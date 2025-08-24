@@ -1,0 +1,67 @@
+/* Center the main container and set max width */
+#root {
+  max-width: 1280px;       /* Restrict the width to 1280px */
+  margin: 0 auto;           /* Center horizontally */
+  padding: 2rem;            /* Add spacing inside the container */
+  text-align: center;       /* Center-align the text inside */
+}
+
+/* Style for logo images */
+.logo {
+  height: 6em;              /* Set height of logo */
+  padding: 1.5em;           /* Space around the logo */
+  will-change: filter;      /* Hint to browser for performance optimization */
+  transition: filter 300ms; /* Smooth transition when filter changes */
+}
+
+/* Apply shadow effect on logo hover */
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);  /* Blue-purple glow */
+}
+
+/* Apply different shadow for React logo on hover */
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);  /* Light blue glow for React */
+}
+
+/* Define spin animation for logos */
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);    /* Start position */
+  }
+  to {
+    transform: rotate(360deg);  /* End position */
+  }
+}
+
+/* Apply spinning animation to the second anchor tag's logo, 
+   but only if user has no motion-reduction preference */
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;  /* Spin infinitely every 20s */
+  }
+}
+
+/* Card-style padding */
+.card {
+  padding: 2em;  /* Add space inside card component */
+}
+
+/* Style for instructional text or less prominent text */
+.read-the-docs {
+  color: #888;   /* Gray color for secondary/informative text */
+}
+
+/* Custom utility for better text wrapping */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Ensure proper text wrapping in cards */
+.break-words-safe {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
