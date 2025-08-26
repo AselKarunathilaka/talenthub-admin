@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { 
   FiBook, FiAlertTriangle, FiTarget, 
   FiInfo, FiCalendar, FiCheckCircle, FiAlertCircle,
-  FiLoader, FiArrowRight, FiMonitor, FiServer, FiClipboard, FiLayers, FiCloud, FiWifi
+  FiLoader, FiArrowRight, FiMonitor, FiServer, FiClipboard, FiLayers, FiCloud, FiWifi,
+  FiSmartphone // Added missing import
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
 
@@ -105,7 +106,8 @@ const Logbook = () => {
     { value: "Documentation", label: "Documentation", icon: <FiBook className="mr-2" /> },
     { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers className="mr-2" /> },
     { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
-    { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> }
+    { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
+    { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> }
   ];
 
   return (
