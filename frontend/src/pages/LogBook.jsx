@@ -4,7 +4,7 @@ import {
   FiBook, FiAlertTriangle, FiTarget, 
   FiInfo, FiCalendar, FiCheckCircle, FiAlertCircle,
   FiLoader, FiArrowRight, FiMonitor, FiServer, FiClipboard, FiLayers, FiCloud, FiWifi,
-  FiSmartphone // Added missing import
+  FiSmartphone, FiUmbrella // Added umbrella icon for leave status
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
 
@@ -16,6 +16,7 @@ const Logbook = () => {
     tasks: '',
     challenges: '',
     plans: '',
+    status: 'working'  // New field with default value
   });
 
   const [statusMessage, setStatusMessage] = useState(null);
@@ -35,15 +36,20 @@ const Logbook = () => {
       return;
     }
 
+    // If user is on leave, adjust the payload accordingly
+    const isOnLeave = formData.status === 'leave';
+    
     const payload = {
       date: new Date().toISOString().split('T')[0],
-      stack: formData.stack,
-      task: formData.tasks.trim(),
-      progress: formData.challenges.trim() || 'No challenges faced',
-      blockers: formData.plans.trim() || 'No specific plans'
+      stack: isOnLeave ? 'On Leave' : formData.stack,
+      task: isOnLeave ? 'On Leave' : formData.tasks.trim(),
+      progress: isOnLeave ? 'On Leave' : (formData.challenges.trim() || 'No challenges faced'),
+      blockers: isOnLeave ? 'On Leave' : (formData.plans.trim() || 'No specific plans'),
+      status: formData.status  // Include status in the payload
     };
 
-    if (!payload.stack || !payload.task) {
+    // Validation differs based on status
+    if (formData.status === 'working' && (!payload.stack || !payload.task)) {
       setStatusMessage({ type: 'error', text: 'Please select a task stack and fill in all required fields.' });
       setIsSubmitting(false);
       return;
@@ -69,6 +75,7 @@ const Logbook = () => {
           tasks: '',
           challenges: '',
           plans: '',
+          status: 'working'  // Reset to default
         });
       } else {
         setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
@@ -159,74 +166,118 @@ const Logbook = () => {
 
                 <div className="p-6">
                   <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Task Stack Selection */}
-                    <div className="space-y-2">
+                    {/* Status Selection - New Field */}
+                    <div className="space-y-4">
                       <label className="flex items-center text-sm font-medium text-gray-700">
-                        <FiMonitor className="mr-2 text-blue-500" />
-                        Task Stack <span className="text-red-500 ml-1">*</span>
+                        <FiUmbrella className="mr-2 text-blue-500" />
+                        Status <span className="text-red-500 ml-1">*</span>
                       </label>
-                      <select
-                        name="stack"
-                        value={formData.stack}
-                        onChange={handleChange}
-                        required
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 bg-white"
-                      >
-                        <option value="" disabled>Select your stack...</option>
-                        {stackOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+                      <div className="flex gap-6">
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="status"
+                            value="working"
+                            checked={formData.status === 'working'}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          />
+                          <span className="ml-2 text-gray-700">Working</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="status"
+                            value="leave"
+                            checked={formData.status === 'leave'}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          />
+                          <span className="ml-2 text-gray-700">On Leave</span>
+                        </label>
+                      </div>
                     </div>
 
-                    {/* Tasks Completed */}
-                    <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-gray-700">
-                        <FiCheckCircle className="mr-2 text-blue-500" />
-                        Tasks Completed <span className="text-red-500 ml-1">*</span>
-                      </label>
-                      <textarea
-                        name="tasks"
-                        value={formData.tasks}
-                        onChange={handleChange}
-                        required
-                        rows={4}
-                        placeholder="What did you accomplish today? Be specific..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
-                      />
-                    </div>
+                    {/* Conditional rendering based on status */}
+                    {formData.status === 'working' ? (
+                      <>
+                        {/* Task Stack Selection */}
+                        <div className="space-y-2">
+                          <label className="flex items-center text-sm font-medium text-gray-700">
+                            <FiMonitor className="mr-2 text-blue-500" />
+                            Task Stack <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <select
+                            name="stack"
+                            value={formData.stack}
+                            onChange={handleChange}
+                            required={formData.status === 'working'}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 bg-white"
+                          >
+                            <option value="" disabled>Select your stack...</option>
+                            {stackOptions.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                        </div>
 
-                    {/* Challenges Faced */}
-                    <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-gray-700">
-                        <FiAlertTriangle className="mr-2 text-blue-500" />
-                        Challenges Faced
-                      </label>
-                      <textarea
-                        name="challenges"
-                        value={formData.challenges}
-                        onChange={handleChange}
-                        rows={3}
-                        placeholder="Any obstacles or difficulties you encountered..."
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
-                      />
-                    </div>
+                        {/* Tasks Completed */}
+                        <div className="space-y-2">
+                          <label className="flex items-center text-sm font-medium text-gray-700">
+                            <FiCheckCircle className="mr-2 text-blue-500" />
+                            Tasks Completed <span className="text-red-500 ml-1">*</span>
+                          </label>
+                          <textarea
+                            name="tasks"
+                            value={formData.tasks}
+                            onChange={handleChange}
+                            required={formData.status === 'working'}
+                            rows={4}
+                            placeholder="What did you accomplish today? Be specific..."
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
+                          />
+                        </div>
 
-                    {/* Plans for Tomorrow */}
-                    <div className="space-y-2">
-                      <label className="flex items-center text-sm font-medium text-gray-700">
-                        <FiTarget className="mr-2 text-blue-500" />
-                        Plans for Tomorrow
-                      </label>
-                      <textarea
-                        name="plans"
-                        value={formData.plans}
-                        onChange={handleChange}
-                        rows={3}
-                        placeholder="What will you focus on tomorrow?"
-                        className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
-                      />
-                    </div>
+                        {/* Challenges Faced */}
+                        <div className="space-y-2">
+                          <label className="flex items-center text-sm font-medium text-gray-700">
+                            <FiAlertTriangle className="mr-2 text-blue-500" />
+                            Challenges Faced
+                          </label>
+                          <textarea
+                            name="challenges"
+                            value={formData.challenges}
+                            onChange={handleChange}
+                            rows={3}
+                            placeholder="Any obstacles or difficulties you encountered..."
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
+                          />
+                        </div>
+
+                        {/* Plans for Tomorrow */}
+                        <div className="space-y-2">
+                          <label className="flex items-center text-sm font-medium text-gray-700">
+                            <FiTarget className="mr-2 text-blue-500" />
+                            Plans for Tomorrow
+                          </label>
+                          <textarea
+                            name="plans"
+                            value={formData.plans}
+                            onChange={handleChange}
+                            rows={3}
+                            placeholder="What will you focus on tomorrow?"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <p className="text-blue-700 flex items-center">
+                          <FiInfo className="mr-2" />
+                          No further details needed for leave days.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Status message */}
                     {statusMessage && (
@@ -309,6 +360,10 @@ const Logbook = () => {
                     <span className="text-blue-500 mr-2">•</span>
                     Plan ahead for tomorrow's priorities
                   </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-2">•</span>
+                    Mark "On Leave" when taking time off
+                  </li>
                 </ul>
               </div>
 
@@ -327,6 +382,14 @@ const Logbook = () => {
                   <p className="flex items-center">
                     <span className="font-medium mr-2">Week:</span>
                     Week {Math.ceil(new Date().getDate() / 7)} of {new Date().toLocaleString('default', { month: 'long' })}
+                  </p>
+                  <p className="flex items-center">
+                    <span className="font-medium mr-2">Status:</span>
+                    {formData.status === 'working' ? (
+                      <span className="text-green-600">Working</span>
+                    ) : (
+                      <span className="text-blue-600">On Leave</span>
+                    )}
                   </p>
                 </div>
               </div>
