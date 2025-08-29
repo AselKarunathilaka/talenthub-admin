@@ -29,6 +29,11 @@ const DailyRecordSchema = new mongoose.Schema({
     type: String,
     default: "No specific plans",
     trim: true
+  },
+  status: {
+    type: String,
+    enum: ["working", "leave"],
+    default: "working"
   }
 }, {
   timestamps: true

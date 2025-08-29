@@ -29,6 +29,18 @@ const getHeaders = () => {
 
 // Admin API functions
 export const adminApi = {
+  // Download on-leave interns Excel
+  downloadOnLeaveExcel: async () => {
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/admin/on-leave/export`, {
+      method: 'GET',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      }
+    });
+    if (!response.ok) throw new Error('Failed to download on-leave Excel');
+    return response.blob();
+  },
   // Get dashboard statistics
   getDashboardStats: async () => {
     try {

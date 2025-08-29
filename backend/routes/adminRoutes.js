@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+
 const {
   getDashboardStats,
   getInternReport,
@@ -10,6 +11,9 @@ const {
   getAllDailyRecords,
   getPreviousDaySubmissions
 } = require("../controllers/adminController");
+const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
+// Export on-leave interns as Excel
+router.get("/on-leave/export", exportOnLeaveExcel);
 
 // All admin routes require authentication
 router.use(authMiddleware);

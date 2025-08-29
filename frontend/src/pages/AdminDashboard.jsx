@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+  import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaUsers, FaSearch, FaDownload, FaBell, FaExclamationTriangle, 
@@ -188,6 +188,22 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error exporting submitted interns CSV:', error);
       notificationUtils.showError('Failed to export submitted interns CSV report');
+    }
+  };
+  // Download On Leave Excel
+  const handleDownloadOnLeaveExcel = async () => {
+    try {
+      const blob = await adminApi.downloadOnLeaveExcel();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'on_leave_interns.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      alert('Failed to download on-leave Excel');
     }
   };
 
@@ -481,10 +497,10 @@ const AdminDashboard = () => {
                   Admin Tools
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-6 gap-3">
+              <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto pb-2">
                 <motion.button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-amber-500/80 to-orange-500/80 text-white rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-amber-500/80 to-orange-500/80 text-white rounded-lg hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -501,7 +517,7 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleSendNotifications}
                   disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-red-500/80 to-pink-500/80 text-white rounded-xl hover:from-red-500 hover:to-pink-500 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-500/80 to-pink-500/80 text-white rounded-lg hover:from-red-500 hover:to-pink-500 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
@@ -521,7 +537,7 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={() => navigate('/admin/daily-records')}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-emerald-500/80 to-teal-500/80 text-white rounded-xl hover:from-emerald-500 hover:to-teal-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-emerald-500/80 to-teal-500/80 text-white rounded-lg hover:from-emerald-500 hover:to-teal-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -538,7 +554,7 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleExportOverdueCSV}
                   disabled={!dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-red-600/80 to-red-700/80 text-white rounded-xl hover:from-red-600 hover:to-red-700 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-600/80 to-red-700/80 text-white rounded-lg hover:from-red-600 hover:to-red-700 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
@@ -554,7 +570,7 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-green-500/80 to-green-600/80 text-white rounded-xl hover:from-green-500 hover:to-green-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-green-500/80 to-green-600/80 text-white rounded-lg hover:from-green-500 hover:to-green-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -570,7 +586,7 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportPreviousDayCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-4 py-3 bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs md:text-sm font-medium min-h-[3rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white rounded-lg hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -580,6 +596,22 @@ const AdminDashboard = () => {
                     <span className="block">Export Previous Day</span>
                     <span className="block text-xs opacity-90">
                       Yesterday's submissions
+                    </span>
+                  </span>
+                </motion.button>
+
+                <motion.button
+                  onClick={handleDownloadOnLeaveExcel}
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-700/80 to-blue-900/80 text-white rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <FaDownload className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <span className="flex-1 text-left">
+                    <span className="block">Download On Leave</span>
+                    <span className="block text-xs opacity-90">
+                      Get list of on-leave interns
                     </span>
                   </span>
                 </motion.button>

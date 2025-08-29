@@ -4,7 +4,7 @@ const Intern = require("../models/Intern");
 // Create a new daily record
 const createDailyRecord = async (req, res) => {
   try {
-    const { date, stack, task, progress, blockers } = req.body;
+  const { date, stack, task, progress, blockers, status } = req.body;
     const userId = req.user.id;
     const userEmail = req.user.email;
 
@@ -54,12 +54,13 @@ const createDailyRecord = async (req, res) => {
       existingRecord.task = task;
       existingRecord.progress = progress || "No challenges faced";
       existingRecord.blockers = blockers || "No specific plans";
-      
+      if (status) existingRecord.status = status;
+
       await existingRecord.save();
-      
+
       // Populate the intern details
       await existingRecord.populate('internId', 'traineeName traineeId email');
-      
+
       console.log('Updated existing record:', existingRecord);
       return res.status(200).json(existingRecord);
     } else {
@@ -70,14 +71,15 @@ const createDailyRecord = async (req, res) => {
         stack,
         task,
         progress: progress || "No challenges faced",
-        blockers: blockers || "No specific plans"
+        blockers: blockers || "No specific plans",
+        status: status || "working"
       });
 
       await newRecord.save();
-      
+
       // Populate the intern details
       await newRecord.populate('internId', 'traineeName traineeId email');
-      
+
       console.log('Created new record:', newRecord);
       return res.status(201).json(newRecord);
     }
