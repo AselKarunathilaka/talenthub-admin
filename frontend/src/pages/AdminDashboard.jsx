@@ -115,29 +115,19 @@ const AdminDashboard = () => {
 
     try {
       setSendingNotifications(true);
-      // Only send to the overdue intern with traineeId '2706' for testing
-      const intern = dashboardStats.overdueList.find(i => i.traineeId === '2706');
-      if (!intern) {
-        notificationUtils.showInfo('No overdue intern with traineeId 2706 found for test.');
-        return;
-      }
-      const emailBody = `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`;
-      // Pass the intern and body to the API (adjust API as needed)
-      const result = await adminApi.sendOverdueNotifications([
-        {
-          id: intern._id,
-          name: intern.traineeName,
-          traineeId: intern.traineeId,
-          email: intern.email,
-          body: emailBody
-        }
-      ]);
-      notificationUtils.showSuccess(
-        `Test notification sent to ${intern.traineeName} (${intern.email}).`
-      );
+      // Send notifications to all overdue interns
+      const notifications = dashboardStats.overdueList.map(intern => ({
+        id: intern._id,
+        name: intern.traineeName,
+        traineeId: intern.traineeId,
+        email: intern.email,
+        body: `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`
+      }));
+      await adminApi.sendOverdueNotifications(notifications);
+      notificationUtils.showSuccess('Notifications sent to all overdue interns.');
     } catch (error) {
       console.error('Error sending notifications:', error);
-      notificationUtils.showError('Failed to send test notification');
+      notificationUtils.showError('Failed to send notifications');
     } finally {
       setSendingNotifications(false);
     }
