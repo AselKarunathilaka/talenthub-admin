@@ -16,7 +16,7 @@ const Logbook = () => {
     tasks: '',
     challenges: '',
     plans: '',
-    status: 'working'  // New field with default value
+    status: 'working'  // Default status: working, leave, or wfh (Work From Home)
   });
 
   const [statusMessage, setStatusMessage] = useState(null);
@@ -36,20 +36,21 @@ const Logbook = () => {
       return;
     }
 
-    // If user is on leave, adjust the payload accordingly
+    // Adjust the payload based on status
     const isOnLeave = formData.status === 'leave';
+    const isWorkFromHome = formData.status === 'wfh';
     
     const payload = {
       date: new Date().toISOString().split('T')[0],
-      stack: isOnLeave ? 'On Leave' : formData.stack,
-      task: isOnLeave ? 'On Leave' : formData.tasks.trim(),
+      stack: isOnLeave ? 'On Leave' : (isWorkFromHome ? formData.stack : formData.stack),
+      task: isOnLeave ? 'On Leave' : (isWorkFromHome ? formData.tasks.trim() : formData.tasks.trim()),
       progress: isOnLeave ? 'On Leave' : (formData.challenges.trim() || 'No challenges faced'),
       blockers: isOnLeave ? 'On Leave' : (formData.plans.trim() || 'No specific plans'),
       status: formData.status  // Include status in the payload
     };
 
     // Validation differs based on status
-    if (formData.status === 'working' && (!payload.stack || !payload.task)) {
+    if ((formData.status === 'working' || formData.status === 'wfh') && (!payload.stack || !payload.task)) {
       setStatusMessage({ type: 'error', text: 'Please select a task stack and fill in all required fields.' });
       setIsSubmitting(false);
       return;
@@ -172,7 +173,7 @@ const Logbook = () => {
                         <FiUmbrella className="mr-2 text-blue-500" />
                         Status <span className="text-red-500 ml-1">*</span>
                       </label>
-                      <div className="flex gap-6">
+                      <div className="flex flex-wrap gap-6">
                         <label className="flex items-center">
                           <input
                             type="radio"
@@ -183,6 +184,17 @@ const Logbook = () => {
                             className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                           />
                           <span className="ml-2 text-gray-700">Working</span>
+                        </label>
+                        <label className="flex items-center">
+                          <input
+                            type="radio"
+                            name="status"
+                            value="wfh"
+                            checked={formData.status === 'wfh'}
+                            onChange={handleChange}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                          />
+                          <span className="ml-2 text-gray-700">Work From Home</span>
                         </label>
                         <label className="flex items-center">
                           <input
@@ -199,7 +211,7 @@ const Logbook = () => {
                     </div>
 
                     {/* Conditional rendering based on status */}
-                    {formData.status === 'working' ? (
+                    {formData.status === 'working' || formData.status === 'wfh' ? (
                       <>
                         {/* Task Stack Selection */}
                         <div className="space-y-2">
@@ -364,6 +376,10 @@ const Logbook = () => {
                     <span className="text-blue-500 mr-2">•</span>
                     Mark "On Leave" when taking time off
                   </li>
+                  <li className="flex items-start">
+                    <span className="text-blue-500 mr-2">•</span>
+                    Use "Work From Home" when working remotely
+                  </li>
                 </ul>
               </div>
 
@@ -387,6 +403,8 @@ const Logbook = () => {
                     <span className="font-medium mr-2">Status:</span>
                     {formData.status === 'working' ? (
                       <span className="text-green-600">Working</span>
+                    ) : formData.status === 'wfh' ? (
+                      <span className="text-purple-600">Work From Home</span>
                     ) : (
                       <span className="text-blue-600">On Leave</span>
                     )}

@@ -454,12 +454,25 @@ const DailyRecords = () => {
                                 {isAdmin ? (record.internId?.traineeName || 'Unknown User') : 'My Record'}
                               </span>
                             </div>
-                            {/* Stack field */}
-                            {record.stack && (
-                              <span className="inline-block mb-1 px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700 mr-2">
-                                {record.stack}
-                              </span>
-                            )}
+                            {/* Stack and Status fields */}
+                            <div className="flex flex-wrap gap-1 mb-1">
+                              {record.stack && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                  {record.stack}
+                                </span>
+                              )}
+                              {record.status && (
+                                <span className={`inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                  record.status === 'working' ? 'bg-green-100 text-green-700' : 
+                                  record.status === 'wfh' ? 'bg-purple-100 text-purple-700' : 
+                                  'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {record.status === 'working' ? 'Working' : 
+                                   record.status === 'wfh' ? 'Work From Home' : 
+                                   'On Leave'}
+                                </span>
+                              )}
+                            </div>
                             <p className="text-gray-700 text-xs md:text-sm line-clamp-3 break-words overflow-wrap-anywhere leading-relaxed">
                               {record.task}
                             </p>
@@ -654,14 +667,25 @@ const DailyRecords = () => {
 
                           {/* Card Content */}
                           <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex-grow">
-                            {/* Stack field */}
-                            {record.stack && (
-                              <div className="mb-2">
+                            {/* Stack and Status fields */}
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              {record.stack && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   {record.stack}
                                 </span>
-                              </div>
-                            )}
+                              )}
+                              {record.status && (
+                                <span className={`inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
+                                  record.status === 'working' ? 'bg-green-100 text-green-700' : 
+                                  record.status === 'wfh' ? 'bg-purple-100 text-purple-700' : 
+                                  'bg-blue-100 text-blue-700'
+                                }`}>
+                                  {record.status === 'working' ? 'Working' : 
+                                   record.status === 'wfh' ? 'Work From Home' : 
+                                   'On Leave'}
+                                </span>
+                              )}
+                            </div>
                             {/* Task Description */}
                             <div className="space-y-2 md:space-y-3">
                               <h4 className="font-semibold text-gray-800 flex items-center gap-2 md:gap-3">

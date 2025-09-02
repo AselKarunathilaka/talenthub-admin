@@ -32,7 +32,7 @@ const DailyRecordSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["working", "leave"],
+    enum: ["working", "leave", "wfh"],
     default: "working"
   }
 }, {
