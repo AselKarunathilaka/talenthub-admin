@@ -219,7 +219,7 @@ const getInternDetails = async (req, res) => {
       .populate('internId', 'traineeName traineeId email')
       .sort({ createdAt: -1 });
 
-    // Map records to include stack, task, progress, blockers
+    // Map records to include stack, task, progress, blockers, status
     const records = recordsRaw.map(record => ({
       _id: record._id,
       date: record.date,
@@ -227,7 +227,8 @@ const getInternDetails = async (req, res) => {
       stack: record.stack,
       task: record.task,
       progress: record.progress,
-      blockers: record.blockers
+      blockers: record.blockers,
+      status: record.status
     }));
 
     // Calculate statistics

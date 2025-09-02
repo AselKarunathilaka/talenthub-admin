@@ -355,14 +355,30 @@ const AdminInternRecords = () => {
                             <p className="text-xs sm:text-sm text-white/60">
                               Submitted: {new Date(record.createdAt).toLocaleDateString()}
                             </p>
-                            {record.stack && (
-                              <span className="inline-block mt-1 sm:mt-2 px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                {record.stack}
-                              </span>
-                            )}
+                            <div className="flex flex-wrap gap-2 mt-1 sm:mt-2">
+                              {/* Show stack only if it's not "On Leave" when status is leave */}
+                              {record.stack && !(record.status === 'leave' && record.stack === 'On Leave') && (
+                                <span className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                  {record.stack}
+                                </span>
+                              )}
+                              
+                              {/* Show status badge for Work From Home */}
+                              {record.status === 'wfh' && (
+                                <span className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                                  Work From Home
+                                </span>
+                              )}
+                              {/* Show status badge for On Leave */}
+                              {record.status === 'leave' && (
+                                <span className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                  On Leave
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2 w-full sm:w-auto">
+                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                           <span className="inline-flex items-center px-2 sm:px-2.5 py-1 sm:py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-400">
                             <FaTasks className="mr-1" />
                             Daily Record

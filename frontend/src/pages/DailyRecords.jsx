@@ -456,20 +456,22 @@ const DailyRecords = () => {
                             </div>
                             {/* Stack and Status fields */}
                             <div className="flex flex-wrap gap-1 mb-1">
-                              {record.stack && (
+                              {/* Show stack only if it's not "On Leave" when status is leave */}
+                              {record.stack && !(record.status === 'leave' && record.stack === 'On Leave') && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   {record.stack}
                                 </span>
                               )}
-                              {record.status && (
-                                <span className={`inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
-                                  record.status === 'working' ? 'bg-green-100 text-green-700' : 
-                                  record.status === 'wfh' ? 'bg-purple-100 text-purple-700' : 
-                                  'bg-blue-100 text-blue-700'
-                                }`}>
-                                  {record.status === 'working' ? 'Working' : 
-                                   record.status === 'wfh' ? 'Work From Home' : 
-                                   'On Leave'}
+                              {/* Show status badge for Work From Home */}
+                              {record.status === 'wfh' && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                                  Work From Home
+                                </span>
+                              )}
+                              {/* Show status badge for On Leave */}
+                              {record.status === 'leave' && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                  On Leave
                                 </span>
                               )}
                             </div>
@@ -669,20 +671,22 @@ const DailyRecords = () => {
                           <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex-grow">
                             {/* Stack and Status fields */}
                             <div className="mb-2 flex flex-wrap gap-2">
-                              {record.stack && (
+                              {/* Show stack only if it's not "On Leave" when status is leave */}
+                              {record.stack && !(record.status === 'leave' && record.stack === 'On Leave') && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   {record.stack}
                                 </span>
                               )}
-                              {record.status && (
-                                <span className={`inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold ${
-                                  record.status === 'working' ? 'bg-green-100 text-green-700' : 
-                                  record.status === 'wfh' ? 'bg-purple-100 text-purple-700' : 
-                                  'bg-blue-100 text-blue-700'
-                                }`}>
-                                  {record.status === 'working' ? 'Working' : 
-                                   record.status === 'wfh' ? 'Work From Home' : 
-                                   'On Leave'}
+                              {/* Show status badge for Work From Home */}
+                              {record.status === 'wfh' && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                                  Work From Home
+                                </span>
+                              )}
+                              {/* Show status badge for On Leave */}
+                              {record.status === 'leave' && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
+                                  On Leave
                                 </span>
                               )}
                             </div>
