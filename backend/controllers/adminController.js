@@ -56,6 +56,9 @@ const getDashboardStats = async (req, res) => {
         traineeName: intern.traineeName,
         traineeId: intern.traineeId,
         email: intern.email,
+        trainingStartDate: intern.trainingStartDate,
+        trainingEndDate: intern.trainingEndDate,
+        fieldOfSpecialization: intern.fieldOfSpecialization,
         lastSubmission: getLastSubmissionDate(intern._id, records)
       }))
     };
@@ -101,6 +104,8 @@ const getInternReport = async (req, res) => {
         email: intern.email,
         fieldOfSpecialization: intern.fieldOfSpecialization,
         team: intern.team || 'Unassigned',
+        trainingStartDate: intern.trainingStartDate,
+        trainingEndDate: intern.trainingEndDate,
         totalRecords: internRecords.length,
         lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
         daysSinceLastSubmission,

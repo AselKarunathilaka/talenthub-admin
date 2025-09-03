@@ -292,7 +292,7 @@ const Login = () => {
       </div>
 
       {/* Global styles for animations */}
-      <style jsx global>{`
+      <style jsx="true" global="true">{`
         @keyframes float {
           0%, 100% {
             transform: translateY(0) translateX(0) rotate(0deg);
