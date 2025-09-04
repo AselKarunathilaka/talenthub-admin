@@ -51,16 +51,27 @@ const getDashboardStats = async (req, res) => {
       totalRecords: records.length,
       submittedInterns: submittedInterns.length,
       overdueInterns: overdueInterns.length,
-      overdueList: overdueInterns.map(intern => ({
-        _id: intern._id,
-        traineeName: intern.traineeName,
-        traineeId: intern.traineeId,
-        email: intern.email,
-        trainingStartDate: intern.trainingStartDate,
-        trainingEndDate: intern.trainingEndDate,
-        fieldOfSpecialization: intern.fieldOfSpecialization,
-        lastSubmission: getLastSubmissionDate(intern._id, records)
-      }))
+      overdueList: overdueInterns.map(intern => {
+        const internRecords = records.filter(record => 
+          record.internId && record.internId._id.toString() === intern._id.toString()
+        );
+        const lastSubmission = getLastSubmissionDate(intern._id, records);
+        const daysSinceLastSubmission = lastSubmission ? 
+          Math.floor((new Date() - new Date(lastSubmission)) / (1000 * 60 * 60 * 24)) : null;
+          
+        return {
+          _id: intern._id,
+          traineeName: intern.traineeName,
+          traineeId: intern.traineeId,
+          email: intern.email,
+          trainingStartDate: intern.trainingStartDate,
+          trainingEndDate: intern.trainingEndDate,
+          fieldOfSpecialization: intern.fieldOfSpecialization,
+          totalRecords: internRecords.length,
+          lastSubmission: lastSubmission,
+          daysSinceLastSubmission: daysSinceLastSubmission
+        };
+      })
     };
 
     res.status(200).json(stats);

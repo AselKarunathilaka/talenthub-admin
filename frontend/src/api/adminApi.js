@@ -344,16 +344,85 @@ export const csvUtils = {
     }
   },
 
+  // Convert overdue interns data to CSV (without Status column)
+  convertOverdueInternsToCSV: (data) => {
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      return '';
+    }
+
+    // Define CSV headers (without Status)
+    const headers = [
+      'Trainee ID',
+      'Name',
+      'Email',
+      'Field of Specialization',
+      'Start Date',
+      'End Date',
+      'Total Records',
+      'Last Submission',
+      'Days Since Last Submission',
+      'Export Date'
+    ];
+
+    // Get current date for export timestamp
+    const exportDate = new Date().toLocaleDateString();
+
+    // Convert data to CSV rows
+    const csvRows = [
+      headers.join(','), // Header row
+      ...data.map(intern => {
+        // Calculate days since last submission if not already provided
+        let daysSinceLastSubmission = intern.daysSinceLastSubmission;
+        if (daysSinceLastSubmission === undefined || daysSinceLastSubmission === null) {
+          if (intern.lastSubmission) {
+            daysSinceLastSubmission = Math.floor(
+              (new Date() - new Date(intern.lastSubmission)) / (1000 * 60 * 60 * 24)
+            );
+          } else {
+            daysSinceLastSubmission = "N/A";
+          }
+        }
+
+        // Use totalRecords if available, or calculate it from backend data
+        // For overdueList from dashboard stats, there's no totalRecords property
+        // but we can check if the intern is in the overdue list which indicates they 
+        // haven't submitted recently
+        const totalRecords = intern.totalRecords !== undefined ? intern.totalRecords : 
+                            (intern.lastSubmission ? "At least 1" : "0");
+
+        return [
+          intern.traineeId || '',
+          `"${intern.traineeName || ''}"`,
+          intern.email || '',
+          `"${intern.fieldOfSpecialization || ''}"`,
+          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
+          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
+          totalRecords,
+          intern.lastSubmission ? new Date(intern.lastSubmission).toLocaleDateString() : 'Never',
+          daysSinceLastSubmission,
+          exportDate
+        ].join(',');
+      })
+    ];
+
+    return csvRows.join('\n');
+  },
+
   // Generate and download intern report CSV
   downloadInternReport: async (data = null, reportType = 'intern_report') => {
     try {
       // Use provided data or fetch all intern data
       const reportData = data || await adminApi.getInternReport();
       
-      // Use specialized CSV conversion for previous day reports
-      const csvContent = reportType.startsWith('previous_day_submissions') 
-        ? csvUtils.convertPreviousDayToCSV(reportData)
-        : csvUtils.convertToCSV(reportData);
+      // Use specialized CSV conversion based on report type
+      let csvContent;
+      if (reportType.startsWith('previous_day_submissions')) {
+        csvContent = csvUtils.convertPreviousDayToCSV(reportData);
+      } else if (reportType === 'overdue_interns') {
+        csvContent = csvUtils.convertOverdueInternsToCSV(reportData);
+      } else {
+        csvContent = csvUtils.convertToCSV(reportData);
+      }
         
       const timestamp = new Date().toISOString().split('T')[0];
       
