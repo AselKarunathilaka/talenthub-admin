@@ -52,6 +52,7 @@ const getDashboardStats = async (req, res) => {
       submittedInterns: submittedInterns.length,
       overdueInterns: overdueInterns.length,
       overdueList: overdueInterns.map(intern => {
+        // Use the intern data directly
         const internRecords = records.filter(record => 
           record.internId && record.internId._id.toString() === intern._id.toString()
         );
@@ -59,6 +60,9 @@ const getDashboardStats = async (req, res) => {
         const daysSinceLastSubmission = lastSubmission ? 
           Math.floor((new Date() - new Date(lastSubmission)) / (1000 * 60 * 60 * 24)) : null;
           
+        // Convert empty string to a default value for better display
+        const instituteValue = intern.institute && intern.institute.trim() ? intern.institute : "Not Specified";
+        
         return {
           _id: intern._id,
           traineeName: intern.traineeName,
@@ -67,6 +71,7 @@ const getDashboardStats = async (req, res) => {
           trainingStartDate: intern.trainingStartDate,
           trainingEndDate: intern.trainingEndDate,
           fieldOfSpecialization: intern.fieldOfSpecialization,
+          institute: instituteValue,
           totalRecords: internRecords.length,
           lastSubmission: lastSubmission,
           daysSinceLastSubmission: daysSinceLastSubmission

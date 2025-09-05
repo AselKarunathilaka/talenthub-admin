@@ -356,6 +356,7 @@ export const csvUtils = {
       'Name',
       'Email',
       'Field of Specialization',
+      'Institute',
       'Start Date',
       'End Date',
       'Total Records',
@@ -390,11 +391,17 @@ export const csvUtils = {
         const totalRecords = intern.totalRecords !== undefined ? intern.totalRecords : 
                             (intern.lastSubmission ? "At least 1" : "0");
 
+        // Ensure the institute field has a default value if empty
+        const institute = intern.institute && intern.institute.trim() 
+          ? intern.institute 
+          : "Not Specified";
+          
         return [
           intern.traineeId || '',
           `"${intern.traineeName || ''}"`,
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
+          `"${institute}"`,
           intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
           intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
           totalRecords,
