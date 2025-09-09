@@ -273,20 +273,18 @@ export const csvUtils = {
     return csvRows.join('\n');
   },
 
-  // Convert previous day submissions data to CSV (without Total Records field)
+  // Convert previous day submissions data to CSV (without Total Records, Start Date and End Date fields)
   convertPreviousDayToCSV: (data) => {
     if (!data || !Array.isArray(data) || data.length === 0) {
       return '';
     }
 
-    // Define CSV headers (without Total Records)
+    // Define CSV headers (without Total Records, Start Date and End Date)
     const headers = [
       'Trainee ID',
       'Name',
       'Email',
       'Field of Specialization',
-      'Start Date',
-      'End Date',
       'Last Submission',
       'Days Since Last Submission',
       'Status',
@@ -315,8 +313,6 @@ export const csvUtils = {
           `"${intern.traineeName || ''}"`,
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
-          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
-          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
           intern.lastSubmission ? new Date(intern.lastSubmission).toLocaleDateString() : 'Never',
           intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? intern.daysSinceLastSubmission : 'N/A',
           status,
