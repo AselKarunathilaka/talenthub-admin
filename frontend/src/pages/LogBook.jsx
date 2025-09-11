@@ -116,7 +116,7 @@ const Logbook = () => {
   { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
   { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
   { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> },
-  { value: "AI/ML", label: "AI/ML", icon: <FiMonitor className="mr-2" /> },
+  { value: "AI/ML", label: "Artificial Intelligence and Machine Learning", icon: <FiMonitor className="mr-2" /> },
   { value: "DataScience", label: "Data Science", icon: <FiServer className="mr-2" /> }
   ];
     
