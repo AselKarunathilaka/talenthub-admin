@@ -1,4 +1,5 @@
 const InternRepository = require("../repositories/internRepository");
+const SLTApiService = require("./sltApiService"); // Add this import
 const moment = require("moment");
 
 class InternService {
@@ -53,7 +54,6 @@ class InternService {
     return await InternRepository.assignToTeam(internIds, teamName);
   }
 
-
   async removeFromTeam(internId) {
     return await InternRepository.removeFromTeam(internId);
   }
@@ -82,9 +82,6 @@ class InternService {
   async assignSingleToTeam(internId, teamName) {
     return await InternRepository.assignSingleToTeam(internId, teamName);
   }
-
-
-
 
   async deleteTeam(teamName) {
     return await InternRepository.deleteTeam(teamName);
@@ -129,27 +126,6 @@ class InternService {
     };
   }
 
-
-  // async addAvailableDay(traineeId, day) {
-  //   const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-  //   if (!validDays.includes(day)) {
-  //     throw new Error("Invalid day provided");
-  //   }
-
-  //   return await InternRepository.addAvailableDay(traineeId, day);
-  // }
-
-  // async removeAvailableDay(traineeId, day) {
-  //   const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-  //   if (!validDays.includes(day)) {
-  //     throw new Error("Invalid day provided");
-  //   }
-
-  //   return await InternRepository.removeAvailableDay(traineeId, day);
-  // }
-
   async addAvailableDay(id, day) {
     const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 
@@ -182,6 +158,140 @@ class InternService {
     return intern;
   }
 
+  // ==================== SLT API INTEGRATION METHODS ====================
+
+  async syncWithSLTAPI() {
+    try {
+      console.log('🔄 Starting SLT API synchronization...');
+      
+      // Fetch active trainees from SLT API
+      const activeTrainees = await SLTApiService.fetchActiveTrainees();
+      
+      let addedCount = 0;
+      let updatedCount = 0;
+      let skippedCount = 0;
+      let errorCount = 0;
+
+      // Process each trainee
+      for (const trainee of activeTrainees) {
+        try {
+          const traineeId = trainee.Trainee_ID?.toString();
+          
+          if (!traineeId) {
+            console.log('⚠️ Skipping trainee without ID:', trainee);
+            skippedCount++;
+            continue;
+          }
+
+          // Map API data to your schema
+          const internData = {
+            traineeId: traineeId,
+            traineeName: trainee.Trainee_Name || '',
+            fieldOfSpecialization: 'General Training', // Default value since SLT API doesn't provide this
+            trainingStartDate: trainee.Training_StartDate ? new Date(trainee.Training_StartDate) : null,
+            trainingEndDate: trainee.Training_EndDate ? new Date(trainee.Training_EndDate) : null,
+            institute: trainee.Institute || '',
+            email: trainee.Trainee_Email || '',
+            team: '',
+            attendance: [],
+            availableDays: []
+          };
+
+          // Check if intern already exists
+          const existingIntern = await InternRepository.findByTraineeId(internData.traineeId);
+
+          if (existingIntern) {
+            // Update existing intern (preserve team, attendance, and availableDays)
+            const updatedData = {
+              traineeName: internData.traineeName,
+              trainingStartDate: internData.trainingStartDate,
+              trainingEndDate: internData.trainingEndDate,
+              institute: internData.institute,
+              email: internData.email
+            };
+            
+            await InternRepository.updateIntern(existingIntern._id, updatedData);
+            updatedCount++;
+            console.log(`📝 Updated intern: ${internData.traineeName} (${internData.traineeId})`);
+          } else {
+            // Create new intern
+            await InternRepository.addIntern(internData);
+            addedCount++;
+            console.log(`➕ Added new intern: ${internData.traineeName} (${internData.traineeId})`);
+          }
+        } catch (error) {
+          console.error(`❌ Error processing trainee ${trainee.Trainee_ID}:`, error.message);
+          errorCount++;
+        }
+      }
+
+      return {
+        success: true,
+        message: `Sync completed: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`,
+        stats: {
+          added: addedCount,
+          updated: updatedCount,
+          skipped: skippedCount,
+          errors: errorCount,
+          totalProcessed: activeTrainees.length
+        }
+      };
+
+    } catch (error) {
+      console.error('❌ Sync failed:', error.message);
+      return {
+        success: false,
+        message: `Sync failed: ${error.message}`,
+        stats: {
+          added: 0,
+          updated: 0,
+          skipped: 0,
+          errors: 1,
+          totalProcessed: 0
+        }
+      };
+    }
+  }
+
+  async testSLTAPI() {
+    try {
+      const trainees = await SLTApiService.fetchActiveTrainees();
+      return {
+        success: true,
+        message: 'SLT API connection successful',
+        count: trainees.length,
+        sample: trainees.slice(0, 3), // Return first 3 as sample
+        total: trainees.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: `SLT API test failed: ${error.message}`,
+        count: 0,
+        sample: [],
+        total: 0
+      };
+    }
+  }
+
+  // Helper method to get raw data from SLT API
+  async getActiveTraineesFromSLT() {
+    try {
+      const trainees = await SLTApiService.fetchActiveTrainees();
+      return {
+        success: true,
+        data: trainees,
+        count: trainees.length
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message,
+        data: [],
+        count: 0
+      };
+    }
+  }
 }
 
 module.exports = new InternService();

@@ -6,7 +6,6 @@ const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
 
-
 const addIntern = async (req, res) => {
   try {
     const newIntern = await InternService.addIntern(req.body);
@@ -18,13 +17,9 @@ const addIntern = async (req, res) => {
 
 const addExternalIntern = async (req, res) => {
   try {
-
     const newInternData = req.body;
-
     console.log("Received intern data from external system:", newInternData);
-
     const newIntern = await InternService.addIntern(newInternData);
-
     res.status(201).json({ message: "Intern added successfully!", intern: newIntern });
   } catch (error) {
     res.status(500).json({ message: "Error adding intern", error: error.message });
@@ -40,7 +35,6 @@ const getAllInterns = async (req, res) => {
     res.status(500).json({ message: "Error fetching interns", error: error.message });
   }
 };
-
 
 const getInternById = async (req, res) => {
   try {
@@ -66,8 +60,6 @@ const getInternByIdEach = async (req, res) => {
   }
 };
 
-
-
 const getAttendanceStats = async (req, res) => {
   try {
     const stats = await InternService.getAttendanceStats();
@@ -79,16 +71,13 @@ const getAttendanceStats = async (req, res) => {
 
 const markAttendance = async (req, res) => {
   const { internId, status, date } = req.body;
-
   try {
-
     const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status, date);
     res.status(200).json({ message: "Attendance marked successfully", intern: updatedIntern });
   } catch (error) {
     res.status(500).json({ message: "Error marking attendance", error: error.message });
   }
 };
-
 
 const updateAttendance = async (req, res) => {
   try {
@@ -100,7 +89,6 @@ const updateAttendance = async (req, res) => {
   }
 };
 
-
 const assignToTeam = async (req, res) => {
   try {
     await InternService.assignToTeam(req.body.internIds, req.body.teamName);
@@ -109,8 +97,6 @@ const assignToTeam = async (req, res) => {
     res.status(500).json({ message: "Error assigning interns to team", error: error.message });
   }
 };
-
-
 
 const removeFromTeam = async (req, res) => {
   try {
@@ -121,9 +107,7 @@ const removeFromTeam = async (req, res) => {
       return res.status(400).json({ message: "Intern ID and Team Name are required." });
     }
 
-
     const decodedTeamName = decodeURIComponent(teamName);
-
     const result = await InternService.removeFromTeam(internId, decodedTeamName);
     if (result) {
       return res.status(200).json({ message: "Intern removed from the team." });
@@ -135,8 +119,6 @@ const removeFromTeam = async (req, res) => {
     res.status(500).json({ message: "Error removing intern from the team" });
   }
 };
-
-
 
 const removeIntern = async (req, res) => {
   try {
@@ -150,7 +132,6 @@ const removeIntern = async (req, res) => {
   }
 };
 
-
 const updateIntern = async (req, res) => {
   try {
     const updatedIntern = await InternService.updateIntern(req.params.id, req.body);
@@ -163,7 +144,6 @@ const updateIntern = async (req, res) => {
   }
 };
 
-
 const uploadInterns = async (req, res) => {
   try {
     if (!req.file) {
@@ -171,7 +151,6 @@ const uploadInterns = async (req, res) => {
     }
 
     console.log("📂 File received:", req.file.path);
-
     const interns = parseXLSX(req.file.path);
     console.log("✅ Parsed Interns:", interns);
 
@@ -206,9 +185,7 @@ const updateTeamName = async (req, res) => {
       return res.status(400).json({ message: "New team name is required" });
     }
 
-
     const decodedOldTeamName = decodeURIComponent(oldTeamName);
-
     const result = await InternService.updateTeamName(decodedOldTeamName, newTeamName);
     res.status(200).json(result);
   } catch (error) {
@@ -225,9 +202,7 @@ const assignSingleToTeam = async (req, res) => {
       return res.status(400).json({ message: "Intern ID and Team Name are required." });
     }
 
-
     const decodedTeamName = decodeURIComponent(teamName);
-
     const result = await InternService.assignSingleToTeam(internId, decodedTeamName);
     if (result) {
       return res.status(200).json({ message: "Intern added to the team!" });
@@ -240,12 +215,9 @@ const assignSingleToTeam = async (req, res) => {
   }
 };
 
-
 const deleteTeam = async (req, res) => {
   try {
-
     const teamName = decodeURIComponent(req.params.teamName);
-
     const result = await InternService.deleteTeam(teamName);
     res.status(200).json(result);
   } catch (error) {
@@ -281,7 +253,6 @@ const updateAttendanceForSpecificDate = async (req, res) => {
 const getWeeklyAttendanceStats = async (req, res) => {
   try {
     const { attendedInterns, notAttendedInterns } = await InternService.getWeeklyAttendanceStats();
-
     res.status(200).json({
       attendedInterns,
       notAttendedInterns,
@@ -301,9 +272,7 @@ const getAttendanceByInternId = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    // Log the intern data
     console.log("Intern data:", intern);
-
     const response = {
       attendance: intern.attendance,
       stats: {
@@ -312,44 +281,12 @@ const getAttendanceByInternId = async (req, res) => {
       }
     };
 
-
     res.status(200).json(response); // Sending the structured response
   } catch (error) {
     console.error("Error fetching attendance data:", error);
     res.status(500).json({ message: "Error fetching intern's attendance", error: error.message });
   }
 };
-
-
-// const addAvailableDay = async (req, res) => {
-//   const { traineeId } = req.params;
-//   const { day } = req.body;
-
-//   try {
-//     const intern = await InternService.addAvailableDay(traineeId, day);
-//     res.status(200).json({
-//       message: "Day added successfully",
-//       availableDays: intern.availableDays,
-//     });
-//   } catch (error) {
-//     res.status(400).json({ message: error.message });
-//   }
-// };
-
-// const removeAvailableDay = async (req, res) => {
-//   const { traineeId } = req.params;
-//   const { day } = req.body;
-
-//   try {
-//     const intern = await InternService.removeAvailableDay(traineeId, day);
-//     res.status(200).json({
-//       message: "Day removed successfully",
-//       availableDays: intern.availableDays,
-//     });
-//   } catch (error) {
-//     res.status(400).json({ message: error.message });
-//   }
-// };
 
 const addAvailableDay = async (req, res) => {
   const { id } = req.params;
@@ -389,51 +326,25 @@ const removeAvailableDay = async (req, res) => {
   }
 };
 
-// GET /api/interns/filter/by-day/:day
-// const getInternsByDay = async (req, res) => {
-//   const { day } = req.params;
-//   try {
-//     const interns = await Intern.find({ availableDays: day });
-//     res.status(200).json(interns);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-// GET /api/interns/filter/by-count/:count
-// const getInternsByDayCount = async (req, res) => {
-//   const count = parseInt(req.params.count);
-//   try {
-//     const interns = await Intern.find({ $expr: { $eq: [{ $size: "$availableDays" }, count] } });
-//     res.status(200).json(interns);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
-
-
 const uploadTXT = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // Read and normalize line endings, remove BOM if present
     let fileContent = fs.readFileSync(req.file.path, 'utf8')
       .replace(/\uFEFF/g, '')           // remove BOM
       .replace(/\r\n/g, '\n');          // unify Windows ↔ Unix
 
-    // Split off header then non-empty rows
     const rows = fileContent.split('\n')
       .slice(1)
       .filter(line => line.trim().length > 0);
 
-    // Map & trim
     const updates = rows.map(row => {
       const [rawId, rawEmail] = row.split('\t');
       const Trainee_ID    = rawId   .trim();
       const Trainee_Email = rawEmail
-        .trim()                      // cut out whitespace
+        .trim()                      
         .replace(/^['"]+|['"]+$/g, '');  // strip surrounding quotes if any
 
       return { Trainee_ID, Trainee_Email };
@@ -459,6 +370,103 @@ const uploadTXT = async (req, res) => {
   }
 };
 
+// ==================== SLT API INTEGRATION CONTROLLERS ====================
+
+const syncWithSLTAPI = async (req, res) => {
+  try {
+    console.log('🔄 SLT API sync requested via controller...');
+    const result = await InternService.syncWithSLTAPI();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        stats: result.stats
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message,
+        stats: result.stats
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error during SLT sync:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      stats: {
+        added: 0,
+        updated: 0,
+        skipped: 0,
+        errors: 1,
+        totalProcessed: 0
+      }
+    });
+  }
+};
+
+const testSLTAPI = async (req, res) => {
+  try {
+    const result = await InternService.testSLTAPI();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        count: result.count,
+        sample: result.sample,
+        total: result.total
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message,
+        count: result.count,
+        sample: result.sample,
+        total: result.total
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error during SLT API test:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      count: 0,
+      sample: [],
+      total: 0
+    });
+  }
+};
+
+const getActiveTraineesFromSLT = async (req, res) => {
+  try {
+    const result = await InternService.getActiveTraineesFromSLT();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        data: result.data,
+        count: result.count
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message,
+        data: [],
+        count: 0
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error fetching SLT trainees:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      data: [],
+      count: 0
+    });
+  }
+};
 
 module.exports = {
   addIntern,
@@ -484,8 +492,9 @@ module.exports = {
   uploadTXT,
   addAvailableDay,
   removeAvailableDay,
-  getInternByIdEach
-  // getInternsByDay,
-  // getInternsByDayCount
-
+  getInternByIdEach,
+  // SLT API Integration endpoints
+  syncWithSLTAPI,
+  testSLTAPI,
+  getActiveTraineesFromSLT
 };

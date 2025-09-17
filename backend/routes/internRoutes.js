@@ -6,7 +6,7 @@ const {
   addExternalIntern,
   getAllInterns,
   getInternById,
-  getInternByIdEach,              // ← from v2
+  getInternByIdEach,
   updateIntern,
   removeIntern,
 
@@ -27,13 +27,18 @@ const {
   deleteTeam,
   getAllTeams,
 
-  // Availability  ← from v2
+  // Availability
   addAvailableDay,
   removeAvailableDay,
 
   // File Upload
   uploadInterns,
-  uploadTXT,                     // ← from v2
+  uploadTXT,
+
+  // SLT API Integration
+  syncWithSLTAPI,
+  testSLTAPI,
+  getActiveTraineesFromSLT,
 
   // Optional Filters (if you ever need them)
   getInternsByDay,
@@ -51,7 +56,7 @@ router.get("/weekly-attendance-stats", authenticateUser, getWeeklyAttendanceStat
 router.post("/add", authenticateUser, addIntern);
 router.post("/add-external", addExternalIntern);
 router.get("/", authenticateUser, getAllInterns);
-router.get("/page/:id", getInternByIdEach);           // ← insertion from v2
+router.get("/page/:id", getInternByIdEach);
 router.get("/:id", authenticateUser, getInternById);
 router.put("/update/:id", authenticateUser, updateIntern);
 router.delete("/:id", authenticateUser, removeIntern);
@@ -71,13 +76,18 @@ router.put("/teams/:teamName/assign-single", authenticateUser, assignSingleToTea
 router.put("/teams/:teamName/remove", authenticateUser, removeFromTeam);
 router.get("/teams/all", authenticateUser, getAllTeams);
 
-// =========================== AVAILABILITY MANAGEMENT ===========================  ← from v2
+// =========================== AVAILABILITY MANAGEMENT ===========================
 router.post("/:id/availability/add", addAvailableDay);
 router.post("/:id/availability/remove", removeAvailableDay);
 
+// =========================== SLT API INTEGRATION ===========================
+router.post("/slt/sync", authenticateUser, syncWithSLTAPI);
+router.get("/slt/test", authenticateUser, testSLTAPI);
+router.get("/slt/trainees", authenticateUser, getActiveTraineesFromSLT);
+
 // =========================== FILE UPLOAD ===========================
 router.post("/upload", authenticateUser, upload.single("file"), uploadInterns);
-router.post("/upload-txt", upload.single("file"), uploadTXT);    // ← from v2
+router.post("/upload-txt", upload.single("file"), uploadTXT);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);

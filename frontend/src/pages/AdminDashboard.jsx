@@ -1,9 +1,10 @@
-  import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FaUsers, FaSearch, FaDownload, FaBell, FaExclamationTriangle, 
   FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaFileExport,
-  FaFilter, FaSort, FaUser, FaTasks, FaSpinner, FaShieldAlt
+  FaFilter, FaSort, FaUser, FaTasks, FaSpinner, FaShieldAlt,
+  FaArrowLeft, FaEye
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi, csvUtils, notificationUtils } from '../api/adminApi';
@@ -266,21 +267,21 @@ const AdminDashboard = () => {
   const getStatusBadge = (intern) => {
     if (intern.isOverdue) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-400">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 border border-red-200">
           <FaExclamationTriangle className="mr-1" />
           Overdue
         </span>
       );
     } else if (intern.totalRecords === 0) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-500/20 text-gray-400">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
           <FaTimesCircle className="mr-1" />
           Not Submitted
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600 border border-green-200">
           <FaCheckCircle className="mr-1" />
           Submitted
         </span>
@@ -290,14 +291,14 @@ const AdminDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-950 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
         <div className="text-center">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-t-4 border-b-4 border-green-400 rounded-full mx-auto mb-6"
+            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
           />
-          <p className="text-white/80 font-medium">Loading dashboard data...</p>
+          <p className="text-gray-600 font-medium">Loading dashboard data...</p>
         </div>
       </div>
     );
@@ -305,13 +306,13 @@ const AdminDashboard = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-950 flex items-center justify-center">
-        <div className="text-center max-w-md p-6 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10">
-          <FaExclamationTriangle className="text-4xl text-red-400 mb-4 mx-auto" />
-          <p className="text-red-100 mb-6">{error}</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
+          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
+          <p className="text-red-600 mb-6">{error}</p>
           <button 
             onClick={fetchData}
-            className="px-4 py-2 bg-green-500/90 hover:bg-green-400/90 text-white rounded-lg transition-colors"
+            className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
           >
             Retry
           </button>
@@ -321,66 +322,127 @@ const AdminDashboard = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-950 text-gray-100 overflow-hidden">
-      {/* Floating background elements */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
+      {/* Enhanced floating background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-80 h-80 rounded-full bg-green-500/10 -top-20 -left-20 animate-float" style={{ animationDelay: "0s" }}></div>
-        <div className="absolute w-96 h-96 rounded-full bg-blue-600/10 top-1/4 right-0 animate-float" style={{ animationDelay: "3s" }}></div>
-        <div className="absolute w-64 h-64 rounded-full bg-purple-500/10 bottom-20 left-1/4 animate-float" style={{ animationDelay: "6s" }}></div>
-        <div className="absolute w-72 h-72 rounded-full bg-cyan-500/10 bottom-0 right-20 animate-float" style={{ animationDelay: "9s" }}></div>
+        <motion.div 
+          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
+          animate={{
+            y: [0, -30, 0],
+            x: [0, 20, 0],
+            rotate: [0, 5, 0]
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div 
+          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
+          animate={{
+            y: [0, 20, 0],
+            x: [0, -20, 0],
+            rotate: [0, -5, 0]
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2
+          }}
+        />
+        <motion.div 
+          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
+          animate={{
+            y: [0, -20, 0],
+            x: [0, 15, 0],
+            rotate: [0, 3, 0]
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 1
+          }}
+        />
+        <motion.div 
+          className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
+          animate={{
+            y: [0, 25, 0],
+            x: [0, -15, 0],
+            rotate: [0, -3, 0]
+          }}
+          transition={{
+            duration: 17,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 3
+          }}
+        />
       </div>
 
-      {/* Top Navbar */}
-      <header className="bg-gradient-to-r from-gray-900/90 to-blue-950/90 backdrop-blur-lg shadow-lg fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-white/10">
-              <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-                <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-                  <motion.div
-                    className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-                    onClick={() => {
-                      localStorage.clear();
-                      navigate('/admin-login');
-                    }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <img 
-                      src={logo} 
-                      alt="SLT Logo" 
-                      className="h-8 sm:h-10 w-auto rounded-md border border-white/10 flex-shrink-0" 
-                    />
+      {/* Enhanced Top Navbar */}
+      <motion.header 
+        className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ type: "spring", stiffness: 100 }}
+      >
+        <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
+            <motion.div
+              className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
+              onClick={() => {
+                localStorage.clear();
+                navigate('/admin-login');
+              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <motion.img 
+                src={logo} 
+                alt="SLT Logo" 
+                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm" 
+                whileHover={{ rotate: 5 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              />
               <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-white/90 truncate">Admin Portal</span>
-                <span className="text-xs sm:text-sm text-blue-100/70 truncate hidden sm:block">Intern Management System</span>
+                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">SLT Admin Portal</span>
+                <span className="text-xs sm:text-sm text-gray-600 truncate">Dashboard</span>
               </div>
-                  </motion.div>
-                </div>
+            </motion.div>
+          </div>
 
           <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
-            <div className="hidden md:flex items-center space-x-3 mr-4">
-              <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-white/10 flex items-center justify-center transition-all duration-300 border border-white/10">
-                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-white/80" />
-              </div>
+            <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
+              <motion.div 
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center transition-all duration-300 group-hover:bg-gray-200 border border-gray-200 shadow-sm"
+                whileHover={{ scale: 1.1, rotate: 5 }}
+              >
+                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              </motion.div>
               <div className="flex flex-col">
-                <span className="text-xs text-white/70">Welcome back,</span>
-                <span className="text-sm font-medium text-white">Administrator</span>
+                <span className="text-xs text-gray-500">Welcome back,</span>
+                <span className="text-sm font-medium text-gray-800">Administrator</span>
               </div>
             </div>
             
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 localStorage.removeItem('adminInfo');
                 navigate('/admin-login');
               }}
-              className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm text-red-200 hover:text-white hover:bg-red-600/20 rounded-lg transition-all duration-200 border border-red-300/20 hover:border-red-300/40 cursor-pointer"
+              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
             >
               <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Logout</span>
             </motion.button>
           </div>
         </div>
-      </header>
+      </motion.header>
       
       {/* Main Content */}
       <div className="pt-[4.5rem] sm:pt-[5.5rem]">
@@ -394,12 +456,12 @@ const AdminDashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-cyan-400">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
                   Intern Management
                 </span>
               </h2>
-              <p className="text-white/70 text-sm md:text-base">Monitor and manage intern logbook submissions</p>
+              <p className="text-gray-600 text-sm md:text-base">Monitor and manage intern logbook submissions</p>
             </motion.div>
 
             {/* Statistics Cards */}
@@ -410,91 +472,91 @@ const AdminDashboard = () => {
               transition={{ delay: 0.2, duration: 0.3 }}
             >
               <motion.div 
-                className="bg-white/5 backdrop-blur-sm p-4 sm:p-6 rounded-xl border border-white/10"
+                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-white/70 mb-1">Total Interns</p>
-                    <p className="text-xl sm:text-2xl font-bold text-white">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Total Interns</p>
+                    <p className="text-xl sm:text-2xl font-bold text-gray-800">
                       {dashboardStats?.totalInterns || 0}
                     </p>
                   </div>
-                  <FaUsers className="text-2xl sm:text-3xl text-blue-400" />
+                  <FaUsers className="text-xl sm:text-2xl text-blue-500" />
                 </div>
               </motion.div>
 
               <motion.div 
-                className="bg-white/5 backdrop-blur-sm p-4 sm:p-6 rounded-xl border border-white/10"
+                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-white/70 mb-1">Submitted Interns</p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-400">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Submitted Interns</p>
+                    <p className="text-xl sm:text-2xl font-bold text-green-600">
                       {dashboardStats?.submittedInterns || 0}
                     </p>
                   </div>
-                  <FaCheckCircle className="text-2xl sm:text-3xl text-green-400" />
+                  <FaCheckCircle className="text-xl sm:text-2xl text-green-500" />
                 </div>
               </motion.div>
 
               <motion.div 
-                className="bg-white/5 backdrop-blur-sm p-4 sm:p-6 rounded-xl border border-white/10"
+                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-white/70 mb-1">Overdue Interns</p>
-                    <p className="text-xl sm:text-2xl font-bold text-red-400">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Overdue Interns</p>
+                    <p className="text-xl sm:text-2xl font-bold text-red-600">
                       {dashboardStats?.overdueInterns || 0}
                     </p>
                   </div>
-                  <FaExclamationTriangle className="text-2xl sm:text-3xl text-red-400" />
+                  <FaExclamationTriangle className="text-xl sm:text-2xl text-red-500" />
                 </div>
               </motion.div>
 
               <motion.div 
-                className="bg-white/5 backdrop-blur-sm p-4 sm:p-6 rounded-xl border border-white/10"
+                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-white/70 mb-1">Total Records</p>
-                    <p className="text-xl sm:text-2xl font-bold text-purple-400">
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Total Records</p>
+                    <p className="text-xl sm:text-2xl font-bold text-purple-600">
                       {dashboardStats?.totalRecords || 0}
                     </p>
                   </div>
-                  <FaTasks className="text-2xl sm:text-3xl text-purple-400" />
+                  <FaTasks className="text-xl sm:text-2xl text-purple-500" />
                 </div>
               </motion.div>
             </motion.div>
 
             {/* Action Buttons */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-white/10 mb-4 md:mb-6"
+              className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-white">Quick Actions</h2>
-                <div className="text-xs text-white/70 bg-white/10 px-2 py-1 rounded-full">
+                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">Quick Actions</h2>
+                <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
                   Admin Tools
                 </div>
               </div>
               <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto pb-2">
                 <motion.button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-amber-500/80 to-orange-500/80 text-white rounded-lg hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaBell className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">{showNotifications ? 'Hide' : 'Show'} Notifications</span>
@@ -507,11 +569,11 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleSendNotifications}
                   disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-500/80 to-pink-500/80 text-white rounded-lg hover:from-red-500 hover:to-pink-500 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   {sendingNotifications ? (
                     <FaSpinner className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
                   ) : (
@@ -527,11 +589,11 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={() => navigate('/admin/daily-records')}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-emerald-500/80 to-teal-500/80 text-white rounded-lg hover:from-emerald-500 hover:to-teal-500 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaCalendarAlt className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">View Daily Records</span>
@@ -544,11 +606,11 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleExportOverdueCSV}
                   disabled={!dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-600/80 to-red-700/80 text-white rounded-lg hover:from-red-600 hover:to-red-700 disabled:from-gray-600/80 disabled:to-gray-600/80 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg disabled:hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileExport className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">Export Overdue</span>
@@ -560,11 +622,11 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-green-500/80 to-green-600/80 text-white rounded-lg hover:from-green-500 hover:to-green-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileExport className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">Export Submitted</span>
@@ -576,11 +638,11 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportPreviousDayCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-500/80 to-blue-600/80 text-white rounded-lg hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaDownload className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">Export Previous Day</span>
@@ -592,11 +654,11 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleDownloadOnLeaveExcel}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-700/80 to-blue-900/80 text-white rounded-lg hover:from-blue-700 hover:to-blue-900 transition-all duration-300 shadow-md hover:shadow-lg text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-xl hover:from-blue-800 hover:to-blue-900 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaDownload className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                   <span className="flex-1 text-left">
                     <span className="block">Download On Leave</span>
@@ -612,13 +674,13 @@ const AdminDashboard = () => {
             <AnimatePresence>
               {showNotifications && (
                 <motion.div 
-                  className="bg-white/5 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-white/10 mb-4 md:mb-6"
+                  className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 className="text-base md:text-lg font-semibold text-white mb-4">
+                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
                     Overdue Interns ({dashboardStats?.overdueList?.length || 0})
                   </h3>
                   {dashboardStats?.overdueList?.length > 0 ? (
@@ -626,17 +688,17 @@ const AdminDashboard = () => {
                       {dashboardStats.overdueList.map((intern) => (
                         <motion.div 
                           key={intern._id} 
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-red-500/10 rounded-lg border border-red-500/20 gap-3 sm:gap-0"
+                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-red-100 rounded-xl border border-red-200 gap-3 sm:gap-0"
                           whileHover={{ scale: 1.01 }}
                           transition={{ duration: 0.2 }}
                         >
                           <div className="flex-1">
-                            <p className="font-medium text-white text-sm md:text-base">{intern.traineeName}</p>
-                            <p className="text-xs md:text-sm text-white/70">ID: {intern.traineeId}</p>
-                            <p className="text-xs md:text-sm text-white/70 truncate">{intern.email}</p>
+                            <p className="font-medium text-gray-900 text-sm md:text-base">{intern.traineeName}</p>
+                            <p className="text-xs md:text-sm text-gray-600">ID: {intern.traineeId}</p>
+                            <p className="text-xs md:text-sm text-gray-600 truncate">{intern.email}</p>
                           </div>
                           <div className="text-left sm:text-right flex-shrink-0">
-                            <p className="text-xs md:text-sm text-red-300">
+                            <p className="text-xs md:text-sm text-red-600">
                               Last: {intern.lastSubmission ? 
                                 new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
                               }
@@ -646,8 +708,8 @@ const AdminDashboard = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-6 md:py-8 bg-white/5 rounded-lg">
-                      <p className="text-white/60 text-sm md:text-base">No overdue interns found.</p>
+                    <div className="text-center py-6 md:py-8 bg-gray-50 rounded-xl">
+                      <p className="text-gray-500 text-sm md:text-base">No overdue interns found.</p>
                     </div>
                   )}
                 </motion.div>
@@ -656,7 +718,7 @@ const AdminDashboard = () => {
 
             {/* Search and Filter Controls */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm p-4 md:p-6 rounded-xl border border-white/10 mb-4 md:mb-6"
+              className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.3 }}
@@ -665,51 +727,51 @@ const AdminDashboard = () => {
                 {/* Search */}
                 <div className="flex-1">
                   <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/60 h-3 w-3 md:h-4 md:w-4" />
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 md:h-4 md:w-4" />
                     {searchLoading && (
-                      <FaSpinner className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/60 h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                      <FaSpinner className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 md:h-4 md:w-4 animate-spin" />
                     )}
                     <input
                       type="text"
                       placeholder="Search by name, trainee ID, or email (min 2 characters)..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-8 md:pl-10 pr-8 md:pr-10 py-2 md:py-3 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-green-400/50 focus:border-transparent text-white placeholder-white/40 text-sm md:text-base"
+                      className="w-full pl-8 md:pl-10 pr-8 md:pr-10 py-2 md:py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 text-sm md:text-base shadow-sm"
                     />
                   </div>
                   {searchTerm.length > 0 && searchTerm.length < 2 && (
-                    <p className="text-xs text-white/50 mt-1">Type at least 2 characters to search</p>
+                    <p className="text-xs text-gray-500 mt-1">Type at least 2 characters to search</p>
                   )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 xl:space-x-4">
                   {/* Filter by Status */}
-                  <div className="flex items-center space-x-2">
-                    <FaFilter className="text-white/60 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                  <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+                    <FaFilter className="text-gray-500 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                     <select
                       value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value)}
-                      className="px-2 md:px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-green-400/50 focus:border-transparent text-white text-sm md:text-base flex-1 sm:flex-none"
+                      className="px-2 md:px-3 py-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 text-sm md:text-base flex-1 sm:flex-none"
                     >
-                      <option value="all" className="bg-gray-800">All Status</option>
-                      <option value="submitted" className="bg-gray-800">Submitted</option>
-                      <option value="notsubmitted" className="bg-gray-800">Not Submitted</option>
-                      <option value="overdue" className="bg-gray-800">Overdue</option>
+                      <option value="all">All Status</option>
+                      <option value="submitted">Submitted</option>
+                      <option value="notsubmitted">Not Submitted</option>
+                      <option value="overdue">Overdue</option>
                     </select>
                   </div>
 
                   {/* Sort */}
-                  <div className="flex items-center space-x-2">
-                    <FaSort className="text-white/60 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                  <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
+                    <FaSort className="text-gray-500 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value)}
-                      className="px-2 md:px-3 py-2 bg-white/5 border border-white/10 rounded-lg focus:ring-2 focus:ring-green-400/50 focus:border-transparent text-white text-sm md:text-base flex-1 sm:flex-none"
+                      className="px-2 md:px-3 py-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 text-sm md:text-base flex-1 sm:flex-none"
                     >
-                      <option value="name" className="bg-gray-800">Sort by Name</option>
-                      <option value="id" className="bg-gray-800">Sort by Trainee ID</option>
-                      <option value="records" className="bg-gray-800">Sort by Records Count</option>
-                      <option value="lastSubmitted" className="bg-gray-800">Sort by Last Submission</option>
+                      <option value="name">Sort by Name</option>
+                      <option value="id">Sort by Trainee ID</option>
+                      <option value="records">Sort by Records Count</option>
+                      <option value="lastSubmitted">Sort by Last Submission</option>
                     </select>
                   </div>
                 </div>
@@ -718,40 +780,40 @@ const AdminDashboard = () => {
 
             {/* Interns Table */}
             <motion.div 
-              className="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 overflow-hidden"
+              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-4 border-b border-white/10">
-                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-white">
+              <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
                   {(!hasSearched && filterStatus === 'all') ? 'Search for Interns' : `Search Results (${filteredInterns.length})`}
                 </h2>
                 {(!hasSearched && filterStatus === 'all') && (
-                  <p className="text-xs md:text-sm text-white/60 mt-1">
+                  <p className="text-xs md:text-sm text-gray-500 mt-1">
                     Use the search bar above to find specific interns or select a filter option
                   </p>
                 )}
               </div>
 
               {(!hasSearched && filterStatus === 'all') ? (
-                <div className="text-center py-12 md:py-16 bg-white/5 px-4">
-                  <FaSearch className="mx-auto h-8 w-8 md:h-12 md:w-12 text-white/40 mb-4" />
-                  <h3 className="text-base md:text-lg font-medium text-white mb-2">Search for Interns</h3>
-                  <p className="text-white/60 mb-4 text-sm md:text-base">
+                <div className="text-center py-12 md:py-16 bg-gray-50 px-4">
+                  <FaSearch className="mx-auto h-8 w-8 md:h-12 md:w-12 text-gray-400 mb-4" />
+                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">Search for Interns</h3>
+                  <p className="text-gray-500 mb-4 text-sm md:text-base">
                     Enter a name, trainee ID, or email to find specific interns and view their records.
                   </p>
-                  <div className="bg-blue-500/10 border border-blue-400/20 rounded-lg p-3 md:p-4 max-w-md mx-auto">
-                    <p className="text-xs md:text-sm text-blue-300">
+                  <div className="bg-blue-100 border border-blue-200 rounded-xl p-3 md:p-4 max-w-md mx-auto">
+                    <p className="text-xs md:text-sm text-blue-700">
                       💡 <strong>Tip:</strong> Type at least 2 characters to start searching or use the filter dropdown to see all interns by status
                     </p>
                   </div>
                 </div>
               ) : filteredInterns.length === 0 ? (
-                <div className="text-center py-8 md:py-12 bg-white/5 px-4">
-                  <FaUser className="mx-auto h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-white/40" />
-                  <h3 className="mt-2 text-sm md:text-base font-medium text-white">No interns found</h3>
-                  <p className="mt-1 text-xs md:text-sm text-white/60">
+                <div className="text-center py-8 md:py-12 bg-gray-50 px-4">
+                  <FaUser className="mx-auto h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm md:text-base font-medium text-gray-700">No interns found</h3>
+                  <p className="mt-1 text-xs md:text-sm text-gray-500">
                     Try adjusting your search terms or check the spelling.
                   </p>
                 </div>
@@ -759,27 +821,27 @@ const AdminDashboard = () => {
                 <>
                   {/* Mobile Card View */}
                   <div className="block lg:hidden">
-                    <div className="divide-y divide-white/10">
+                    <div className="divide-y divide-gray-200">
                       {filteredInterns.map((intern) => (
                         <motion.div 
                           key={intern._id} 
-                          className="p-4 hover:bg-white/5"
-                          whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                          className="p-4 hover:bg-gray-50 transition-colors"
+                          whileHover={{ y: -2 }}
                           transition={{ duration: 0.1 }}
                         >
                           {/* Header with avatar and name */}
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center space-x-3">
                               <div className="flex-shrink-0 h-8 w-8">
-                                <div className="h-8 w-8 rounded-full bg-white/10 flex items-center justify-center">
-                                  <FaUser className="text-white/80 text-xs" />
+                                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
+                                  <FaUser className="text-blue-600 text-xs" />
                                 </div>
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-white">
+                                <div className="text-sm font-medium text-gray-900">
                                   {intern.traineeName || 'N/A'}
                                 </div>
-                                <div className="text-xs text-white/60">
+                                <div className="text-xs text-gray-600">
                                   ID: {intern.traineeId || 'N/A'}
                                 </div>
                               </div>
@@ -791,28 +853,28 @@ const AdminDashboard = () => {
                           
                           {/* Contact info */}
                           <div className="mb-3">
-                            <div className="text-xs text-white/80 truncate">
+                            <div className="text-xs text-gray-700 truncate">
                               📧 {intern.email || 'N/A'}
                             </div>
-                            <div className="text-xs text-white/60 truncate">
+                            <div className="text-xs text-gray-500 truncate">
                               🎯 {intern.fieldOfSpecialization || 'N/A'}
                             </div>
                           </div>
                           
                           {/* Stats and last submission */}
                           <div className="flex justify-between items-center mb-3">
-                            <div className="text-xs text-white/80">
+                            <div className="text-xs text-gray-700">
                               📊 {intern.totalRecords || 0} records
                             </div>
                           </div>
                           
                           <div className="mb-3">
-                            <div className="text-xs text-white/80">
+                            <div className="text-xs text-gray-700">
                               📅 Last: {intern.lastSubmission ? 
                                 new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
                               }
                             </div>
-                            <div className="text-xs text-white/60">
+                            <div className="text-xs text-gray-500">
                               ⏰ {intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? 
                                 `${intern.daysSinceLastSubmission} days ago` : 'No submissions'
                               }
@@ -821,18 +883,22 @@ const AdminDashboard = () => {
                           
                           {/* Actions */}
                           <div className="flex space-x-2">
-                            <button
+                            <motion.button
                               onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                              className="flex-1 text-cyan-400 hover:text-cyan-300 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors text-xs text-center"
+                              className="flex-1 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                             >
                               View Details
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
                               onClick={() => navigate(`/admin/intern/${intern._id}/records`)}
-                              className="flex-1 text-green-400 hover:text-green-300 hover:bg-white/10 px-2 py-1 rounded-lg transition-colors text-xs text-center"
+                              className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
                             >
                               View Records
-                            </button>
+                            </motion.button>
                           </div>
                         </motion.div>
                       ))}
@@ -841,74 +907,74 @@ const AdminDashboard = () => {
 
                   {/* Desktop Table View */}
                   <div className="hidden lg:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-white/10">
-                      <thead className="bg-white/5">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[200px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
                             Intern Details
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[180px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
                             Contact
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[120px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                             Records
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[140px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
                             Last Submission
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[100px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-white/80 uppercase tracking-wider min-w-[150px]">
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
                             Actions
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-white/10">
+                      <tbody className="divide-y divide-gray-200">
                         {filteredInterns.map((intern) => (
                           <motion.tr 
                             key={intern._id} 
-                            className="hover:bg-white/5"
-                            whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.05)' }}
+                            className="hover:bg-gray-50 transition-colors"
+                            whileHover={{ y: -2 }}
                             transition={{ duration: 0.1 }}
                           >
                             <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
                               <div className="flex items-center">
                                 <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="h-10 w-10 rounded-full bg-white/10 flex items-center justify-center">
-                                    <FaUser className="text-white/80" />
+                                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
+                                    <FaUser className="text-blue-600" />
                                   </div>
                                 </div>
                                 <div className="ml-4 flex-1">
-                                  <div className="text-sm font-medium text-white truncate max-w-[120px]">
+                                  <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
                                     {intern.traineeName || 'N/A'}
                                   </div>
-                                  <div className="text-sm text-white/60 truncate">
+                                  <div className="text-sm text-gray-600 truncate">
                                     ID: {intern.traineeId || 'N/A'}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[180px]">
-                              <div className="text-sm text-white truncate max-w-[150px]" title={intern.email}>
+                              <div className="text-sm text-gray-900 truncate max-w-[150px]" title={intern.email}>
                                 {intern.email || 'N/A'}
                               </div>
-                              <div className="text-sm text-white/60 truncate max-w-[150px]" title={intern.fieldOfSpecialization}>
+                              <div className="text-sm text-gray-600 truncate max-w-[150px]" title={intern.fieldOfSpecialization}>
                                 {intern.fieldOfSpecialization || 'N/A'}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[120px]">
-                              <div className="text-sm font-medium text-white">
+                              <div className="text-sm font-medium text-gray-900">
                                 {intern.totalRecords || 0} records
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
-                              <div className="text-sm text-white">
+                              <div className="text-sm text-gray-900">
                                 {intern.lastSubmission ? 
                                   new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
                                 }
                               </div>
-                              <div className="text-sm text-white/60">
+                              <div className="text-sm text-gray-600">
                                 {intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? 
                                   `${intern.daysSinceLastSubmission} days ago` : 'No submissions'
                                 }
@@ -919,18 +985,22 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[150px]">
                               <div className="flex flex-col space-y-1">
-                                <button
+                                <motion.button
                                   onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                                  className="text-cyan-400 hover:text-cyan-300 text-sm text-left"
+                                  className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
                                 >
                                   View Details
-                                </button>
-                                <button
+                                </motion.button>
+                                <motion.button
                                   onClick={() => navigate(`/admin/intern/${intern._id}/records`)}
-                                  className="text-green-400 hover:text-green-300 text-sm text-left"
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
                                 >
                                   View Records
-                                </button>
+                                </motion.button>
                               </div>
                             </td>
                           </motion.tr>
@@ -944,27 +1014,6 @@ const AdminDashboard = () => {
           </div>
         </main>
       </div>
-
-      {/* Global styles for animations */}
-      <style jsx="true" global="true">{`
-        @keyframes float {
-          0%, 100% {
-            transform: translateY(0) translateX(0) rotate(0deg);
-          }
-          25% {
-            transform: translateY(-20px) translateX(10px) rotate(2deg);
-          }
-          50% {
-            transform: translateY(10px) translateX(-10px) rotate(-2deg);
-          }
-          75% {
-            transform: translateY(-10px) translateX(15px) rotate(1deg);
-          }
-        }
-        .animate-float {
-          animation: float 12s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
