@@ -10,6 +10,40 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi, csvUtils, notificationUtils } from '../api/adminApi';
 import logo from '../assets/sltlogo.jpg';
 
+// Date formatting utilities
+const formatDateDisplay = (dateString) => {
+  if (!dateString) return 'N/A';
+  
+  // Handle YYYY-MM-DD format from backend
+  if (dateString.includes('-')) {
+    const [year, month, day] = dateString.split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  }
+  
+  // Fallback for other formats
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
+
+const parseDateForComparison = (dateString) => {
+  if (!dateString) return new Date(0);
+  
+  // Handle YYYY-MM-DD format from backend
+  if (dateString.includes('-')) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }
+  
+  return new Date(dateString);
+};
+
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [dashboardStats, setDashboardStats] = useState(null);
@@ -181,6 +215,7 @@ const AdminDashboard = () => {
       notificationUtils.showError('Failed to export submitted interns CSV report');
     }
   };
+
   // Download On Leave Excel
   const handleDownloadOnLeaveExcel = async () => {
     try {
@@ -700,7 +735,7 @@ const AdminDashboard = () => {
                           <div className="text-left sm:text-right flex-shrink-0">
                             <p className="text-xs md:text-sm text-red-600">
                               Last: {intern.lastSubmission ? 
-                                new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
+                                formatDateDisplay(intern.lastSubmission) : 'Never'
                               }
                             </p>
                           </div>
@@ -871,7 +906,7 @@ const AdminDashboard = () => {
                           <div className="mb-3">
                             <div className="text-xs text-gray-700">
                               📅 Last: {intern.lastSubmission ? 
-                                new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
+                                formatDateDisplay(intern.lastSubmission) : 'Never'
                               }
                             </div>
                             <div className="text-xs text-gray-500">
@@ -971,7 +1006,7 @@ const AdminDashboard = () => {
                             <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                               <div className="text-sm text-gray-900">
                                 {intern.lastSubmission ? 
-                                  new Date(intern.lastSubmission).toLocaleDateString() : 'Never'
+                                  formatDateDisplay(intern.lastSubmission) : 'Never'
                                 }
                               </div>
                               <div className="text-sm text-gray-600">

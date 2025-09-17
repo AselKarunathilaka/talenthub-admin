@@ -106,17 +106,20 @@ const Logbook = () => {
   };
 
   const stackOptions = [
-    { value: "Front-end Development", label: "Front-end Development", icon: <FiMonitor className="mr-2" /> },
-    { value: "Back-end Development", label: "Back-end Development", icon: <FiServer className="mr-2" /> },
-    { value: "Full-stack Development", label: "Full-stack Development", icon: <FiServer className="mr-2" /> },
-    { value: "Project Management", label: "Project Management", icon: <FiClipboard className="mr-2" /> },
-    { value: "QA", label: "Quality Assurance", icon: <FiCheckCircle className="mr-2" /> },
-    { value: "Documentation", label: "Documentation", icon: <FiBook className="mr-2" /> },
-    { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers className="mr-2" /> },
-    { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
-    { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
-    { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> }
+  { value: "Front-end Development", label: "Front-end Development", icon: <FiMonitor className="mr-2" /> },
+  { value: "Back-end Development", label: "Back-end Development", icon: <FiServer className="mr-2" /> },
+  { value: "Full-stack Development", label: "Full-stack Development", icon: <FiServer className="mr-2" /> },
+  { value: "Project Management", label: "Project Management", icon: <FiClipboard className="mr-2" /> },
+  { value: "QA", label: "Quality Assurance", icon: <FiCheckCircle className="mr-2" /> },
+  { value: "Documentation", label: "Documentation", icon: <FiBook className="mr-2" /> },
+  { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers className="mr-2" /> },
+  { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
+  { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
+  { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> },
+  { value: "AI/ML", label: "Artificial Intelligence and Machine Learning", icon: <FiMonitor className="mr-2" /> },
+  { value: "DataScience", label: "Data Science", icon: <FiServer className="mr-2" /> }
   ];
+    
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
