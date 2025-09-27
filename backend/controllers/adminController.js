@@ -505,6 +505,118 @@ const getPreviousDaySubmissions = async (req, res) => {
   }
 };
 
+// Get weekly non-submissions (Monday to Friday of current week)
+const getWeeklyNonSubmissions = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify admin user
+    const adminUser = await User.findById(userId);
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    // Calculate current week's date range (Monday to Friday)
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    
+    // Calculate Monday of current week
+    const monday = new Date(today);
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // If Sunday, go back 6 days to Monday
+    monday.setDate(today.getDate() - daysFromMonday);
+    monday.setHours(0, 0, 0, 0);
+    
+    // Calculate Friday of current week
+    const friday = new Date(monday);
+    friday.setDate(monday.getDate() + 4); // Add 4 days to Monday to get Friday
+    friday.setHours(23, 59, 59, 999);
+
+    console.log('Checking weekly submissions from:', monday.toDateString(), 'to:', friday.toDateString());
+
+    // Get all interns
+    const allInterns = await Intern.find({});
+
+    // Get all daily records for the current week (Monday to Friday)
+    const weeklyRecords = await DailyRecord.find({
+      createdAt: {
+        $gte: monday,
+        $lte: friday
+      }
+    })
+    .populate('internId', 'traineeName traineeId email fieldOfSpecialization')
+    .sort({ createdAt: -1 });
+
+    // Create a set of intern IDs who have submitted records this week
+    const submittedInternIds = new Set();
+    weeklyRecords.forEach(record => {
+      if (record.internId) {
+        submittedInternIds.add(record.internId._id.toString());
+      }
+    });
+
+    // Find interns who haven't submitted any records this week
+    const nonSubmittedInterns = allInterns.filter(intern => {
+      return !submittedInternIds.has(intern._id.toString());
+    });
+
+    // Calculate days in current week up to today (for proper context)
+    const currentDate = new Date();
+    let workingDaysUpToToday = 0;
+    
+    // Count working days from Monday to today (or Friday if today is after Friday)
+    const endDate = currentDate > friday ? friday : currentDate;
+    for (let d = new Date(monday); d <= endDate; d.setDate(d.getDate() + 1)) {
+      const dayOfWeek = d.getDay();
+      if (dayOfWeek >= 1 && dayOfWeek <= 5) { // Monday to Friday
+        workingDaysUpToToday++;
+      }
+    }
+
+    // Format response with additional details
+    const nonSubmissionsArray = nonSubmittedInterns.map(intern => {
+      // Check if they have any previous submissions for context
+      const lastSubmissionRecord = weeklyRecords.find(record => 
+        record.internId && record.internId._id.toString() === intern._id.toString()
+      );
+
+      return {
+        _id: intern._id,
+        traineeName: intern.traineeName,
+        traineeId: intern.traineeId,
+        email: intern.email,
+        fieldOfSpecialization: intern.fieldOfSpecialization,
+        institute: intern.institute || "Not Specified",
+        team: intern.team || "Unassigned",
+        trainingStartDate: intern.trainingStartDate,
+        trainingEndDate: intern.trainingEndDate,
+        weeklySubmissions: 0,
+        workingDaysThisWeek: workingDaysUpToToday,
+        missedDays: workingDaysUpToToday,
+        weekPeriod: `${monday.toDateString()} to ${friday.toDateString()}`,
+        lastSubmission: null,
+        daysSinceLastSubmission: null,
+        status: 'Not Submitted This Week'
+      };
+    });
+
+    console.log(`Found ${nonSubmissionsArray.length} interns who haven't submitted records this week (Monday to Friday)`);
+    console.log(`Total working days this week so far: ${workingDaysUpToToday}`);
+    
+    res.status(200).json({
+      weekPeriod: `${monday.toDateString()} to ${friday.toDateString()}`,
+      workingDaysThisWeek: workingDaysUpToToday,
+      totalInterns: allInterns.length,
+      nonSubmittedCount: nonSubmissionsArray.length,
+      submittedCount: submittedInternIds.size,
+      nonSubmittedInterns: nonSubmissionsArray
+    });
+
+  } catch (error) {
+    console.error("Error getting weekly non-submissions:", error);
+    res.status(500).json({ error: "Failed to get weekly non-submissions" });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -512,5 +624,6 @@ module.exports = {
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
-  getPreviousDaySubmissions
+  getPreviousDaySubmissions,
+  getWeeklyNonSubmissions
 };

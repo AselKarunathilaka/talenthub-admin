@@ -211,6 +211,25 @@ export const adminApi = {
       console.error('Error fetching previous day submissions:', error);
       throw error;
     }
+  },
+
+  // Get weekly non-submissions (Monday to Friday of current week)
+  getWeeklyNonSubmissions: async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/weekly-non-submissions`, {
+        method: 'GET',
+        headers: getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch weekly non-submissions: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching weekly non-submissions:', error);
+      throw error;
+    }
   }
 };
 
@@ -411,6 +430,55 @@ export const csvUtils = {
     return csvRows.join('\n');
   },
 
+  // Convert weekly non-submissions data to CSV
+  convertWeeklyNonSubmissionsToCSV: (data) => {
+    if (!data || !data.nonSubmittedInterns || !Array.isArray(data.nonSubmittedInterns) || data.nonSubmittedInterns.length === 0) {
+      return '';
+    }
+
+    // Define CSV headers
+    const headers = [
+      'Trainee ID',
+      'Name',
+      'Email',
+      'Field of Specialization',
+      'Institute',
+      'Start Date',
+      'End Date',
+      'Working Days This Week',
+      'Missed Days',
+      'Week Period',
+      'Status',
+      'Export Date'
+    ];
+
+    // Get current date for export timestamp
+    const exportDate = new Date().toLocaleDateString();
+
+    // Convert data to CSV rows
+    const csvRows = [
+      headers.join(','), // Header row
+      ...data.nonSubmittedInterns.map(intern => {
+        return [
+          intern.traineeId || '',
+          `"${intern.traineeName || ''}"`,
+          intern.email || '',
+          `"${intern.fieldOfSpecialization || ''}"`,
+          `"${intern.institute || 'Not Specified'}"`,
+          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
+          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
+          intern.workingDaysThisWeek || 0,
+          intern.missedDays || 0,
+          `"${intern.weekPeriod || ''}"`,
+          intern.status || 'Not Submitted This Week',
+          exportDate
+        ].join(',');
+      })
+    ];
+
+    return csvRows.join('\n');
+  },
+
   // Generate and download intern report CSV
   downloadInternReport: async (data = null, reportType = 'intern_report') => {
     try {
@@ -423,6 +491,8 @@ export const csvUtils = {
         csvContent = csvUtils.convertPreviousDayToCSV(reportData);
       } else if (reportType === 'overdue_interns') {
         csvContent = csvUtils.convertOverdueInternsToCSV(reportData);
+      } else if (reportType.startsWith('weekly_non_submissions')) {
+        csvContent = csvUtils.convertWeeklyNonSubmissionsToCSV(reportData);
       } else {
         csvContent = csvUtils.convertToCSV(reportData);
       }
@@ -442,8 +512,10 @@ export const csvUtils = {
           filename = `search_results_${timestamp}.csv`;
           break;
         default:
-          // Handle previous day submissions with custom filename
+          // Handle special report types with custom filenames
           if (reportType.startsWith('previous_day_submissions_')) {
+            filename = `${reportType}.csv`;
+          } else if (reportType.startsWith('weekly_non_submissions_')) {
             filename = `${reportType}.csv`;
           } else {
             filename = `intern_report_${timestamp}.csv`;

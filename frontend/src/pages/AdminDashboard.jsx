@@ -256,6 +256,31 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleExportWeeklyNonSubmissionsCSV = async () => {
+    try {
+      // Get weekly non-submissions
+      const weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
+      
+      if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
+        notificationUtils.showInfo('All interns have submitted records this week (Monday to Friday).');
+        return;
+      }
+
+      // Format the date for filename
+      const today = new Date();
+      const weekStr = today.toISOString().split('T')[0];
+
+      await csvUtils.downloadInternReport(weeklyNonSubmissionsData, `weekly_non_submissions_${weekStr}`);
+      notificationUtils.showSuccess(
+        `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
+        `Period: ${weeklyNonSubmissionsData.weekPeriod}`
+      );
+    } catch (error) {
+      console.error('Error exporting weekly non-submissions CSV:', error);
+      notificationUtils.showError('Failed to export weekly non-submissions CSV report');
+    }
+  };
+
   const getFilteredInterns = () => {
     if (!internReport || internReport.length === 0) return [];
 
@@ -573,29 +598,29 @@ const AdminDashboard = () => {
 
             {/* Action Buttons */}
             <motion.div 
-              className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
+              className="bg-white/80 backdrop-blur-sm p-2 md:p-3 rounded-lg border border-gray-100 shadow-sm mb-2 md:mb-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">Quick Actions</h2>
-                <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-xs md:text-sm lg:text-base font-semibold text-gray-900">Quick Actions</h2>
+                <div className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                   Admin Tools
                 </div>
               </div>
-              <div className="flex flex-row flex-nowrap gap-3 overflow-x-auto pb-2">
+              <div className="flex flex-row flex-nowrap gap-1.5 overflow-x-auto pb-1">
                 <motion.button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-xl hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-md hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaBell className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaBell className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">{showNotifications ? 'Hide' : 'Show'} Notifications</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">{showNotifications ? 'Hide' : 'Show'} Notifications</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       {dashboardStats?.overdueInterns || 0} overdue
                     </span>
                   </span>
@@ -604,19 +629,19 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleSendNotifications}
                   disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-md hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   {sendingNotifications ? (
-                    <FaSpinner className="mr-2 h-3 w-3 md:h-4 md:w-4 animate-spin" />
+                    <FaSpinner className="mr-1 h-2.5 w-2.5 animate-spin" />
                   ) : (
-                    <FaBell className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                    <FaBell className="mr-1 h-2.5 w-2.5" />
                   )}
                   <span className="flex-1 text-left">
-                    <span className="block">Send Notifications</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">Send Notifications</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       {sendingNotifications ? 'Sending...' : 'Email overdue interns'}
                     </span>
                   </span>
@@ -624,15 +649,15 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={() => navigate('/admin/daily-records')}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-md hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaCalendarAlt className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaCalendarAlt className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">View Daily Records</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">View Daily Records</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       All interns' records
                     </span>
                   </span>
@@ -641,15 +666,15 @@ const AdminDashboard = () => {
                 <motion.button
                   onClick={handleExportOverdueCSV}
                   disabled={!dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
                   whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">Export Overdue</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">Export Overdue</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       {dashboardStats?.overdueList?.length ? `${dashboardStats.overdueList.length} overdue` : 'No overdue'}
                     </span>
                   </span>
@@ -657,15 +682,15 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">Export Submitted</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">Export Submitted</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       {dashboardStats?.submittedInterns ? `${dashboardStats.submittedInterns} submitted` : 'Submitted interns'}
                     </span>
                   </span>
@@ -673,31 +698,47 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleExportPreviousDayCSV}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaDownload className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">Export Previous Day</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">Export Previous Day</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       Yesterday's submissions
                     </span>
                   </span>
                 </motion.button>
 
                 <motion.button
-                  onClick={handleDownloadOnLeaveExcel}
-                  className="group relative flex items-center justify-center px-3 md:px-3 py-2.5 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-xl hover:from-blue-800 hover:to-blue-900 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[2.5rem]"
+                  onClick={handleExportWeeklyNonSubmissionsCSV}
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaDownload className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block">Download On Leave</span>
-                    <span className="block text-xs opacity-90">
+                    <span className="block text-xs leading-tight">Export Weekly Non-Submissions</span>
+                    <span className="block text-xs opacity-75 leading-tight">
+                      Monday to Friday
+                    </span>
+                  </span>
+                </motion.button>
+
+                <motion.button
+                  onClick={handleDownloadOnLeaveExcel}
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md hover:from-blue-800 hover:to-blue-900 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaDownload className="mr-1 h-2.5 w-2.5" />
+                  <span className="flex-1 text-left">
+                    <span className="block text-xs leading-tight">Download On Leave</span>
+                    <span className="block text-xs opacity-75 leading-tight">
                       Get list of on-leave interns
                     </span>
                   </span>

@@ -9,7 +9,8 @@ const {
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
-  getPreviousDaySubmissions
+  getPreviousDaySubmissions,
+  getWeeklyNonSubmissions
 } = require("../controllers/adminController");
 const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
 // Export on-leave interns as Excel
@@ -32,6 +33,9 @@ router.get("/daily-records", getAllDailyRecords);
 
 // Get previous day submissions
 router.get("/previous-day-submissions", getPreviousDaySubmissions);
+
+// Get weekly non-submissions (Monday to Friday of current week)
+router.get("/weekly-non-submissions", getWeeklyNonSubmissions);
 
 // Send notifications to overdue interns
 router.post("/notifications/overdue", sendOverdueNotifications);
