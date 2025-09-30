@@ -1,6 +1,7 @@
 const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");
+const WeeklyScheduler = require("./services/weeklyScheduler");
 
 connectDB();
 
@@ -22,22 +23,8 @@ app.listen(PORT, () => {
     .catch(error => {
       console.error('❌ Auto-sync error:', error.message);
     });
-});
 
-// const internData = {
-//     traineeId: "12345",
-//     traineeName: "Nawamina",
-//     fieldOfSpecialization: "MERN"
-//   };
-  
-//   fetch("https://internattendancebe.azurewebsites.net/api/interns/add-external", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json"
-//     },
-//     body: JSON.stringify(internData)
-//   })
-//   .then(response => response.json())
-//   .then(data => console.log("Success:", data))
-//   .catch(error => console.error("Error:", error));
+  // Initialize weekly work log compliance scheduler
+  WeeklyScheduler.init();
+});
   

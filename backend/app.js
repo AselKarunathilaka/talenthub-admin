@@ -11,6 +11,7 @@ const projectRoutes = require("./routes/projectRoutes");
 const qrCodeRoutes = require("./routes/qrCodeRoutes");
 const dailyRecordRoutes = require("./routes/dailyRecordRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const complianceRoutes = require("./routes/complianceRoutes");
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/records", dailyRecordRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/compliance", complianceRoutes);
 
 
 module.exports = app;
