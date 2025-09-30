@@ -1,5 +1,5 @@
 const InternRepository = require("../repositories/internRepository");
-const SLTApiService = require("./sltApiService"); // Add this import
+const SLTApiService = require("./sltApiService");
 const moment = require("moment");
 
 class InternService {
@@ -7,7 +7,6 @@ class InternService {
     return await InternRepository.addIntern(data);
   }
 
-  // Update the getAllInterns method
   async getAllInterns(date) {
     let interns = await InternRepository.getAllInterns();
 
@@ -16,7 +15,7 @@ class InternService {
       const endDate = moment.tz(date, "Asia/Colombo").endOf('day').toDate();
 
       interns = interns.map((intern) => {
-        const attendance = intern.attendance || []; // Ensure attendance is an array
+        const attendance = intern.attendance || [];
         const attendanceRecord = attendance.find(att => {
           const attendanceDate = new Date(att.date).setHours(0, 0, 0, 0);
           return attendanceDate >= formattedDate && attendanceDate <= endDate;
@@ -41,7 +40,6 @@ class InternService {
   }
 
   async markAttendance(internId, status, date) {
-
     const attendanceDate = date ? moment.tz(date, "Asia/Colombo").toDate() : moment.tz("Asia/Colombo").toDate();
     return await InternRepository.markAttendance(internId, status, attendanceDate);
   }
@@ -89,7 +87,7 @@ class InternService {
 
   async getAttendanceStatsForToday() {
     try {
-      return await InternRepository.getAttendanceStatsForToday(); // Fetches today's attendance stats
+      return await InternRepository.getAttendanceStatsForToday();
     } catch (error) {
       throw new Error("Error fetching attendance stats for today: " + error.message);
     }
@@ -100,10 +98,9 @@ class InternService {
   }
 
   async getWeeklyAttendanceStats() {
-    const startOfWeek = moment().startOf('week').toDate();  // Start of the current week (Sunday)
-    const endOfWeek = moment().endOf('week').toDate();      // End of the current week (Saturday)
+    const startOfWeek = moment().startOf('week').toDate();
+    const endOfWeek = moment().endOf('week').toDate();
 
-    // Fetch all interns and filter based on attendance status for the current week
     const interns = await InternRepository.getAllInterns();
 
     const attendedInterns = interns.filter(intern => {
@@ -147,11 +144,10 @@ class InternService {
   }
   
   async updateInternEmail(traineeId, email) {
-    // Find the intern by traineeId and update the email
+    // Use the repository method if it exists, otherwise implement it
     const intern = await InternRepository.findByTraineeId(traineeId);
     if (!intern) throw new Error("Intern not found");
 
-    // Update the intern's email
     intern.email = email;
     await intern.save();
 
@@ -166,6 +162,8 @@ class InternService {
       
       // Fetch active trainees from SLT API
       const activeTrainees = await SLTApiService.fetchActiveTrainees();
+      
+      console.log(`📥 Received ${activeTrainees.length} trainees from SLT API`);
       
       let addedCount = 0;
       let updatedCount = 0;
@@ -183,31 +181,28 @@ class InternService {
             continue;
           }
 
-          // Map API data to your schema
-          const internData = {
-            traineeId: traineeId,
-            traineeName: trainee.Trainee_Name || '',
-            fieldOfSpecialization: 'General Training', // Default value since SLT API doesn't provide this
-            trainingStartDate: trainee.Training_StartDate ? new Date(trainee.Training_StartDate) : null,
-            trainingEndDate: trainee.Training_EndDate ? new Date(trainee.Training_EndDate) : null,
-            institute: trainee.Institute || '',
-            email: trainee.Trainee_Email || '',
-            team: '',
-            attendance: [],
-            availableDays: []
-          };
+          // Map API data to your schema using the service mapper
+          const mappedTrainees = SLTApiService.mapToInternSchema([trainee]);
+          if (mappedTrainees.length === 0) {
+            console.log('⚠️ Skipping trainee - mapping failed:', traineeId);
+            skippedCount++;
+            continue;
+          }
 
-          // Check if intern already exists
-          const existingIntern = await InternRepository.findByTraineeId(internData.traineeId);
+          const internData = mappedTrainees[0];
+
+          // Check if intern already exists using the repository method
+          const existingIntern = await InternRepository.findByTraineeId(traineeId);
 
           if (existingIntern) {
-            // Update existing intern (preserve team, attendance, and availableDays)
+            // Update existing intern (preserve existing team, attendance, and availableDays)
             const updatedData = {
               traineeName: internData.traineeName,
               trainingStartDate: internData.trainingStartDate,
               trainingEndDate: internData.trainingEndDate,
               institute: internData.institute,
               email: internData.email
+              // Note: team, attendance, and availableDays are preserved
             };
             
             await InternRepository.updateIntern(existingIntern._id, updatedData);
@@ -225,7 +220,7 @@ class InternService {
         }
       }
 
-      return {
+      const result = {
         success: true,
         message: `Sync completed: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`,
         stats: {
@@ -237,8 +232,11 @@ class InternService {
         }
       };
 
+      console.log('✅ SLT API synchronization completed:', result.message);
+      return result;
+
     } catch (error) {
-      console.error('❌ Sync failed:', error.message);
+      console.error('❌ SLT API synchronization failed:', error.message);
       return {
         success: false,
         message: `Sync failed: ${error.message}`,
@@ -255,15 +253,21 @@ class InternService {
 
   async testSLTAPI() {
     try {
+      console.log('🧪 Testing SLT API connection...');
       const trainees = await SLTApiService.fetchActiveTrainees();
-      return {
+      
+      const result = {
         success: true,
         message: 'SLT API connection successful',
         count: trainees.length,
-        sample: trainees.slice(0, 3), // Return first 3 as sample
+        sample: trainees.slice(0, 3),
         total: trainees.length
       };
+      
+      console.log('✅ SLT API test successful:', result.message);
+      return result;
     } catch (error) {
+      console.error('❌ SLT API test failed:', error.message);
       return {
         success: false,
         message: `SLT API test failed: ${error.message}`,
@@ -274,16 +278,22 @@ class InternService {
     }
   }
 
-  // Helper method to get raw data from SLT API
   async getActiveTraineesFromSLT() {
     try {
+      console.log('📡 Fetching active trainees from SLT API...');
       const trainees = await SLTApiService.fetchActiveTrainees();
-      return {
+      const mappedTrainees = SLTApiService.mapToInternSchema(trainees);
+      
+      const result = {
         success: true,
-        data: trainees,
-        count: trainees.length
+        data: mappedTrainees,
+        count: mappedTrainees.length
       };
+      
+      console.log('✅ Fetched trainees from SLT API:', result.count);
+      return result;
     } catch (error) {
+      console.error('❌ Error fetching SLT trainees:', error.message);
       return {
         success: false,
         message: error.message,
