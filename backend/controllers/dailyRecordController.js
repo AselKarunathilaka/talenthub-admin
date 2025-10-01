@@ -1,5 +1,6 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
+const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
 
 // Create a new daily record
 const createDailyRecord = async (req, res) => {
@@ -10,6 +11,18 @@ const createDailyRecord = async (req, res) => {
 
     console.log('Creating daily record for user:', userId, 'email:', userEmail);
     console.log('Request body:', req.body);
+
+    // Check if leave submission is allowed (time restriction check)
+    if (status === 'leave') {
+      const leaveCheck = checkLeaveSubmissionAllowed();
+      if (!leaveCheck.allowed) {
+        return res.status(403).json({ 
+          error: leaveCheck.message,
+          timeRestriction: true,
+          currentTime: leaveCheck.currentTime
+        });
+      }
+    }
 
     // The user ID could be either a User (admin) or Intern ID directly
     // For daily records, we need to find the intern
@@ -188,8 +201,20 @@ const getDailyRecordById = async (req, res) => {
 const updateDailyRecord = async (req, res) => {
   try {
     const { id } = req.params;
-    const { task, progress, blockers } = req.body;
+    const { task, progress, blockers, status } = req.body;
     const userId = req.user.id;
+
+    // Check if leave status update is allowed (time restriction check)
+    if (status === 'leave') {
+      const leaveCheck = checkLeaveSubmissionAllowed();
+      if (!leaveCheck.allowed) {
+        return res.status(403).json({ 
+          error: leaveCheck.message,
+          timeRestriction: true,
+          currentTime: leaveCheck.currentTime
+        });
+      }
+    }
 
     const record = await DailyRecord.findById(id);
     
@@ -213,6 +238,7 @@ const updateDailyRecord = async (req, res) => {
     if (task !== undefined) record.task = task;
     if (progress !== undefined) record.progress = progress;
     if (blockers !== undefined) record.blockers = blockers;
+    if (status !== undefined) record.status = status;
 
     await record.save();
     await record.populate('internId', 'traineeName traineeId email');

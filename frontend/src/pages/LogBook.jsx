@@ -4,9 +4,50 @@ import {
   FiBook, FiAlertTriangle, FiTarget, 
   FiInfo, FiCalendar, FiCheckCircle, FiAlertCircle,
   FiLoader, FiArrowRight, FiMonitor, FiServer, FiClipboard, FiLayers, FiCloud, FiWifi,
-  FiSmartphone, FiUmbrella // Added umbrella icon for leave status
+  FiSmartphone, FiUmbrella, FiClock // Added umbrella icon for leave status and clock for time
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
+
+// Utility function to check if current time is after 10 AM (Sri Lankan time)
+const checkLeaveTimeRestriction = () => {
+  try {
+    // Get current time and convert to Sri Lankan timezone
+    const now = new Date();
+    
+    // Calculate offset for Sri Lankan Time (UTC +5:30)
+    const sriLankanOffset = 5.5 * 60; // 330 minutes
+    const localOffset = now.getTimezoneOffset(); // minutes behind UTC
+    const sriLankanTime = new Date(now.getTime() + (localOffset + sriLankanOffset) * 60000);
+    
+    // Create 10 AM today in Sri Lankan time
+    const tenAM = new Date(sriLankanTime);
+    tenAM.setHours(10, 0, 0, 0);
+    
+    const currentTime = sriLankanTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+    
+    const isAfter10AM = sriLankanTime > tenAM;
+    
+    return {
+      isAfter10AM,
+      currentTime: currentTime + ' (Sri Lankan Time)',
+      message: isAfter10AM ? 
+        `Leave applications are not allowed after 10:00 AM. Current time: ${currentTime} (Sri Lankan Time)` :
+        'Leave application is allowed'
+    };
+  } catch (error) {
+    console.error('Error checking time restriction:', error);
+    // Default to allowing if there's an error
+    return {
+      isAfter10AM: false,
+      currentTime: new Date().toLocaleTimeString(),
+      message: 'Leave application is allowed'
+    };
+  }
+};
 
 const Logbook = () => {
   const navigate = useNavigate();
@@ -21,6 +62,7 @@ const Logbook = () => {
 
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeRestriction, setTimeRestriction] = useState(checkLeaveTimeRestriction());
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -48,6 +90,16 @@ const Logbook = () => {
       blockers: isOnLeave ? 'On Leave' : (formData.plans.trim() || 'No specific plans'),
       status: formData.status  // Include status in the payload
     };
+
+    // Check time restriction for leave status
+    if (formData.status === 'leave') {
+      const currentTimeCheck = checkLeaveTimeRestriction();
+      if (currentTimeCheck.isAfter10AM) {
+        setStatusMessage({ type: 'error', text: currentTimeCheck.message });
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     // Validation differs based on status
     if ((formData.status === 'working' || formData.status === 'wfh') && (!payload.stack || !payload.task)) {
@@ -79,7 +131,17 @@ const Logbook = () => {
           status: 'working'  // Reset to default
         });
       } else {
-        setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
+        // Handle time restriction error specifically
+        if (data.timeRestriction) {
+          setStatusMessage({ 
+            type: 'error', 
+            text: data.error || 'Leave applications are not allowed after 10:00 AM.'
+          });
+          // Update the time restriction state
+          setTimeRestriction(checkLeaveTimeRestriction());
+        } else {
+          setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
+        }
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -99,6 +161,26 @@ const Logbook = () => {
     }
     return () => clearTimeout(timer);
   }, [statusMessage, navigate]);
+
+  // Update time restriction every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRestriction(checkLeaveTimeRestriction());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Handle time restriction changes - reset status if leave is selected but no longer allowed
+  useEffect(() => {
+    if (formData.status === 'leave' && timeRestriction.isAfter10AM) {
+      setFormData(prev => ({ ...prev, status: 'working' }));
+      setStatusMessage({
+        type: 'error',
+        text: 'Leave option is no longer available after 10:00 AM. Status changed to Working.'
+      });
+    }
+  }, [timeRestriction.isAfter10AM, formData.status]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -199,19 +281,41 @@ const Logbook = () => {
                           />
                           <span className="ml-2 text-gray-700">Work From Home</span>
                         </label>
-                        <label className="flex items-center">
+                        <label className={`flex items-center ${timeRestriction.isAfter10AM ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
                           <input
                             type="radio"
                             name="status"
                             value="leave"
                             checked={formData.status === 'leave'}
                             onChange={handleChange}
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                            disabled={timeRestriction.isAfter10AM}
+                            className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${timeRestriction.isAfter10AM ? 'cursor-not-allowed' : ''}`}
                           />
-                          <span className="ml-2 text-gray-700">On Leave</span>
+                          <span className="ml-2 text-gray-700 flex items-center">
+                            On Leave
+                            {timeRestriction.isAfter10AM && (
+                              <FiClock className="ml-1 text-red-500" title="Not available after 10:00 AM" />
+                            )}
+                          </span>
                         </label>
                       </div>
                     </div>
+
+                    {/* Time restriction notification */}
+                    {timeRestriction.isAfter10AM && (
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+                        <div className="flex items-start">
+                          <FiClock className="text-red-500 mt-0.5 mr-3 flex-shrink-0" />
+                          <div className="text-sm">
+                            <p className="text-red-800 font-medium mb-1">Leave Applications Closed</p>
+                            <p className="text-red-700">
+                              Leave applications are not available after 10:00 AM.
+                              Current time: {timeRestriction.currentTime}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Conditional rendering based on status */}
                     {formData.status === 'working' || formData.status === 'wfh' ? (
