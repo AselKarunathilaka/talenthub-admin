@@ -195,19 +195,66 @@ class InternService {
           const existingIntern = await InternRepository.findByTraineeId(traineeId);
 
           if (existingIntern) {
-            // Update existing intern (preserve existing team, attendance, and availableDays)
-            const updatedData = {
-              traineeName: internData.traineeName,
-              trainingStartDate: internData.trainingStartDate,
-              trainingEndDate: internData.trainingEndDate,
-              institute: internData.institute,
-              email: internData.email
-              // Note: team, attendance, and availableDays are preserved
-            };
+            // Update existing intern - only update fields that are missing or have changed
+            const updatedData = {};
             
-            await InternRepository.updateIntern(existingIntern._id, updatedData);
-            updatedCount++;
-            console.log(`📝 Updated intern: ${internData.traineeName} (${internData.traineeId})`);
+            // Update name if different
+            if (existingIntern.traineeName !== internData.traineeName) {
+              updatedData.traineeName = internData.traineeName;
+            }
+            
+            // Update training start date if missing or different
+            if (!existingIntern.trainingStartDate && internData.trainingStartDate) {
+              updatedData.trainingStartDate = internData.trainingStartDate;
+            } else if (internData.trainingStartDate && existingIntern.trainingStartDate) {
+              const existingDate = new Date(existingIntern.trainingStartDate).getTime();
+              const newDate = new Date(internData.trainingStartDate).getTime();
+              if (existingDate !== newDate) {
+                updatedData.trainingStartDate = internData.trainingStartDate;
+              }
+            }
+            
+            // Update training end date if missing or different
+            if (!existingIntern.trainingEndDate && internData.trainingEndDate) {
+              updatedData.trainingEndDate = internData.trainingEndDate;
+            } else if (internData.trainingEndDate && existingIntern.trainingEndDate) {
+              const existingDate = new Date(existingIntern.trainingEndDate).getTime();
+              const newDate = new Date(internData.trainingEndDate).getTime();
+              if (existingDate !== newDate) {
+                updatedData.trainingEndDate = internData.trainingEndDate;
+              }
+            }
+            
+            // Update institute if missing or different
+            if ((!existingIntern.institute || existingIntern.institute.trim() === '') && internData.institute) {
+              updatedData.institute = internData.institute;
+            } else if (internData.institute && existingIntern.institute !== internData.institute) {
+              updatedData.institute = internData.institute;
+            }
+            
+            // Update email if missing or different
+            if ((!existingIntern.email || existingIntern.email.trim() === '') && internData.email) {
+              updatedData.email = internData.email;
+            } else if (internData.email && existingIntern.email !== internData.email) {
+              updatedData.email = internData.email;
+            }
+            
+            // Update field of specialization if missing or different
+            if ((!existingIntern.fieldOfSpecialization || existingIntern.fieldOfSpecialization.trim() === '') && internData.fieldOfSpecialization) {
+              updatedData.fieldOfSpecialization = internData.fieldOfSpecialization;
+            } else if (internData.fieldOfSpecialization && existingIntern.fieldOfSpecialization !== internData.fieldOfSpecialization) {
+              updatedData.fieldOfSpecialization = internData.fieldOfSpecialization;
+            }
+            
+            // Only update if there are changes
+            if (Object.keys(updatedData).length > 0) {
+              await InternRepository.updateIntern(existingIntern._id, updatedData);
+              updatedCount++;
+              console.log(`📝 Updated intern: ${internData.traineeName} (${internData.traineeId}) - Updated: ${Object.keys(updatedData).join(', ')}`);
+            } else {
+              skippedCount++;
+              console.log(`⏭️ Skipped intern: ${internData.traineeName} (${internData.traineeId}) - No changes needed`);
+            }
           } else {
             // Create new intern
             await InternRepository.addIntern(internData);

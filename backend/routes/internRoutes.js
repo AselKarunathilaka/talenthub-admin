@@ -39,6 +39,10 @@ const {
   syncWithSLTAPI,
   testSLTAPI,
   getActiveTraineesFromSLT,
+  
+  // SLT API Scheduler
+  triggerManualSLTSync,
+  triggerComprehensiveUpdate,
 
   // Optional Filters (if you ever need them)
   getInternsByDay,
@@ -84,6 +88,10 @@ router.post("/:id/availability/remove", removeAvailableDay);
 router.post("/slt/sync", authenticateUser, syncWithSLTAPI);
 router.get("/slt/test", authenticateUser, testSLTAPI);
 router.get("/slt/trainees", authenticateUser, getActiveTraineesFromSLT);
+
+// =========================== SLT API SCHEDULER ===========================
+router.post("/slt/sync/manual", authenticateUser, triggerManualSLTSync);
+router.post("/slt/update/comprehensive", authenticateUser, triggerComprehensiveUpdate);
 
 // =========================== FILE UPLOAD ===========================
 router.post("/upload", authenticateUser, upload.single("file"), uploadInterns);

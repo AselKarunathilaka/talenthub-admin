@@ -2,6 +2,7 @@ const InternService = require("../services/internService");
 const attendanceService = require("../services/attendanceService");
 const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
+const SLTApiScheduler = require("../services/sltApiScheduler");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
@@ -468,6 +469,76 @@ const getActiveTraineesFromSLT = async (req, res) => {
   }
 };
 
+// ==================== SLT API SCHEDULER CONTROLLERS ====================
+
+const triggerManualSLTSync = async (req, res) => {
+  try {
+    console.log('🔧 Manual SLT API sync requested via controller...');
+    const result = await SLTApiScheduler.triggerManualSync();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: 'Manual sync completed successfully',
+        timestamp: result.timestamp,
+        type: result.type,
+        results: result.results
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Manual sync failed',
+        timestamp: result.timestamp,
+        type: result.type,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error during manual SLT sync:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      timestamp: new Date(),
+      type: 'manual_sync',
+      error: error.message
+    });
+  }
+};
+
+const triggerComprehensiveUpdate = async (req, res) => {
+  try {
+    console.log('🔧 Comprehensive update requested via controller...');
+    const result = await SLTApiScheduler.triggerManualUpdate();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: 'Comprehensive update completed successfully',
+        timestamp: result.timestamp,
+        type: result.type,
+        results: result.results
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Comprehensive update failed',
+        timestamp: result.timestamp,
+        type: result.type,
+        error: result.error
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error during comprehensive update:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      timestamp: new Date(),
+      type: 'comprehensive_update',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -496,5 +567,8 @@ module.exports = {
   // SLT API Integration endpoints
   syncWithSLTAPI,
   testSLTAPI,
-  getActiveTraineesFromSLT
+  getActiveTraineesFromSLT,
+  // SLT API Scheduler endpoints
+  triggerManualSLTSync,
+  triggerComprehensiveUpdate
 };

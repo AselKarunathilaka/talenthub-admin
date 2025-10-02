@@ -2,6 +2,7 @@ const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");
 const WeeklyScheduler = require("./services/weeklyScheduler");
+const SLTApiScheduler = require("./services/sltApiScheduler");
 
 connectDB();
 
@@ -26,5 +27,8 @@ app.listen(PORT, () => {
 
   // Initialize weekly work log compliance scheduler
   WeeklyScheduler.init();
+  
+  // Initialize SLT API synchronization scheduler
+  SLTApiScheduler.init();
 });
   
