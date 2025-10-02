@@ -1,5 +1,6 @@
 const InternRepository = require("../repositories/internRepository");
 const SLTApiService = require("./sltApiService");
+const SLTApiScheduler = require("./sltApiScheduler");
 const moment = require("moment");
 
 class InternService {
@@ -346,6 +347,26 @@ class InternService {
         message: error.message,
         data: [],
         count: 0
+      };
+    }
+  }
+
+  async cleanupInactiveInterns() {
+    try {
+      console.log('🧹 Starting cleanup of inactive interns...');
+      const result = await SLTApiScheduler.performDataCleanup();
+      return result;
+    } catch (error) {
+      console.error('❌ Cleanup service error:', error.message);
+      return {
+        success: false,
+        message: `Cleanup failed: ${error.message}`,
+        stats: {
+          totalInDb: 0,
+          activeInApi: 0,
+          removed: 0,
+          errors: 1
+        }
       };
     }
   }

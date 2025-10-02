@@ -39,6 +39,7 @@ const {
   syncWithSLTAPI,
   testSLTAPI,
   getActiveTraineesFromSLT,
+  cleanupInactiveInterns,
   
   // SLT API Scheduler
   triggerManualSLTSync,
@@ -88,6 +89,7 @@ router.post("/:id/availability/remove", removeAvailableDay);
 router.post("/slt/sync", authenticateUser, syncWithSLTAPI);
 router.get("/slt/test", authenticateUser, testSLTAPI);
 router.get("/slt/trainees", authenticateUser, getActiveTraineesFromSLT);
+router.post("/slt/cleanup", authenticateUser, cleanupInactiveInterns);
 
 // =========================== SLT API SCHEDULER ===========================
 router.post("/slt/sync/manual", authenticateUser, triggerManualSLTSync);

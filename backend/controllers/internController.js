@@ -469,6 +469,39 @@ const getActiveTraineesFromSLT = async (req, res) => {
   }
 };
 
+const cleanupInactiveInterns = async (req, res) => {
+  try {
+    console.log('🧹 Cleanup of inactive interns requested via controller...');
+    const result = await InternService.cleanupInactiveInterns();
+    
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        stats: result.stats
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: result.message,
+        stats: result.stats
+      });
+    }
+  } catch (error) {
+    console.error('❌ Controller error during inactive intern cleanup:', error);
+    res.status(500).json({
+      success: false,
+      message: `Internal server error: ${error.message}`,
+      stats: {
+        totalInDb: 0,
+        activeInApi: 0,
+        removed: 0,
+        errors: 1
+      }
+    });
+  }
+};
+
 // ==================== SLT API SCHEDULER CONTROLLERS ====================
 
 const triggerManualSLTSync = async (req, res) => {
@@ -568,6 +601,7 @@ module.exports = {
   syncWithSLTAPI,
   testSLTAPI,
   getActiveTraineesFromSLT,
+  cleanupInactiveInterns,
   // SLT API Scheduler endpoints
   triggerManualSLTSync,
   triggerComprehensiveUpdate

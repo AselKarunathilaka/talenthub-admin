@@ -335,6 +335,137 @@ class SLTApiScheduler {
       };
     }
   }
+
+  /**
+   * Remove interns from MongoDB that are no longer present in the SLT API
+   */
+  static async performDataCleanup() {
+    console.log('🧹 Starting data cleanup - removing inactive interns from database...');
+
+    try {
+      // Get all current API data
+      const activeTrainees = await SLTApiService.fetchActiveTrainees();
+      const mappedTrainees = SLTApiService.mapToInternSchema(activeTrainees);
+      
+      // Get all interns from database
+      const dbInterns = await InternRepository.getAllInterns();
+      
+      // Create a set of active trainee IDs from API
+      const activeTraineeIds = new Set(
+        mappedTrainees
+          .map(t => t.traineeId?.toString())
+          .filter(id => id && id.trim() !== '')
+      );
+      
+      // Find interns in database that are not in the current API
+      const internsToRemove = dbInterns.filter(intern => {
+        const traineeId = intern.traineeId?.toString();
+        return traineeId && !activeTraineeIds.has(traineeId);
+      });
+      
+      console.log(`📊 Analysis: ${dbInterns.length} total in DB, ${activeTrainees.length} active in API, ${internsToRemove.length} to remove`);
+      
+      if (internsToRemove.length === 0) {
+        console.log('✅ No inactive interns found - database is clean');
+        return {
+          success: true,
+          message: 'No inactive interns found to remove',
+          stats: {
+            totalInDb: dbInterns.length,
+            activeInApi: activeTrainees.length,
+            removed: 0,
+            errors: 0
+          }
+        };
+      }
+      
+      let removedCount = 0;
+      let errorCount = 0;
+      
+      // Log which interns will be removed (for safety)
+      console.log('🗑️ Interns to be removed (not found in API):');
+      internsToRemove.forEach(intern => {
+        console.log(`   - ${intern.traineeId}: ${intern.traineeName} (${intern.email || 'No email'})`);
+      });
+      
+      // Remove interns in batches for efficiency
+      try {
+        const idsToRemove = internsToRemove.map(intern => intern._id);
+        const result = await InternRepository.removeMultipleInterns(idsToRemove);
+        
+        removedCount = result.deletedCount;
+        console.log(`✅ Successfully removed ${removedCount} inactive interns from database`);
+        
+      } catch (batchError) {
+        console.error('❌ Batch removal failed, trying individual removals:', batchError.message);
+        
+        // Fallback to individual removals
+        for (const intern of internsToRemove) {
+          try {
+            await InternRepository.removeIntern(intern._id);
+            removedCount++;
+            console.log(`✅ Removed: ${intern.traineeName} (${intern.traineeId})`);
+          } catch (error) {
+            console.error(`❌ Failed to remove ${intern.traineeName} (${intern.traineeId}):`, error.message);
+            errorCount++;
+          }
+        }
+      }
+      
+      const result = {
+        success: true,
+        message: `Data cleanup completed: ${removedCount} inactive interns removed, ${errorCount} errors`,
+        stats: {
+          totalInDb: dbInterns.length,
+          activeInApi: activeTrainees.length,
+          removed: removedCount,
+          errors: errorCount
+        }
+      };
+      
+      console.log('✅ Data cleanup completed:', result.message);
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Data cleanup failed:', error.message);
+      return {
+        success: false,
+        message: `Data cleanup failed: ${error.message}`,
+        stats: {
+          totalInDb: 0,
+          activeInApi: 0,
+          removed: 0,
+          errors: 1
+        }
+      };
+    }
+  }
+
+  /**
+   * Manual trigger for data cleanup
+   */
+  static async triggerManualCleanup() {
+    console.log('\n🧹 Manual data cleanup triggered');
+    console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
+    
+    try {
+      const result = await this.performDataCleanup();
+      return {
+        success: result.success,
+        timestamp: new Date(),
+        type: 'data_cleanup',
+        results: result
+      };
+    } catch (error) {
+      console.error('❌ Manual cleanup error:', error);
+      return {
+        success: false,
+        timestamp: new Date(),
+        type: 'data_cleanup',
+        error: error.message
+      };
+    }
+  }
 }
 
 module.exports = SLTApiScheduler;

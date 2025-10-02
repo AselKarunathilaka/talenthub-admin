@@ -103,6 +103,14 @@ class InternRepository {
     return await Intern.findByIdAndDelete(internId);
   }
 
+  static async removeMultipleInterns(internIds) {
+    const result = await Intern.deleteMany({ _id: { $in: internIds } });
+    return {
+      deletedCount: result.deletedCount,
+      acknowledged: result.acknowledged
+    };
+  }
+
   static async updateIntern(internId, data) {
     return await Intern.findByIdAndUpdate(internId, data, { new: true });
   }
