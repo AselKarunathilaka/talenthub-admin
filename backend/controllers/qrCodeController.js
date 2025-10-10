@@ -12,20 +12,28 @@ const QRCode = require("qrcode");
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId } = req.query; // Get internId from query parameters
+    const { internId, type = 'meeting' } = req.query; // Get internId and type from query parameters
     
     let sessionId;
-    if (internId) {
-      // Generate QR with intern ID for admin scanning
-      sessionId = `attendance_session_${internId}_${new Date().getTime()}`;
+    if (type === 'daily') {
+      // Generate QR for daily attendance
+      if (internId) {
+        sessionId = `daily_attendance_${internId}_${new Date().getTime()}`;
+      } else {
+        sessionId = `daily_attendance_${new Date().getTime()}`;
+      }
     } else {
-      // Generate generic QR for regular use
-      sessionId = `attendance_session_${new Date().getTime()}`;
+      // Generate QR for meeting attendance (default)
+      if (internId) {
+        sessionId = `attendance_session_${internId}_${new Date().getTime()}`;
+      } else {
+        sessionId = `attendance_session_${new Date().getTime()}`;
+      }
     }
     
     const qrCode = await QRCode.toDataURL(sessionId); 
 
-    res.status(200).json({ qrCode, sessionId });  
+    res.status(200).json({ qrCode, sessionId, type });  
   } catch (error) {
     res.status(500).json({ message: "Error generating QR Code", error: error.message });
   }
@@ -49,6 +57,12 @@ const scanQRCode = async (req, res) => {
   const { qrCode, internId, scanType = 'daily' } = req.body;
 
   try {
+    // Validate QR code format based on scan type
+    if (scanType === 'daily') {
+      if (!qrCode.includes('daily_attendance_')) {
+        return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
+      }
+    }
     
     const isValid = await qrCodeService.verifyQRCode(qrCode);
     if (!isValid) {
@@ -80,6 +94,11 @@ const scanMeetingQRCode = async (req, res) => {
   try {
     if (!meetingTitle) {
       return res.status(400).json({ message: "Meeting title is required." });
+    }
+
+    // Validate QR code format for meeting attendance
+    if (!qrCode.includes('attendance_session_')) {
+      return res.status(400).json({ message: "Invalid QR code format. This QR code is not for meeting attendance." });
     }
 
     // Verify QR code validity

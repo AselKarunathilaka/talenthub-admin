@@ -55,24 +55,42 @@ const markAttendance = async (internId, status) => {
   await sendAttendanceNotification(intern.email, intern.traineeId);
 };
 
-// Verify QR code (check if it's expired or valid and contains attendance_session_ prefix)
+// Verify QR code (check if it's expired or valid)
 const verifyQRCode = async (qrCode) => {
-  // First, validate that the QR code contains the required prefix
-  if (!qrCode || typeof qrCode !== 'string' || !qrCode.startsWith('attendance_session_')) {
+  if (!qrCode || typeof qrCode !== 'string') {
     return false;
   }
 
-  // Split the QR code to extract components: attendance_session_{internId}_{timestamp}
-  const qrCodeParts = qrCode.split("_");
+  let qrCodeTime;
   
-  // Validate QR code format: attendance_session_{internId}_{timestamp}
-  // Should have at least 4 parts: ['attendance', 'session', 'internId', 'timestamp']
-  if (qrCodeParts.length < 4 || qrCodeParts[0] !== 'attendance' || qrCodeParts[1] !== 'session') {
+  // Check for daily attendance QR code format: daily_attendance_{internId}_{timestamp}
+  if (qrCode.includes('daily_attendance_')) {
+    const qrCodeParts = qrCode.split("_");
+    
+    // Validate format: ['daily', 'attendance', 'internId', 'timestamp'] or ['daily', 'attendance', 'timestamp']
+    if (qrCodeParts.length < 3 || qrCodeParts[0] !== 'daily' || qrCodeParts[1] !== 'attendance') {
+      return false;
+    }
+    
+    // Extract timestamp (last part)
+    qrCodeTime = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+  }
+  // Check for meeting attendance QR code format: attendance_session_{internId}_{timestamp}
+  else if (qrCode.includes('attendance_session_')) {
+    const qrCodeParts = qrCode.split("_");
+    
+    // Validate format: ['attendance', 'session', 'internId', 'timestamp'] or ['attendance', 'session', 'timestamp']
+    if (qrCodeParts.length < 3 || qrCodeParts[0] !== 'attendance' || qrCodeParts[1] !== 'session') {
+      return false;
+    }
+    
+    // Extract timestamp (last part)
+    qrCodeTime = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+  }
+  // Invalid QR code format
+  else {
     return false;
   }
-
-  // Extract timestamp (last part)
-  const qrCodeTime = parseInt(qrCodeParts[qrCodeParts.length - 1]);
 
   // Validate that timestamp is a valid number
   if (isNaN(qrCodeTime)) {
