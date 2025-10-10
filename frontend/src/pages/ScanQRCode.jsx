@@ -6,11 +6,46 @@ import { Camera, Scan, XCircle, Info, CheckCircle, ChevronRight } from 'lucide-r
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 
+// Function to validate QR code format
+const validateQRCodeFormat = (qrCode) => {
+  // Check if QR code exists and is a string
+  if (!qrCode || typeof qrCode !== 'string') {
+    return false;
+  }
+
+  // Check if QR code starts with 'attendance_session_'
+  if (!qrCode.startsWith('attendance_session_')) {
+    return false;
+  }
+
+  // Split the QR code to validate structure
+  const qrCodeParts = qrCode.split('_');
+  
+  // Expected format: attendance_session_{internId}_{timestamp}
+  // Should have at least 4 parts: ['attendance', 'session', 'internId', 'timestamp']
+  if (qrCodeParts.length < 4 || qrCodeParts[0] !== 'attendance' || qrCodeParts[1] !== 'session') {
+    return false;
+  }
+
+  // Extract the timestamp (last part)
+  const timestamp = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+  
+  // Validate that the timestamp is a valid number
+  if (isNaN(timestamp)) {
+    return false;
+  }
+
+  return true;
+};
+
 const ScanQRCode = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanner, setScanner] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
   const [hasCameraAccess, setHasCameraAccess] = useState(true);
+  const [scanMode, setScanMode] = useState('daily'); // 'daily' or 'meeting'
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
 
   const checkCameraAccess = async () => {
@@ -26,6 +61,12 @@ const ScanQRCode = () => {
   const startScanning = () => {
     if (scanner || !hasCameraAccess) return;
 
+    if (scanMode === 'meeting' && !meetingTitle.trim()) {
+      toast.error('Please enter a meeting title first');
+      setShowMeetingInput(true);
+      return;
+    }
+
     const codeReader = new BrowserMultiFormatReader();
     setScanner(codeReader);
 
@@ -34,12 +75,36 @@ const ScanQRCode = () => {
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
 
+        // Validate QR code format before processing
+        if (!validateQRCodeFormat(qrData)) {
+          toast.error("Invalid QR code format. Please scan a valid attendance QR code.");
+          return;
+        }
+
         setScanSuccess(true);
         setTimeout(() => setScanSuccess(false), 1500);
 
         try {
-          const res = await api.post('/qrcode/scan', { qrCode: qrData, internId });
-          toast.success(res.message || "Attendance marked successfully!");
+          let res;
+          if (scanMode === 'daily') {
+            res = await api.post('/qrcode/scan', { 
+              qrCode: qrData, 
+              internId, 
+              scanType: 'daily' 
+            });
+          } else {
+            if (!meetingTitle.trim()) {
+              toast.error("Please enter a meeting title first");
+              return;
+            }
+            res = await api.post('/qrcode/scan-meeting', { 
+              qrCode: qrData, 
+              internId, 
+              meetingTitle: meetingTitle.trim()
+            });
+          }
+          
+          toast.success(res.message || `${scanMode === 'daily' ? 'Daily' : 'Meeting'} attendance marked successfully!`);
           setIsScanning(false);
         } catch (err) {
           console.error("Failed to mark attendance:", err);
@@ -107,6 +172,87 @@ const ScanQRCode = () => {
           <motion.div className="mb-6 md:mb-8" variants={itemVariants}>
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900">QR Code Scanner</h1>
             <p className="text-gray-500 mt-1 text-sm md:text-base">Scan your attendance QR code quickly and easily</p>
+          </motion.div>
+
+          {/* Mode Selection */}
+          <motion.div className="mb-6" variants={itemVariants}>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <h2 className="text-lg font-semibold text-gray-800 mb-4">Select Scan Type</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setScanMode('daily');
+                    setShowMeetingInput(false);
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                    scanMode === 'daily'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded-full ${
+                      scanMode === 'daily' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      <CheckCircle className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold">Daily Attendance</h3>
+                      <p className="text-sm opacity-75">Mark your daily work attendance</p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setScanMode('meeting');
+                    setShowMeetingInput(true);
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all duration-200 ${
+                    scanMode === 'meeting'
+                      ? 'border-green-500 bg-green-50 text-green-700'
+                      : 'border-gray-200 hover:border-green-300 text-gray-700'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className={`p-2 rounded-full ${
+                      scanMode === 'meeting' ? 'bg-green-100' : 'bg-gray-100'
+                    }`}>
+                      <Camera className="w-5 h-5" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-semibold">Meeting Attendance</h3>
+                      <p className="text-sm opacity-75">Mark attendance for meetings</p>
+                    </div>
+                  </div>
+                </motion.button>
+              </div>
+
+              {/* Meeting Title Input */}
+              {showMeetingInput && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-4 pt-4 border-t border-gray-200"
+                >
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Meeting Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={meetingTitle}
+                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    placeholder="Enter meeting title..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                </motion.div>
+              )}
+            </div>
           </motion.div>
 
           <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">

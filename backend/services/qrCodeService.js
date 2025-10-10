@@ -12,6 +12,8 @@ const generateQRCode = async (internId) => {
 };
 
 
+
+
 // Function to send email notification on attendance marking
 const sendAttendanceNotification = async (internEmail, traineeId) => {
   const transporter = nodemailer.createTransport({
@@ -53,13 +55,34 @@ const markAttendance = async (internId, status) => {
   await sendAttendanceNotification(intern.email, intern.traineeId);
 };
 
-// Verify QR code (check if it's expired or valid)
+// Verify QR code (check if it's expired or valid and contains attendance_session_ prefix)
 const verifyQRCode = async (qrCode) => {
-  const sessionId = qrCode.split("_")[1];  // Extract sessionId from QR code
-  const currentTime = new Date().getTime();
-  const qrCodeTime = parseInt(qrCode.split("_")[2]);
+  // First, validate that the QR code contains the required prefix
+  if (!qrCode || typeof qrCode !== 'string' || !qrCode.startsWith('attendance_session_')) {
+    return false;
+  }
 
-  if (currentTime - qrCodeTime > 3600000) {  // QR Code expires in 1 hour
+  // Split the QR code to extract components: attendance_session_{internId}_{timestamp}
+  const qrCodeParts = qrCode.split("_");
+  
+  // Validate QR code format: attendance_session_{internId}_{timestamp}
+  // Should have at least 4 parts: ['attendance', 'session', 'internId', 'timestamp']
+  if (qrCodeParts.length < 4 || qrCodeParts[0] !== 'attendance' || qrCodeParts[1] !== 'session') {
+    return false;
+  }
+
+  // Extract timestamp (last part)
+  const qrCodeTime = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+
+  // Validate that timestamp is a valid number
+  if (isNaN(qrCodeTime)) {
+    return false;
+  }
+
+  const currentTime = new Date().getTime();
+  
+  // QR Code expires in 1 hour (3600000 milliseconds)
+  if (currentTime - qrCodeTime > 3600000) {
     return false;
   }
 
@@ -68,4 +91,110 @@ const verifyQRCode = async (qrCode) => {
 
 
 
-module.exports = { generateQRCode, markAttendance, verifyQRCode };
+
+
+// Mark intern daily attendance (for intern-side scanning)
+const markInternDailyAttendance = async (internId) => {
+  const DailyRecord = require("../models/DailyRecord");
+  const Intern = require("../models/Intern");
+  
+  const intern = await Intern.findById(internId);
+  if (!intern) throw new Error("Intern not found");
+  
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  // Find existing daily record for today
+  let dailyRecord = await DailyRecord.findOne({ internId, date: today });
+  
+  if (dailyRecord) {
+    // Update existing record with attendance
+    dailyRecord.attendance = "present";
+    dailyRecord.attendanceTime = new Date();
+    await dailyRecord.save();
+  }
+  // Note: We don't create a new daily record if one doesn't exist
+  // The intern should fill their daily log first
+  
+  return {
+    intern: {
+      id: intern._id,
+      traineeId: intern.traineeId,
+      traineeName: intern.traineeName,
+      email: intern.email
+    },
+    attendance: {
+      date: today,
+      status: "present",
+      time: new Date()
+    }
+  };
+};
+
+// Mark meeting attendance
+const markMeetingAttendance = async (internId, meetingTitle) => {
+  const DailyRecord = require("../models/DailyRecord");
+  const Intern = require("../models/Intern");
+  
+  const intern = await Intern.findById(internId);
+  if (!intern) throw new Error("Intern not found");
+  
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  // Find or create daily record for today
+  let dailyRecord = await DailyRecord.findOne({ internId, date: today });
+  
+  if (!dailyRecord) {
+    // Create new daily record if doesn't exist
+    dailyRecord = new DailyRecord({
+      internId,
+      date: today,
+      stack: "Default",
+      task: "Meeting attendance marked via QR scan",
+      meetingAttendance: [{
+        meetingTitle,
+        attendanceStatus: "present",
+        attendanceTime: new Date()
+      }]
+    });
+  } else {
+    // Check if meeting attendance already exists
+    const existingMeeting = dailyRecord.meetingAttendance.find(
+      meeting => meeting.meetingTitle === meetingTitle
+    );
+    
+    if (existingMeeting) {
+      existingMeeting.attendanceStatus = "present";
+      existingMeeting.attendanceTime = new Date();
+    } else {
+      dailyRecord.meetingAttendance.push({
+        meetingTitle,
+        attendanceStatus: "present",
+        attendanceTime: new Date()
+      });
+    }
+  }
+  
+  await dailyRecord.save();
+  
+  return {
+    intern: {
+      id: intern._id,
+      traineeId: intern.traineeId,
+      traineeName: intern.traineeName,
+      email: intern.email
+    },
+    meeting: {
+      title: meetingTitle,
+      status: "present",
+      time: new Date()
+    }
+  };
+};
+
+module.exports = { 
+  generateQRCode, 
+  markAttendance, 
+  markInternDailyAttendance,
+  markMeetingAttendance, 
+  verifyQRCode 
+};

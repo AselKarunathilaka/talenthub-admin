@@ -34,7 +34,31 @@ const DailyRecordSchema = new mongoose.Schema({
     type: String,
     enum: ["working", "leave", "wfh"],
     default: "working"
-  }
+  },
+  attendance: {
+    type: String,
+    enum: ["present", "absent", "late"],
+    default: "absent"
+  },
+  attendanceTime: {
+    type: Date,
+    default: null
+  },
+  meetingAttendance: [{
+    meetingTitle: {
+      type: String,
+      required: true
+    },
+    attendanceStatus: {
+      type: String,
+      enum: ["present", "absent"],
+      default: "absent"
+    },
+    attendanceTime: {
+      type: Date,
+      default: Date.now
+    }
+  }]
 }, {
   timestamps: true
 });
