@@ -6,28 +6,28 @@ import { Camera, Scan, XCircle, Info, CheckCircle, ChevronRight } from 'lucide-r
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 
-// Function to validate QR code format
-const validateQRCodeFormat = (qrCode) => {
+// Function to validate QR code format based on scan mode
+const validateQRCodeFormat = (qrCode, scanMode) => {
   // Check if QR code exists and is a string
   if (!qrCode || typeof qrCode !== 'string') {
     return false;
   }
 
-  // Check if QR code starts with 'attendance_session_'
-  if (!qrCode.startsWith('attendance_session_')) {
-    return false;
+  // Validate based on scan mode
+  if (scanMode === 'daily') {
+    // Check for daily attendance format: daily_attendance_*
+    if (!qrCode.includes('daily_attendance_')) {
+      return false;
+    }
+  } else {
+    // Check for meeting attendance format: attendance_session_*
+    if (!qrCode.includes('attendance_session_')) {
+      return false;
+    }
   }
 
-  // Split the QR code to validate structure
+  // Extract timestamp for validation
   const qrCodeParts = qrCode.split('_');
-  
-  // Expected format: attendance_session_{internId}_{timestamp}
-  // Should have at least 4 parts: ['attendance', 'session', 'internId', 'timestamp']
-  if (qrCodeParts.length < 4 || qrCodeParts[0] !== 'attendance' || qrCodeParts[1] !== 'session') {
-    return false;
-  }
-
-  // Extract the timestamp (last part)
   const timestamp = parseInt(qrCodeParts[qrCodeParts.length - 1]);
   
   // Validate that the timestamp is a valid number
@@ -75,9 +75,12 @@ const ScanQRCode = () => {
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
 
+
+
         // Validate QR code format before processing
-        if (!validateQRCodeFormat(qrData)) {
-          toast.error("Invalid QR code format. Please scan a valid attendance QR code.");
+        if (!validateQRCodeFormat(qrData, scanMode)) {
+          const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
+          toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
           return;
         }
 
