@@ -281,7 +281,7 @@ const getAttendanceByInternId = async (req, res) => {
     const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Add historical meeting attendance from intern.attendance (old system)
+    // Add historical meeting attendance from intern.attendance (old system - keep as meeting attendance)
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
         meetingAttendance.push({
@@ -300,7 +300,7 @@ const getAttendanceByInternId = async (req, res) => {
     
     // Add recent attendance from dailyRecords (new QR system)
     dailyRecords.forEach(record => {
-      // Add daily attendance if it exists
+      // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== 'absent') {
         const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
         dailyAttendance.push({
@@ -315,7 +315,7 @@ const getAttendanceByInternId = async (req, res) => {
         });
       }
       
-      // Add meeting attendance if it exists
+      // Add meeting attendance if it exists (NEW QR scanned meeting attendance goes to Meeting section)
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach(meeting => {
           const attendanceTime = new Date(meeting.attendanceTime);
