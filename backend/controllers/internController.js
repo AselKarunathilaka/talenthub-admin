@@ -3,6 +3,7 @@ const attendanceService = require("../services/attendanceService");
 const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
+const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
@@ -273,9 +274,36 @@ const getAttendanceByInternId = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    console.log("Intern data:", intern);
+    // Get daily records for this intern to include meeting attendance
+    const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
+
+    // Combine basic attendance with meeting attendance
+    const combinedAttendance = [...intern.attendance];
+
+    // Add meeting attendance entries
+    dailyRecords.forEach(record => {
+      if (record.meetingAttendance && record.meetingAttendance.length > 0) {
+        record.meetingAttendance.forEach(meeting => {
+          const attendanceTime = new Date(meeting.attendanceTime);
+          combinedAttendance.push({
+            date: record.date,
+            status: meeting.meetingTitle,
+            type: 'Meeting',
+            time: attendanceTime.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            isMeeting: true
+          });
+        });
+      }
+    });
+
+    // Sort combined attendance by date (newest first)
+    combinedAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+
     const response = {
-      attendance: intern.attendance,
+      attendance: combinedAttendance,
       stats: {
         present: intern.attendance.filter(entry => entry.status === "Present").length,
         absent: intern.attendance.filter(entry => entry.status === "Absent").length

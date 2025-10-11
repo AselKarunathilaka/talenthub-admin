@@ -87,9 +87,6 @@ const Dashboard = () => {
           present: presentCount,
           absent: absentCount,
         });
-
-        // Update filteredAttendance to include meeting attendance
-        updateFilteredAttendanceWithMeetings(response);
       }
     } catch (err) {
       console.error("Error fetching daily records:", err);
@@ -97,57 +94,10 @@ const Dashboard = () => {
     }
   };
 
-  const updateFilteredAttendanceWithMeetings = (dailyRecordsData) => {
-    setFilteredAttendance(prevAttendance => {
-      const attendanceMap = new Map();
-      
-      // First, add existing attendance records
-      prevAttendance.forEach(entry => {
-        attendanceMap.set(entry.date, [{
-          ...entry,
-          type: 'Daily'
-        }]);
-      });
-
-      // Then, add meeting attendance records
-      dailyRecordsData.forEach(record => {
-        const dateKey = record.date;
-        
-        if (record.meetingAttendance && record.meetingAttendance.length > 0) {
-          const existingEntries = attendanceMap.get(dateKey) || [];
-          
-          record.meetingAttendance.forEach(meeting => {
-            const attendanceTime = new Date(meeting.attendanceTime);
-            existingEntries.push({
-              date: dateKey,
-              status: meeting.meetingTitle,
-              type: 'Meeting',
-              time: attendanceTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              isMeeting: true
-            });
-          });
-
-          attendanceMap.set(dateKey, existingEntries);
-        }
-      });
-
-      // Convert map back to flat array
-      const updatedAttendance = [];
-      for (const entries of attendanceMap.values()) {
-        updatedAttendance.push(...entries);
-      }
-
-      // Sort by date (newest first)
-      return updatedAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
-    });
-  };
-
   const loadAllData = async () => {
     setLoading(true);
-    await Promise.all([loadAttendanceData(), loadDailyRecords()]);
+    await loadDailyRecords();
+    await loadAttendanceData(); // Load attendance data last to get the combined data from backend
     setLoading(false);
   };
 
@@ -177,7 +127,7 @@ const Dashboard = () => {
 
     if (date) {
       const dateString = new Date(date).toLocaleDateString();
-      const foundEntries = filteredAttendance.filter(
+      const foundEntries = attendanceHistory.filter(
         (entry) =>
           new Date(entry.date).toLocaleDateString() === dateString
       );
@@ -190,7 +140,7 @@ const Dashboard = () => {
       }
     } else {
       // Reset to show all attendance (both daily and meeting)
-      loadAllData();
+      setFilteredAttendance(attendanceHistory);
     }
   };
 
@@ -198,11 +148,10 @@ const Dashboard = () => {
     setFilterStatus(status);
 
     if (status === "All") {
-      // Reset to show all attendance (both daily and meeting)
-      loadAllData();
+      setFilteredAttendance(attendanceHistory);
     } else {
       setFilteredAttendance(
-        filteredAttendance.filter((entry) => {
+        attendanceHistory.filter((entry) => {
           // For meeting entries, don't filter by Present/Absent status
           if (entry.isMeeting) {
             return status === "All";
