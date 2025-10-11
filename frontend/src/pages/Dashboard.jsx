@@ -37,7 +37,6 @@ const Dashboard = () => {
       }
 
       const response = await api.get(`/interns/attendance/${internId}`);
-      console.log("Attendance data response:", response);
 
       if (response && response.attendance && response.stats) {
         setAttendanceHistory(response.attendance);
@@ -63,7 +62,6 @@ const Dashboard = () => {
   const loadDailyRecords = async () => {
     try {
       const response = await api.get('/daily-records');
-      console.log("Daily records response:", response);
 
       if (response && Array.isArray(response)) {
         setDailyRecords(response);
@@ -89,11 +87,62 @@ const Dashboard = () => {
           present: presentCount,
           absent: absentCount,
         });
+
+        // Update filteredAttendance to include meeting attendance
+        updateFilteredAttendanceWithMeetings(response);
       }
     } catch (err) {
       console.error("Error fetching daily records:", err);
       // Don't show error for daily records as it's optional
     }
+  };
+
+  const updateFilteredAttendanceWithMeetings = (dailyRecordsData) => {
+    setFilteredAttendance(prevAttendance => {
+      const attendanceMap = new Map();
+      
+      // First, add existing attendance records
+      prevAttendance.forEach(entry => {
+        attendanceMap.set(entry.date, [{
+          ...entry,
+          type: 'Daily'
+        }]);
+      });
+
+      // Then, add meeting attendance records
+      dailyRecordsData.forEach(record => {
+        const dateKey = record.date;
+        
+        if (record.meetingAttendance && record.meetingAttendance.length > 0) {
+          const existingEntries = attendanceMap.get(dateKey) || [];
+          
+          record.meetingAttendance.forEach(meeting => {
+            const attendanceTime = new Date(meeting.attendanceTime);
+            existingEntries.push({
+              date: dateKey,
+              status: meeting.meetingTitle,
+              type: 'Meeting',
+              time: attendanceTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              isMeeting: true
+            });
+          });
+
+          attendanceMap.set(dateKey, existingEntries);
+        }
+      });
+
+      // Convert map back to flat array
+      const updatedAttendance = [];
+      for (const entries of attendanceMap.values()) {
+        updatedAttendance.push(...entries);
+      }
+
+      // Sort by date (newest first)
+      return updatedAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+    });
   };
 
   const loadAllData = async () => {
@@ -127,20 +176,21 @@ const Dashboard = () => {
     setSelectedDate(date);
 
     if (date) {
-      const foundEntry = attendanceHistory.find(
+      const dateString = new Date(date).toLocaleDateString();
+      const foundEntries = filteredAttendance.filter(
         (entry) =>
-          new Date(entry.date).toLocaleDateString() ===
-          new Date(date).toLocaleDateString()
+          new Date(entry.date).toLocaleDateString() === dateString
       );
 
-      if (foundEntry) {
-        setFilteredAttendance([foundEntry]);
+      if (foundEntries.length > 0) {
+        setFilteredAttendance(foundEntries);
       } else {
-        toast.error("Attendance not marked for this day.");
+        toast.error("No attendance records found for this day.");
         setFilteredAttendance([]);
       }
     } else {
-      setFilteredAttendance(attendanceHistory);
+      // Reset to show all attendance (both daily and meeting)
+      loadAllData();
     }
   };
 
@@ -148,10 +198,17 @@ const Dashboard = () => {
     setFilterStatus(status);
 
     if (status === "All") {
-      setFilteredAttendance(attendanceHistory);
+      // Reset to show all attendance (both daily and meeting)
+      loadAllData();
     } else {
       setFilteredAttendance(
-        attendanceHistory.filter((entry) => entry.status === status)
+        filteredAttendance.filter((entry) => {
+          // For meeting entries, don't filter by Present/Absent status
+          if (entry.isMeeting) {
+            return status === "All";
+          }
+          return entry.status === status;
+        })
       );
     }
     setCurrentPage(1);
@@ -486,21 +543,22 @@ const Dashboard = () => {
 
           {filteredAttendance.length > 0 ? (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="grid grid-cols-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
+              <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                 <div>Date</div>
+                <div className="text-center">Type</div>
                 <div className="text-center">Status</div>
-                <div className="text-right">Day</div>
+                <div className="text-right">Time/Day</div>
               </div>
 
               <div className="divide-y divide-gray-100">
-                {filteredAttendance.map((entry) => {
+                {filteredAttendance.map((entry, index) => {
                   const date = new Date(entry.date);
                   const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
 
                   return (
                     <motion.div
-                      key={entry.date}
-                      className="grid grid-cols-3 items-center p-3 hover:bg-gray-50"
+                      key={`${entry.date}-${entry.type}-${index}`}
+                      className="grid grid-cols-4 items-center p-3 hover:bg-gray-50"
                       whileHover={{ backgroundColor: "#f9f9f9" }}
                       transition={{ duration: 0.1 }}
                     >
@@ -508,21 +566,36 @@ const Dashboard = () => {
                         {formatDate(entry.date)}
                       </div>
                       <div className="text-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          entry.status === "Present"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
+                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                          entry.type === 'Daily' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-purple-100 text-purple-800'
                         }`}>
-                          {entry.status === "Present" ? (
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                          ) : (
-                            <XCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {entry.status}
+                          {entry.type || 'Daily'}
                         </span>
                       </div>
+                      <div className="text-center">
+                        {entry.isMeeting ? (
+                          <span className="text-sm text-gray-900 font-medium">
+                            {entry.status}
+                          </span>
+                        ) : (
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            entry.status === "Present"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}>
+                            {entry.status === "Present" ? (
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                            ) : (
+                              <XCircle className="h-3 w-3 mr-1" />
+                            )}
+                            {entry.status}
+                          </span>
+                        )}
+                      </div>
                       <div className="text-right text-xs text-gray-500">
-                        {dayName}
+                        {entry.isMeeting ? entry.time : dayName}
                       </div>
                     </motion.div>
                   );

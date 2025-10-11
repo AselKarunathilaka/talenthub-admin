@@ -12,7 +12,7 @@ const QRCode = require("qrcode");
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId, type = 'meeting' } = req.query; // Get internId and type from query parameters
+    const { internId, type } = req.query; // Get internId and type from query parameters
     
     let sessionId;
     if (type === 'daily') {
@@ -23,7 +23,7 @@ const generateQRCode = async (req, res) => {
         sessionId = `daily_attendance_${new Date().getTime()}`;
       }
     } else {
-      // Generate QR for meeting attendance (default)
+      // Generate QR for meeting attendance (default when no type specified or type='meeting')
       if (internId) {
         sessionId = `attendance_session_${internId}_${new Date().getTime()}`;
       } else {
@@ -59,7 +59,8 @@ const scanQRCode = async (req, res) => {
   try {
     // Validate QR code format based on scan type
     if (scanType === 'daily') {
-      if (!qrCode.includes('daily_attendance_')) {
+      // Accept both daily_attendance_ and attendance_session_ for backward compatibility
+      if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
         return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
       }
     }

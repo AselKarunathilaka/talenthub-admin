@@ -15,8 +15,8 @@ const validateQRCodeFormat = (qrCode, scanMode) => {
 
   // Validate based on scan mode
   if (scanMode === 'daily') {
-    // Check for daily attendance format: daily_attendance_*
-    if (!qrCode.includes('daily_attendance_')) {
+    // Check for daily attendance format: daily_attendance_* or attendance_session_* (backward compatibility)
+    if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
       return false;
     }
   } else {

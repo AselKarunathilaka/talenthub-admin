@@ -9,8 +9,7 @@ const createDailyRecord = async (req, res) => {
     const userId = req.user.id;
     const userEmail = req.user.email;
 
-    console.log('Creating daily record for user:', userId, 'email:', userEmail);
-    console.log('Request body:', req.body);
+
 
     // Check if leave submission is allowed (time restriction check)
     if (status === 'leave') {
@@ -42,10 +41,6 @@ const createDailyRecord = async (req, res) => {
     }
     
     if (!intern) {
-      console.log('No intern found for user ID:', userId, 'or email:', userEmail);
-      console.log('Available interns in database:');
-      const allInterns = await Intern.find({}, 'traineeId traineeName email').limit(5);
-      console.log(allInterns);
       return res.status(404).json({ 
         error: "Intern record not found. Please contact your administrator to set up your intern profile.",
         details: `No intern found for email: ${userEmail}`
@@ -53,7 +48,6 @@ const createDailyRecord = async (req, res) => {
     }
 
     internId = intern._id;
-    console.log('Found intern:', internId, 'Name:', intern.traineeName, 'TraineeId:', intern.traineeId);
 
     // Check if a record already exists for this date
     const existingRecord = await DailyRecord.findOne({ 
@@ -74,7 +68,6 @@ const createDailyRecord = async (req, res) => {
       // Populate the intern details
       await existingRecord.populate('internId', 'traineeName traineeId email');
 
-      console.log('Updated existing record:', existingRecord);
       return res.status(200).json(existingRecord);
     } else {
       // Create new record
@@ -93,7 +86,6 @@ const createDailyRecord = async (req, res) => {
       // Populate the intern details
       await newRecord.populate('internId', 'traineeName traineeId email');
 
-      console.log('Created new record:', newRecord);
       return res.status(201).json(newRecord);
     }
   } catch (error) {
@@ -110,8 +102,6 @@ const getDailyRecords = async (req, res) => {
   try {
     const userId = req.user.id;
     const userEmail = req.user.email;
-
-    console.log('Getting daily records for user:', userId, 'email:', userEmail);
 
     let query = {};
     
@@ -134,10 +124,6 @@ const getDailyRecords = async (req, res) => {
       }
       
       if (!intern) {
-        console.log('No intern found for user ID:', userId, 'or email:', userEmail);
-        console.log('Available interns:');
-        const allInterns = await Intern.find({}, 'traineeId traineeName email').limit(5);
-        console.log(allInterns);
         return res.status(404).json({ 
           error: "Intern record not found. Please contact your administrator.",
           details: `No intern found for email: ${userEmail}`
@@ -145,9 +131,7 @@ const getDailyRecords = async (req, res) => {
       }
       
       query.internId = intern._id;
-      console.log('Intern user, filtering by intern ID:', intern._id, 'Name:', intern.traineeName);
     } else {
-      console.log('Admin user, showing all records');
       // Admin can see all records - no filter needed
     }
 
@@ -155,10 +139,6 @@ const getDailyRecords = async (req, res) => {
       .populate('internId', 'traineeName traineeId email')
       .sort({ createdAt: -1 });
 
-    console.log('Found records:', records.length);
-    if (records.length > 0) {
-      console.log('Sample record intern data:', records[0].internId);
-    }
     res.status(200).json(records);
   } catch (error) {
     console.error("Error fetching daily records:", error);
