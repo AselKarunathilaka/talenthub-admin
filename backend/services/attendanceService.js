@@ -28,26 +28,21 @@ const markAttendanceAndNotify = async (internId, status, date) => {
     const internName = updatedIntern.traineeName;
     const internTraineeId = updatedIntern.traineeId;
 
-    const emailSubject = "Attendance Updated by Administrator - SLT Mobitel";
+    const emailSubject = "Attendance Marked - SLT Mobitel";
     const emailBody = `
       Hello ${internName},
 
-      Your attendance record has been updated by an administrator for ${attendanceDate}.
+      This is to inform you that your attendance has been successfully marked for ${attendanceDate}.
+      Status: ${status}
+      Intern ID: ${internTraineeId}
 
-      Details:
-      - Trainee ID: ${internTraineeId}
-      - Date: ${attendanceDate}
-      - Status: ${status}
-      - Updated by: System Administrator
+      If you have any issues or concerns, please do not hesitate to contact your supervisor.
 
-      This change has been made to ensure accurate attendance records. If you believe this is an error or have any questions about this update, please contact your supervisor immediately.
-
-      Please do not reply to this email. This is an automated administrative notification.
+      Please do not reply to this email. This is an auto-generated message.
 
       Best regards,
       SLT Mobitel
       Digital Platforms Development Section
-      Administrative Services
     `;
 
     // Send the email notification if the intern has an email address

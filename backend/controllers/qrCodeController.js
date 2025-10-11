@@ -70,26 +70,19 @@ const scanQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark daily attendance in DailyRecord with proper email notification
+    // Mark attendance in intern's attendance array (existing functionality)
+    const status = "Present";
+    const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
+
+    // Also mark daily attendance in DailyRecord
     if (scanType === 'daily') {
-      const result = await qrCodeService.markInternDailyAttendance(internId);
-      
-      res.status(200).json({ 
-        message: "Daily attendance marked successfully and email sent!",
-        intern: result.intern,
-        attendance: result.attendance,
-        dailyAttendanceUpdated: true
-      });
-    } else {
-      // For other scan types (legacy QR codes), use QR service
-      const status = "Present";
-      await qrCodeService.markAttendance(internId, status);
-      
-      res.status(200).json({ 
-        message: "Attendance marked successfully and email sent!",
-        dailyAttendanceUpdated: false
-      });
+      await qrCodeService.markInternDailyAttendance(internId);
     }
+
+    res.status(200).json({ 
+      message: "Attendance marked successfully and email sent!",
+      dailyAttendanceUpdated: scanType === 'daily'
+    });
   } catch (error) {
     res.status(500).json({ message: "Error processing QR code", error: error.message });
   }
@@ -115,11 +108,11 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark meeting attendance with email notification
+    // Mark meeting attendance
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle);
     
     res.status(200).json({ 
-      message: "Meeting attendance marked successfully and email sent!",
+      message: "Meeting attendance marked successfully!",
       intern: result.intern,
       meeting: result.meeting
     });
