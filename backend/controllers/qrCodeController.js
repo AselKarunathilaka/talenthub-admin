@@ -81,9 +81,9 @@ const scanQRCode = async (req, res) => {
         dailyAttendanceUpdated: true
       });
     } else {
-      // For other scan types, fall back to original functionality
+      // For other scan types (legacy QR codes), use QR service
       const status = "Present";
-      const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
+      await qrCodeService.markAttendance(internId, status);
       
       res.status(200).json({ 
         message: "Attendance marked successfully and email sent!",
