@@ -14,6 +14,8 @@ const Dashboard = () => {
   });
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [filteredAttendance, setFilteredAttendance] = useState([]);
+  const [meetingAttendance, setMeetingAttendance] = useState([]);
+  const [filteredMeetingAttendance, setFilteredMeetingAttendance] = useState([]);
   const [dailyRecords, setDailyRecords] = useState([]);
   const [dailyAttendanceStats, setDailyAttendanceStats] = useState({
     present: 0,
@@ -38,15 +40,39 @@ const Dashboard = () => {
 
       const response = await api.get(`/interns/attendance/${internId}`);
 
-      if (response && response.attendance && response.stats) {
-        setAttendanceHistory(response.attendance);
-        setFilteredAttendance(response.attendance);
+      if (response) {
+        console.log("Full API Response:", response); // Debug log
+        
+        // Set daily attendance (for the Daily Attendance section)
+        const dailyAttendanceData = response.dailyAttendance || response.attendance?.filter(entry => !entry.isMeeting) || [];
+        console.log("Daily Attendance Data:", dailyAttendanceData); // Debug log
+        setAttendanceHistory(dailyAttendanceData);
+        setFilteredAttendance(dailyAttendanceData);
+        
+        // Set meeting attendance (for the Attendance History section)
+        const meetingAttendanceData = response.meetingAttendance || response.attendance?.filter(entry => entry.isMeeting) || [];
+        console.log("Meeting Attendance Data:", meetingAttendanceData); // Debug log
+        setMeetingAttendance(meetingAttendanceData);
+        setFilteredMeetingAttendance(meetingAttendanceData);
+        
+        // Set attendance stats with fallback
+        const stats = response.stats || {
+          present: dailyAttendanceData.filter(entry => entry.status === "Present").length,
+          absent: dailyAttendanceData.filter(entry => entry.status === "Absent").length
+        };
+        
         setAttendanceStats({
-          present: response.stats.present,
-          absent: response.stats.absent,
+          present: stats.present,
+          absent: stats.absent,
+        });
+        
+        // Set daily attendance stats based on the daily attendance data
+        setDailyAttendanceStats({
+          present: dailyAttendanceData.filter(entry => entry.status === "Present").length,
+          absent: dailyAttendanceData.filter(entry => entry.status === "Absent").length,
         });
       } else {
-        throw new Error("Invalid data format from API: Missing 'attendance' or 'stats'");
+        throw new Error("No data returned from API");
       }
     } catch (err) {
       console.error("Error fetching attendance data:", err);
@@ -59,45 +85,11 @@ const Dashboard = () => {
     }
   };
 
-  const loadDailyRecords = async () => {
-    try {
-      const response = await api.get('/daily-records');
 
-      if (response && Array.isArray(response)) {
-        setDailyRecords(response);
-        
-        // Calculate daily attendance stats
-        let presentCount = 0;
-        let absentCount = 0;
-        
-        response.forEach(record => {
-          if (record.attendance) {
-            if (record.attendance === 'present') {
-              presentCount++;
-            } else if (record.attendance === 'absent') {
-              absentCount++;
-            }
-          } else {
-            // If no attendance field, consider as absent
-            absentCount++;
-          }
-        });
-        
-        setDailyAttendanceStats({
-          present: presentCount,
-          absent: absentCount,
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching daily records:", err);
-      // Don't show error for daily records as it's optional
-    }
-  };
 
   const loadAllData = async () => {
     setLoading(true);
-    await loadDailyRecords();
-    await loadAttendanceData(); // Load attendance data last to get the combined data from backend
+    await loadAttendanceData(); // This now includes both daily and meeting attendance
     setLoading(false);
   };
 
@@ -127,20 +119,20 @@ const Dashboard = () => {
 
     if (date) {
       const dateString = new Date(date).toLocaleDateString();
-      const foundEntries = attendanceHistory.filter(
+      const foundMeetingEntries = meetingAttendance.filter(
         (entry) =>
           new Date(entry.date).toLocaleDateString() === dateString
       );
 
-      if (foundEntries.length > 0) {
-        setFilteredAttendance(foundEntries);
+      if (foundMeetingEntries.length > 0) {
+        setFilteredMeetingAttendance(foundMeetingEntries);
       } else {
-        toast.error("No attendance records found for this day.");
-        setFilteredAttendance([]);
+        toast.error("No meeting attendance records found for this day.");
+        setFilteredMeetingAttendance([]);
       }
     } else {
-      // Reset to show all attendance (both daily and meeting)
-      setFilteredAttendance(attendanceHistory);
+      // Reset to show all meeting attendance
+      setFilteredMeetingAttendance(meetingAttendance);
     }
   };
 
@@ -148,17 +140,10 @@ const Dashboard = () => {
     setFilterStatus(status);
 
     if (status === "All") {
-      setFilteredAttendance(attendanceHistory);
+      setFilteredMeetingAttendance(meetingAttendance);
     } else {
-      setFilteredAttendance(
-        attendanceHistory.filter((entry) => {
-          // For meeting entries, don't filter by Present/Absent status
-          if (entry.isMeeting) {
-            return status === "All";
-          }
-          return entry.status === status;
-        })
-      );
+      // Meeting attendance is always "Present", so no filtering needed for meetings
+      setFilteredMeetingAttendance(meetingAttendance);
     }
     setCurrentPage(1);
   };
@@ -304,7 +289,7 @@ const Dashboard = () => {
               </motion.button>
             </div>
 
-            {dailyRecords.length > 0 ? (
+            {attendanceHistory.length > 0 ? (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
                 <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                   <div>Date</div>
@@ -314,44 +299,56 @@ const Dashboard = () => {
                 </div>
 
                 <div className="divide-y divide-gray-100">
-                  {dailyRecords
-                    .filter(record => record.attendance && record.attendance !== 'absent')
-                    .slice(0, 5) // Show only recent 5 records
-                    .map((record) => {
-                      const date = new Date(record.date);
-                      const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                      const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
+                  {attendanceHistory
+                    .slice(0, 5) // Show only recent 5 records - show all statuses
+                    .map((entry, index) => {
+                      console.log("Processing entry:", entry); // Debug log
+                      
+                      // Handle date parsing more robustly
+                      let date, dayName, formattedDate;
+                      try {
+                        date = entry.date ? new Date(entry.date) : new Date();
+                        if (isNaN(date.getTime())) {
+                          throw new Error("Invalid date");
+                        }
+                        dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                        formattedDate = date.toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        });
+                      } catch (error) {
+                        console.error("Date parsing error:", error, "Entry:", entry);
+                        dayName = 'N/A';
+                        formattedDate = entry.date || 'N/A';
+                      }
 
                       return (
                         <motion.div
-                          key={record._id}
+                          key={`${entry.date}-${index}`}
                           className="grid grid-cols-4 items-center p-3 hover:bg-gray-50"
                           whileHover={{ backgroundColor: "#f9f9f9" }}
                           transition={{ duration: 0.1 }}
                         >
                           <div className="text-sm font-medium text-gray-800">
-                            {formatDate(record.date)}
+                            {formattedDate}
                           </div>
                           <div className="text-center">
                             <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              record.attendance === "present"
+                              entry.status === "Present"
                                 ? "bg-green-100 text-green-800"
                                 : "bg-red-100 text-red-800"
                             }`}>
-                              {record.attendance === "present" ? (
+                              {entry.status === "Present" ? (
                                 <CheckCircle className="h-3 w-3 mr-1" />
                               ) : (
                                 <XCircle className="h-3 w-3 mr-1" />
                               )}
-                              {record.attendance === "present" ? "Present" : "Absent"}
+                              {entry.status}
                             </span>
                           </div>
                           <div className="text-center text-xs text-gray-600">
-                            {attendanceTime ? attendanceTime.toLocaleTimeString('en-US', {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                              hour12: true
-                            }) : '-'}
+                            {entry.time || '-'}
                           </div>
                           <div className="text-right text-xs text-gray-500">
                             {dayName}
@@ -490,19 +487,37 @@ const Dashboard = () => {
             Attendance History
           </h3>
 
-          {filteredAttendance.length > 0 ? (
+          {filteredMeetingAttendance.length > 0 ? (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
               <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                 <div>Date</div>
-                <div className="text-center">Type</div>
+                <div className="text-center">Meeting name</div>
                 <div className="text-center">Status</div>
-                <div className="text-right">Time/Day</div>
+                <div className="text-right">Day</div>
               </div>
 
               <div className="divide-y divide-gray-100">
-                {filteredAttendance.map((entry, index) => {
-                  const date = new Date(entry.date);
-                  const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                {filteredMeetingAttendance.map((entry, index) => {
+                  console.log("Processing meeting entry:", entry); // Debug log
+                  
+                  // Handle date parsing more robustly
+                  let date, dayName, formattedDate;
+                  try {
+                    date = entry.date ? new Date(entry.date) : new Date();
+                    if (isNaN(date.getTime())) {
+                      throw new Error("Invalid date");
+                    }
+                    dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                    formattedDate = date.toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    });
+                  } catch (error) {
+                    console.error("Meeting date parsing error:", error, "Entry:", entry);
+                    dayName = 'N/A';
+                    formattedDate = entry.date || 'N/A';
+                  }
 
                   return (
                     <motion.div
@@ -512,39 +527,29 @@ const Dashboard = () => {
                       transition={{ duration: 0.1 }}
                     >
                       <div className="text-sm font-medium text-gray-800">
-                        {formatDate(entry.date)}
+                        {formattedDate}
                       </div>
                       <div className="text-center">
-                        <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                          entry.type === 'Daily' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {entry.type || 'Daily'}
+                        <span className="text-sm text-gray-900 font-medium">
+                          {entry.meetingName || entry.type || 'Meeting'}
                         </span>
                       </div>
                       <div className="text-center">
-                        {entry.isMeeting ? (
-                          <span className="text-sm text-gray-900 font-medium">
-                            {entry.status}
-                          </span>
-                        ) : (
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            entry.status === "Present"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}>
-                            {entry.status === "Present" ? (
-                              <CheckCircle className="h-3 w-3 mr-1" />
-                            ) : (
-                              <XCircle className="h-3 w-3 mr-1" />
-                            )}
-                            {entry.status}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          entry.status === "Present"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {entry.status === "Present" ? (
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                          ) : (
+                            <XCircle className="h-3 w-3 mr-1" />
+                          )}
+                          {entry.status}
+                        </span>
                       </div>
                       <div className="text-right text-xs text-gray-500">
-                        {entry.isMeeting ? entry.time : dayName}
+                        {dayName}
                       </div>
                     </motion.div>
                   );
@@ -553,7 +558,8 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No attendance records found</p>
+              <p className="text-gray-500">No meeting attendance records found</p>
+              <p className="text-xs text-gray-400 mt-1">Meeting attendance will appear here after QR scanning</p>
             </div>
           )}
         </motion.div>

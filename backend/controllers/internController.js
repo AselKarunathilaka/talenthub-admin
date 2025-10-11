@@ -277,17 +277,52 @@ const getAttendanceByInternId = async (req, res) => {
     // Get daily records for this intern to include meeting attendance
     const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
 
-    // Combine basic attendance with meeting attendance
-    const combinedAttendance = [...intern.attendance];
-
-    // Add meeting attendance entries
+    // Prepare daily attendance from BOTH sources (intern.attendance AND dailyRecords)
+    const dailyAttendance = [];
+    const meetingAttendance = [];
+    
+    // Add historical meeting attendance from intern.attendance (old system)
+    if (intern.attendance && intern.attendance.length > 0) {
+      intern.attendance.forEach(entry => {
+        meetingAttendance.push({
+          date: entry.date,
+          status: entry.status, // Already in correct format (Present/Absent)
+          meetingName: 'General Meeting', // Default meeting name for historical records
+          type: 'Meeting',
+          time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : null,
+          isMeeting: true
+        });
+      });
+    }
+    
+    // Add recent attendance from dailyRecords (new QR system)
     dailyRecords.forEach(record => {
+      // Add daily attendance if it exists
+      if (record.attendance && record.attendance !== 'absent') {
+        const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
+        dailyAttendance.push({
+          date: record.date,
+          status: record.attendance === 'present' ? 'Present' : record.attendance === 'late' ? 'Late' : 'Absent',
+          type: 'Daily',
+          time: attendanceTime ? attendanceTime.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : null,
+          attendanceTime: record.attendanceTime
+        });
+      }
+      
+      // Add meeting attendance if it exists
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach(meeting => {
           const attendanceTime = new Date(meeting.attendanceTime);
-          combinedAttendance.push({
+          meetingAttendance.push({
             date: record.date,
-            status: meeting.meetingTitle,
+            status: "Present",
+            meetingName: meeting.meetingTitle,
             type: 'Meeting',
             time: attendanceTime.toLocaleTimeString('en-US', {
               hour: '2-digit',
@@ -299,16 +334,35 @@ const getAttendanceByInternId = async (req, res) => {
       }
     });
 
-    // Sort combined attendance by date (newest first)
+    // Sort daily attendance by date (newest first)
+    dailyAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    // Sort meeting attendance by date (newest first)
+    meetingAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Combine for backward compatibility
+    const combinedAttendance = [...dailyAttendance, ...meetingAttendance];
     combinedAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const response = {
-      attendance: combinedAttendance,
+      attendance: combinedAttendance, // Keep for backward compatibility
+      dailyAttendance: dailyAttendance,
+      meetingAttendance: meetingAttendance,
       stats: {
-        present: intern.attendance.filter(entry => entry.status === "Present").length,
-        absent: intern.attendance.filter(entry => entry.status === "Absent").length
+        present: meetingAttendance.filter(entry => entry.status === "Present").length,
+        absent: meetingAttendance.filter(entry => entry.status === "Absent").length
       }
     };
+
+    console.log("Backend Response:", {
+      dailyAttendanceCount: dailyAttendance.length,
+      meetingAttendanceCount: meetingAttendance.length,
+      dailyAttendanceSample: dailyAttendance.slice(0, 2),
+      meetingAttendanceSample: meetingAttendance.slice(0, 2),
+      combinedCount: combinedAttendance.length
+    });
+
+
 
     res.status(200).json(response); // Sending the structured response
   } catch (error) {
