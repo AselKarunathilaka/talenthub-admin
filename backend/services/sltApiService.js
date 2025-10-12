@@ -94,7 +94,7 @@ class SLTApiService {
     if (!this.debug || !traineesData || traineesData.length === 0) return;
 
     const sampleTrainee = traineesData[0];
-    const criticalFields = ['Trainee_ID', 'Trainee_Name', 'Trainee_Email'];
+  const criticalFields = ['Trainee_ID', 'Trainee_Name', 'Trainee_Email', 'field_of_spec_name'];
     
     console.log('📋 Critical Fields Check:');
     criticalFields.forEach(field => {
@@ -130,7 +130,7 @@ class SLTApiService {
     const mappedTrainees = apiData.map(trainee => ({
       traineeId: this.getFieldValue(trainee, ['Trainee_ID', 'traineeId', 'id'])?.toString() || '',
       traineeName: this.getFieldValue(trainee, ['Trainee_Name', 'traineeName', 'name', 'TraineeName']) || '',
-      fieldOfSpecialization: this.getFieldValue(trainee, ['Field', 'Specialization', 'fieldOfSpecialization', 'FieldOfStudy']) || 'General Training',
+  fieldOfSpecialization: this.getFieldValue(trainee, ['field_of_spec_name', 'Field', 'Specialization', 'fieldOfSpecialization', 'FieldOfStudy']) || 'General Training',
       trainingStartDate: this.parseDate(this.getFieldValue(trainee, ['Training_StartDate', 'startDate', 'StartDate'])),
       trainingEndDate: this.parseDate(this.getFieldValue(trainee, ['Training_EndDate', 'endDate', 'EndDate'])),
       institute: this.getFieldValue(trainee, ['Institute', 'institute', 'University', 'College']) || '',
