@@ -194,6 +194,38 @@ const markMeetingAttendance = async (internId, meetingTitle) => {
   
   await dailyRecord.save();
   
+  // Send email notification for meeting attendance
+  if (intern.email) {
+    const sendEmail = require("../utils/emailSender");
+    const moment = require("moment-timezone");
+    const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
+    const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
+    
+    const emailSubject = "Meeting Attendance Marked - SLT Mobitel";
+    const emailBody = `
+      Hello ${intern.traineeName},
+
+      This is to confirm that your meeting attendance has been successfully recorded.
+      
+      📅 Date: ${attendanceDate}
+      ⏰ Time: ${attendanceTime}
+      🏢 Meeting: ${meetingTitle}
+      ✅ Status: Present
+      🆔 Intern ID: ${intern.traineeId}
+
+      Your attendance has been recorded via QR code scan for the specified meeting.
+
+      If you have any issues or concerns, please do not hesitate to contact your supervisor.
+
+      Please do not reply to this email. This is an auto-generated message.
+
+      Best regards,
+      SLT Mobitel
+      Digital Platforms Development Section
+    `;
+    sendEmail(intern.email, emailSubject, emailBody);
+  }
+  
   return {
     intern: {
       id: intern._id,

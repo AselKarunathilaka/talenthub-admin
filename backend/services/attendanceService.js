@@ -28,13 +28,19 @@ const markAttendanceAndNotify = async (internId, status, date) => {
     const internName = updatedIntern.traineeName;
     const internTraineeId = updatedIntern.traineeId;
 
-    const emailSubject = "Attendance Marked - SLT Mobitel";
+    const currentTime = moment.tz("Asia/Colombo").format("h:mm A");
+    const emailSubject = "General Attendance Marked - SLT Mobitel";
     const emailBody = `
       Hello ${internName},
 
-      This is to inform you that your attendance has been successfully marked for ${attendanceDate}.
-      Status: ${status}
-      Intern ID: ${internTraineeId}
+      This is to inform you that your general attendance has been successfully marked.
+      
+      📅 Date: ${attendanceDate}
+      ⏰ Time: ${currentTime}
+      ✅ Status: ${status}
+      🆔 Intern ID: ${internTraineeId}
+
+      Your attendance has been recorded in the system.
 
       If you have any issues or concerns, please do not hesitate to contact your supervisor.
 

@@ -70,19 +70,54 @@ const scanQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark attendance in intern's attendance array (existing functionality)
-    const status = "Present";
-    const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
-
-    // Also mark daily attendance in DailyRecord
+    // For daily attendance scans, only mark in DailyRecord (new system)
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId);
-    }
+      
+      // Send email notification for daily attendance
+      const intern = await InternService.getInternById(internId);
+      if (intern && intern.email) {
+        const moment = require("moment-timezone");
+        const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
+        const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
+        const emailSubject = "Daily Attendance Marked - SLT Mobitel";
+        const emailBody = `
+          Hello ${intern.traineeName},
 
-    res.status(200).json({ 
-      message: "Attendance marked successfully and email sent!",
-      dailyAttendanceUpdated: scanType === 'daily'
-    });
+          This is to inform you that your daily attendance has been successfully marked.
+          
+          📅 Date: ${attendanceDate}
+          ⏰ Time: ${attendanceTime}
+          ✅ Status: Present
+          🆔 Intern ID: ${intern.traineeId}
+
+          Your attendance has been recorded via QR code scan for daily attendance tracking.
+
+          If you have any issues or concerns, please do not hesitate to contact your supervisor.
+
+          Please do not reply to this email. This is an auto-generated message.
+
+          Best regards,
+          SLT Mobitel
+          Digital Platforms Development Section
+        `;
+        sendEmail(intern.email, emailSubject, emailBody);
+      }
+      
+      res.status(200).json({ 
+        message: "Daily attendance marked successfully and email sent!",
+        dailyAttendanceUpdated: true
+      });
+    } else {
+      // For meeting/general attendance scans, use the old system (intern.attendance)
+      const status = "Present";
+      const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
+      
+      res.status(200).json({ 
+        message: "Attendance marked successfully and email sent!",
+        dailyAttendanceUpdated: false
+      });
+    }
   } catch (error) {
     res.status(500).json({ message: "Error processing QR code", error: error.message });
   }
