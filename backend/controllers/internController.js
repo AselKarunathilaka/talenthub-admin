@@ -437,12 +437,12 @@ const uploadTXT = async (req, res) => {
       try {
         const intern = await InternService.updateInternEmail(Trainee_ID, Trainee_Email);
         if (intern) {
-          console.log(`✅ ${Trainee_ID} → ${Trainee_Email}`);
+          // Email updated
         } else {
-          console.log(`⚠️  ${Trainee_ID} not found, skipping.`);
+          // Trainee not found
         }
       } catch (err) {
-        console.error(`❌ Error for ${Trainee_ID}: ${err.message}`);
+        console.error(`Error updating ${Trainee_ID}: ${err.message}`);
       }
     }
 
@@ -457,7 +457,6 @@ const uploadTXT = async (req, res) => {
 
 const syncWithSLTAPI = async (req, res) => {
   try {
-    console.log('🔄 SLT API sync requested via controller...');
     const result = await InternService.syncWithSLTAPI();
     
     if (result.success) {
