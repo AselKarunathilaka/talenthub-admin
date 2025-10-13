@@ -1,13 +1,14 @@
 // services/sltApiService.js
 const axios = require('axios');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
 class SLTApiService {
   constructor() {
     this.apiUrl = 'https://prohub.slt.com.lk/ProhubTrainees/api/MainApi/AllActiveTrainees';
     this.secretKey = process.env.TRAINEES_API_SECRET_KEY;
     this.timeout = 30000; // 30 seconds
-    this.debug = process.env.NODE_ENV === 'development'; // Only debug in development
+    this.debug = false; // Disabled verbose logging for performance
   }
 
   async fetchActiveTrainees() {
@@ -54,19 +55,11 @@ class SLTApiService {
         throw new Error('Invalid response format from SLT API - No array found in expected locations');
       }
 
-      const duration = Date.now() - startTime;
-      
-      if (this.debug) {
-        console.log(`✅ SLT API: ${traineesData.length} trainees fetched in ${duration}ms`);
-      }
+      console.log(`✅ SLT API: ${traineesData.length} trainees fetched`);
 
       return traineesData;
     } catch (error) {
-      const duration = Date.now() - startTime;
-      
-      if (this.debug) {
-        console.error(`❌ SLT API Error (${duration}ms):`, error.message);
-      }
+      console.error(`❌ SLT API Error:`, error.message);
 
       if (error.response) {
         switch (error.response.status) {
@@ -89,48 +82,18 @@ class SLTApiService {
     }
   }
 
-  // Quick field presence check (only in debug mode)
-  analyzeFieldPresence(traineesData) {
-    if (!this.debug || !traineesData || traineesData.length === 0) return;
-
-    const sampleTrainee = traineesData[0];
-  const criticalFields = ['Trainee_ID', 'Trainee_Name', 'Trainee_Email', 'field_of_spec_name'];
-    
-    console.log('📋 Critical Fields Check:');
-    criticalFields.forEach(field => {
-      const exists = sampleTrainee.hasOwnProperty(field);
-      console.log(`   ${exists ? '✅' : '❌'} ${field}`);
-    });
-  }
-
-  // Fast data quality analysis
-  analyzeDataQuality(traineesData) {
-    if (!this.debug || !traineesData || traineesData.length === 0) return;
-
-    const hasTraineeId = traineesData.filter(t => t.Trainee_ID).length;
-    const hasTraineeName = traineesData.filter(t => t.Trainee_Name).length;
-    const hasEmail = traineesData.filter(t => t.Trainee_Email).length;
-    const uniqueIds = new Set(traineesData.map(t => t.Trainee_ID?.toString()).filter(Boolean)).size;
-
-    console.log('📊 Data Quality:');
-    console.log(`   Total: ${traineesData.length}`);
-    console.log(`   With ID: ${hasTraineeId} (${((hasTraineeId/traineesData.length)*100).toFixed(1)}%)`);
-    console.log(`   With Name: ${hasTraineeName} (${((hasTraineeName/traineesData.length)*100).toFixed(1)}%)`);
-    console.log(`   With Email: ${hasEmail} (${((hasEmail/traineesData.length)*100).toFixed(1)}%)`);
-    console.log(`   Unique IDs: ${uniqueIds}`);
-  }
+  // Removed verbose analysis methods for performance
 
   // Optimized mapper
   mapToInternSchema(apiData) {
     if (!apiData || !Array.isArray(apiData)) {
-      if (this.debug) console.log('⚠️ Invalid API data received for mapping');
       return [];
     }
 
     const mappedTrainees = apiData.map(trainee => ({
       traineeId: this.getFieldValue(trainee, ['Trainee_ID', 'traineeId', 'id'])?.toString() || '',
       traineeName: this.getFieldValue(trainee, ['Trainee_Name', 'traineeName', 'name', 'TraineeName']) || '',
-  fieldOfSpecialization: this.getFieldValue(trainee, ['field_of_spec_name', 'Field', 'Specialization', 'fieldOfSpecialization', 'FieldOfStudy']) || 'General Training',
+      fieldOfSpecialization: this.getFieldValue(trainee, ['field_of_spec_name', 'Field', 'Specialization', 'fieldOfSpecialization', 'FieldOfStudy']) || 'General Training',
       trainingStartDate: this.parseDate(this.getFieldValue(trainee, ['Training_StartDate', 'startDate', 'StartDate'])),
       trainingEndDate: this.parseDate(this.getFieldValue(trainee, ['Training_EndDate', 'endDate', 'EndDate'])),
       institute: this.getFieldValue(trainee, ['Institute', 'institute', 'University', 'College']) || '',
@@ -139,10 +102,6 @@ class SLTApiService {
       attendance: [],
       availableDays: []
     }));
-
-    if (this.debug) {
-      console.log(`✅ Mapped ${mappedTrainees.length} trainees to internal schema`);
-    }
 
     return mappedTrainees;
   }
@@ -156,7 +115,7 @@ class SLTApiService {
         success: true,
         message: 'SLT API connection successful',
         count: trainees.length,
-        sample: this.debug ? trainees.slice(0, 2) : [], // Only include sample in debug
+        sample: [],
         total: trainees.length
       };
     } catch (error) {
@@ -184,12 +143,6 @@ class SLTApiService {
       const inApiNotInDb = [...apiTraineeIds].filter(id => !dbTraineeIds.has(id));
       const inDbNotInApi = [...dbTraineeIds].filter(id => !apiTraineeIds.has(id));
 
-      if (this.debug) {
-        console.log('🔍 Database Comparison:');
-        console.log(`   API: ${apiTraineeIds.size}, DB: ${dbTraineeIds.size}`);
-        console.log(`   To add: ${inApiNotInDb.length}, To review: ${inDbNotInApi.length}`);
-      }
-
       return {
         apiCount: apiTraineeIds.size,
         dbCount: dbTraineeIds.size,
@@ -198,9 +151,6 @@ class SLTApiService {
         inBoth: apiTraineeIds.size - inApiNotInDb.length
       };
     } catch (error) {
-      if (this.debug) {
-        console.error('❌ Database comparison failed:', error.message);
-      }
       return null;
     }
   }
