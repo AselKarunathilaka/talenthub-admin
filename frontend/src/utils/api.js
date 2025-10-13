@@ -15,7 +15,17 @@ export const api = {
       },
       body: JSON.stringify(data),
     });
-    return res.json();
+    
+    const jsonResponse = await res.json();
+    
+    // If response is not ok, throw error with response data
+    if (!res.ok) {
+      const error = new Error(jsonResponse.message || 'API request failed');
+      error.response = { data: jsonResponse };
+      throw error;
+    }
+    
+    return jsonResponse;
   },
 
   put: async (endpoint, data) => {
