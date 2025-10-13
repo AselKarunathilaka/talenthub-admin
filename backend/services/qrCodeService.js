@@ -112,9 +112,10 @@ const verifyQRCode = async (qrCode) => {
 
 
 // Mark intern daily attendance (for intern-side scanning)
-const markInternDailyAttendance = async (internId) => {
+const markInternDailyAttendance = async (internId, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
+  const externalSystemService = require("./externalSystemService");
   
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -133,6 +134,17 @@ const markInternDailyAttendance = async (internId) => {
   // Note: We don't create a new daily record if one doesn't exist
   // The intern should fill their daily log first
   
+  // Sync with Attendance System if QR code is provided
+  if (qrCode && intern.traineeId) {
+    try {
+      const syncResult = await externalSystemService.syncDailyAttendance(qrCode, intern.traineeId);
+      console.log('Daily attendance sync result:', syncResult);
+    } catch (error) {
+      console.error('Failed to sync daily attendance with external system:', error);
+      // Continue with local processing even if external sync fails
+    }
+  }
+  
   return {
     intern: {
       id: intern._id,
@@ -149,9 +161,10 @@ const markInternDailyAttendance = async (internId) => {
 };
 
 // Mark meeting attendance
-const markMeetingAttendance = async (internId, meetingTitle) => {
+const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
+  const externalSystemService = require("./externalSystemService");
   
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -193,6 +206,17 @@ const markMeetingAttendance = async (internId, meetingTitle) => {
   }
   
   await dailyRecord.save();
+  
+  // Sync with Attendance System if QR code is provided
+  if (qrCode && intern.traineeId) {
+    try {
+      const syncResult = await externalSystemService.syncMeetingAttendance(qrCode, intern.traineeId);
+      console.log('Meeting attendance sync result:', syncResult);
+    } catch (error) {
+      console.error('Failed to sync meeting attendance with external system:', error);
+      // Continue with local processing even if external sync fails
+    }
+  }
   
   // Send email notification for meeting attendance
   if (intern.email) {

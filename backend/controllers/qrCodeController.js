@@ -72,7 +72,7 @@ const scanQRCode = async (req, res) => {
 
     // For daily attendance scans, only mark in DailyRecord (new system)
     if (scanType === 'daily') {
-      await qrCodeService.markInternDailyAttendance(internId);
+      await qrCodeService.markInternDailyAttendance(internId, qrCode);
       
       // Send email notification for daily attendance
       const intern = await InternService.getInternById(internId);
@@ -144,7 +144,7 @@ const scanMeetingQRCode = async (req, res) => {
     }
 
     // Mark meeting attendance
-    const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle);
+    const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
     
     res.status(200).json({ 
       message: "Meeting attendance marked successfully!",
