@@ -2,36 +2,8 @@ const Intern = require("../models/Intern");
 
 class InternRepository {
 
-  // Convert incoming object keys (camelCase) to API-style keys used in DB
-  static normalizeToApiFields(data) {
-    if (!data || typeof data !== 'object') return data;
-    const normalized = { ...data };
-
-    if (data.traineeId) normalized.Trainee_ID = data.traineeId;
-    if (data.traineeName) normalized.Trainee_Name = data.traineeName;
-    if (data.homeAddress) normalized.Trainee_HomeAddress = data.homeAddress;
-    if (data.trainingStartDate) normalized.Training_StartDate = data.trainingStartDate;
-    if (data.trainingEndDate) normalized.Training_EndDate = data.trainingEndDate;
-    if (data.email) normalized.Trainee_Email = (typeof data.email === 'string') ? data.email.toLowerCase() : data.email;
-    if (data.institute) normalized.Institute = data.institute;
-    if (data.fieldOfSpecialization) normalized.field_of_spec_name = data.fieldOfSpecialization;
-
-    // Remove camelCase keys to avoid duplication in DB when saving via repository
-    delete normalized.traineeId;
-    delete normalized.traineeName;
-    delete normalized.homeAddress;
-    delete normalized.trainingStartDate;
-    delete normalized.trainingEndDate;
-    delete normalized.email;
-    delete normalized.institute;
-    delete normalized.fieldOfSpecialization;
-
-    return normalized;
-  }
-
   static async addIntern(data) {
-    const normalized = this.normalizeToApiFields(data);
-    const intern = new Intern(normalized);
+    const intern = new Intern(data);
     return await intern.save();
   }
 
@@ -44,7 +16,7 @@ class InternRepository {
     return await Intern.findById(internId);
   }
   static async findByEmail(email) {
-    return await Intern.findOne({ Trainee_Email: email.toLowerCase() });
+    return await Intern.findOne({ email: email.toLowerCase() });
   }
 
 
@@ -140,8 +112,7 @@ class InternRepository {
   }
 
   static async updateIntern(internId, data) {
-    const normalized = this.normalizeToApiFields(data);
-    return await Intern.findByIdAndUpdate(internId, normalized, { new: true });
+    return await Intern.findByIdAndUpdate(internId, data, { new: true });
   }
 
   static async getAllTeams() {
@@ -290,7 +261,7 @@ class InternRepository {
   }
 
   static async findByTraineeId(traineeId) {
-    return await Intern.findOne({ Trainee_ID: traineeId });
+    return await Intern.findOne({ traineeId: traineeId });
   }
   
 }

@@ -6,43 +6,36 @@ import { Camera, Scan, XCircle, Info, CheckCircle, ChevronRight } from 'lucide-r
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 
-// Function to detect QR type and validate format
-const detectQRType = (qrCode) => {
-  if (!qrCode || typeof qrCode !== 'string') {
-    return null;
-  }
-
-  try {
-    // Try to parse as JSON first (new format)
-    const parsed = JSON.parse(qrCode);
-    
-    // Check for daily QR format with qrSessionId
-    if (parsed.qrSessionId) {
-      return 'daily';
-    }
-    
-    // Check for meeting QR format with qrData
-    if (parsed.qrData) {
-      return 'meeting';
-    }
-    
-    return null;
-  } catch (e) {
-    // If not JSON, check legacy formats
-    if (qrCode.includes('daily_attendance_')) {
-      return 'daily';
-    } else if (qrCode.includes('attendance_session_')) {
-      return 'meeting';
-    }
-    
-    return null;
-  }
-};
-
 // Function to validate QR code format based on scan mode
 const validateQRCodeFormat = (qrCode, scanMode) => {
-  const detectedType = detectQRType(qrCode);
-  return detectedType === scanMode;
+  // Check if QR code exists and is a string
+  if (!qrCode || typeof qrCode !== 'string') {
+    return false;
+  }
+
+  // Validate based on scan mode
+  if (scanMode === 'daily') {
+    // Check for daily attendance format: daily_attendance_* or attendance_session_* (backward compatibility)
+    if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
+      return false;
+    }
+  } else {
+    // Check for meeting attendance format: attendance_session_*
+    if (!qrCode.includes('attendance_session_')) {
+      return false;
+    }
+  }
+
+  // Extract timestamp for validation
+  const qrCodeParts = qrCode.split('_');
+  const timestamp = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+  
+  // Validate that the timestamp is a valid number
+  if (isNaN(timestamp)) {
+    return false;
+  }
+
+  return true;
 };
 
 const ScanQRCode = () => {
@@ -80,31 +73,13 @@ const ScanQRCode = () => {
     codeReader.decodeFromVideoDevice(null, videoRef.current, async (result, error) => {
       if (result) {
         const qrData = result.getText();
-        const traineeId = localStorage.getItem("internId"); // Using traineeId but keeping internId key for compatibility
+        const internId = localStorage.getItem("internId");
 
-        // Auto-detect QR type
-        const detectedType = detectQRType(qrData);
-        
-        if (!detectedType) {
-          toast.error('Invalid QR code format. Please scan a valid attendance QR code.');
-          return;
-        }
 
-        // Auto-switch scan mode if different type detected
-        if (detectedType !== scanMode) {
-          setScanMode(detectedType);
-          if (detectedType === 'meeting') {
-            setShowMeetingInput(true);
-            if (!meetingTitle.trim()) {
-              toast.error("Please enter a meeting title first");
-              return;
-            }
-          }
-        }
 
-        // Validate QR code format matches current mode
-        if (!validateQRCodeFormat(qrData, detectedType)) {
-          const expectedFormat = detectedType === 'daily' ? 'daily attendance' : 'meeting attendance';
+        // Validate QR code format before processing
+        if (!validateQRCodeFormat(qrData, scanMode)) {
+          const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
           return;
         }
@@ -114,67 +89,29 @@ const ScanQRCode = () => {
 
         try {
           let res;
-          let requestData;
-          
-          // Parse QR data to extract parameters
-          try {
-            const parsedQR = JSON.parse(qrData);
-            
-            if (detectedType === 'daily') {
-              requestData = {
-                traineeId,
-                qrSessionId: parsedQR.qrSessionId
-              };
-              res = await api.post('/external/scan-daily', requestData);
-            } else {
-              if (!meetingTitle.trim()) {
-                toast.error("Please enter a meeting title first");
-                return;
-              }
-              requestData = {
-                traineeId,
-                qrData: parsedQR.qrData,
-                meetingTitle: meetingTitle.trim()
-              };
-              res = await api.post('/external/scan-meeting', requestData);
-            }
-          } catch (parseError) {
-            // Handle legacy format
-            if (detectedType === 'daily') {
-              requestData = {
-                traineeId,
-                qrSessionId: qrData
-              };
-              res = await api.post('/external/scan-daily', requestData);
-            } else {
-              if (!meetingTitle.trim()) {
-                toast.error("Please enter a meeting title first");
-                return;
-              }
-              requestData = {
-                traineeId,
-                qrData: qrData,
-                meetingTitle: meetingTitle.trim()
-              };
-              res = await api.post('/external/scan-meeting', requestData);
-            }
-          }
-          
-          // Handle new response format with success, message, and code fields
-          if (res.success) {
-            toast.success(res.message || `${detectedType === 'daily' ? 'Daily' : 'Meeting'} attendance marked successfully!`);
+          if (scanMode === 'daily') {
+            res = await api.post('/qrcode/scan', { 
+              qrCode: qrData, 
+              internId, 
+              scanType: 'daily' 
+            });
           } else {
-            toast.error(res.message || "Failed to mark attendance");
+            if (!meetingTitle.trim()) {
+              toast.error("Please enter a meeting title first");
+              return;
+            }
+            res = await api.post('/qrcode/scan-meeting', { 
+              qrCode: qrData, 
+              internId, 
+              meetingTitle: meetingTitle.trim()
+            });
           }
+          
+          toast.success(res.message || `${scanMode === 'daily' ? 'Daily' : 'Meeting'} attendance marked successfully!`);
           setIsScanning(false);
         } catch (err) {
           console.error("Failed to mark attendance:", err);
-          
-          // Handle new error response format
-          const errorMessage = err.response?.data?.message || 
-                              err.message || 
-                              "Failed to mark attendance";
-          toast.error(errorMessage);
+          toast.error(err.response?.data?.message || "Failed to mark attendance");
         }
       }
 

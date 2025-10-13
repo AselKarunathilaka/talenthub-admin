@@ -159,7 +159,12 @@ class InternService {
 
   async syncWithSLTAPI() {
     try {
+      console.log('🔄 Starting SLT API synchronization...');
+      
+      // Fetch active trainees from SLT API
       const activeTrainees = await SLTApiService.fetchActiveTrainees();
+      
+      console.log(`📥 Received ${activeTrainees.length} trainees from SLT API`);
       
       let addedCount = 0;
       let updatedCount = 0;
@@ -172,6 +177,7 @@ class InternService {
           const traineeId = trainee.Trainee_ID?.toString();
           
           if (!traineeId) {
+            console.log('⚠️ Skipping trainee without ID:', trainee);
             skippedCount++;
             continue;
           }
@@ -179,6 +185,7 @@ class InternService {
           // Map API data to your schema using the service mapper
           const mappedTrainees = SLTApiService.mapToInternSchema([trainee]);
           if (mappedTrainees.length === 0) {
+            console.log('⚠️ Skipping trainee - mapping failed:', traineeId);
             skippedCount++;
             continue;
           }
@@ -192,18 +199,16 @@ class InternService {
             // Update existing intern - only update fields that are missing or have changed
             const updatedData = {};
             
-            // Update name if different (support both API keys and camelCase)
-            const existingName = existingIntern.traineeName || existingIntern.Trainee_Name || '';
-            if (existingName !== internData.traineeName) {
+            // Update name if different
+            if (existingIntern.traineeName !== internData.traineeName) {
               updatedData.traineeName = internData.traineeName;
             }
             
             // Update training start date if missing or different
-            const existingStart = existingIntern.trainingStartDate || existingIntern.Training_StartDate;
-            if (!existingStart && internData.trainingStartDate) {
+            if (!existingIntern.trainingStartDate && internData.trainingStartDate) {
               updatedData.trainingStartDate = internData.trainingStartDate;
-            } else if (internData.trainingStartDate && existingStart) {
-              const existingDate = new Date(existingStart).getTime();
+            } else if (internData.trainingStartDate && existingIntern.trainingStartDate) {
+              const existingDate = new Date(existingIntern.trainingStartDate).getTime();
               const newDate = new Date(internData.trainingStartDate).getTime();
               if (existingDate !== newDate) {
                 updatedData.trainingStartDate = internData.trainingStartDate;
@@ -211,11 +216,10 @@ class InternService {
             }
             
             // Update training end date if missing or different
-            const existingEnd = existingIntern.trainingEndDate || existingIntern.Training_EndDate;
-            if (!existingEnd && internData.trainingEndDate) {
+            if (!existingIntern.trainingEndDate && internData.trainingEndDate) {
               updatedData.trainingEndDate = internData.trainingEndDate;
-            } else if (internData.trainingEndDate && existingEnd) {
-              const existingDate = new Date(existingEnd).getTime();
+            } else if (internData.trainingEndDate && existingIntern.trainingEndDate) {
+              const existingDate = new Date(existingIntern.trainingEndDate).getTime();
               const newDate = new Date(internData.trainingEndDate).getTime();
               if (existingDate !== newDate) {
                 updatedData.trainingEndDate = internData.trainingEndDate;
@@ -223,27 +227,23 @@ class InternService {
             }
             
             // Update institute if missing or different
-            const existingInstitute = existingIntern.institute || existingIntern.Institute || '';
-            if ((!existingInstitute || existingInstitute.trim() === '') && internData.institute) {
+            if ((!existingIntern.institute || existingIntern.institute.trim() === '') && internData.institute) {
               updatedData.institute = internData.institute;
-            } else if (internData.institute && existingInstitute !== internData.institute) {
+            } else if (internData.institute && existingIntern.institute !== internData.institute) {
               updatedData.institute = internData.institute;
             }
             
             // Update email if missing or different
-            const existingEmail = (existingIntern.email || existingIntern.Trainee_Email || '')?.toString().toLowerCase();
-            const newEmail = (internData.email || '')?.toString().toLowerCase();
-            if ((!existingEmail || existingEmail.trim() === '') && newEmail) {
+            if ((!existingIntern.email || existingIntern.email.trim() === '') && internData.email) {
               updatedData.email = internData.email;
-            } else if (newEmail && existingEmail !== newEmail) {
+            } else if (internData.email && existingIntern.email !== internData.email) {
               updatedData.email = internData.email;
             }
             
             // Update field of specialization if missing or different
-            const existingField = existingIntern.fieldOfSpecialization || existingIntern.field_of_spec_name || '';
-            if ((!existingField || existingField.trim() === '') && internData.fieldOfSpecialization) {
+            if ((!existingIntern.fieldOfSpecialization || existingIntern.fieldOfSpecialization.trim() === '') && internData.fieldOfSpecialization) {
               updatedData.fieldOfSpecialization = internData.fieldOfSpecialization;
-            } else if (internData.fieldOfSpecialization && existingField !== internData.fieldOfSpecialization) {
+            } else if (internData.fieldOfSpecialization && existingIntern.fieldOfSpecialization !== internData.fieldOfSpecialization) {
               updatedData.fieldOfSpecialization = internData.fieldOfSpecialization;
             }
             
@@ -251,15 +251,19 @@ class InternService {
             if (Object.keys(updatedData).length > 0) {
               await InternRepository.updateIntern(existingIntern._id, updatedData);
               updatedCount++;
+              console.log(`📝 Updated intern: ${internData.traineeName} (${internData.traineeId}) - Updated: ${Object.keys(updatedData).join(', ')}`);
             } else {
               skippedCount++;
+              console.log(`⏭️ Skipped intern: ${internData.traineeName} (${internData.traineeId}) - No changes needed`);
             }
           } else {
             // Create new intern
             await InternRepository.addIntern(internData);
             addedCount++;
+            console.log(`➕ Added new intern: ${internData.traineeName} (${internData.traineeId})`);
           }
         } catch (error) {
+          console.error(`❌ Error processing trainee ${trainee.Trainee_ID}:`, error.message);
           errorCount++;
         }
       }
@@ -276,7 +280,7 @@ class InternService {
         }
       };
 
-      console.log('✅ Sync completed:', result.message);
+      console.log('✅ SLT API synchronization completed:', result.message);
       return result;
 
     } catch (error) {
