@@ -143,8 +143,37 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark meeting attendance
+    // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
+    
+    // Sync with external Attendance System
+    try {
+      const axios = require('axios');
+      const externalConfig = require('../config/externalSystems');
+      
+      if (externalConfig.attendanceSystem.enabled) {
+        const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanMeeting}`;
+        
+        console.log(`Syncing meeting attendance to external system: ${attendanceSystemUrl}`);
+        
+        const syncData = {
+          qrSessionId: qrCode, // Use the QR code as session ID
+          traineeId: result.intern.traineeId
+        };
+        
+        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
+          timeout: externalConfig.attendanceSystem.timeout,
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        console.log('Meeting attendance synced successfully:', syncResponse.data);
+      }
+    } catch (syncError) {
+      console.error('Failed to sync meeting attendance to external system:', syncError.message);
+      // Don't fail the main request if external sync fails
+    }
     
     res.status(200).json({ 
       message: "Meeting attendance marked successfully!",
