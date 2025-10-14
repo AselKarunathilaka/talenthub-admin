@@ -112,7 +112,7 @@ const verifyQRCode = async (qrCode) => {
 
 
 // Mark intern daily attendance (for intern-side scanning)
-const markInternDailyAttendance = async (internId, qrCode = null) => {
+const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
   const externalSystemService = require("./externalSystemService");
@@ -265,10 +265,94 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   };
 };
 
+// Mark daily attendance for an intern
+const markInternDailyAttendance = async (internId, qrCode) => {
+  const DailyRecord = require("../models/DailyRecord");
+  const Intern = require("../models/Intern");
+  const externalSystemService = require("./externalSystemService");
+  
+  const intern = await Intern.findById(internId);
+  if (!intern) throw new Error("Intern not found");
+
+  const moment = require("moment-timezone");
+  
+  // Use Sri Lankan timezone for all date operations
+  const todaySriLanka = moment.tz("Asia/Colombo").startOf('day');
+  const attendanceTime = moment.tz("Asia/Colombo").toDate();
+  const today = todaySriLanka.format('YYYY-MM-DD'); // YYYY-MM-DD format
+
+  // Create or update daily record in TalentHub's DailyRecord system
+  let dailyRecord = await DailyRecord.findOne({ internId, date: today });
+  
+  if (!dailyRecord) {
+    // Create new daily record - this should ALWAYS be allowed for daily attendance
+    dailyRecord = new DailyRecord({
+      internId,
+      date: today,
+      stack: "Default",
+      task: "Daily attendance marked via QR scan",
+      dailyAttendanceStatus: "present",
+      dailyAttendanceTime: attendanceTime
+    });
+  } else {
+    // Update existing daily record
+    dailyRecord.dailyAttendanceStatus = "present";
+    dailyRecord.dailyAttendanceTime = attendanceTime;
+  }
+  
+  await dailyRecord.save();
+
+  // Also update the old intern.attendance system for backward compatibility
+  const existingAttendanceIndex = intern.attendance.findIndex((a) => {
+    const attendanceDate = moment.tz(a.date, "Asia/Colombo").startOf('day');
+    const isToday = attendanceDate.isSame(todaySriLanka, 'day');
+    return isToday && (a.type === 'daily' || a.type === 'daily_qr' || !a.type);
+  });
+
+  if (existingAttendanceIndex !== -1) {
+    intern.attendance[existingAttendanceIndex].status = "Present";
+    intern.attendance[existingAttendanceIndex].timeMarked = attendanceTime;
+    intern.attendance[existingAttendanceIndex].type = "daily_qr";
+  } else {
+    intern.attendance.push({
+      date: todaySriLanka.toDate(),
+      status: "Present",
+      type: "daily_qr",
+      timeMarked: attendanceTime,
+      qrCode: qrCode
+    });
+  }
+
+  await intern.save();
+
+  // Sync with external Attendance System
+  if (qrCode && intern.traineeId) {
+    try {
+      const syncResult = await externalSystemService.syncDailyAttendance(qrCode, intern.traineeId);
+      console.log('Daily attendance sync result:', syncResult);
+    } catch (error) {
+      console.error('Failed to sync daily attendance with external system:', error);
+      // Continue with local processing even if external sync fails
+    }
+  }
+
+  return {
+    success: true,
+    message: "Daily attendance marked successfully",
+    intern: {
+      traineeId: intern.traineeId,
+      traineeName: intern.traineeName
+    },
+    timeMarked: attendanceTime,
+    type: "daily_qr"
+  };
+};
+
 module.exports = { 
   generateQRCode, 
   markAttendance, 
   markInternDailyAttendance,
+  markInternDailyAttendanceLegacy,
   markMeetingAttendance, 
   verifyQRCode 
 };
