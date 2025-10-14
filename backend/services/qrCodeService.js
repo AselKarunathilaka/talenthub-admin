@@ -291,13 +291,13 @@ const markInternDailyAttendance = async (internId, qrCode) => {
       date: today,
       stack: "Default",
       task: "Daily attendance marked via QR scan",
-      dailyAttendanceStatus: "present",
-      dailyAttendanceTime: attendanceTime
+      attendance: "present",
+      attendanceTime: attendanceTime
     });
   } else {
     // Update existing daily record
-    dailyRecord.dailyAttendanceStatus = "present";
-    dailyRecord.dailyAttendanceTime = attendanceTime;
+    dailyRecord.attendance = "present";
+    dailyRecord.attendanceTime = attendanceTime;
   }
   
   await dailyRecord.save();
