@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Function to send an email
+// Function to send an email (returns a Promise)
 const sendEmail = (to, subject, text) => {
   const mailOptions = {
     from: process.env.GMAIL_USER, // From address
@@ -21,14 +21,17 @@ const sendEmail = (to, subject, text) => {
     text: text, // Email body content
   };
 
-  // Send email
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log("Error sending email:", error);
-    } else {
+  // When no callback is provided, nodemailer returns a Promise
+  return transporter
+    .sendMail(mailOptions)
+    .then((info) => {
       console.log("Email sent:", info.response);
-    }
-  });
+      return info;
+    })
+    .catch((error) => {
+      console.log("Error sending email:", error);
+      throw error;
+    });
 };
 
 module.exports = sendEmail;

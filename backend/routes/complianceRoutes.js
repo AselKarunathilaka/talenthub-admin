@@ -1,5 +1,6 @@
 const express = require('express');
 const WeeklyScheduler = require('../services/weeklyScheduler');
+const DailyScheduler = require('../services/dailyScheduler');
 const WeeklyWorkLogService = require('../services/weeklyWorkLogService');
 const ComplianceCheck = require('../models/ComplianceCheck');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -30,6 +31,25 @@ router.post('/trigger-check', authMiddleware, async (req, res) => {
       message: 'Failed to execute compliance check',
       error: error.message
     });
+  }
+});
+
+/**
+ * Manual trigger for daily reminder (Admin only)
+ * POST /api/compliance/trigger-daily-reminder
+ * Optional body: { dryRun: boolean }
+ */
+router.post('/trigger-daily-reminder', authMiddleware, async (req, res) => {
+  try {
+    const userEmail = req.user?.email || 'Unknown';
+    const dryRun = Boolean(req.body?.dryRun);
+    console.log(`🔧 Manual daily reminder triggered by: ${userEmail} (dryRun=${dryRun})`);
+
+    const result = await DailyScheduler.triggerManualReminder({ dryRun });
+    res.json({ success: true, result });
+  } catch (error) {
+    console.error('❌ Manual daily reminder failed:', error);
+    res.status(500).json({ success: false, message: 'Failed to execute daily reminder', error: error.message });
   }
 });
 
