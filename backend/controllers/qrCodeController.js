@@ -3,6 +3,7 @@ const InternService = require("../services/internService");
 const attendanceService = require("../services/attendanceService");
 const InternRepository = require("../repositories/internRepository");  
 const sendEmail = require("../utils/emailSender");  
+const externalSystemService = require("../services/externalSystemService");
 
 const moment = require("moment");
 
@@ -177,32 +178,18 @@ const scanMeetingQRCode = async (req, res) => {
     // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
     
-    // Sync with external Attendance System
+    // Sync with external Attendance System using the same service as daily attendance
     try {
-      const axios = require('axios');
-      const externalConfig = require('../config/externalSystems');
+      console.log(`Syncing meeting attendance - QR: ${qrCode}, TraineeId: ${result.intern.traineeId}, InternName: ${result.intern.traineeName}`);
       
-      if (externalConfig.attendanceSystem.enabled) {
-        const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanMeeting}`;
-        
-        console.log(`Syncing meeting attendance to external system: ${attendanceSystemUrl}`);
-        
-        const syncData = {
-          qrSessionId: qrCode, // Use the QR code as session ID
-          traineeId: result.intern.traineeId
-        };
-        
-        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
-          timeout: externalConfig.attendanceSystem.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Meeting attendance synced successfully:', syncResponse.data);
-      }
+      const syncResult = await externalSystemService.syncMeetingAttendance(qrCode, result.intern.traineeId);
+      console.log('Meeting attendance sync result:', syncResult);
     } catch (syncError) {
       console.error('Failed to sync meeting attendance to external system:', syncError.message);
+      if (syncError.response) {
+        console.error('Sync error response status:', syncError.response.status);
+        console.error('Sync error response data:', syncError.response.data);
+      }
       // Don't fail the main request if external sync fails
     }
     

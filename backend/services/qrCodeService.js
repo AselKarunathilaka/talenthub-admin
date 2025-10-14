@@ -328,6 +328,7 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   // Sync with external Attendance System
   if (qrCode && intern.traineeId) {
     try {
+      console.log(`Syncing daily attendance - QR: ${qrCode}, TraineeId: ${intern.traineeId}, InternName: ${intern.traineeName}`);
       const syncResult = await externalSystemService.syncDailyAttendance(qrCode, intern.traineeId);
       console.log('Daily attendance sync result:', syncResult);
     } catch (error) {
