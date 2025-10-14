@@ -2,7 +2,7 @@
 module.exports = {
   // Attendance System Admin API configuration
   attendanceSystem: {
-    baseUrl: process.env.ATTENDANCE_SYSTEM_URL || 'http://localhost:5000',
+    baseUrl: process.env.ATTENDANCE_SYSTEM_URL || 'http://localhost:5001',
     endpoints: {
       scanDaily: '/api/qrcode/external/scan-daily',
       scanMeeting: '/api/qrcode/external/scan-meeting'

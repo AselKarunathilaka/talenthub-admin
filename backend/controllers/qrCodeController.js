@@ -74,8 +74,39 @@ const scanQRCode = async (req, res) => {
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId, qrCode);
       
-      // Send email notification for daily attendance
+      // Get intern info for both email and external sync
       const intern = await InternService.getInternById(internId);
+      
+      // Sync with external Attendance System for daily attendance
+      try {
+        const axios = require('axios');
+        const externalConfig = require('../config/externalSystems');
+        
+        if (externalConfig.attendanceSystem.enabled && intern) {
+          const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanDaily}`;
+          
+          console.log(`Syncing daily attendance to external system: ${attendanceSystemUrl}`);
+          
+          const syncData = {
+            qrSessionId: qrCode, // Use the QR code as session ID
+            traineeId: intern.traineeId
+          };
+          
+          const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
+            timeout: externalConfig.attendanceSystem.timeout,
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          console.log('Daily attendance synced successfully:', syncResponse.data);
+        }
+      } catch (syncError) {
+        console.error('Failed to sync daily attendance to external system:', syncError.message);
+        // Don't fail the main request if external sync fails
+      }
+      
+      // Send email notification for daily attendance
       if (intern && intern.email) {
         const moment = require("moment-timezone");
         const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
