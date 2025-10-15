@@ -74,37 +74,8 @@ const scanQRCode = async (req, res) => {
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId, qrCode);
       
-      // Get intern info for both email and external sync
+      // Get intern info for email notification
       const intern = await InternService.getInternById(internId);
-      
-      // Sync with external Attendance System for daily attendance
-      try {
-        const axios = require('axios');
-        const externalConfig = require('../config/externalSystems');
-        
-        if (externalConfig.attendanceSystem.enabled && intern) {
-          const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanDaily}`;
-          
-          console.log(`Syncing daily attendance to external system: ${attendanceSystemUrl}`);
-          
-          const syncData = {
-            qrSessionId: qrCode, // Use the QR code as session ID
-            traineeId: intern.traineeId
-          };
-          
-          const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
-            timeout: externalConfig.attendanceSystem.timeout,
-            headers: {
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          console.log('Daily attendance synced successfully:', syncResponse.data);
-        }
-      } catch (syncError) {
-        console.error('Failed to sync daily attendance to external system:', syncError.message);
-        // Don't fail the main request if external sync fails
-      }
       
       // Send email notification for daily attendance
       if (intern && intern.email) {
@@ -174,37 +145,8 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark meeting attendance in TalentHub system
+    // Mark meeting attendance in TalentHub system (this will also handle external sync)
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
-    
-    // Sync with external Attendance System
-    try {
-      const axios = require('axios');
-      const externalConfig = require('../config/externalSystems');
-      
-      if (externalConfig.attendanceSystem.enabled) {
-        const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanMeeting}`;
-        
-        console.log(`Syncing meeting attendance to external system: ${attendanceSystemUrl}`);
-        
-        const syncData = {
-          qrSessionId: qrCode, // Use the QR code as session ID
-          traineeId: result.intern.traineeId
-        };
-        
-        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
-          timeout: externalConfig.attendanceSystem.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        console.log('Meeting attendance synced successfully:', syncResponse.data);
-      }
-    } catch (syncError) {
-      console.error('Failed to sync meeting attendance to external system:', syncError.message);
-      // Don't fail the main request if external sync fails
-    }
     
     res.status(200).json({ 
       message: "Meeting attendance marked successfully!",
