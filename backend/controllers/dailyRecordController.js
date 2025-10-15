@@ -90,10 +90,33 @@ const createDailyRecord = async (req, res) => {
     }
   } catch (error) {
     console.error("Error creating daily record:", error);
+    
     if (error.code === 11000) {
       return res.status(400).json({ error: "A record for this date already exists" });
     }
-    res.status(500).json({ error: "Failed to create daily record" });
+    
+    // Check for validation errors (e.g., field too long)
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ 
+        error: "Validation failed", 
+        details: validationErrors,
+        message: "Please check that your entries are not too long. Each field has a maximum character limit."
+      });
+    }
+    
+    // Check for payload too large error
+    if (error.type === 'entity.too.large') {
+      return res.status(413).json({ 
+        error: "Request too large", 
+        message: "Your submission contains too much data. Please reduce the length of your entries."
+      });
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to create daily record",
+      message: "Please try submitting with shorter entries. If the problem persists, contact support."
+    });
   }
 };
 

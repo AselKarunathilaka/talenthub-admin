@@ -13,22 +13,26 @@ const DailyRecordSchema = new mongoose.Schema({
   stack: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 2000 // Allow up to 2000 characters for stack/technology descriptions
   },
   task: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    maxlength: 5000 // Allow up to 5000 characters for detailed task descriptions
   },
   progress: {
     type: String,
     default: "No challenges faced",
-    trim: true
+    trim: true,
+    maxlength: 5000 // Allow up to 5000 characters for detailed progress notes
   },
   blockers: {
     type: String,
     default: "No specific plans",
-    trim: true
+    trim: true,
+    maxlength: 5000 // Allow up to 5000 characters for detailed blocker descriptions
   },
   status: {
     type: String,
