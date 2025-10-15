@@ -8,7 +8,7 @@ const DailyScheduler = require("./services/dailyScheduler");
 connectDB();
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
   // Auto-sync with SLT API on server startup
@@ -35,4 +35,7 @@ app.listen(PORT, () => {
   // Initialize daily reminder scheduler
   DailyScheduler.init();
 });
+
+// Set server timeout to handle longer requests (5 minutes)
+server.timeout = 300000;
   
