@@ -282,19 +282,32 @@ const getAttendanceByInternId = async (req, res) => {
     const meetingAttendance = [];
     
     // Add historical meeting attendance from intern.attendance (old system - keep as meeting attendance)
+    // BUT exclude entries that have corresponding daily QR attendance to prevent double display
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
-        meetingAttendance.push({
-          date: entry.date,
-          status: entry.status, // Already in correct format (Present/Absent)
-          meetingName: 'General Meeting', // Default meeting name for historical records
-          type: 'Meeting',
-          time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : null,
-          isMeeting: true
-        });
+        const entryDate = new Date(entry.date).toISOString().split('T')[0]; // YYYY-MM-DD format
+        
+        // Check if this date has a corresponding daily QR attendance record
+        const hasDailyQRAttendance = dailyRecords.some(record => 
+          record.date === entryDate && 
+          record.attendance === 'present'
+        );
+        
+        // Only add to meeting attendance if there's NO daily QR attendance for this date
+        // This prevents daily QR scans from appearing in both daily and meeting sections
+        if (!hasDailyQRAttendance) {
+          meetingAttendance.push({
+            date: entry.date,
+            status: entry.status, // Already in correct format (Present/Absent)
+            meetingName: 'General Meeting', // Default meeting name for historical records
+            type: 'Meeting',
+            time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : null,
+            isMeeting: true
+          });
+        }
       });
     }
     
