@@ -281,20 +281,36 @@ const getAttendanceByInternId = async (req, res) => {
     const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Add historical meeting attendance from intern.attendance (old system - keep as meeting attendance)
+    // Track dates with daily QR attendance for prioritization
+    const dailyQRDates = new Set();
+    
+    // First pass: identify all dates with daily QR attendance
+    dailyRecords.forEach(record => {
+      if (record.attendance && record.attendance !== 'absent') {
+        const recordDate = new Date(record.date).toDateString();
+        dailyQRDates.add(recordDate);
+      }
+    });
+    
+    // Add historical meeting attendance ONLY if NO daily QR attendance exists for that date
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
-        meetingAttendance.push({
-          date: entry.date,
-          status: entry.status, // Already in correct format (Present/Absent)
-          meetingName: 'General Meeting', // Default meeting name for historical records
-          type: 'Meeting',
-          time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : null,
-          isMeeting: true
-        });
+        const entryDate = new Date(entry.date).toDateString();
+        
+        // Only add historical meeting attendance if this date doesn't have daily QR attendance
+        if (!dailyQRDates.has(entryDate)) {
+          meetingAttendance.push({
+            date: entry.date,
+            status: entry.status, // Already in correct format (Present/Absent)
+            meetingName: 'General Meeting', // Default meeting name for historical records
+            type: 'Meeting',
+            time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : null,
+            isMeeting: true
+          });
+        }
       });
     }
     
@@ -302,6 +318,9 @@ const getAttendanceByInternId = async (req, res) => {
     dailyRecords.forEach(record => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== 'absent') {
+        const recordDate = new Date(record.date).toDateString();
+        dailyQRDates.add(recordDate); // Track this date as having daily QR attendance
+        
         const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
         dailyAttendance.push({
           date: record.date,
@@ -315,22 +334,27 @@ const getAttendanceByInternId = async (req, res) => {
         });
       }
       
-      // Add meeting attendance if it exists (NEW QR scanned meeting attendance goes to Meeting section)
+      // Add meeting attendance ONLY if NO daily QR attendance exists for this date (prioritization logic)
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
-        record.meetingAttendance.forEach(meeting => {
-          const attendanceTime = new Date(meeting.attendanceTime);
-          meetingAttendance.push({
-            date: record.date,
-            status: "Present",
-            meetingName: meeting.meetingTitle,
-            type: 'Meeting',
-            time: attendanceTime.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            isMeeting: true
+        const recordDate = new Date(record.date).toDateString();
+        
+        // Only add meeting attendance if this date doesn't have daily QR attendance
+        if (!dailyQRDates.has(recordDate)) {
+          record.meetingAttendance.forEach(meeting => {
+            const attendanceTime = new Date(meeting.attendanceTime);
+            meetingAttendance.push({
+              date: record.date,
+              status: "Present",
+              meetingName: meeting.meetingTitle,
+              type: 'Meeting',
+              time: attendanceTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              isMeeting: true
+            });
           });
-        });
+        }
       }
     });
 
