@@ -290,36 +290,61 @@ const getAttendanceByInternId = async (req, res) => {
     // Track dates with daily QR attendance for prioritization
     const dailyQRDates = new Set();
     
-    // First pass: identify all dates with daily QR attendance
+    // First pass: identify all dates with daily QR attendance from DailyRecord
     dailyRecords.forEach(record => {
       if (record.attendance && record.attendance !== 'absent') {
         const recordDate = new Date(record.date).toDateString();
         dailyQRDates.add(recordDate);
-        console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date: ${recordDate}`);
+        console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date from DailyRecord: ${recordDate}`);
       }
     });
+    
+    // Also check intern.attendance for daily_qr type records
+    if (intern.attendance && intern.attendance.length > 0) {
+      intern.attendance.forEach(entry => {
+        if (entry.type === 'daily_qr' || entry.type === 'daily') {
+          const entryDate = new Date(entry.date).toDateString();
+          dailyQRDates.add(entryDate);
+          console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date from intern.attendance: ${entryDate} (type: ${entry.type})`);
+        }
+      });
+    }
     
     console.log(`🔍 PRIORITIZATION DEBUG: Total daily QR dates tracked: ${dailyQRDates.size}`, Array.from(dailyQRDates));
     
     // Add historical meeting attendance ONLY if NO daily QR attendance exists for that date
+    // AND only process records that are actually meetings (not daily records)
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
         const entryDate = new Date(entry.date).toDateString();
         
-        // Only add historical meeting attendance if this date doesn't have daily QR attendance
-        if (!dailyQRDates.has(entryDate)) {
-          meetingAttendance.push({
-            date: entry.date,
-            status: entry.status, // Already in correct format (Present/Absent)
-            meetingName: 'General Meeting', // Default meeting name for historical records
-            type: 'Meeting',
-            time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }) : null,
-            isMeeting: true
-          });
+        console.log(`🔍 PRIORITIZATION DEBUG: Processing intern.attendance record: ${entryDate}, type: ${entry.type || 'NO_TYPE'}, dailyQR exists: ${dailyQRDates.has(entryDate)}`);
+        
+        // Skip if this date has daily QR attendance
+        if (dailyQRDates.has(entryDate)) {
+          console.log(`🔍 PRIORITIZATION DEBUG: SKIPPED - Daily QR exists for ${entryDate}`);
+          return;
         }
+        
+        // Skip if this is actually a daily attendance record (not meeting)
+        if (entry.type === 'daily_qr' || entry.type === 'daily') {
+          console.log(`🔍 PRIORITIZATION DEBUG: SKIPPED - This is a daily record, not meeting: ${entryDate}`);
+          return;
+        }
+        
+        // Only process as meeting attendance if it's explicitly a meeting or legacy record without type
+        console.log(`🔍 PRIORITIZATION DEBUG: ADDING to meeting attendance: ${entryDate}`);
+        meetingAttendance.push({
+          date: entry.date,
+          status: entry.status, // Already in correct format (Present/Absent)
+          meetingName: 'General Meeting', // Default meeting name for historical records
+          type: 'Meeting',
+          time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : null,
+          isMeeting: true
+        });
       });
     }
     
