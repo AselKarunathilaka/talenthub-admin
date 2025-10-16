@@ -269,71 +269,21 @@ const getAttendanceByInternId = async (req, res) => {
   const internId = req.params.id;
 
   try {
-    console.log(`🔍 API CALL: getAttendanceByInternId called for intern: ${internId}`);
-    
     const intern = await InternService.getInternById(internId);
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    console.log(`🔍 INTERN FOUND: ${intern.traineeName} (${intern.Trainee_ID})`);
-
     // Get daily records for this intern to include meeting attendance
     const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
-    
-    console.log(`🔍 DAILY RECORDS: Found ${dailyRecords.length} daily records`);
 
     // Prepare daily attendance from BOTH sources (intern.attendance AND dailyRecords)
     const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Track dates with daily QR attendance for prioritization
-    const dailyQRDates = new Set();
-    
-    // First pass: identify all dates with daily QR attendance from DailyRecord
-    dailyRecords.forEach(record => {
-      if (record.attendance && record.attendance !== 'absent') {
-        const recordDate = new Date(record.date).toDateString();
-        dailyQRDates.add(recordDate);
-        console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date from DailyRecord: ${recordDate}`);
-      }
-    });
-    
-    // Also check intern.attendance for daily_qr type records
+    // Add historical meeting attendance from intern.attendance (old system - keep as meeting attendance)
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
-        if (entry.type === 'daily_qr' || entry.type === 'daily') {
-          const entryDate = new Date(entry.date).toDateString();
-          dailyQRDates.add(entryDate);
-          console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date from intern.attendance: ${entryDate} (type: ${entry.type})`);
-        }
-      });
-    }
-    
-    console.log(`🔍 PRIORITIZATION DEBUG: Total daily QR dates tracked: ${dailyQRDates.size}`, Array.from(dailyQRDates));
-    
-    // Add historical meeting attendance ONLY if NO daily QR attendance exists for that date
-    // AND only process records that are actually meetings (not daily records)
-    if (intern.attendance && intern.attendance.length > 0) {
-      intern.attendance.forEach(entry => {
-        const entryDate = new Date(entry.date).toDateString();
-        
-        console.log(`🔍 PRIORITIZATION DEBUG: Processing intern.attendance record: ${entryDate}, type: ${entry.type || 'NO_TYPE'}, dailyQR exists: ${dailyQRDates.has(entryDate)}`);
-        
-        // Skip if this date has daily QR attendance
-        if (dailyQRDates.has(entryDate)) {
-          console.log(`🔍 PRIORITIZATION DEBUG: SKIPPED - Daily QR exists for ${entryDate}`);
-          return;
-        }
-        
-        // Skip if this is actually a daily attendance record (not meeting)
-        if (entry.type === 'daily_qr' || entry.type === 'daily') {
-          console.log(`🔍 PRIORITIZATION DEBUG: SKIPPED - This is a daily record, not meeting: ${entryDate}`);
-          return;
-        }
-        
-        // Only process as meeting attendance if it's explicitly a meeting or legacy record without type
-        console.log(`🔍 PRIORITIZATION DEBUG: ADDING to meeting attendance: ${entryDate}`);
         meetingAttendance.push({
           date: entry.date,
           status: entry.status, // Already in correct format (Present/Absent)
@@ -365,33 +315,22 @@ const getAttendanceByInternId = async (req, res) => {
         });
       }
       
-      // Add meeting attendance ONLY if NO daily QR attendance exists for this date (prioritization logic)
+      // Add meeting attendance if it exists (NEW QR scanned meeting attendance goes to Meeting section)
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
-        const recordDate = new Date(record.date).toDateString();
-        
-        console.log(`🔍 PRIORITIZATION DEBUG: Checking meeting attendance for date: ${recordDate}`);
-        console.log(`🔍 PRIORITIZATION DEBUG: Daily QR exists for this date? ${dailyQRDates.has(recordDate)}`);
-        
-        // Only add meeting attendance if this date doesn't have daily QR attendance
-        if (!dailyQRDates.has(recordDate)) {
-          console.log(`🔍 PRIORITIZATION DEBUG: Adding meeting attendance for ${recordDate} (no daily QR conflict)`);
-          record.meetingAttendance.forEach(meeting => {
-            const attendanceTime = new Date(meeting.attendanceTime);
-            meetingAttendance.push({
-              date: record.date,
-              status: "Present",
-              meetingName: meeting.meetingTitle,
-              type: 'Meeting',
-              time: attendanceTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-              }),
-              isMeeting: true
-            });
+        record.meetingAttendance.forEach(meeting => {
+          const attendanceTime = new Date(meeting.attendanceTime);
+          meetingAttendance.push({
+            date: record.date,
+            status: "Present",
+            meetingName: meeting.meetingTitle,
+            type: 'Meeting',
+            time: attendanceTime.toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            isMeeting: true
           });
-        } else {
-          console.log(`🔍 PRIORITIZATION DEBUG: BLOCKED meeting attendance for ${recordDate} (daily QR takes priority)`);
-        }
+        });
       }
     });
 
