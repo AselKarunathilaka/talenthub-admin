@@ -269,13 +269,19 @@ const getAttendanceByInternId = async (req, res) => {
   const internId = req.params.id;
 
   try {
+    console.log(`🔍 API CALL: getAttendanceByInternId called for intern: ${internId}`);
+    
     const intern = await InternService.getInternById(internId);
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
 
+    console.log(`🔍 INTERN FOUND: ${intern.traineeName} (${intern.Trainee_ID})`);
+
     // Get daily records for this intern to include meeting attendance
     const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
+    
+    console.log(`🔍 DAILY RECORDS: Found ${dailyRecords.length} daily records`);
 
     // Prepare daily attendance from BOTH sources (intern.attendance AND dailyRecords)
     const dailyAttendance = [];
