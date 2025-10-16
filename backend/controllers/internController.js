@@ -289,8 +289,11 @@ const getAttendanceByInternId = async (req, res) => {
       if (record.attendance && record.attendance !== 'absent') {
         const recordDate = new Date(record.date).toDateString();
         dailyQRDates.add(recordDate);
+        console.log(`🔍 PRIORITIZATION DEBUG: Added daily QR date: ${recordDate}`);
       }
     });
+    
+    console.log(`🔍 PRIORITIZATION DEBUG: Total daily QR dates tracked: ${dailyQRDates.size}`, Array.from(dailyQRDates));
     
     // Add historical meeting attendance ONLY if NO daily QR attendance exists for that date
     if (intern.attendance && intern.attendance.length > 0) {
@@ -318,9 +321,6 @@ const getAttendanceByInternId = async (req, res) => {
     dailyRecords.forEach(record => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== 'absent') {
-        const recordDate = new Date(record.date).toDateString();
-        dailyQRDates.add(recordDate); // Track this date as having daily QR attendance
-        
         const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
         dailyAttendance.push({
           date: record.date,
@@ -338,8 +338,12 @@ const getAttendanceByInternId = async (req, res) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         const recordDate = new Date(record.date).toDateString();
         
+        console.log(`🔍 PRIORITIZATION DEBUG: Checking meeting attendance for date: ${recordDate}`);
+        console.log(`🔍 PRIORITIZATION DEBUG: Daily QR exists for this date? ${dailyQRDates.has(recordDate)}`);
+        
         // Only add meeting attendance if this date doesn't have daily QR attendance
         if (!dailyQRDates.has(recordDate)) {
+          console.log(`🔍 PRIORITIZATION DEBUG: Adding meeting attendance for ${recordDate} (no daily QR conflict)`);
           record.meetingAttendance.forEach(meeting => {
             const attendanceTime = new Date(meeting.attendanceTime);
             meetingAttendance.push({
@@ -354,6 +358,8 @@ const getAttendanceByInternId = async (req, res) => {
               isMeeting: true
             });
           });
+        } else {
+          console.log(`🔍 PRIORITIZATION DEBUG: BLOCKED meeting attendance for ${recordDate} (daily QR takes priority)`);
         }
       }
     });
