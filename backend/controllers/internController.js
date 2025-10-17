@@ -287,27 +287,27 @@ const getAttendanceByInternId = async (req, res) => {
       intern.attendance.forEach(entry => {
         const entryDate = new Date(entry.date).toISOString().split('T')[0]; // YYYY-MM-DD format
         
-        // Check if this date has a corresponding daily QR attendance record
-        const hasDailyQRAttendance = dailyRecords.some(record => 
-          record.date === entryDate && 
-          record.attendance === 'present'
-        );
-        
-        // Only add to meeting attendance if there's NO daily QR attendance for this date
-        // This prevents daily QR scans from appearing in both daily and meeting sections
-        if (!hasDailyQRAttendance) {
-          meetingAttendance.push({
-            date: entry.date,
-            status: entry.status, // Already in correct format (Present/Absent)
-            meetingName: 'General Meeting', // Default meeting name for historical records
-            type: 'Meeting',
-            time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }) : null,
-            isMeeting: true
+          // Check if this date has a corresponding daily QR attendance record (type: 'daily_qr')
+          const hasDailyQRAttendance = dailyRecords.some(record => {
+            const recordDate = new Date(record.date).toISOString().split('T')[0];
+            return recordDate === entryDate && (record.type === 'daily_qr' || record.type === 'daily');
           });
-        }
+
+          // Only add to meeting attendance if there's NO daily QR attendance for this date
+          // This prevents daily QR scans from appearing in both daily and meeting sections
+          if (!hasDailyQRAttendance) {
+            meetingAttendance.push({
+              date: entry.date,
+              status: entry.status, // Already in correct format (Present/Absent)
+              meetingName: 'General Meeting', // Default meeting name for historical records
+              type: 'Meeting',
+              time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : null,
+              isMeeting: true
+            });
+          }
       });
     }
     
