@@ -3,6 +3,10 @@ const mongoose = require("mongoose");
 const attendanceSchema = new mongoose.Schema({
   date: { type: Date, default: Date.now },
   status: { type: String, enum: ["Present", "Absent"], default: "Absent" },
+  type: { type: String, enum: ["manual", "qr", "daily_qr", "daily"], default: "manual" },
+  timeMarked: { type: Date },
+  qrCode: { type: String },
+  meetingName: { type: String }
 });
 
 // Store API-style keys as the canonical document shape so DB contains Trainee_* fields.
