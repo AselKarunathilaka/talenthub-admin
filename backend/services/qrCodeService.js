@@ -190,23 +190,9 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   
-  // Find or create daily record for today
+  // Only update an existing DailyRecord; do NOT create a new one via meeting QR scan
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
-  
-  if (!dailyRecord) {
-    // Create new daily record if doesn't exist
-    dailyRecord = new DailyRecord({
-      internId,
-      date: today,
-      stack: "Default",
-      task: "Meeting attendance marked via QR scan",
-      meetingAttendance: [{
-        meetingTitle,
-        attendanceStatus: "present",
-        attendanceTime: new Date()
-      }]
-    });
-  } else {
+  if (dailyRecord) {
     // Check if meeting attendance already exists
     const existingMeeting = dailyRecord.meetingAttendance.find(
       meeting => meeting.meetingTitle === meetingTitle
@@ -222,9 +208,8 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
         attendanceTime: new Date()
       });
     }
+    await dailyRecord.save();
   }
-  
-  await dailyRecord.save();
   
   // Sync with Attendance System if QR code is provided
   if (qrCode && intern && intern.Trainee_ID) {
@@ -303,7 +288,9 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   };
 };
 
-// Mark daily attendance for an intern
+// Mark daily attendance for an intern (do NOT auto-create DailyRecord/logbook)
+// Note: The logbook (DailyRecord) must be filled by the intern manually.
+// On QR scan, we only update attendance fields if a DailyRecord for today already exists.
 const markInternDailyAttendance = async (internId, qrCode) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
@@ -319,26 +306,14 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   const attendanceTime = moment.tz("Asia/Colombo").toDate();
   const today = todaySriLanka.format('YYYY-MM-DD'); // YYYY-MM-DD format
 
-  // Create or update daily record in TalentHub's DailyRecord system
-  let dailyRecord = await DailyRecord.findOne({ internId, date: today });
-  
-  if (!dailyRecord) {
-    // Create new daily record - this should ALWAYS be allowed for daily attendance
-    dailyRecord = new DailyRecord({
-      internId,
-      date: today,
-      stack: "Default",
-      task: "Daily attendance marked via QR scan",
-      attendance: "present",
-      attendanceTime: attendanceTime
-    });
-  } else {
-    // Update existing daily record
+  // Update DailyRecord ONLY if it already exists for today.
+  // Do NOT create a new logbook entry from QR scans; interns must fill it themselves.
+  const dailyRecord = await DailyRecord.findOne({ internId, date: today });
+  if (dailyRecord) {
     dailyRecord.attendance = "present";
     dailyRecord.attendanceTime = attendanceTime;
+    await dailyRecord.save();
   }
-  
-  await dailyRecord.save();
 
   // Also update the old intern.attendance system for backward compatibility
   const existingAttendanceIndex = intern.attendance.findIndex((a) => {

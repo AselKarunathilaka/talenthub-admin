@@ -70,7 +70,8 @@ const scanQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // For daily attendance scans, only mark in DailyRecord (new system)
+  // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
+  // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId, qrCode);
       
@@ -145,11 +146,12 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    // Mark meeting attendance in TalentHub system (this will also handle external sync)
+  // Mark meeting attendance in TalentHub system (this will also handle external sync)
+  // Note: This does NOT create or update the intern's logbook entry content.
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
     
     res.status(200).json({ 
-      message: "Meeting attendance marked successfully!",
+  message: "Meeting attendance marked successfully (logbook not modified)",
       intern: result.intern,
       meeting: result.meeting
     });
