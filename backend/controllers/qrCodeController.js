@@ -147,11 +147,10 @@ const scanMeetingQRCode = async (req, res) => {
     }
 
   // Mark meeting attendance in TalentHub system (this will also handle external sync)
-  // Note: This does NOT create or update the intern's logbook entry content.
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
     
     res.status(200).json({ 
-  message: "Meeting attendance marked successfully (logbook not modified)",
+  message: "Meeting attendance marked successfully",
       intern: result.intern,
       meeting: result.meeting
     });
