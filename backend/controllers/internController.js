@@ -281,33 +281,34 @@ const getAttendanceByInternId = async (req, res) => {
     const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Add historical meeting attendance from intern.attendance (old system - keep as meeting attendance)
-    // BUT exclude entries that have corresponding daily QR attendance to prevent double display
+    // Add historical meeting attendance from intern.attendance (legacy data)
+    // IMPORTANT: Only treat entries as MEETING when they explicitly indicate a meeting.
+    // Daily QR scans (type: 'daily' | 'daily_qr') must NOT be added to meeting attendance.
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
-        const entryDate = new Date(entry.date).toISOString().split('T')[0]; // YYYY-MM-DD format
-        
-          // Check if this date has a corresponding daily QR attendance record (type: 'daily_qr')
-          const hasDailyQRAttendance = dailyRecords.some(record => {
-            const recordDate = new Date(record.date).toISOString().split('T')[0];
-            return recordDate === entryDate && (record.type === 'daily_qr' || record.type === 'daily');
-          });
+        const type = (entry.type || '').toLowerCase();
 
-          // Only add to meeting attendance if there's NO daily QR attendance for this date
-          // This prevents daily QR scans from appearing in both daily and meeting sections
-          if (!hasDailyQRAttendance) {
-            meetingAttendance.push({
-              date: entry.date,
-              status: entry.status, // Already in correct format (Present/Absent)
-              meetingName: 'General Meeting', // Default meeting name for historical records
-              type: 'Meeting',
-              time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
-              }) : null,
-              isMeeting: true
-            });
-          }
+        const isMeetingEntry = !!entry.meetingName || type === 'qr' || type === 'meeting' || type === 'meeting_qr';
+        const isDailyEntry = type === 'daily' || type === 'daily_qr';
+
+        // Skip daily entries here; daily section is built from DailyRecord below
+        if (isDailyEntry) return;
+
+        // Only add to meeting section when it is explicitly a meeting entry
+        if (isMeetingEntry) {
+          meetingAttendance.push({
+            date: entry.date,
+            status: entry.status || 'Present',
+            meetingName: entry.meetingName || 'General Meeting',
+            type: 'Meeting',
+            time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }) : null,
+            isMeeting: true
+          });
+        }
+        // If it's neither explicitly a meeting nor a daily entry, ignore it here to avoid misclassification
       });
     }
     
