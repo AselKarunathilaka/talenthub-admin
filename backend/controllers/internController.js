@@ -277,8 +277,8 @@ const getAttendanceByInternId = async (req, res) => {
     // Get daily records for this intern to include meeting attendance
     const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
 
-    // Prepare daily attendance from BOTH sources (intern.attendance AND dailyRecords)
-    const dailyAttendance = [];
+  // Prepare daily attendance from BOTH sources (DailyRecord first, then fallback to intern.attendance)
+  const dailyAttendance = [];
     const meetingAttendance = [];
     
     // Add ALL legacy meeting attendance from intern.attendance (including 'General Meeting' and those with no meetingName)
@@ -290,10 +290,11 @@ const getAttendanceByInternId = async (req, res) => {
         if (isDailyEntry) return; // skip daily QR/daily entries
 
         // All other legacy entries are preserved as meeting attendance
+        const legacyMeetingName = entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
         meetingAttendance.push({
           date: entry.date,
           status: entry.status || 'Present',
-          meetingName: entry.meetingName || 'General Meeting',
+          meetingName: legacyMeetingName || 'General Meeting',
           type: 'Meeting',
           time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
             hour: '2-digit',
@@ -339,6 +340,40 @@ const getAttendanceByInternId = async (req, res) => {
         });
       }
     });
+
+    // Fallback: include daily QR scans from intern.attendance if DailyRecord doesn't exist for that date
+    try {
+      const datesWithDailyRecord = new Set(
+        dailyAttendance.map((d) => new Date(d.date).toDateString())
+      );
+
+      if (intern.attendance && intern.attendance.length > 0) {
+        intern.attendance.forEach((entry) => {
+          const type = (entry.type || '').toLowerCase();
+          const isDaily = type === 'daily' || type === 'daily_qr';
+          if (!isDaily) return; // only consider daily scans here
+
+          const entryDate = entry.date ? new Date(entry.date) : null;
+          if (!entryDate || isNaN(entryDate.getTime())) return;
+
+          const dayKey = entryDate.toDateString();
+          if (datesWithDailyRecord.has(dayKey)) return; // already covered by DailyRecord
+
+          dailyAttendance.push({
+            date: entryDate,
+            status: (entry.status || 'Present'),
+            type: 'Daily',
+            time: (entry.timeMarked ? new Date(entry.timeMarked) : entryDate).toLocaleTimeString('en-US', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            attendanceTime: entry.timeMarked || entry.date
+          });
+        });
+      }
+    } catch (e) {
+      // Non-fatal: if fallback merge fails, continue with what we have
+    }
 
     // Sort daily attendance by date (newest first)
     dailyAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));

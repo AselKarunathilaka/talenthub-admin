@@ -209,6 +209,19 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
       });
     }
     await dailyRecord.save();
+  } else {
+    // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it
+    const moment = require('moment-timezone');
+    const attendanceTime = moment.tz('Asia/Colombo').toDate();
+    intern.attendance.push({
+      date: attendanceTime,
+      status: 'Present',
+      type: 'qr',
+      timeMarked: attendanceTime,
+      meetingName: meetingTitle,
+      qrCode: qrCode
+    });
+    await intern.save();
   }
   
   // Sync with Attendance System if QR code is provided
