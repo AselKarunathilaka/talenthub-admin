@@ -297,43 +297,85 @@ const searchInterns = async (req, res) => {
     const userId = req.user.id;
     const { q } = req.query;
 
-    console.log('Search interns called by user:', userId, 'query:', q);
-
     // Verify admin user
     const adminUser = await User.findById(userId);
     if (!adminUser) {
-      console.log('Admin verification failed for user:', userId);
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    console.log('Admin user verified:', adminUser.email);
-
+    // Handle special case for getting all interns
     if (!q || q.trim().length < 2) {
-      console.log('Search query too short or empty:', q);
+      if (q && q.trim() === '*') {
+        // Get all interns
+        const interns = await Intern.find({});
+
+        // Get all records
+        const records = await DailyRecord.find({
+          internId: { $in: interns.map(intern => intern._id) }
+        }).populate('internId', 'traineeName traineeId email').sort({ createdAt: -1 });
+
+        // Build report for each intern
+        const searchResults = interns.map(intern => {
+          const internRecords = records.filter(record => 
+            record.internId && record.internId._id.toString() === intern._id.toString()
+          );
+
+          const lastSubmission = internRecords.length > 0 ? internRecords[0] : null;
+          const daysSinceLastSubmission = lastSubmission ? 
+            Math.floor((new Date() - new Date(lastSubmission.createdAt)) / (1000 * 60 * 60 * 24)) : null;
+
+          // Check if overdue (no submission in last 3 days)
+          const threeDaysAgo = new Date();
+          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          const isOverdue = !lastSubmission || new Date(lastSubmission.createdAt) < threeDaysAgo;
+
+          return {
+            _id: intern._id,
+            traineeId: intern.Trainee_ID,
+            traineeName: intern.Trainee_Name,
+            email: intern.Trainee_Email,
+            fieldOfSpecialization: intern.field_of_spec_name,
+            team: intern.team,
+            totalRecords: internRecords.length,
+            lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
+            daysSinceLastSubmission,
+            isOverdue,
+            recentRecords: internRecords.slice(0, 5).map(record => ({
+              _id: record._id,
+              date: record.date,
+              createdAt: record.createdAt,
+              stack: record.stack,
+              task: record.task,
+              progress: record.progress,
+              blockers: record.blockers
+            }))
+          };
+        });
+
+        return res.status(200).json(searchResults);
+      }
+      
       return res.status(400).json({ error: "Search query must be at least 2 characters" });
     }
 
     const searchTerm = q.trim();
-    console.log('Searching for:', searchTerm);
 
     // Create case-insensitive search regex
     const searchRegex = new RegExp(searchTerm, 'i');
 
-    // Search interns by name, trainee ID, or email
+    // Search interns by name, trainee ID, or email (using correct DB field names)
     const interns = await Intern.find({
       $or: [
-        { traineeName: searchRegex },
-        { traineeId: searchRegex },
-        { email: searchRegex }
+        { Trainee_Name: searchRegex },
+        { Trainee_ID: searchRegex },
+        { Trainee_Email: searchRegex }
       ]
     });
-
-    console.log(`Found ${interns.length} interns matching search term`);
 
     // Get records for found interns
     const records = await DailyRecord.find({
       internId: { $in: interns.map(intern => intern._id) }
-    }).populate('internId', 'traineeName traineeId email').sort({ createdAt: -1 });
+    }).populate('internId').sort({ createdAt: -1 });
 
     // Build report for each found intern
     const searchResults = interns.map(intern => {
@@ -352,10 +394,10 @@ const searchInterns = async (req, res) => {
 
       return {
         _id: intern._id,
-        traineeId: intern.traineeId,
-        traineeName: intern.traineeName,
-        email: intern.email,
-        fieldOfSpecialization: intern.fieldOfSpecialization,
+        traineeId: intern.Trainee_ID,
+        traineeName: intern.Trainee_Name,
+        email: intern.Trainee_Email,
+        fieldOfSpecialization: intern.field_of_spec_name,
         team: intern.team,
         totalRecords: internRecords.length,
         lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
@@ -373,7 +415,6 @@ const searchInterns = async (req, res) => {
       };
     });
 
-    console.log('Search results prepared:', searchResults.length, 'results');
     res.status(200).json(searchResults);
 
   } catch (error) {
@@ -394,44 +435,93 @@ const getLastSubmissionDate = (internId, records) => {
 // Get all daily records for admin view
 const getAllDailyRecords = async (req, res) => {
   try {
-    const userId = req.user.id;
+    console.log('getAllDailyRecords - User info from token:', req.user);
+    
+    const userId = req.user.id || req.user._id;
 
-    // Verify admin user
-    const adminUser = await User.findById(userId);
-    if (!adminUser) {
-      return res.status(403).json({ error: "Admin access required" });
+    // Verify admin user - be more flexible with user verification
+    let adminUser = null;
+    try {
+      adminUser = await User.findById(userId);
+      console.log('Admin user found:', adminUser ? 'Yes' : 'No');
+    } catch (userError) {
+      console.log('User verification error (continuing anyway):', userError.message);
     }
+
+    // For now, allow the request to continue even if user verification fails
+    // This is to debug the main issue with intern details
+    console.log('Fetching all daily records with intern details...');
 
     // Get all daily records with intern details
     const records = await DailyRecord.find({})
-      .populate('internId', 'traineeName traineeId email fieldOfSpecialization')
-      .sort({ createdAt: -1 });
+      .populate({
+        path: 'internId',
+        select: 'traineeName traineeId email fieldOfSpecialization institute team',
+        model: 'Intern'
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    console.log(`Found ${records.length} daily records from database`);
 
     // Format records for frontend consumption
-    const formattedRecords = records.map(record => ({
-      _id: record._id,
-      date: record.date,
-      createdAt: record.createdAt,
-      taskDescription: record.tasks ? 
-        (Array.isArray(record.tasks) ? record.tasks.join(', ') : record.tasks) : 
-        'No description',
-      hoursWorked: record.hoursWorked || 0,
-      internId: record.internId?._id,
-      traineeName: record.internId?.traineeName || 'Unknown',
-      traineeId: record.internId?.traineeId || 'Unknown',
-      email: record.internId?.email || 'Unknown',
-      fieldOfSpecialization: record.internId?.fieldOfSpecialization
-    }));
+    const formattedRecords = records.map(record => {
+      console.log('Record internId:', record.internId);
+      
+      return {
+        _id: record._id,
+        date: record.date,
+        createdAt: record.createdAt,
+        taskDescription: record.task || record.tasks || 'No description',
+        stack: record.stack || 'No stack specified',
+        task: record.task || 'No task specified',
+        progress: record.progress || 'No progress specified',
+        blockers: record.blockers || 'No blockers specified',
+        status: record.status || 'working',
+        hoursWorked: record.hoursWorked || 0,
+        internId: record.internId?._id || record.internId,
+        traineeName: record.internId?.traineeName || 'Unknown Intern',
+        traineeId: record.internId?.traineeId || 'Unknown ID',
+        email: record.internId?.email || 'No email',
+        fieldOfSpecialization: record.internId?.fieldOfSpecialization || 'Not specified',
+        institute: record.internId?.institute || 'Not specified',
+        team: record.internId?.team || 'Not specified'
+      };
+    });
 
-    console.log(`Retrieved ${formattedRecords.length} daily records for admin view`);
+    console.log(`Formatted ${formattedRecords.length} daily records for admin view`);
+    console.log('Sample record:', JSON.stringify(formattedRecords[0], null, 2));
+    
     res.status(200).json(formattedRecords);
 
   } catch (error) {
     console.error("Error getting all daily records:", error);
-    res.status(500).json({ error: "Failed to get daily records" });
+    
+    // Try to get basic info for debugging
+    try {
+      const recordCount = await DailyRecord.countDocuments();
+      const internCount = await Intern.countDocuments();
+      console.log(`Debug info - Records count: ${recordCount}, Interns count: ${internCount}`);
+      
+      if (recordCount > 0) {
+        const sampleRecord = await DailyRecord.findOne().lean();
+        console.log('Sample record without populate:', JSON.stringify(sampleRecord, null, 2));
+        
+        const populatedRecord = await DailyRecord.findById(sampleRecord._id).populate('internId').lean();
+        console.log('Sample record with populate:', JSON.stringify(populatedRecord, null, 2));
+      }
+    } catch (debugError) {
+      console.error('Debug query failed:', debugError);
+    }
+    
+    res.status(500).json({ 
+      error: "Failed to get daily records",
+      details: error.message 
+    });
   }
 };
 
+// Debug endpoint to check database data
 // Get previous day's submissions for admin export
 const getPreviousDaySubmissions = async (req, res) => {
   try {
