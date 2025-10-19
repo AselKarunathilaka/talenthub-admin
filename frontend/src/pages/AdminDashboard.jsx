@@ -14,72 +14,34 @@ import logo from '../assets/sltlogo.jpg';
 const formatDateDisplay = (dateString) => {
   if (!dateString) return 'N/A';
   
-  try {
-    // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
-    if (dateString.includes('T') || dateString.includes('Z')) {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
-    }
-    
-    // Handle YYYY-MM-DD format from backend
-    if (dateString.includes('-') && dateString.split('-').length === 3) {
-      const parts = dateString.split('-');
-      // Check if it's a simple YYYY-MM-DD (no time component)
-      if (parts[2].length <= 2) {
-        const [year, month, day] = parts.map(Number);
-        const date = new Date(year, month - 1, day);
-        if (isNaN(date.getTime())) return 'Invalid Date';
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
-        });
-      }
-    }
-    
-    // Fallback for other formats
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleDateString('en-US', {
+  // Handle YYYY-MM-DD format from backend
+  if (dateString.includes('-')) {
+    const [year, month, day] = dateString.split('-');
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric'
     });
-  } catch (error) {
-    console.error('Error formatting date:', dateString, error);
-    return 'Invalid Date';
   }
+  
+  // Fallback for other formats
+  return new Date(dateString).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
 };
 
 const parseDateForComparison = (dateString) => {
   if (!dateString) return new Date(0);
   
-  try {
-    // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
-    if (dateString.includes('T') || dateString.includes('Z')) {
-      return new Date(dateString);
-    }
-    
-    // Handle YYYY-MM-DD format from backend
-    if (dateString.includes('-') && dateString.split('-').length === 3) {
-      const parts = dateString.split('-');
-      // Check if it's a simple YYYY-MM-DD (no time component)
-      if (parts[2].length <= 2) {
-        const [year, month, day] = parts.map(Number);
-        return new Date(year, month - 1, day);
-      }
-    }
-    
-    return new Date(dateString);
-  } catch (error) {
-    console.error('Error parsing date for comparison:', dateString, error);
-    return new Date(0);
+  // Handle YYYY-MM-DD format from backend
+  if (dateString.includes('-')) {
+    const [year, month, day] = dateString.split('-').map(Number);
+    return new Date(year, month - 1, day);
   }
+  
+  return new Date(dateString);
 };
 
 const AdminDashboard = () => {
@@ -320,12 +282,18 @@ const AdminDashboard = () => {
   };
 
   const getFilteredInterns = () => {
-    if (!internReport || internReport.length === 0) {
-      return [];
-    }
+    if (!internReport || internReport.length === 0) return [];
 
-    // Note: Backend already filtered by searchTerm, so we only apply filterStatus here
-    const filtered = internReport.filter(intern => {
+    return internReport.filter(intern => {
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = 
+          intern.traineeName?.toLowerCase().includes(searchLower) ||
+          intern.traineeId?.toLowerCase().includes(searchLower) ||
+          intern.email?.toLowerCase().includes(searchLower);
+        if (!matchesSearch) return false;
+      }
+
       switch (filterStatus) {
         case 'submitted':
           return !intern.isOverdue && intern.totalRecords > 0;
@@ -334,7 +302,7 @@ const AdminDashboard = () => {
         case 'overdue':
           return intern.isOverdue;
         default:
-          return true; // 'all' - no filtering
+          return true;
       }
     }).sort((a, b) => {
       switch (sortBy) {
@@ -352,8 +320,6 @@ const AdminDashboard = () => {
           return 0;
       }
     });
-    
-    return filtered;
   };
 
   const filteredInterns = getFilteredInterns();
