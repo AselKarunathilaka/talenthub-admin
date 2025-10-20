@@ -10,6 +10,7 @@ const generateQRCode = async (internId) => {
   const qrCode = await QRCode.toDataURL(qrData); 
   return qrCode;
 };
+// ...existing code...
 
 
 
@@ -35,25 +36,47 @@ const sendAttendanceNotification = async (internEmail, traineeId) => {
 };
 
 const markAttendance = async (internId, status) => {
+  // Use InternRepository to get intern
   const intern = await InternRepository.getInternById(internId);
   if (!intern) throw new Error("Intern not found");
 
-  const today = new Date().setHours(0, 0, 0, 0);
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   const existingAttendance = intern.attendance.find(
-    (a) => new Date(a.date).setHours(0, 0, 0, 0) === today
+    (a) => {
+      const aDate = new Date(a.date);
+      return aDate.getFullYear() === todayStart.getFullYear() &&
+             aDate.getMonth() === todayStart.getMonth() &&
+             aDate.getDate() === todayStart.getDate();
+    }
   );
 
   if (existingAttendance) {
     existingAttendance.status = status;
   } else {
-    intern.attendance.push({ date: new Date(), status });
+    intern.attendance.push({ date: today, status });
   }
 
   await intern.save();
 
-  // Send email notification
-  await sendAttendanceNotification(intern.email, intern.traineeId);
+  // Optionally, send attendance notification email
+  if (intern.Trainee_Email && intern.Trainee_ID) {
+    await sendAttendanceNotification(intern.Trainee_Email, intern.Trainee_ID);
+  }
+
+  return {
+    success: true,
+    message: "Attendance marked successfully",
+    intern: {
+      traineeId: intern.Trainee_ID,
+      traineeName: intern.Trainee_Name,
+      email: intern.Trainee_Email
+    },
+    status
+  };
 };
+  
+// ...existing code...
 
 // Verify QR code (check if it's expired or valid)
 const verifyQRCode = async (qrCode) => {
@@ -133,52 +156,8 @@ const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
   }
   // Note: We don't create a new daily record if one doesn't exist
   // The intern should fill their daily log first
-  
-  // Sync with Attendance System if QR code is provided
-  if (qrCode && intern && intern.Trainee_ID) {
-    try {
-      // Direct axios call to ensure external sync works
-      const axios = require('axios');
-      const externalConfig = require('../config/externalSystems');
-      
-      if (externalConfig.attendanceSystem.enabled) {
-        const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanDaily}`;
-        
-        const syncData = {
-          qrSessionId: qrCode,
-          traineeId: intern.Trainee_ID
-        };
-        
-        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
-          timeout: externalConfig.attendanceSystem.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        // External sync successful - no need to log in production
-      }
-    } catch (error) {
-      // Continue with local processing even if external sync fails
-      // Error handling without console logs to avoid production noise
-    }
-  }
-  
-  return {
-    intern: {
-      id: intern._id,
-      traineeId: intern.Trainee_ID,
-      traineeName: intern.Trainee_Name,
-      email: intern.Trainee_Email
-    },
-    attendance: {
-      date: today,
-      status: "present",
-      time: new Date()
-    }
-  };
 };
-
+  
 // Mark meeting attendance
 const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
@@ -233,57 +212,35 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
       
       if (externalConfig.attendanceSystem.enabled) {
         const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanMeeting}`;
-        
-        const syncData = {
-          qrSessionId: qrCode,
-          traineeId: intern.Trainee_ID
-        };
-        
-        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
-          timeout: externalConfig.attendanceSystem.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        // External sync successful - no need to log in production
+        // ...existing code...
+        const emailSubject = "Meeting Attendance Marked - SLT Mobitel";
+        const emailBody = `
+          Hello ${intern.Trainee_Name},
+
+          This is to confirm that your meeting attendance has been successfully recorded.
+          
+          📅 Date: ${attendanceDate}
+          ⏰ Time: ${attendanceTime}
+          🏢 Meeting: ${meetingTitle}
+          ✅ Status: Present
+          🆔 Intern ID: ${intern.Trainee_ID}
+
+          Your attendance has been recorded via QR code scan for the specified meeting.
+
+          If you have any issues or concerns, please do not hesitate to contact your supervisor.
+
+          Please do not reply to this email. This is an auto-generated message.
+
+          Best regards,
+          SLT Mobitel
+          Digital Platforms Development Section
+        `;
+        sendEmail(intern.Trainee_Email, emailSubject, emailBody);
       }
     } catch (error) {
-      // Continue with local processing even if external sync fails
-      // Error handling without console logs to avoid production noise
+      // Handle error (optional: log or rethrow)
+      // For production, avoid logging sensitive info
     }
-  }
-  
-  // Send email notification for meeting attendance
-  if (intern.Trainee_Email) {
-    const sendEmail = require("../utils/emailSender");
-    const moment = require("moment-timezone");
-    const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
-    const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
-    
-    const emailSubject = "Meeting Attendance Marked - SLT Mobitel";
-    const emailBody = `
-      Hello ${intern.Trainee_Name},
-
-      This is to confirm that your meeting attendance has been successfully recorded.
-      
-      📅 Date: ${attendanceDate}
-      ⏰ Time: ${attendanceTime}
-      🏢 Meeting: ${meetingTitle}
-      ✅ Status: Present
-      🆔 Intern ID: ${intern.Trainee_ID}
-
-      Your attendance has been recorded via QR code scan for the specified meeting.
-
-      If you have any issues or concerns, please do not hesitate to contact your supervisor.
-
-      Please do not reply to this email. This is an auto-generated message.
-
-      Best regards,
-      SLT Mobitel
-      Digital Platforms Development Section
-    `;
-    sendEmail(intern.Trainee_Email, emailSubject, emailBody);
   }
   
   return {
@@ -298,7 +255,7 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
       status: "present",
       time: new Date()
     }
-  };
+  }
 };
 
 // Mark daily attendance for an intern (do NOT auto-create DailyRecord/logbook)

@@ -7,35 +7,49 @@ import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 
 // Function to validate QR code format based on scan mode
-const validateQRCodeFormat = (qrCode, scanMode) => {
-  // Check if QR code exists and is a string
+const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = '') => {
   if (!qrCode || typeof qrCode !== 'string') {
     return false;
   }
 
-  // Validate based on scan mode
   if (scanMode === 'daily') {
-    // Check for daily attendance format: daily_attendance_* or attendance_session_* (backward compatibility)
+    // Daily attendance: legacy string format
     if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
       return false;
     }
-  } else {
-    // Check for meeting attendance format: attendance_session_*
-    if (!qrCode.includes('attendance_session_')) {
+    // Extract timestamp for validation
+    const qrCodeParts = qrCode.split('_');
+    const timestamp = parseInt(qrCodeParts[qrCodeParts.length - 1]);
+    if (isNaN(timestamp)) {
       return false;
     }
+    return true;
+  } else {
+    // Meeting attendance: expect JSON format
+    let parsed;
+    try {
+      parsed = JSON.parse(qrCode);
+    } catch (e) {
+      return false;
+    }
+    // Must have type and meetingTitle
+    if (
+      parsed.type !== 'meeting_attendance' ||
+      typeof parsed.meetingTitle !== 'string' ||
+      !parsed.meetingTitle.trim()
+    ) {
+      return false;
+    }
+    // Meeting title must match
+    if (meetingTitle.trim() && parsed.meetingTitle.trim() !== meetingTitle.trim()) {
+      return false;
+    }
+    // Timestamp validation (optional, if present)
+    if (parsed.timestamp && isNaN(parseInt(parsed.timestamp))) {
+      return false;
+    }
+    return true;
   }
-
-  // Extract timestamp for validation
-  const qrCodeParts = qrCode.split('_');
-  const timestamp = parseInt(qrCodeParts[qrCodeParts.length - 1]);
-  
-  // Validate that the timestamp is a valid number
-  if (isNaN(timestamp)) {
-    return false;
-  }
-
-  return true;
 };
 
 const ScanQRCode = () => {
@@ -78,7 +92,7 @@ const ScanQRCode = () => {
 
 
         // Validate QR code format before processing
-        if (!validateQRCodeFormat(qrData, scanMode)) {
+        if (!validateQRCodeFormat(qrData, scanMode, meetingTitle)) {
           const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
           return;

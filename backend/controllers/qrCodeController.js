@@ -129,28 +129,34 @@ const scanQRCode = async (req, res) => {
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
   const { qrCode, internId, meetingTitle } = req.body;
-
   try {
     if (!meetingTitle) {
       return res.status(400).json({ message: "Meeting title is required." });
     }
-
-    // Validate QR code format for meeting attendance
-    if (!qrCode.includes('attendance_session_')) {
-      return res.status(400).json({ message: "Invalid QR code format. This QR code is not for meeting attendance." });
+    // Try to parse QR code as JSON
+    let qrPayload;
+    try {
+      qrPayload = JSON.parse(qrCode);
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid QR code format. Please scan a valid meeting attendance QR code." });
     }
-
-    // Verify QR code validity
-    const isValid = await qrCodeService.verifyQRCode(qrCode);
-    if (!isValid) {
-      return res.status(400).json({ message: "QR code is expired or invalid." });
+    // Validate QR code type
+    if (qrPayload.type !== "meeting_attendance") {
+      return res.status(400).json({ message: "Invalid QR code type. Please scan a valid meeting attendance QR code." });
     }
-
-  // Mark meeting attendance in TalentHub system (this will also handle external sync)
+    // Validate meeting title matches
+    if (qrPayload.meetingTitle !== meetingTitle) {
+      return res.status(400).json({ message: `Meeting title mismatch. QR code is for '${qrPayload.meetingTitle}', but you entered '${meetingTitle}'.` });
+    }
+    // Optionally, check expiry (10 min)
+    const now = Date.now();
+    if (qrPayload.timestamp && now - qrPayload.timestamp > 10 * 60 * 1000) {
+      return res.status(400).json({ message: "QR code is expired." });
+    }
+    // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
-    
     res.status(200).json({ 
-  message: "Meeting attendance marked successfully",
+      message: "Meeting attendance marked successfully",
       intern: result.intern,
       meeting: result.meeting
     });
