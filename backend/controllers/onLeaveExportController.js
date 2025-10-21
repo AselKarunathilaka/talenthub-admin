@@ -32,11 +32,11 @@ const exportOnLeaveExcel = async (req, res) => {
     } else {
       data = leaveRecords.map(record => ({
         Date: record.date || '',
-        TraineeID: record.internId?.traineeId || '',
-        Name: record.internId?.traineeName || '',
-        Email: record.internId?.email || '',
-        Field: record.internId?.fieldOfSpecialization || '',
-        Institute: record.internId?.institute || '',
+        TraineeID: record.internId?.Trainee_ID || '',
+        Name: record.internId?.Trainee_Name || '',
+        Email: record.internId?.Trainee_Email || '',
+        Field: record.internId?.field_of_spec_name || '',
+        Institute: record.internId?.Institute || '',
         Team: record.internId?.team || '',
         LeaveReason: record.task || 'On Leave'
       }));

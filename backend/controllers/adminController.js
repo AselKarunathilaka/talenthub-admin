@@ -52,25 +52,21 @@ const getDashboardStats = async (req, res) => {
       submittedInterns: submittedInterns.length,
       overdueInterns: overdueInterns.length,
       overdueList: overdueInterns.map(intern => {
-        // Use the intern data directly
         const internRecords = records.filter(record => 
           record.internId && record.internId._id.toString() === intern._id.toString()
         );
         const lastSubmission = getLastSubmissionDate(intern._id, records);
         const daysSinceLastSubmission = lastSubmission ? 
           Math.floor((new Date() - new Date(lastSubmission)) / (1000 * 60 * 60 * 24)) : null;
-          
-        // Convert empty string to a default value for better display
-        const instituteValue = intern.institute && intern.institute.trim() ? intern.institute : "Not Specified";
-        
+        const instituteValue = intern.Institute && intern.Institute.trim() ? intern.Institute : "Not Specified";
         return {
           _id: intern._id,
-          traineeName: intern.traineeName,
-          traineeId: intern.traineeId,
-          email: intern.email,
-          trainingStartDate: intern.trainingStartDate,
-          trainingEndDate: intern.trainingEndDate,
-          fieldOfSpecialization: intern.fieldOfSpecialization,
+          traineeId: intern.Trainee_ID,
+          traineeName: intern.Trainee_Name,
+          email: intern.Trainee_Email,
+          trainingStartDate: intern.Training_StartDate,
+          trainingEndDate: intern.Training_EndDate,
+          fieldOfSpecialization: intern.field_of_spec_name,
           institute: instituteValue,
           totalRecords: internRecords.length,
           lastSubmission: lastSubmission,
@@ -115,13 +111,13 @@ const getInternReport = async (req, res) => {
 
       return {
         _id: intern._id,
-        traineeId: intern.traineeId,
-        traineeName: intern.traineeName,
-        email: intern.email,
-        fieldOfSpecialization: intern.fieldOfSpecialization,
+        traineeId: intern.Trainee_ID,
+        traineeName: intern.Trainee_Name,
+        email: intern.Trainee_Email,
+        fieldOfSpecialization: intern.field_of_spec_name,
         team: intern.team || 'Unassigned',
-        trainingStartDate: intern.trainingStartDate,
-        trainingEndDate: intern.trainingEndDate,
+        trainingStartDate: intern.Training_StartDate,
+        trainingEndDate: intern.Training_EndDate,
         totalRecords: internRecords.length,
         lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
         daysSinceLastSubmission,
@@ -552,7 +548,7 @@ const getPreviousDaySubmissions = async (req, res) => {
         $lte: endOfYesterday
       }
     })
-    .populate('internId', 'traineeName traineeId email fieldOfSpecialization')
+  .populate('internId')
     .sort({ createdAt: -1 });
 
     // Group by intern to get unique submissions
@@ -564,10 +560,10 @@ const getPreviousDaySubmissions = async (req, res) => {
         if (!internSubmissions.has(internId)) {
           internSubmissions.set(internId, {
             _id: record.internId._id,
-            traineeName: record.internId.traineeName,
-            traineeId: record.internId.traineeId,
-            email: record.internId.email,
-            fieldOfSpecialization: record.internId.fieldOfSpecialization,
+            traineeId: record.internId.Trainee_ID,
+            traineeName: record.internId.Trainee_Name,
+            email: record.internId.Trainee_Email,
+            fieldOfSpecialization: record.internId.field_of_spec_name,
             lastSubmission: record.createdAt,
             totalRecords: 1,
             isOverdue: false,
@@ -689,14 +685,14 @@ const getWeeklyNonSubmissions = async (req, res) => {
 
       return {
         _id: intern._id,
-        traineeName: intern.traineeName,
-        traineeId: intern.traineeId,
-        email: intern.email,
-        fieldOfSpecialization: intern.fieldOfSpecialization,
-        institute: intern.institute || "Not Specified",
+        traineeId: intern.Trainee_ID,
+        traineeName: intern.Trainee_Name,
+        email: intern.Trainee_Email,
+        fieldOfSpecialization: intern.field_of_spec_name,
+        institute: intern.Institute || "Not Specified",
         team: intern.team || "Unassigned",
-        trainingStartDate: intern.trainingStartDate,
-        trainingEndDate: intern.trainingEndDate,
+        trainingStartDate: intern.Training_StartDate,
+        trainingEndDate: intern.Training_EndDate,
         weeklySubmissions: 0,
         workingDaysThisWeek: workingDaysUpToToday,
         missedDays: workingDaysUpToToday,
