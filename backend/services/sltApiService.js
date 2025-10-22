@@ -137,8 +137,8 @@ class SLTApiService {
         internRepository.getAllInterns()
       ]);
 
-      const apiTraineeIds = new Set(apiTrainees.map(t => t.Trainee_ID?.toString()).filter(Boolean));
-      const dbTraineeIds = new Set(dbInterns.map(i => i.traineeId?.toString()).filter(Boolean));
+  const apiTraineeIds = new Set(apiTrainees.map(t => t.Trainee_ID?.toString()).filter(Boolean));
+  const dbTraineeIds = new Set(dbInterns.map(i => (i.Trainee_ID || i.traineeId)?.toString()).filter(Boolean));
 
       const inApiNotInDb = [...apiTraineeIds].filter(id => !dbTraineeIds.has(id));
       const inDbNotInApi = [...dbTraineeIds].filter(id => !apiTraineeIds.has(id));

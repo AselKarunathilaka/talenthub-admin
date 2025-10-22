@@ -1,9 +1,31 @@
 const Intern = require("../models/Intern");
 
+// Normalize incoming data (camelCase from services) to API-style keys stored in DB
+function normalizeToApiFields(data = {}) {
+  const normalized = {};
+
+  // Canonical API-style fields
+  if (data.Trainee_ID || data.traineeId) normalized.Trainee_ID = (data.Trainee_ID || data.traineeId)?.toString();
+  if (data.Trainee_Name || data.traineeName) normalized.Trainee_Name = data.Trainee_Name || data.traineeName;
+  if (data.Trainee_HomeAddress || data.homeAddress) normalized.Trainee_HomeAddress = data.Trainee_HomeAddress || data.homeAddress;
+  if (data.Training_StartDate || data.trainingStartDate) normalized.Training_StartDate = data.Training_StartDate || data.trainingStartDate;
+  if (data.Training_EndDate || data.trainingEndDate) normalized.Training_EndDate = data.Training_EndDate || data.trainingEndDate;
+  if (data.Trainee_Email || data.email) normalized.Trainee_Email = (data.Trainee_Email || data.email || '').toString().trim();
+  if (data.Institute || data.institute) normalized.Institute = data.Institute || data.institute;
+  if (data.field_of_spec_name || data.fieldOfSpecialization) normalized.field_of_spec_name = data.field_of_spec_name || data.fieldOfSpecialization;
+
+  // App-specific fields (keep as-is)
+  if (data.team !== undefined) normalized.team = data.team;
+  if (data.attendance !== undefined) normalized.attendance = data.attendance;
+  if (data.availableDays !== undefined) normalized.availableDays = data.availableDays;
+
+  return normalized;
+}
+
 class InternRepository {
 
   static async addIntern(data) {
-    const intern = new Intern(data);
+    const intern = new Intern(normalizeToApiFields(data));
     return await intern.save();
   }
 
@@ -112,7 +134,8 @@ class InternRepository {
   }
 
   static async updateIntern(internId, data) {
-    return await Intern.findByIdAndUpdate(internId, data, { new: true });
+    const normalized = normalizeToApiFields(data);
+    return await Intern.findByIdAndUpdate(internId, { $set: normalized }, { new: true });
   }
 
   static async getAllTeams() {
@@ -261,7 +284,8 @@ class InternRepository {
   }
 
   static async findByTraineeId(traineeId) {
-    return await Intern.findOne({ traineeId: traineeId });
+    // DB is canonical with Trainee_ID
+    return await Intern.findOne({ Trainee_ID: traineeId?.toString() });
   }
   
 }

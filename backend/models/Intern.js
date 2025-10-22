@@ -32,4 +32,7 @@ const internSchema = new mongoose.Schema({
 
 // Schema migration completed - now uses API-style fields as canonical
 
+// Note: Unique index on Trainee_ID is declared via the field definition above.
+// If a legacy unique index on `traineeId` exists in the database, run scripts/fixInternIndexes.js to drop it.
+
 module.exports = mongoose.model('Intern', internSchema);
