@@ -452,7 +452,7 @@ const getAllDailyRecords = async (req, res) => {
     const records = await DailyRecord.find({})
       .populate({
         path: 'internId',
-        select: 'traineeName traineeId email fieldOfSpecialization institute team',
+        select: 'Trainee_Name Trainee_ID Trainee_Email field_of_spec_name Institute team',
         model: 'Intern'
       })
       .sort({ createdAt: -1 })
@@ -476,12 +476,12 @@ const getAllDailyRecords = async (req, res) => {
         status: record.status || 'working',
         hoursWorked: record.hoursWorked || 0,
         internId: record.internId?._id || record.internId,
-        traineeName: record.internId?.traineeName || 'Unknown Intern',
-        traineeId: record.internId?.traineeId || 'Unknown ID',
-        email: record.internId?.email || 'No email',
-        fieldOfSpecialization: record.internId?.fieldOfSpecialization || 'Not specified',
-        institute: record.internId?.institute || 'Not specified',
-        team: record.internId?.team || 'Not specified'
+        Trainee_Name: record.internId?.Trainee_Name || 'N/A',
+        Trainee_ID: record.internId?.Trainee_ID || 'N/A',
+        Trainee_Email: record.internId?.Trainee_Email || 'N/A',
+        field_of_spec_name: record.internId?.field_of_spec_name || 'N/A',
+        Institute: record.internId?.Institute || 'N/A',
+        team: record.internId?.team || 'N/A'
       };
     });
 

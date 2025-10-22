@@ -66,7 +66,7 @@ const createDailyRecord = async (req, res) => {
       await existingRecord.save();
 
       // Populate the intern details
-      await existingRecord.populate('internId', 'traineeName traineeId email');
+  await existingRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
 
       return res.status(200).json(existingRecord);
     } else {
@@ -84,7 +84,7 @@ const createDailyRecord = async (req, res) => {
       await newRecord.save();
 
       // Populate the intern details
-      await newRecord.populate('internId', 'traineeName traineeId email');
+  await newRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
 
       return res.status(201).json(newRecord);
     }

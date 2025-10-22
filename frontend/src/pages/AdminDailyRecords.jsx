@@ -64,8 +64,8 @@ const AdminDailyRecords = () => {
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
       filtered = filtered.filter(record => 
-        record.traineeName?.toLowerCase().includes(searchLower) ||
-        record.traineeId?.toLowerCase().includes(searchLower)
+        record.Trainee_Name?.toLowerCase().includes(searchLower) ||
+        record.Trainee_ID?.toLowerCase().includes(searchLower)
       );
     }
 
@@ -88,12 +88,12 @@ const AdminDailyRecords = () => {
           bValue = new Date(b.date);
           break;
         case 'name':
-          aValue = a.traineeName || '';
-          bValue = b.traineeName || '';
+          aValue = a.Trainee_Name || '';
+          bValue = b.Trainee_Name || '';
           break;
         case 'traineeId':
-          aValue = a.traineeId || '';
-          bValue = b.traineeId || '';
+          aValue = a.Trainee_ID || '';
+          bValue = b.Trainee_ID || '';
           break;
         default:
           return 0;
@@ -123,8 +123,8 @@ const AdminDailyRecords = () => {
       // Format data for CSV export
       const csvData = filteredRecords.map(record => ({
         'Date': new Date(record.date).toLocaleDateString(),
-        'Trainee Name': record.traineeName || 'N/A',
-        'Trainee ID': record.traineeId || 'N/A',
+        'Trainee Name': record.Trainee_Name || 'N/A',
+        'Trainee ID': record.Trainee_ID || 'N/A',
         'Created At': new Date(record.createdAt).toLocaleString()
       }));
 
@@ -422,7 +422,7 @@ const AdminDailyRecords = () => {
                   <div>
                     <p className="text-xs md:text-sm text-gray-500 mb-1">Unique Interns</p>
                     <p className="text-xl md:text-2xl font-bold text-purple-600">
-                      {new Set(dailyRecords.map(r => r.traineeId)).size}
+                      {new Set(dailyRecords.map(r => r.Trainee_ID)).size}
                     </p>
                   </div>
                   <FaUser className="text-xl md:text-2xl text-purple-500" />
@@ -579,10 +579,10 @@ const AdminDailyRecords = () => {
                               </div>
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
-                                  {record.traineeName || 'N/A'}
+                                  {record.Trainee_Name || 'N/A'}
                                 </div>
                                 <div className="text-xs text-gray-600">
-                                  ID: {record.traineeId || 'N/A'}
+                                  ID: {record.Trainee_ID || 'N/A'}
                                 </div>
                               </div>
                             </div>
@@ -663,10 +663,10 @@ const AdminDailyRecords = () => {
                                 </div>
                                 <div className="ml-4">
                                   <div className="text-sm font-medium text-gray-900">
-                                    {record.traineeName || 'N/A'}
+                                    {record.Trainee_Name || 'N/A'}
                                   </div>
                                   <div className="text-sm text-gray-500">
-                                    ID: {record.traineeId || 'N/A'}
+                                    ID: {record.Trainee_ID || 'N/A'}
                                   </div>
                                 </div>
                               </div>
