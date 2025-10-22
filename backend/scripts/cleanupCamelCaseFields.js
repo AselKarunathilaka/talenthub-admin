@@ -2,9 +2,9 @@
   Find and optionally remove camelCase fields from Intern documents.
   Dry-run by default. Use --apply to perform removal.
 
-  Fields removed:
+  Fields removed (legacy camelCase only, excluding 'team'):
     traineeId, traineeName, homeAddress, trainingStartDate, trainingEndDate,
-    email, institute, fieldOfSpecialization, fieldOfSpecialization
+    email, institute, fieldOfSpecialization
 
   Usage:
     node cleanupCamelCaseFields.js          # dry-run
@@ -30,7 +30,7 @@ async function main() {
 
   const camelFields = [
     'traineeId','traineeName','homeAddress','trainingStartDate','trainingEndDate',
-    'email','institute','fieldOfSpecialization','team'
+    'email','institute','fieldOfSpecialization'
   ];
 
   // find documents that have any of these fields
@@ -52,8 +52,9 @@ async function main() {
   const unsetObj = {};
   camelFields.forEach(f => unsetObj[f] = "");
 
-  const result = await Intern.updateMany(query, { $unset: unsetObj });
-  console.log(`Applied: matched ${result.matchedCount}, modified ${result.modifiedCount}`);
+  // Use raw collection to bypass Mongoose strict mode and ensure $unset on non-schema fields
+  const result = await Intern.collection.updateMany(query, { $unset: unsetObj });
+  console.log(`Applied: matched ${result.matchedCount ?? result.matched}, modified ${result.modifiedCount ?? result.modifiedCount}`);
 
   await mongoose.disconnect();
   process.exit(0);

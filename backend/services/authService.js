@@ -68,7 +68,7 @@ class AuthService {
     }
   
     const token = jwt.sign(
-      { id: intern._id, email: intern.email },
+      { id: intern._id, email: intern.Trainee_Email },
       dotenv.jwtSecret,
       { expiresIn: "1h" }
     );

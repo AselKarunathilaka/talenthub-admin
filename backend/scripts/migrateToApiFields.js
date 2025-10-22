@@ -40,26 +40,28 @@ async function main() {
     count++;
     const updates = {};
     const unset = {};
+    const docObj = doc.toObject({ minimize: false });
+    const hasOwn = (k) => Object.prototype.hasOwnProperty.call(docObj, k);
 
     // prefer existing API fields; if missing, copy from camelCase
-    if (!doc.Trainee_ID && doc.traineeId) updates.Trainee_ID = doc.traineeId;
-    if (!doc.Trainee_Name && doc.traineeName) updates.Trainee_Name = doc.traineeName;
-    if (!doc.Trainee_HomeAddress && doc.homeAddress) updates.Trainee_HomeAddress = doc.homeAddress;
-    if (!doc.Training_StartDate && doc.trainingStartDate) updates.Training_StartDate = doc.trainingStartDate;
-    if (!doc.Training_EndDate && doc.trainingEndDate) updates.Training_EndDate = doc.trainingEndDate;
-    if (!doc.Trainee_Email && doc.email) updates.Trainee_Email = doc.email;
-    if (!doc.Institute && doc.institute) updates.Institute = doc.institute;
-    if (!doc.field_of_spec_name && doc.fieldOfSpecialization) updates.field_of_spec_name = doc.fieldOfSpecialization;
+  if (!doc.Trainee_ID && hasOwn('traineeId')) updates.Trainee_ID = docObj.traineeId;
+  if (!doc.Trainee_Name && hasOwn('traineeName')) updates.Trainee_Name = docObj.traineeName;
+  if (!doc.Trainee_HomeAddress && hasOwn('homeAddress')) updates.Trainee_HomeAddress = docObj.homeAddress;
+  if (!doc.Training_StartDate && hasOwn('trainingStartDate')) updates.Training_StartDate = docObj.trainingStartDate;
+  if (!doc.Training_EndDate && hasOwn('trainingEndDate')) updates.Training_EndDate = docObj.trainingEndDate;
+  if (!doc.Trainee_Email && hasOwn('email')) updates.Trainee_Email = docObj.email;
+  if (!doc.Institute && hasOwn('institute')) updates.Institute = docObj.institute;
+  if (!doc.field_of_spec_name && hasOwn('fieldOfSpecialization')) updates.field_of_spec_name = docObj.fieldOfSpecialization;
 
     // If camelCase exists, schedule it to be removed after migration
-    if (doc.traineeId) unset.traineeId = "";
-    if (doc.traineeName) unset.traineeName = "";
-    if (doc.homeAddress) unset.homeAddress = "";
-    if (doc.trainingStartDate) unset.trainingStartDate = "";
-    if (doc.trainingEndDate) unset.trainingEndDate = "";
-    if (doc.email) unset.email = "";
-    if (doc.institute) unset.institute = "";
-    if (doc.fieldOfSpecialization) unset.fieldOfSpecialization = "";
+  if (hasOwn('traineeId')) unset.traineeId = "";
+  if (hasOwn('traineeName')) unset.traineeName = "";
+  if (hasOwn('homeAddress')) unset.homeAddress = "";
+  if (hasOwn('trainingStartDate')) unset.trainingStartDate = "";
+  if (hasOwn('trainingEndDate')) unset.trainingEndDate = "";
+  if (hasOwn('email')) unset.email = "";
+  if (hasOwn('institute')) unset.institute = "";
+  if (hasOwn('fieldOfSpecialization')) unset.fieldOfSpecialization = "";
 
     if (Object.keys(updates).length === 0 && Object.keys(unset).length === 0) continue;
 

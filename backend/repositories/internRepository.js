@@ -38,7 +38,10 @@ class InternRepository {
     return await Intern.findById(internId);
   }
   static async findByEmail(email) {
-    return await Intern.findOne({ email: email.toLowerCase() });
+    if (!email) return null;
+    // DB stores email under Trainee_Email (canonical). Use case-insensitive match to be robust.
+    const escaped = String(email).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return await Intern.findOne({ Trainee_Email: { $regex: `^${escaped}$`, $options: 'i' } });
   }
 
 
