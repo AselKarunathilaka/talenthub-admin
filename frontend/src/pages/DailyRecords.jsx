@@ -608,49 +608,52 @@ const DailyRecords = () => {
                               <span className="text-gray-600 font-medium">Trainee ID:</span>
                               <span className="font-mono bg-white/30 px-2 md:px-4 py-1 md:py-2 rounded-lg text-gray-800 font-semibold backdrop-blur-sm text-xs md:text-sm">
                                 {(() => {
-                                  console.log('=== TRAINEE ID DEBUG ===');
-                                  console.log('isAdmin:', isAdmin);
-                                  console.log('Full record object:', record);
-                                  console.log('record.internId object:', record.internId);
-                                  
+                                  // Prefer canonical field, fallback to legacy
                                   if (isAdmin && record.internId) {
-                                    console.log('ADMIN VIEW - Available fields in record.internId:', Object.keys(record.internId));
-                                    console.log('traineeId:', record.internId.traineeId);
-                                    console.log('traineeName:', record.internId.traineeName);
-                                    console.log('email:', record.internId.email);
-                                    
-                                    // Try different possible field names
-                                    const traineeId = record.internId.traineeId || 
-                                                     record.internId.username || 
-                                                     record.internId._id || 
-                                                     'No ID Available';
-                                    console.log('Final traineeId for admin:', traineeId);
-                                    return traineeId;
-                                  } else if (!isAdmin) {
-                                    console.log('STUDENT VIEW - studentInfo object:', studentInfo);
-                                    console.log('Available fields in studentInfo:', Object.keys(studentInfo));
-                                    console.log('studentInfo.traineeId:', studentInfo.traineeId);
-                                    console.log('studentInfo.username:', studentInfo.username);
-                                    
-                                    // For student view, get traineeId from their own record if available
-                                    if (record.internId) {
-                                      const traineeId = record.internId.traineeId || 
-                                                       record.internId.username || 
-                                                       studentInfo.traineeId || 
-                                                       studentInfo.username || 
-                                                       'No ID Available';
-                                      console.log('Final traineeId for student (from record):', traineeId);
-                                      return traineeId;
-                                    } else {
-                                      const traineeId = studentInfo.traineeId || 
-                                                       studentInfo.username || 
-                                                       'No ID Available';
-                                      console.log('Final traineeId for student (from localStorage):', traineeId);
-                                      return traineeId;
+                                    if (record.internId.Trainee_ID) {
+                                      return record.internId.Trainee_ID;
                                     }
+                                    if (record.internId.traineeId) {
+                                      return record.internId.traineeId;
+                                    }
+                                    if (record.internId.username) {
+                                      return record.internId.username;
+                                    }
+                                    if (record.internId._id) {
+                                      return record.internId._id;
+                                    }
+                                    return 'No ID Available';
+                                  } else if (!isAdmin) {
+                                    // For student view, check record and studentInfo
+                                    if (record.internId) {
+                                      if (record.internId.Trainee_ID) {
+                                        return record.internId.Trainee_ID;
+                                      }
+                                      if (record.internId.traineeId) {
+                                        return record.internId.traineeId;
+                                      }
+                                      if (record.internId.username) {
+                                        return record.internId.username;
+                                      }
+                                    }
+                                    if (record.Trainee_ID) {
+                                      return record.Trainee_ID;
+                                    }
+                                    if (record.traineeId) {
+                                      return record.traineeId;
+                                    }
+                                    if (studentInfo && studentInfo.Trainee_ID) {
+                                      return studentInfo.Trainee_ID;
+                                    }
+                                    if (studentInfo && studentInfo.traineeId) {
+                                      return studentInfo.traineeId;
+                                    }
+                                    if (studentInfo && studentInfo.username) {
+                                      return studentInfo.username;
+                                    }
+                                    return 'No ID Available';
                                   } else {
-                                    console.log('No data available for trainee ID');
-                                    return 'No Data';
+                                    return 'No ID Available';
                                   }
                                 })()}
                               </span>

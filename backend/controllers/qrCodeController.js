@@ -54,7 +54,7 @@ const markAttendance = async (req, res) => {
 
 
 const scanQRCode = async (req, res) => {
-  const { qrCode, internId, scanType = 'daily' } = req.body;
+  const { qrCode, internId, scanType = 'daily', lat, lng } = req.body;
 
   try {
     // Validate QR code format based on scan type
@@ -63,21 +63,43 @@ const scanQRCode = async (req, res) => {
       if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
         return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
       }
+      // Location validation for SLT premises
+      const SLT_LAT = 6.9271;
+      const SLT_LNG = 79.8612;
+      const MAX_DISTANCE_METERS = 2000;
+      function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+        function deg2rad(deg) { return deg * (Math.PI/180); }
+        const R = 6371000; // Radius of the earth in meters
+        const dLat = deg2rad(lat2-lat1);
+        const dLon = deg2rad(lon2-lon1);
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+          Math.sin(dLon/2) * Math.sin(dLon/2)
+          ;
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const d = R * c; // Distance in meters
+        return d;
+      }
+      if (!lat || !lng) {
+        return res.status(400).json({ message: "Location data is required to mark attendance." });
+      }
+      const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
+      if (distance > MAX_DISTANCE_METERS) {
+        return res.status(403).json({ message: `Attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
+      }
     }
-    
     const isValid = await qrCodeService.verifyQRCode(qrCode);
     if (!isValid) {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-  // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
-  // DO NOT create a new logbook entry or set its task from QR scans.
+    // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
+    // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId, qrCode);
-      
       // Get intern info for email notification
       const intern = await InternService.getInternById(internId);
-      
       // Send email notification for daily attendance
       if (intern && intern.email) {
         const moment = require("moment-timezone");
@@ -106,7 +128,6 @@ const scanQRCode = async (req, res) => {
         `;
         sendEmail(intern.email, emailSubject, emailBody);
       }
-      
       res.status(200).json({ 
         message: "Daily attendance marked successfully and email sent!",
         dailyAttendanceUpdated: true
@@ -115,7 +136,6 @@ const scanQRCode = async (req, res) => {
       // For meeting/general attendance scans, use the old system (intern.attendance)
       const status = "Present";
       const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
-      
       res.status(200).json({ 
         message: "Attendance marked successfully and email sent!",
         dailyAttendanceUpdated: false

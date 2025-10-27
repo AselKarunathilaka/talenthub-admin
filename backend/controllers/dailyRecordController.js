@@ -159,7 +159,7 @@ const getDailyRecords = async (req, res) => {
     }
 
     const records = await DailyRecord.find(query)
-      .populate('internId', 'traineeName traineeId email')
+      .populate('internId', 'Trainee_Name Trainee_ID Trainee_Email')
       .sort({ createdAt: -1 });
 
     res.status(200).json(records);

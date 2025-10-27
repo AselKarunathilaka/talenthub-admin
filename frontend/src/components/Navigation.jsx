@@ -19,19 +19,20 @@ const Navigation = () => {
   
   useEffect(() => {
     if (!traineeId) return;
-  
+
     const fetchTraineeData = async () => {
       try {
         const res = await axios.get(`${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${traineeId}`);
         if (res.data) {
-          setInternEmail(res.data.email || "");
-          setInternName(res.data.traineeName || "");
+          // Prefer canonical field Trainee_Name, fallback to traineeName
+          setInternEmail(res.data.Trainee_Email || res.data.email || "");
+          setInternName(res.data.Trainee_Name || res.data.traineeName || "");
         }
       } catch (error) {
         console.error("Error fetching trainee data:", error);
       }
     };
-  
+
     fetchTraineeData();
   }, [traineeId]);
 
@@ -128,10 +129,16 @@ const Navigation = () => {
           </div>
 
           {/* Show user initials on mobile top bar */}
-          {internName && (
+          {internName ? (
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
                 {internName.split(' ').map(n => n[0]).join('')}
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center">
+              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
+                U
               </div>
             </div>
           )}
@@ -227,7 +234,7 @@ const Navigation = () => {
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-blue-100/70">Welcome,</span>
-                <span className="text-sm font-medium text-white">{internName || "User"}</span>
+                <span className="text-sm font-medium text-white">{internName ? internName : "User"}</span>
                 {internEmail && (
                   <span className="text-xs text-gray-400/80 truncate max-w-[160px]">{internEmail}</span>
                 )}

@@ -58,6 +58,7 @@ const ScanQRCode = () => {
   const [scanSuccess, setScanSuccess] = useState(false);
   const [hasCameraAccess, setHasCameraAccess] = useState(true);
   const [scanMode, setScanMode] = useState('daily'); // 'daily' or 'meeting'
+  const [location, setLocation] = useState({ lat: null, lng: null });
   const [meetingTitle, setMeetingTitle] = useState('');
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
@@ -89,8 +90,6 @@ const ScanQRCode = () => {
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
 
-
-
         // Validate QR code format before processing
         if (!validateQRCodeFormat(qrData, scanMode, meetingTitle)) {
           const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
@@ -98,34 +97,58 @@ const ScanQRCode = () => {
           return;
         }
 
-        setScanSuccess(true);
-        setTimeout(() => setScanSuccess(false), 1500);
-
-        try {
-          let res;
-          if (scanMode === 'daily') {
-            res = await api.post('/qrcode/scan', { 
-              qrCode: qrData, 
-              internId, 
-              scanType: 'daily' 
-            });
+        // Get geolocation for daily attendance
+        let lat = null, lng = null;
+        if (scanMode === 'daily') {
+          if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+              async (position) => {
+                lat = position.coords.latitude;
+                lng = position.coords.longitude;
+                setLocation({ lat, lng });
+                setScanSuccess(true);
+                setTimeout(() => setScanSuccess(false), 1500);
+                try {
+                  const res = await api.post('/qrcode/scan', {
+                    qrCode: qrData,
+                    internId,
+                    scanType: 'daily',
+                    lat,
+                    lng
+                  });
+                  toast.success(res.message || 'Daily attendance marked successfully!');
+                  setIsScanning(false);
+                } catch (err) {
+                  console.error("Failed to mark attendance:", err);
+                  toast.error(err.response?.data?.message || "Failed to mark attendance");
+                }
+              },
+              (geoError) => {
+                toast.error("Location access denied. Please enable location to mark attendance.");
+              }
+            );
           } else {
+            toast.error("Geolocation not supported by your browser.");
+          }
+        } else {
+          setScanSuccess(true);
+          setTimeout(() => setScanSuccess(false), 1500);
+          try {
             if (!meetingTitle.trim()) {
               toast.error("Please enter a meeting title first");
               return;
             }
-            res = await api.post('/qrcode/scan-meeting', { 
-              qrCode: qrData, 
-              internId, 
+            const res = await api.post('/qrcode/scan-meeting', {
+              qrCode: qrData,
+              internId,
               meetingTitle: meetingTitle.trim()
             });
+            toast.success(res.message || 'Meeting attendance marked successfully!');
+            setIsScanning(false);
+          } catch (err) {
+            console.error("Failed to mark attendance:", err);
+            toast.error(err.response?.data?.message || "Failed to mark attendance");
           }
-          
-          toast.success(res.message || `${scanMode === 'daily' ? 'Daily' : 'Meeting'} attendance marked successfully!`);
-          setIsScanning(false);
-        } catch (err) {
-          console.error("Failed to mark attendance:", err);
-          toast.error(err.response?.data?.message || "Failed to mark attendance");
         }
       }
 
