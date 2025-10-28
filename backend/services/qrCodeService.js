@@ -279,11 +279,21 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   // Update DailyRecord ONLY if it already exists for today.
   // Do NOT create a new logbook entry from QR scans; interns must fill it themselves.
   const dailyRecord = await DailyRecord.findOne({ internId, date: today });
-  if (dailyRecord) {
-    dailyRecord.attendance = "present";
-    dailyRecord.attendanceTime = attendanceTime;
-    await dailyRecord.save();
-  }
+
+    // Robust duplicate QR scan check using DailyRecord
+    if (dailyRecord && dailyRecord.attendance === "present" && dailyRecord.attendanceTime) {
+      const lastTime = moment.tz(dailyRecord.attendanceTime, "Asia/Colombo");
+      const diffSeconds = moment(attendanceTime).diff(lastTime, 'seconds');
+      if (diffSeconds < 60) {
+        throw new Error("Duplicate QR scan detected. Please wait before scanning again.");
+      }
+    }
+
+    if (dailyRecord) {
+      dailyRecord.attendance = "present";
+      dailyRecord.attendanceTime = attendanceTime;
+      await dailyRecord.save();
+    }
 
     // Prevent duplicate QR scans within 1 minute
     const lastAttendance = intern.attendance
