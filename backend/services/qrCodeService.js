@@ -168,17 +168,6 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   if (!intern) throw new Error("Intern not found");
   
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-
-    // Check if daily attendance is marked for today
-    const moment = require('moment-timezone');
-    const todaySriLanka = moment.tz('Asia/Colombo').startOf('day');
-    const hasDailyAttendance = intern.attendance.some(a => {
-      const attendanceDate = moment.tz(a.date, 'Asia/Colombo').startOf('day');
-      return attendanceDate.isSame(todaySriLanka, 'day') && (a.type === 'daily' || a.type === 'daily_qr' || !a.type) && a.status === 'Present';
-    });
-    if (!hasDailyAttendance) {
-      throw new Error('Daily attendance not marked. Please scan daily QR before meeting QR.');
-    }
   
   // Only update an existing DailyRecord; do NOT create a new one via meeting QR scan
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
