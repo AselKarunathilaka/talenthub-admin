@@ -296,16 +296,24 @@ const AdminDashboard = () => {
 
   const handleExportWeeklyNonSubmissionsCSV = async () => {
     try {
-      // Get weekly non-submissions
-      const weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
-      
+      // Determine if today is Tuesday
+      const today = new Date();
+      const isTuesday = today.getDay() === 2; // 0=Sunday, 1=Monday, 2=Tuesday
+
+      // Get weekly non-submissions, previous week if Tuesday
+      let weeklyNonSubmissionsData;
+      if (isTuesday) {
+        weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions('previous');
+      } else {
+        weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
+      }
+
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
-        notificationUtils.showInfo('All interns have submitted records this week (Monday to Friday).');
+        notificationUtils.showInfo('All interns have submitted records for the selected week.');
         return;
       }
 
       // Format the date for filename
-      const today = new Date();
       const weekStr = today.toISOString().split('T')[0];
 
       await csvUtils.downloadInternReport(weeklyNonSubmissionsData, `weekly_non_submissions_${weekStr}`);

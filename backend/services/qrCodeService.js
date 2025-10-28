@@ -176,7 +176,18 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
     const existingMeeting = dailyRecord.meetingAttendance.find(
       meeting => meeting.meetingTitle === meetingTitle
     );
-    
+
+    // Duplicate scan check: block if already present within 1 minute
+    if (existingMeeting && existingMeeting.attendanceStatus === "present" && existingMeeting.attendanceTime) {
+      const moment = require('moment-timezone');
+      const now = moment.tz('Asia/Colombo');
+      const lastTime = moment.tz(existingMeeting.attendanceTime, 'Asia/Colombo');
+      const diffSeconds = now.diff(lastTime, 'seconds');
+      if (diffSeconds < 60) {
+        throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
+      }
+    }
+
     if (existingMeeting) {
       existingMeeting.attendanceStatus = "present";
       existingMeeting.attendanceTime = new Date();

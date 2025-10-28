@@ -214,17 +214,19 @@ export const adminApi = {
   },
 
   // Get weekly non-submissions (Monday to Friday of current week)
-  getWeeklyNonSubmissions: async () => {
+  getWeeklyNonSubmissions: async (weekType = null) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/weekly-non-submissions`, {
+      let url = `${API_BASE_URL}/admin/weekly-non-submissions`;
+      if (weekType) {
+        url += `?week=${weekType}`;
+      }
+      const response = await fetch(url, {
         method: 'GET',
         headers: getHeaders()
       });
-
       if (!response.ok) {
         throw new Error(`Failed to fetch weekly non-submissions: ${response.status}`);
       }
-
       return await response.json();
     } catch (error) {
       console.error('Error fetching weekly non-submissions:', error);
