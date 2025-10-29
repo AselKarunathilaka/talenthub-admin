@@ -168,9 +168,9 @@ const scanMeetingQRCode = async (req, res) => {
     if (qrPayload.meetingTitle !== meetingTitle) {
       return res.status(400).json({ message: `Meeting title mismatch. QR code is for '${qrPayload.meetingTitle}', but you entered '${meetingTitle}'.` });
     }
-    // Optionally, check expiry (10 min)
+    // Optionally, check expiry (1 hour)
     const now = Date.now();
-    if (qrPayload.timestamp && now - qrPayload.timestamp > 10 * 60 * 1000) {
+    if (qrPayload.timestamp && now - qrPayload.timestamp > 60 * 60 * 1000) {
       return res.status(400).json({ message: "QR code is expired." });
     }
     // Mark meeting attendance in TalentHub system

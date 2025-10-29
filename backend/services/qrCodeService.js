@@ -172,33 +172,46 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   // Only update an existing DailyRecord; do NOT create a new one via meeting QR scan
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
   if (dailyRecord) {
-    // Check if meeting attendance already exists
-    const existingMeeting = dailyRecord.meetingAttendance.find(
-      meeting => meeting.meetingTitle === meetingTitle
-    );
-
-    // Duplicate scan check: block if already present within 1 minute
-    if (existingMeeting && existingMeeting.attendanceStatus === "present" && existingMeeting.attendanceTime) {
-      const moment = require('moment-timezone');
-      const now = moment.tz('Asia/Colombo');
-      const lastTime = moment.tz(existingMeeting.attendanceTime, 'Asia/Colombo');
-      const diffSeconds = now.diff(lastTime, 'seconds');
-      if (diffSeconds < 60) {
-        throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
+    // Atomic duplicate check: query for any present record for this meeting within 1 minute
+    const moment = require('moment-timezone');
+    const now = moment.tz('Asia/Colombo');
+    const duplicate = dailyRecord.meetingAttendance.find(meeting => {
+      if (meeting.meetingTitle === meetingTitle && meeting.attendanceStatus === 'present' && meeting.attendanceTime) {
+        const lastTime = moment.tz(meeting.attendanceTime, 'Asia/Colombo');
+        const diffSeconds = now.diff(lastTime, 'seconds');
+        return diffSeconds < 60;
       }
+      return false;
+    });
+    if (duplicate) {
+      throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
     }
 
-    if (existingMeeting) {
-      existingMeeting.attendanceStatus = "present";
-      existingMeeting.attendanceTime = new Date();
-    } else {
-      dailyRecord.meetingAttendance.push({
-        meetingTitle,
-        attendanceStatus: "present",
-        attendanceTime: new Date()
-      });
-    }
-    await dailyRecord.save();
+    // Use atomic update to avoid race conditions
+    await DailyRecord.updateOne(
+      { _id: dailyRecord._id, 'meetingAttendance.meetingTitle': meetingTitle },
+      {
+        $set: {
+          'meetingAttendance.$.attendanceStatus': 'present',
+          'meetingAttendance.$.attendanceTime': new Date()
+        }
+      }
+    );
+    // If not found, push new meeting attendance
+    await DailyRecord.updateOne(
+      { _id: dailyRecord._id, 'meetingAttendance.meetingTitle': { $ne: meetingTitle } },
+      {
+        $push: {
+          meetingAttendance: {
+            meetingTitle,
+            attendanceStatus: 'present',
+            attendanceTime: new Date()
+          }
+        }
+      }
+    );
+    // Reload dailyRecord for downstream logic if needed
+    dailyRecord = await DailyRecord.findById(dailyRecord._id);
   } else {
     // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it
     const moment = require('moment-timezone');
