@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
+import InternshipEndNotification from "../components/InternshipEndNotification";
 import { Users, CheckCircle, XCircle, Loader2, Calendar, Clock } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
+import { calculateInternshipEndNotification } from "../utils/internshipNotification";
 import { motion } from "framer-motion"; // Import framer-motion
 
 const Dashboard = () => {
@@ -27,8 +29,39 @@ const Dashboard = () => {
   const [error, setError] = useState(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [internData, setInternData] = useState(null);
+  const [endDateNotification, setEndDateNotification] = useState(null);
   const rowsPerPage = 10;
   const navigate = useNavigate();
+
+  const loadInternData = async () => {
+    try {
+      const internId = localStorage.getItem("internId");
+
+      if (!internId) {
+        throw new Error("Authentication error: missing internId");
+      }
+
+      const response = await api.get(`/interns/${internId}`);
+
+      if (response) {
+        console.log("Intern Data Response:", response); // Debug log
+        setInternData(response);
+        
+        // Check if internship end date notification should be shown
+        if (response.Training_EndDate) {
+          const notification = calculateInternshipEndNotification(response.Training_EndDate);
+          console.log("End date notification:", notification); // Debug log
+          setEndDateNotification(notification);
+        }
+      } else {
+        throw new Error("No intern data returned from API");
+      }
+    } catch (err) {
+      console.error("Error fetching intern data:", err);
+      // Don't show error for intern data as it's not critical for attendance functionality
+    }
+  };
 
   const loadAttendanceData = async () => {
     try {
@@ -89,7 +122,10 @@ const Dashboard = () => {
 
   const loadAllData = async () => {
     setLoading(true);
-    await loadAttendanceData(); // This now includes both daily and meeting attendance
+    await Promise.all([
+      loadInternData(), // Load intern details including end date
+      loadAttendanceData() // Load attendance data
+    ]);
     setLoading(false);
   };
 
@@ -188,6 +224,12 @@ const Dashboard = () => {
 
     return (
       <>
+        {/* Internship End Date Notification */}
+        <InternshipEndNotification 
+          notification={endDateNotification}
+          onDismiss={() => setEndDateNotification(null)}
+        />
+
         {/* Daily Attendance Section */}
         <motion.div
           className="mb-8"
