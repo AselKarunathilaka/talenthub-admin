@@ -157,19 +157,23 @@ class InternService {
 
   // ==================== SLT API INTEGRATION METHODS ====================
 
-  async syncWithSLTAPI() {
+  async syncWithSLTAPI(options = {}) {
     try {
       console.log('🔄 Starting SLT API synchronization...');
+      
+      const { enableCleanup = process.env.AUTO_CLEANUP_INACTIVE_INTERNS === 'true' } = options;
       
       // Fetch active trainees from SLT API
       const activeTrainees = await SLTApiService.fetchActiveTrainees();
       
       console.log(`📥 Received ${activeTrainees.length} trainees from SLT API`);
+      console.log(`🧹 Cleanup mode: ${enableCleanup ? 'ENABLED' : 'DISABLED'}`);
       
       let addedCount = 0;
       let updatedCount = 0;
       let skippedCount = 0;
       let errorCount = 0;
+      let removedCount = 0;
 
       // Process each trainee
       for (const trainee of activeTrainees) {
@@ -268,12 +272,62 @@ class InternService {
         }
       }
 
+      // After processing all API trainees, check for interns in DB that are no longer in API
+      if (enableCleanup) {
+        console.log('🔍 Checking for interns to remove (no longer in API)...');
+        
+        try {
+          // Get all interns from database
+          const allDbInterns = await InternRepository.getAllInterns();
+          
+          // Create set of active trainee IDs from API
+          const activeTraineeIds = new Set(
+            activeTrainees
+              .map(t => t.Trainee_ID?.toString())
+              .filter(Boolean)
+          );
+          
+          // Find interns in DB that are not in API
+          const internsToRemove = allDbInterns.filter(intern => {
+            const traineeId = intern.Trainee_ID?.toString();
+            return traineeId && !activeTraineeIds.has(traineeId);
+          });
+          
+          if (internsToRemove.length > 0) {
+            console.log(`🗑️  Found ${internsToRemove.length} interns to remove (no longer in API):`);
+            internsToRemove.forEach(intern => {
+              console.log(`   - ${intern.Trainee_ID}: ${intern.Trainee_Name} (${intern.Trainee_Email || 'No email'})`);
+            });
+            
+            // Remove the interns that are no longer in API
+            for (const intern of internsToRemove) {
+              try {
+                await InternRepository.removeIntern(intern._id);
+                removedCount++;
+                console.log(`✅ Removed: ${intern.Trainee_Name} (${intern.Trainee_ID})`);
+              } catch (error) {
+                console.error(`❌ Failed to remove ${intern.Trainee_Name} (${intern.Trainee_ID}):`, error.message);
+                errorCount++;
+              }
+            }
+          } else {
+            console.log('✅ No interns need to be removed - all DB interns are still active in API');
+          }
+        } catch (error) {
+          console.error('❌ Error during cleanup phase:', error.message);
+          errorCount++;
+        }
+      } else {
+        console.log('⏭️  Cleanup phase skipped (disabled)');
+      }
+
       const result = {
         success: true,
-        message: `Sync completed: ${addedCount} added, ${updatedCount} updated, ${skippedCount} skipped, ${errorCount} errors`,
+        message: `Sync completed: ${addedCount} added, ${updatedCount} updated, ${removedCount} removed, ${skippedCount} skipped, ${errorCount} errors`,
         stats: {
           added: addedCount,
           updated: updatedCount,
+          removed: removedCount,
           skipped: skippedCount,
           errors: errorCount,
           totalProcessed: activeTrainees.length
@@ -291,6 +345,7 @@ class InternService {
         stats: {
           added: 0,
           updated: 0,
+          removed: 0,
           skipped: 0,
           errors: 1,
           totalProcessed: 0

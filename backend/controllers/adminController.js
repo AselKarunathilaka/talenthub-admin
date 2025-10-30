@@ -2,6 +2,7 @@ const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const User = require("../models/User");
 const emailSender = require("../utils/emailSender");
+const internService = require("../services/internService");
 
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
@@ -755,6 +756,47 @@ const getWeeklyNonSubmissions = async (req, res) => {
   }
 };
 
+// Manually trigger SLT API sync with optional cleanup
+const syncWithSLTAPI = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify admin user
+    const adminUser = await User.findById(userId);
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const { enableCleanup = false } = req.body;
+
+    console.log(`Admin ${adminUser.email} triggered SLT API sync with cleanup: ${enableCleanup}`);
+
+    // Perform the sync
+    const syncResult = await internService.syncWithSLTAPI(enableCleanup);
+
+    res.json({
+      success: syncResult.success,
+      message: syncResult.message,
+      data: {
+        totalProcessed: syncResult.stats.totalProcessed,
+        newInterns: syncResult.stats.added,
+        updatedInterns: syncResult.stats.updated,
+        removedInterns: syncResult.stats.removed,
+        skippedInterns: syncResult.stats.skipped,
+        errors: syncResult.stats.errors,
+        cleanupEnabled: enableCleanup
+      }
+    });
+
+  } catch (error) {
+    console.error("Error during SLT API sync:", error);
+    res.status(500).json({ 
+      error: "Failed to sync with SLT API",
+      details: error.message 
+    });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -763,5 +805,6 @@ module.exports = {
   searchInterns,
   getAllDailyRecords,
   getPreviousDaySubmissions,
-  getWeeklyNonSubmissions
+  getWeeklyNonSubmissions,
+  syncWithSLTAPI
 };

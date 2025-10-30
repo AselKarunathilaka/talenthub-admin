@@ -56,13 +56,18 @@ class SLTApiScheduler {
     console.log('🔄 Starting scheduled SLT API synchronization...');
     
     try {
-      const result = await InternService.syncWithSLTAPI();
+      // Check if cleanup is enabled via environment variable
+      const enableCleanup = process.env.AUTO_CLEANUP_INACTIVE_INTERNS === 'true';
+      
+      console.log(`🧹 Auto cleanup enabled: ${enableCleanup}`);
+      
+      const result = await InternService.syncWithSLTAPI(enableCleanup);
       
       console.log('✅ Scheduled sync completed:', result.message);
       
-      // Log sync statistics
+      // Log sync statistics including cleanup
       if (result.success && result.stats) {
-        console.log(`📊 Sync Stats: Added: ${result.stats.added}, Updated: ${result.stats.updated}, Skipped: ${result.stats.skipped}, Errors: ${result.stats.errors}`);
+        console.log(`📊 Sync Stats: Added: ${result.stats.added}, Updated: ${result.stats.updated}, Removed: ${result.stats.removed}, Skipped: ${result.stats.skipped}, Errors: ${result.stats.errors}`);
       }
       
       return result;
@@ -71,7 +76,7 @@ class SLTApiScheduler {
       return {
         success: false,
         message: `Scheduled sync failed: ${error.message}`,
-        stats: { added: 0, updated: 0, skipped: 0, errors: 1, totalProcessed: 0 }
+        stats: { added: 0, updated: 0, removed: 0, skipped: 0, errors: 1, totalProcessed: 0 }
       };
     }
   }

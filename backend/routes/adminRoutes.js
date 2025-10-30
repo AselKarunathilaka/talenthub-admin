@@ -10,7 +10,8 @@ const {
   searchInterns,
   getAllDailyRecords,
   getPreviousDaySubmissions,
-  getWeeklyNonSubmissions
+  getWeeklyNonSubmissions,
+  syncWithSLTAPI
 } = require("../controllers/adminController");
 const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
 // Export on-leave interns as Excel
@@ -42,5 +43,8 @@ router.post("/notifications/overdue", sendOverdueNotifications);
 
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);
+
+// Manually trigger SLT API sync
+router.post("/sync/slt-api", syncWithSLTAPI);
 
 module.exports = router;
