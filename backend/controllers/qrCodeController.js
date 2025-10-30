@@ -148,7 +148,32 @@ const scanQRCode = async (req, res) => {
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId, meetingTitle } = req.body;
+  const { qrCode, internId, meetingTitle, lat, lng } = req.body;
+    // Location validation for SLT premises
+    const SLT_LAT = 6.9271;
+    const SLT_LNG = 79.8612;
+    const MAX_DISTANCE_METERS = 2000;
+    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
+      function deg2rad(deg) { return deg * (Math.PI/180); }
+      const R = 6371000; // Radius of the earth in meters
+      const dLat = deg2rad(lat2-lat1);
+      const dLon = deg2rad(lon2-lon1);
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon/2) * Math.sin(dLon/2)
+        ;
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const d = R * c; // Distance in meters
+      return d;
+    }
+    if (!lat || !lng) {
+      return res.status(400).json({ message: "Location data is required to mark meeting attendance." });
+    }
+    const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
+    if (distance > MAX_DISTANCE_METERS) {
+      return res.status(403).json({ message: `Meeting attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
+    }
   try {
     if (!meetingTitle) {
       return res.status(400).json({ message: "Meeting title is required." });

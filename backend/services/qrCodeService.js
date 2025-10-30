@@ -172,45 +172,58 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   // Only update an existing DailyRecord; do NOT create a new one via meeting QR scan
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
   if (dailyRecord) {
-    // Atomic duplicate check: query for any present record for this meeting within 1 minute
+    // Atomic upsert for meeting attendance
     const moment = require('moment-timezone');
     const now = moment.tz('Asia/Colombo');
-    const duplicate = dailyRecord.meetingAttendance.find(meeting => {
-      if (meeting.meetingTitle === meetingTitle && meeting.attendanceStatus === 'present' && meeting.attendanceTime) {
-        const lastTime = moment.tz(meeting.attendanceTime, 'Asia/Colombo');
-        const diffSeconds = now.diff(lastTime, 'seconds');
-        return diffSeconds < 60;
-      }
-      return false;
-    });
-    if (duplicate) {
+    const attendanceTime = now.toDate();
+    // Try to update existing present record within 1 minute
+    const updated = await DailyRecord.findOneAndUpdate(
+      {
+        _id: dailyRecord._id,
+        meetingAttendance: {
+          $elemMatch: {
+            meetingTitle,
+            attendanceStatus: 'present',
+            attendanceTime: { $gte: moment(now).subtract(1, 'minute').toDate() }
+          }
+        }
+      },
+      {},
+      { new: true }
+    );
+    if (updated) {
       throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
     }
-
-    // Use atomic update to avoid race conditions
-    await DailyRecord.updateOne(
-      { _id: dailyRecord._id, 'meetingAttendance.meetingTitle': meetingTitle },
+    // Upsert meeting attendance
+    await DailyRecord.findOneAndUpdate(
+      {
+        _id: dailyRecord._id,
+        'meetingAttendance.meetingTitle': meetingTitle
+      },
       {
         $set: {
           'meetingAttendance.$.attendanceStatus': 'present',
-          'meetingAttendance.$.attendanceTime': new Date()
+          'meetingAttendance.$.attendanceTime': attendanceTime
         }
-      }
+      },
+      { new: true }
     );
-    // If not found, push new meeting attendance
-    await DailyRecord.updateOne(
-      { _id: dailyRecord._id, 'meetingAttendance.meetingTitle': { $ne: meetingTitle } },
+    await DailyRecord.findOneAndUpdate(
+      {
+        _id: dailyRecord._id,
+        'meetingAttendance.meetingTitle': { $ne: meetingTitle }
+      },
       {
         $push: {
           meetingAttendance: {
             meetingTitle,
             attendanceStatus: 'present',
-            attendanceTime: new Date()
+            attendanceTime
           }
         }
-      }
+      },
+      { new: true }
     );
-    // Reload dailyRecord for downstream logic if needed
     dailyRecord = await DailyRecord.findById(dailyRecord._id);
   } else {
     // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it

@@ -97,18 +97,18 @@ const ScanQRCode = () => {
           return;
         }
 
-        // Get geolocation for daily attendance
+        // Get geolocation for both daily and meeting attendance
         let lat = null, lng = null;
-        if (scanMode === 'daily') {
-          if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-              async (position) => {
-                lat = position.coords.latitude;
-                lng = position.coords.longitude;
-                setLocation({ lat, lng });
-                setScanSuccess(true);
-                setTimeout(() => setScanSuccess(false), 1500);
-                try {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              lat = position.coords.latitude;
+              lng = position.coords.longitude;
+              setLocation({ lat, lng });
+              setScanSuccess(true);
+              setTimeout(() => setScanSuccess(false), 1500);
+              try {
+                if (scanMode === 'daily') {
                   const res = await api.post('/qrcode/scan', {
                     qrCode: qrData,
                     internId,
@@ -118,37 +118,32 @@ const ScanQRCode = () => {
                   });
                   toast.success(res.message || 'Daily attendance marked successfully!');
                   setIsScanning(false);
-                } catch (err) {
-                  console.error("Failed to mark attendance:", err);
-                  toast.error(err.response?.data?.message || "Failed to mark attendance");
+                } else {
+                  if (!meetingTitle.trim()) {
+                    toast.error("Please enter a meeting title first");
+                    return;
+                  }
+                  const res = await api.post('/qrcode/scan-meeting', {
+                    qrCode: qrData,
+                    internId,
+                    meetingTitle: meetingTitle.trim(),
+                    lat,
+                    lng
+                  });
+                  toast.success(res.message || 'Meeting attendance marked successfully!');
+                  setIsScanning(false);
                 }
-              },
-              (geoError) => {
-                toast.error("Location access denied. Please enable location to mark attendance.");
+              } catch (err) {
+                console.error("Failed to mark attendance:", err);
+                toast.error(err.response?.data?.message || "Failed to mark attendance");
               }
-            );
-          } else {
-            toast.error("Geolocation not supported by your browser.");
-          }
-        } else {
-          setScanSuccess(true);
-          setTimeout(() => setScanSuccess(false), 1500);
-          try {
-            if (!meetingTitle.trim()) {
-              toast.error("Please enter a meeting title first");
-              return;
+            },
+            (geoError) => {
+              toast.error("Location access denied. Please enable location to mark attendance.");
             }
-            const res = await api.post('/qrcode/scan-meeting', {
-              qrCode: qrData,
-              internId,
-              meetingTitle: meetingTitle.trim()
-            });
-            toast.success(res.message || 'Meeting attendance marked successfully!');
-            setIsScanning(false);
-          } catch (err) {
-            console.error("Failed to mark attendance:", err);
-            toast.error(err.response?.data?.message || "Failed to mark attendance");
-          }
+          );
+        } else {
+          toast.error("Geolocation not supported by your browser.");
         }
       }
 
