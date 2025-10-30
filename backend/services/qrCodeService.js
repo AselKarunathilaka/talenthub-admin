@@ -216,6 +216,19 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
     // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it
     const moment = require('moment-timezone');
     const attendanceTime = moment.tz('Asia/Colombo').toDate();
+    // Duplicate scan check for intern.attendance array
+    const now = moment.tz('Asia/Colombo');
+    const duplicate = intern.attendance.find(a => {
+      if (a.type === 'qr' && a.status === 'Present' && a.meetingName === meetingTitle && a.date) {
+        const lastTime = moment.tz(a.timeMarked || a.date, 'Asia/Colombo');
+        const diffSeconds = now.diff(lastTime, 'seconds');
+        return diffSeconds < 60;
+      }
+      return false;
+    });
+    if (duplicate) {
+      throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
+    }
     intern.attendance.push({
       date: attendanceTime,
       status: 'Present',

@@ -595,7 +595,9 @@ const getPreviousDaySubmissions = async (req, res) => {
 const getWeeklyNonSubmissions = async (req, res) => {
   try {
     const userId = req.user.id;
-    const weekType = req.query.week;
+  const weekType = req.query.week;
+  const startDateParam = req.query.startDate;
+  const endDateParam = req.query.endDate;
 
     // Verify admin user
     const adminUser = await User.findById(userId);
@@ -603,52 +605,60 @@ const getWeeklyNonSubmissions = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    let monday, friday, sunday, weekPeriodLabel, workingDaysUpToToday;
-    const today = new Date();
-    if (weekType === 'previous') {
-      // Calculate previous week's Monday and Sunday
-      const prevWeek = new Date(today);
-      prevWeek.setDate(today.getDate() - 7);
-      const prevDayOfWeek = prevWeek.getDay();
-      const prevMonday = new Date(prevWeek);
-      const daysFromMonday = prevDayOfWeek === 0 ? 6 : prevDayOfWeek - 1;
-      prevMonday.setDate(prevWeek.getDate() - daysFromMonday);
-      prevMonday.setHours(0, 0, 0, 0);
-      const prevSunday = new Date(prevMonday);
-      prevSunday.setDate(prevMonday.getDate() + 6);
-      prevSunday.setHours(23, 59, 59, 999);
-      monday = prevMonday;
-      sunday = prevSunday;
-      weekPeriodLabel = `${monday.toDateString()} to ${sunday.toDateString()}`;
-      workingDaysUpToToday = 0;
-      // Count working days (Monday to Sunday)
-      for (let d = new Date(monday); d <= sunday; d.setDate(d.getDate() + 1)) {
+    let startDate, endDate, weekPeriodLabel, workingDaysInRange;
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(endDateParam);
+      endDate.setHours(23, 59, 59, 999);
+      weekPeriodLabel = `${startDate.toDateString()} to ${endDate.toDateString()}`;
+      // Count working days (Mon-Fri) in custom range
+      workingDaysInRange = 0;
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const dayOfWeek = d.getDay();
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          workingDaysUpToToday++;
-        }
+        if (dayOfWeek >= 1 && dayOfWeek <= 5) workingDaysInRange++;
       }
     } else {
-      // Default: current week (Monday to Friday)
-      const dayOfWeek = today.getDay();
-      const currMonday = new Date(today);
-      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      currMonday.setDate(today.getDate() - daysFromMonday);
-      currMonday.setHours(0, 0, 0, 0);
-      const currFriday = new Date(currMonday);
-      currFriday.setDate(currMonday.getDate() + 4);
-      currFriday.setHours(23, 59, 59, 999);
-      monday = currMonday;
-      friday = currFriday;
-      weekPeriodLabel = `${monday.toDateString()} to ${friday.toDateString()}`;
-      // Count working days from Monday to today (or Friday if today is after Friday)
-      const todayDate = new Date();
-      workingDaysUpToToday = 0;
-      const endDate = todayDate > friday ? friday : todayDate;
-      for (let d = new Date(monday); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const dayOfWeek = d.getDay();
-        if (dayOfWeek >= 1 && dayOfWeek <= 5) {
-          workingDaysUpToToday++;
+      // Fallback to legacy logic (weekType)
+      const today = new Date();
+      if (weekType === 'previous') {
+        const prevWeek = new Date(today);
+        prevWeek.setDate(today.getDate() - 7);
+        const prevDayOfWeek = prevWeek.getDay();
+        const prevMonday = new Date(prevWeek);
+        const daysFromMonday = prevDayOfWeek === 0 ? 6 : prevDayOfWeek - 1;
+        prevMonday.setDate(prevWeek.getDate() - daysFromMonday);
+        prevMonday.setHours(0, 0, 0, 0);
+        const prevSunday = new Date(prevMonday);
+        prevSunday.setDate(prevMonday.getDate() + 6);
+        prevSunday.setHours(23, 59, 59, 999);
+        startDate = prevMonday;
+        endDate = prevSunday;
+        weekPeriodLabel = `${startDate.toDateString()} to ${endDate.toDateString()}`;
+        workingDaysInRange = 0;
+        for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+          const dayOfWeek = d.getDay();
+          if (dayOfWeek >= 1 && dayOfWeek <= 5) workingDaysInRange++;
+        }
+      } else {
+        const dayOfWeek = today.getDay();
+        const currMonday = new Date(today);
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        currMonday.setDate(today.getDate() - daysFromMonday);
+        currMonday.setHours(0, 0, 0, 0);
+        const currFriday = new Date(currMonday);
+        currFriday.setDate(currMonday.getDate() + 4);
+        currFriday.setHours(23, 59, 59, 999);
+        startDate = currMonday;
+        endDate = currFriday;
+        weekPeriodLabel = `${startDate.toDateString()} to ${endDate.toDateString()}`;
+        // Count working days from Monday to today (or Friday if today is after Friday)
+        workingDaysInRange = 0;
+        const todayDate = new Date();
+        const rangeEnd = todayDate > endDate ? endDate : todayDate;
+        for (let d = new Date(startDate); d <= rangeEnd; d.setDate(d.getDate() + 1)) {
+          const dayOfWeek = d.getDay();
+          if (dayOfWeek >= 1 && dayOfWeek <= 5) workingDaysInRange++;
         }
       }
     }
@@ -658,32 +668,38 @@ const getWeeklyNonSubmissions = async (req, res) => {
     // Get all interns
     const allInterns = await Intern.find({});
 
-    // Filter out interns whose training has already ended before the report period end
-    const reportDate = (weekType === 'previous' ? (sunday || friday) : friday) || new Date();
-    reportDate.setHours(0, 0, 0, 0);
+    // Filter out interns whose training has already ended before the report end date
+    const reportEndDate = endDate;
+    const toDateString = d => {
+      const date = new Date(d);
+      return date.toISOString().slice(0, 10); // YYYY-MM-DD
+    };
+    const reportEndDateStr = toDateString(endDate);
+    const reportStartDateStr = toDateString(startDate);
     const activeInterns = allInterns.filter(intern => {
-      if (!intern.trainingEndDate) {
-        return true;
+      if (!intern.trainingEndDate) return true;
+      const internEndDateStr = toDateString(intern.trainingEndDate);
+      // Exclude if intern's end date is <= report end date
+      if (internEndDateStr <= reportEndDateStr) {
+        console.log(`Excluding intern ${intern.Trainee_ID} (${intern.Trainee_Name}) with end date ${internEndDateStr} <= report end date ${reportEndDateStr}`);
+        return false;
       }
-      const endDate = new Date(intern.trainingEndDate);
-      endDate.setHours(23, 59, 59, 999);
-      return endDate >= reportDate;
+      return true;
     });
 
     console.log(`Total interns: ${allInterns.length}, Active interns (training not ended): ${activeInterns.length}`);
 
-    // Get all daily records for the week
-    const weekEnd = weekType === 'previous' ? sunday : friday;
+    // Get all daily records for the custom range (single day or range)
     const weeklyRecords = await DailyRecord.find({
       createdAt: {
-        $gte: monday,
-        $lte: weekEnd
+        $gte: startDate,
+        $lte: endDate
       }
     })
     .populate('internId', 'traineeName traineeId email fieldOfSpecialization')
     .sort({ createdAt: -1 });
 
-    // Create a set of intern IDs who have submitted records this week
+    // Create a set of intern IDs who have submitted records in the range
     const submittedInternIds = new Set();
     weeklyRecords.forEach(record => {
       if (record.internId) {
@@ -691,7 +707,7 @@ const getWeeklyNonSubmissions = async (req, res) => {
       }
     });
 
-    // Find active interns who haven't submitted any records this week
+    // Find active interns who haven't submitted any records in the range
     const nonSubmittedInterns = activeInterns.filter(intern => {
       return !submittedInternIds.has(intern._id.toString());
     });
@@ -709,8 +725,8 @@ const getWeeklyNonSubmissions = async (req, res) => {
         trainingStartDate: intern.Training_StartDate,
         trainingEndDate: intern.Training_EndDate,
         weeklySubmissions: 0,
-        workingDaysThisWeek: workingDaysUpToToday,
-        missedDays: workingDaysUpToToday,
+        workingDaysThisWeek: workingDaysInRange,
+        missedDays: workingDaysInRange,
         weekPeriod: weekPeriodLabel,
         lastSubmission: null,
         daysSinceLastSubmission: null,
@@ -719,12 +735,12 @@ const getWeeklyNonSubmissions = async (req, res) => {
     });
 
     console.log(`Found ${nonSubmissionsArray.length} active interns who haven't submitted records for period: ${weekPeriodLabel}`);
-    console.log(`Total working days in period: ${workingDaysUpToToday}`);
+    console.log(`Total working days in period: ${workingDaysInRange}`);
     console.log(`Excluded ${allInterns.length - activeInterns.length} interns whose training has ended`);
     
     res.status(200).json({
       weekPeriod: weekPeriodLabel,
-      workingDaysThisWeek: workingDaysUpToToday,
+      workingDaysThisWeek: workingDaysInRange,
       totalInterns: activeInterns.length,
       totalInternsInDatabase: allInterns.length,
       excludedInterns: allInterns.length - activeInterns.length,

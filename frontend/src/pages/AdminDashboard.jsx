@@ -83,6 +83,15 @@ const parseDateForComparison = (dateString) => {
 };
 
 const AdminDashboard = () => {
+  // Toggle for showing date picker
+  const [showDateSelector, setShowDateSelector] = useState(false);
+  // Handler to show date selector
+  const handleShowDateSelector = () => {
+    setShowDateSelector(true);
+  };
+  // State for custom date range
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const navigate = useNavigate();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [internReport, setInternReport] = useState([]);
@@ -296,16 +305,22 @@ const AdminDashboard = () => {
 
   const handleExportWeeklyNonSubmissionsCSV = async () => {
     try {
-      // Determine if today is Tuesday
-      const today = new Date();
-      const isTuesday = today.getDay() === 2; // 0=Sunday, 1=Monday, 2=Tuesday
-
-      // Get weekly non-submissions, previous week if Tuesday
       let weeklyNonSubmissionsData;
-      if (isTuesday) {
-        weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions('previous');
+      // If both custom dates are set, use them
+      if (customStartDate && customEndDate) {
+        weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions({
+          startDate: customStartDate,
+          endDate: customEndDate
+        });
       } else {
-        weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
+        // Fallback to default logic (current or previous week)
+        const today = new Date();
+        const isTuesday = today.getDay() === 2;
+        if (isTuesday) {
+          weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions('previous');
+        } else {
+          weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
+        }
       }
 
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
@@ -314,7 +329,9 @@ const AdminDashboard = () => {
       }
 
       // Format the date for filename
-      const weekStr = today.toISOString().split('T')[0];
+      const weekStr = customStartDate && customEndDate
+        ? `${customStartDate}_to_${customEndDate}`
+        : new Date().toISOString().split('T')[0];
 
       await csvUtils.downloadInternReport(weeklyNonSubmissionsData, `weekly_non_submissions_${weekStr}`);
       notificationUtils.showSuccess(
@@ -326,6 +343,35 @@ const AdminDashboard = () => {
       notificationUtils.showError('Failed to export weekly non-submissions CSV report');
     }
   };
+  // ...existing code...
+  // Date range selection UI for weekly non-submissions
+  // Place this in your render/return block where you want the controls to appear
+  // Example placement: above the export button
+  // --- Date Range Picker UI ---
+  // <div className="mb-2">
+  //   {!showDateSelector && (
+  //     <button
+  //       onClick={handleShowDateSelector}
+  //       className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
+  //     >
+  //       Export Weekly Non-Submissions
+  //     </button>
+  //   )}
+  //   {showDateSelector && (
+  //     <div className="flex items-center space-x-2">
+  //       <label className="text-xs font-medium">Start Date:</label>
+  //       <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+  //       <label className="text-xs font-medium">End Date:</label>
+  //       <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+  //       <button
+  //         onClick={handleExportWeeklyNonSubmissionsCSV}
+  //         className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
+  //       >
+  //         Download CSV
+  //       </button>
+  //     </div>
+  //   )}
+  // </div>
 
   const getFilteredInterns = () => {
     if (!internReport || internReport.length === 0) {
@@ -754,21 +800,36 @@ const AdminDashboard = () => {
                   </span>
                 </motion.button>
 
-                <motion.button
-                  onClick={handleExportWeeklyNonSubmissionsCSV}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Export Weekly Non-Submissions</span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Monday to Friday
+                {!showDateSelector ? (
+                  <motion.button
+                    onClick={handleShowDateSelector}
+                    className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                    <FaDownload className="mr-1 h-2.5 w-2.5" />
+                    <span className="flex-1 text-left">
+                      <span className="block text-xs leading-tight">Export Non-Submissions</span>
+                      <span className="block text-xs opacity-75 leading-tight">
+                        Select custom date range
+                      </span>
                     </span>
-                  </span>
-                </motion.button>
+                  </motion.button>
+                ) : (
+                  <div className="flex items-center space-x-2 mb-2">
+                    <label className="text-xs font-medium">Start Date:</label>
+                    <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                    <label className="text-xs font-medium">End Date:</label>
+                    <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                    <button
+                      onClick={handleExportWeeklyNonSubmissionsCSV}
+                      className="bg-purple-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-purple-700"
+                    >
+                      Download CSV
+                    </button>
+                  </div>
+                )}
 
                 <motion.button
                   onClick={handleDownloadOnLeaveExcel}

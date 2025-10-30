@@ -217,7 +217,13 @@ export const adminApi = {
   getWeeklyNonSubmissions: async (weekType = null) => {
     try {
       let url = `${API_BASE_URL}/admin/weekly-non-submissions`;
-      if (weekType) {
+      // Accepts either weekType or custom date range
+      if (typeof weekType === 'object' && weekType !== null) {
+        const { startDate, endDate } = weekType;
+        if (startDate && endDate) {
+          url += `?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`;
+        }
+      } else if (weekType) {
         url += `?week=${weekType}`;
       }
       const response = await fetch(url, {
