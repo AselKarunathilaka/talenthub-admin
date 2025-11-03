@@ -162,95 +162,109 @@ const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
 const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
+  const mongoose = require("mongoose");
   const externalSystemService = require("./externalSystemService");
   
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
   
+  const moment = require('moment-timezone');
+  const now = moment.tz('Asia/Colombo');
+  const attendanceTime = now.toDate();
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const oneMinuteAgo = moment(now).subtract(60, 'seconds').toDate();
   
-  // Only update an existing DailyRecord; do NOT create a new one via meeting QR scan
+  // CRITICAL: Use a SINGLE atomic findOneAndUpdate to prevent ALL race conditions
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
+  
   if (dailyRecord) {
-    // Atomic upsert for meeting attendance
-    const moment = require('moment-timezone');
-    const now = moment.tz('Asia/Colombo');
-    const attendanceTime = now.toDate();
-    // Try to update existing present record within 1 minute
-    const updated = await DailyRecord.findOneAndUpdate(
+    // ATOMIC DUPLICATE CHECK AND INSERT IN ONE OPERATION
+    // This uses MongoDB's atomic findOneAndUpdate with conditional logic
+    const updatedRecord = await DailyRecord.findOneAndUpdate(
       {
         _id: dailyRecord._id,
-        meetingAttendance: {
-          $elemMatch: {
-            meetingTitle,
-            attendanceStatus: 'present',
-            attendanceTime: { $gte: moment(now).subtract(1, 'minute').toDate() }
+        // Condition: NO recent present attendance for this meeting exists
+        $nor: [
+          {
+            meetingAttendance: {
+              $elemMatch: {
+                meetingTitle,
+                attendanceStatus: 'present',
+                attendanceTime: { $gte: oneMinuteAgo }
+              }
+            }
           }
-        }
+        ]
       },
-      {},
+      {
+        // First pull any old record for this meeting
+        $pull: { meetingAttendance: { meetingTitle } }
+      },
       { new: true }
     );
-    if (updated) {
+    
+    if (!updatedRecord) {
+      // Record was NOT updated because a recent scan exists
       throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
     }
-    // Upsert meeting attendance
-    await DailyRecord.findOneAndUpdate(
-      {
-        _id: dailyRecord._id,
-        'meetingAttendance.meetingTitle': meetingTitle
-      },
-      {
-        $set: {
-          'meetingAttendance.$.attendanceStatus': 'present',
-          'meetingAttendance.$.attendanceTime': attendanceTime
-        }
-      },
-      { new: true }
-    );
-    await DailyRecord.findOneAndUpdate(
-      {
-        _id: dailyRecord._id,
-        'meetingAttendance.meetingTitle': { $ne: meetingTitle }
-      },
-      {
-        $push: {
+    
+    // Now push the new attendance record
+    await DailyRecord.updateOne(
+      { _id: dailyRecord._id },
+      { 
+        $push: { 
           meetingAttendance: {
             meetingTitle,
             attendanceStatus: 'present',
             attendanceTime
           }
         }
-      },
-      { new: true }
+      }
     );
+    
     dailyRecord = await DailyRecord.findById(dailyRecord._id);
   } else {
     // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it
-    const moment = require('moment-timezone');
-    const attendanceTime = moment.tz('Asia/Colombo').toDate();
-    // Duplicate scan check for intern.attendance array
-    const now = moment.tz('Asia/Colombo');
-    const duplicate = intern.attendance.find(a => {
-      if (a.type === 'qr' && a.status === 'Present' && a.meetingName === meetingTitle && a.date) {
-        const lastTime = moment.tz(a.timeMarked || a.date, 'Asia/Colombo');
-        const diffSeconds = now.diff(lastTime, 'seconds');
-        return diffSeconds < 60;
-      }
-      return false;
-    });
-    if (duplicate) {
+    // ATOMIC CHECK: Use findOneAndUpdate on Intern model
+    const today_start = moment.tz('Asia/Colombo').startOf('day').toDate();
+    const today_end = moment.tz('Asia/Colombo').endOf('day').toDate();
+    
+    const updatedIntern = await Intern.findOneAndUpdate(
+      {
+        _id: internId,
+        // Condition: NO recent present QR attendance for this meeting exists today
+        $nor: [
+          {
+            attendance: {
+              $elemMatch: {
+                type: 'qr',
+                status: 'Present',
+                meetingName: meetingTitle,
+                date: { $gte: today_start, $lte: today_end },
+                timeMarked: { $gte: oneMinuteAgo }
+              }
+            }
+          }
+        ]
+      },
+      {
+        $push: {
+          attendance: {
+            date: attendanceTime,
+            status: 'Present',
+            type: 'qr',
+            timeMarked: attendanceTime,
+            meetingName: meetingTitle,
+            qrCode: qrCode
+          }
+        }
+      },
+      { new: true }
+    );
+    
+    if (!updatedIntern) {
       throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
     }
-    intern.attendance.push({
-      date: attendanceTime,
-      status: 'Present',
-      type: 'qr',
-      timeMarked: attendanceTime,
-      meetingName: meetingTitle,
-      qrCode: qrCode
-    });
-    await intern.save();
   }
   
   // Sync with Attendance System if QR code is provided
@@ -325,60 +339,73 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   const todaySriLanka = moment.tz("Asia/Colombo").startOf('day');
   const attendanceTime = moment.tz("Asia/Colombo").toDate();
   const today = todaySriLanka.format('YYYY-MM-DD'); // YYYY-MM-DD format
+  const oneMinuteAgo = moment.tz("Asia/Colombo").subtract(60, 'seconds').toDate();
 
-  // Update DailyRecord ONLY if it already exists for today.
-  // Do NOT create a new logbook entry from QR scans; interns must fill it themselves.
-  const dailyRecord = await DailyRecord.findOne({ internId, date: today });
-
-    // Robust duplicate QR scan check using DailyRecord
-    if (dailyRecord && dailyRecord.attendance === "present" && dailyRecord.attendanceTime) {
-      const lastTime = moment.tz(dailyRecord.attendanceTime, "Asia/Colombo");
-      const diffSeconds = moment(attendanceTime).diff(lastTime, 'seconds');
-      if (diffSeconds < 60) {
-        throw new Error("Duplicate QR scan detected. Please wait before scanning again.");
+  // ATOMIC UPDATE for DailyRecord - prevent duplicates using findOneAndUpdate
+  const updatedDailyRecord = await DailyRecord.findOneAndUpdate(
+    {
+      internId,
+      date: today,
+      // Condition: Either no attendance marked yet OR last attendance was more than 60 seconds ago
+      $or: [
+        { attendance: { $ne: "present" } },
+        { attendanceTime: { $lt: oneMinuteAgo } },
+        { attendanceTime: null }
+      ]
+    },
+    {
+      $set: {
+        attendance: "present",
+        attendanceTime: attendanceTime
       }
+    },
+    { new: true }
+  );
+
+  if (updatedDailyRecord === null) {
+    // DailyRecord exists but was NOT updated because a recent scan exists
+    const dailyRecord = await DailyRecord.findOne({ internId, date: today });
+    if (dailyRecord && dailyRecord.attendance === "present") {
+      throw new Error("Duplicate daily QR scan detected. Please wait before scanning again.");
     }
-
-    if (dailyRecord) {
-      dailyRecord.attendance = "present";
-      dailyRecord.attendanceTime = attendanceTime;
-      await dailyRecord.save();
-    }
-
-    // Prevent duplicate QR scans within 1 minute
-    const lastAttendance = intern.attendance
-      .filter(a => a.type === 'daily_qr')
-      .sort((a, b) => new Date(b.timeMarked) - new Date(a.timeMarked))[0];
-    if (lastAttendance) {
-      const lastTime = moment.tz(lastAttendance.timeMarked, "Asia/Colombo");
-      const diffSeconds = moment(attendanceTime).diff(lastTime, 'seconds');
-      if (diffSeconds < 60) {
-        throw new Error("Duplicate QR scan detected. Please wait before scanning again.");
-      }
-    }
-
-  // Also update the old intern.attendance system for backward compatibility
-  const existingAttendanceIndex = intern.attendance.findIndex((a) => {
-    const attendanceDate = moment.tz(a.date, "Asia/Colombo").startOf('day');
-    const isToday = attendanceDate.isSame(todaySriLanka, 'day');
-    return isToday && (a.type === 'daily' || a.type === 'daily_qr' || !a.type);
-  });
-
-  if (existingAttendanceIndex !== -1) {
-    intern.attendance[existingAttendanceIndex].status = "Present";
-    intern.attendance[existingAttendanceIndex].timeMarked = attendanceTime;
-    intern.attendance[existingAttendanceIndex].type = "daily_qr";
-  } else {
-    intern.attendance.push({
-      date: todaySriLanka.toDate(),
-      status: "Present",
-      type: "daily_qr",
-      timeMarked: attendanceTime,
-      qrCode: qrCode
-    });
+    // If no dailyRecord exists, that's ok - continue to update intern.attendance
   }
 
-  await intern.save();
+  // ATOMIC UPDATE for intern.attendance - prevent duplicates
+  const updatedIntern = await Intern.findOneAndUpdate(
+    {
+      _id: internId,
+      // Condition: NO recent daily_qr attendance exists in the last 60 seconds
+      $nor: [
+        {
+          attendance: {
+            $elemMatch: {
+              type: 'daily_qr',
+              status: 'Present',
+              date: { $gte: todaySriLanka.toDate(), $lte: todaySriLanka.clone().endOf('day').toDate() },
+              timeMarked: { $gte: oneMinuteAgo }
+            }
+          }
+        }
+      ]
+    },
+    {
+      $push: {
+        attendance: {
+          date: todaySriLanka.toDate(),
+          status: "Present",
+          type: "daily_qr",
+          timeMarked: attendanceTime,
+          qrCode: qrCode
+        }
+      }
+    },
+    { new: true }
+  );
+
+  if (!updatedIntern) {
+    throw new Error("Duplicate daily QR scan detected. Please wait before scanning again.");
+  }
 
   // Sync with external Attendance System
   if (qrCode && intern.Trainee_ID) {
