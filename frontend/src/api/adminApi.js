@@ -241,6 +241,18 @@ export const adminApi = {
   }
 };
 
+// Helper function to format date as YYYY-MM-DD
+// Uses = formula prefix to force Excel to treat it as text and preserve the format
+const formatDateForExport = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `="${year}-${month}-${day}"`;
+};
+
 // CSV export utility functions
 export const csvUtils = {
   // Convert intern report data to CSV
@@ -265,7 +277,7 @@ export const csvUtils = {
     ];
 
     // Get current date for export timestamp
-    const exportDate = new Date().toLocaleDateString();
+    const exportDate = formatDateForExport(new Date());
 
     // Convert data to CSV rows
     const csvRows = [
@@ -286,10 +298,10 @@ export const csvUtils = {
           `"${intern.traineeName || ''}"`,
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
-          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
-          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
+          intern.trainingStartDate ? formatDateForExport(intern.trainingStartDate) : '="Not Set"',
+          intern.trainingEndDate ? formatDateForExport(intern.trainingEndDate) : '="Not Set"',
           intern.totalRecords || 0,
-          intern.lastSubmission ? new Date(intern.lastSubmission).toLocaleDateString() : 'Never',
+          intern.lastSubmission ? formatDateForExport(intern.lastSubmission) : '="Never"',
           intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? intern.daysSinceLastSubmission : 'N/A',
           status,
           exportDate
@@ -319,7 +331,7 @@ export const csvUtils = {
     ];
 
     // Get current date for export timestamp
-    const exportDate = new Date().toLocaleDateString();
+    const exportDate = formatDateForExport(new Date());
 
     // Convert data to CSV rows
     const csvRows = [
@@ -340,7 +352,7 @@ export const csvUtils = {
           `"${intern.traineeName || ''}"`,
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
-          intern.lastSubmission ? new Date(intern.lastSubmission).toLocaleDateString() : 'Never',
+          intern.lastSubmission ? formatDateForExport(intern.lastSubmission) : '="Never"',
           intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? intern.daysSinceLastSubmission : 'N/A',
           status,
           exportDate
@@ -389,7 +401,7 @@ export const csvUtils = {
     ];
 
     // Get current date for export timestamp
-    const exportDate = new Date().toLocaleDateString();
+    const exportDate = formatDateForExport(new Date());
 
     // Convert data to CSV rows
     const csvRows = [
@@ -425,10 +437,10 @@ export const csvUtils = {
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
           `"${institute}"`,
-          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
-          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
+          intern.trainingStartDate ? formatDateForExport(intern.trainingStartDate) : '="Not Set"',
+          intern.trainingEndDate ? formatDateForExport(intern.trainingEndDate) : '="Not Set"',
           totalRecords,
-          intern.lastSubmission ? new Date(intern.lastSubmission).toLocaleDateString() : 'Never',
+          intern.lastSubmission ? formatDateForExport(intern.lastSubmission) : '="Never"',
           daysSinceLastSubmission,
           exportDate
         ].join(',');
@@ -461,7 +473,7 @@ export const csvUtils = {
     ];
 
     // Get current date for export timestamp
-    const exportDate = new Date().toLocaleDateString();
+    const exportDate = formatDateForExport(new Date());
 
     // Convert data to CSV rows
     const csvRows = [
@@ -473,8 +485,8 @@ export const csvUtils = {
           intern.email || '',
           `"${intern.fieldOfSpecialization || ''}"`,
           `"${intern.institute || 'Not Specified'}"`,
-          intern.trainingStartDate ? new Date(intern.trainingStartDate).toLocaleDateString() : 'Not Set',
-          intern.trainingEndDate ? new Date(intern.trainingEndDate).toLocaleDateString() : 'Not Set',
+          intern.trainingStartDate ? formatDateForExport(intern.trainingStartDate) : '="Not Set"',
+          intern.trainingEndDate ? formatDateForExport(intern.trainingEndDate) : '="Not Set"',
           intern.workingDaysThisWeek || 0,
           intern.missedDays || 0,
           `"${intern.weekPeriod || ''}"`,

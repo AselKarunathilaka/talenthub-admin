@@ -120,12 +120,39 @@ const AdminDailyRecords = () => {
         return;
       }
 
+      // Helper function to format date as YYYY-MM-DD
+      // Uses = formula prefix to force Excel to treat it as text and preserve the format
+      const formatDateForExport = (date) => {
+        if (!date) return '="N/A"';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '="N/A"';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `="${year}-${month}-${day}"`;
+      };
+
+      // Helper function to format datetime as YYYY-MM-DD HH:MM:SS
+      // Uses = formula prefix to force Excel to treat it as text and preserve the format
+      const formatDateTimeForExport = (date) => {
+        if (!date) return '="N/A"';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '="N/A"';
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        return `="${year}-${month}-${day} ${hours}:${minutes}:${seconds}"`;
+      };
+
       // Format data for CSV export
       const csvData = filteredRecords.map(record => ({
-        'Date': new Date(record.date).toLocaleDateString(),
-        'Trainee Name': record.Trainee_Name || 'N/A',
+        'Date': formatDateForExport(record.date),
+        'Trainee Name': `"${record.Trainee_Name || 'N/A'}"`,
         'Trainee ID': record.Trainee_ID || 'N/A',
-        'Created At': new Date(record.createdAt).toLocaleString()
+        'Created At': formatDateTimeForExport(record.createdAt)
       }));
 
       // Convert to CSV and download
