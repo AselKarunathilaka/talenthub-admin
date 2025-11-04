@@ -3,6 +3,7 @@ const Intern = require('../models/Intern');
 const ComplianceCheck = require('../models/ComplianceCheck');
 const sendEmail = require('../utils/emailSender');
 const moment = require('moment');
+const nodemailer = require("nodemailer");
 
 class WeeklyWorkLogService {
   /**
@@ -44,6 +45,34 @@ class WeeklyWorkLogService {
   }
 
   /**
+   * Get intern name (supports both API-style and legacy fields)
+   */
+  static getInternName(intern) {
+    return intern.Trainee_Name || intern.traineeName || 'Unknown';
+  }
+
+  /**
+   * Get intern ID (supports both API-style and legacy fields)
+   */
+  static getInternId(intern) {
+    return intern.Trainee_ID || intern.traineeId || 'Unknown';
+  }
+
+  /**
+   * Get intern email (supports both API-style and legacy fields)
+   */
+  static getInternEmail(intern) {
+    return intern.Trainee_Email || intern.email || '';
+  }
+
+  /**
+   * Get training start date (supports both API-style and legacy fields)
+   */
+  static getTrainingStartDate(intern) {
+    return intern.Training_StartDate || intern.trainingStartDate;
+  }
+
+  /**
    * Get all active interns who should be monitored
    */
   static async getActiveInterns() {
@@ -55,14 +84,14 @@ class WeeklyWorkLogService {
         $and: [
           {
             $or: [
-              { trainingStartDate: { $lte: currentDate } },
-              { trainingStartDate: { $exists: false } }
+              { Training_StartDate: { $lte: currentDate } },
+              { Training_StartDate: { $exists: false } }
             ]
           },
           {
             $or: [
-              { trainingEndDate: { $gte: currentDate } },
-              { trainingEndDate: { $exists: false } }
+              { Training_EndDate: { $gte: currentDate } },
+              { Training_EndDate: { $exists: false } }
             ]
           }
         ]
@@ -76,55 +105,122 @@ class WeeklyWorkLogService {
   }
 
   /**
-   * Send termination email to intern and supervisors
+   * Send consolidated report email to supervisors with all non-compliant interns
    */
-  static async sendTerminationEmail(intern) {
+  static async sendConsolidatedReportEmail(nonCompliantList, previousWeekStart, previousWeekEnd) {
     try {
-      const internEmail = intern.email;
-      const supervisorEmails = 'jana@slt.com.lk,mgiri@slt.com.lk';
-      const ccEmails = supervisorEmails;
+      if (nonCompliantList.length === 0) {
+        console.log('✅ No non-compliant interns - no email to send');
+        return {
+          success: true,
+          skipped: true,
+          reason: 'No non-compliant interns'
+        };
+      }
 
-      const subject = `URGENT: Internship Termination Notice - ${intern.traineeName} (${intern.traineeId})`;
+      // Supervisors email addresses
+      const supervisorEmails = 'mgiri@slt.com.lk,jana@slt.com.lk';
       
-      const emailBody = `
-Dear ${intern.traineeName},
+      // Separate new and regular interns
+      const newInterns = nonCompliantList.filter(i => i.isNewIntern);
+      const regularInterns = nonCompliantList.filter(i => !i.isNewIntern);
 
-INTERNSHIP TERMINATION NOTICE
+      const subject = `⚠️ Weekly Compliance Report - ${nonCompliantList.length} Interns Without Daily Records - Week of ${previousWeekStart.format('MMM DD, YYYY')}`;
+      
+      // Build email body
+      let emailBody = `
+Dear Supervisors,
 
-We have detected that you have not submitted any work logs for the previous week (${moment().subtract(1, 'week').startOf('isoWeek').format('MMMM DD')} - ${moment().subtract(1, 'week').endOf('isoWeek').subtract(2, 'days').format('MMMM DD, YYYY')}).
+WEEKLY WORK LOG COMPLIANCE REPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-As per company policy, consistent work log submission is mandatory for all interns. Due to non-compliance with this requirement, your internship is hereby terminated effective immediately.
+📅 Week Checked: ${previousWeekStart.format('MMMM DD')} - ${previousWeekEnd.format('MMMM DD, YYYY')}
+📊 Total Non-Compliant Interns: ${nonCompliantList.length}
+🆕 New Interns (Grace Period): ${newInterns.length}
+⚠️  Regular Interns: ${regularInterns.length}
 
-Intern Details:
-- Name: ${intern.traineeName}
-- Trainee ID: ${intern.traineeId}
-- Field of Specialization: ${intern.fieldOfSpecialization}
-- Training Start Date: ${intern.trainingStartDate ? moment(intern.trainingStartDate).format('MMMM DD, YYYY') : 'Not specified'}
-- Institute: ${intern.institute || 'Not specified'}
-- Team: ${intern.team || 'Not specified'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If you believe this is an error or have any questions, please contact your supervisors immediately.
+The following interns have NOT submitted any daily work logs for the previous week:
+`;
+
+      // Add new interns section
+      if (newInterns.length > 0) {
+        emailBody += `
+
+🆕 NEW INTERNS (Within 4-Week Grace Period):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+        newInterns.forEach((intern, index) => {
+          emailBody += `
+${index + 1}. ${intern.name} (${intern.id})
+   📧 Email: ${intern.email}
+   🎓 Field: ${intern.fieldOfSpecialization}
+   🏫 Institute: ${intern.institute}
+   � Team: ${intern.team}
+   📅 Start Date: ${intern.trainingStartDate}
+   ⏰ Status: ${intern.gracePeriodStatus}
+`;
+        });
+      }
+
+      // Add regular interns section
+      if (regularInterns.length > 0) {
+        emailBody += `
+
+⚠️ REGULAR INTERNS (Past Grace Period):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+`;
+        regularInterns.forEach((intern, index) => {
+          emailBody += `
+${index + 1}. ${intern.name} (${intern.id})
+   📧 Email: ${intern.email}
+   🎓 Field: ${intern.fieldOfSpecialization}
+   🏫 Institute: ${intern.institute}
+   👥 Team: ${intern.team}
+   📅 Start Date: ${intern.trainingStartDate}
+   ⏰ Status: ${intern.gracePeriodStatus}
+`;
+        });
+      }
+
+      emailBody += `
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📋 SUMMARY:
+• Total interns checked: Visible in system logs
+• Compliant interns: Have submitted daily records
+• Non-compliant interns: ${nonCompliantList.length} (listed above)
+
+⚡ RECOMMENDED ACTIONS:
+${regularInterns.length > 0 ? `• Follow up with regular interns regarding non-compliance\n• Consider termination proceedings if pattern continues` : ''}
+${newInterns.length > 0 ? `• Monitor new interns and remind them of daily log requirements\n• Provide additional guidance during grace period` : ''}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+This is an automated report generated by the TalentHub Intern Management System.
+For questions or concerns, please review the system logs or contact the system administrator.
 
 Best regards,
-SLT Mobitel
+SLT Mobitel - TalentHub System
 Digital Platforms Development Section
 
----
-Supervisors: Mr. Janaka, Mr. Giridaran
-Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+� Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
+📧 Recipients: Mr. Giridharan (mgiri@slt.com.lk), Mr. Janaka (jana@slt.com.lk)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
       `.trim();
 
-      // Create mail options with CC
+      // Create mail options
       const mailOptions = {
         from: process.env.GMAIL_USER,
-        to: internEmail,
-        cc: ccEmails,
+        to: supervisorEmails,
         subject: subject,
         text: emailBody
       };
 
-      // Send email using existing transporter
-      const nodemailer = require("nodemailer");
+      // Send email using transporter
       const transporter = nodemailer.createTransporter({
         service: "gmail",
         auth: {
@@ -135,35 +231,31 @@ Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
 
       const info = await transporter.sendMail(mailOptions);
       
-      console.log(`✅ Termination email sent to ${intern.traineeName} (${intern.traineeId})`);
+      console.log(`✅ Consolidated report email sent to supervisors`);
+      console.log(`📧 Recipients: ${supervisorEmails}`);
       console.log(`📧 Email ID: ${info.messageId}`);
+      console.log(`📊 Interns listed: ${nonCompliantList.length} (${newInterns.length} new, ${regularInterns.length} regular)`);
       
       return {
         success: true,
         messageId: info.messageId,
-        intern: {
-          name: intern.traineeName,
-          id: intern.traineeId,
-          email: internEmail
-        }
+        recipients: supervisorEmails,
+        internsCount: nonCompliantList.length,
+        newInternsCount: newInterns.length,
+        regularInternsCount: regularInterns.length
       };
 
     } catch (error) {
-      console.error(`❌ Failed to send termination email to ${intern.traineeName}:`, error);
+      console.error(`❌ Failed to send consolidated report email:`, error);
       return {
         success: false,
-        error: error.message,
-        intern: {
-          name: intern.traineeName,
-          id: intern.traineeId,
-          email: intern.email
-        }
+        error: error.message
       };
     }
   }
 
   /**
-   * Main function to check all interns and send termination emails
+   * Main function to check all interns and send consolidated report to supervisors
    */
   static async performWeeklyCheck(triggerType = 'scheduled') {
     const startTime = new Date();
@@ -181,20 +273,25 @@ Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
       const results = {
         total: activeInterns.length,
         compliant: 0,
-        gracePeriod: 0,
-        terminated: 0,
-        emailsSent: [],
-        emailsFailed: [],
-        errors: []
+        nonCompliantNew: 0,
+        nonCompliantRegular: 0,
+        emailSent: false,
+        emailMessageId: null,
+        emailError: null,
+        errors: [],
+        nonCompliantList: [] // Detailed list of non-compliant interns
       };
 
+      // Check each intern
       for (const intern of activeInterns) {
         try {
+          const internName = this.getInternName(intern);
+          const internId = this.getInternId(intern);
+          const internEmail = this.getInternEmail(intern);
+          const trainingStartDate = this.getTrainingStartDate(intern);
+          
           // Check if intern is within grace period
-          if (this.isWithinGracePeriod(intern.trainingStartDate)) {
-            results.gracePeriod++;
-            continue;
-          }
+          const isNewIntern = this.isWithinGracePeriod(trainingStartDate);
 
           // Check if intern has work logs for previous week
           const hasLogs = await this.hasWorkLogsForPreviousWeek(intern._id);
@@ -202,67 +299,109 @@ Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
           if (hasLogs) {
             results.compliant++;
           } else {
-            console.log(`❌ ${intern.traineeName} (${intern.traineeId}) has NO work logs - sending termination email`);
+            // Add to non-compliant list with detailed information
+            const nonCompliantInfo = {
+              internId: intern._id,
+              name: internName,
+              id: internId,
+              email: internEmail,
+              fieldOfSpecialization: intern.field_of_spec_name || 'Not specified',
+              institute: intern.Institute || 'Not specified',
+              team: intern.team || 'Not specified',
+              trainingStartDate: trainingStartDate ? moment(trainingStartDate).format('YYYY-MM-DD') : 'Not specified',
+              isNewIntern: isNewIntern,
+              gracePeriodStatus: isNewIntern ? 'Within 4-week grace period' : 'Regular intern'
+            };
+            results.nonCompliantList.push(nonCompliantInfo);
             
-            // Send termination email
-            const emailResult = await this.sendTerminationEmail(intern);
-            
-            if (emailResult.success) {
-              results.emailsSent.push({
-                internId: intern._id,
-                internName: intern.traineeName,
-                traineeId: intern.traineeId,
-                email: intern.email,
-                emailId: emailResult.messageId,
-                sentAt: new Date()
-              });
-              results.terminated++;
+            if (isNewIntern) {
+              results.nonCompliantNew++;
+              console.log(`⚠️  [NEW INTERN] ${internName} (${internId}) has NO work logs`);
             } else {
-              results.emailsFailed.push({
-                internId: intern._id,
-                internName: intern.traineeName,
-                traineeId: intern.traineeId,
-                email: intern.email,
-                error: emailResult.error,
-                attemptedAt: new Date()
-              });
+              results.nonCompliantRegular++;
+              console.log(`❌ [REGULAR] ${internName} (${internId}) has NO work logs`);
             }
           }
 
         } catch (error) {
-          console.error(`❌ Error processing intern ${intern.traineeName}:`, error);
+          const internName = this.getInternName(intern);
+          const internId = this.getInternId(intern);
+          console.error(`❌ Error processing intern ${internName}:`, error);
           results.errors.push({
             internId: intern._id,
-            internName: intern.traineeName,
-            traineeId: intern.traineeId,
+            internName: internName,
+            traineeId: internId,
             error: error.message,
             occurredAt: new Date()
           });
         }
       }
 
-      // Generate summary
-      console.log('\n📊 WEEKLY COMPLIANCE CHECK SUMMARY');
-      console.log('=====================================');
-      console.log(`Total interns checked: ${results.total}`);
-      console.log(`Compliant (has logs): ${results.compliant}`);
-      console.log(`Grace period: ${results.gracePeriod}`);
-      console.log(`Terminated: ${results.terminated}`);
-      console.log(`Email failures: ${results.emailsFailed.length}`);
-      console.log(`Processing errors: ${results.errors.length}`);
-
-      if (results.emailsSent.length > 0) {
-        console.log('\n📧 Termination emails sent to:');
-        results.emailsSent.forEach(intern => {
-          console.log(`  - ${intern.name} (${intern.id}) - ${intern.email}`);
-        });
+      // Send consolidated email to supervisors if there are non-compliant interns
+      if (results.nonCompliantList.length > 0) {
+        console.log(`\n📧 Sending consolidated report to supervisors...`);
+        const emailResult = await this.sendConsolidatedReportEmail(
+          results.nonCompliantList,
+          previousWeekStart,
+          previousWeekEnd
+        );
+        
+        if (emailResult.success) {
+          results.emailSent = true;
+          results.emailMessageId = emailResult.messageId;
+          console.log(`✅ Email sent successfully to supervisors`);
+        } else {
+          results.emailSent = false;
+          results.emailError = emailResult.error;
+          console.log(`❌ Failed to send email to supervisors: ${emailResult.error}`);
+        }
       }
 
-      if (results.emailsFailed.length > 0) {
-        console.log('\n❌ Failed to send emails to:');
-        results.emailsFailed.forEach(failed => {
-          console.log(`  - ${failed.intern.name} (${failed.intern.id}): ${failed.error}`);
-        });
+      // Generate summary with detailed listing
+      console.log('\n📊 WEEKLY COMPLIANCE CHECK SUMMARY');
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+      console.log(`📋 Total interns checked: ${results.total}`);
+      console.log(`✅ Compliant (has logs): ${results.compliant}`);
+      console.log(`⚠️  Non-compliant (new interns in grace period): ${results.nonCompliantNew}`);
+      console.log(`❌ Non-compliant (regular interns): ${results.nonCompliantRegular}`);
+      console.log(`📧 Consolidated report sent: ${results.emailSent ? 'YES' : 'NO'}`);
+      console.log(`⚠️  Processing errors: ${results.errors.length}`);
+      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+
+      if (results.nonCompliantList.length > 0) {
+        console.log('\n📋 DETAILED LIST OF NON-COMPLIANT INTERNS:');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        
+        // Group by status
+        const newInterns = results.nonCompliantList.filter(i => i.isNewIntern);
+        const regularInterns = results.nonCompliantList.filter(i => !i.isNewIntern);
+        
+        if (newInterns.length > 0) {
+          console.log('\n🆕 NEW INTERNS (Grace Period):');
+          newInterns.forEach((intern, index) => {
+            console.log(`\n  ${index + 1}. ${intern.name} (${intern.id})`);
+            console.log(`     📧 Email: ${intern.email}`);
+            console.log(`     🎓 Field: ${intern.fieldOfSpecialization}`);
+            console.log(`     🏫 Institute: ${intern.institute}`);
+            console.log(`     👥 Team: ${intern.team}`);
+            console.log(`     📅 Start Date: ${intern.trainingStartDate}`);
+            console.log(`     ⏰ Status: ${intern.gracePeriodStatus}`);
+          });
+        }
+        
+        if (regularInterns.length > 0) {
+          console.log('\n⚠️  REGULAR INTERNS (Past Grace Period):');
+          regularInterns.forEach((intern, index) => {
+            console.log(`\n  ${index + 1}. ${intern.name} (${intern.id})`);
+            console.log(`     📧 Email: ${intern.email}`);
+            console.log(`     🎓 Field: ${intern.fieldOfSpecialization}`);
+            console.log(`     🏫 Institute: ${intern.institute}`);
+            console.log(`     👥 Team: ${intern.team}`);
+            console.log(`     📅 Start Date: ${intern.trainingStartDate}`);
+            console.log(`     ⏰ Status: ${intern.gracePeriodStatus}`);
+          });
+        }
+        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       }
 
       console.log('\n✅ Weekly compliance check completed!\n');
@@ -279,18 +418,21 @@ Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
         results: {
           totalInterns: results.total,
           compliantInterns: results.compliant,
-          gracePeriodInterns: results.gracePeriod,
-          terminatedInterns: results.terminated,
-          emailsSent: results.emailsSent,
-          emailsFailed: results.emailsFailed,
-          processingErrors: results.errors
+          nonCompliantNewInterns: results.nonCompliantNew,
+          nonCompliantRegularInterns: results.nonCompliantRegular,
+          terminatedInterns: results.nonCompliantRegular,
+          emailSent: results.emailSent,
+          emailMessageId: results.emailMessageId,
+          emailError: results.emailError,
+          processingErrors: results.errors,
+          nonCompliantDetails: results.nonCompliantList
         },
         executionTime: {
           startedAt: startTime,
           completedAt: endTime,
           durationMs: endTime.getTime() - startTime.getTime()
         },
-        status: results.errors.length === 0 ? 'success' : (results.emailsSent.length > 0 ? 'partial_success' : 'failed')
+        status: results.errors.length === 0 ? 'success' : 'partial_success'
       });
 
       await complianceCheck.save();
@@ -317,10 +459,10 @@ Generated on: ${moment().format('MMMM DD, YYYY [at] h:mm A')}
           results: {
             totalInterns: 0,
             compliantInterns: 0,
-            gracePeriodInterns: 0,
+            nonCompliantNewInterns: 0,
+            nonCompliantRegularInterns: 0,
             terminatedInterns: 0,
-            emailsSent: [],
-            emailsFailed: [],
+            emailSent: false,
             processingErrors: [{
               error: error.message,
               occurredAt: new Date()

@@ -30,7 +30,11 @@ const ComplianceCheckSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    gracePeriodInterns: {
+    nonCompliantNewInterns: {
+      type: Number,
+      default: 0
+    },
+    nonCompliantRegularInterns: {
       type: Number,
       default: 0
     },
@@ -38,34 +42,16 @@ const ComplianceCheckSchema = new mongoose.Schema({
       type: Number,
       default: 0
     },
-    emailsSent: [{
-      internId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Intern"
-      },
-      internName: String,
-      traineeId: String,
-      email: String,
-      emailId: String, // Email message ID from nodemailer
-      sentAt: {
-        type: Date,
-        default: Date.now
-      }
-    }],
-    emailsFailed: [{
-      internId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Intern"
-      },
-      internName: String,
-      traineeId: String,
-      email: String,
-      error: String,
-      attemptedAt: {
-        type: Date,
-        default: Date.now
-      }
-    }],
+    emailSent: {
+      type: Boolean,
+      default: false
+    },
+    emailMessageId: {
+      type: String
+    },
+    emailError: {
+      type: String
+    },
     processingErrors: [{
       internId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -78,6 +64,21 @@ const ComplianceCheckSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
       }
+    }],
+    nonCompliantDetails: [{
+      internId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Intern"
+      },
+      name: String,
+      id: String,
+      email: String,
+      fieldOfSpecialization: String,
+      institute: String,
+      team: String,
+      trainingStartDate: String,
+      isNewIntern: Boolean,
+      gracePeriodStatus: String
     }]
   },
   executionTime: {
