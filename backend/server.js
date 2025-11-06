@@ -3,7 +3,6 @@ const connectDB = require("./config/database");
 const InternService = require("./services/internService");
 const WeeklyScheduler = require("./services/weeklyScheduler");
 const SLTApiScheduler = require("./services/sltApiScheduler");
-const DailyScheduler = require("./services/dailyScheduler");
 
 connectDB();
 
@@ -31,9 +30,6 @@ const server = app.listen(PORT, () => {
   
   // Initialize SLT API synchronization scheduler
   SLTApiScheduler.init();
-
-  // Initialize daily reminder scheduler
-  DailyScheduler.init();
 });
 
 // Set server timeout to handle longer requests (5 minutes)
