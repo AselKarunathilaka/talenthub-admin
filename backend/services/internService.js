@@ -425,6 +425,19 @@ class InternService {
       };
     }
   }
+
+  async acceptAgreement(internId) {
+    const intern = await InternRepository.getInternById(internId);
+    if (!intern) {
+      throw new Error("Intern not found");
+    }
+    
+    intern.agreementAccepted = true;
+    intern.agreementAcceptedDate = new Date();
+    await intern.save();
+    
+    return intern;
+  }
 }
 
 module.exports = new InternService();

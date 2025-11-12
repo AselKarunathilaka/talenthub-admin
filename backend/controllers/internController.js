@@ -695,6 +695,20 @@ const triggerComprehensiveUpdate = async (req, res) => {
   }
 };
 
+const acceptAgreement = async (req, res) => {
+  try {
+    const internId = req.params.id;
+    const updatedIntern = await InternService.acceptAgreement(internId);
+    res.status(200).json({ 
+      message: "Agreement accepted successfully", 
+      agreementAccepted: updatedIntern.agreementAccepted,
+      agreementAcceptedDate: updatedIntern.agreementAcceptedDate
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Error accepting agreement", error: error.message });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -727,5 +741,6 @@ module.exports = {
   cleanupInactiveInterns,
   // SLT API Scheduler endpoints
   triggerManualSLTSync,
-  triggerComprehensiveUpdate
+  triggerComprehensiveUpdate,
+  acceptAgreement
 };

@@ -28,6 +28,8 @@ const internSchema = new mongoose.Schema({
     enum: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     default: [],
   },
+  agreementAccepted: { type: Boolean, default: false },
+  agreementAcceptedDate: { type: Date },
 }, { timestamps: true });
 
 // Schema migration completed - now uses API-style fields as canonical

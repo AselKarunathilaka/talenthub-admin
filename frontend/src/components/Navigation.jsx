@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen, Download } from "lucide-react";
+import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen, Download, FileText } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
+import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -114,6 +115,15 @@ const Navigation = () => {
     const link = document.createElement('a');
     link.href = leaveFormPdf;
     link.download = 'Intern_Leave_Form.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDownloadAgreement = () => {
+    const link = document.createElement('a');
+    link.href = agreementPdf;
+    link.download = 'Trainee_Guidelines_Agreement.pdf';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -285,7 +295,16 @@ const Navigation = () => {
               aria-label="Download Leave Form"
             >
               <Download className="h-5 w-5 text-gray-400 group-hover:text-blue-300" />
-              <span className="ml-3">Download Leave Form</span>
+              <span className="ml-3 text-sm">Leave Form</span>
+            </button>
+
+            <button 
+              onClick={handleDownloadAgreement}
+              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
+              aria-label="Download Agreement"
+            >
+              <FileText className="h-5 w-5 text-gray-400 group-hover:text-blue-300" />
+              <span className="ml-3 text-sm">Guidelines Agreement</span>
             </button>
             
             <button 

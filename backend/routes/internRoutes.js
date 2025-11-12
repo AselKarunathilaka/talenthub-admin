@@ -45,6 +45,9 @@ const {
   triggerManualSLTSync,
   triggerComprehensiveUpdate,
 
+  // Agreement
+  acceptAgreement,
+
   // Optional Filters (if you ever need them)
   getInternsByDay,
   getInternsByDayCount,
@@ -98,6 +101,9 @@ router.post("/slt/update/comprehensive", authenticateUser, triggerComprehensiveU
 // =========================== FILE UPLOAD ===========================
 router.post("/upload", authenticateUser, upload.single("file"), uploadInterns);
 router.post("/upload-txt", upload.single("file"), uploadTXT);
+
+// =========================== AGREEMENT ===========================
+router.put("/:id/accept-agreement", acceptAgreement);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);

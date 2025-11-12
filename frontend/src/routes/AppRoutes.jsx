@@ -11,16 +11,19 @@ import AdminDashboard from "../pages/AdminDashboard";
 import AdminDailyRecords from "../pages/AdminDailyRecords";
 import AdminInternDetails from "../pages/AdminInternDetails";
 import AdminInternRecords from "../pages/AdminInternRecords";
+import AgreementGuard from "../components/AgreementGuard";
 
 const AppRoutes = () => {
   return (
     <Routes>
       <Route path="/" element={<Login />} />
-      <Route path="/scan-qr" element={<ScanQRCode />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/availability" element={<Availability />} />
-      <Route path="/log-book" element={<LogBook />} />
-      <Route path="/DailyRecords" element={<DailyRecords />} />
+      
+      {/* Protected Intern Routes - Wrapped with AgreementGuard */}
+      <Route path="/scan-qr" element={<AgreementGuard><ScanQRCode /></AgreementGuard>} />
+      <Route path="/dashboard" element={<AgreementGuard><Dashboard /></AgreementGuard>} />
+      <Route path="/availability" element={<AgreementGuard><Availability /></AgreementGuard>} />
+      <Route path="/log-book" element={<AgreementGuard><LogBook /></AgreementGuard>} />
+      <Route path="/DailyRecords" element={<AgreementGuard><DailyRecords /></AgreementGuard>} />
       
       {/* Admin Routes */}
       <Route path="/admin-login" element={<AdminLogin />} />
