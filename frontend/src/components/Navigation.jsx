@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen, Download, FileText } from "lucide-react";
+import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen, Download, FileText, Youtube } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
@@ -127,6 +127,10 @@ const Navigation = () => {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleYouTubeClick = () => {
+    window.open('https://youtube.com/@digitalserendib?si=9A0u6vWxGWY5EdnG', '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -289,6 +293,15 @@ const Navigation = () => {
 
           {/* Footer Section */}
           <div className="p-4 border-t border-gray-700/50 space-y-2">
+            <button 
+              onClick={handleYouTubeClick}
+              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 group cursor-pointer"
+              aria-label="Watch Training Videos in Digital Serendib"
+            >
+              <Youtube className="h-5 w-5 text-gray-400 group-hover:text-red-400" />
+              <span className="ml-3 text-sm">Digital Serendib</span>
+            </button>
+
             <button 
               onClick={handleDownloadLeaveForm}
               className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
