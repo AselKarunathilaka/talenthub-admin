@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen } from "lucide-react";
+import { Menu, X, Home, QrCode, Calendar, LogOut, User, BookOpen, Download } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 
 const Navigation = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -107,6 +108,15 @@ const Navigation = () => {
   const handleLogout = () => {
     localStorage.removeItem("internId");
     navigate("/");
+  };
+
+  const handleDownloadLeaveForm = () => {
+    const link = document.createElement('a');
+    link.href = leaveFormPdf;
+    link.download = 'Intern_Leave_Form.pdf';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -268,7 +278,16 @@ const Navigation = () => {
           </nav>
 
           {/* Footer Section */}
-          <div className="p-4 border-t border-gray-700/50">
+          <div className="p-4 border-t border-gray-700/50 space-y-2">
+            <button 
+              onClick={handleDownloadLeaveForm}
+              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
+              aria-label="Download Leave Form"
+            >
+              <Download className="h-5 w-5 text-gray-400 group-hover:text-blue-300" />
+              <span className="ml-3">Download Leave Form</span>
+            </button>
+            
             <button 
               onClick={handleLogout}
               className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-gray-700/40 hover:text-white transition-all duration-200 group cursor-pointer"
