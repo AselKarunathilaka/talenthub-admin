@@ -35,10 +35,10 @@ const AgreementModal = ({ onAccept, internName }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] flex flex-col animate-fadeIn">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 overflow-hidden">
+      <div className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-4xl w-full h-[95vh] sm:h-auto sm:max-h-[90vh] flex flex-col animate-fadeIn">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#00102F] to-[#001a4d] text-white px-4 sm:px-6 py-4 sm:py-5 rounded-t-xl sm:rounded-t-2xl">
+        <div className="bg-gradient-to-r from-[#00102F] to-[#001a4d] text-white px-4 sm:px-6 py-4 sm:py-5 rounded-t-xl sm:rounded-t-2xl flex-shrink-0">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <FileText className="h-6 w-6 sm:h-7 sm:w-7 flex-shrink-0" />
             <div className="min-w-0">
@@ -48,11 +48,11 @@ const AgreementModal = ({ onAccept, internName }) => {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto flex flex-col p-3 sm:p-6">
+        {/* Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto flex flex-col p-3 sm:p-6 min-h-0">
           {/* PDF Viewer */}
           <div 
-            className="flex-1 border-2 border-gray-200 rounded-lg overflow-auto mb-3 sm:mb-4 min-h-[200px] max-h-[45vh] sm:min-h-[300px] sm:max-h-[50vh] -webkit-overflow-scrolling-touch"
+            className="border-2 border-gray-200 rounded-lg overflow-auto mb-3 sm:mb-4 h-[35vh] sm:h-[40vh] flex-shrink-0"
             onScroll={handleScroll}
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
@@ -119,7 +119,7 @@ const AgreementModal = ({ onAccept, internName }) => {
 
           {/* Scroll Indicator */}
           {!hasScrolledToBottom && !isIOS && viewMode === 'iframe' && (
-            <div className="flex items-center justify-center space-x-2 text-amber-600 bg-amber-50 py-2 px-3 sm:px-4 rounded-lg mb-3 sm:mb-4 animate-pulse">
+            <div className="flex items-center justify-center space-x-2 text-amber-600 bg-amber-50 py-2 px-3 sm:px-4 rounded-lg mb-3 sm:mb-4 animate-pulse flex-shrink-0">
               <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
               <span className="text-xs sm:text-sm font-medium text-center">Please scroll through the entire document to continue</span>
             </div>
@@ -147,20 +147,11 @@ const AgreementModal = ({ onAccept, internName }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 flex-shrink-0 pt-2">
-            <a
-              href={agreementPdf}
-              download="Trainee_Guidelines_Agreement.pdf"
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center justify-center sm:justify-start space-x-2 transition-colors py-2 sm:py-0"
-            >
-              <FileText className="h-4 w-4" />
-              <span>Download PDF</span>
-            </a>
-
+          <div className="flex justify-end flex-shrink-0 pt-2">
             <button
               onClick={handleAccept}
               disabled={!hasAccepted || isLoading}
-              className={`px-4 sm:px-6 py-3 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all
+              className={`px-4 sm:px-6 py-3 rounded-lg font-semibold text-sm sm:text-base flex items-center justify-center space-x-2 transition-all w-full sm:w-auto
                 ${hasAccepted && !isLoading
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
