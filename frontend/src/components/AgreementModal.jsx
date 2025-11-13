@@ -49,10 +49,10 @@ const AgreementModal = ({ onAccept, internName }) => {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex flex-col p-3 sm:p-6">
+        <div className="flex-1 overflow-y-auto flex flex-col p-3 sm:p-6">
           {/* PDF Viewer */}
           <div 
-            className="flex-1 border-2 border-gray-200 rounded-lg overflow-auto mb-3 sm:mb-4 min-h-[250px] sm:min-h-[400px] -webkit-overflow-scrolling-touch"
+            className="flex-1 border-2 border-gray-200 rounded-lg overflow-auto mb-3 sm:mb-4 min-h-[200px] max-h-[45vh] sm:min-h-[300px] sm:max-h-[50vh] -webkit-overflow-scrolling-touch"
             onScroll={handleScroll}
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
@@ -126,7 +126,7 @@ const AgreementModal = ({ onAccept, internName }) => {
           )}
 
           {/* Checkbox */}
-          <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4">
+          <div className="bg-gray-50 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 flex-shrink-0">
             <label className="flex items-start space-x-2 sm:space-x-3 cursor-pointer group">
               <input
                 type="checkbox"
@@ -147,7 +147,7 @@ const AgreementModal = ({ onAccept, internName }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 flex-shrink-0 pt-2">
             <a
               href={agreementPdf}
               download="Trainee_Guidelines_Agreement.pdf"
