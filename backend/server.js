@@ -11,8 +11,10 @@ const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   
   // Auto-sync with SLT API on server startup
-  console.log('🔄 Starting auto-sync with SLT API...');
-  InternService.syncWithSLTAPI()
+  // WARNING: enableCleanup: true will remove interns from the DB that are not present in the API.
+  // This is destructive. Set AUTO_CLEANUP_INACTIVE_INTERNS='false' in your env if you want to disable cleanup.
+  console.log('🔄 Starting auto-sync with SLT API (cleanup enabled)...');
+  InternService.syncWithSLTAPI({ enableCleanup: true })
     .then(result => {
       if (result.success) {
         console.log('✅ Auto-sync completed successfully!');
