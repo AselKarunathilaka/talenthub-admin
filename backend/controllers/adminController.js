@@ -268,7 +268,21 @@ const getInternDetails = async (req, res) => {
     });
 
     const internDetails = {
-      intern,
+      intern: {
+        _id: intern._id,
+        traineeId: intern.Trainee_ID,
+        traineeName: intern.Trainee_Name,
+        email: intern.Trainee_Email,
+        fieldOfSpecialization: intern.field_of_spec_name,
+        homeAddress: intern.Trainee_HomeAddress,
+        startDate: intern.Training_StartDate,
+        endDate: intern.Training_EndDate,
+        institute: intern.Institute,
+        team: intern.team,
+        availableDays: intern.availableDays,
+        agreementAccepted: intern.agreementAccepted,
+        agreementAcceptedDate: intern.agreementAcceptedDate
+      },
       records,
       statistics: {
         totalRecords: records.length,
