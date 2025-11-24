@@ -13,6 +13,7 @@ import {
   FileText,
   CalendarCheck,
   Youtube,
+  Armchair,
 } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import axios from "axios";
@@ -125,7 +126,7 @@ const Navigation = ({ children }) => {
     {
       to: "/seat-reservation",
       label: "Seat Reservation",
-      icon: <CalendarCheck className="h-5 w-5" />,
+      icon: <Armchair className="h-5 w-5" />,
     },
   ];
 
