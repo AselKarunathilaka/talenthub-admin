@@ -4,7 +4,7 @@ import {
   FaUsers, FaSearch, FaDownload, FaBell, FaExclamationTriangle, 
   FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaFileExport,
   FaFilter, FaSort, FaUser, FaTasks, FaSpinner, FaShieldAlt,
-  FaArrowLeft, FaEye
+  FaArrowLeft, FaEye, FaFileAlt
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi, csvUtils, notificationUtils } from '../api/adminApi';
@@ -747,6 +747,22 @@ const AdminDashboard = () => {
                     <span className="block text-xs leading-tight">View Daily Records</span>
                     <span className="block text-xs opacity-75 leading-tight">
                       All interns' records
+                    </span>
+                  </span>
+                </motion.button>
+
+                <motion.button
+                  onClick={() => navigate('/admin/leave-requests')}
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-md hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaFileAlt className="mr-1 h-2.5 w-2.5" />
+                  <span className="flex-1 text-left">
+                    <span className="block text-xs leading-tight">Leave Requests</span>
+                    <span className="block text-xs opacity-75 leading-tight">
+                      Manage leave requests
                     </span>
                   </span>
                 </motion.button>

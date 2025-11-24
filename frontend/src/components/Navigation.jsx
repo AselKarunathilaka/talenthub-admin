@@ -7,7 +7,7 @@ import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 
-const Navigation = () => {
+const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNavbarHidden, setIsNavbarHidden] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -101,6 +101,11 @@ const Navigation = () => {
       to: "/log-book",
       label: "Log Book",
       icon: <BookOpen className="h-5 w-5" />,
+    },
+    {
+      to: "/leave-requests",
+      label: "Leave Requests",
+      icon: <FileText className="h-5 w-5" />,
     },
   ];
 
@@ -303,15 +308,6 @@ const Navigation = () => {
             </button>
 
             <button 
-              onClick={handleDownloadLeaveForm}
-              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
-              aria-label="Download Leave Form"
-            >
-              <Download className="h-5 w-5 text-gray-400 group-hover:text-blue-300" />
-              <span className="ml-3 text-sm">Leave Form</span>
-            </button>
-
-            <button 
               onClick={handleDownloadAgreement}
               className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
               aria-label="Download Agreement"
@@ -338,6 +334,9 @@ const Navigation = () => {
 
       {/* Spacer for desktop top navbar */}
       <div className="hidden lg:block h-[5.5rem]"></div>
+
+      {/* Main Content */}
+      {children}
     </>
   );
 };

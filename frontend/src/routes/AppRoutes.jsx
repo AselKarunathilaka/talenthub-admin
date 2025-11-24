@@ -6,11 +6,13 @@ import Dashboard from "../pages/Dashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
 import DailyRecords from "../pages/DailyRecords";
+import MyLeaveRequests from "../pages/MyLeaveRequests";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminDailyRecords from "../pages/AdminDailyRecords";
 import AdminInternDetails from "../pages/AdminInternDetails";
 import AdminInternRecords from "../pages/AdminInternRecords";
+import AdminLeaveManagement from "../pages/AdminLeaveManagement";
 import AgreementGuard from "../components/AgreementGuard";
 
 const AppRoutes = () => {
@@ -24,6 +26,7 @@ const AppRoutes = () => {
       <Route path="/availability" element={<AgreementGuard><Availability /></AgreementGuard>} />
       <Route path="/log-book" element={<AgreementGuard><LogBook /></AgreementGuard>} />
       <Route path="/DailyRecords" element={<AgreementGuard><DailyRecords /></AgreementGuard>} />
+      <Route path="/leave-requests" element={<AgreementGuard><MyLeaveRequests /></AgreementGuard>} />
       
       {/* Admin Routes */}
       <Route path="/admin-login" element={<AdminLogin />} />
@@ -32,6 +35,7 @@ const AppRoutes = () => {
       <Route path="/admin/daily-records" element={<AdminDailyRecords />} />
       <Route path="/admin/intern/:internId" element={<AdminInternDetails />} />
       <Route path="/admin/intern/:internId/records" element={<AdminInternRecords />} />
+      <Route path="/admin/leave-requests" element={<AdminLeaveManagement />} />
       
   </Routes>
   );
