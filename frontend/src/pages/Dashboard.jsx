@@ -23,6 +23,7 @@ const Dashboard = () => {
     present: 0,
     absent: 0,
   });
+  const [showCricketPopup, setShowCricketPopup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
@@ -33,6 +34,8 @@ const Dashboard = () => {
   const [endDateNotification, setEndDateNotification] = useState(null);
   const rowsPerPage = 10;
   const navigate = useNavigate();
+  const cricketRegistrationLink = "https://linktr.ee/CricketFiestaRegistrationLinks";
+  const cricketPosterUrl = "/images/cricket-fiesta-poster.jpg";
 
   const loadInternData = async () => {
     try {
@@ -135,6 +138,16 @@ const Dashboard = () => {
       navigate("/");
     }
   }, [navigate]);
+
+  useEffect(() => {
+    const deadline = new Date("2025-12-31T23:59:59");
+    const now = new Date();
+    const dismissedUntil = localStorage.getItem("cricketFiestaDismissed");
+
+    if (now <= deadline && dismissedUntil !== "2025-12-31") {
+      setShowCricketPopup(true);
+    }
+  }, []);
 
   useEffect(() => {
     loadAllData();
@@ -612,6 +625,56 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navigation onLogout={handleLogout} />
+      {showCricketPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">
+          <div className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-2xl">
+            <button
+              onClick={() => {
+                localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
+                setShowCricketPopup(false);
+              }}
+              className="absolute right-3 top-3 text-gray-500 hover:text-gray-800"
+              aria-label="Close cricket fiesta announcement"
+            >
+              ✕
+            </button>
+            <div className="h-full rounded-2xl bg-white p-6 text-center">
+              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-2">
+                <img
+                  src={cricketPosterUrl}
+                  alt="Cricket Fiesta poster"
+                  className="w-full max-h-[32rem] rounded-lg object-contain"
+                />
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500 mt-1">
+                  Register before December 31st to secure your spot.
+                </p>
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <a
+                  href={cricketRegistrationLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                >
+                  Open Registration Links
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
+                    setShowCricketPopup(false);
+                  }}
+                  className="text-sm font-medium text-gray-600 underline"
+                >
+                  Maybe later
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex-1 flex flex-col lg:mt-7 lg:px-10">
         <div className="h-16" />
         <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
