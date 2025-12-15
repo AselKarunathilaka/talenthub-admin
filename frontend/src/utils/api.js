@@ -2,18 +2,20 @@
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const getAuthToken = () => {
-  const authToken = localStorage.getItem('authToken');
-  if (authToken) return authToken;
-
   const adminInfo = localStorage.getItem('adminInfo');
   if (adminInfo) {
     try {
       const parsed = JSON.parse(adminInfo);
-      if (parsed.token) return parsed.token;
+      if (parsed.token) {
+        return parsed.token;
+      }
     } catch (error) {
       console.error('Error parsing adminInfo:', error);
     }
   }
+
+  const authToken = localStorage.getItem('authToken');
+  if (authToken) return authToken;
 
   const userData = localStorage.getItem('userData');
   if (userData) {

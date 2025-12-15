@@ -40,6 +40,11 @@ router.patch(
   leaveRequestController.updateLeaveRequestStatus
 );
 
+router.get(
+  '/report/approved',
+  leaveRequestController.exportApprovedLeavesPdf
+);
+
 // Shared routes (both admin and intern can access)
 router.get(
   '/:id/document',

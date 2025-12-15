@@ -27,6 +27,28 @@ const getHeaders = () => {
   };
 };
 
+const downloadApprovedLeaveReport = async ({ startDate, endDate } = {}) => {
+  const token = getAuthToken();
+  const params = new URLSearchParams();
+
+  if (startDate) params.set('startDate', startDate);
+  if (endDate) params.set('endDate', endDate);
+
+  const url = `${API_BASE_URL}/leave-requests/report/approved${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: {
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to download approved leave report: ${response.status}`);
+  }
+
+  return response.blob();
+};
+
 // Admin API functions
 export const adminApi = {
   // Download on-leave interns Excel
@@ -41,6 +63,7 @@ export const adminApi = {
     if (!response.ok) throw new Error('Failed to download on-leave Excel');
     return response.blob();
   },
+  downloadApprovedLeaveReport,
   // Get dashboard statistics
   getDashboardStats: async () => {
     try {
@@ -240,6 +263,8 @@ export const adminApi = {
     }
   }
 };
+
+export { downloadApprovedLeaveReport };
 
 // Helper function to format date as YYYY-MM-DD
 // Uses = formula prefix to force Excel to treat it as text and preserve the format

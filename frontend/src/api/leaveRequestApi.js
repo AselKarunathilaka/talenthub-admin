@@ -3,20 +3,20 @@ import { API_BASE_URL } from './apiConfig';
 
 // Get auth token from localStorage
 const getAuthToken = () => {
-  // Check for intern auth token first (stored directly as string)
+  // Prefer intern auth token since leave requests are intern-only
   const authToken = localStorage.getItem('authToken');
   if (authToken) {
     console.log('Leave Request API - Using intern token');
     return authToken;
   }
-  
-  // Try to get admin token
+
+  // Fall back to admin token (if this endpoint is ever used by admins)
   const adminInfo = localStorage.getItem('adminInfo');
   if (adminInfo) {
     try {
       const parsed = JSON.parse(adminInfo);
       if (parsed.token) {
-        console.log('Leave Request API - Using admin token');
+        console.log('Leave Request API - Using admin token fallback');
         return parsed.token;
       }
     } catch (e) {

@@ -5,6 +5,7 @@ import {
   updateLeaveRequestStatus,
   getLeaveRequestStats,
 } from '../api/leaveRequestApi';
+import { downloadApprovedLeaveReport } from '../api/adminApi';
 import toast from 'react-hot-toast';
 import { FiFileText, FiCalendar, FiClock, FiUser, FiX, FiCheck, FiAlertCircle, FiArrowLeft, FiEye } from 'react-icons/fi';
 import logo from '../assets/sltlogo.jpg';
@@ -30,6 +31,7 @@ const AdminLeaveManagement = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminResponse, setAdminResponse] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [reportRange, setReportRange] = useState({ startDate: '', endDate: '' });
 
   useEffect(() => {
     // Check if admin is logged in
@@ -161,6 +163,33 @@ const AdminLeaveManagement = () => {
     setAdminResponse('');
   };
 
+  const handleDownloadApprovedReport = async () => {
+    const toastId = toast.loading('Generating approved leave report...');
+    try {
+      const blob = await downloadApprovedLeaveReport({
+        startDate: reportRange.startDate || undefined,
+        endDate: reportRange.endDate || undefined
+      });
+
+      const url = URL.createObjectURL(blob);
+      const fileName = `approved-leaves-report${
+        reportRange.startDate ? `-${reportRange.startDate}` : ''
+      }${reportRange.endDate ? `-to-${reportRange.endDate}` : ''}.pdf`;
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success('Approved leave report ready for download', { id: toastId });
+    } catch (error) {
+      console.error('Error downloading approved leave report:', error);
+      toast.error('Failed to download approved leave report', { id: toastId });
+    }
+  };
+
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'Approved':
@@ -269,6 +298,40 @@ const AdminLeaveManagement = () => {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Download Approved Leave Report */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="reportStartDate">
+              Start Date
+            </label>
+            <input
+              id="reportStartDate"
+              type="date"
+              value={reportRange.startDate}
+              onChange={(e) => setReportRange((prev) => ({ ...prev, startDate: e.target.value }))}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-medium text-gray-700" htmlFor="reportEndDate">
+              End Date
+            </label>
+            <input
+              id="reportEndDate"
+              type="date"
+              value={reportRange.endDate}
+              onChange={(e) => setReportRange((prev) => ({ ...prev, endDate: e.target.value }))}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <button
+            onClick={handleDownloadApprovedReport}
+            className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            Download Approved Leaves PDF
+          </button>
         </div>
 
         {/* Content */}

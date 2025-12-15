@@ -256,6 +256,47 @@ class LeaveRequestController {
     }
   }
 
+  async exportApprovedLeavesPdf(req, res, next) {
+    try {
+      const adminUser = await User.findById(req.user.id);
+
+      if (!adminUser) {
+        return res.status(403).json({
+          success: false,
+          message: 'Admin access required'
+        });
+      }
+
+      const { startDate, endDate } = req.query;
+
+      if (startDate && Number.isNaN(new Date(startDate).getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid startDate value'
+        });
+      }
+
+      if (endDate && Number.isNaN(new Date(endDate).getTime())) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid endDate value'
+        });
+      }
+
+      const pdfBuffer = await leaveRequestService.generateApprovedLeavesPDF({
+        startDate,
+        endDate
+      });
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="approved-leaves-report.pdf"');
+      res.send(pdfBuffer);
+    } catch (error) {
+      console.error('Error in exportApprovedLeavesPdf controller:', error);
+      next(error);
+    }
+  }
+
   // Get document for a leave request
   async getLeaveRequestDocument(req, res, next) {
     try {
