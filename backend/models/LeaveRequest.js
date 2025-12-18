@@ -10,9 +10,9 @@ const leaveRequestSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  internNIC: {
+  internTraineeId: {
     type: String,
-    required: true
+    default: null
   },
   leaveDate: {
     type: Date,

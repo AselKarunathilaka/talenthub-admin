@@ -247,9 +247,9 @@ const AdminLeaveManagement = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
               <FiFileText className="text-blue-600" />
-              Leave Request Management
+              Short Leave Request Management
             </h1>
-            <p className="text-gray-600 mt-1">Review and manage intern leave requests</p>
+            <p className="text-gray-600 mt-1">Review and manage intern short leave requests</p>
           </div>
         </div>
 
@@ -342,7 +342,7 @@ const AdminLeaveManagement = () => {
         ) : leaveRequests.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
-            <p className="text-gray-600 text-lg">No leave requests found</p>
+            <p className="text-gray-600 text-lg">No short leave requests found</p>
           </div>
         ) : (
           <>
@@ -462,7 +462,7 @@ const AdminLeaveManagement = () => {
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-blue-600" />
-                  Leave Request Details
+                  Short Leave Request Details
                 </h2>
                 <button
                   onClick={closeReviewModal}

@@ -760,9 +760,9 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileAlt className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Leave Requests</span>
+                    <span className="block text-xs leading-tight">Short Leave Requests</span>
                     <span className="block text-xs opacity-75 leading-tight">
-                      Manage leave requests
+                      Manage short leave requests
                     </span>
                   </span>
                 </motion.button>

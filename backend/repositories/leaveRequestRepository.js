@@ -8,7 +8,7 @@ class LeaveRequestRepository {
 
   async findById(id) {
     return await LeaveRequest.findById(id)
-      .populate('intern', 'firstName lastName nic email')
+      .populate('intern', 'Trainee_Name Trainee_ID Trainee_Email')
       .populate('reviewedBy', 'name email');
   }
 
@@ -58,7 +58,7 @@ class LeaveRequestRepository {
     
     return await query
       .sort({ submittedAt: -1 })
-      .populate('intern', 'firstName lastName nic email')
+      .populate('intern', 'Trainee_Name Trainee_ID Trainee_Email')
       .populate('reviewedBy', 'name email');
   }
 
@@ -72,7 +72,7 @@ class LeaveRequestRepository {
         reviewedAt: new Date()
       },
       { new: true }
-    ).populate('intern', 'firstName lastName nic email')
+    ).populate('intern', 'Trainee_Name Trainee_ID Trainee_Email')
      .populate('reviewedBy', 'name email');
   }
 
