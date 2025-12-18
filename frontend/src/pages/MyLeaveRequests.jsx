@@ -180,9 +180,9 @@ const MyLeaveRequests = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-blue-600" />
-                  My Leave Requests
+                  My Short Leave Requests
                 </h1>
-                <p className="text-gray-600 mt-1">View and manage your leave permission requests</p>
+                <p className="text-gray-600 mt-1">View and manage your short leave permission requests</p>
               </div>
               <button
                 onClick={() => setShowForm(!showForm)}
@@ -198,7 +198,7 @@ const MyLeaveRequests = () => {
                   </>
                 ) : (
                 <>
-                  <FiPlus /> New Leave Request
+                  <FiPlus /> New Short Leave Request
                 </>
               )}
             </button>
@@ -241,7 +241,7 @@ const MyLeaveRequests = () => {
           ) : leaveRequests.length === 0 ? (
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
               <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
-              <p className="text-gray-600 text-lg mb-4">No leave requests found</p>
+              <p className="text-gray-600 text-lg mb-4">No short leave requests found</p>
               {!showForm && (
                 <button
                   onClick={() => setShowForm(true)}

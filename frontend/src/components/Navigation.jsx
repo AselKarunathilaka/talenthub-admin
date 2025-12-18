@@ -120,7 +120,7 @@ const Navigation = ({ children }) => {
     },
     {
       to: "/leave-requests",
-      label: "Leave Requests",
+      label: "Short Leave Requests",
       icon: <FileText className="h-5 w-5" />,
     },
     {

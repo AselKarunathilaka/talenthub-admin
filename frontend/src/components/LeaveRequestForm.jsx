@@ -97,7 +97,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
       <div className="flex items-center gap-4 mb-6 pb-6 border-b border-gray-200">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">
-            Leave Permission Request
+            Short Leave Permission Request
           </h2>
           <p className="text-gray-600 text-sm mt-1">
             Submit your request to exit SLT premises early
@@ -217,7 +217,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
                 : 'bg-blue-600 hover:bg-blue-700 hover:shadow-lg'
             }`}
           >
-            {loading ? 'Submitting...' : 'Submit Leave Request'}
+            {loading ? 'Submitting...' : 'Submit Short Leave Request'}
           </button>
         </div>
       </form>
