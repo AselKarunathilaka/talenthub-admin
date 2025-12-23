@@ -222,7 +222,34 @@ const InternSeatManagement = () => {
                 <span className="text-xs sm:text-sm font-medium">Locked</span>
               </div>
             </div>
-
+            {/* Joined Seats Info Banner */}
+            <div className="mb-6 text-center">
+              <div className="inline-flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-6 py-4 shadow-sm">
+                <div className="text-amber-700">
+                  <svg
+                    className="w-8 h-8"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-amber-900">
+                    Joined Seats Information
+                  </p>
+                  <p className="text-sm text-amber-800 mt-1">
+                    Some seats are designed as <strong>2 seats for 1 table</strong> (joined units).
+                  </p>
+                </div>
+              </div>
+            </div>
             <div className="relative">
               <div className="hidden sm:block bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
                 <div
@@ -617,7 +644,7 @@ const InternSeatManagement = () => {
                   Seats Booked for {formatDisplayDate(selectedDate)}
                 </h3>
                 <span className="text-sm text-gray-500 mt-1 sm:mt-0">
-                  {totalBookedCount} of 97 seats booked
+                  {totalBookedCount} of 96 seats booked
                 </span>
               </div>
               {Object.keys(dailyBookings).length > 0 ? (
