@@ -3,6 +3,7 @@ const Intern = require("../models/Intern");
 const User = require("../models/User");
 const emailSender = require("../utils/emailSender");
 const internService = require("../services/internService");
+const WeeklyScheduler = require("../services/weeklyScheduler");
 
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
@@ -811,6 +812,45 @@ const syncWithSLTAPI = async (req, res) => {
   }
 };
 
+// Manually trigger weekly non-submission check
+const triggerWeeklyNonSubmissionCheck = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify admin user
+    const adminUser = await User.findById(userId);
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    console.log(`🔧 Manual weekly non-submission check triggered by admin: ${adminUser.email}`);
+    
+    // Trigger the manual check
+    const result = await WeeklyScheduler.triggerManualNonSubmissionCheck();
+    
+    if (result.success) {
+      res.status(200).json({
+        message: "Weekly non-submission check completed successfully",
+        timestamp: result.timestamp,
+        results: result.results
+      });
+    } else {
+      res.status(500).json({
+        error: "Weekly non-submission check failed",
+        details: result.error,
+        timestamp: result.timestamp
+      });
+    }
+
+  } catch (error) {
+    console.error("Error triggering weekly non-submission check:", error);
+    res.status(500).json({ 
+      error: "Failed to trigger weekly non-submission check",
+      details: error.message 
+    });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -820,5 +860,6 @@ module.exports = {
   getAllDailyRecords,
   getPreviousDaySubmissions,
   getWeeklyNonSubmissions,
-  syncWithSLTAPI
+  syncWithSLTAPI,
+  triggerWeeklyNonSubmissionCheck
 };
