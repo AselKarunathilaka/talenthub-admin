@@ -13,6 +13,7 @@ const InternSeatManagement = () => {
     maxBookingDate,
     leftSection,
     rightSection,
+    totalUnavailableCount,
     totalBookedCount,
     formatDisplayDate,
     handleDateChange,
@@ -171,19 +172,17 @@ const InternSeatManagement = () => {
               </div>
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-700">
-                      {totalBookedCount}
+                  <div className="text-center p-3 bg-red-50 rounded-lg">
+                    <div className="text-2xl font-bold text-red-700">
+                      {totalUnavailableCount}
                     </div>
-                    <div className="text-sm text-blue-600">Seats Booked</div>
+                    <div className="text-sm text-red-600">Seats Booked / Locked</div>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-700">
-                      {96 - Object.keys(dailyBookings).length}
+                      {96 - totalUnavailableCount}
                     </div>
-                    <div className="text-sm text-green-600">
-                      Seats Available
-                    </div>
+                    <div className="text-sm text-green-600">Seats Available</div>
                   </div>
                   <div className="flex justify-center sm:justify-end">
                     <div className="flex items-center gap-3">
@@ -446,7 +445,6 @@ const InternSeatManagement = () => {
                   </div>
                 </div>
               </div>
-
               <div className="sm:hidden bg-gray-100 rounded-xl p-2 overflow-auto">
                 <div
                   className="relative"
@@ -644,7 +642,7 @@ const InternSeatManagement = () => {
                   Seats Booked for {formatDisplayDate(selectedDate)}
                 </h3>
                 <span className="text-sm text-gray-500 mt-1 sm:mt-0">
-                  {totalBookedCount} of 96 seats booked
+                  {totalUnavailableCount} of 96 seats unavailable (includes locked)
                 </span>
               </div>
               {Object.keys(dailyBookings).length > 0 ? (

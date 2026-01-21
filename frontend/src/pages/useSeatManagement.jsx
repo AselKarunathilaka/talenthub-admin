@@ -26,7 +26,7 @@ const leftSection = {
   ],
   outerRing1: [
     { number: 34, angle: 190, radius: 240 },
-    { number: 0, angle: 174, radius: 225 },
+    { number: 35, angle: 174, radius: 225 },
     { number: 36, angle: 155, radius: 195 },
     { number: 37, angle: 133, radius: 180 },
     { number: 38, angle: 111, radius: 174 },
@@ -39,14 +39,14 @@ const leftSection = {
     { number: 44, angle: -11, radius: 240 },
   ],
   outerRing2: [
-    { number: 52, angle: 155, radius: 260 },
-    { number: 51, angle: 139, radius: 255 },
-    { number: 50, angle: 123, radius: 250 },
-    { number: 49, angle: 107, radius: 245 },
-    { number: 48, angle: 91, radius: 235 },
-    { number: 47, angle: 75, radius: 240 },
-    { number: 46, angle: 59, radius: 245 },
-    { number: 45, angle: 43, radius: 250 },
+    { number: 0, angle: 155, radius: 260 },
+    { number: 0, angle: 139, radius: 255 },
+    { number: 0, angle: 123, radius: 250 },
+    { number: 0, angle: 107, radius: 245 },
+    { number: 0, angle: 91, radius: 235 },
+    { number: 0, angle: 75, radius: 240 },
+    { number: 0, angle: 59, radius: 245 },
+    { number: 0, angle: 43, radius: 250 },
   ],
   outerRing3: [
     { number: 55, angle: 63, radius: 312 },
@@ -88,8 +88,8 @@ const rightSection = {
     { number: 62, angle: 340, radius: 105 },
     { number: 66, angle: 20, radius: 105 },
     { number: 67, angle: 60, radius: 105 },
-    { number: 68, angle: 120, radius: 105 },
-    { number: 69, angle: 160, radius: 105 },
+    { number: 0, angle: 120, radius: 105 },
+    { number: 0, angle: 160, radius: 105 },
     { number: 59, angle: 200, radius: 105 },
     { number: 60, angle: 240, radius: 115 },
   ],
@@ -107,25 +107,39 @@ const rightSection = {
     { number: 80, angle: 22, radius: 280 },
   ],
   outerRing2: [
-    { number: 70, angle: 173, radius: 210 },
-    { number: 71, angle: 160, radius: 210 },
+    { number: 0, angle: 173, radius: 210 },
+    { number: 0, angle: 160, radius: 210 },
     { number: 72, angle: 140, radius: 200 },
     { number: 73, angle: 120, radius: 180 },
     { number: 74, angle: 100, radius: 170 },
     { number: 75, angle: 80, radius: 170 },
-    { number: 76, angle: 60, radius: 180 },
+    { number: 0, angle: 60, radius: 180 },
     { number: 77, angle: 40, radius: 200 },
-    { number: 78, angle: 20, radius: 210 },
-    { number: 79, angle: 7, radius: 210},
+    { number: 0, angle: 20, radius: 210 },
+    { number: 0, angle: 7, radius: 210},
   ],
   outerRing3: [
     { number: 92, angle: 132, radius: 340 },
-    { number: 93, angle: 120, radius: 330 },
-    { number: 94, angle: 43, radius: 340 },
-    { number: 95, angle: 31, radius: 360 },
-    { number: 96, angle: 24, radius: 350 },
+    { number: 0, angle: 120, radius: 330 },
+    { number: 0, angle: 43, radius: 340 },
+    { number: 0, angle: 31, radius: 360 },
+    { number: 0, angle: 24, radius: 350 },
   ],
 };
+
+// Compute the number of locked seats (seats with number 0)
+const lockedCount = [
+  ...leftSection.topRow,
+  ...leftSection.pillarSeats,
+  ...leftSection.outerRing1,
+  ...leftSection.outerRing2,
+  ...leftSection.outerRing3,
+  ...rightSection.straightSeats,
+  ...rightSection.pillarSeats,
+  ...rightSection.outerRing1,
+  ...rightSection.outerRing2,
+  ...rightSection.outerRing3
+].filter(seat => seat.number === 0).length;
 
 export const useSeatManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -141,6 +155,7 @@ export const useSeatManagement = () => {
   const [maxBookingDate, setMaxBookingDate] = useState("");
   const [takenSeatsByAnyone, setTakenSeatsByAnyone] = useState([]);
   const [totalBookedCount, setTotalBookedCount] = useState(0);
+  const [totalUnavailableCount, setTotalUnavailableCount] = useState(0);
 
   const formatDisplayDate = useCallback((dateString) => {
     const date = new Date(dateString);
@@ -247,8 +262,7 @@ export const useSeatManagement = () => {
         throw new Error(errorData.message || "Failed to cancel booking");
       }
 
-      const result = await response.json();
-      return result;
+      return await response.json();
     } catch (err) {
       setError(err.message);
       throw err;
@@ -257,7 +271,7 @@ export const useSeatManagement = () => {
     }
   }, []);
 
-  // Fetch seat availability
+  // Fetch seat availability (all booked seats for the date)
   const fetchSeatAvailability = useCallback(async (dateString) => {
     try {
       const response = await fetch(
@@ -279,18 +293,13 @@ export const useSeatManagement = () => {
     }
   }, []);
 
-  // Check if intern can book for date
-  const canInternBookForDate = useCallback(() => {
-    return Object.values(dailyBookings).length === 0;
-  }, [dailyBookings]);
-
   // Load bookings for a specific date
   const loadBookingsForDate = useCallback(
     async (dateString) => {
       try {
         setLoading(true);
 
-        // 1. Get all taken seats (for red color on map)
+        // 1. Get all taken seats (booked by anyone)
         const availability = await fetchSeatAvailability(dateString);
         const allTakenSeats = availability.bookedSeats || [];
 
@@ -302,16 +311,17 @@ export const useSeatManagement = () => {
           }
         );
 
-        if (!response.ok) {
+        let myBookings = [];
+        if (response.ok) {
+          myBookings = await response.json();
+        } else {
           console.error("Failed to fetch my bookings");
           setDailyBookings({});
           setTakenSeatsByAnyone(allTakenSeats);
           return;
         }
 
-        const myBookings = await response.json();
-
-        // 3. Find booking for THIS date (critical fix: proper date match)
+        // 3. Find booking for THIS date
         const targetDate = new Date(dateString);
         targetDate.setHours(0, 0, 0, 0);
 
@@ -333,9 +343,10 @@ export const useSeatManagement = () => {
           };
         }
 
-        setDailyBookings(myOnly); // ← Table: only YOU
-        setTakenSeatsByAnyone(allTakenSeats); // ← Map: all red
+        setDailyBookings(myOnly); // Table: only YOU
+        setTakenSeatsByAnyone(allTakenSeats); // Map: all red (booked)
         setTotalBookedCount(allTakenSeats.length);
+        setTotalUnavailableCount(allTakenSeats.length + lockedCount); // booked + locked
       } catch (err) {
         console.error("Load error:", err);
         setError("Failed to load your seat");
@@ -408,7 +419,6 @@ export const useSeatManagement = () => {
   }, []);
 
   // Handle booking confirmation
-  // Handle booking confirmation
   const handleDateBookingConfirm = useCallback(async () => {
     try {
       const bookingData = {
@@ -442,7 +452,7 @@ export const useSeatManagement = () => {
       if (!booking) return;
 
       const confirmed = window.confirm(
-        `Are you sure you want to cancel the booking for Seat ${seatNumber}?\nIntern ID: ${booking.internId}\nEmail: ${booking.email}`
+        `Are you sure you want to cancel the booking for Seat ${seatNumber}?`
       );
 
       if (!confirmed) return;
@@ -508,8 +518,8 @@ export const useSeatManagement = () => {
     loading,
     error,
     totalBookedCount,
+    totalUnavailableCount,
     formatDisplayDate,
-    canInternBookForDate,
     handleDateChange,
     handleSeatClick,
     handleModalClose,
