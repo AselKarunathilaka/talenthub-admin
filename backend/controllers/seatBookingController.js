@@ -231,8 +231,8 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    //Delete thr booking
-    await SeatBooking.findByIdAndDelete(bookingId);
+    booking.status = "cancelled";
+    await booking.save();
 
     res.status(200).json({
       success: true,
@@ -241,7 +241,7 @@ exports.cancelBooking = async (req, res) => {
         _id: booking._id,
         seatNumber: booking.seatNumber,
         bookingDate: booking.bookingDate,
-        status: "cancelled",
+        status: booking.status,
       },
     });
   } catch (error) {
