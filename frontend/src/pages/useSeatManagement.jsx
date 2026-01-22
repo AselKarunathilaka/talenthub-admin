@@ -1,8 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { API_BASE_URL } from "../api/apiConfig";
 
-const LOCKED_SEATS = [0];
-
 // Left section seats configuration
 const leftSection = {
   topRow: [
@@ -31,7 +29,6 @@ const leftSection = {
     { number: 37, angle: 133, radius: 180 },
     { number: 38, angle: 111, radius: 174 },
     { number: 39, angle: 89, radius: 170 },
-   // { number: 39, angle: 80, radius: 170 },
     { number: 40, angle: 66, radius: 174 },
     { number: 41, angle: 43, radius: 180 },
     { number: 42, angle: 20, radius: 198 },
@@ -39,19 +36,19 @@ const leftSection = {
     { number: 44, angle: -11, radius: 240 },
   ],
   outerRing2: [
-    { number: 0, angle: 155, radius: 260 },
-    { number: 0, angle: 139, radius: 255 },
-    { number: 0, angle: 123, radius: 250 },
-    { number: 0, angle: 107, radius: 245 },
-    { number: 0, angle: 91, radius: 235 },
-    { number: 0, angle: 75, radius: 240 },
-    { number: 0, angle: 59, radius: 245 },
-    { number: 0, angle: 43, radius: 250 },
+    { number: 52, angle: 155, radius: 260, locked: true },
+    { number: 51, angle: 139, radius: 255, locked: true },
+    { number: 50, angle: 123, radius: 250, locked: true },
+    { number: 49, angle: 107, radius: 245, locked: true },
+    { number: 48, angle: 91, radius: 235, locked: true },
+    { number: 47, angle: 75, radius: 240, locked: true },
+    { number: 46, angle: 59, radius: 245, locked: true },
+    { number: 45, angle: 43, radius: 250, locked: true },
   ],
   outerRing3: [
-    { number: 55, angle: 63, radius: 312 },
-    { number: 54, angle: 51, radius: 335 },
-    { number: 53, angle: 42, radius: 325 },
+    { number: 55, angle: 63, radius: 312, locked: true },
+    { number: 54, angle: 51, radius: 335, locked: true },
+    { number: 53, angle: 42, radius: 325, locked: true },
   ],
 };
 
@@ -88,15 +85,15 @@ const rightSection = {
     { number: 62, angle: 340, radius: 105 },
     { number: 66, angle: 20, radius: 105 },
     { number: 67, angle: 60, radius: 105 },
-    { number: 0, angle: 120, radius: 105 },
-    { number: 0, angle: 160, radius: 105 },
+    { number: 68, angle: 120, radius: 105, locked: true },
+    { number: 69, angle: 160, radius: 105, locked: true },
     { number: 59, angle: 200, radius: 105 },
     { number: 60, angle: 240, radius: 115 },
   ],
   outerRing1: [
-    { number: 91, angle: 161, radius: 280 },
-    { number: 90, angle: 151, radius: 280 },
-    { number: 89, angle: 135, radius: 270 },
+    { number: 90, angle: 161, radius: 280 },
+    { number: 89, angle: 151, radius: 280 },
+    { number: 88, angle: 135, radius: 270 },
     { number: 87, angle: 120, radius: 260 },
     { number: 86, angle: 106, radius: 250 },
     { number: 85, angle: 92, radius: 245 },
@@ -107,28 +104,28 @@ const rightSection = {
     { number: 80, angle: 22, radius: 280 },
   ],
   outerRing2: [
-    { number: 0, angle: 173, radius: 210 },
-    { number: 0, angle: 160, radius: 210 },
+    { number: 70, angle: 173, radius: 210, locked: true },
+    { number: 71, angle: 160, radius: 210, locked: true },
     { number: 72, angle: 140, radius: 200 },
     { number: 73, angle: 120, radius: 180 },
     { number: 74, angle: 100, radius: 170 },
     { number: 75, angle: 80, radius: 170 },
-    { number: 0, angle: 60, radius: 180 },
-    { number: 77, angle: 40, radius: 200 },
-    { number: 0, angle: 20, radius: 210 },
-    { number: 0, angle: 7, radius: 210},
+    { number: 76, angle: 60, radius: 180, locked: true },
+    { number: 77, angle: 40, radius: 200, locked: true },
+    { number: 78, angle: 20, radius: 210, locked: true },
+    { number: 79, angle: 7, radius: 210, locked: true },
   ],
   outerRing3: [
-    { number: 92, angle: 132, radius: 340 },
-    { number: 0, angle: 120, radius: 330 },
-    { number: 0, angle: 43, radius: 340 },
-    { number: 0, angle: 31, radius: 360 },
-    { number: 0, angle: 24, radius: 350 },
+    { number: 91, angle: 132, radius: 340 },
+    { number: 92, angle: 120, radius: 330, locked: true },
+    { number: 93, angle: 43, radius: 340, locked: true },
+    { number: 94, angle: 31, radius: 360, locked: true },
+    { number: 95, angle: 24, radius: 350, locked: true },
   ],
 };
 
-// Compute the number of locked seats (seats with number 0)
-const lockedCount = [
+// Calculate total seats and locked seats
+const ALL_SEATS = [
   ...leftSection.topRow,
   ...leftSection.pillarSeats,
   ...leftSection.outerRing1,
@@ -138,8 +135,19 @@ const lockedCount = [
   ...rightSection.pillarSeats,
   ...rightSection.outerRing1,
   ...rightSection.outerRing2,
-  ...rightSection.outerRing3
-].filter(seat => seat.number === 0).length;
+  ...rightSection.outerRing3,
+];
+
+//Total unique seats
+const TOTAL_SEATS = ALL_SEATS.length;
+
+//Locked seat numbers array
+const LOCKED_SEATS = ALL_SEATS.filter((seat) => seat.locked).map(
+  (seat) => seat.number,
+);
+
+//Count of locked seats
+const LOCKED_SEATS_COUNT = LOCKED_SEATS.length;
 
 export const useSeatManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -154,8 +162,13 @@ export const useSeatManagement = () => {
   const [minBookingDate, setMinBookingDate] = useState("");
   const [maxBookingDate, setMaxBookingDate] = useState("");
   const [takenSeatsByAnyone, setTakenSeatsByAnyone] = useState([]);
-  const [totalBookedCount, setTotalBookedCount] = useState(0);
-  const [totalUnavailableCount, setTotalUnavailableCount] = useState(0);
+
+  //Computed values based on current state
+  const totalUnavailableCount = takenSeatsByAnyone.length;
+  const totalBookedCount = takenSeatsByAnyone.filter(
+    (seatNum) => !LOCKED_SEATS.includes(seatNum),
+  ).length;
+  const totalAvailableCount = TOTAL_SEATS - totalUnavailableCount;
 
   const formatDisplayDate = useCallback((dateString) => {
     const date = new Date(dateString);
@@ -196,7 +209,7 @@ export const useSeatManagement = () => {
           headers: {
             ...getAuthHeaders(),
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -229,7 +242,7 @@ export const useSeatManagement = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(bookingData),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -254,7 +267,7 @@ export const useSeatManagement = () => {
           headers: {
             ...getAuthHeaders(),
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -280,7 +293,7 @@ export const useSeatManagement = () => {
           headers: {
             ...getAuthHeaders(),
           },
-        }
+        },
       );
       if (!response.ok) {
         throw new Error(`Failed to fetch availability: ${response.statusText}`);
@@ -303,12 +316,17 @@ export const useSeatManagement = () => {
         const availability = await fetchSeatAvailability(dateString);
         const allTakenSeats = availability.bookedSeats || [];
 
-        // 2. Get ONLY my bookings
+        // 2. Combine booked seats with locked seats (locked seats are ALWAYS unavailable)
+        const allUnavailableSeats = [
+          ...new Set([...allTakenSeats, ...LOCKED_SEATS]),
+        ];
+
+        // 3. Get ONLY my bookings
         const response = await fetch(
           `${API_BASE_URL}/seat-reservation/bookings/intern`,
           {
             headers: getAuthHeaders(),
-          }
+          },
         );
 
         let myBookings = [];
@@ -317,11 +335,11 @@ export const useSeatManagement = () => {
         } else {
           console.error("Failed to fetch my bookings");
           setDailyBookings({});
-          setTakenSeatsByAnyone(allTakenSeats);
+          setTakenSeatsByAnyone(allUnavailableSeats); // Use combined list
           return;
         }
 
-        // 3. Find booking for THIS date
+        // 4. Find booking for THIS date
         const targetDate = new Date(dateString);
         targetDate.setHours(0, 0, 0, 0);
 
@@ -331,7 +349,7 @@ export const useSeatManagement = () => {
           return bookingDate.getTime() === targetDate.getTime();
         });
 
-        // 4. Build ONLY my booking
+        // 5. Build ONLY my booking
         const myOnly = {};
         if (myBookingForDate) {
           myOnly[myBookingForDate.seatNumber] = {
@@ -344,9 +362,7 @@ export const useSeatManagement = () => {
         }
 
         setDailyBookings(myOnly); // Table: only YOU
-        setTakenSeatsByAnyone(allTakenSeats); // Map: all red (booked)
-        setTotalBookedCount(allTakenSeats.length);
-        setTotalUnavailableCount(allTakenSeats.length + lockedCount); // booked + locked
+        setTakenSeatsByAnyone(allUnavailableSeats); // Map: all unavailable (booked + locked)
       } catch (err) {
         console.error("Load error:", err);
         setError("Failed to load your seat");
@@ -354,7 +370,7 @@ export const useSeatManagement = () => {
         setLoading(false);
       }
     },
-    [fetchSeatAvailability]
+    [fetchSeatAvailability],
   );
 
   // Handle date change
@@ -389,7 +405,7 @@ export const useSeatManagement = () => {
       await loadBookingsForDate(newDate);
       return true;
     },
-    [loadBookingsForDate]
+    [loadBookingsForDate],
   );
 
   // Handle seat click
@@ -400,7 +416,7 @@ export const useSeatManagement = () => {
       // Check if seat is booked by anyone (not just the current intern)
       if (takenSeatsByAnyone.includes(seatNumber)) {
         alert(
-          `This seat is already booked for ${formatDisplayDate(selectedDate)}.`
+          `This seat is already booked for ${formatDisplayDate(selectedDate)}.`,
         );
         return;
       }
@@ -408,7 +424,7 @@ export const useSeatManagement = () => {
       setCurrentSeat(seatNumber);
       setShowModal(true);
     },
-    [takenSeatsByAnyone, selectedDate, formatDisplayDate]
+    [takenSeatsByAnyone, selectedDate, formatDisplayDate],
   );
 
   // Handle modal close
@@ -452,7 +468,7 @@ export const useSeatManagement = () => {
       if (!booking) return;
 
       const confirmed = window.confirm(
-        `Are you sure you want to cancel the booking for Seat ${seatNumber}?`
+        `Are you sure you want to cancel the booking for Seat ${seatNumber}?`,
       );
 
       if (!confirmed) return;
@@ -464,13 +480,13 @@ export const useSeatManagement = () => {
         await loadBookingsForDate(selectedDate);
 
         alert(
-          `Booking for Seat ${seatNumber} has been cancelled successfully.`
+          `Booking for Seat ${seatNumber} has been cancelled successfully.`,
         );
       } catch (err) {
         alert(`Failed to cancel booking: ${err.message}`);
       }
     },
-    [dailyBookings, cancelBooking, loadBookingsForDate, selectedDate]
+    [dailyBookings, cancelBooking, loadBookingsForDate, selectedDate],
   );
 
   // Get seat status
@@ -478,16 +494,13 @@ export const useSeatManagement = () => {
     (seatNumber) => {
       if (LOCKED_SEATS.includes(seatNumber)) return "locked";
 
-      // 1. If it's YOUR seat → show as "booked" (red + in table)
-      if (dailyBookings[seatNumber]) return "booked";
+      // If seat is booked by anyone (including you) → show as "booked"
+      if (takenSeatsByAnyone.includes(seatNumber)) return "booked";
 
-      // 2. If it's someone else's seat → show as "taken" (red on map only)
-      if (takenSeatsByAnyone.includes(seatNumber)) return "taken";
-
-      // 3. Otherwise → available
+      // Otherwise → available
       return "available";
     },
-    [dailyBookings, takenSeatsByAnyone]
+    [takenSeatsByAnyone],
   );
 
   // Initialize dates and load bookings
@@ -519,6 +532,8 @@ export const useSeatManagement = () => {
     error,
     totalBookedCount,
     totalUnavailableCount,
+    totalAvailableCount,
+    TOTAL_SEATS,
     formatDisplayDate,
     handleDateChange,
     handleSeatClick,

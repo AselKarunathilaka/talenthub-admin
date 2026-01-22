@@ -6,10 +6,8 @@ exports.createBooking = async (req, res) => {
   try {
     const { seatNumber, date } = req.body;
 
-    // Get intern identity from JWT (set by authenticateUser middleware)
     const { id } = req.user || {};
 
-    // Validate authentication
     if (!id) {
       return res.status(401).json({
         success: false,
@@ -17,7 +15,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Fetch intern details from database
     const intern = await Intern.findById(id);
     if (!intern) {
       return res.status(404).json({
@@ -26,12 +23,9 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Extract needed data from intern document
     const internId = intern._id.toString();
     const email = intern.Trainee_Email;
-    // You can also access intern.Trainee_ID if needed for display purposes
 
-    // Validate required fields
     if (!seatNumber || !date) {
       return res.status(400).json({
         success: false,
@@ -39,13 +33,11 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Normalize date to start of day
-    const bookingDate = new Date(date);
-    bookingDate.setHours(0, 0, 0, 0);
+    const bookingDate = new Date(date + "T00:00:00.000Z");
 
-    // Validate date is not in the past
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    today.setUTCHours(0, 0, 0, 0);
+
     if (bookingDate < today) {
       return res.status(400).json({
         success: false,
@@ -53,17 +45,34 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Check if seat is already booked for this date
-    const existingBooking = await SeatBooking.findOne({
+    // ENHANCED: Check ALL bookings for this seat/date (including cancelled)
+    const allBookingsForSeat = await SeatBooking.find({
       seatNumber,
       bookingDate,
-      status: "active",
     });
+
+    // Check if there's an ACTIVE booking
+    const existingBooking = allBookingsForSeat.find(
+      (b) => b.status === "active",
+    );
 
     if (existingBooking) {
       return res.status(400).json({
         success: false,
         message: `Seat ${seatNumber} is already booked for this date`,
+      });
+    }
+
+    // If there's a cancelled booking, delete it first to avoid unique constraint
+    const cancelledBookings = allBookingsForSeat.filter(
+      (b) => b.status === "cancelled",
+    );
+    if (cancelledBookings.length > 0) {
+      console.log(
+        `Found ${cancelledBookings.length} cancelled bookings, deleting them...`,
+      );
+      await SeatBooking.deleteMany({
+        _id: { $in: cancelledBookings.map((b) => b._id) },
       });
     }
 
@@ -81,7 +90,6 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    // Create the booking
     const booking = await SeatBooking.create({
       seatNumber,
       internId,
@@ -90,7 +98,6 @@ exports.createBooking = async (req, res) => {
       status: "active",
     });
 
-    // Return response matching frontend expectations
     res.status(201).json({
       success: true,
       _id: booking._id,
@@ -102,6 +109,16 @@ exports.createBooking = async (req, res) => {
     });
   } catch (error) {
     console.error("Booking creation error:", error);
+
+    // Better error message for duplicate key
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "This seat is already booked for the selected date. Please refresh and try again.",
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Server error while creating booking",
@@ -122,9 +139,8 @@ exports.getBookingsByDate = async (req, res) => {
       });
     }
 
-    // Parse and normalize the date
-    const queryDate = new Date(date);
-    queryDate.setHours(0, 0, 0, 0);
+    // Parse in UTC
+    const queryDate = new Date(date + "T00:00:00.000Z");
 
     const bookings = await SeatBooking.find({
       bookingDate: queryDate,
@@ -155,7 +171,7 @@ exports.getBookingsByIntern = async (req, res) => {
       });
     }
 
-    // Fetch intern to get internId (can access both _id and Trainee_ID if needed)
+    // Fetch intern to get internId
     const intern = await Intern.findById(id);
     if (!intern) {
       return res.status(404).json({
@@ -266,8 +282,8 @@ exports.getSeatAvailability = async (req, res) => {
       });
     }
 
-    const queryDate = new Date(date);
-    queryDate.setHours(0, 0, 0, 0);
+    // Parse in UTC
+    const queryDate = new Date(date + "T00:00:00.000Z");
 
     const bookings = await SeatBooking.find({
       bookingDate: queryDate,
@@ -275,7 +291,7 @@ exports.getSeatAvailability = async (req, res) => {
     });
 
     const bookedSeats = bookings.map((b) => b.seatNumber);
-    const totalSeats = 96; // Total number of seats in the system
+    const totalSeats = 95;
 
     res.status(200).json({
       success: true,
