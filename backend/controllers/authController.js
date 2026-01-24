@@ -6,12 +6,11 @@ const googleLogin = async (req, res) => {
 
   try {
     const result = await authService.googleLogin(code);
-    res.status(200).json(result); 
+    res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
-
 
 // Admin Login
 const login = async (req, res) => {
@@ -39,7 +38,9 @@ const register = async (req, res) => {
     }
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Registration failed", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Registration failed", error: error.message });
   }
 };
 
@@ -49,4 +50,44 @@ const getGoogleAuthUrl = (req, res) => {
   res.status(200).json({ authUrl });
 };
 
-module.exports = { googleLogin, login, register, getGoogleAuthUrl };
+//Gate Staff Login
+const gateStaffLogin = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await authService.gateStaffLogin(email, password);
+    if (result.error) {
+      return res.status(400).json({ message: result.error });
+    }
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: "Login failed", error: error.message });
+  }
+};
+
+// Gate Staff Registration (for manual database entry)
+const registerGateStaff = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await authService.registerGateStaff(email, password);
+    if (result.error) {
+      return res.status(400).json({ message: result.error });
+    }
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({
+      message: "Gate staff registration failed",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  googleLogin,
+  login,
+  register,
+  getGoogleAuthUrl,
+  gateStaffLogin,
+  registerGateStaff,
+};

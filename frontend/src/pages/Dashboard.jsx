@@ -3,7 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
-import { Users, CheckCircle, XCircle, Loader2, Calendar, Clock } from "lucide-react";
+import {
+  Users,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Calendar,
+  Clock,
+} from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
 import { calculateInternshipEndNotification } from "../utils/internshipNotification";
@@ -17,7 +24,9 @@ const Dashboard = () => {
   const [attendanceHistory, setAttendanceHistory] = useState([]);
   const [filteredAttendance, setFilteredAttendance] = useState([]);
   const [meetingAttendance, setMeetingAttendance] = useState([]);
-  const [filteredMeetingAttendance, setFilteredMeetingAttendance] = useState([]);
+  const [filteredMeetingAttendance, setFilteredMeetingAttendance] = useState(
+    [],
+  );
   const [dailyRecords, setDailyRecords] = useState([]);
   const [dailyAttendanceStats, setDailyAttendanceStats] = useState({
     present: 0,
@@ -34,7 +43,8 @@ const Dashboard = () => {
   const [endDateNotification, setEndDateNotification] = useState(null);
   const rowsPerPage = 10;
   const navigate = useNavigate();
-  const cricketRegistrationLink = "https://linktr.ee/CricketFiestaRegistrationLinks";
+  const cricketRegistrationLink =
+    "https://linktr.ee/CricketFiestaRegistrationLinks";
   const cricketPosterUrl = "/images/cricket-fiesta-poster.jpg";
 
   const loadInternData = async () => {
@@ -50,10 +60,12 @@ const Dashboard = () => {
       if (response) {
         console.log("Intern Data Response:", response); // Debug log
         setInternData(response);
-        
+
         // Check if internship end date notification should be shown
         if (response.Training_EndDate) {
-          const notification = calculateInternshipEndNotification(response.Training_EndDate);
+          const notification = calculateInternshipEndNotification(
+            response.Training_EndDate,
+          );
           console.log("End date notification:", notification); // Debug log
           setEndDateNotification(notification);
         }
@@ -78,34 +90,48 @@ const Dashboard = () => {
 
       if (response) {
         console.log("Full API Response:", response); // Debug log
-        
+
         // Set daily attendance (for the Daily Attendance section)
-        const dailyAttendanceData = response.dailyAttendance || response.attendance?.filter(entry => !entry.isMeeting) || [];
+        const dailyAttendanceData =
+          response.dailyAttendance ||
+          response.attendance?.filter((entry) => !entry.isMeeting) ||
+          [];
         console.log("Daily Attendance Data:", dailyAttendanceData); // Debug log
         setAttendanceHistory(dailyAttendanceData);
         setFilteredAttendance(dailyAttendanceData);
-        
+
         // Set meeting attendance (for the Attendance History section)
-        const meetingAttendanceData = response.meetingAttendance || response.attendance?.filter(entry => entry.isMeeting) || [];
+        const meetingAttendanceData =
+          response.meetingAttendance ||
+          response.attendance?.filter((entry) => entry.isMeeting) ||
+          [];
         console.log("Meeting Attendance Data:", meetingAttendanceData); // Debug log
         setMeetingAttendance(meetingAttendanceData);
         setFilteredMeetingAttendance(meetingAttendanceData);
-        
+
         // Set attendance stats with fallback
         const stats = response.stats || {
-          present: dailyAttendanceData.filter(entry => entry.status === "Present").length,
-          absent: dailyAttendanceData.filter(entry => entry.status === "Absent").length
+          present: dailyAttendanceData.filter(
+            (entry) => entry.status === "Present",
+          ).length,
+          absent: dailyAttendanceData.filter(
+            (entry) => entry.status === "Absent",
+          ).length,
         };
-        
+
         setAttendanceStats({
           present: stats.present,
           absent: stats.absent,
         });
-        
+
         // Set daily attendance stats based on the daily attendance data
         setDailyAttendanceStats({
-          present: dailyAttendanceData.filter(entry => entry.status === "Present").length,
-          absent: dailyAttendanceData.filter(entry => entry.status === "Absent").length,
+          present: dailyAttendanceData.filter(
+            (entry) => entry.status === "Present",
+          ).length,
+          absent: dailyAttendanceData.filter(
+            (entry) => entry.status === "Absent",
+          ).length,
         });
       } else {
         throw new Error("No data returned from API");
@@ -121,13 +147,11 @@ const Dashboard = () => {
     }
   };
 
-
-
   const loadAllData = async () => {
     setLoading(true);
     await Promise.all([
       loadInternData(), // Load intern details including end date
-      loadAttendanceData() // Load attendance data
+      loadAttendanceData(), // Load attendance data
     ]);
     setLoading(false);
   };
@@ -154,14 +178,17 @@ const Dashboard = () => {
   }, []);
 
   const handleLogout = () => {
+    localStorage.removeItem("authToken");
     localStorage.removeItem("internId");
+    localStorage.removeItem("userData");
     navigate("/");
   };
 
   const totalAttendance = attendanceStats.present + attendanceStats.absent;
-  const presentPercentage = totalAttendance > 0
-    ? Math.round((attendanceStats.present / totalAttendance) * 100)
-    : 0;
+  const presentPercentage =
+    totalAttendance > 0
+      ? Math.round((attendanceStats.present / totalAttendance) * 100)
+      : 0;
 
   const handleDateSelection = (date) => {
     setSelectedDate(date);
@@ -169,8 +196,7 @@ const Dashboard = () => {
     if (date) {
       const dateString = new Date(date).toLocaleDateString();
       const foundMeetingEntries = meetingAttendance.filter(
-        (entry) =>
-          new Date(entry.date).toLocaleDateString() === dateString
+        (entry) => new Date(entry.date).toLocaleDateString() === dateString,
       );
 
       if (foundMeetingEntries.length > 0) {
@@ -238,7 +264,7 @@ const Dashboard = () => {
     return (
       <>
         {/* Internship End Date Notification */}
-        <InternshipEndNotification 
+        <InternshipEndNotification
           notification={endDateNotification}
           onDismiss={() => setEndDateNotification(null)}
         />
@@ -271,7 +297,9 @@ const Dashboard = () => {
             >
               <span className="text-sm text-gray-500 mb-1">Present Days</span>
               <div className="flex items-center">
-                <span className="text-xl font-bold text-green-600">{dailyAttendanceStats.present}</span>
+                <span className="text-xl font-bold text-green-600">
+                  {dailyAttendanceStats.present}
+                </span>
                 <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
               </div>
             </motion.div>
@@ -283,7 +311,9 @@ const Dashboard = () => {
             >
               <span className="text-sm text-gray-500 mb-1">Absent Days</span>
               <div className="flex items-center">
-                <span className="text-xl font-bold text-red-600">{dailyAttendanceStats.absent}</span>
+                <span className="text-xl font-bold text-red-600">
+                  {dailyAttendanceStats.absent}
+                </span>
                 <XCircle className="h-5 w-5 text-red-500 ml-auto" />
               </div>
             </motion.div>
@@ -296,26 +326,61 @@ const Dashboard = () => {
               <span className="text-sm text-gray-500 mb-1">Daily Rate</span>
               <div className="flex items-center">
                 <span className="text-xl font-bold text-gray-800">
-                  {dailyAttendanceStats.present + dailyAttendanceStats.absent > 0
-                    ? Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100)
-                    : 0}%
+                  {dailyAttendanceStats.present + dailyAttendanceStats.absent >
+                  0
+                    ? Math.round(
+                        (dailyAttendanceStats.present /
+                          (dailyAttendanceStats.present +
+                            dailyAttendanceStats.absent)) *
+                          100,
+                      )
+                    : 0}
+                  %
                 </span>
-                <span className={`ml-auto px-2 py-1 text-xs rounded-full ${
-                  dailyAttendanceStats.present + dailyAttendanceStats.absent > 0 &&
-                  Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100) >= 80
-                    ? "bg-green-100 text-green-800"
-                    : dailyAttendanceStats.present + dailyAttendanceStats.absent > 0 &&
-                      Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100) >= 60
-                    ? "bg-yellow-100 text-yellow-800"
-                    : "bg-red-100 text-red-800"
-                }`}>
-                  {dailyAttendanceStats.present + dailyAttendanceStats.absent > 0 &&
-                   Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100) >= 80
+                <span
+                  className={`ml-auto px-2 py-1 text-xs rounded-full ${
+                    dailyAttendanceStats.present + dailyAttendanceStats.absent >
+                      0 &&
+                    Math.round(
+                      (dailyAttendanceStats.present /
+                        (dailyAttendanceStats.present +
+                          dailyAttendanceStats.absent)) *
+                        100,
+                    ) >= 80
+                      ? "bg-green-100 text-green-800"
+                      : dailyAttendanceStats.present +
+                            dailyAttendanceStats.absent >
+                            0 &&
+                          Math.round(
+                            (dailyAttendanceStats.present /
+                              (dailyAttendanceStats.present +
+                                dailyAttendanceStats.absent)) *
+                              100,
+                          ) >= 60
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-red-100 text-red-800"
+                  }`}
+                >
+                  {dailyAttendanceStats.present + dailyAttendanceStats.absent >
+                    0 &&
+                  Math.round(
+                    (dailyAttendanceStats.present /
+                      (dailyAttendanceStats.present +
+                        dailyAttendanceStats.absent)) *
+                      100,
+                  ) >= 80
                     ? "Excellent"
-                    : dailyAttendanceStats.present + dailyAttendanceStats.absent > 0 &&
-                      Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100) >= 60
-                    ? "Good"
-                    : "Needs Improvement"}
+                    : dailyAttendanceStats.present +
+                          dailyAttendanceStats.absent >
+                          0 &&
+                        Math.round(
+                          (dailyAttendanceStats.present /
+                            (dailyAttendanceStats.present +
+                              dailyAttendanceStats.absent)) *
+                            100,
+                        ) >= 60
+                      ? "Good"
+                      : "Needs Improvement"}
                 </span>
               </div>
             </motion.div>
@@ -334,7 +399,7 @@ const Dashboard = () => {
                 Recent Daily Attendance
               </h3>
               <motion.button
-                onClick={() => navigate('/scan-qr')}
+                onClick={() => navigate("/scan-qr")}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -358,7 +423,7 @@ const Dashboard = () => {
                     .slice(0, 5) // Show only recent 5 records - show all statuses
                     .map((entry, index) => {
                       console.log("Processing entry:", entry); // Debug log
-                      
+
                       // Handle date parsing more robustly
                       let date, dayName, formattedDate;
                       try {
@@ -366,16 +431,23 @@ const Dashboard = () => {
                         if (isNaN(date.getTime())) {
                           throw new Error("Invalid date");
                         }
-                        dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                        formattedDate = date.toLocaleDateString('en-US', { 
-                          year: 'numeric', 
-                          month: 'short', 
-                          day: 'numeric' 
+                        dayName = date.toLocaleDateString("en-US", {
+                          weekday: "short",
+                        });
+                        formattedDate = date.toLocaleDateString("en-US", {
+                          year: "numeric",
+                          month: "short",
+                          day: "numeric",
                         });
                       } catch (error) {
-                        console.error("Date parsing error:", error, "Entry:", entry);
-                        dayName = 'N/A';
-                        formattedDate = entry.date || 'N/A';
+                        console.error(
+                          "Date parsing error:",
+                          error,
+                          "Entry:",
+                          entry,
+                        );
+                        dayName = "N/A";
+                        formattedDate = entry.date || "N/A";
                       }
 
                       return (
@@ -389,11 +461,13 @@ const Dashboard = () => {
                             {formattedDate}
                           </div>
                           <div className="text-center">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              entry.status === "Present"
-                                ? "bg-green-100 text-green-800"
-                                : "bg-red-100 text-red-800"
-                            }`}>
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                entry.status === "Present"
+                                  ? "bg-green-100 text-green-800"
+                                  : "bg-red-100 text-red-800"
+                              }`}
+                            >
                               {entry.status === "Present" ? (
                                 <CheckCircle className="h-3 w-3 mr-1" />
                               ) : (
@@ -403,7 +477,7 @@ const Dashboard = () => {
                             </span>
                           </div>
                           <div className="text-center text-xs text-gray-600">
-                            {entry.time || '-'}
+                            {entry.time || "-"}
                           </div>
                           <div className="text-right text-xs text-gray-500">
                             {dayName}
@@ -415,8 +489,12 @@ const Dashboard = () => {
               </div>
             ) : (
               <div className="text-center py-6 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">No daily attendance records found</p>
-                <p className="text-xs text-gray-400 mt-1">Attendance will appear here after QR scanning</p>
+                <p className="text-gray-500">
+                  No daily attendance records found
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Attendance will appear here after QR scanning
+                </p>
               </div>
             )}
           </motion.div>
@@ -451,7 +529,9 @@ const Dashboard = () => {
           >
             <span className="text-sm text-gray-500 mb-1">Present Days</span>
             <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">{attendanceStats.present}</span>
+              <span className="text-xl font-bold text-gray-800">
+                {attendanceStats.present}
+              </span>
               <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
             </div>
           </motion.div>
@@ -463,7 +543,9 @@ const Dashboard = () => {
           >
             <span className="text-sm text-gray-500 mb-1">Absent Days</span>
             <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">{attendanceStats.absent}</span>
+              <span className="text-xl font-bold text-gray-800">
+                {attendanceStats.absent}
+              </span>
               <XCircle className="h-5 w-5 text-red-500 ml-auto" />
             </div>
           </motion.div>
@@ -475,14 +557,23 @@ const Dashboard = () => {
           >
             <span className="text-sm text-gray-500 mb-1">Attendance Rate</span>
             <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">{presentPercentage}%</span>
-              <span className={`ml-auto px-2 py-1 text-xs rounded-full ${
-                presentPercentage >= 80 ? "bg-green-100 text-green-800" :
-                presentPercentage >= 60 ? "bg-yellow-100 text-yellow-800" :
-                "bg-red-100 text-red-800"
-              }`}>
-                {presentPercentage >= 80 ? "Excellent" :
-                 presentPercentage >= 60 ? "Good" : "Needs Improvement"}
+              <span className="text-xl font-bold text-gray-800">
+                {presentPercentage}%
+              </span>
+              <span
+                className={`ml-auto px-2 py-1 text-xs rounded-full ${
+                  presentPercentage >= 80
+                    ? "bg-green-100 text-green-800"
+                    : presentPercentage >= 60
+                      ? "bg-yellow-100 text-yellow-800"
+                      : "bg-red-100 text-red-800"
+                }`}
+              >
+                {presentPercentage >= 80
+                  ? "Excellent"
+                  : presentPercentage >= 60
+                    ? "Good"
+                    : "Needs Improvement"}
               </span>
             </div>
           </motion.div>
@@ -554,7 +645,7 @@ const Dashboard = () => {
               <div className="divide-y divide-gray-100">
                 {filteredMeetingAttendance.map((entry, index) => {
                   console.log("Processing meeting entry:", entry); // Debug log
-                  
+
                   // Handle date parsing more robustly
                   let date, dayName, formattedDate;
                   try {
@@ -562,16 +653,23 @@ const Dashboard = () => {
                     if (isNaN(date.getTime())) {
                       throw new Error("Invalid date");
                     }
-                    dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                    formattedDate = date.toLocaleDateString('en-US', { 
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
+                    dayName = date.toLocaleDateString("en-US", {
+                      weekday: "short",
+                    });
+                    formattedDate = date.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
                     });
                   } catch (error) {
-                    console.error("Meeting date parsing error:", error, "Entry:", entry);
-                    dayName = 'N/A';
-                    formattedDate = entry.date || 'N/A';
+                    console.error(
+                      "Meeting date parsing error:",
+                      error,
+                      "Entry:",
+                      entry,
+                    );
+                    dayName = "N/A";
+                    formattedDate = entry.date || "N/A";
                   }
 
                   return (
@@ -586,15 +684,17 @@ const Dashboard = () => {
                       </div>
                       <div className="text-center">
                         <span className="text-sm text-gray-900 font-medium">
-                          {entry.meetingName || entry.type || 'Meeting'}
+                          {entry.meetingName || entry.type || "Meeting"}
                         </span>
                       </div>
                       <div className="text-center">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          entry.status === "Present"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            entry.status === "Present"
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
                           {entry.status === "Present" ? (
                             <CheckCircle className="h-3 w-3 mr-1" />
                           ) : (
@@ -613,8 +713,12 @@ const Dashboard = () => {
             </div>
           ) : (
             <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">No meeting attendance records found</p>
-              <p className="text-xs text-gray-400 mt-1">Meeting attendance will appear here after QR scanning</p>
+              <p className="text-gray-500">
+                No meeting attendance records found
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Meeting attendance will appear here after QR scanning
+              </p>
             </div>
           )}
         </motion.div>
@@ -663,7 +767,10 @@ const Dashboard = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
+                    localStorage.setItem(
+                      "cricketFiestaDismissed",
+                      "2025-12-31",
+                    );
                     setShowCricketPopup(false);
                   }}
                   className="text-sm font-medium text-gray-600 underline"

@@ -1,21 +1,35 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   getAllLeaveRequests,
   updateLeaveRequestStatus,
   getLeaveRequestStats,
-} from '../api/leaveRequestApi';
-import { downloadApprovedLeaveReport } from '../api/adminApi';
-import toast from 'react-hot-toast';
-import { FiFileText, FiCalendar, FiClock, FiUser, FiX, FiCheck, FiAlertCircle, FiArrowLeft, FiEye } from 'react-icons/fi';
-import logo from '../assets/sltlogo.jpg';
+} from "../api/leaveRequestApi";
+import { downloadApprovedLeaveReport } from "../api/adminApi";
+import toast from "react-hot-toast";
+import {
+  FiFileText,
+  FiCalendar,
+  FiClock,
+  FiUser,
+  FiX,
+  FiCheck,
+  FiAlertCircle,
+  FiArrowLeft,
+  FiEye,
+} from "react-icons/fi";
+import logo from "../assets/sltlogo.jpg";
 
 const AdminLeaveManagement = () => {
   const navigate = useNavigate();
   const [leaveRequests, setLeaveRequests] = useState([]);
-  const [documentViewer, setDocumentViewer] = useState({ show: false, url: '', type: '' });
+  const [documentViewer, setDocumentViewer] = useState({
+    show: false,
+    url: "",
+    type: "",
+  });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('Pending');
+  const [filter, setFilter] = useState("Pending");
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -29,20 +43,23 @@ const AdminLeaveManagement = () => {
     totalPages: 0,
   });
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [adminResponse, setAdminResponse] = useState('');
+  const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [reportRange, setReportRange] = useState({ startDate: '', endDate: '' });
+  const [reportRange, setReportRange] = useState({
+    startDate: "",
+    endDate: "",
+  });
 
   useEffect(() => {
     // Check if admin is logged in
-    const adminInfo = localStorage.getItem('adminInfo');
-    
+    const adminInfo = localStorage.getItem("adminInfo");
+
     if (!adminInfo) {
-      toast.error('Please log in as admin to access this page');
-      navigate('/admin-login');
+      toast.error("Please log in as admin to access this page");
+      navigate("/admin-login");
       return;
     }
-    
+
     fetchLeaveRequests();
     fetchStats();
   }, [filter, pagination.page]);
@@ -55,7 +72,7 @@ const AdminLeaveManagement = () => {
         limit: pagination.limit,
       };
 
-      if (filter !== 'all') {
+      if (filter !== "all") {
         params.status = filter;
       }
 
@@ -63,18 +80,16 @@ const AdminLeaveManagement = () => {
       setLeaveRequests(response.data);
       setPagination(response.pagination);
     } catch (error) {
-      console.error('Error fetching leave requests:', error);
-      
-      // If admin access is denied, clear intern token and redirect
-      if (error.message === 'Admin access required') {
-        toast.error('Admin access required. Redirecting to admin login...');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('internId');
-        setTimeout(() => navigate('/admin-login'), 1500);
+      console.error("Error fetching leave requests:", error);
+
+      // If admin access is denied, redirect
+      if (error.message === "Admin access required") {
+        toast.error("Admin access required. Redirecting to admin login...");
+        setTimeout(() => navigate("/admin-login"), 1500);
         return;
       }
-      
-      toast.error('Failed to load leave requests');
+
+      toast.error("Failed to load leave requests");
     } finally {
       setLoading(false);
     }
@@ -85,51 +100,57 @@ const AdminLeaveManagement = () => {
       const response = await getLeaveRequestStats();
       setStats(response.data);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      console.error("Error fetching stats:", error);
     }
   };
 
   const handleViewDocument = async (leaveRequestId) => {
     try {
       // Get auth token
-      const authToken = localStorage.getItem('authToken');
-      const adminInfo = localStorage.getItem('adminInfo');
-      const token = authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
+      const authToken = localStorage.getItem("authToken");
+      const adminInfo = localStorage.getItem("adminInfo");
+      const token =
+        authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
 
       // Fetch document with authentication
-      const response = await fetch(`http://localhost:5000/api/leave-requests/${leaveRequestId}/document`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to load document');
+        throw new Error("Failed to load document");
       }
 
       // Get the blob and create object URL
       const blob = await response.blob();
       const fileUrl = URL.createObjectURL(blob);
-      const contentType = response.headers.get('Content-Type');
-      
+      const contentType = response.headers.get("Content-Type");
+
       // Determine file type from content type
-      const fileType = contentType?.includes('pdf') ? 'pdf' : 
-                       contentType?.includes('image') ? 'image' : 
-                       'other';
-      
+      const fileType = contentType?.includes("pdf")
+        ? "pdf"
+        : contentType?.includes("image")
+          ? "image"
+          : "other";
+
       setDocumentViewer({ show: true, url: fileUrl, type: fileType });
     } catch (error) {
-      console.error('Error loading document:', error);
-      toast.error('Failed to load document');
+      console.error("Error loading document:", error);
+      toast.error("Failed to load document");
     }
   };
 
   const closeDocumentViewer = () => {
     // Revoke object URL to free memory
-    if (documentViewer.url && documentViewer.url.startsWith('blob:')) {
+    if (documentViewer.url && documentViewer.url.startsWith("blob:")) {
       URL.revokeObjectURL(documentViewer.url);
     }
-    setDocumentViewer({ show: false, url: '', type: '' });
+    setDocumentViewer({ show: false, url: "", type: "" });
   };
 
   const handleStatusUpdate = async (requestId, status) => {
@@ -142,12 +163,12 @@ const AdminLeaveManagement = () => {
 
       toast.success(`Leave request ${status.toLowerCase()} successfully`);
       setSelectedRequest(null);
-      setAdminResponse('');
+      setAdminResponse("");
       fetchLeaveRequests();
       fetchStats();
     } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error(error.message || 'Failed to update leave request');
+      console.error("Error updating status:", error);
+      toast.error(error.message || "Failed to update leave request");
     } finally {
       setProcessing(false);
     }
@@ -155,27 +176,27 @@ const AdminLeaveManagement = () => {
 
   const openReviewModal = (request) => {
     setSelectedRequest(request);
-    setAdminResponse('');
+    setAdminResponse("");
   };
 
   const closeReviewModal = () => {
     setSelectedRequest(null);
-    setAdminResponse('');
+    setAdminResponse("");
   };
 
   const handleDownloadApprovedReport = async () => {
-    const toastId = toast.loading('Generating approved leave report...');
+    const toastId = toast.loading("Generating approved leave report...");
     try {
       const blob = await downloadApprovedLeaveReport({
         startDate: reportRange.startDate || undefined,
-        endDate: reportRange.endDate || undefined
+        endDate: reportRange.endDate || undefined,
       });
 
       const url = URL.createObjectURL(blob);
       const fileName = `approved-leaves-report${
-        reportRange.startDate ? `-${reportRange.startDate}` : ''
-      }${reportRange.endDate ? `-to-${reportRange.endDate}` : ''}.pdf`;
-      const link = document.createElement('a');
+        reportRange.startDate ? `-${reportRange.startDate}` : ""
+      }${reportRange.endDate ? `-to-${reportRange.endDate}` : ""}.pdf`;
+      const link = document.createElement("a");
       link.href = url;
       link.download = fileName;
       document.body.appendChild(link);
@@ -183,47 +204,49 @@ const AdminLeaveManagement = () => {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      toast.success('Approved leave report ready for download', { id: toastId });
+      toast.success("Approved leave report ready for download", {
+        id: toastId,
+      });
     } catch (error) {
-      console.error('Error downloading approved leave report:', error);
-      toast.error('Failed to download approved leave report', { id: toastId });
+      console.error("Error downloading approved leave report:", error);
+      toast.error("Failed to download approved leave report", { id: toastId });
     }
   };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'Approved':
-        return 'px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800';
-      case 'Denied':
-        return 'px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800';
-      case 'Pending':
-        return 'px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800';
+      case "Approved":
+        return "px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800";
+      case "Denied":
+        return "px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800";
+      case "Pending":
+        return "px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800";
       default:
-        return 'px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800';
+        return "px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800";
     }
   };
 
   const getPurposeBadgeClass = (purpose) => {
-    return purpose === 'Official'
-      ? 'px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800'
-      : 'px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800';
+    return purpose === "Official"
+      ? "px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
+      : "px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800";
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   };
 
   const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -239,36 +262,42 @@ const AdminLeaveManagement = () => {
           >
             <FiArrowLeft className="w-6 h-6" />
           </button>
-          <img 
-            src={logo} 
-            alt="SLT Logo" 
-            className="w-16 h-16 object-contain"
-          />
+          <img src={logo} alt="SLT Logo" className="w-16 h-16 object-contain" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
               <FiFileText className="text-blue-600" />
               Short Leave Request Management
             </h1>
-            <p className="text-gray-600 mt-1">Review and manage intern short leave requests</p>
+            <p className="text-gray-600 mt-1">
+              Review and manage intern short leave requests
+            </p>
           </div>
         </div>
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+            <div className="text-3xl font-bold text-gray-900">
+              {stats.total}
+            </div>
             <div className="text-sm text-gray-600 mt-1">Total Requests</div>
           </div>
           <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6">
-            <div className="text-3xl font-bold text-yellow-800">{stats.pending}</div>
+            <div className="text-3xl font-bold text-yellow-800">
+              {stats.pending}
+            </div>
             <div className="text-sm text-yellow-600 mt-1">Pending</div>
           </div>
           <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
-            <div className="text-3xl font-bold text-green-800">{stats.approved}</div>
+            <div className="text-3xl font-bold text-green-800">
+              {stats.approved}
+            </div>
             <div className="text-sm text-green-600 mt-1">Approved</div>
           </div>
           <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
-            <div className="text-3xl font-bold text-red-800">{stats.denied}</div>
+            <div className="text-3xl font-bold text-red-800">
+              {stats.denied}
+            </div>
             <div className="text-sm text-red-600 mt-1">Denied</div>
           </div>
         </div>
@@ -277,10 +306,10 @@ const AdminLeaveManagement = () => {
         <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'Pending', count: stats.pending },
-              { key: 'Approved', count: stats.approved },
-              { key: 'Denied', count: stats.denied },
-              { key: 'all', count: stats.total, label: 'All' }
+              { key: "Pending", count: stats.pending },
+              { key: "Approved", count: stats.approved },
+              { key: "Denied", count: stats.denied },
+              { key: "all", count: stats.total, label: "All" },
             ].map(({ key, count, label }) => (
               <button
                 key={key}
@@ -290,8 +319,8 @@ const AdminLeaveManagement = () => {
                 }}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   filter === key
-                    ? 'bg-blue-600 text-white shadow-md'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 {label || key} ({count})
@@ -303,26 +332,39 @@ const AdminLeaveManagement = () => {
         {/* Download Approved Leave Report */}
         <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-end gap-4">
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700" htmlFor="reportStartDate">
+            <label
+              className="text-sm font-medium text-gray-700"
+              htmlFor="reportStartDate"
+            >
               Start Date
             </label>
             <input
               id="reportStartDate"
               type="date"
               value={reportRange.startDate}
-              onChange={(e) => setReportRange((prev) => ({ ...prev, startDate: e.target.value }))}
+              onChange={(e) =>
+                setReportRange((prev) => ({
+                  ...prev,
+                  startDate: e.target.value,
+                }))
+              }
               className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700" htmlFor="reportEndDate">
+            <label
+              className="text-sm font-medium text-gray-700"
+              htmlFor="reportEndDate"
+            >
               End Date
             </label>
             <input
               id="reportEndDate"
               type="date"
               value={reportRange.endDate}
-              onChange={(e) => setReportRange((prev) => ({ ...prev, endDate: e.target.value }))}
+              onChange={(e) =>
+                setReportRange((prev) => ({ ...prev, endDate: e.target.value }))
+              }
               className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -342,7 +384,9 @@ const AdminLeaveManagement = () => {
         ) : leaveRequests.length === 0 ? (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
-            <p className="text-gray-600 text-lg">No short leave requests found</p>
+            <p className="text-gray-600 text-lg">
+              No short leave requests found
+            </p>
           </div>
         ) : (
           <>
@@ -382,7 +426,7 @@ const AdminLeaveManagement = () => {
                                 {request.internName}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {request.internNIC}
+                                {request.nationalId}
                               </div>
                             </div>
                           </div>
@@ -398,7 +442,9 @@ const AdminLeaveManagement = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={getPurposeBadgeClass(request.purpose)}>
+                          <span
+                            className={getPurposeBadgeClass(request.purpose)}
+                          >
                             {request.purpose}
                           </span>
                         </td>
@@ -456,8 +502,14 @@ const AdminLeaveManagement = () => {
 
         {/* Review Modal */}
         {selectedRequest && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50" onClick={closeReviewModal}>
-            <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={closeReviewModal}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Modal Header */}
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -476,25 +528,37 @@ const AdminLeaveManagement = () => {
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Intern Name</label>
-                    <p className="text-sm text-gray-900">{selectedRequest.internName}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Intern Name
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedRequest.internName}
+                    </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">NIC</label>
-                    <p className="text-sm text-gray-900">{selectedRequest.internNIC}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      NIC
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedRequest.nationalId}
+                    </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Leave Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Leave Date
+                    </label>
                     <p className="text-sm text-gray-900 flex items-center gap-2">
                       <FiCalendar className="text-gray-400" />
                       {formatDate(selectedRequest.leaveDate)}
                     </p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Leave Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Leave Time
+                    </label>
                     <p className="text-sm text-gray-900 flex items-center gap-2">
                       <FiClock className="text-gray-400" />
                       {selectedRequest.leaveTime}
@@ -503,38 +567,54 @@ const AdminLeaveManagement = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Purpose</label>
-                  <span className={getPurposeBadgeClass(selectedRequest.purpose)}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Purpose
+                  </label>
+                  <span
+                    className={getPurposeBadgeClass(selectedRequest.purpose)}
+                  >
                     {selectedRequest.purpose}
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reason
+                  </label>
                   <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
                     {selectedRequest.reason}
                   </p>
                 </div>
 
-                {selectedRequest.proofDocument && selectedRequest.proofDocument.data && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Proof Document</label>
-                    <button
-                      onClick={() => handleViewDocument(selectedRequest._id)}
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 underline bg-transparent border-none cursor-pointer"
-                    >
-                      <FiEye /> View Document ({selectedRequest.proofDocument.filename})
-                    </button>
-                  </div>
-                )}
+                {selectedRequest.proofDocument &&
+                  selectedRequest.proofDocument.data && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Proof Document
+                      </label>
+                      <button
+                        onClick={() => handleViewDocument(selectedRequest._id)}
+                        className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 underline bg-transparent border-none cursor-pointer"
+                      >
+                        <FiEye /> View Document (
+                        {selectedRequest.proofDocument.filename})
+                      </button>
+                    </div>
+                  )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Submitted At</label>
-                  <p className="text-sm text-gray-900">{formatDateTime(selectedRequest.submittedAt)}</p>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Submitted At
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {formatDateTime(selectedRequest.submittedAt)}
+                  </p>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Status</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Current Status
+                  </label>
                   <span className={getStatusBadgeClass(selectedRequest.status)}>
                     {selectedRequest.status}
                   </span>
@@ -543,18 +623,28 @@ const AdminLeaveManagement = () => {
                 {selectedRequest.reviewedBy && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Reviewed By</label>
-                      <p className="text-sm text-gray-900">{selectedRequest.reviewedBy?.email}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reviewed By
+                      </label>
+                      <p className="text-sm text-gray-900">
+                        {selectedRequest.reviewedBy?.email}
+                      </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Reviewed At</label>
-                      <p className="text-sm text-gray-900">{formatDateTime(selectedRequest.reviewedAt)}</p>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Reviewed At
+                      </label>
+                      <p className="text-sm text-gray-900">
+                        {formatDateTime(selectedRequest.reviewedAt)}
+                      </p>
                     </div>
 
                     {selectedRequest.adminResponse && (
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Previous Admin Response</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Previous Admin Response
+                        </label>
                         <p className="text-sm text-gray-900 bg-blue-50 p-3 rounded-lg">
                           {selectedRequest.adminResponse}
                         </p>
@@ -563,7 +653,7 @@ const AdminLeaveManagement = () => {
                   </>
                 )}
 
-                {selectedRequest.status === 'Pending' && (
+                {selectedRequest.status === "Pending" && (
                   <>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -580,28 +670,32 @@ const AdminLeaveManagement = () => {
 
                     <div className="flex gap-3 pt-4">
                       <button
-                        onClick={() => handleStatusUpdate(selectedRequest._id, 'Approved')}
+                        onClick={() =>
+                          handleStatusUpdate(selectedRequest._id, "Approved")
+                        }
                         disabled={processing}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
                           processing
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-green-600 hover:bg-green-700 hover:shadow-lg'
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-green-600 hover:bg-green-700 hover:shadow-lg"
                         }`}
                       >
                         <FiCheck className="w-5 h-5" />
-                        {processing ? 'Processing...' : 'Approve'}
+                        {processing ? "Processing..." : "Approve"}
                       </button>
                       <button
-                        onClick={() => handleStatusUpdate(selectedRequest._id, 'Denied')}
+                        onClick={() =>
+                          handleStatusUpdate(selectedRequest._id, "Denied")
+                        }
                         disabled={processing}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
                           processing
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : 'bg-red-600 hover:bg-red-700 hover:shadow-lg'
+                            ? "bg-gray-400 cursor-not-allowed"
+                            : "bg-red-600 hover:bg-red-700 hover:shadow-lg"
                         }`}
                       >
                         <FiX className="w-5 h-5" />
-                        {processing ? 'Processing...' : 'Deny'}
+                        {processing ? "Processing..." : "Deny"}
                       </button>
                     </div>
                   </>
@@ -617,7 +711,9 @@ const AdminLeaveManagement = () => {
             <div className="relative bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
               {/* Modal Header */}
               <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">Document Viewer</h3>
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Document Viewer
+                </h3>
                 <button
                   onClick={closeDocumentViewer}
                   className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -628,13 +724,13 @@ const AdminLeaveManagement = () => {
 
               {/* Modal Content */}
               <div className="flex-1 overflow-auto p-4">
-                {documentViewer.type === 'pdf' ? (
+                {documentViewer.type === "pdf" ? (
                   <iframe
                     src={documentViewer.url}
                     className="w-full h-full min-h-[600px] border-0"
                     title="Document Viewer"
                   />
-                ) : documentViewer.type === 'image' ? (
+                ) : documentViewer.type === "image" ? (
                   <img
                     src={documentViewer.url}
                     alt="Document"
@@ -642,8 +738,13 @@ const AdminLeaveManagement = () => {
                   />
                 ) : (
                   <div className="text-center py-12">
-                    <FiFileText size={64} className="mx-auto text-gray-400 mb-4" />
-                    <p className="text-gray-600 mb-4">This file type cannot be previewed.</p>
+                    <FiFileText
+                      size={64}
+                      className="mx-auto text-gray-400 mb-4"
+                    />
+                    <p className="text-gray-600 mb-4">
+                      This file type cannot be previewed.
+                    </p>
                     <a
                       href={documentViewer.url}
                       download
