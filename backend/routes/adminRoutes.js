@@ -12,7 +12,8 @@ const {
   getPreviousDaySubmissions,
   getWeeklyNonSubmissions,
   syncWithSLTAPI,
-  triggerWeeklyNonSubmissionCheck
+  triggerWeeklyNonSubmissionCheck,
+  triggerWeeklyNonSubmissionCheckWithExcel
 } = require("../controllers/adminController");
 const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
 // Export on-leave interns as Excel
@@ -50,5 +51,8 @@ router.post("/sync/slt-api", syncWithSLTAPI);
 
 // Manually trigger weekly non-submission check
 router.post("/trigger/weekly-non-submission-check", triggerWeeklyNonSubmissionCheck);
+
+// Manually trigger weekly non-submission check with Excel attachment
+router.post("/trigger/weekly-non-submission-check-excel", triggerWeeklyNonSubmissionCheckWithExcel);
 
 module.exports = router;

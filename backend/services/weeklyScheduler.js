@@ -1,6 +1,6 @@
 const cron = require('node-cron');
 const WeeklyWorkLogService = require('./weeklyWorkLogService');
-const WeeklyNonSubmissionService = require('./weeklyNonSubmissionService');
+const WeeklyNonSubmissionExcelService = require('./weeklyNonSubmissionExcelService');
 
 class WeeklyScheduler {
   static init() {
@@ -29,11 +29,11 @@ class WeeklyScheduler {
     const nonSubmissionCronExpression = '30 9 * * 0';
     
     cron.schedule(nonSubmissionCronExpression, async () => {
-      console.log('\n⏰ Weekly logbook non-submission check triggered by scheduler');
+      console.log('\n⏰ Weekly logbook non-submission check with Excel attachment triggered by scheduler');
       console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
       
       try {
-        await WeeklyNonSubmissionService.performWeeklyNonSubmissionCheck();
+        await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel();
       } catch (error) {
         console.error('❌ Non-submission scheduler error:', error);
       }
@@ -44,7 +44,7 @@ class WeeklyScheduler {
     
     console.log('✅ Weekly scheduler initialized successfully!');
     console.log(`📅 Work log compliance: Every Sunday at 9:00 AM (Asia/Colombo time)`);
-    console.log(`📅 Non-submission alert: Every Sunday at 9:30 AM (Asia/Colombo time)`);
+    console.log(`📅 Non-submission alert with Excel: Every Sunday at 9:30 AM (Asia/Colombo time)`);
   }
   
 
@@ -74,14 +74,14 @@ class WeeklyScheduler {
   }
 
   /**
-   * Manual trigger for non-submission check (can be called via API endpoint)
+   * Manual trigger for non-submission check with Excel (can be called via API endpoint)
    */
   static async triggerManualNonSubmissionCheck() {
-    console.log('\n🔧 Manual non-submission check triggered');
+    console.log('\n🔧 Manual non-submission check with Excel triggered');
     console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
     
     try {
-      const results = await WeeklyNonSubmissionService.performWeeklyNonSubmissionCheck('manual');
+      const results = await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel('manual');
       return {
         success: true,
         timestamp: new Date(),

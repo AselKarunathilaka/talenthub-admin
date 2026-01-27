@@ -4,6 +4,7 @@ const User = require("../models/User");
 const emailSender = require("../utils/emailSender");
 const internService = require("../services/internService");
 const WeeklyScheduler = require("../services/weeklyScheduler");
+const WeeklyNonSubmissionExcelService = require("../services/weeklyNonSubmissionExcelService");
 
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
@@ -851,6 +852,60 @@ const triggerWeeklyNonSubmissionCheck = async (req, res) => {
   }
 };
 
+// Manually trigger weekly non-submission check with Excel attachment
+const triggerWeeklyNonSubmissionCheckWithExcel = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify admin user
+    const adminUser = await User.findById(userId);
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    console.log(`🔧 Manual weekly non-submission check (with Excel) triggered by admin: ${adminUser.email}`);
+    
+    // Get recipient email from request body (optional, defaults to manager email)
+    const recipientEmail = req.body.recipientEmail || 'mgiri@slt.com.lk';
+    
+    // Trigger the check with Excel attachment
+    const result = await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(
+      recipientEmail,
+      'manual-admin'
+    );
+    
+    if (result.emailSent) {
+      res.status(200).json({
+        message: "Weekly non-submission check with Excel attachment completed successfully",
+        timestamp: new Date().toISOString(),
+        results: {
+          totalInterns: result.total,
+          submittedLogs: result.submitted,
+          notSubmitted: result.notSubmitted,
+          emailSent: result.emailSent,
+          recipient: recipientEmail,
+          attachmentName: result.attachmentName,
+          messageId: result.emailMessageId,
+          executionTime: result.executionTime
+        }
+      });
+    } else {
+      res.status(500).json({
+        error: "Weekly non-submission check failed",
+        details: result.emailError || result.error,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+  } catch (error) {
+    console.error("Error triggering weekly non-submission check with Excel:", error);
+    res.status(500).json({ 
+      error: "Failed to trigger weekly non-submission check with Excel",
+      details: error.message 
+    });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -861,5 +916,6 @@ module.exports = {
   getPreviousDaySubmissions,
   getWeeklyNonSubmissions,
   syncWithSLTAPI,
-  triggerWeeklyNonSubmissionCheck
+  triggerWeeklyNonSubmissionCheck,
+  triggerWeeklyNonSubmissionCheckWithExcel
 };
