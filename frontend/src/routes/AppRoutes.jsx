@@ -15,6 +15,8 @@ import AdminInternDetails from "../pages/AdminInternDetails";
 import AdminInternRecords from "../pages/AdminInternRecords";
 import AdminLeaveManagement from "../pages/AdminLeaveManagement";
 import AgreementGuard from "../components/AgreementGuard";
+import GateStaffLogin from "../pages/GateStaffLogin";
+import GateStaffDashboard from "../pages/GateStaffDashboard";
 
 const AppRoutes = () => {
   return (
@@ -90,6 +92,8 @@ const AppRoutes = () => {
         element={<AdminInternRecords />}
       />
       <Route path="/admin/leave-requests" element={<AdminLeaveManagement />} />
+      <Route path="/gate-staff-login" element={<GateStaffLogin />} />
+      <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
     </Routes>
   );
 };

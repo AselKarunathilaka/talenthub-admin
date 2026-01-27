@@ -14,7 +14,8 @@ const InternSeatManagement = () => {
     leftSection,
     rightSection,
     totalUnavailableCount,
-    totalBookedCount,
+    totalAvailableCount,
+    TOTAL_SEATS,
     formatDisplayDate,
     handleDateChange,
     handleSeatClick,
@@ -41,17 +42,17 @@ const InternSeatManagement = () => {
     }
 
     const baseClasses =
-      "absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all cursor-pointer shadow-md";
+      "absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md";
 
     let statusClasses = "";
 
     if (status === "locked") {
       statusClasses = "bg-gray-500 text-white cursor-not-allowed opacity-80";
-    } else if (status === "booked" || status === "taken") {
+    } else if (status === "booked") {
       statusClasses = "bg-red-300 text-white cursor-not-allowed";
     } else {
       statusClasses =
-        "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105";
+        "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105 cursor-pointer";
     }
 
     return (
@@ -63,19 +64,22 @@ const InternSeatManagement = () => {
           top: `${posY - 24}px`,
         }}
         title={
-          dailyBookings[number]
-            ? `Intern ID: ${dailyBookings[number].internId} - ${dailyBookings[number].email}`
-            : `Seat ${number}`
+          status === "locked"
+            ? `Seat ${number} (Locked)`
+            : status === "booked" && dailyBookings[number]
+              ? `Your booking - Seat ${number}`
+              : status === "booked"
+                ? `Seat ${number} (Already Booked)`
+                : `Seat ${number} (Available)`
         }
       >
-        {status === "locked" && <X size={14} />}
-        {status !== "locked" && status === "booked" && (
-          <X size={12} className="mb-[-2px]" />
-        )}
+        {/* Show X icon only for booked seats, not for locked seats */}
+        {status === "booked" && <X size={12} className="mb-[-2px]" />}
 
         <Armchair size={16} />
 
-        {status !== "locked" && <span className="text-[10px]">{number}</span>}
+        {/* Always show seat number for all seat types */}
+        <span className="text-[10px] mt-0.5">{number}</span>
       </div>
     );
   };
@@ -176,13 +180,17 @@ const InternSeatManagement = () => {
                     <div className="text-2xl font-bold text-red-700">
                       {totalUnavailableCount}
                     </div>
-                    <div className="text-sm text-red-600">Seats Booked / Locked</div>
+                    <div className="text-sm text-red-600">
+                      Seats Booked / Locked
+                    </div>
                   </div>
                   <div className="text-center p-3 bg-green-50 rounded-lg">
                     <div className="text-2xl font-bold text-green-700">
-                      {96 - totalUnavailableCount}
+                      {totalAvailableCount}
                     </div>
-                    <div className="text-sm text-green-600">Seats Available</div>
+                    <div className="text-sm text-green-600">
+                      Seats Available
+                    </div>
                   </div>
                   <div className="flex justify-center sm:justify-end">
                     <div className="flex items-center gap-3">
@@ -244,7 +252,8 @@ const InternSeatManagement = () => {
                     Joined Seats Information
                   </p>
                   <p className="text-sm text-amber-800 mt-1">
-                    Some seats are designed as <strong>2 seats for 1 table</strong> (joined units).
+                    Some seats are designed as{" "}
+                    <strong>2 seats for 1 table</strong> (joined units).
                   </p>
                 </div>
               </div>
@@ -642,7 +651,8 @@ const InternSeatManagement = () => {
                   Seats Booked for {formatDisplayDate(selectedDate)}
                 </h3>
                 <span className="text-sm text-gray-500 mt-1 sm:mt-0">
-                  {totalUnavailableCount} of 96 seats unavailable (includes locked)
+                  {totalUnavailableCount} of {TOTAL_SEATS} seats unavailable
+                  (includes locked)
                 </span>
               </div>
               {Object.keys(dailyBookings).length > 0 ? (
