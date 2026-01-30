@@ -23,7 +23,8 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    const internId = intern._id.toString();
+    const internId = intern._id;
+    const traineeId = intern.Trainee_ID;
     const email = intern.Trainee_Email;
 
     if (!seatNumber || !date) {
@@ -93,6 +94,7 @@ exports.createBooking = async (req, res) => {
     const booking = await SeatBooking.create({
       seatNumber,
       internId,
+      traineeId,
       email,
       bookingDate,
       status: "active",
@@ -145,7 +147,9 @@ exports.getBookingsByDate = async (req, res) => {
     const bookings = await SeatBooking.find({
       bookingDate: queryDate,
       status: "active",
-    }).sort({ seatNumber: 1 });
+    })
+      .select("seatNumber traineeId internId bookingDate")
+      .sort({ seatNumber: 1 });
 
     res.status(200).json(bookings);
   } catch (error) {
@@ -180,7 +184,7 @@ exports.getBookingsByIntern = async (req, res) => {
       });
     }
 
-    const internId = intern._id.toString();
+    const internId = intern._id;
 
     const bookings = await SeatBooking.find({
       internId,
@@ -220,7 +224,7 @@ exports.cancelBooking = async (req, res) => {
       });
     }
 
-    const internId = intern._id.toString();
+    const internId = intern._id;
 
     const booking = await SeatBooking.findById(bookingId);
 
@@ -232,7 +236,7 @@ exports.cancelBooking = async (req, res) => {
     }
 
     // Verify the booking belongs to the authenticated user
-    if (booking.internId !== internId) {
+    if (!booking.internId.equals(internId)) {
       return res.status(403).json({
         success: false,
         message: "Forbidden: You can only cancel your own bookings",

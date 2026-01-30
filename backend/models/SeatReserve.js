@@ -9,9 +9,13 @@ const seatBookingSchema = new mongoose.Schema(
       max: 96,
     },
     internId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Intern",
+      required: true,
+    },
+    traineeId: {
       type: String,
       required: true,
-      trim: true,
     },
     email: {
       type: String,

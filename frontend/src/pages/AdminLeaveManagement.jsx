@@ -17,6 +17,9 @@ import {
   FiAlertCircle,
   FiArrowLeft,
   FiEye,
+  FiCheckSquare,
+  FiSquare,
+  FiCheckCircle,
 } from "react-icons/fi";
 import logo from "../assets/sltlogo.jpg";
 
@@ -50,6 +53,13 @@ const AdminLeaveManagement = () => {
     endDate: "",
   });
 
+  // New states for bulk operations
+  const [selectedRequests, setSelectedRequests] = useState(new Set());
+  const [bulkAction, setBulkAction] = useState(""); // "approve" or "deny"
+  const [bulkAdminResponse, setBulkAdminResponse] = useState("");
+  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+  const [isSelectAll, setIsSelectAll] = useState(false);
+
   useEffect(() => {
     // Check if admin is logged in
     const adminInfo = localStorage.getItem("adminInfo");
@@ -79,6 +89,9 @@ const AdminLeaveManagement = () => {
       const response = await getAllLeaveRequests(params);
       setLeaveRequests(response.data);
       setPagination(response.pagination);
+      // Clear selections when data changes
+      setSelectedRequests(new Set());
+      setIsSelectAll(false);
     } catch (error) {
       console.error("Error fetching leave requests:", error);
 
@@ -153,12 +166,12 @@ const AdminLeaveManagement = () => {
     setDocumentViewer({ show: false, url: "", type: "" });
   };
 
-  const handleStatusUpdate = async (requestId, status) => {
+  const handleStatusUpdate = async (requestId, status, response = "") => {
     setProcessing(true);
     try {
       await updateLeaveRequestStatus(requestId, {
         status,
-        adminResponse: adminResponse.trim() || undefined,
+        adminResponse: response.trim() || undefined,
       });
 
       toast.success(`Leave request ${status.toLowerCase()} successfully`);
@@ -182,6 +195,83 @@ const AdminLeaveManagement = () => {
   const closeReviewModal = () => {
     setSelectedRequest(null);
     setAdminResponse("");
+  };
+
+  // Bulk selection handlers
+  const handleSelectRequest = (requestId) => {
+    const newSelected = new Set(selectedRequests);
+    if (newSelected.has(requestId)) {
+      newSelected.delete(requestId);
+    } else {
+      newSelected.add(requestId);
+    }
+    setSelectedRequests(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (isSelectAll) {
+      setSelectedRequests(new Set());
+    } else {
+      const allIds = leaveRequests
+        .filter((request) => request.status === "Pending")
+        .map((request) => request._id);
+      setSelectedRequests(new Set(allIds));
+    }
+    setIsSelectAll(!isSelectAll);
+  };
+
+  const handleBulkAction = (action) => {
+    if (selectedRequests.size === 0) {
+      toast.error("Please select at least one request");
+      return;
+    }
+    setBulkAction(action);
+    setIsBulkModalOpen(true);
+  };
+
+  const confirmBulkAction = async () => {
+    if (selectedRequests.size === 0) {
+      toast.error("No requests selected");
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      const requestsArray = Array.from(selectedRequests);
+      const toastId = toast.loading(
+        `Processing ${selectedRequests.size} request(s)...`,
+      );
+
+      // Process each request individually
+      const promises = requestsArray.map((requestId) =>
+        updateLeaveRequestStatus(requestId, {
+          status: bulkAction === "approve" ? "Approved" : "Denied",
+          adminResponse: bulkAdminResponse.trim() || undefined,
+        }),
+      );
+
+      await Promise.all(promises);
+
+      toast.success(
+        `Successfully ${bulkAction === "approve" ? "approved" : "denied"} ${selectedRequests.size} request(s)`,
+        {
+          id: toastId,
+        },
+      );
+
+      // Reset and refresh
+      setSelectedRequests(new Set());
+      setIsSelectAll(false);
+      setBulkAdminResponse("");
+      setIsBulkModalOpen(false);
+      fetchLeaveRequests();
+      fetchStats();
+    } catch (error) {
+      console.error("Error in bulk action:", error);
+      toast.error("Failed to process bulk action");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleDownloadApprovedReport = async () => {
@@ -316,6 +406,8 @@ const AdminLeaveManagement = () => {
                 onClick={() => {
                   setFilter(key);
                   setPagination((prev) => ({ ...prev, page: 1 }));
+                  setSelectedRequests(new Set());
+                  setIsSelectAll(false);
                 }}
                 className={`px-4 py-2 rounded-lg font-medium transition-all ${
                   filter === key
@@ -376,6 +468,46 @@ const AdminLeaveManagement = () => {
           </button>
         </div>
 
+        {/* Bulk Actions Bar - Only show for pending requests */}
+        {filter === "Pending" && selectedRequests.size > 0 && (
+          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-blue-700 font-medium">
+                  {selectedRequests.size} request(s) selected
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handleBulkAction("approve")}
+                  disabled={processing}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  <FiCheckCircle />
+                  Approve Selected
+                </button>
+                <button
+                  onClick={() => handleBulkAction("deny")}
+                  disabled={processing}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  <FiX />
+                  Deny Selected
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedRequests(new Set());
+                    setIsSelectAll(false);
+                  }}
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  Clear Selection
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Content */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
@@ -396,6 +528,22 @@ const AdminLeaveManagement = () => {
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
+                      {/* Add checkbox column header */}
+                      {filter === "Pending" && (
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
+                          <button
+                            onClick={handleSelectAll}
+                            className="flex items-center justify-center"
+                            title={isSelectAll ? "Deselect all" : "Select all"}
+                          >
+                            {isSelectAll ? (
+                              <FiCheckSquare className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <FiSquare className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        </th>
+                      )}
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Intern Details
                       </th>
@@ -419,6 +567,22 @@ const AdminLeaveManagement = () => {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {leaveRequests.map((request) => (
                       <tr key={request._id} className="hover:bg-gray-50">
+                        {/* Add checkbox for pending requests */}
+                        {filter === "Pending" && (
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-center">
+                              <input
+                                type="checkbox"
+                                checked={selectedRequests.has(request._id)}
+                                onChange={() =>
+                                  handleSelectRequest(request._id)
+                                }
+                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                disabled={request.status !== "Pending"}
+                              />
+                            </div>
+                          </td>
+                        )}
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div>
@@ -671,7 +835,11 @@ const AdminLeaveManagement = () => {
                     <div className="flex gap-3 pt-4">
                       <button
                         onClick={() =>
-                          handleStatusUpdate(selectedRequest._id, "Approved")
+                          handleStatusUpdate(
+                            selectedRequest._id,
+                            "Approved",
+                            adminResponse,
+                          )
                         }
                         disabled={processing}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
@@ -685,7 +853,11 @@ const AdminLeaveManagement = () => {
                       </button>
                       <button
                         onClick={() =>
-                          handleStatusUpdate(selectedRequest._id, "Denied")
+                          handleStatusUpdate(
+                            selectedRequest._id,
+                            "Denied",
+                            adminResponse,
+                          )
                         }
                         disabled={processing}
                         className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
@@ -700,6 +872,100 @@ const AdminLeaveManagement = () => {
                     </div>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bulk Action Modal */}
+        {isBulkModalOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            onClick={() => !processing && setIsBulkModalOpen(false)}
+          >
+            <div
+              className="bg-white rounded-lg shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  {bulkAction === "approve" ? (
+                    <FiCheckCircle className="text-green-600" />
+                  ) : (
+                    <FiX className="text-red-600" />
+                  )}
+                  Bulk {bulkAction === "approve" ? "Approve" : "Deny"} Requests
+                </h2>
+                <button
+                  onClick={() => !processing && setIsBulkModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  disabled={processing}
+                >
+                  <FiX className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <p className="text-blue-800 text-sm">
+                    You are about to{" "}
+                    {bulkAction === "approve" ? "approve" : "deny"}{" "}
+                    <span className="font-bold">{selectedRequests.size}</span>{" "}
+                    leave request(s).
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Admin Response (Optional - applied to all selected requests)
+                  </label>
+                  <textarea
+                    value={bulkAdminResponse}
+                    onChange={(e) => setBulkAdminResponse(e.target.value)}
+                    placeholder={`Add a comment or reason for ${bulkAction === "approve" ? "approving" : "denying"} these requests...`}
+                    rows="3"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                    disabled={processing}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => !processing && setIsBulkModalOpen(false)}
+                    disabled={processing}
+                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={confirmBulkAction}
+                    disabled={processing}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
+                      processing
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : bulkAction === "approve"
+                          ? "bg-green-600 hover:bg-green-700"
+                          : "bg-red-600 hover:bg-red-700"
+                    }`}
+                  >
+                    {processing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        {bulkAction === "approve" ? <FiCheckCircle /> : <FiX />}
+                        Confirm {bulkAction === "approve"
+                          ? "Approve"
+                          : "Deny"}{" "}
+                        ({selectedRequests.size})
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -16,6 +16,7 @@ const InternSeatManagement = () => {
     totalUnavailableCount,
     totalAvailableCount,
     TOTAL_SEATS,
+    allBookings,
     formatDisplayDate,
     handleDateChange,
     handleSeatClick,
@@ -27,6 +28,8 @@ const InternSeatManagement = () => {
 
   const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
     const status = getSeatStatus(number);
+    const bookingInfo = allBookings[number]; // Get booking info from allBookings
+    const isMyBooking = dailyBookings[number]; // Check if it's my booking
 
     let posX = x;
     let posY = y;
@@ -49,7 +52,12 @@ const InternSeatManagement = () => {
     if (status === "locked") {
       statusClasses = "bg-gray-500 text-white cursor-not-allowed opacity-80";
     } else if (status === "booked") {
-      statusClasses = "bg-red-300 text-white cursor-not-allowed";
+      // Optional: Use different color for my booking vs others
+      if (isMyBooking) {
+        statusClasses = "bg-red-300 text-white cursor-not-allowed"; // My booking (darker red)
+      } else {
+        statusClasses = "bg-red-300 text-white cursor-not-allowed"; // Others' booking
+      }
     } else {
       statusClasses =
         "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105 cursor-pointer";
@@ -66,11 +74,13 @@ const InternSeatManagement = () => {
         title={
           status === "locked"
             ? `Seat ${number} (Locked)`
-            : status === "booked" && dailyBookings[number]
-              ? `Your booking - Seat ${number}`
-              : status === "booked"
-                ? `Seat ${number} (Already Booked)`
-                : `Seat ${number} (Available)`
+            : status === "booked" && bookingInfo?.traineeId // Change from dailyBookings to bookingInfo
+              ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
+              : status === "booked" && bookingInfo?.email
+                ? `Seat ${number} - Booked by: ${bookingInfo.email}`
+                : status === "booked"
+                  ? `Seat ${number} (Already Booked)`
+                  : `Seat ${number} (Available)`
         }
       >
         {/* Show X icon only for booked seats, not for locked seats */}
@@ -230,7 +240,7 @@ const InternSeatManagement = () => {
               </div>
             </div>
             {/* Joined Seats Info Banner */}
-            <div className="mb-6 text-center">
+            {/* <div className="mb-6 text-center">
               <div className="inline-flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-6 py-4 shadow-sm">
                 <div className="text-amber-700">
                   <svg
@@ -257,7 +267,7 @@ const InternSeatManagement = () => {
                   </p>
                 </div>
               </div>
-            </div>
+            </div> */}
             <div className="relative">
               <div className="hidden sm:block bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
                 <div
@@ -280,8 +290,8 @@ const InternSeatManagement = () => {
                     <div
                       className="absolute top-0 h-12 bg-gray-700  flex items-center"
                       style={{
-                        left: "-125px",
-                        width: "744px",
+                        left: "-124px",
+                        width: "742px",
                       }}
                     >
                       <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
@@ -302,7 +312,7 @@ const InternSeatManagement = () => {
                       className="absolute top-11 w-33 bg-gray-700"
                       style={{
                         left: "486px",
-                        bottom: "-100px",
+                        bottom: "-110px",
                       }}
                     ></div>
 

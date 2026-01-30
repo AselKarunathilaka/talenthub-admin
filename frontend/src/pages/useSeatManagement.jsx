@@ -4,123 +4,123 @@ import { API_BASE_URL } from "../api/apiConfig";
 // Left section seats configuration
 const leftSection = {
   topRow: [
-    { number: 25, x: 3, y: 145 },
-    { number: 24, x: 68, y: 145 },
-    { number: 23, x: 133, y: 145 },
-    { number: 22, x: 198, y: 145 },
-    { number: 21, x: 263, y: 145 },
-    { number: 20, x: 328, y: 145 },
-    { number: 19, x: 393, y: 145 },
+    { number: 1, x: 3, y: 145 },
+    { number: 2, x: 68, y: 145 },
+    { number: 3, x: 133, y: 145 },
+    { number: 4, x: 198, y: 145 },
+    { number: 5, x: 263, y: 145 },
+    { number: 6, x: 328, y: 145 },
+    { number: 7, x: 393, y: 145 },
   ],
   pillarSeats: [
-    { number: 28, angle: 300, radius: 115 },
-    { number: 29, angle: 340, radius: 105 },
-    { number: 30, angle: 20, radius: 105 },
-    { number: 31, angle: 60, radius: 105 },
-    { number: 32, angle: 120, radius: 105 },
-    { number: 33, angle: 160, radius: 105 },
-    { number: 26, angle: 200, radius: 105 },
-    { number: 27, angle: 240, radius: 115 },
+    { number: 10, angle: 290, radius: 115 },
+    { number: 11, angle: 330, radius: 105 },
+    { number: 12, angle: 30, radius: 105 },
+    { number: 13, angle: 70, radius: 105 },
+    { number: 14, angle: 110, radius: 105 },
+    { number: 15, angle: 150, radius: 105 },
+    { number: 8, angle: 210, radius: 105 },
+    { number: 9, angle: 250, radius: 115 },
   ],
   outerRing1: [
-    { number: 34, angle: 190, radius: 240 },
-    { number: 35, angle: 174, radius: 225 },
-    { number: 36, angle: 155, radius: 195 },
-    { number: 37, angle: 133, radius: 180 },
-    { number: 38, angle: 111, radius: 174 },
-    { number: 39, angle: 89, radius: 170 },
-    { number: 40, angle: 66, radius: 174 },
-    { number: 41, angle: 43, radius: 180 },
-    { number: 42, angle: 20, radius: 198 },
-    { number: 43, angle: 0.6, radius: 228 },
-    { number: 44, angle: -11, radius: 240 },
+    { number: 16, angle: 190, radius: 210 },
+    { number: 17, angle: 172, radius: 195 },
+    { number: 18, angle: 152, radius: 185 },
+    { number: 19, angle: 130, radius: 180 },
+    { number: 20, angle: 109, radius: 175 },
+    { number: 21, angle: 88, radius: 170 },
+    { number: 22, angle: 67, radius: 175 },
+    { number: 23, angle: 46, radius: 185 },
+    { number: 24, angle: 25, radius: 185 },
+    { number: 25, angle: 6, radius: 195 },
+    { number: 26, angle: -11, radius: 210 },
   ],
   outerRing2: [
-    { number: 52, angle: 155, radius: 260, locked: true },
-    { number: 51, angle: 139, radius: 255, locked: true },
-    { number: 50, angle: 123, radius: 250, locked: true },
-    { number: 49, angle: 107, radius: 245, locked: true },
-    { number: 48, angle: 91, radius: 235, locked: true },
-    { number: 47, angle: 75, radius: 240, locked: true },
-    { number: 46, angle: 59, radius: 245, locked: true },
-    { number: 45, angle: 43, radius: 250, locked: true },
+    { number: 34, angle: 155, radius: 270, locked: true },
+    { number: 33, angle: 139, radius: 265, locked: true },
+    { number: 32, angle: 123, radius: 255, locked: true },
+    { number: 31, angle: 107, radius: 245, locked: true },
+    { number: 30, angle: 91, radius: 245, locked: true },
+    { number: 29, angle: 75, radius: 250, locked: true },
+    { number: 28, angle: 59, radius: 260, locked: true },
+    { number: 27, angle: 43, radius: 270, locked: true },
   ],
   outerRing3: [
-    { number: 55, angle: 63, radius: 312, locked: true },
-    { number: 54, angle: 51, radius: 335, locked: true },
-    { number: 53, angle: 42, radius: 325, locked: true },
+    { number: 36, angle: 59, radius: 325, locked: true },
+    { number: 35, angle: 47, radius: 335, locked: true },
+    //{ number: 53, angle: 42, radius: 325, locked: true },
   ],
 };
 
 // Right section seats configuration
 const rightSection = {
   straightSeats: [
-    { number: 1, x: 722, y: 80 },
-    { number: 2, x: 787, y: 80 },
-    { number: 3, x: 852, y: 80 },
-    { number: 4, x: 917, y: 80 },
-    { number: 5, x: 982, y: 80 },
-    { number: 6, x: 1047, y: 80 },
-    { number: 7, x: 1112, y: 80 },
-    { number: 8, x: 1177, y: 80 },
-    { number: 18, x: 657, y: 145 },
-    { number: 17, x: 722, y: 145 },
-    { number: 16, x: 787, y: 145 },
-    { number: 15, x: 852, y: 145 },
-    { number: 14, x: 917, y: 145 },
-    { number: 13, x: 982, y: 145 },
-    { number: 12, x: 1047, y: 145 },
-    { number: 11, x: 1112, y: 145 },
-    { number: 10, x: 1177, y: 145 },
-    { number: 9, x: 1224, y: 145 },
-    { number: 56, x: 657, y: 210 },
-    { number: 57, x: 722, y: 210 },
-    { number: 58, x: 787, y: 210 },
-    { number: 63, x: 1047, y: 210 },
-    { number: 64, x: 1112, y: 210 },
-    { number: 65, x: 1159, y: 210 },
+    { number: 37, x: 722, y: 80 },
+    { number: 38, x: 787, y: 80 },
+    { number: 39, x: 852, y: 80 },
+    { number: 40, x: 917, y: 80 },
+    { number: 41, x: 982, y: 80 },
+    { number: 42, x: 1047, y: 80 },
+    { number: 43, x: 1112, y: 80 },
+    { number: 44, x: 1177, y: 80 },
+    { number: 53, x: 657, y: 145 },
+    { number: 52, x: 722, y: 145 },
+    { number: 51, x: 787, y: 145 },
+    { number: 50, x: 852, y: 145 },
+    { number: 49, x: 917, y: 145 },
+    { number: 48, x: 982, y: 145 },
+    { number: 47, x: 1047, y: 145 },
+    { number: 46, x: 1112, y: 145 },
+    { number: 45, x: 1177, y: 145 },
+    //{ number: 9, x: 1224, y: 145 },
+    { number: 54, x: 657, y: 210 },
+    { number: 55, x: 722, y: 210 },
+    { number: 56, x: 787, y: 210 },
+    // { number: 63, x: 1047, y: 210 },
+    { number: 57, x: 1112, y: 210 },
+    { number: 58, x: 1179, y: 210 },
   ],
   pillarSeats: [
-    { number: 61, angle: 300, radius: 115 },
-    { number: 62, angle: 340, radius: 105 },
-    { number: 66, angle: 20, radius: 105 },
-    { number: 67, angle: 60, radius: 105 },
-    { number: 68, angle: 120, radius: 105, locked: true },
-    { number: 69, angle: 160, radius: 105, locked: true },
-    { number: 59, angle: 200, radius: 105 },
-    { number: 60, angle: 240, radius: 115 },
+    { number: 61, angle: 290, radius: 115 },
+    { number: 62, angle: 330, radius: 105 },
+    { number: 63, angle: 30, radius: 105 },
+    { number: 64, angle: 70, radius: 105 },
+    { number: 65, angle: 110, radius: 105, locked: true },
+    { number: 66, angle: 150, radius: 105, locked: true },
+    { number: 59, angle: 210, radius: 105 },
+    { number: 60, angle: 250, radius: 115 },
   ],
   outerRing1: [
-    { number: 90, angle: 161, radius: 280 },
-    { number: 89, angle: 151, radius: 280 },
-    { number: 88, angle: 135, radius: 270 },
-    { number: 87, angle: 120, radius: 260 },
-    { number: 86, angle: 106, radius: 250 },
-    { number: 85, angle: 92, radius: 245 },
-    { number: 84, angle: 77, radius: 250 },
-    { number: 83, angle: 63, radius: 260 },
-    { number: 82, angle: 48, radius: 270 },
-    { number: 81, angle: 32, radius: 280 },
-    { number: 80, angle: 22, radius: 280 },
+    // { number: 90, angle: 161, radius: 280 },
+    { number: 84, angle: 158, radius: 280 },
+    { number: 83, angle: 142, radius: 270 },
+    { number: 82, angle: 126, radius: 260 },
+    { number: 81, angle: 111, radius: 250 },
+    { number: 80, angle: 96, radius: 245 },
+    { number: 79, angle: 81, radius: 245 },
+    { number: 78, angle: 65, radius: 250 },
+    { number: 77, angle: 50, radius: 260 },
+    { number: 76, angle: 34, radius: 270 },
+    { number: 75, angle: 19, radius: 280 },
   ],
   outerRing2: [
-    { number: 70, angle: 173, radius: 210, locked: true },
-    { number: 71, angle: 160, radius: 210, locked: true },
-    { number: 72, angle: 140, radius: 200 },
-    { number: 73, angle: 120, radius: 180 },
-    { number: 74, angle: 100, radius: 170 },
-    { number: 75, angle: 80, radius: 170 },
-    { number: 76, angle: 60, radius: 180, locked: true },
-    { number: 77, angle: 40, radius: 200, locked: true },
-    { number: 78, angle: 20, radius: 210, locked: true },
-    { number: 79, angle: 7, radius: 210, locked: true },
+    // { number: 70, angle: 173, radius: 210, locked: true },
+    { number: 67, angle: 165, radius: 190, locked: true },
+    { number: 68, angle: 145, radius: 190 },
+    { number: 69, angle: 123, radius: 180 },
+    { number: 70, angle: 100, radius: 170 },
+    { number: 71, angle: 79, radius: 170 },
+    { number: 72, angle: 57, radius: 180, locked: true },
+    { number: 73, angle: 35, radius: 190, locked: true },
+    { number: 74, angle: 15, radius: 190, locked: true },
+    // { number: 79, angle: 7, radius: 210, locked: true },
   ],
   outerRing3: [
-    { number: 91, angle: 132, radius: 340 },
-    { number: 92, angle: 120, radius: 330, locked: true },
-    { number: 93, angle: 43, radius: 340, locked: true },
-    { number: 94, angle: 31, radius: 360, locked: true },
-    { number: 95, angle: 24, radius: 350, locked: true },
+    { number: 85, angle: 141, radius: 350 },
+    { number: 86, angle: 130, radius: 330, locked: true },
+    { number: 87, angle: 38, radius: 340, locked: true },
+    { number: 88, angle: 26, radius: 350, locked: true },
+    //{ number: 95, angle: 24, radius: 350, locked: true },
   ],
 };
 
@@ -162,6 +162,7 @@ export const useSeatManagement = () => {
   const [minBookingDate, setMinBookingDate] = useState("");
   const [maxBookingDate, setMaxBookingDate] = useState("");
   const [takenSeatsByAnyone, setTakenSeatsByAnyone] = useState([]);
+  const [allBookings, setAllBookings] = useState({});
 
   //Computed values based on current state
   const totalUnavailableCount = takenSeatsByAnyone.length;
@@ -307,71 +308,97 @@ export const useSeatManagement = () => {
   }, []);
 
   // Load bookings for a specific date
-  const loadBookingsForDate = useCallback(
-    async (dateString) => {
-      try {
-        setLoading(true);
+  // Update the loadBookingsForDate function in useSeatManagement hook
+  const loadBookingsForDate = useCallback(async (dateString) => {
+    try {
+      setLoading(true);
 
-        // 1. Get all taken seats (booked by anyone)
-        const availability = await fetchSeatAvailability(dateString);
-        const allTakenSeats = availability.bookedSeats || [];
+      // 1. Get ALL bookings for this date (not just availability)
+      const response = await fetch(
+        `${API_BASE_URL}/seat-reservation/bookings/date/${dateString}`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
 
-        // 2. Combine booked seats with locked seats (locked seats are ALWAYS unavailable)
-        const allUnavailableSeats = [
-          ...new Set([...allTakenSeats, ...LOCKED_SEATS]),
-        ];
-
-        // 3. Get ONLY my bookings
-        const response = await fetch(
-          `${API_BASE_URL}/seat-reservation/bookings/intern`,
-          {
-            headers: getAuthHeaders(),
-          },
-        );
-
-        let myBookings = [];
-        if (response.ok) {
-          myBookings = await response.json();
-        } else {
-          console.error("Failed to fetch my bookings");
-          setDailyBookings({});
-          setTakenSeatsByAnyone(allUnavailableSeats); // Use combined list
-          return;
-        }
-
-        // 4. Find booking for THIS date
-        const targetDate = new Date(dateString);
-        targetDate.setHours(0, 0, 0, 0);
-
-        const myBookingForDate = myBookings.find((booking) => {
-          const bookingDate = new Date(booking.bookingDate);
-          bookingDate.setHours(0, 0, 0, 0);
-          return bookingDate.getTime() === targetDate.getTime();
-        });
-
-        // 5. Build ONLY my booking
-        const myOnly = {};
-        if (myBookingForDate) {
-          myOnly[myBookingForDate.seatNumber] = {
-            internId: myBookingForDate.internId,
-            email: myBookingForDate.email,
-            date: myBookingForDate.bookingDate,
-            bookedAt: myBookingForDate.createdAt || myBookingForDate.bookedAt,
-            id: myBookingForDate._id,
-          };
-        }
-
-        setDailyBookings(myOnly); // Table: only YOU
-        setTakenSeatsByAnyone(allUnavailableSeats); // Map: all unavailable (booked + locked)
-      } catch (err) {
-        console.error("Load error:", err);
-        setError("Failed to load your seat");
-      } finally {
-        setLoading(false);
+      let allBookings = [];
+      if (response.ok) {
+        const result = await response.json();
+        allBookings = result.data || result;
+      } else {
+        console.error("Failed to fetch bookings for date");
       }
-    },
-    [fetchSeatAvailability],
-  );
+
+      // 2. Create a map of all bookings with booking details
+      const allBookingsMap = {};
+      const allTakenSeats = [];
+
+      allBookings.forEach((booking) => {
+        const seatNum = booking.seatNumber;
+        allBookingsMap[seatNum] = {
+          internId: booking.internId,
+          traineeId: booking.traineeId,
+          email: booking.email,
+          date: booking.bookingDate,
+          bookedAt: booking.createdAt || booking.bookedAt,
+          id: booking._id,
+          // Add any other relevant booking info
+        };
+        allTakenSeats.push(seatNum);
+      });
+
+      // 3. Combine with locked seats
+      const allUnavailableSeats = [
+        ...new Set([...allTakenSeats, ...LOCKED_SEATS]),
+      ];
+
+      // 4. Get my bookings separately for cancellation purposes
+      const myBookingsResponse = await fetch(
+        `${API_BASE_URL}/seat-reservation/bookings/intern`,
+        {
+          headers: getAuthHeaders(),
+        },
+      );
+
+      let myBookings = [];
+      if (myBookingsResponse.ok) {
+        myBookings = await myBookingsResponse.json();
+      }
+
+      // 5. Find my booking for THIS date
+      const targetDate = new Date(dateString);
+      targetDate.setHours(0, 0, 0, 0);
+
+      const myBookingForDate = myBookings.find((booking) => {
+        const bookingDate = new Date(booking.bookingDate);
+        bookingDate.setHours(0, 0, 0, 0);
+        return bookingDate.getTime() === targetDate.getTime();
+      });
+
+      // 6. Store my booking separately
+      const myOnly = {};
+      if (myBookingForDate) {
+        myOnly[myBookingForDate.seatNumber] = {
+          internId: myBookingForDate.internId,
+          traineeId: myBookingForDate.traineeId,
+          email: myBookingForDate.email,
+          date: myBookingForDate.bookingDate,
+          bookedAt: myBookingForDate.createdAt || myBookingForDate.bookedAt,
+          id: myBookingForDate._id,
+        };
+      }
+
+      // 7. Update state with ALL bookings and my bookings
+      setDailyBookings(myOnly); // Only my bookings (for cancellation)
+      setAllBookings(allBookingsMap); // Add this state
+      setTakenSeatsByAnyone(allUnavailableSeats);
+    } catch (err) {
+      console.error("Load error:", err);
+      setError("Failed to load seat bookings");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Handle date change
   const handleDateChange = useCallback(
@@ -534,6 +561,7 @@ export const useSeatManagement = () => {
     totalUnavailableCount,
     totalAvailableCount,
     TOTAL_SEATS,
+    allBookings,
     formatDisplayDate,
     handleDateChange,
     handleSeatClick,
