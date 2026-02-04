@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   getAllLeaveRequests,
   updateLeaveRequestStatus,
+  bulkUpdateLeaveRequestStatus,
   getLeaveRequestStats,
 } from "../api/leaveRequestApi";
 import { downloadApprovedLeaveReport } from "../api/adminApi";
@@ -59,6 +60,8 @@ const AdminLeaveManagement = () => {
   const [bulkAdminResponse, setBulkAdminResponse] = useState("");
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isSelectAll, setIsSelectAll] = useState(false);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [sortBy, setSortBy] = useState("newest"); // newest, oldest, urgent
 
   useEffect(() => {
     // Check if admin is logged in
@@ -74,6 +77,18 @@ const AdminLeaveManagement = () => {
     fetchStats();
   }, [filter, pagination.page]);
 
+  // Auto-refresh every 30 seconds if enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+    
+    const interval = setInterval(() => {
+      fetchLeaveRequests();
+      fetchStats();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, filter, pagination.page]);
+
   const fetchLeaveRequests = async () => {
     setLoading(true);
     try {
@@ -87,7 +102,25 @@ const AdminLeaveManagement = () => {
       }
 
       const response = await getAllLeaveRequests(params);
-      setLeaveRequests(response.data);
+      
+      // Sort requests based on sortBy
+      let sortedRequests = [...response.data];
+      if (sortBy === "urgent") {
+        const today = new Date().toISOString().split('T')[0];
+        sortedRequests.sort((a, b) => {
+          const aIsUrgent = a.leaveDate.split('T')[0] === today;
+          const bIsUrgent = b.leaveDate.split('T')[0] === today;
+          if (aIsUrgent && !bIsUrgent) return -1;
+          if (!aIsUrgent && bIsUrgent) return 1;
+          return new Date(b.submittedAt) - new Date(a.submittedAt);
+        });
+      } else if (sortBy === "oldest") {
+        sortedRequests.sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+      } else {
+        sortedRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+      }
+      
+      setLeaveRequests(sortedRequests);
       setPagination(response.pagination);
       // Clear selections when data changes
       setSelectedRequests(new Set());
@@ -242,18 +275,18 @@ const AdminLeaveManagement = () => {
         `Processing ${selectedRequests.size} request(s)...`,
       );
 
-      // Process each request individually
-      const promises = requestsArray.map((requestId) =>
-        updateLeaveRequestStatus(requestId, {
-          status: bulkAction === "approve" ? "Approved" : "Denied",
-          adminResponse: bulkAdminResponse.trim() || undefined,
-        }),
-      );
-
-      await Promise.all(promises);
+      // Use bulk update API endpoint for better performance and single email
+      const response = await bulkUpdateLeaveRequestStatus(requestsArray, {
+        status: bulkAction === "approve" ? "Approved" : "Denied",
+        adminResponse: bulkAdminResponse.trim() || undefined,
+      });
 
       toast.success(
-        `Successfully ${bulkAction === "approve" ? "approved" : "denied"} ${selectedRequests.size} request(s)`,
+        `Successfully ${bulkAction === "approve" ? "approved" : "denied"} ${selectedRequests.size} request(s)${
+          bulkAction === "approve" && response.data.updated > 0
+            ? " - Email notification sent!"
+            : ""
+        }`,
         {
           id: toastId,
         },
@@ -301,6 +334,43 @@ const AdminLeaveManagement = () => {
       console.error("Error downloading approved leave report:", error);
       toast.error("Failed to download approved leave report", { id: toastId });
     }
+  };
+
+  // Quick approve/deny without modal
+  const handleQuickAction = async (requestId, action) => {
+    if (!window.confirm(`Are you sure you want to ${action} this request?`)) {
+      return;
+    }
+
+    setProcessing(true);
+    try {
+      await updateLeaveRequestStatus(requestId, {
+        status: action === "approve" ? "Approved" : "Denied",
+      });
+
+      toast.success(`Leave request ${action}d successfully`);
+      fetchLeaveRequests();
+      fetchStats();
+    } catch (error) {
+      console.error("Error in quick action:", error);
+      toast.error(error.message || "Failed to update leave request");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // Check if request is urgent (same day)
+  const isUrgentRequest = (leaveDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    const reqDate = new Date(leaveDate).toISOString().split('T')[0];
+    return reqDate === today;
+  };
+
+  // Check if request is for today
+  const isToday = (leaveDate) => {
+    const today = new Date().toISOString().split('T')[0];
+    const reqDate = new Date(leaveDate).toISOString().split('T')[0];
+    return reqDate === today;
   };
 
   const getStatusBadgeClass = (status) => {
@@ -372,52 +442,98 @@ const AdminLeaveManagement = () => {
             </div>
             <div className="text-sm text-gray-600 mt-1">Total Requests</div>
           </div>
-          <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6">
+          <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
+            {stats.pending > 0 && (
+              <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
+                {stats.pending}
+              </div>
+            )}
             <div className="text-3xl font-bold text-yellow-800">
               {stats.pending}
             </div>
-            <div className="text-sm text-yellow-600 mt-1">Pending</div>
+            <div className="text-sm text-yellow-600 mt-1 font-semibold">⏰ Pending Review</div>
           </div>
           <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
             <div className="text-3xl font-bold text-green-800">
               {stats.approved}
             </div>
-            <div className="text-sm text-green-600 mt-1">Approved</div>
+            <div className="text-sm text-green-600 mt-1">✓ Approved</div>
           </div>
           <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
             <div className="text-3xl font-bold text-red-800">
               {stats.denied}
             </div>
-            <div className="text-sm text-red-600 mt-1">Denied</div>
+            <div className="text-sm text-red-600 mt-1">✗ Denied</div>
           </div>
         </div>
 
-        {/* Filter Buttons */}
+        {/* Filter Buttons & Controls */}
         <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "Pending", count: stats.pending },
-              { key: "Approved", count: stats.approved },
-              { key: "Denied", count: stats.denied },
-              { key: "all", count: stats.total, label: "All" },
-            ].map(({ key, count, label }) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setFilter(key);
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                  setSelectedRequests(new Set());
-                  setIsSelectAll(false);
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Filter buttons */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { key: "Pending", count: stats.pending, icon: "⏰" },
+                { key: "Approved", count: stats.approved, icon: "✓" },
+                { key: "Denied", count: stats.denied, icon: "✗" },
+                { key: "all", count: stats.total, label: "All", icon: "📋" },
+              ].map(({ key, count, label, icon }) => (
+                <button
+                  key={key}
+                  onClick={() => {
+                    setFilter(key);
+                    setPagination((prev) => ({ ...prev, page: 1 }));
+                    setSelectedRequests(new Set());
+                    setIsSelectAll(false);
+                  }}
+                  className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                    filter === key
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                >
+                  <span>{icon}</span>
+                  {label || key} ({count})
+                </button>
+              ))}
+            </div>
+
+            {/* Sort and refresh controls */}
+            <div className="flex items-center gap-3">
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value);
+                  fetchLeaveRequests();
                 }}
-                className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                  filter === key
-                    ? "bg-blue-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                {label || key} ({count})
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="urgent">Urgent First (Today)</option>
+              </select>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoRefresh}
+                  onChange={(e) => setAutoRefresh(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                />
+                Auto-refresh (30s)
+              </label>
+
+              <button
+                onClick={() => {
+                  fetchLeaveRequests();
+                  fetchStats();
+                  toast.success("Refreshed!");
+                }}
+                className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+              >
+                🔄 Refresh
               </button>
-            ))}
+            </div>
           </div>
         </div>
 
@@ -565,71 +681,127 @@ const AdminLeaveManagement = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {leaveRequests.map((request) => (
-                      <tr key={request._id} className="hover:bg-gray-50">
-                        {/* Add checkbox for pending requests */}
-                        {filter === "Pending" && (
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-center">
-                              <input
-                                type="checkbox"
-                                checked={selectedRequests.has(request._id)}
-                                onChange={() =>
-                                  handleSelectRequest(request._id)
-                                }
-                                className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                                disabled={request.status !== "Pending"}
-                              />
+                    {leaveRequests.map((request) => {
+                      const urgent = isUrgentRequest(request.leaveDate);
+                      const todayRequest = isToday(request.leaveDate);
+                      
+                      return (
+                        <tr 
+                          key={request._id} 
+                          className={`hover:bg-gray-50 ${
+                            urgent && request.status === 'Pending' 
+                              ? 'bg-orange-50 border-l-4 border-l-orange-500' 
+                              : todayRequest 
+                                ? 'bg-blue-50' 
+                                : ''
+                          }`}
+                        >
+                          {/* Add checkbox for pending requests */}
+                          {filter === "Pending" && (
+                            <td className="px-6 py-4">
+                              <div className="flex items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedRequests.has(request._id)}
+                                  onChange={() =>
+                                    handleSelectRequest(request._id)
+                                  }
+                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                                  disabled={request.status !== "Pending"}
+                                />
+                              </div>
+                            </td>
+                          )}
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                                  {request.internName}
+                                  {urgent && request.status === 'Pending' && (
+                                    <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full font-bold animate-pulse">
+                                      URGENT
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-sm text-gray-500">
+                                  {request.nationalId}
+                                </div>
+                              </div>
                             </div>
                           </td>
-                        )}
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {request.internName}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {request.nationalId}
-                              </div>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900 flex items-center gap-2">
+                              <FiCalendar className="text-gray-400" />
+                              {formatDate(request.leaveDate)}
+                              {todayRequest && (
+                                <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-bold">
+                                  TODAY
+                                </span>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 flex items-center gap-2">
-                            <FiCalendar className="text-gray-400" />
-                            {formatDate(request.leaveDate)}
-                          </div>
-                          <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                            <FiClock className="text-gray-400" />
-                            {request.leaveTime}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={getPurposeBadgeClass(request.purpose)}
-                          >
-                            {request.purpose}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {formatDate(request.submittedAt)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={getStatusBadgeClass(request.status)}>
-                            {request.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <button
-                            onClick={() => openReviewModal(request)}
-                            className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
-                          >
-                            Review
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                            <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
+                              <FiClock className="text-gray-400" />
+                              {request.leaveTime}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span
+                              className={getPurposeBadgeClass(request.purpose)}
+                            >
+                              {request.purpose}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(request.submittedAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={getStatusBadgeClass(request.status)}>
+                              {request.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              {request.status === "Pending" ? (
+                                <>
+                                  <button
+                                    onClick={() => handleQuickAction(request._id, "approve")}
+                                    disabled={processing}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-xs font-semibold"
+                                    title="Quick Approve"
+                                  >
+                                    <FiCheck className="w-4 h-4" />
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleQuickAction(request._id, "deny")}
+                                    disabled={processing}
+                                    className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-xs font-semibold"
+                                    title="Quick Deny"
+                                  >
+                                    <FiX className="w-4 h-4" />
+                                    Deny
+                                  </button>
+                                  <button
+                                    onClick={() => openReviewModal(request)}
+                                    className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-xs font-semibold border border-blue-300"
+                                    title="View Details"
+                                  >
+                                    <FiEye className="w-4 h-4 inline" /> Details
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  onClick={() => openReviewModal(request)}
+                                  className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
+                                >
+                                  Review
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

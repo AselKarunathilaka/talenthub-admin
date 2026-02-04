@@ -142,6 +142,25 @@ export const updateLeaveRequestStatus = async (id, statusData) => {
   }
 };
 
+// Bulk update leave request status (admin only)
+export const bulkUpdateLeaveRequestStatus = async (requestIds, statusData) => {
+  try {
+    const response = await axios.patch(
+      `${API_BASE_URL}/leave-requests/bulk/status`,
+      {
+        requestIds,
+        ...statusData
+      },
+      {
+        headers: getHeaders(),
+      },
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 // Delete leave request
 export const deleteLeaveRequest = async (id) => {
   try {

@@ -35,14 +35,20 @@ router.get(
   leaveRequestController.getLeaveRequestStats
 );
 
-router.patch(
-  '/:id/status',
-  leaveRequestController.updateLeaveRequestStatus
-);
-
 router.get(
   '/report/approved',
   leaveRequestController.exportApprovedLeavesPdf
+);
+
+// Bulk update status (Admin only) - MUST be before /:id routes
+router.patch(
+  '/bulk/status',
+  leaveRequestController.bulkUpdateLeaveRequestStatus
+);
+
+router.patch(
+  '/:id/status',
+  leaveRequestController.updateLeaveRequestStatus
 );
 
 // Shared routes (both admin and intern can access)

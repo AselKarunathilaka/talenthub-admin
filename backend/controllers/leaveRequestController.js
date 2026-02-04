@@ -1,6 +1,7 @@
 const leaveRequestService = require("../services/leaveRequestService");
 const User = require("../models/User");
 const fs = require("fs");
+const ApprovedLeaveNotificationService = require("../services/approvedLeaveNotificationService");
 
 class LeaveRequestController {
   // Create a new leave request (Intern only)
@@ -198,6 +199,27 @@ class LeaveRequestController {
         reviewedBy,
       );
 
+      // If status is "Approved", trigger email notification with Excel
+      if (status === "Approved") {
+        console.log(`📧 Triggering approved leave notification for request: ${id}`);
+        
+        // Populate reviewedBy field for email
+        await leaveRequest.populate('reviewedBy', 'email');
+        
+        // Send notification (async, don't wait)
+        ApprovedLeaveNotificationService.notifyApprovedLeaves([leaveRequest])
+          .then(result => {
+            if (result.success && !result.skipped) {
+              console.log(`✅ Notification sent for approved leave: ${id}`);
+            } else if (result.skipped) {
+              console.log(`⏭️  Notification skipped for approved leave: ${id} - ${result.reason}`);
+            }
+          })
+          .catch(error => {
+            console.error(`❌ Error sending notification for approved leave: ${id}`, error);
+          });
+      }
+
       res.status(200).json({
         success: true,
         message: `Leave request ${status.toLowerCase()} successfully`,
@@ -322,6 +344,110 @@ class LeaveRequestController {
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error in exportApprovedLeavesPdf controller:", error);
+      next(error);
+    }
+  }
+
+  // Bulk update leave request status (Admin only) - with email notification
+  async bulkUpdateLeaveRequestStatus(req, res, next) {
+    console.log('\n🔥🔥🔥 BULK UPDATE ENDPOINT HIT! 🔥🔥🔥');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('Request user:', JSON.stringify(req.user, null, 2));
+    
+    try {
+      // Check if user is admin
+      const adminUser = await User.findById(req.user.id);
+      if (!adminUser) {
+        return res.status(403).json({
+          success: false,
+          message: "Admin access required",
+        });
+      }
+
+      const { requestIds, status, adminResponse } = req.body;
+      const reviewedBy = req.user.id;
+
+      if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Request IDs array is required",
+        });
+      }
+
+      if (!status) {
+        return res.status(400).json({
+          success: false,
+          message: "Status is required",
+        });
+      }
+
+      console.log(`📋 Bulk updating ${requestIds.length} leave requests to: ${status}`);
+
+      // Update all requests
+      const updatedRequests = [];
+      const errors = [];
+
+      for (const requestId of requestIds) {
+        try {
+          const leaveRequest = await leaveRequestService.updateLeaveRequestStatus(
+            requestId,
+            status,
+            adminResponse,
+            reviewedBy,
+          );
+          // Populate reviewedBy for email
+          await leaveRequest.populate('reviewedBy', 'email');
+          updatedRequests.push(leaveRequest);
+        } catch (error) {
+          console.error(`Error updating request ${requestId}:`, error);
+          errors.push({ requestId, error: error.message });
+        }
+      }
+
+      // If status is "Approved", send bulk notification email
+      if (status === "Approved" && updatedRequests.length > 0) {
+        console.log(`\n========================================`);
+        console.log(`📧 BULK APPROVAL EMAIL NOTIFICATION`);
+        console.log(`========================================`);
+        console.log(`📋 Total approved requests: ${updatedRequests.length}`);
+        console.log(`⏰ Current time: ${new Date().toLocaleString()}`);
+        
+        // Log each approved request
+        updatedRequests.forEach((req, idx) => {
+          console.log(`  ${idx + 1}. ${req.internName} (${req.nationalId}) - ${req.leaveTime}`);
+        });
+        
+        // Send notification (async, don't wait for response)
+        ApprovedLeaveNotificationService.notifyApprovedLeaves(updatedRequests)
+          .then(result => {
+            console.log(`\n📬 Email notification result:`, JSON.stringify(result, null, 2));
+            if (result.success && !result.skipped) {
+              console.log(`✅ Bulk notification sent successfully for ${updatedRequests.length} approved leaves`);
+            } else if (result.skipped) {
+              console.log(`⏭️  Bulk notification skipped - ${result.reason}`);
+            } else {
+              console.log(`❌ Bulk notification failed - ${result.error}`);
+            }
+            console.log(`========================================\n`);
+          })
+          .catch(error => {
+            console.error(`\n❌ ERROR sending bulk notification:`);
+            console.error(error);
+            console.log(`========================================\n`);
+          });
+      }
+
+      res.status(200).json({
+        success: true,
+        message: `Successfully ${status.toLowerCase()} ${updatedRequests.length} leave request(s)`,
+        data: {
+          updated: updatedRequests.length,
+          errors: errors.length,
+          details: errors.length > 0 ? errors : undefined
+        }
+      });
+    } catch (error) {
+      console.error("Error in bulkUpdateLeaveRequestStatus controller:", error);
       next(error);
     }
   }
