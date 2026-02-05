@@ -49,9 +49,12 @@ const AdminLeaveManagement = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [reportRange, setReportRange] = useState({
-    startDate: "",
-    endDate: "",
+  const [reportRange, setReportRange] = useState(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return {
+      startDate: today,
+      endDate: today,
+    };
   });
 
   // New states for bulk operations
@@ -73,29 +76,36 @@ const AdminLeaveManagement = () => {
       return;
     }
 
+    // Set default date to today if not set
     if (!reportRange.startDate && !reportRange.endDate) {
-    const today = new Date().toISOString().split("T")[0];
-    setReportRange({
-      startDate: today,
-      endDate: today,
-    });
-  }
+      const today = new Date().toISOString().split("T")[0];
+      setReportRange({
+        startDate: today,
+        endDate: today,
+      });
+    }
 
     fetchLeaveRequests();
     fetchStats();
-  }, [filter, pagination.page,reportRange.startDate, reportRange.endDate]);
+  }, [filter, pagination.page, reportRange.startDate, reportRange.endDate]);
 
   // Auto-refresh every 30 seconds if enabled
   useEffect(() => {
     if (!autoRefresh) return;
-    
+
     const interval = setInterval(() => {
       fetchLeaveRequests();
       fetchStats();
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [autoRefresh, filter, pagination.page]);
+  }, [
+    autoRefresh,
+    filter,
+    pagination.page,
+    reportRange.startDate,
+    reportRange.endDate,
+  ]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -110,32 +120,36 @@ const AdminLeaveManagement = () => {
       }
 
       // Date range filter
-    if (reportRange.startDate) {
-      params.startDate = reportRange.startDate;
-    }
-    if (reportRange.endDate) {
-      params.endDate = reportRange.endDate;
-    }
+      if (reportRange.startDate) {
+        params.startDate = reportRange.startDate;
+      }
+      if (reportRange.endDate) {
+        params.endDate = reportRange.endDate;
+      }
 
       const response = await getAllLeaveRequests(params);
-      
+
       // Sort requests based on sortBy
       let sortedRequests = [...response.data];
       if (sortBy === "urgent") {
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date().toISOString().split("T")[0];
         sortedRequests.sort((a, b) => {
-          const aIsUrgent = a.leaveDate.split('T')[0] === today;
-          const bIsUrgent = b.leaveDate.split('T')[0] === today;
+          const aIsUrgent = a.leaveDate.split("T")[0] === today;
+          const bIsUrgent = b.leaveDate.split("T")[0] === today;
           if (aIsUrgent && !bIsUrgent) return -1;
           if (!aIsUrgent && bIsUrgent) return 1;
           return new Date(b.submittedAt) - new Date(a.submittedAt);
         });
       } else if (sortBy === "oldest") {
-        sortedRequests.sort((a, b) => new Date(a.submittedAt) - new Date(b.submittedAt));
+        sortedRequests.sort(
+          (a, b) => new Date(a.submittedAt) - new Date(b.submittedAt),
+        );
       } else {
-        sortedRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+        sortedRequests.sort(
+          (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+        );
       }
-      
+
       setLeaveRequests(sortedRequests);
       setPagination(response.pagination);
       // Clear selections when data changes
@@ -159,7 +173,17 @@ const AdminLeaveManagement = () => {
 
   const fetchStats = async () => {
     try {
-      const response = await getLeaveRequestStats();
+      const params = {};
+
+      // Include date range in stats request
+      if (reportRange.startDate) {
+        params.startDate = reportRange.startDate;
+      }
+      if (reportRange.endDate) {
+        params.endDate = reportRange.endDate;
+      }
+
+      const response = await getLeaveRequestStats(params);
       setStats(response.data);
     } catch (error) {
       console.error("Error fetching stats:", error);
@@ -377,15 +401,15 @@ const AdminLeaveManagement = () => {
 
   // Check if request is urgent (same day)
   const isUrgentRequest = (leaveDate) => {
-    const today = new Date().toISOString().split('T')[0];
-    const reqDate = new Date(leaveDate).toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
+    const reqDate = new Date(leaveDate).toISOString().split("T")[0];
     return reqDate === today;
   };
 
   // Check if request is for today
   const isToday = (leaveDate) => {
-    const today = new Date().toISOString().split('T')[0];
-    const reqDate = new Date(leaveDate).toISOString().split('T')[0];
+    const today = new Date().toISOString().split("T")[0];
+    const reqDate = new Date(leaveDate).toISOString().split("T")[0];
     return reqDate === today;
   };
 
@@ -450,37 +474,95 @@ const AdminLeaveManagement = () => {
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="text-3xl font-bold text-gray-900">
-              {stats.total}
+        {/* Statistics Cards with Date Range Indicator */}
+        <div className="mb-6">
+          {/* Stats cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="text-3xl font-bold text-gray-900">
+                {stats.total}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">Total Requests</div>
             </div>
-            <div className="text-sm text-gray-600 mt-1">Total Requests</div>
-          </div>
-          <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
-            {stats.pending > 0 && (
-              <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
+            <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
+              {stats.pending > 0 && (
+                <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
+                  {stats.pending}
+                </div>
+              )}
+              <div className="text-3xl font-bold text-yellow-800">
                 {stats.pending}
               </div>
-            )}
-            <div className="text-3xl font-bold text-yellow-800">
-              {stats.pending}
+              <div className="text-sm text-yellow-600 mt-1 font-semibold">
+                ⏰ Pending Review
+              </div>
             </div>
-            <div className="text-sm text-yellow-600 mt-1 font-semibold">⏰ Pending Review</div>
-          </div>
-          <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
-            <div className="text-3xl font-bold text-green-800">
-              {stats.approved}
+            <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
+              <div className="text-3xl font-bold text-green-800">
+                {stats.approved}
+              </div>
+              <div className="text-sm text-green-600 mt-1">✓ Approved</div>
             </div>
-            <div className="text-sm text-green-600 mt-1">✓ Approved</div>
-          </div>
-          <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
-            <div className="text-3xl font-bold text-red-800">
-              {stats.denied}
+            <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
+              <div className="text-3xl font-bold text-red-800">
+                {stats.denied}
+              </div>
+              <div className="text-sm text-red-600 mt-1">✗ Denied</div>
             </div>
-            <div className="text-sm text-red-600 mt-1">✗ Denied</div>
           </div>
+        </div>
+
+        {/* Date Range Selector */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-end gap-4">
+          <div className="flex flex-col gap-1">
+            <label
+              className="text-sm font-medium text-gray-700"
+              htmlFor="reportStartDate"
+            >
+              Start Date
+            </label>
+            <input
+              id="reportStartDate"
+              type="date"
+              value={reportRange.startDate}
+              onChange={(e) => {
+                setReportRange((prev) => ({
+                  ...prev,
+                  startDate: e.target.value,
+                }));
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label
+              className="text-sm font-medium text-gray-700"
+              htmlFor="reportEndDate"
+            >
+              End Date
+            </label>
+            <input
+              id="reportEndDate"
+              type="date"
+              value={reportRange.endDate}
+              onChange={(e) => {
+                setReportRange((prev) => ({
+                  ...prev,
+                  endDate: e.target.value,
+                }));
+                setPagination((prev) => ({ ...prev, page: 1 }));
+              }}
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          <button
+            onClick={handleDownloadApprovedReport}
+            className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors"
+          >
+            Download Approved Leaves PDF
+          </button>
         </div>
 
         {/* Filter Buttons & Controls */}
@@ -553,54 +635,7 @@ const AdminLeaveManagement = () => {
           </div>
         </div>
 
-        {/* Download Approved Leave Report */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-end gap-4">
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-gray-700"
-              htmlFor="reportStartDate"
-            >
-              Start Date
-            </label>
-            <input
-              id="reportStartDate"
-              type="date"
-              value={reportRange.startDate}
-              onChange={(e) =>
-                setReportRange((prev) => ({
-                  ...prev,
-                  startDate: e.target.value,
-                }))
-              }
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-gray-700"
-              htmlFor="reportEndDate"
-            >
-              End Date
-            </label>
-            <input
-              id="reportEndDate"
-              type="date"
-              value={reportRange.endDate}
-              onChange={(e) =>
-                setReportRange((prev) => ({ ...prev, endDate: e.target.value }))
-              }
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <button
-            onClick={handleDownloadApprovedReport}
-            className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors"
-          >
-            Download Approved Leaves PDF
-          </button>
-        </div>
-
-        {/* Bulk Actions Bar - Only show for pending requests */}
+        {/* Bulk Actions Bar */}
         {filter === "Pending" && selectedRequests.size > 0 && (
           <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center justify-between">
@@ -649,8 +684,17 @@ const AdminLeaveManagement = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
             <p className="text-gray-600 text-lg">
-              No short leave requests found
+              No short leave requests found for the selected date range
             </p>
+            <button
+              onClick={() => {
+                const today = new Date().toISOString().split("T")[0];
+                setReportRange({ startDate: today, endDate: today });
+              }}
+              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Reset to Today
+            </button>
           </div>
         ) : (
           <>
@@ -700,16 +744,16 @@ const AdminLeaveManagement = () => {
                     {leaveRequests.map((request) => {
                       const urgent = isUrgentRequest(request.leaveDate);
                       const todayRequest = isToday(request.leaveDate);
-                      
+
                       return (
-                        <tr 
-                          key={request._id} 
+                        <tr
+                          key={request._id}
                           className={`hover:bg-gray-50 ${
-                            urgent && request.status === 'Pending' 
-                              ? 'bg-orange-50 border-l-4 border-l-orange-500' 
-                              : todayRequest 
-                                ? 'bg-blue-50' 
-                                : ''
+                            urgent && request.status === "Pending"
+                              ? "bg-orange-50 border-l-4 border-l-orange-500"
+                              : todayRequest
+                                ? "bg-blue-50"
+                                : ""
                           }`}
                         >
                           {/* Add checkbox for pending requests */}
@@ -733,7 +777,7 @@ const AdminLeaveManagement = () => {
                               <div>
                                 <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                                   {request.internName}
-                                  {urgent && request.status === 'Pending' && (
+                                  {urgent && request.status === "Pending" && (
                                     <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full font-bold animate-pulse">
                                       URGENT
                                     </span>
@@ -771,7 +815,9 @@ const AdminLeaveManagement = () => {
                             {formatDate(request.submittedAt)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={getStatusBadgeClass(request.status)}>
+                            <span
+                              className={getStatusBadgeClass(request.status)}
+                            >
                               {request.status}
                             </span>
                           </td>
@@ -780,7 +826,9 @@ const AdminLeaveManagement = () => {
                               {request.status === "Pending" ? (
                                 <>
                                   <button
-                                    onClick={() => handleQuickAction(request._id, "approve")}
+                                    onClick={() =>
+                                      handleQuickAction(request._id, "approve")
+                                    }
                                     disabled={processing}
                                     className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-xs font-semibold"
                                     title="Quick Approve"
@@ -789,7 +837,9 @@ const AdminLeaveManagement = () => {
                                     Approve
                                   </button>
                                   <button
-                                    onClick={() => handleQuickAction(request._id, "deny")}
+                                    onClick={() =>
+                                      handleQuickAction(request._id, "deny")
+                                    }
                                     disabled={processing}
                                     className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-xs font-semibold"
                                     title="Quick Deny"
