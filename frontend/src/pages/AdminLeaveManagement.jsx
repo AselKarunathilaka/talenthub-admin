@@ -73,9 +73,17 @@ const AdminLeaveManagement = () => {
       return;
     }
 
+    if (!reportRange.startDate && !reportRange.endDate) {
+    const today = new Date().toISOString().split("T")[0];
+    setReportRange({
+      startDate: today,
+      endDate: today,
+    });
+  }
+
     fetchLeaveRequests();
     fetchStats();
-  }, [filter, pagination.page]);
+  }, [filter, pagination.page,reportRange.startDate, reportRange.endDate]);
 
   // Auto-refresh every 30 seconds if enabled
   useEffect(() => {
@@ -100,6 +108,14 @@ const AdminLeaveManagement = () => {
       if (filter !== "all") {
         params.status = filter;
       }
+
+      // Date range filter
+    if (reportRange.startDate) {
+      params.startDate = reportRange.startDate;
+    }
+    if (reportRange.endDate) {
+      params.endDate = reportRange.endDate;
+    }
 
       const response = await getAllLeaveRequests(params);
       
