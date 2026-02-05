@@ -189,6 +189,27 @@ const MyLeaveRequests = () => {
     });
   };
 
+  const hasRequestForToday = () => {
+    const today = new Date().toISOString().split("T")[0];
+    return leaveRequests.some((request) => {
+      const requestDate = new Date(request.leaveDate)
+        .toISOString()
+        .split("T")[0];
+      return requestDate === today;
+    });
+  };
+
+  const handleNewRequestClick = () => {
+    if (hasRequestForToday()) {
+      toast.error(
+        "You already have a short leave request for today. Only one request per day is allowed.",
+        { duration: 4000 },
+      );
+      return;
+    }
+    setShowForm(!showForm);
+  };
+
   console.log(
     "[MyLeaveRequests] Rendering component. Loading:",
     loading,
@@ -217,7 +238,7 @@ const MyLeaveRequests = () => {
                 </p>
               </div>
               <button
-                onClick={() => setShowForm(!showForm)}
+                onClick={handleNewRequestClick}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
                   showForm
                     ? "bg-red-600 text-white hover:bg-red-700"
@@ -278,7 +299,7 @@ const MyLeaveRequests = () => {
                 </p>
                 {!showForm && (
                   <button
-                    onClick={() => setShowForm(true)}
+                    onClick={handleNewRequestClick}
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all"
                   >
                     Create Your First Request

@@ -78,6 +78,18 @@ const LeaveRequestForm = ({ onSuccess }) => {
       return;
     }
 
+    // Date validation - ensure it's today
+    const today = new Date().toISOString().split("T")[0];
+    if (formData.leaveDate !== today) {
+      toast.error(
+        "Leave date must be today. Past or future dates are not allowed.",
+        {
+          duration: 4000,
+        },
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -111,7 +123,21 @@ const LeaveRequestForm = ({ onSuccess }) => {
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Error submitting leave request:", error);
-      toast.error(error.message || "Failed to submit leave request");
+
+      // Handle specific error cases
+      if (error.message && error.message.includes("past")) {
+        toast.error(
+          "Leave date cannot be in the past. Please ensure your system date/time is correct and try again.",
+          { duration: 5000 },
+        );
+      } else if (error.message && error.message.includes("already exists")) {
+        toast.error(
+          "You already have a leave request for this date. Only one request per day is allowed.",
+          { duration: 4000 },
+        );
+      } else {
+        toast.error(error.message || "Failed to submit leave request");
+      }
     } finally {
       setLoading(false);
     }
@@ -149,6 +175,9 @@ const LeaveRequestForm = ({ onSuccess }) => {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Only today's date is allowed
+            </p>
           </div>
 
           <div>
