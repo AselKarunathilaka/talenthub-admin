@@ -21,6 +21,7 @@ import {
   FiCheckSquare,
   FiSquare,
   FiCheckCircle,
+  FiFilter,
 } from "react-icons/fi";
 import logo from "../assets/sltlogo.jpg";
 
@@ -49,12 +50,8 @@ const AdminLeaveManagement = () => {
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
-  const [reportRange, setReportRange] = useState(() => {
-    const today = new Date().toISOString().split("T")[0];
-    return {
-      startDate: today,
-      endDate: today,
-    };
+  const [selectedDate, setSelectedDate] = useState(() => {
+    return new Date().toISOString().split("T")[0]; // Default to today
   });
 
   // New states for bulk operations
@@ -76,18 +73,9 @@ const AdminLeaveManagement = () => {
       return;
     }
 
-    // Set default date to today if not set
-    if (!reportRange.startDate && !reportRange.endDate) {
-      const today = new Date().toISOString().split("T")[0];
-      setReportRange({
-        startDate: today,
-        endDate: today,
-      });
-    }
-
     fetchLeaveRequests();
     fetchStats();
-  }, [filter, pagination.page, reportRange.startDate, reportRange.endDate]);
+  }, [filter, pagination.page, selectedDate]);
 
   // Auto-refresh every 30 seconds if enabled
   useEffect(() => {
@@ -99,13 +87,7 @@ const AdminLeaveManagement = () => {
     }, 30000); // 30 seconds
 
     return () => clearInterval(interval);
-  }, [
-    autoRefresh,
-    filter,
-    pagination.page,
-    reportRange.startDate,
-    reportRange.endDate,
-  ]);
+  }, [autoRefresh, filter, pagination.page, selectedDate]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -119,12 +101,9 @@ const AdminLeaveManagement = () => {
         params.status = filter;
       }
 
-      // Date range filter
-      if (reportRange.startDate) {
-        params.startDate = reportRange.startDate;
-      }
-      if (reportRange.endDate) {
-        params.endDate = reportRange.endDate;
+      // Single date filter
+      if (selectedDate) {
+        params.date = selectedDate; // Use single date parameter
       }
 
       const response = await getAllLeaveRequests(params);
@@ -175,13 +154,8 @@ const AdminLeaveManagement = () => {
     try {
       const params = {};
 
-      // Include date range in stats request
-      if (reportRange.startDate) {
-        params.startDate = reportRange.startDate;
-      }
-      if (reportRange.endDate) {
-        params.endDate = reportRange.endDate;
-      }
+      // Always include date in stats request (use selected date or default to today)
+      params.date = selectedDate || new Date().toISOString().split("T")[0];
 
       const response = await getLeaveRequestStats(params);
       setStats(response.data);
@@ -350,15 +324,15 @@ const AdminLeaveManagement = () => {
   const handleDownloadApprovedReport = async () => {
     const toastId = toast.loading("Generating approved leave report...");
     try {
+      // Always pass a date parameter (selected date or today)
+      const reportDate = selectedDate || new Date().toISOString().split("T")[0];
+
       const blob = await downloadApprovedLeaveReport({
-        startDate: reportRange.startDate || undefined,
-        endDate: reportRange.endDate || undefined,
+        date: reportDate,
       });
 
       const url = URL.createObjectURL(blob);
-      const fileName = `approved-leaves-report${
-        reportRange.startDate ? `-${reportRange.startDate}` : ""
-      }${reportRange.endDate ? `-to-${reportRange.endDate}` : ""}.pdf`;
+      const fileName = `approved-leaves-report-${reportDate}.pdf`;
       const link = document.createElement("a");
       link.href = url;
       link.download = fileName;
@@ -450,6 +424,23 @@ const AdminLeaveManagement = () => {
     });
   };
 
+  // Format the selected date for display
+  const formatSelectedDate = () => {
+    if (!selectedDate) return "All Dates";
+    const date = new Date(selectedDate);
+    const today = new Date().toISOString().split("T")[0];
+    const isToday = selectedDate === today;
+
+    return (
+      date.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }) + (isToday ? " (Today)" : "")
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -474,7 +465,7 @@ const AdminLeaveManagement = () => {
           </div>
         </div>
 
-        {/* Statistics Cards with Date Range Indicator */}
+        {/* Statistics Cards with Date Filter */}
         <div className="mb-6">
           {/* Stats cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -483,6 +474,11 @@ const AdminLeaveManagement = () => {
                 {stats.total}
               </div>
               <div className="text-sm text-gray-600 mt-1">Total Requests</div>
+              {selectedDate && (
+                <div className="text-xs text-gray-500 mt-1">
+                  for {formatSelectedDate().replace(" (Today)", "")}
+                </div>
+              )}
             </div>
             <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
               {stats.pending > 0 && (
@@ -510,59 +506,44 @@ const AdminLeaveManagement = () => {
               <div className="text-sm text-red-600 mt-1">✗ Denied</div>
             </div>
           </div>
-        </div>
+          {/* Date filter bar */}
+          <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex flex-col">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <FiFilter className="inline mr-1" />
+                  Filter by Date
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                    }}
+                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                {selectedDate && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Showing requests for:{" "}
+                    <span className="font-semibold">
+                      {formatSelectedDate()}
+                    </span>
+                  </p>
+                )}
+              </div>
 
-        {/* Date Range Selector */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4 flex flex-wrap items-end gap-4">
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-gray-700"
-              htmlFor="reportStartDate"
-            >
-              Start Date
-            </label>
-            <input
-              id="reportStartDate"
-              type="date"
-              value={reportRange.startDate}
-              onChange={(e) => {
-                setReportRange((prev) => ({
-                  ...prev,
-                  startDate: e.target.value,
-                }));
-                setPagination((prev) => ({ ...prev, page: 1 }));
-              }}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            />
+              <button
+                onClick={handleDownloadApprovedReport}
+                className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
+              >
+                <FiFileText />
+                Download Approved Leaves PDF
+              </button>
+            </div>
           </div>
-          <div className="flex flex-col gap-1">
-            <label
-              className="text-sm font-medium text-gray-700"
-              htmlFor="reportEndDate"
-            >
-              End Date
-            </label>
-            <input
-              id="reportEndDate"
-              type="date"
-              value={reportRange.endDate}
-              onChange={(e) => {
-                setReportRange((prev) => ({
-                  ...prev,
-                  endDate: e.target.value,
-                }));
-                setPagination((prev) => ({ ...prev, page: 1 }));
-              }}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          <button
-            onClick={handleDownloadApprovedReport}
-            className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors"
-          >
-            Download Approved Leaves PDF
-          </button>
         </div>
 
         {/* Filter Buttons & Controls */}
@@ -684,17 +665,21 @@ const AdminLeaveManagement = () => {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
             <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
             <p className="text-gray-600 text-lg">
-              No short leave requests found for the selected date range
+              {selectedDate
+                ? `No short leave requests found for ${formatSelectedDate()}`
+                : "No short leave requests found"}
             </p>
-            <button
-              onClick={() => {
-                const today = new Date().toISOString().split("T")[0];
-                setReportRange({ startDate: today, endDate: today });
-              }}
-              className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Reset to Today
-            </button>
+            <div className="mt-4 flex gap-3 justify-center">
+              <button
+                onClick={() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  setSelectedDate(today);
+                }}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                View Today's Requests
+              </button>
+            </div>
           </div>
         ) : (
           <>

@@ -140,12 +140,11 @@ class LeaveRequestController {
         });
       }
 
-      const { status, page = 1, limit = 10, startDate, endDate } = req.query;
+      const { status, page = 1, limit = 10, date } = req.query;
 
       const options = {
         status,
-        startDate,
-        endDate,
+        date: req.query.date,
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
       };
@@ -201,22 +200,29 @@ class LeaveRequestController {
 
       // If status is "Approved", trigger email notification with Excel
       if (status === "Approved") {
-        console.log(`📧 Triggering approved leave notification for request: ${id}`);
-        
+        console.log(
+          `📧 Triggering approved leave notification for request: ${id}`,
+        );
+
         // Populate reviewedBy field for email
-        await leaveRequest.populate('reviewedBy', 'email');
-        
+        await leaveRequest.populate("reviewedBy", "email");
+
         // Send notification (async, don't wait)
         ApprovedLeaveNotificationService.notifyApprovedLeaves([leaveRequest])
-          .then(result => {
+          .then((result) => {
             if (result.success && !result.skipped) {
               console.log(`✅ Notification sent for approved leave: ${id}`);
             } else if (result.skipped) {
-              console.log(`⏭️  Notification skipped for approved leave: ${id} - ${result.reason}`);
+              console.log(
+                `⏭️  Notification skipped for approved leave: ${id} - ${result.reason}`,
+              );
             }
           })
-          .catch(error => {
-            console.error(`❌ Error sending notification for approved leave: ${id}`, error);
+          .catch((error) => {
+            console.error(
+              `❌ Error sending notification for approved leave: ${id}`,
+              error,
+            );
           });
       }
 
@@ -268,24 +274,28 @@ class LeaveRequestController {
         });
       }
 
-      const { startDate, endDate } = req.query;
+      const { date } = req.query;
+
+      if (!date) {
+        return res.status(400).json({
+          success: false,
+          message: "date query parameter is required",
+        });
+      }
 
       const [total, pending, approved, denied] = await Promise.all([
-        leaveRequestService.getAllLeaveRequests({ startDate, endDate }),
+        leaveRequestService.getAllLeaveRequests({ date }),
         leaveRequestService.getAllLeaveRequests({
+          date,
           status: "Pending",
-          startDate,
-          endDate,
         }),
         leaveRequestService.getAllLeaveRequests({
+          date,
           status: "Approved",
-          startDate,
-          endDate,
         }),
         leaveRequestService.getAllLeaveRequests({
+          date,
           status: "Denied",
-          startDate,
-          endDate,
         }),
       ]);
 
@@ -315,25 +325,17 @@ class LeaveRequestController {
         });
       }
 
-      const { startDate, endDate } = req.query;
+      const { date } = req.query;
 
-      if (startDate && Number.isNaN(new Date(startDate).getTime())) {
+      if (!date || Number.isNaN(new Date(date).getTime())) {
         return res.status(400).json({
           success: false,
-          message: "Invalid startDate value",
-        });
-      }
-
-      if (endDate && Number.isNaN(new Date(endDate).getTime())) {
-        return res.status(400).json({
-          success: false,
-          message: "Invalid endDate value",
+          message: "Valid date query parameter is required",
         });
       }
 
       const pdfBuffer = await leaveRequestService.generateApprovedLeavesPDF({
-        startDate,
-        endDate,
+        date,
       });
 
       res.setHeader("Content-Type", "application/pdf");
@@ -350,10 +352,10 @@ class LeaveRequestController {
 
   // Bulk update leave request status (Admin only) - with email notification
   async bulkUpdateLeaveRequestStatus(req, res, next) {
-    console.log('\n🔥🔥🔥 BULK UPDATE ENDPOINT HIT! 🔥🔥🔥');
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
-    console.log('Request user:', JSON.stringify(req.user, null, 2));
-    
+    console.log("\n🔥🔥🔥 BULK UPDATE ENDPOINT HIT! 🔥🔥🔥");
+    console.log("Request body:", JSON.stringify(req.body, null, 2));
+    console.log("Request user:", JSON.stringify(req.user, null, 2));
+
     try {
       // Check if user is admin
       const adminUser = await User.findById(req.user.id);
@@ -367,7 +369,11 @@ class LeaveRequestController {
       const { requestIds, status, adminResponse } = req.body;
       const reviewedBy = req.user.id;
 
-      if (!requestIds || !Array.isArray(requestIds) || requestIds.length === 0) {
+      if (
+        !requestIds ||
+        !Array.isArray(requestIds) ||
+        requestIds.length === 0
+      ) {
         return res.status(400).json({
           success: false,
           message: "Request IDs array is required",
@@ -381,7 +387,9 @@ class LeaveRequestController {
         });
       }
 
-      console.log(`📋 Bulk updating ${requestIds.length} leave requests to: ${status}`);
+      console.log(
+        `📋 Bulk updating ${requestIds.length} leave requests to: ${status}`,
+      );
 
       // Update all requests
       const updatedRequests = [];
@@ -389,14 +397,15 @@ class LeaveRequestController {
 
       for (const requestId of requestIds) {
         try {
-          const leaveRequest = await leaveRequestService.updateLeaveRequestStatus(
-            requestId,
-            status,
-            adminResponse,
-            reviewedBy,
-          );
+          const leaveRequest =
+            await leaveRequestService.updateLeaveRequestStatus(
+              requestId,
+              status,
+              adminResponse,
+              reviewedBy,
+            );
           // Populate reviewedBy for email
-          await leaveRequest.populate('reviewedBy', 'email');
+          await leaveRequest.populate("reviewedBy", "email");
           updatedRequests.push(leaveRequest);
         } catch (error) {
           console.error(`Error updating request ${requestId}:`, error);
@@ -411,18 +420,25 @@ class LeaveRequestController {
         console.log(`========================================`);
         console.log(`📋 Total approved requests: ${updatedRequests.length}`);
         console.log(`⏰ Current time: ${new Date().toLocaleString()}`);
-        
+
         // Log each approved request
         updatedRequests.forEach((req, idx) => {
-          console.log(`  ${idx + 1}. ${req.internName} (${req.nationalId}) - ${req.leaveTime}`);
+          console.log(
+            `  ${idx + 1}. ${req.internName} (${req.nationalId}) - ${req.leaveTime}`,
+          );
         });
-        
+
         // Send notification (async, don't wait for response)
         ApprovedLeaveNotificationService.notifyApprovedLeaves(updatedRequests)
-          .then(result => {
-            console.log(`\n📬 Email notification result:`, JSON.stringify(result, null, 2));
+          .then((result) => {
+            console.log(
+              `\n📬 Email notification result:`,
+              JSON.stringify(result, null, 2),
+            );
             if (result.success && !result.skipped) {
-              console.log(`✅ Bulk notification sent successfully for ${updatedRequests.length} approved leaves`);
+              console.log(
+                `✅ Bulk notification sent successfully for ${updatedRequests.length} approved leaves`,
+              );
             } else if (result.skipped) {
               console.log(`⏭️  Bulk notification skipped - ${result.reason}`);
             } else {
@@ -430,7 +446,7 @@ class LeaveRequestController {
             }
             console.log(`========================================\n`);
           })
-          .catch(error => {
+          .catch((error) => {
             console.error(`\n❌ ERROR sending bulk notification:`);
             console.error(error);
             console.log(`========================================\n`);
@@ -443,8 +459,8 @@ class LeaveRequestController {
         data: {
           updated: updatedRequests.length,
           errors: errors.length,
-          details: errors.length > 0 ? errors : undefined
-        }
+          details: errors.length > 0 ? errors : undefined,
+        },
       });
     } catch (error) {
       console.error("Error in bulkUpdateLeaveRequestStatus controller:", error);

@@ -96,19 +96,15 @@ class LeaveRequestService {
     }
   }
 
-  async getApprovedLeavesByDate(startDate, endDate) {
+  async getApprovedLeavesByDate(date) {
     return await leaveRequestRepository.findAll({
       status: "Approved",
-      startDate,
-      endDate,
+      date: date,
     });
   }
 
-  async generateApprovedLeavesPDF({ startDate, endDate }) {
-    const leaveRequests = await this.getApprovedLeavesByDate(
-      startDate,
-      endDate,
-    );
+  async generateApprovedLeavesPDF({ date }) {
+    const leaveRequests = await this.getApprovedLeavesByDate(date);
     const doc = new PDFDocument({ margin: 40, size: "A4" });
     const chunks = [];
 
@@ -133,13 +129,12 @@ class LeaveRequestService {
       .fontSize(18)
       .text("Approved Short Leave Requests Report", { align: "center" });
     doc.moveDown(0.5);
-    const startLabel = startDate ? formatDateLabel(startDate) : "Beginning";
-    const endLabel = endDate ? formatDateLabel(endDate) : "Present";
-    doc
-      .fontSize(12)
-      .text(`Reporting window: ${startLabel} – ${endLabel}`, {
-        align: "center",
-      });
+    const dateLabel = date
+      ? formatDateLabel(date)
+      : formatDateLabel(new Date());
+    doc.fontSize(12).text(`Date: ${dateLabel}`, {
+      align: "center",
+    });
     doc
       .fontSize(12)
       .text(`Generated: ${formatDateLabel(new Date())}`, { align: "center" });
@@ -266,8 +261,7 @@ class LeaveRequestService {
 
       // UPDATED: Pass date options to countAll method
       const total = await leaveRequestRepository.countAll(options.status, {
-        startDate: options.startDate,
-        endDate: options.endDate,
+        date: options.date,
       });
 
       return {

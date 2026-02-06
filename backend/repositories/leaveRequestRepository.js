@@ -34,36 +34,29 @@ class LeaveRequestRepository {
   }
 
   async findAll(options = {}) {
-    const { status, limit, skip, startDate, endDate } = options;
+    const { status, limit, skip, date } = options;
     let query = LeaveRequest.find();
 
     if (status) {
       query = query.where("status").equals(status);
     }
 
-    //Improved date filtering with proper end-of-day handling
-    if (startDate || endDate) {
-      const dateFilter = {};
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
 
-      if (startDate) {
-        // Start of the day for startDate
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.$gte = start;
-      }
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      if (endDate) {
-        // End of the day for endDate
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.$lte = end;
-      }
-
-      query = query.where("leaveDate", dateFilter);
+      query = query.where("leaveDate", {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      });
 
       console.log("Date filter applied:", {
-        startDate: dateFilter.$gte,
-        endDate: dateFilter.$lte,
+        date: date,
+        startOfDay: startOfDay,
+        endOfDay: endOfDay,
       });
     }
 
@@ -106,30 +99,25 @@ class LeaveRequestRepository {
 
   // Add date filtering to countAll method
   async countAll(status = null, options = {}) {
-    const { startDate, endDate } = options;
+    const { date } = options;
     const query = {};
 
     if (status) {
       query.status = status;
     }
 
-    // Add date filtering to count as well
-    if (startDate || endDate) {
-      const dateFilter = {};
+    // Single date filtering
+    if (date) {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
 
-      if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        dateFilter.$gte = start;
-      }
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
 
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.$lte = end;
-      }
-
-      query.leaveDate = dateFilter;
+      query.leaveDate = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
     }
 
     return await LeaveRequest.countDocuments(query);
