@@ -17,6 +17,7 @@ import AdminLeaveManagement from "../pages/AdminLeaveManagement";
 import AgreementGuard from "../components/AgreementGuard";
 import GateStaffLogin from "../pages/GateStaffLogin";
 import GateStaffDashboard from "../pages/GateStaffDashboard";
+import AdminSeatManagement from "../pages/AdminSeatManagement";
 
 const AppRoutes = () => {
   return (
@@ -94,6 +95,7 @@ const AppRoutes = () => {
       <Route path="/admin/leave-requests" element={<AdminLeaveManagement />} />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
+      <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
     </Routes>
   );
 };

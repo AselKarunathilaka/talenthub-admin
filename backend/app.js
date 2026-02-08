@@ -15,6 +15,7 @@ const complianceRoutes = require("./routes/complianceRoutes");
 const leaveRequestRoutes = require("./routes/leaveRequestRoutes");
 const seatBookingRoutes = require("./routes/seatBookingRoutes");
 const gateStaffRoutes = require("./routes/gateStaffRoutes");
+const adminSeatRoutes = require("./routes/adminSeatRoutes");
 
 const app = express();
 
@@ -52,5 +53,6 @@ app.use("/api/compliance", complianceRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
 app.use("/api/seat-reservation", seatBookingRoutes);
 app.use("/api/gate-staff", gateStaffRoutes);
+app.use("/api/admin", adminSeatRoutes);
 
 module.exports = app;

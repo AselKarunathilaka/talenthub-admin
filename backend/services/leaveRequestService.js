@@ -117,101 +117,233 @@ class LeaveRequestService {
       doc.on("error", reject);
     });
 
+    // Add SLT Logo
     if (SLT_LOGO_BUFFER) {
       doc.image(SLT_LOGO_BUFFER, {
         fit: [120, 80],
         align: "center",
       });
-      doc.moveDown(0.5);
+      doc.moveDown(2);
     }
 
+    // Report Title - Use standard PDF fonts
     doc
       .fontSize(18)
+      .font("Helvetica-Bold")
+      .fillColor("#0b5394")
       .text("Approved Short Leave Requests Report", { align: "center" });
+
     doc.moveDown(0.5);
+
+    // Date Information
     const dateLabel = date
       ? formatDateLabel(date)
       : formatDateLabel(new Date());
-    doc.fontSize(12).text(`Date: ${dateLabel}`, {
-      align: "center",
-    });
     doc
       .fontSize(12)
-      .text(`Generated: ${formatDateLabel(new Date())}`, { align: "center" });
+      .font("Helvetica")
+      .fillColor("black")
+      .text(`Report Date: ${dateLabel}`, { align: "center" });
+
+    doc
+      .fontSize(10)
+      .fillColor("#666666")
+      .text(`Generated on: ${formatDateLabel(new Date())}`, {
+        align: "center",
+      });
+
+    doc.moveDown(1);
+
+    // Summary Statistics
+    doc
+      .fontSize(12)
+      .font("Helvetica-Bold")
+      .fillColor("black")
+      .text(`Total Approved Requests: ${leaveRequests.length}`, {
+        align: "center",
+      });
+
     doc.moveDown(1.5);
 
+    // Check if there are any approved requests
     if (leaveRequests.length === 0) {
       doc
         .fontSize(12)
+        .font("Helvetica")
+        .fillColor("#666666")
         .text(
-          "No approved short leave requests were recorded for the selected period.",
-          {
-            align: "left",
-          },
+          "No approved short leave requests were recorded for the selected date.",
+          { align: "center" },
         );
       doc.end();
       return await pdfBuffer;
     }
 
-    const grouped = leaveRequests.reduce((acc, leave) => {
-      const dateKey = toDateKey(leave.leaveDate);
-      if (!dateKey) return acc;
+    // Table configuration
+    const tableTop = doc.y;
+    const tableLeft = 40;
+    const rowHeight = 30;
+    const pageHeight = doc.page.height - 80;
 
-      if (!acc[dateKey]) {
-        acc[dateKey] = [];
-      }
+    // Column widths
+    const colWidths = {
+      no: 30,
+      name: 110,
+      nationalId: 85,
+      time: 65,
+      purpose: 60,
+      reason: 165,
+    };
 
-      acc[dateKey].push(leave);
-      return acc;
-    }, {});
+    // Function to draw table header
+    const drawTableHeader = (yPosition) => {
+      // Draw header background
+      doc.rect(tableLeft, yPosition, 515, 25).fill("#0b5394");
 
-    const sortedDates = Object.keys(grouped).sort();
+      // Set font - use standard font with bold style
+      doc.fontSize(10).font("Helvetica-Bold").fillColor("white");
 
-    sortedDates.forEach((dateKey, index) => {
-      const entries = grouped[dateKey];
-      doc
-        .fontSize(14)
-        .fillColor("#0b5394")
-        .text(formatDateLabel(dateKey, { includeWeekday: true }), {
-          underline: true,
-        });
-      doc
-        .fontSize(12)
-        .fillColor("black")
-        .text(`Total approved: ${entries.length}`);
-      doc.moveDown(0.25);
+      let xPos = tableLeft + 5;
 
-      entries.forEach((leave) => {
-        const internFullName =
-          leave.intern?.Trainee_Name || leave.internName || "Unknown Intern";
-        const rawTraineeId = getLeaveTraineeId(leave);
-        const traineeId =
-          rawTraineeId && rawTraineeId !== "N/A" ? rawTraineeId : "N/A";
-        const time = leave.leaveTime || "N/A";
-        const purpose = leave.purpose || "N/A";
-        const reason = leave.reason || "N/A";
+      // Draw header text
+      doc.text("No.", xPos, yPosition + 8, {
+        width: colWidths.no,
+        align: "center",
+      });
+      xPos += colWidths.no;
 
-        doc.font("Helvetica-Bold").fontSize(12).text(internFullName);
-        doc.font("Helvetica").fontSize(11).text(`Trainee ID: ${traineeId}`, {
-          indent: 10,
-        });
-        doc
-          .font("Helvetica")
-          .fontSize(11)
-          .text(`Time: ${time} | Purpose: ${purpose}`, {
-            indent: 10,
-          });
-        doc
-          .font("Helvetica")
-          .fontSize(11)
-          .text(`Reason: ${reason}`, { indent: 10 });
-        doc.moveDown(0.75);
+      doc.text("Intern Name", xPos, yPosition + 8, {
+        width: colWidths.name,
+        align: "left",
+      });
+      xPos += colWidths.name;
+
+      doc.text("National ID", xPos, yPosition + 8, {
+        width: colWidths.nationalId,
+        align: "left",
+      });
+      xPos += colWidths.nationalId;
+
+      doc.text("Time", xPos, yPosition + 8, {
+        width: colWidths.time,
+        align: "left",
+      });
+      xPos += colWidths.time;
+
+      doc.text("Purpose", xPos, yPosition + 8, {
+        width: colWidths.purpose,
+        align: "left",
+      });
+      xPos += colWidths.purpose;
+
+      doc.text("Reason", xPos, yPosition + 8, {
+        width: colWidths.reason,
+        align: "left",
       });
 
-      if (index < sortedDates.length - 1) {
+      // Reset to regular font for table rows
+      doc.font("Helvetica").fillColor("black");
+
+      return yPosition + 25;
+    };
+
+    // Draw first header
+    let currentY = drawTableHeader(tableTop);
+
+    // Draw table rows
+    leaveRequests.forEach((leave, index) => {
+      // Check if we need a new page
+      if (currentY + rowHeight > pageHeight) {
         doc.addPage();
+        currentY = drawTableHeader(40);
       }
+
+      // Extract data
+      const internName =
+        leave.intern?.Trainee_Name || leave.internName || "Unknown";
+      const nationalId = leave.nationalId || "N/A";
+      const time = leave.leaveTime || "N/A";
+      const purpose = leave.purpose || "N/A";
+      const reason = leave.reason || "N/A";
+
+      // Alternate row colors
+      const rowColor = index % 2 === 0 ? "#f5f5f5" : "#ffffff";
+      doc.rect(tableLeft, currentY, 515, rowHeight).fill(rowColor);
+
+      // Row data
+      doc.fontSize(9).fillColor("black");
+      let xPos = tableLeft + 5;
+
+      // Serial Number
+      doc.text((index + 1).toString(), xPos, currentY + 10, {
+        width: colWidths.no,
+        align: "center",
+      });
+      xPos += colWidths.no;
+
+      // Intern Name
+      doc.text(internName, xPos, currentY + 10, {
+        width: colWidths.name,
+        align: "left",
+      });
+      xPos += colWidths.name;
+
+      // National ID
+      doc.text(nationalId, xPos, currentY + 10, {
+        width: colWidths.nationalId,
+        align: "left",
+      });
+      xPos += colWidths.nationalId;
+
+      // Time
+      doc.text(time, xPos, currentY + 10, {
+        width: colWidths.time,
+        align: "left",
+      });
+      xPos += colWidths.time;
+
+      // Purpose
+      doc.text(purpose, xPos, currentY + 10, {
+        width: colWidths.purpose,
+        align: "left",
+      });
+      xPos += colWidths.purpose;
+
+      // Reason (with ellipsis if too long)
+      const truncatedReason =
+        reason.length > 80 ? reason.substring(0, 77) + "..." : reason;
+      doc.text(truncatedReason, xPos, currentY + 10, {
+        width: colWidths.reason,
+        align: "left",
+      });
+
+      currentY += rowHeight;
     });
+
+    // Footer with page numbers
+    const pages = doc.bufferedPageRange();
+    for (let i = 0; i < pages.count; i++) {
+      doc.switchToPage(i);
+
+      // Footer line
+      doc
+        .moveTo(40, doc.page.height - 50)
+        .lineTo(doc.page.width - 40, doc.page.height - 50)
+        .stroke("#cccccc");
+
+      // Page number
+      doc
+        .fontSize(9)
+        .fillColor("#666666")
+        .text(
+          `Page ${i + 1} of ${pages.count}`,
+          doc.page.width / 2,
+          doc.page.height - 40,
+          {
+            align: "center",
+          },
+        );
+    }
 
     doc.end();
     return await pdfBuffer;

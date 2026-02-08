@@ -1,83 +1,98 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  FaUsers, FaSearch, FaDownload, FaBell, FaExclamationTriangle, 
-  FaCheckCircle, FaTimesCircle, FaCalendarAlt, FaFileExport,
-  FaFilter, FaSort, FaUser, FaTasks, FaSpinner, FaShieldAlt,
-  FaArrowLeft, FaEye, FaFileAlt
-} from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import { adminApi, csvUtils, notificationUtils } from '../api/adminApi';
-import logo from '../assets/sltlogo.jpg';
+import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FaUsers,
+  FaSearch,
+  FaDownload,
+  FaBell,
+  FaExclamationTriangle,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaCalendarAlt,
+  FaFileExport,
+  FaFilter,
+  FaSort,
+  FaUser,
+  FaTasks,
+  FaSpinner,
+  FaShieldAlt,
+  FaArrowLeft,
+  FaEye,
+  FaFileAlt,
+  FaChair,
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
+import logo from "../assets/sltlogo.jpg";
 
 // Date formatting utilities
 const formatDateDisplay = (dateString) => {
-  if (!dateString) return 'N/A';
-  
+  if (!dateString) return "N/A";
+
   try {
     // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
-    if (dateString.includes('T') || dateString.includes('Z')) {
+    if (dateString.includes("T") || dateString.includes("Z")) {
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return 'Invalid Date';
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
       });
     }
-    
+
     // Handle YYYY-MM-DD format from backend
-    if (dateString.includes('-') && dateString.split('-').length === 3) {
-      const parts = dateString.split('-');
+    if (dateString.includes("-") && dateString.split("-").length === 3) {
+      const parts = dateString.split("-");
       // Check if it's a simple YYYY-MM-DD (no time component)
       if (parts[2].length <= 2) {
         const [year, month, day] = parts.map(Number);
         const date = new Date(year, month - 1, day);
-        if (isNaN(date.getTime())) return 'Invalid Date';
-        return date.toLocaleDateString('en-US', {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric'
+        if (isNaN(date.getTime())) return "Invalid Date";
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
         });
       }
     }
-    
+
     // Fallback for other formats
     const date = new Date(dateString);
-    if (isNaN(date.getTime())) return 'Invalid Date';
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+    if (isNaN(date.getTime())) return "Invalid Date";
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
     });
   } catch (error) {
-    console.error('Error formatting date:', dateString, error);
-    return 'Invalid Date';
+    console.error("Error formatting date:", dateString, error);
+    return "Invalid Date";
   }
 };
 
 const parseDateForComparison = (dateString) => {
   if (!dateString) return new Date(0);
-  
+
   try {
     // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
-    if (dateString.includes('T') || dateString.includes('Z')) {
+    if (dateString.includes("T") || dateString.includes("Z")) {
       return new Date(dateString);
     }
-    
+
     // Handle YYYY-MM-DD format from backend
-    if (dateString.includes('-') && dateString.split('-').length === 3) {
-      const parts = dateString.split('-');
+    if (dateString.includes("-") && dateString.split("-").length === 3) {
+      const parts = dateString.split("-");
       // Check if it's a simple YYYY-MM-DD (no time component)
       if (parts[2].length <= 2) {
         const [year, month, day] = parts.map(Number);
         return new Date(year, month - 1, day);
       }
     }
-    
+
     return new Date(dateString);
   } catch (error) {
-    console.error('Error parsing date for comparison:', dateString, error);
+    console.error("Error parsing date for comparison:", dateString, error);
     return new Date(0);
   }
 };
@@ -90,17 +105,17 @@ const AdminDashboard = () => {
     setShowDateSelector(true);
   };
   // State for custom date range
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
   const navigate = useNavigate();
   const [dashboardStats, setDashboardStats] = useState(null);
   const [internReport, setInternReport] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all');
-  const [sortBy, setSortBy] = useState('name');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [sortBy, setSortBy] = useState("name");
   const [showNotifications, setShowNotifications] = useState(false);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -111,10 +126,10 @@ const AdminDashboard = () => {
       setLoading(true);
       setError(null);
 
-      const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
       if (!adminInfo.token) {
-        setError('Admin authentication required');
-        navigate('/admin-login');
+        setError("Admin authentication required");
+        navigate("/admin-login");
         return;
       }
 
@@ -122,14 +137,13 @@ const AdminDashboard = () => {
       setDashboardStats(statsData);
       setInternReport([]);
       setHasSearched(false);
-
     } catch (error) {
-      console.error('Error in fetchData:', error);
-      setError('Failed to load dashboard data. Please try again.');
-      
-      if (error.message.includes('403') || error.message.includes('401')) {
-        localStorage.removeItem('adminInfo');
-        navigate('/admin-login');
+      console.error("Error in fetchData:", error);
+      setError("Failed to load dashboard data. Please try again.");
+
+      if (error.message.includes("403") || error.message.includes("401")) {
+        localStorage.removeItem("adminInfo");
+        navigate("/admin-login");
       }
     } finally {
       setLoading(false);
@@ -137,39 +151,42 @@ const AdminDashboard = () => {
   }, [navigate]);
 
   // Search for interns
-  const searchInterns = useCallback(async (searchQuery) => {
-    if (!searchQuery || searchQuery.trim().length < 2) {
-      if (filterStatus !== 'all') {
-        try {
-          setSearchLoading(true);
-          const reportData = await adminApi.searchInterns('*');
-          setInternReport(reportData);
-          setHasSearched(true);
-        } catch (error) {
-          console.error('Error loading all interns:', error);
+  const searchInterns = useCallback(
+    async (searchQuery) => {
+      if (!searchQuery || searchQuery.trim().length < 2) {
+        if (filterStatus !== "all") {
+          try {
+            setSearchLoading(true);
+            const reportData = await adminApi.searchInterns("*");
+            setInternReport(reportData);
+            setHasSearched(true);
+          } catch (error) {
+            console.error("Error loading all interns:", error);
+            setInternReport([]);
+          } finally {
+            setSearchLoading(false);
+          }
+        } else {
           setInternReport([]);
-        } finally {
-          setSearchLoading(false);
+          setHasSearched(false);
         }
-      } else {
-        setInternReport([]);
-        setHasSearched(false);
+        return;
       }
-      return;
-    }
 
-    try {
-      setSearchLoading(true);
-      const reportData = await adminApi.searchInterns(searchQuery.trim());
-      setInternReport(reportData);
-      setHasSearched(true);
-    } catch (error) {
-      console.error('Error searching interns:', error);
-      setInternReport([]);
-    } finally {
-      setSearchLoading(false);
-    }
-  }, [filterStatus]);
+      try {
+        setSearchLoading(true);
+        const reportData = await adminApi.searchInterns(searchQuery.trim());
+        setInternReport(reportData);
+        setHasSearched(true);
+      } catch (error) {
+        console.error("Error searching interns:", error);
+        setInternReport([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [filterStatus],
+  );
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -180,8 +197,11 @@ const AdminDashboard = () => {
   }, [searchTerm, searchInterns]);
 
   useEffect(() => {
-    if (filterStatus !== 'all' && (!searchTerm || searchTerm.trim().length < 2)) {
-      searchInterns('');
+    if (
+      filterStatus !== "all" &&
+      (!searchTerm || searchTerm.trim().length < 2)
+    ) {
+      searchInterns("");
     }
   }, [filterStatus, searchInterns, searchTerm]);
 
@@ -190,26 +210,31 @@ const AdminDashboard = () => {
   }, [fetchData]);
 
   const handleSendNotifications = async () => {
-    if (!dashboardStats?.overdueList || dashboardStats.overdueList.length === 0) {
-      notificationUtils.showInfo('No overdue interns to notify');
+    if (
+      !dashboardStats?.overdueList ||
+      dashboardStats.overdueList.length === 0
+    ) {
+      notificationUtils.showInfo("No overdue interns to notify");
       return;
     }
 
     try {
       setSendingNotifications(true);
       // Send notifications to all overdue interns
-      const notifications = dashboardStats.overdueList.map(intern => ({
+      const notifications = dashboardStats.overdueList.map((intern) => ({
         id: intern._id,
         name: intern.traineeName,
         traineeId: intern.traineeId,
         email: intern.email,
-        body: `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`
+        body: `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`,
       }));
       await adminApi.sendOverdueNotifications(notifications);
-      notificationUtils.showSuccess('Notifications sent to all overdue interns.');
+      notificationUtils.showSuccess(
+        "Notifications sent to all overdue interns.",
+      );
     } catch (error) {
-      console.error('Error sending notifications:', error);
-      notificationUtils.showError('Failed to send notifications');
+      console.error("Error sending notifications:", error);
+      notificationUtils.showError("Failed to send notifications");
     } finally {
       setSendingNotifications(false);
     }
@@ -217,33 +242,49 @@ const AdminDashboard = () => {
 
   const handleExportOverdueCSV = async () => {
     try {
-      if (!dashboardStats?.overdueList || dashboardStats.overdueList.length === 0) {
-        notificationUtils.showInfo('No overdue interns to export.');
+      if (
+        !dashboardStats?.overdueList ||
+        dashboardStats.overdueList.length === 0
+      ) {
+        notificationUtils.showInfo("No overdue interns to export.");
         return;
       }
 
-      await csvUtils.downloadInternReport(dashboardStats.overdueList, 'overdue_interns');
-      notificationUtils.showSuccess(`Overdue interns CSV report with ${dashboardStats.overdueList.length} interns downloaded successfully`);
+      await csvUtils.downloadInternReport(
+        dashboardStats.overdueList,
+        "overdue_interns",
+      );
+      notificationUtils.showSuccess(
+        `Overdue interns CSV report with ${dashboardStats.overdueList.length} interns downloaded successfully`,
+      );
     } catch (error) {
-      console.error('Error exporting overdue interns CSV:', error);
-      notificationUtils.showError('Failed to export overdue interns CSV report');
+      console.error("Error exporting overdue interns CSV:", error);
+      notificationUtils.showError(
+        "Failed to export overdue interns CSV report",
+      );
     }
   };
 
   const handleExportSubmittedCSV = async () => {
     try {
       let submittedInterns = [];
-      
+
       if (internReport && internReport.length > 0) {
-        submittedInterns = internReport.filter(intern => !intern.isOverdue && intern.totalRecords > 0);
+        submittedInterns = internReport.filter(
+          (intern) => !intern.isOverdue && intern.totalRecords > 0,
+        );
       } else {
         try {
           setSearchLoading(true);
           const allInterns = await adminApi.getInternReport();
-          submittedInterns = allInterns.filter(intern => !intern.isOverdue && intern.totalRecords > 0);
+          submittedInterns = allInterns.filter(
+            (intern) => !intern.isOverdue && intern.totalRecords > 0,
+          );
         } catch (error) {
-          console.error('Error loading interns for submitted export:', error);
-          notificationUtils.showError('Failed to load intern data for export. Please try again or search for interns first.');
+          console.error("Error loading interns for submitted export:", error);
+          notificationUtils.showError(
+            "Failed to load intern data for export. Please try again or search for interns first.",
+          );
           return;
         } finally {
           setSearchLoading(false);
@@ -251,15 +292,22 @@ const AdminDashboard = () => {
       }
 
       if (submittedInterns.length === 0) {
-        notificationUtils.showInfo('No submitted interns found to export.');
+        notificationUtils.showInfo("No submitted interns found to export.");
         return;
       }
 
-      await csvUtils.downloadInternReport(submittedInterns, 'submitted_interns');
-      notificationUtils.showSuccess(`Submitted interns CSV report with ${submittedInterns.length} interns downloaded successfully`);
+      await csvUtils.downloadInternReport(
+        submittedInterns,
+        "submitted_interns",
+      );
+      notificationUtils.showSuccess(
+        `Submitted interns CSV report with ${submittedInterns.length} interns downloaded successfully`,
+      );
     } catch (error) {
-      console.error('Error exporting submitted interns CSV:', error);
-      notificationUtils.showError('Failed to export submitted interns CSV report');
+      console.error("Error exporting submitted interns CSV:", error);
+      notificationUtils.showError(
+        "Failed to export submitted interns CSV report",
+      );
     }
   };
 
@@ -268,15 +316,15 @@ const AdminDashboard = () => {
     try {
       const blob = await adminApi.downloadOnLeaveExcel();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'on_leave_interns.xlsx';
+      a.download = "on_leave_interns.xlsx";
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert('Failed to download on-leave Excel');
+      alert("Failed to download on-leave Excel");
     }
   };
 
@@ -284,22 +332,31 @@ const AdminDashboard = () => {
     try {
       // Get previous day submissions
       const previousDaySubmissions = await adminApi.getPreviousDaySubmissions();
-      
+
       if (previousDaySubmissions.length === 0) {
-        notificationUtils.showInfo('No interns submitted records on the previous day.');
+        notificationUtils.showInfo(
+          "No interns submitted records on the previous day.",
+        );
         return;
       }
 
       // Format the date for filename
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const dateStr = yesterday.toISOString().split('T')[0];
+      const dateStr = yesterday.toISOString().split("T")[0];
 
-      await csvUtils.downloadInternReport(previousDaySubmissions, `previous_day_submissions_${dateStr}`);
-      notificationUtils.showSuccess(`Previous day submissions CSV report with ${previousDaySubmissions.length} interns downloaded successfully`);
+      await csvUtils.downloadInternReport(
+        previousDaySubmissions,
+        `previous_day_submissions_${dateStr}`,
+      );
+      notificationUtils.showSuccess(
+        `Previous day submissions CSV report with ${previousDaySubmissions.length} interns downloaded successfully`,
+      );
     } catch (error) {
-      console.error('Error exporting previous day submissions CSV:', error);
-      notificationUtils.showError('Failed to export previous day submissions CSV report');
+      console.error("Error exporting previous day submissions CSV:", error);
+      notificationUtils.showError(
+        "Failed to export previous day submissions CSV report",
+      );
     }
   };
 
@@ -310,37 +367,46 @@ const AdminDashboard = () => {
       if (customStartDate && customEndDate) {
         weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions({
           startDate: customStartDate,
-          endDate: customEndDate
+          endDate: customEndDate,
         });
       } else {
         // Fallback to default logic (current or previous week)
         const today = new Date();
         const isTuesday = today.getDay() === 2;
         if (isTuesday) {
-          weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions('previous');
+          weeklyNonSubmissionsData =
+            await adminApi.getWeeklyNonSubmissions("previous");
         } else {
           weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
         }
       }
 
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
-        notificationUtils.showInfo('All interns have submitted records for the selected week.');
+        notificationUtils.showInfo(
+          "All interns have submitted records for the selected week.",
+        );
         return;
       }
 
       // Format the date for filename
-      const weekStr = customStartDate && customEndDate
-        ? `${customStartDate}_to_${customEndDate}`
-        : new Date().toISOString().split('T')[0];
+      const weekStr =
+        customStartDate && customEndDate
+          ? `${customStartDate}_to_${customEndDate}`
+          : new Date().toISOString().split("T")[0];
 
-      await csvUtils.downloadInternReport(weeklyNonSubmissionsData, `weekly_non_submissions_${weekStr}`);
+      await csvUtils.downloadInternReport(
+        weeklyNonSubmissionsData,
+        `weekly_non_submissions_${weekStr}`,
+      );
       notificationUtils.showSuccess(
         `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
-        `Period: ${weeklyNonSubmissionsData.weekPeriod}`
+          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
-      console.error('Error exporting weekly non-submissions CSV:', error);
-      notificationUtils.showError('Failed to export weekly non-submissions CSV report');
+      console.error("Error exporting weekly non-submissions CSV:", error);
+      notificationUtils.showError(
+        "Failed to export weekly non-submissions CSV report",
+      );
     }
   };
   // ...existing code...
@@ -379,34 +445,36 @@ const AdminDashboard = () => {
     }
 
     // Note: Backend already filtered by searchTerm, so we only apply filterStatus here
-    const filtered = internReport.filter(intern => {
-      switch (filterStatus) {
-        case 'submitted':
-          return !intern.isOverdue && intern.totalRecords > 0;
-        case 'notsubmitted':
-          return intern.totalRecords === 0;
-        case 'overdue':
-          return intern.isOverdue;
-        default:
-          return true; // 'all' - no filtering
-      }
-    }).sort((a, b) => {
-      switch (sortBy) {
-        case 'name':
-          return (a.traineeName || '').localeCompare(b.traineeName || '');
-        case 'id':
-          return (a.traineeId || '').localeCompare(b.traineeId || '');
-        case 'records':
-          return (b.totalRecords || 0) - (a.totalRecords || 0);
-        case 'lastSubmitted':
-          const aDays = a.daysSinceLastSubmission || 999;
-          const bDays = b.daysSinceLastSubmission || 999;
-          return aDays - bDays;
-        default:
-          return 0;
-      }
-    });
-    
+    const filtered = internReport
+      .filter((intern) => {
+        switch (filterStatus) {
+          case "submitted":
+            return !intern.isOverdue && intern.totalRecords > 0;
+          case "notsubmitted":
+            return intern.totalRecords === 0;
+          case "overdue":
+            return intern.isOverdue;
+          default:
+            return true; // 'all' - no filtering
+        }
+      })
+      .sort((a, b) => {
+        switch (sortBy) {
+          case "name":
+            return (a.traineeName || "").localeCompare(b.traineeName || "");
+          case "id":
+            return (a.traineeId || "").localeCompare(b.traineeId || "");
+          case "records":
+            return (b.totalRecords || 0) - (a.totalRecords || 0);
+          case "lastSubmitted":
+            const aDays = a.daysSinceLastSubmission || 999;
+            const bDays = b.daysSinceLastSubmission || 999;
+            return aDays - bDays;
+          default:
+            return 0;
+        }
+      });
+
     return filtered;
   };
 
@@ -458,7 +526,7 @@ const AdminDashboard = () => {
         <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
           <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
           <p className="text-red-600 mb-6">{error}</p>
-          <button 
+          <button
             onClick={fetchData}
             className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
           >
@@ -473,65 +541,65 @@ const AdminDashboard = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
       {/* Enhanced floating background elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
+        <motion.div
           className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
           animate={{
             y: [0, -30, 0],
             x: [0, 20, 0],
-            rotate: [0, 5, 0]
+            rotate: [0, 5, 0],
           }}
           transition={{
             duration: 15,
             repeat: Infinity,
-            ease: "easeInOut"
+            ease: "easeInOut",
           }}
         />
-        <motion.div 
+        <motion.div
           className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
           animate={{
             y: [0, 20, 0],
             x: [0, -20, 0],
-            rotate: [0, -5, 0]
+            rotate: [0, -5, 0],
           }}
           transition={{
             duration: 18,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 2
+            delay: 2,
           }}
         />
-        <motion.div 
+        <motion.div
           className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
           animate={{
             y: [0, -20, 0],
             x: [0, 15, 0],
-            rotate: [0, 3, 0]
+            rotate: [0, 3, 0],
           }}
           transition={{
             duration: 20,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 1
+            delay: 1,
           }}
         />
-        <motion.div 
+        <motion.div
           className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
           animate={{
             y: [0, 25, 0],
             x: [0, -15, 0],
-            rotate: [0, -3, 0]
+            rotate: [0, -3, 0],
           }}
           transition={{
             duration: 17,
             repeat: Infinity,
             ease: "easeInOut",
-            delay: 3
+            delay: 3,
           }}
         />
       </div>
 
       {/* Enhanced Top Navbar */}
-      <motion.header 
+      <motion.header
         className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -543,28 +611,32 @@ const AdminDashboard = () => {
               className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
               onClick={() => {
                 localStorage.clear();
-                navigate('/admin-login');
+                navigate("/admin-login");
               }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <motion.img 
-                src={logo} 
-                alt="SLT Logo" 
-                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm" 
+              <motion.img
+                src={logo}
+                alt="SLT Logo"
+                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
                 whileHover={{ rotate: 5 }}
                 transition={{ type: "spring", stiffness: 300 }}
               />
               <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">SLT Admin Portal</span>
-                <span className="text-xs sm:text-sm text-gray-600 truncate">Dashboard</span>
+                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
+                  SLT Admin Portal
+                </span>
+                <span className="text-xs sm:text-sm text-gray-600 truncate">
+                  Dashboard
+                </span>
               </div>
             </motion.div>
           </div>
 
           <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
             <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
-              <motion.div 
+              <motion.div
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center transition-all duration-300 group-hover:bg-gray-200 border border-gray-200 shadow-sm"
                 whileHover={{ scale: 1.1, rotate: 5 }}
               >
@@ -572,16 +644,18 @@ const AdminDashboard = () => {
               </motion.div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">Administrator</span>
+                <span className="text-sm font-medium text-gray-800">
+                  Administrator
+                </span>
               </div>
             </div>
-            
+
             <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                localStorage.removeItem('adminInfo');
-                navigate('/admin-login');
+                localStorage.removeItem("adminInfo");
+                navigate("/admin-login");
               }}
               className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
             >
@@ -591,14 +665,13 @@ const AdminDashboard = () => {
           </div>
         </div>
       </motion.header>
-      
+
       {/* Main Content */}
       <div className="pt-[4.5rem] sm:pt-[5.5rem]">
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
-            
             {/* Header */}
-            <motion.div 
+            <motion.div
               className="mb-4 md:mb-6"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -609,24 +682,28 @@ const AdminDashboard = () => {
                   Intern Management
                 </span>
               </h2>
-              <p className="text-gray-600 text-sm md:text-base">Monitor and manage intern logbook submissions</p>
+              <p className="text-gray-600 text-sm md:text-base">
+                Monitor and manage intern logbook submissions
+              </p>
             </motion.div>
 
             {/* Statistics Cards */}
-            <motion.div 
+            <motion.div
               className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
-              <motion.div 
+              <motion.div
                 className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Total Interns</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                      Total Interns
+                    </p>
                     <p className="text-xl sm:text-2xl font-bold text-gray-800">
                       {dashboardStats?.totalInterns || 0}
                     </p>
@@ -635,14 +712,16 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Submitted Interns</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                      Submitted Interns
+                    </p>
                     <p className="text-xl sm:text-2xl font-bold text-green-600">
                       {dashboardStats?.submittedInterns || 0}
                     </p>
@@ -651,14 +730,16 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Overdue Interns</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                      Overdue Interns
+                    </p>
                     <p className="text-xl sm:text-2xl font-bold text-red-600">
                       {dashboardStats?.overdueInterns || 0}
                     </p>
@@ -667,14 +748,16 @@ const AdminDashboard = () => {
                 </div>
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
                 whileHover={{ scale: 1.03 }}
                 transition={{ duration: 0.2 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">Total Records</p>
+                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                      Total Records
+                    </p>
                     <p className="text-xl sm:text-2xl font-bold text-purple-600">
                       {dashboardStats?.totalRecords || 0}
                     </p>
@@ -685,14 +768,16 @@ const AdminDashboard = () => {
             </motion.div>
 
             {/* Action Buttons */}
-            <motion.div 
+            <motion.div
               className="bg-white/80 backdrop-blur-sm p-2 md:p-3 rounded-lg border border-gray-100 shadow-sm mb-2 md:mb-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs md:text-sm lg:text-base font-semibold text-gray-900">Quick Actions</h2>
+                <h2 className="text-xs md:text-sm lg:text-base font-semibold text-gray-900">
+                  Quick Actions
+                </h2>
                 <div className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
                   Admin Tools
                 </div>
@@ -707,7 +792,9 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaBell className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">{showNotifications ? 'Hide' : 'Show'} Notifications</span>
+                    <span className="block text-xs leading-tight">
+                      {showNotifications ? "Hide" : "Show"} Notifications
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
                       {dashboardStats?.overdueInterns || 0} overdue
                     </span>
@@ -716,10 +803,24 @@ const AdminDashboard = () => {
 
                 <motion.button
                   onClick={handleSendNotifications}
-                  disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
+                  disabled={
+                    sendingNotifications || !dashboardStats?.overdueList?.length
+                  }
                   className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-md hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
-                  whileTap={{ scale: sendingNotifications || !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
+                  whileHover={{
+                    scale:
+                      sendingNotifications ||
+                      !dashboardStats?.overdueList?.length
+                        ? 1
+                        : 1.02,
+                  }}
+                  whileTap={{
+                    scale:
+                      sendingNotifications ||
+                      !dashboardStats?.overdueList?.length
+                        ? 1
+                        : 0.98,
+                  }}
                 >
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   {sendingNotifications ? (
@@ -728,15 +829,19 @@ const AdminDashboard = () => {
                     <FaBell className="mr-1 h-2.5 w-2.5" />
                   )}
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Send Notifications</span>
+                    <span className="block text-xs leading-tight">
+                      Send Notifications
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
-                      {sendingNotifications ? 'Sending...' : 'Email overdue interns'}
+                      {sendingNotifications
+                        ? "Sending..."
+                        : "Email overdue interns"}
                     </span>
                   </span>
                 </motion.button>
 
                 <motion.button
-                  onClick={() => navigate('/admin/daily-records')}
+                  onClick={() => navigate("/admin/daily-records")}
                   className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-md hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -744,7 +849,9 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaCalendarAlt className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">View Daily Records</span>
+                    <span className="block text-xs leading-tight">
+                      View Daily Records
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
                       All interns' records
                     </span>
@@ -752,7 +859,7 @@ const AdminDashboard = () => {
                 </motion.button>
 
                 <motion.button
-                  onClick={() => navigate('/admin/leave-requests')}
+                  onClick={() => navigate("/admin/leave-requests")}
                   className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-md hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -760,7 +867,9 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileAlt className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Short Leave Requests</span>
+                    <span className="block text-xs leading-tight">
+                      Short Leave Requests
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
                       Manage short leave requests
                     </span>
@@ -771,15 +880,23 @@ const AdminDashboard = () => {
                   onClick={handleExportOverdueCSV}
                   disabled={!dashboardStats?.overdueList?.length}
                   className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.02 }}
-                  whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.98 }}
+                  whileHover={{
+                    scale: !dashboardStats?.overdueList?.length ? 1 : 1.02,
+                  }}
+                  whileTap={{
+                    scale: !dashboardStats?.overdueList?.length ? 1 : 0.98,
+                  }}
                 >
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileExport className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Export Overdue</span>
+                    <span className="block text-xs leading-tight">
+                      Export Overdue
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.overdueList?.length ? `${dashboardStats.overdueList.length} overdue` : 'No overdue'}
+                      {dashboardStats?.overdueList?.length
+                        ? `${dashboardStats.overdueList.length} overdue`
+                        : "No overdue"}
                     </span>
                   </span>
                 </motion.button>
@@ -793,9 +910,13 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaFileExport className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Export Submitted</span>
+                    <span className="block text-xs leading-tight">
+                      Export Submitted
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.submittedInterns ? `${dashboardStats.submittedInterns} submitted` : 'Submitted interns'}
+                      {dashboardStats?.submittedInterns
+                        ? `${dashboardStats.submittedInterns} submitted`
+                        : "Submitted interns"}
                     </span>
                   </span>
                 </motion.button>
@@ -809,7 +930,9 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaDownload className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Export Previous Day</span>
+                    <span className="block text-xs leading-tight">
+                      Export Previous Day
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
                       Yesterday's submissions
                     </span>
@@ -826,7 +949,9 @@ const AdminDashboard = () => {
                     <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                     <FaDownload className="mr-1 h-2.5 w-2.5" />
                     <span className="flex-1 text-left">
-                      <span className="block text-xs leading-tight">Export Non-Submissions</span>
+                      <span className="block text-xs leading-tight">
+                        Export Non-Submissions
+                      </span>
                       <span className="block text-xs opacity-75 leading-tight">
                         Select custom date range
                       </span>
@@ -835,9 +960,19 @@ const AdminDashboard = () => {
                 ) : (
                   <div className="flex items-center space-x-2 mb-2">
                     <label className="text-xs font-medium">Start Date:</label>
-                    <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="border rounded px-2 py-1 text-xs"
+                    />
                     <label className="text-xs font-medium">End Date:</label>
-                    <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="border rounded px-2 py-1 text-xs"
+                    />
                     <button
                       onClick={handleExportWeeklyNonSubmissionsCSV}
                       className="bg-purple-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-purple-700"
@@ -856,9 +991,29 @@ const AdminDashboard = () => {
                   <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
                   <FaDownload className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">Download On Leave</span>
+                    <span className="block text-xs leading-tight">
+                      Download On Leave
+                    </span>
                     <span className="block text-xs opacity-75 leading-tight">
                       Get list of on-leave interns
+                    </span>
+                  </span>
+                </motion.button>
+
+                <motion.button
+                  onClick={() => navigate("/admin/seat-management")}
+                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
+                  <FaChair className="mr-1 h-2.5 w-2.5" />
+                  <span className="flex-1 text-left">
+                    <span className="block text-xs leading-tight">
+                      Intern Seat Management
+                    </span>
+                    <span className="block text-xs opacity-75 leading-tight">
+                      Manage seating arrangements
                     </span>
                   </span>
                 </motion.button>
@@ -868,10 +1023,10 @@ const AdminDashboard = () => {
             {/* Notifications Panel */}
             <AnimatePresence>
               {showNotifications && (
-                <motion.div 
+                <motion.div
                   className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
                   initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
+                  animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
@@ -881,22 +1036,29 @@ const AdminDashboard = () => {
                   {dashboardStats?.overdueList?.length > 0 ? (
                     <div className="space-y-3">
                       {dashboardStats.overdueList.map((intern) => (
-                        <motion.div 
-                          key={intern._id} 
+                        <motion.div
+                          key={intern._id}
                           className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-red-100 rounded-xl border border-red-200 gap-3 sm:gap-0"
                           whileHover={{ scale: 1.01 }}
                           transition={{ duration: 0.2 }}
                         >
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm md:text-base">{intern.traineeName}</p>
-                            <p className="text-xs md:text-sm text-gray-600">ID: {intern.traineeId}</p>
-                            <p className="text-xs md:text-sm text-gray-600 truncate">{intern.email}</p>
+                            <p className="font-medium text-gray-900 text-sm md:text-base">
+                              {intern.traineeName}
+                            </p>
+                            <p className="text-xs md:text-sm text-gray-600">
+                              ID: {intern.traineeId}
+                            </p>
+                            <p className="text-xs md:text-sm text-gray-600 truncate">
+                              {intern.email}
+                            </p>
                           </div>
                           <div className="text-left sm:text-right flex-shrink-0">
                             <p className="text-xs md:text-sm text-red-600">
-                              Last: {intern.lastSubmission ? 
-                                formatDateDisplay(intern.lastSubmission) : 'Never'
-                              }
+                              Last:{" "}
+                              {intern.lastSubmission
+                                ? formatDateDisplay(intern.lastSubmission)
+                                : "Never"}
                             </p>
                           </div>
                         </motion.div>
@@ -904,7 +1066,9 @@ const AdminDashboard = () => {
                     </div>
                   ) : (
                     <div className="text-center py-6 md:py-8 bg-gray-50 rounded-xl">
-                      <p className="text-gray-500 text-sm md:text-base">No overdue interns found.</p>
+                      <p className="text-gray-500 text-sm md:text-base">
+                        No overdue interns found.
+                      </p>
                     </div>
                   )}
                 </motion.div>
@@ -912,7 +1076,7 @@ const AdminDashboard = () => {
             </AnimatePresence>
 
             {/* Search and Filter Controls */}
-            <motion.div 
+            <motion.div
               className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -935,7 +1099,9 @@ const AdminDashboard = () => {
                     />
                   </div>
                   {searchTerm.length > 0 && searchTerm.length < 2 && (
-                    <p className="text-xs text-gray-500 mt-1">Type at least 2 characters to search</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Type at least 2 characters to search
+                    </p>
                   )}
                 </div>
 
@@ -966,7 +1132,9 @@ const AdminDashboard = () => {
                       <option value="name">Sort by Name</option>
                       <option value="id">Sort by Trainee ID</option>
                       <option value="records">Sort by Records Count</option>
-                      <option value="lastSubmitted">Sort by Last Submission</option>
+                      <option value="lastSubmitted">
+                        Sort by Last Submission
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -974,7 +1142,7 @@ const AdminDashboard = () => {
             </motion.div>
 
             {/* Interns Table */}
-            <motion.div 
+            <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -982,32 +1150,42 @@ const AdminDashboard = () => {
             >
               <div className="px-4 md:px-6 py-4 border-b border-gray-200">
                 <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
-                  {(!hasSearched && filterStatus === 'all') ? 'Search for Interns' : `Search Results (${filteredInterns.length})`}
+                  {!hasSearched && filterStatus === "all"
+                    ? "Search for Interns"
+                    : `Search Results (${filteredInterns.length})`}
                 </h2>
-                {(!hasSearched && filterStatus === 'all') && (
+                {!hasSearched && filterStatus === "all" && (
                   <p className="text-xs md:text-sm text-gray-500 mt-1">
-                    Use the search bar above to find specific interns or select a filter option
+                    Use the search bar above to find specific interns or select
+                    a filter option
                   </p>
                 )}
               </div>
 
-              {(!hasSearched && filterStatus === 'all') ? (
+              {!hasSearched && filterStatus === "all" ? (
                 <div className="text-center py-12 md:py-16 bg-gray-50 px-4">
                   <FaSearch className="mx-auto h-8 w-8 md:h-12 md:w-12 text-gray-400 mb-4" />
-                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">Search for Interns</h3>
+                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">
+                    Search for Interns
+                  </h3>
                   <p className="text-gray-500 mb-4 text-sm md:text-base">
-                    Enter a name, trainee ID, or email to find specific interns and view their records.
+                    Enter a name, trainee ID, or email to find specific interns
+                    and view their records.
                   </p>
                   <div className="bg-blue-100 border border-blue-200 rounded-xl p-3 md:p-4 max-w-md mx-auto">
                     <p className="text-xs md:text-sm text-blue-700">
-                      💡 <strong>Tip:</strong> Type at least 2 characters to start searching or use the filter dropdown to see all interns by status
+                      💡 <strong>Tip:</strong> Type at least 2 characters to
+                      start searching or use the filter dropdown to see all
+                      interns by status
                     </p>
                   </div>
                 </div>
               ) : filteredInterns.length === 0 ? (
                 <div className="text-center py-8 md:py-12 bg-gray-50 px-4">
                   <FaUser className="mx-auto h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm md:text-base font-medium text-gray-700">No interns found</h3>
+                  <h3 className="mt-2 text-sm md:text-base font-medium text-gray-700">
+                    No interns found
+                  </h3>
                   <p className="mt-1 text-xs md:text-sm text-gray-500">
                     Try adjusting your search terms or check the spelling.
                   </p>
@@ -1018,8 +1196,8 @@ const AdminDashboard = () => {
                   <div className="block lg:hidden">
                     <div className="divide-y divide-gray-200">
                       {filteredInterns.map((intern) => (
-                        <motion.div 
-                          key={intern._id} 
+                        <motion.div
+                          key={intern._id}
                           className="p-4 hover:bg-gray-50 transition-colors"
                           whileHover={{ y: -2 }}
                           transition={{ duration: 0.1 }}
@@ -1034,10 +1212,10 @@ const AdminDashboard = () => {
                               </div>
                               <div>
                                 <div className="text-sm font-medium text-gray-900">
-                                  {intern.traineeName || 'N/A'}
+                                  {intern.traineeName || "N/A"}
                                 </div>
                                 <div className="text-xs text-gray-600">
-                                  ID: {intern.traineeId || 'N/A'}
+                                  ID: {intern.traineeId || "N/A"}
                                 </div>
                               </div>
                             </div>
@@ -1045,41 +1223,46 @@ const AdminDashboard = () => {
                               {getStatusBadge(intern)}
                             </div>
                           </div>
-                          
+
                           {/* Contact info */}
                           <div className="mb-3">
                             <div className="text-xs text-gray-700 truncate">
-                              📧 {intern.email || 'N/A'}
+                              📧 {intern.email || "N/A"}
                             </div>
                             <div className="text-xs text-gray-500 truncate">
-                              🎯 {intern.fieldOfSpecialization || 'N/A'}
+                              🎯 {intern.fieldOfSpecialization || "N/A"}
                             </div>
                           </div>
-                          
+
                           {/* Stats and last submission */}
                           <div className="flex justify-between items-center mb-3">
                             <div className="text-xs text-gray-700">
                               📊 {intern.totalRecords || 0} records
                             </div>
                           </div>
-                          
+
                           <div className="mb-3">
                             <div className="text-xs text-gray-700">
-                              📅 Last: {intern.lastSubmission ? 
-                                formatDateDisplay(intern.lastSubmission) : 'Never'
-                              }
+                              📅 Last:{" "}
+                              {intern.lastSubmission
+                                ? formatDateDisplay(intern.lastSubmission)
+                                : "Never"}
                             </div>
                             <div className="text-xs text-gray-500">
-                              ⏰ {intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? 
-                                `${intern.daysSinceLastSubmission} days ago` : 'No submissions'
-                              }
+                              ⏰{" "}
+                              {intern.daysSinceLastSubmission !== null &&
+                              intern.daysSinceLastSubmission !== undefined
+                                ? `${intern.daysSinceLastSubmission} days ago`
+                                : "No submissions"}
                             </div>
                           </div>
-                          
+
                           {/* Actions */}
                           <div className="flex space-x-2">
                             <motion.button
-                              onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                              onClick={() =>
+                                navigate(`/admin/intern/${intern._id}`)
+                              }
                               className="flex-1 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -1087,7 +1270,9 @@ const AdminDashboard = () => {
                               View Details
                             </motion.button>
                             <motion.button
-                              onClick={() => navigate(`/admin/intern/${intern._id}/records`)}
+                              onClick={() =>
+                                navigate(`/admin/intern/${intern._id}/records`)
+                              }
                               className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
@@ -1127,8 +1312,8 @@ const AdminDashboard = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {filteredInterns.map((intern) => (
-                          <motion.tr 
-                            key={intern._id} 
+                          <motion.tr
+                            key={intern._id}
                             className="hover:bg-gray-50 transition-colors"
                             whileHover={{ y: -2 }}
                             transition={{ duration: 0.1 }}
@@ -1142,20 +1327,26 @@ const AdminDashboard = () => {
                                 </div>
                                 <div className="ml-4 flex-1">
                                   <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
-                                    {intern.traineeName || 'N/A'}
+                                    {intern.traineeName || "N/A"}
                                   </div>
                                   <div className="text-sm text-gray-600 truncate">
-                                    ID: {intern.traineeId || 'N/A'}
+                                    ID: {intern.traineeId || "N/A"}
                                   </div>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[180px]">
-                              <div className="text-sm text-gray-900 truncate max-w-[150px]" title={intern.email}>
-                                {intern.email || 'N/A'}
+                              <div
+                                className="text-sm text-gray-900 truncate max-w-[150px]"
+                                title={intern.email}
+                              >
+                                {intern.email || "N/A"}
                               </div>
-                              <div className="text-sm text-gray-600 truncate max-w-[150px]" title={intern.fieldOfSpecialization}>
-                                {intern.fieldOfSpecialization || 'N/A'}
+                              <div
+                                className="text-sm text-gray-600 truncate max-w-[150px]"
+                                title={intern.fieldOfSpecialization}
+                              >
+                                {intern.fieldOfSpecialization || "N/A"}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[120px]">
@@ -1165,14 +1356,15 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                               <div className="text-sm text-gray-900">
-                                {intern.lastSubmission ? 
-                                  formatDateDisplay(intern.lastSubmission) : 'Never'
-                                }
+                                {intern.lastSubmission
+                                  ? formatDateDisplay(intern.lastSubmission)
+                                  : "Never"}
                               </div>
                               <div className="text-sm text-gray-600">
-                                {intern.daysSinceLastSubmission !== null && intern.daysSinceLastSubmission !== undefined ? 
-                                  `${intern.daysSinceLastSubmission} days ago` : 'No submissions'
-                                }
+                                {intern.daysSinceLastSubmission !== null &&
+                                intern.daysSinceLastSubmission !== undefined
+                                  ? `${intern.daysSinceLastSubmission} days ago`
+                                  : "No submissions"}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[100px]">
@@ -1181,7 +1373,9 @@ const AdminDashboard = () => {
                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[150px]">
                               <div className="flex flex-col space-y-1">
                                 <motion.button
-                                  onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                                  onClick={() =>
+                                    navigate(`/admin/intern/${intern._id}`)
+                                  }
                                   className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
@@ -1189,7 +1383,11 @@ const AdminDashboard = () => {
                                   View Details
                                 </motion.button>
                                 <motion.button
-                                  onClick={() => navigate(`/admin/intern/${intern._id}/records`)}
+                                  onClick={() =>
+                                    navigate(
+                                      `/admin/intern/${intern._id}/records`,
+                                    )
+                                  }
                                   className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
