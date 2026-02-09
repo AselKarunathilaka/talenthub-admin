@@ -9,13 +9,16 @@ const {
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
-  getPreviousDaySubmissions,
+  getNonSubmissionsWithinAWeek,
   getWeeklyNonSubmissions,
   syncWithSLTAPI,
   triggerWeeklyNonSubmissionCheck,
-  triggerWeeklyNonSubmissionCheckWithExcel
+  triggerWeeklyNonSubmissionCheckWithExcel,
 } = require("../controllers/adminController");
-const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
+const {
+  exportOnLeaveExcel,
+} = require("../controllers/onLeaveExportController");
+
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
 
@@ -34,8 +37,8 @@ router.get("/report/interns", getInternReport);
 // Get all daily records
 router.get("/daily-records", getAllDailyRecords);
 
-// Get previous day submissions
-router.get("/previous-day-submissions", getPreviousDaySubmissions);
+// Get non-submissions within a week from current date (last 5 working days)
+router.get("/non-submissions-within-week", getNonSubmissionsWithinAWeek);
 
 // Get weekly non-submissions (Monday to Friday of current week)
 router.get("/weekly-non-submissions", getWeeklyNonSubmissions);
@@ -50,9 +53,15 @@ router.get("/intern/:internId", getInternDetails);
 router.post("/sync/slt-api", syncWithSLTAPI);
 
 // Manually trigger weekly non-submission check
-router.post("/trigger/weekly-non-submission-check", triggerWeeklyNonSubmissionCheck);
+router.post(
+  "/trigger/weekly-non-submission-check",
+  triggerWeeklyNonSubmissionCheck,
+);
 
 // Manually trigger weekly non-submission check with Excel attachment
-router.post("/trigger/weekly-non-submission-check-excel", triggerWeeklyNonSubmissionCheckWithExcel);
+router.post(
+  "/trigger/weekly-non-submission-check-excel",
+  triggerWeeklyNonSubmissionCheckWithExcel,
+);
 
 module.exports = router;

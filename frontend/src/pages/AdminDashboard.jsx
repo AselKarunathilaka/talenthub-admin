@@ -328,34 +328,40 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleExportPreviousDayCSV = async () => {
+  //export weekly non-submissions for the last 5 working days from today
+  const handleExportWeeklyNonSubmissionsWithinWeek = async () => {
     try {
-      // Get previous day submissions
-      const previousDaySubmissions = await adminApi.getPreviousDaySubmissions();
+      // Get non-submissions within the last 5 working days
+      const weeklyNonSubmissionsData =
+        await adminApi.getNonSubmissionsWithinAWeek();
 
-      if (previousDaySubmissions.length === 0) {
+      if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
-          "No interns submitted records on the previous day.",
+          "All interns have submitted records within the last 5 working days.",
         );
         return;
       }
 
-      // Format the date for filename
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const dateStr = yesterday.toISOString().split("T")[0];
+      // Format the start date for filename (5 working days back)
+      const startDateStr =
+        weeklyNonSubmissionsData.startDate ||
+        new Date().toISOString().split("T")[0];
 
       await csvUtils.downloadInternReport(
-        previousDaySubmissions,
-        `previous_day_submissions_${dateStr}`,
+        weeklyNonSubmissionsData,
+        `weekly_non_submissions_from_${startDateStr}`,
       );
       notificationUtils.showSuccess(
-        `Previous day submissions CSV report with ${previousDaySubmissions.length} interns downloaded successfully`,
+        `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
+          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
-      console.error("Error exporting previous day submissions CSV:", error);
+      console.error(
+        "Error exporting weekly non-submissions within week CSV:",
+        error,
+      );
       notificationUtils.showError(
-        "Failed to export previous day submissions CSV report",
+        "Failed to export weekly non-submissions within week CSV report",
       );
     }
   };
@@ -409,35 +415,6 @@ const AdminDashboard = () => {
       );
     }
   };
-  // ...existing code...
-  // Date range selection UI for weekly non-submissions
-  // Place this in your render/return block where you want the controls to appear
-  // Example placement: above the export button
-  // --- Date Range Picker UI ---
-  // <div className="mb-2">
-  //   {!showDateSelector && (
-  //     <button
-  //       onClick={handleShowDateSelector}
-  //       className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
-  //     >
-  //       Export Weekly Non-Submissions
-  //     </button>
-  //   )}
-  //   {showDateSelector && (
-  //     <div className="flex items-center space-x-2">
-  //       <label className="text-xs font-medium">Start Date:</label>
-  //       <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-  //       <label className="text-xs font-medium">End Date:</label>
-  //       <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-  //       <button
-  //         onClick={handleExportWeeklyNonSubmissionsCSV}
-  //         className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
-  //       >
-  //         Download CSV
-  //       </button>
-  //     </div>
-  //   )}
-  // </div>
 
   const getFilteredInterns = () => {
     if (!internReport || internReport.length === 0) {
@@ -922,7 +899,7 @@ const AdminDashboard = () => {
                 </motion.button>
 
                 <motion.button
-                  onClick={handleExportPreviousDayCSV}
+                  onClick={handleExportWeeklyNonSubmissionsWithinWeek}
                   className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -931,10 +908,10 @@ const AdminDashboard = () => {
                   <FaDownload className="mr-1 h-2.5 w-2.5" />
                   <span className="flex-1 text-left">
                     <span className="block text-xs leading-tight">
-                      Export Previous Day
+                      Export Weekly Non-Submissions
                     </span>
                     <span className="block text-xs opacity-75 leading-tight">
-                      Yesterday's submissions
+                      Last 5 working days
                     </span>
                   </span>
                 </motion.button>
