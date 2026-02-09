@@ -332,7 +332,7 @@ const Login = () => {
                         Login as Admin
                       </button>
 
-                      <button
+                      {/* <button
                         onClick={() => navigate("/gate-staff-login")}
                         className="w-full inline-flex items-center justify-center px-3 py-1.5 text-xs text-white/60 hover:text-white/80 bg-white/0 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded transition-all duration-200 cursor-pointer"
                       >
@@ -351,10 +351,10 @@ const Login = () => {
                           />
                         </svg>
                         Gate Staff Access
-                      </button>
+                      </button> */}
 
                       <p className="text-xs text-white/50 mt-2">
-                        For administrators and gate staff only
+                        For administrators and supervisors only
                       </p>
                     </div>
                   </div>
