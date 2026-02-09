@@ -20,6 +20,14 @@ import {
   FaEye,
   FaFileAlt,
   FaChair,
+  FaSignOutAlt,
+  FaRunning,
+  FaClock,
+  FaAngleDoubleLeft,
+  FaRegFileExcel,
+  FaSlidersH,
+  FaCalendarCheck,
+  FaRegPaperPlane,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -30,7 +38,7 @@ const formatDateDisplay = (dateString) => {
   if (!dateString) return "N/A";
 
   try {
-    // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
+    // Handle ISO date strings ( 2024-10-19T10:30:00.000Z)
     if (dateString.includes("T") || dateString.includes("Z")) {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Invalid Date";
@@ -636,7 +644,7 @@ const AdminDashboard = () => {
               }}
               className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
             >
-              <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+              <FaSignOutAlt className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Logout</span>
             </motion.button>
           </div>
@@ -744,256 +752,192 @@ const AdminDashboard = () => {
               </motion.div>
             </motion.div>
 
-            {/* Action Buttons */}
+            {/* Quick Actions Section */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-2 md:p-3 rounded-lg border border-gray-100 shadow-sm mb-2 md:mb-3"
+              className="bg-white/80 backdrop-blur-sm p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs md:text-sm lg:text-base font-semibold text-gray-900">
-                  Quick Actions
-                </h2>
-                <div className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                  Admin Tools
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                    Quick Actions
+                  </h2>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Admin tools for managing intern submissions
+                  </p>
                 </div>
               </div>
-              <div className="flex flex-row flex-nowrap gap-1.5 overflow-x-auto pb-1">
-                <motion.button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-md hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaBell className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      {showNotifications ? "Hide" : "Show"} Notifications
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.overdueInterns || 0} overdue
-                    </span>
-                  </span>
-                </motion.button>
 
-                <motion.button
-                  onClick={handleSendNotifications}
-                  disabled={
-                    sendingNotifications || !dashboardStats?.overdueList?.length
-                  }
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-md hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{
-                    scale:
-                      sendingNotifications ||
-                      !dashboardStats?.overdueList?.length
-                        ? 1
-                        : 1.02,
-                  }}
-                  whileTap={{
-                    scale:
-                      sendingNotifications ||
-                      !dashboardStats?.overdueList?.length
-                        ? 1
-                        : 0.98,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  {sendingNotifications ? (
-                    <FaSpinner className="mr-1 h-2.5 w-2.5 animate-spin" />
-                  ) : (
-                    <FaBell className="mr-1 h-2.5 w-2.5" />
-                  )}
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Send Notifications
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {sendingNotifications
-                        ? "Sending..."
-                        : "Email overdue interns"}
-                    </span>
-                  </span>
-                </motion.button>
-
+              {/* 3x2 Grid Layout for Quick Actions */}
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {/* Daily Records */}
                 <motion.button
                   onClick={() => navigate("/admin/daily-records")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-md hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-gray-800 rounded-xl border border-emerald-200 hover:border-emerald-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaCalendarAlt className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      View Daily Records
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      All interns' records
-                    </span>
+                  <FaCalendarAlt className="h-6 w-6 text-emerald-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    Daily Records
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    All intern records
                   </span>
                 </motion.button>
 
+                {/* Short Leave Requests */}
                 <motion.button
                   onClick={() => navigate("/admin/leave-requests")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-md hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-gray-800 rounded-xl border border-purple-200 hover:border-purple-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileAlt className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Short Leave Requests
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Manage short leave requests
-                    </span>
+                  <FaRunning className="h-6 w-6 text-purple-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    Short Leave Requests
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    Manage short leave requests
                   </span>
                 </motion.button>
 
-                <motion.button
-                  onClick={handleExportOverdueCSV}
-                  disabled={!dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{
-                    scale: !dashboardStats?.overdueList?.length ? 1 : 1.02,
-                  }}
-                  whileTap={{
-                    scale: !dashboardStats?.overdueList?.length ? 1 : 0.98,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Overdue
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.overdueList?.length
-                        ? `${dashboardStats.overdueList.length} overdue`
-                        : "No overdue"}
-                    </span>
-                  </span>
-                </motion.button>
-
-                <motion.button
-                  onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Submitted
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.submittedInterns
-                        ? `${dashboardStats.submittedInterns} submitted`
-                        : "Submitted interns"}
-                    </span>
-                  </span>
-                </motion.button>
-
+                {/* Weekly Non-Submissions */}
                 <motion.button
                   onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 text-gray-800 rounded-xl border border-indigo-200 hover:border-indigo-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Weekly Non-Submissions
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Last 5 working days
-                    </span>
+                  <FaSlidersH className="h-6 w-6 text-indigo-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    Weekly Non-Submissions
                   </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    Export weekly non-submitted intern list
+                  </span>
+                </motion.button>
+
+                {/* Show/Hide Overdue List */}
+                <motion.button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-gray-800 rounded-xl border border-amber-200 hover:border-amber-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaClock className="h-6 w-6 text-amber-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    {showNotifications ? "Hide" : "Show"} Overdue List
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    View overdue interns
+                  </span>
+                </motion.button>
+
+                {/* On-Leave List */}
+                <motion.button
+                  onClick={handleDownloadOnLeaveExcel}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-gray-800 rounded-xl border border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaRegFileExcel className="h-6 w-6 text-blue-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    On-Leave List
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    Export list of intern on-leave
+                  </span>
+                </motion.button>
+
+                {/* Seat Management */}
+                <motion.button
+                  onClick={() => navigate("/admin/seat-management")}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 text-gray-800 rounded-xl border border-pink-200 hover:border-pink-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaChair className="h-6 w-6 text-pink-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    Intern Seat Management
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    Manage intern seating arrangements
+                  </span>
+                </motion.button>
+              </div>
+
+              {/* Additional Action Buttons */}
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
+                <motion.button
+                  onClick={handleExportSubmittedCSV}
+                  className="group relative flex items-center justify-center p-3 bg-gradient-to-br from-emerald-100 to-teal-100 hover:from-emerald-200 hover:to-teal-200 text-gray-800 rounded-xl border border-emerald-300 hover:border-emerald-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaFileExport className="mr-2 h-4 w-4 text-emerald-600" />
+                  <span className="truncate">Export Submissions List</span>
                 </motion.button>
 
                 {!showDateSelector ? (
                   <motion.button
                     onClick={handleShowDateSelector}
-                    className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                    whileHover={{ scale: 1.02 }}
+                    className="group relative flex items-center justify-center p-3 bg-gradient-to-br from-indigo-100 to-violet-100 hover:from-indigo-200 hover:to-violet-200 text-gray-800 rounded-xl border border-indigo-300 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
+                    whileHover={{ y: -1 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                    <FaDownload className="mr-1 h-2.5 w-2.5" />
-                    <span className="flex-1 text-left">
-                      <span className="block text-xs leading-tight">
-                        Export Non-Submissions
-                      </span>
-                      <span className="block text-xs opacity-75 leading-tight">
-                        Select custom date range
-                      </span>
+                    <FaDownload className="mr-2 h-4 w-4 text-indigo-600" />
+                    <span className="truncate">
+                      Export Non-Submissions List
                     </span>
                   </motion.button>
                 ) : (
-                  <div className="flex items-center space-x-2 mb-2">
-                    <label className="text-xs font-medium">Start Date:</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
-                    />
-                    <label className="text-xs font-medium">End Date:</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
-                    />
+                  <div className="col-span-2 md:col-span-1 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-indigo-800">
+                        Select Date Range
+                      </span>
+                      <button
+                        onClick={() => setShowDateSelector(false)}
+                        className="text-xs text-indigo-600 hover:text-indigo-800"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-indigo-700 block mb-1">
+                          From:
+                        </label>
+                        <input
+                          type="date"
+                          value={customStartDate}
+                          onChange={(e) => setCustomStartDate(e.target.value)}
+                          className="w-full border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-indigo-700 block mb-1">
+                          To:
+                        </label>
+                        <input
+                          type="date"
+                          value={customEndDate}
+                          onChange={(e) => setCustomEndDate(e.target.value)}
+                          className="w-full border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
                     <button
                       onClick={handleExportWeeklyNonSubmissionsCSV}
-                      className="bg-purple-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-purple-700"
+                      className="w-full mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-indigo-700 transition-colors"
                     >
                       Download CSV
                     </button>
                   </div>
                 )}
-
-                <motion.button
-                  onClick={handleDownloadOnLeaveExcel}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md hover:from-blue-800 hover:to-blue-900 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Download On Leave
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Get list of on-leave interns
-                    </span>
-                  </span>
-                </motion.button>
-
-                <motion.button
-                  onClick={() => navigate("/admin/seat-management")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaChair className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Intern Seat Management
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Manage seating arrangements
-                    </span>
-                  </span>
-                </motion.button>
               </div>
             </motion.div>
 
@@ -1007,9 +951,64 @@ const AdminDashboard = () => {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-                    Overdue Interns ({dashboardStats?.overdueList?.length || 0})
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                      Overdue Interns (
+                      {dashboardStats?.overdueList?.length || 0})
+                    </h3>
+
+                    <div className="flex space-x-2">
+                      <motion.button
+                        onClick={handleExportOverdueCSV}
+                        disabled={!dashboardStats?.overdueList?.length}
+                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
+                        whileHover={{
+                          scale: !dashboardStats?.overdueList?.length
+                            ? 1
+                            : 1.03,
+                        }}
+                        whileTap={{
+                          scale: !dashboardStats?.overdueList?.length
+                            ? 1
+                            : 0.98,
+                        }}
+                      >
+                        <FaFileExport className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="truncate">Export Overdue List</span>
+                      </motion.button>
+
+                      <motion.button
+                        onClick={handleSendNotifications}
+                        disabled={
+                          sendingNotifications ||
+                          !dashboardStats?.overdueList?.length
+                        }
+                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
+                        whileHover={{
+                          scale:
+                            sendingNotifications ||
+                            !dashboardStats?.overdueList?.length
+                              ? 1
+                              : 1.03,
+                        }}
+                        whileTap={{
+                          scale:
+                            sendingNotifications ||
+                            !dashboardStats?.overdueList?.length
+                              ? 1
+                              : 0.98,
+                        }}
+                      >
+                        {sendingNotifications ? (
+                          <FaSpinner className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <FaRegPaperPlane className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="truncate">Remind All</span>
+                      </motion.button>
+                    </div>
+                  </div>
+
                   {dashboardStats?.overdueList?.length > 0 ? (
                     <div className="space-y-3">
                       {dashboardStats.overdueList.map((intern) => (
