@@ -105,7 +105,7 @@ class LeaveRequestService {
 
   async generateApprovedLeavesPDF({ date }) {
     const leaveRequests = await this.getApprovedLeavesByDate(date);
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const doc = new PDFDocument({ margin: 40, size: "A4", bufferPages: true });
     const chunks = [];
 
     doc.on("data", (chunk) => {
@@ -175,6 +175,8 @@ class LeaveRequestService {
           "No approved short leave requests were recorded for the selected date.",
           { align: "center" },
         );
+
+      doc.flushPages();
       doc.end();
       return await pdfBuffer;
     }
@@ -345,6 +347,7 @@ class LeaveRequestService {
         );
     }
 
+    doc.flushPages();
     doc.end();
     return await pdfBuffer;
   }
