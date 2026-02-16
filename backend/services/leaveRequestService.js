@@ -374,6 +374,7 @@ class LeaveRequestService {
       const total = await leaveRequestRepository.countByInternId(
         internId,
         options.status,
+        { date: options.date },
       );
 
       return {
@@ -557,6 +558,155 @@ class LeaveRequestService {
     } catch (error) {
       console.error("Error sending intern notification:", error);
       // Don't throw error - notification failure shouldn't block status update
+    }
+  }
+
+  async updateLeaveRequestStatus(id, status, adminResponse, reviewedBy) {
+    try {
+      // Validate status
+      if (!["Approved", "Denied"].includes(status)) {
+        throw new Error("Invalid status. Must be Approved or Denied");
+      }
+
+      // Update leave request
+      const leaveRequest = await leaveRequestRepository.updateStatus(
+        id,
+        status,
+        adminResponse,
+        reviewedBy,
+      );
+
+      if (!leaveRequest) {
+        throw new Error("Leave request not found");
+      }
+
+      // Generate pass token if approved
+      if (status === "Approved" && !leaveRequest.passToken) {
+        leaveRequest.generatePassToken();
+        await leaveRequest.save();
+      }
+
+      // Send notification email to intern
+      await this.notifyInternStatusUpdate(leaveRequest);
+
+      console.log(
+        `Leave request ${id} updated to ${status} by admin ${reviewedBy}`,
+      );
+
+      return leaveRequest;
+    } catch (error) {
+      console.error("Error updating leave request status:", error);
+      throw error;
+    }
+  }
+
+  // Add new method to validate leave pass
+  async validateLeavePass(token) {
+    try {
+      const leaveRequest = await leaveRequestRepository.findByToken(token);
+
+      if (!leaveRequest) {
+        return {
+          valid: false,
+          reason: "Invalid leave pass",
+        };
+      }
+
+      if (leaveRequest.status !== "Approved") {
+        return {
+          valid: false,
+          reason: "Leave not approved",
+        };
+      }
+
+      if (leaveRequest.passUsed) {
+        return {
+          valid: false,
+          reason: "Pass already used",
+          usedAt: leaveRequest.passUsedAt,
+        };
+      }
+
+      // Check if leave date is today (Sri Lanka timezone)
+      const sriLankaTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Colombo",
+      });
+      const currentDate = new Date(sriLankaTime);
+      const leaveDate = new Date(leaveRequest.leaveDate);
+
+      const isSameDay =
+        currentDate.getFullYear() === leaveDate.getFullYear() &&
+        currentDate.getMonth() === leaveDate.getMonth() &&
+        currentDate.getDate() === leaveDate.getDate();
+
+      if (!isSameDay) {
+        return {
+          valid: false,
+          reason: "Pass is not valid for today",
+          leaveDate: leaveRequest.leaveDate,
+        };
+      }
+
+      // Check if current time is past 4:30 PM Sri Lanka time
+      const currentHour = currentDate.getHours();
+      const currentMinute = currentDate.getMinutes();
+      const isPastExpiry =
+        currentHour > 16 || (currentHour === 16 && currentMinute >= 30);
+
+      if (isPastExpiry) {
+        return {
+          valid: false,
+          reason: "Pass expired (after 4:30 PM)",
+          expired: true,
+        };
+      }
+
+      // Pass is valid
+      return {
+        valid: true,
+        leaveRequest: {
+          internName: leaveRequest.internName,
+          traineeId: leaveRequest.internTraineeId,
+          nationalId: leaveRequest.nationalId,
+          leaveDate: leaveRequest.leaveDate,
+          leaveTime: leaveRequest.leaveTime,
+          purpose: leaveRequest.purpose,
+          reason: leaveRequest.reason,
+          reviewedBy: leaveRequest.reviewedBy,
+          reviewedAt: leaveRequest.reviewedAt,
+        },
+      };
+    } catch (error) {
+      console.error("Error validating leave pass:", error);
+      throw error;
+    }
+  }
+
+  // Add new method to mark pass as used
+  async markPassAsUsed(token) {
+    try {
+      const leaveRequest = await leaveRequestRepository.findByToken(token);
+
+      if (!leaveRequest) {
+        throw new Error("Leave pass not found");
+      }
+
+      if (leaveRequest.passUsed) {
+        throw new Error("Pass already marked as used");
+      }
+
+      leaveRequest.passUsed = true;
+      leaveRequest.passUsedAt = new Date();
+      await leaveRequest.save();
+
+      return {
+        success: true,
+        message: "Exit marked successfully",
+        usedAt: leaveRequest.passUsedAt,
+      };
+    } catch (error) {
+      console.error("Error marking pass as used:", error);
+      throw error;
     }
   }
 }

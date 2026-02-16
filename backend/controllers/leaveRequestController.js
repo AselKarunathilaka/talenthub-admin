@@ -94,13 +94,19 @@ class LeaveRequestController {
   async getMyLeaveRequests(req, res, next) {
     try {
       const internId = req.user.internId || req.user.id;
-      const { status, page = 1, limit = 10 } = req.query;
+      // Accept `date` param in addition to `status` and pagination
+      const { status, date, page = 1, limit = 10 } = req.query;
 
       const options = {
         status,
+        date, // pass date through to service → repository
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
       };
+
+      console.log(
+        `[getMyLeaveRequests] internId=${internId} date=${date} status=${status} page=${page}`,
+      );
 
       const result = await leaveRequestService.getLeaveRequestsByIntern(
         internId,
@@ -500,6 +506,65 @@ class LeaveRequestController {
       res.send(fileBuffer);
     } catch (error) {
       console.error("Error in getLeaveRequestDocument controller:", error);
+      next(error);
+    }
+  }
+
+  // Validate leave pass
+  async validateLeavePass(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const validation = await leaveRequestService.validateLeavePass(token);
+
+      res.status(200).json({
+        success: true,
+        data: validation,
+      });
+    } catch (error) {
+      console.error("Error in validateLeavePass controller:", error);
+      next(error);
+    }
+  }
+
+  // Mark pass as used
+  async markPassAsUsed(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const result = await leaveRequestService.markPassAsUsed(token);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in markPassAsUsed controller:", error);
+      next(error);
+    }
+  }
+
+  // Get leave pass by token (for intern to view their own pass)
+  async getLeavePassByToken(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const validation = await leaveRequestService.validateLeavePass(token);
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.reason,
+          data: validation,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: validation,
+      });
+    } catch (error) {
+      console.error("Error in getLeavePassByToken controller:", error);
       next(error);
     }
   }

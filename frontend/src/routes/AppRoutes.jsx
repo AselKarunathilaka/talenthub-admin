@@ -7,6 +7,7 @@ import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
 import DailyRecords from "../pages/DailyRecords";
 import MyLeaveRequests from "../pages/MyLeaveRequests";
+import ShortLeavePass from "../pages/ShortLeavePass";
 import SeatReservation from "../pages/SeatReservation";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
@@ -70,6 +71,14 @@ const AppRoutes = () => {
         element={
           <AgreementGuard>
             <MyLeaveRequests />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/leave-pass/:token"
+        element={
+          <AgreementGuard>
+            <ShortLeavePass />
           </AgreementGuard>
         }
       />

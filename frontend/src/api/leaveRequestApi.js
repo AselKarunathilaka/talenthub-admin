@@ -149,7 +149,7 @@ export const bulkUpdateLeaveRequestStatus = async (requestIds, statusData) => {
       `${API_BASE_URL}/leave-requests/bulk/status`,
       {
         requestIds,
-        ...statusData
+        ...statusData,
       },
       {
         headers: getHeaders(),
@@ -186,5 +186,47 @@ export const getLeaveRequestStats = async (params = {}) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || error;
+  }
+};
+
+export const validateLeavePass = async (token) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/leave-requests/pass/validate/${token}`,
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to validate pass");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error validating leave pass:", error);
+    throw error;
+  }
+};
+
+export const markPassAsUsed = async (token) => {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/leave-requests/pass/mark-used/${token}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to mark pass as used");
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error marking pass as used:", error);
+    throw error;
   }
 };

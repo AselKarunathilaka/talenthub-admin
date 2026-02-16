@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const crypto = require("crypto");
 
 const leaveRequestSchema = new mongoose.Schema(
   {
@@ -10,6 +11,10 @@ const leaveRequestSchema = new mongoose.Schema(
     internName: {
       type: String,
       required: true,
+    },
+    internTraineeId: {
+      type: String,
+      default: null,
     },
     nationalId: {
       type: String,
@@ -83,15 +88,36 @@ const leaveRequestSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    passToken: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    passUsed: {
+      type: Boolean,
+      default: false,
+    },
+    passUsedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
   },
 );
 
+// Generate secure token when leave is approved
+leaveRequestSchema.methods.generatePassToken = function () {
+  this.passToken = crypto.randomBytes(32).toString("hex");
+  return this.passToken;
+};
+
 // Index for faster queries
 leaveRequestSchema.index({ intern: 1, status: 1 });
 leaveRequestSchema.index({ status: 1, submittedAt: -1 });
+leaveRequestSchema.index({ passToken: 1 });
 
 const LeaveRequest = mongoose.model("LeaveRequest", leaveRequestSchema);
 
