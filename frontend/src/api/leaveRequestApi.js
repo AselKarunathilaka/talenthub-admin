@@ -189,44 +189,26 @@ export const getLeaveRequestStats = async (params = {}) => {
   }
 };
 
+// Validate a leave pass by token (no auth required — public endpoint for gate staff)
 export const validateLeavePass = async (token) => {
   try {
-    const response = await fetch(
+    const response = await axios.get(
       `${API_BASE_URL}/leave-requests/pass/validate/${token}`,
     );
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to validate pass");
-    }
-
-    return data;
+    return response.data;
   } catch (error) {
-    console.error("Error validating leave pass:", error);
-    throw error;
+    throw error.response?.data || error;
   }
 };
 
+// Mark a leave pass as used by token (no auth required — public endpoint for gate staff)
 export const markPassAsUsed = async (token) => {
   try {
-    const response = await fetch(
+    const response = await axios.post(
       `${API_BASE_URL}/leave-requests/pass/mark-used/${token}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-      },
     );
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to mark pass as used");
-    }
-
-    return data;
+    return response.data;
   } catch (error) {
-    console.error("Error marking pass as used:", error);
-    throw error;
+    throw error.response?.data || error;
   }
 };

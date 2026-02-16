@@ -14,6 +14,7 @@ import {
   FiInfo,
   FiTag,
 } from "react-icons/fi";
+import { validateLeavePass } from "../api/leaveRequestApi"; // ← import shared API fn
 
 const ShortLeavePass = () => {
   const { token } = useParams();
@@ -45,14 +46,11 @@ const ShortLeavePass = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Validate pass every 5 seconds
+  // Validate pass every 5 seconds — now uses shared validateLeavePass()
   useEffect(() => {
     const validatePass = async () => {
       try {
-        const response = await fetch(
-          `http://localhost:5000/api/leave-requests/pass/validate/${token}`,
-        );
-        const result = await response.json();
+        const result = await validateLeavePass(token); // ← uses API_BASE_URL internally
 
         if (!result.success || !result.data.valid) {
           setPassData(null);
