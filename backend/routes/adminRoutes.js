@@ -14,6 +14,8 @@ const {
   syncWithSLTAPI,
   triggerWeeklyNonSubmissionCheck,
   triggerWeeklyNonSubmissionCheckWithExcel,
+  getAdminInternLocations,
+  getDistrictCounts
 } = require("../controllers/adminController");
 const {
   exportOnLeaveExcel,
@@ -63,5 +65,11 @@ router.post(
   "/trigger/weekly-non-submission-check-excel",
   triggerWeeklyNonSubmissionCheckWithExcel,
 );
+
+router.get(
+  "/intern-locations", getAdminInternLocations);
+
+router.get("/district-counts", getDistrictCounts);
+
 
 module.exports = router;

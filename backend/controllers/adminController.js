@@ -1178,6 +1178,74 @@ const triggerWeeklyNonSubmissionCheckWithExcel = async (req, res) => {
   }
 };
 
+const getAdminInternLocations = async (req, res) => {
+  try {
+    const { district } = req.query;
+
+    const filter = {
+      location: { $exists: true },
+      "location.coordinates.0": { $exists: true },
+    };
+
+    // Only apply district filter if it exists and not All
+    if (district && district !== "All") {
+      filter.district = district;
+    }
+
+    const interns = await Intern.find(filter);
+
+    const formatted = interns.map((intern) => ({
+      id: intern.Trainee_ID,
+      name: intern.Trainee_Name,
+      address: intern.Trainee_HomeAddress,
+      district: intern.district || "Unknown",
+      coordinates: intern.location.coordinates,
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: formatted,
+    });
+
+  } catch (error) {
+    console.error("Error fetching intern locations:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
+
+const getDistrictCounts = async (req, res) => {
+  try {
+    const counts = await Intern.aggregate([
+      {
+        $match: {
+          "location.coordinates.0": { $exists: true }
+        }
+      },
+      {
+        $group: {
+          _id: "$district",
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      success: true,
+      data: counts,
+    });
+
+  } catch (error) {
+    console.error("Error getting district counts:", error);
+    res.status(500).json({
+      success: false,
+    });
+  }
+};
+
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -1190,4 +1258,6 @@ module.exports = {
   syncWithSLTAPI,
   triggerWeeklyNonSubmissionCheck,
   triggerWeeklyNonSubmissionCheckWithExcel,
+  getAdminInternLocations,
+  getDistrictCounts
 };

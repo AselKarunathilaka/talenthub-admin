@@ -10,7 +10,22 @@ const path = require('path');
 
 const addIntern = async (req, res) => {
   try {
-    const newIntern = await InternService.addIntern(req.body);
+    const { Trainee_HomeAddress } = req.body;
+
+    let location, district;
+
+    if (Trainee_HomeAddress) {
+      const geo = await geocodeAddress(Trainee_HomeAddress);
+      if (geo) {
+        location = geo.location;
+        district = geo.district;
+      }
+    }
+
+
+    const newIntern = await InternService.addIntern({...req.body,
+      location,
+      district,});
     res.status(201).json({ message: "Intern added successfully!", intern: newIntern });
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -20,8 +35,28 @@ const addIntern = async (req, res) => {
 const addExternalIntern = async (req, res) => {
   try {
     const newInternData = req.body;
+    let location = undefined;
+    let district = "";
+
+    if (newInternData.Trainee_HomeAddress) {
+      const geo = await geocodeAddress(newInternData.Trainee_HomeAddress);
+
+      if (geo) {
+        location = {
+          type: "Point",
+          coordinates: [geo.longitude, geo.latitude],
+        };
+        district = geo.district;
+      }
+    }
     console.log("Received intern data from external system:", newInternData);
-    const newIntern = await InternService.addIntern(newInternData);
+
+    const newIntern = await InternService.addIntern({
+      ...newInternData,
+      location,
+      district,
+    });
+
     res.status(201).json({ message: "Intern added successfully!", intern: newIntern });
   } catch (error) {
     res.status(500).json({ message: "Error adding intern", error: error.message });
