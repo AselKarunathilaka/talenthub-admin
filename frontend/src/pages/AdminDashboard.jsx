@@ -28,6 +28,7 @@ import {
   FaSlidersH,
   FaCalendarCheck,
   FaRegPaperPlane,
+  FaMapMarkedAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -938,6 +939,18 @@ const AdminDashboard = () => {
                     </button>
                   </div>
                 )}
+
+                <motion.button
+                  onClick={() => navigate("/admin/intern-locations")}
+                  className="group relative flex items-center justify-center gap-2 p-4 bg-gradient-to-br from-indigo-100 to-violet-100 hover:from-indigo-200 hover:to-violet-200 text-gray-800 rounded-xl border border-indigo-300 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaMapMarkedAlt className="h-6 w-6 text-blue-500" />
+
+                  <span className="truncate">Intern Locations</span>
+                </motion.button>
+                
               </div>
             </motion.div>
 

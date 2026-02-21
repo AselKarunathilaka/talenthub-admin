@@ -19,6 +19,8 @@ import AgreementGuard from "../components/AgreementGuard";
 import GateStaffLogin from "../pages/GateStaffLogin";
 import GateStaffDashboard from "../pages/GateStaffDashboard";
 import AdminSeatManagement from "../pages/AdminSeatManagement";
+import AdminInternLocations from "../pages/AdminInternLocations";
+
 
 const AppRoutes = () => {
   return (
@@ -105,6 +107,8 @@ const AppRoutes = () => {
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
+      <Route path="/admin/intern-locations"element={<AdminInternLocations />}/>
+
     </Routes>
   );
 };
