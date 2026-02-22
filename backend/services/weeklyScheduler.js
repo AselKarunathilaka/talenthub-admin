@@ -26,14 +26,20 @@ class WeeklyScheduler {
     });
     
     // Schedule non-submission check to run every Sunday at 9:30 AM
+    // Send to both developer and supervisor
     const nonSubmissionCronExpression = '30 9 * * 0';
+    const recipients = [
+      'lakindunaveesha263@gmail.com',  // Developer
+      'mgiri@slt.com.lk'                // Supervisor
+    ];
     
     cron.schedule(nonSubmissionCronExpression, async () => {
       console.log('\n⏰ Weekly logbook non-submission check with Excel attachment triggered by scheduler');
       console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
+      console.log(`📧 Recipients: ${recipients.join(', ')}`);
       
       try {
-        await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel();
+        await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(recipients);
       } catch (error) {
         console.error('❌ Non-submission scheduler error:', error);
       }
@@ -45,6 +51,7 @@ class WeeklyScheduler {
     console.log('✅ Weekly scheduler initialized successfully!');
     console.log(`📅 Work log compliance: Every Sunday at 9:00 AM (Asia/Colombo time)`);
     console.log(`📅 Non-submission alert with Excel: Every Sunday at 9:30 AM (Asia/Colombo time)`);
+    console.log(`📧 Email recipients: ${recipients.join(', ')}`);
   }
   
 
@@ -75,13 +82,22 @@ class WeeklyScheduler {
 
   /**
    * Manual trigger for non-submission check with Excel (can be called via API endpoint)
+   * Can accept custom recipients or use defaults (dev + supervisor)
    */
-  static async triggerManualNonSubmissionCheck() {
+  static async triggerManualNonSubmissionCheck(recipients = null) {
     console.log('\n🔧 Manual non-submission check with Excel triggered');
     console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
     
+    // Use provided recipients or default to both dev and supervisor
+    const emailRecipients = recipients || [
+      'lakindunaveesha263@gmail.com',  // Developer
+      'mgiri@slt.com.lk'                // Supervisor
+    ];
+    
+    console.log(`📧 Recipients: ${Array.isArray(emailRecipients) ? emailRecipients.join(', ') : emailRecipients}`);
+    
     try {
-      const results = await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel('manual');
+      const results = await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(emailRecipients, 'manual');
       return {
         success: true,
         timestamp: new Date(),
