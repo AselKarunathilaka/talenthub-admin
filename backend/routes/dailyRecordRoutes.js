@@ -5,7 +5,8 @@ const {
   getDailyRecords,
   getDailyRecordById,
   updateDailyRecord,
-  deleteDailyRecord
+  deleteDailyRecord,
+  exportDailyRecordsPDF,
 } = require("../controllers/dailyRecordController");
 
 const router = express.Router();
@@ -18,6 +19,9 @@ router.post("/", createDailyRecord);
 
 // Get all daily records (filtered by user role)
 router.get("/", getDailyRecords);
+
+// Export daily records as PDF (must be before /:id to avoid conflict)
+router.get("/export/pdf", exportDailyRecordsPDF);
 
 // Get a specific daily record by ID
 router.get("/:id", getDailyRecordById);
