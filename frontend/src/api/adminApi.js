@@ -159,17 +159,30 @@ export const adminApi = {
   },
 
   // Get all daily records
-  getAllDailyRecords: async () => {
+  getAllDailyRecords: async ({
+    page = 1,
+    limit = 50,
+    search = "",
+    date = "",
+  } = {}) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/daily-records`, {
-        method: "GET",
-        headers: getHeaders(),
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        ...(search ? { search } : {}),
+        ...(date ? { date } : {}),
       });
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/daily-records?${params.toString()}`,
+        { method: "GET", headers: getHeaders() },
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch daily records: ${response.status}`);
       }
 
+      // Returns { records: [...], pagination: { total, page, limit, totalPages, hasNextPage, hasPrevPage } }
       return await response.json();
     } catch (error) {
       console.error("Error fetching daily records:", error);

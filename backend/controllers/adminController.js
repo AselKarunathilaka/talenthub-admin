@@ -12,67 +12,71 @@ const getDashboardStats = async (req, res) => {
     const userId = req.user.id;
 
     // Verify admin user
-    const adminUser = await User.findById(userId);
+    const adminUser = await User.findById(userId).lean();
     if (!adminUser) {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get all interns
-    const interns = await Intern.find({});
-
-    // Get all records
-    const records = await DailyRecord.find({})
-      .populate("internId", "traineeName traineeId email")
-      .sort({ createdAt: -1 });
-
-    // Calculate statistics
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    threeDaysAgo.setHours(0, 0, 0, 0);
 
-    const overdueInterns = [];
-    const submittedInterns = [];
+    // Run both queries in parallel
+    const [interns, submissionSummary] = await Promise.all([
+      // 1. Fetch all interns as plain objects (fast)
+      Intern.find({}).lean(),
 
-    for (const intern of interns) {
-      const internRecords = records.filter(
-        (record) =>
-          record.internId &&
-          record.internId._id.toString() === intern._id.toString(),
-      );
+      // 2. Aggregate DailyRecord collection:
+      //    For each intern, return only their latest submission date + count.
+      //    This is O(records) in the DB but returns only N rows (one per intern).
+      DailyRecord.aggregate([
+        {
+          $group: {
+            _id: "$internId",
+            latestSubmission: { $max: "$createdAt" },
+            totalRecords: { $sum: 1 },
+          },
+        },
+      ]),
+    ]);
 
-      if (internRecords.length === 0) {
-        overdueInterns.push(intern);
-      } else {
-        const latestRecord = internRecords[0]; // Already sorted by createdAt desc
-        if (new Date(latestRecord.createdAt) < threeDaysAgo) {
-          overdueInterns.push(intern);
-        } else {
-          submittedInterns.push(intern);
-        }
+    // Build O(1) lookup map:  internId string → { latestSubmission, totalRecords }
+    const submissionMap = new Map();
+    for (const s of submissionSummary) {
+      if (s._id) {
+        submissionMap.set(s._id.toString(), {
+          latestSubmission: s.latestSubmission,
+          totalRecords: s.totalRecords,
+        });
       }
     }
 
-    const stats = {
-      totalInterns: interns.length,
-      totalRecords: records.length,
-      submittedInterns: submittedInterns.length,
-      overdueInterns: overdueInterns.length,
-      overdueList: overdueInterns.map((intern) => {
-        const internRecords = records.filter(
-          (record) =>
-            record.internId &&
-            record.internId._id.toString() === intern._id.toString(),
-        );
-        const lastSubmission = getLastSubmissionDate(intern._id, records);
-        const daysSinceLastSubmission = lastSubmission
+    // Classify each intern as submitted / overdue
+    const overdueList = [];
+    let submittedCount = 0;
+    let totalRecords = 0;
+
+    for (const intern of interns) {
+      const key = intern._id.toString();
+      const summary = submissionMap.get(key);
+
+      const latestSubmission = summary?.latestSubmission ?? null;
+      const internTotalRec = summary?.totalRecords ?? 0;
+      totalRecords += internTotalRec;
+
+      // Overdue = never submitted, OR latest submission older than 3 days
+      const isOverdue =
+        !latestSubmission || new Date(latestSubmission) < threeDaysAgo;
+
+      if (isOverdue) {
+        const daysSince = latestSubmission
           ? Math.floor(
-              (new Date() - new Date(lastSubmission)) / (1000 * 60 * 60 * 24),
+              (Date.now() - new Date(latestSubmission).getTime()) /
+                (1000 * 60 * 60 * 24),
             )
           : null;
-        const instituteValue =
-          intern.Institute && intern.Institute.trim()
-            ? intern.Institute
-            : "Not Specified";
-        return {
+
+        overdueList.push({
           _id: intern._id,
           traineeId: intern.Trainee_ID,
           traineeName: intern.Trainee_Name,
@@ -80,15 +84,25 @@ const getDashboardStats = async (req, res) => {
           trainingStartDate: intern.Training_StartDate,
           trainingEndDate: intern.Training_EndDate,
           fieldOfSpecialization: intern.field_of_spec_name,
-          institute: instituteValue,
-          totalRecords: internRecords.length,
-          lastSubmission: lastSubmission,
-          daysSinceLastSubmission: daysSinceLastSubmission,
-        };
-      }),
-    };
+          institute: intern.Institute?.trim()
+            ? intern.Institute
+            : "Not Specified",
+          totalRecords: internTotalRec,
+          lastSubmission: latestSubmission,
+          daysSinceLastSubmission: daysSince,
+        });
+      } else {
+        submittedCount++;
+      }
+    }
 
-    res.status(200).json(stats);
+    return res.status(200).json({
+      totalInterns: interns.length,
+      totalRecords,
+      submittedInterns: submittedCount,
+      overdueInterns: overdueList.length,
+      overdueList,
+    });
   } catch (error) {
     console.error("Error getting dashboard stats:", error);
     res.status(500).json({ error: "Failed to get dashboard statistics" });
@@ -489,104 +503,79 @@ const getLastSubmissionDate = (internId, records) => {
 // Get all daily records for admin view
 const getAllDailyRecords = async (req, res) => {
   try {
-    console.log("getAllDailyRecords - User info from token:", req.user);
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+    const skip = (page - 1) * limit;
 
-    const userId = req.user.id || req.user._id;
+    const date = (req.query.date || "").trim(); // "YYYY-MM-DD"
+    const search = (req.query.search || "").trim();
 
-    // Verify admin user - be more flexible with user verification
-    let adminUser = null;
-    try {
-      adminUser = await User.findById(userId);
-      console.log("Admin user found:", adminUser ? "Yes" : "No");
-    } catch (userError) {
-      console.log(
-        "User verification error (continuing anyway):",
-        userError.message,
-      );
+    // 1. Build record-level filter
+    const recordFilter = {};
+
+    // Always filter by date so we only load one day at a time
+    if (date) {
+      recordFilter.date = date;
     }
 
-    // For now, allow the request to continue even if user verification fails
-    // This is to debug the main issue with intern details
-    console.log("Fetching all daily records with intern details...");
+    // 2. Resolve intern IDs when search term present
+    if (search) {
+      const Intern = require("../models/Intern");
+      const matchingInterns = await Intern.find(
+        {
+          $or: [
+            { Trainee_Name: { $regex: search, $options: "i" } },
+            { Trainee_ID: { $regex: search, $options: "i" } },
+          ],
+        },
+        "_id",
+      ).lean();
 
-    // Get all daily records with intern details
-    const records = await DailyRecord.find({})
-      .populate({
-        path: "internId",
-        select:
-          "Trainee_Name Trainee_ID Trainee_Email field_of_spec_name Institute team",
-        model: "Intern",
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    console.log(`Found ${records.length} daily records from database`);
-
-    // Format records for frontend consumption
-    const formattedRecords = records.map((record) => {
-      console.log("Record internId:", record.internId);
-
-      return {
-        _id: record._id,
-        date: record.date,
-        createdAt: record.createdAt,
-        taskDescription: record.task || record.tasks || "No description",
-        stack: record.stack || "No stack specified",
-        task: record.task || "No task specified",
-        progress: record.progress || "No progress specified",
-        blockers: record.blockers || "No blockers specified",
-        status: record.status || "working",
-        hoursWorked: record.hoursWorked || 0,
-        internId: record.internId?._id || record.internId,
-        Trainee_Name: record.internId?.Trainee_Name || "N/A",
-        Trainee_ID: record.internId?.Trainee_ID || "N/A",
-        Trainee_Email: record.internId?.Trainee_Email || "N/A",
-        field_of_spec_name: record.internId?.field_of_spec_name || "N/A",
-        Institute: record.internId?.Institute || "N/A",
-        team: record.internId?.team || "N/A",
-      };
-    });
-
-    console.log(
-      `Formatted ${formattedRecords.length} daily records for admin view`,
-    );
-    console.log("Sample record:", JSON.stringify(formattedRecords[0], null, 2));
-
-    res.status(200).json(formattedRecords);
-  } catch (error) {
-    console.error("Error getting all daily records:", error);
-
-    // Try to get basic info for debugging
-    try {
-      const recordCount = await DailyRecord.countDocuments();
-      const internCount = await Intern.countDocuments();
-      console.log(
-        `Debug info - Records count: ${recordCount}, Interns count: ${internCount}`,
-      );
-
-      if (recordCount > 0) {
-        const sampleRecord = await DailyRecord.findOne().lean();
-        console.log(
-          "Sample record without populate:",
-          JSON.stringify(sampleRecord, null, 2),
-        );
-
-        const populatedRecord = await DailyRecord.findById(sampleRecord._id)
-          .populate("internId")
-          .lean();
-        console.log(
-          "Sample record with populate:",
-          JSON.stringify(populatedRecord, null, 2),
-        );
+      if (matchingInterns.length === 0) {
+        // Short-circuit — no interns matched the search
+        return res.status(200).json({
+          records: [],
+          pagination: {
+            total: 0,
+            page,
+            limit,
+            totalPages: 0,
+            hasNextPage: false,
+            hasPrevPage: false,
+          },
+        });
       }
-    } catch (debugError) {
-      console.error("Debug query failed:", debugError);
+
+      recordFilter.internId = { $in: matchingInterns.map((i) => i._id) };
     }
 
-    res.status(500).json({
-      error: "Failed to get daily records",
-      details: error.message,
+    // 3. Count + paginated fetch (parallel)
+    const [total, records] = await Promise.all([
+      DailyRecord.countDocuments(recordFilter),
+      DailyRecord.find(recordFilter)
+        .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
+        .sort({ createdAt: -1 }) // newest submission first within the day
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return res.status(200).json({
+      records,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
     });
+  } catch (error) {
+    console.error("Error fetching daily records:", error);
+    res.status(500).json({ error: "Failed to fetch daily records" });
   }
 };
 
@@ -1206,7 +1195,6 @@ const getAdminInternLocations = async (req, res) => {
       success: true,
       data: formatted,
     });
-
   } catch (error) {
     console.error("Error fetching intern locations:", error);
     res.status(500).json({
@@ -1221,22 +1209,21 @@ const getDistrictCounts = async (req, res) => {
     const counts = await Intern.aggregate([
       {
         $match: {
-          "location.coordinates.0": { $exists: true }
-        }
+          "location.coordinates.0": { $exists: true },
+        },
       },
       {
         $group: {
           _id: "$district",
-          count: { $sum: 1 }
-        }
-      }
+          count: { $sum: 1 },
+        },
+      },
     ]);
 
     res.status(200).json({
       success: true,
       data: counts,
     });
-
   } catch (error) {
     console.error("Error getting district counts:", error);
     res.status(500).json({
@@ -1244,7 +1231,6 @@ const getDistrictCounts = async (req, res) => {
     });
   }
 };
-
 
 module.exports = {
   getDashboardStats,
@@ -1259,5 +1245,5 @@ module.exports = {
   triggerWeeklyNonSubmissionCheck,
   triggerWeeklyNonSubmissionCheckWithExcel,
   getAdminInternLocations,
-  getDistrictCounts
+  getDistrictCounts,
 };
