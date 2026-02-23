@@ -775,7 +775,9 @@ const AdminDailyRecords = () => {
                               </p>
                               <motion.button
                                 onClick={() =>
-                                  navigate(`/admin/intern/${iid}/records`)
+                                  navigate(`/admin/intern/${iid}/records`, {
+                                    state: { from: "daily-records" },
+                                  })
                                 }
                                 className="flex items-center text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs"
                                 whileHover={{ scale: 1.05 }}
@@ -867,7 +869,9 @@ const AdminDailyRecords = () => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <motion.button
                                     onClick={() =>
-                                      navigate(`/admin/intern/${iid}/records`)
+                                      navigate(`/admin/intern/${iid}/records`, {
+                                        state: { from: "daily-records" },
+                                      })
                                     }
                                     className="inline-flex items-center gap-1.5 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1.5 rounded-xl text-sm transition-colors shadow-sm"
                                     whileHover={{ scale: 1.05 }}
