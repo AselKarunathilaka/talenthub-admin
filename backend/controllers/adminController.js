@@ -1232,6 +1232,56 @@ const getDistrictCounts = async (req, res) => {
   }
 };
 
+// Get a single intern's location by Trainee_ID (for the map search feature)
+const getInternLocationById = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { traineeId } = req.params;
+
+    const adminUser = await User.findById(userId).lean();
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    if (!traineeId) {
+      return res.status(400).json({ error: "Trainee ID is required" });
+    }
+
+    // Case-insensitive search by Trainee_ID
+    const intern = await Intern.findOne({
+      Trainee_ID: { $regex: new RegExp(`^${traineeId.trim()}$`, "i") },
+    }).lean();
+
+    if (!intern) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Intern not found" });
+    }
+
+    const hasLocation =
+      intern.location &&
+      Array.isArray(intern.location.coordinates) &&
+      intern.location.coordinates.length === 2;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        id: intern.Trainee_ID,
+        name: intern.Trainee_Name,
+        address: intern.Trainee_HomeAddress || "",
+        district: intern.district || "",
+        // coordinates is [longitude, latitude] — same shape as getAdminInternLocations
+        coordinates: hasLocation ? intern.location.coordinates : null,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching intern location by ID:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch intern location" });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -1246,4 +1296,5 @@ module.exports = {
   triggerWeeklyNonSubmissionCheckWithExcel,
   getAdminInternLocations,
   getDistrictCounts,
+  getInternLocationById,
 };

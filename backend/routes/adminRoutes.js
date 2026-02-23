@@ -15,7 +15,8 @@ const {
   triggerWeeklyNonSubmissionCheck,
   triggerWeeklyNonSubmissionCheckWithExcel,
   getAdminInternLocations,
-  getDistrictCounts
+  getDistrictCounts,
+  getInternLocationById,
 } = require("../controllers/adminController");
 const {
   exportOnLeaveExcel,
@@ -66,10 +67,10 @@ router.post(
   triggerWeeklyNonSubmissionCheckWithExcel,
 );
 
-router.get(
-  "/intern-locations", getAdminInternLocations);
+router.get("/intern-locations", getAdminInternLocations);
 
 router.get("/district-counts", getDistrictCounts);
 
+router.get("/intern-location/:traineeId", getInternLocationById);
 
 module.exports = router;
