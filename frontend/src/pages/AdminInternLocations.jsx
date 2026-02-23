@@ -25,13 +25,14 @@ const AdminInternLocations = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const API_BASE = import.meta.env.VITE_BACKEND_URL;
   const fetchInternLocations = useCallback(async (token) => {
     try {
       setLoading(true);
       setError(null);
 
       const res = await axios.get(
-        "http://localhost:5000/api/admin/intern-locations",
+        `${API_BASE}/admin/intern-locations`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
