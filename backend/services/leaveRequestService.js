@@ -71,6 +71,22 @@ class LeaveRequestService {
         throw new Error("Leave date cannot be in the past");
       }
 
+      // Validate short leave request time (8 AM to 1 PM Sri Lanka Time)
+      const moment = require("moment");
+      const sriLankaNow = moment().utcOffset("+05:30");
+      const currentHour = sriLankaNow.hour();
+      const currentMinute = sriLankaNow.minute();
+      
+      // Check if current time is between 8:00 AM and 1:00 PM
+      const isWithinAllowedTime = 
+        (currentHour === 8 && currentMinute >= 0) ||
+        (currentHour > 8 && currentHour < 13) ||
+        (currentHour === 13 && currentMinute === 0);
+
+      if (!isWithinAllowedTime) {
+        throw new Error("Short leave requests can only be submitted between 8:00 AM and 1:00 PM Sri Lanka Time");
+      }
+
       // Create leave request
       console.log(
         `Creating leave request for intern: ${internId}, Trainee_ID: ${intern.Trainee_ID}`,
@@ -83,8 +99,9 @@ class LeaveRequestService {
         ...leaveRequestData,
       });
 
-      // Send notification email to admin
-      await this.notifyAdminNewRequest(leaveRequest);
+      // NOTE: Individual notification emails are disabled
+      // All short leave requests are sent together at 1 PM via scheduled email
+      // await this.notifyAdminNewRequest(leaveRequest);
 
       console.log(
         `Leave request created by intern ${internId}, stored Trainee_ID: ${leaveRequest.internTraineeId}`,
