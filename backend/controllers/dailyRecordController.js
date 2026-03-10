@@ -1,11 +1,12 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
+const { validateDailyRecordContent } = require("../middleware/contentValidation");
 
 // Create a new daily record
 const createDailyRecord = async (req, res) => {
   try {
-  const { date, stack, task, progress, blockers, status } = req.body;
+    const { date, stack, task, progress, blockers, status } = req.body;
     const userId = req.user.id;
     const userEmail = req.user.email;
 
@@ -15,7 +16,7 @@ const createDailyRecord = async (req, res) => {
     if (status === 'leave') {
       const leaveCheck = checkLeaveSubmissionAllowed();
       if (!leaveCheck.allowed) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: leaveCheck.message,
           timeRestriction: true,
           currentTime: leaveCheck.currentTime
@@ -23,25 +24,37 @@ const createDailyRecord = async (req, res) => {
       }
     }
 
+    // ── Content quality validation ──────────────────────────────────────
+    const contentCheck = validateDailyRecordContent({ task, stack, progress, blockers, status });
+    if (!contentCheck.valid) {
+      return res.status(400).json({
+        error: "Content quality check failed",
+        details: contentCheck.reasons,
+        flagReason: contentCheck.flagReason,
+        message: "Your submission could not be saved. Please review the issues below and resubmit with accurate work details."
+      });
+    }
+    // ───────────────────────────────────────────────────────────────────
+
     // The user ID could be either a User (admin) or Intern ID directly
     // For daily records, we need to find the intern
     let internId;
-    
+
     // First, try to find intern by ID directly (for Google login case)
     let intern = await Intern.findById(userId);
-    
+
     if (!intern) {
       // If not found by ID, try to find by email (for cases where user logged in with email)
       intern = await Intern.findOne({ email: userEmail });
     }
-    
+
     if (!intern) {
       // If still not found, try to find intern by userId (for admin login case - though admins shouldn't create records)
       intern = await Intern.findOne({ userId: userId });
     }
-    
+
     if (!intern) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: "Intern record not found. Please contact your administrator to set up your intern profile.",
         details: `No intern found for email: ${userEmail}`
       });
@@ -50,9 +63,9 @@ const createDailyRecord = async (req, res) => {
     internId = intern._id;
 
     // Check if a record already exists for this date
-    const existingRecord = await DailyRecord.findOne({ 
-      internId: internId, 
-      date: date 
+    const existingRecord = await DailyRecord.findOne({
+      internId: internId,
+      date: date
     });
 
     if (existingRecord) {
@@ -62,11 +75,16 @@ const createDailyRecord = async (req, res) => {
       existingRecord.progress = progress || "No challenges faced";
       existingRecord.blockers = blockers || "No specific plans";
       if (status) existingRecord.status = status;
+      // Clear any previous flag since content passed validation
+      existingRecord.flagged = false;
+      existingRecord.flagReason = null;
+      existingRecord.flaggedAt = null;
+      existingRecord.flagDetails = [];
 
       await existingRecord.save();
 
       // Populate the intern details
-  await existingRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
+      await existingRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
 
       return res.status(200).json(existingRecord);
     } else {
@@ -78,42 +96,46 @@ const createDailyRecord = async (req, res) => {
         task,
         progress: progress || "No challenges faced",
         blockers: blockers || "No specific plans",
-        status: status || "working"
+        status: status || "working",
+        flagged: false,
+        flagReason: null,
+        flaggedAt: null,
+        flagDetails: []
       });
 
       await newRecord.save();
 
       // Populate the intern details
-  await newRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
+      await newRecord.populate('internId', 'Trainee_Name Trainee_ID Trainee_Email');
 
       return res.status(201).json(newRecord);
     }
   } catch (error) {
     console.error("Error creating daily record:", error);
-    
+
     if (error.code === 11000) {
       return res.status(400).json({ error: "A record for this date already exists" });
     }
-    
+
     // Check for validation errors (e.g., field too long)
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map(err => err.message);
-      return res.status(400).json({ 
-        error: "Validation failed", 
+      return res.status(400).json({
+        error: "Validation failed",
         details: validationErrors,
         message: "Please check that your entries are not too long. Each field has a maximum character limit."
       });
     }
-    
+
     // Check for payload too large error
     if (error.type === 'entity.too.large') {
-      return res.status(413).json({ 
-        error: "Request too large", 
+      return res.status(413).json({
+        error: "Request too large",
         message: "Your submission contains too much data. Please reduce the length of your entries."
       });
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       error: "Failed to create daily record",
       message: "Please try submitting with shorter entries. If the problem persists, contact support."
     });
@@ -127,32 +149,32 @@ const getDailyRecords = async (req, res) => {
     const userEmail = req.user.email;
 
     let query = {};
-    
+
     // Check if this is an admin or intern request
     // If the user ID corresponds to a User (admin), show all records
     // If the user ID corresponds to an Intern, show only their records
-    
+
     // First check if this is an admin user
     const adminUser = await require("../models/User").findById(userId);
-    
+
     if (!adminUser) {
       // This is likely an intern login, filter by their records
-      
+
       // Try to find intern by ID first (Google login case)
       let intern = await Intern.findById(userId);
-      
+
       if (!intern) {
         // Try to find by email (backup case)
         intern = await Intern.findOne({ email: userEmail });
       }
-      
+
       if (!intern) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: "Intern record not found. Please contact your administrator.",
           details: `No intern found for email: ${userEmail}`
         });
       }
-      
+
       query.internId = intern._id;
     } else {
       // Admin can see all records - no filter needed
@@ -176,14 +198,14 @@ const getDailyRecordById = async (req, res) => {
     const userId = req.user.id;
 
     const record = await DailyRecord.findById(id).populate('internId', 'traineeName traineeId email');
-    
+
     if (!record) {
       return res.status(404).json({ error: "Daily record not found" });
     }
 
     // Check if user has permission to view this record
     const adminUser = await require("../models/User").findById(userId);
-    
+
     if (!adminUser) {
       // This is an intern user, check if they own this record
       const intern = await Intern.findById(userId);
@@ -211,7 +233,7 @@ const updateDailyRecord = async (req, res) => {
     if (status === 'leave') {
       const leaveCheck = checkLeaveSubmissionAllowed();
       if (!leaveCheck.allowed) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: leaveCheck.message,
           timeRestriction: true,
           currentTime: leaveCheck.currentTime
@@ -219,15 +241,34 @@ const updateDailyRecord = async (req, res) => {
       }
     }
 
+    // ── Content quality validation on update ───────────────────────────
+    const { task: updTask, progress: updProgress, blockers: updBlockers } = req.body;
+    const contentCheck = validateDailyRecordContent({
+      task: updTask,
+      stack: req.body.stack,
+      progress: updProgress,
+      blockers: updBlockers,
+      status
+    });
+    if (!contentCheck.valid) {
+      return res.status(400).json({
+        error: "Content quality check failed",
+        details: contentCheck.reasons,
+        flagReason: contentCheck.flagReason,
+        message: "Your update could not be saved. Please review the issues below and resubmit with accurate work details."
+      });
+    }
+    // ───────────────────────────────────────────────────────────────────
+
     const record = await DailyRecord.findById(id);
-    
+
     if (!record) {
       return res.status(404).json({ error: "Daily record not found" });
     }
 
     // Check if user has permission to update this record
     const adminUser = await require("../models/User").findById(userId);
-    
+
     if (!adminUser) {
       // This is an intern user, check if they own this record
       const intern = await Intern.findById(userId);
@@ -260,14 +301,14 @@ const deleteDailyRecord = async (req, res) => {
     const userId = req.user.id;
 
     const record = await DailyRecord.findById(id);
-    
+
     if (!record) {
       return res.status(404).json({ error: "Daily record not found" });
     }
 
     // Check if user has permission to delete this record
     const adminUser = await require("../models/User").findById(userId);
-    
+
     if (!adminUser) {
       // This is an intern user, check if they own this record
       const intern = await Intern.findById(userId);

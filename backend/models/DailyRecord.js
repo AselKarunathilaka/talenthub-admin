@@ -39,6 +39,24 @@ const DailyRecordSchema = new mongoose.Schema({
     enum: ["working", "leave", "wfh"],
     default: "working"
   },
+  // Content quality flagging
+  flagged: {
+    type: Boolean,
+    default: false
+  },
+  flagReason: {
+    type: String,
+    enum: ["off_topic_content", "low_entropy", "blacklisted_phrase", "too_short", "quality_check_failed", null],
+    default: null
+  },
+  flaggedAt: {
+    type: Date,
+    default: null
+  },
+  flagDetails: {
+    type: [String],
+    default: []
+  },
   attendance: {
     type: String,
     enum: ["present", "absent", "late"],
