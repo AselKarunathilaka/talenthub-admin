@@ -1,17 +1,20 @@
 # Short Leave Request Automated Email Feature
 
 ## Overview
+
 This feature automates the short leave request process by enforcing time windows for submissions and automatically sending consolidated reports to the Digital Platforms Development team.
 
 ## How It Works
 
 ### 1. Request Submission Window (8 AM - 1 PM)
+
 - **Time Window**: Interns can ONLY submit short leave requests between 8:00 AM and 1:00 PM (Sri Lanka Time)
 - **Validation**: System automatically validates submission time
 - **Error Handling**: Requests outside this window are rejected with clear error message
 - **Leave Date**: Requests are for the SAME DAY
 
 ### 2. Automated 1 PM Email Report
+
 - **Schedule**: Every day at 1:00 PM (Sri Lanka time)
 - **Logic**:
   - Collects ALL short leave requests submitted between 8 AM - 1 PM
@@ -22,18 +25,22 @@ This feature automates the short leave request process by enforcing time windows
 - **Attachment**: Excel file containing all short leave requests
 
 ### 3. Admin Approval Process
+
 - **Timing**: Admin reviews and approves requests after 1:30 PM
 - **Previous Flow**: Approved leaves are sent at 4:00 PM (existing functionality)
 
 ## Email Configuration
 
 ### New Domain Email Setup
+
 The system now uses a dedicated domain email for short leave notifications:
+
 - **Email**: `internship-management-systems@slt.com.lk`
 - **Purpose**: Sender for 1 PM short leave requests report
 - **Recipient Group**: `digitalplatformsdev@slt.com.lk`
 
 ### Environment Variables Required
+
 Add these to your `.env` file:
 
 ```env
@@ -50,6 +57,7 @@ SHORT_LEAVE_RECIPIENT=digitalplatformsdev@slt.com.lk
 ## Files Created/Modified
 
 ### New Files:
+
 1. **`backend/services/shortLeaveEmailService.js`**
    - Service handling short leave email generation and sending
    - Methods:
@@ -58,6 +66,7 @@ SHORT_LEAVE_RECIPIENT=digitalplatformsdev@slt.com.lk
      - `sendDailyShortLeaveReport()` - Main method called by scheduler
 
 ### Modified Files:
+
 1. **`backend/services/leaveRequestService.js`**
    - Added time validation (8 AM - 1 PM) in `createLeaveRequest()` method
    - Validates current time against allowed submission window
@@ -83,7 +92,7 @@ SHORT_LEAVE_RECIPIENT=digitalplatformsdev@slt.com.lk
                               Email sent to                Approved leaves
                               Digital Platforms            email sent to
                               Dev team with all            gate staff
-                              submitted requests           
+                              submitted requests
                                           │
                                           └─ Admin reviews
                                              and approves
@@ -93,6 +102,7 @@ SHORT_LEAVE_RECIPIENT=digitalplatformsdev@slt.com.lk
 ## Excel Report Contents
 
 The 1 PM Excel report includes:
+
 - **No.**: Sequential number
 - **Intern Name**: Full name
 - **Trainee ID**: SLT trainee identifier
@@ -107,6 +117,7 @@ The 1 PM Excel report includes:
 ## Email Template
 
 The email sent at 1 PM includes:
+
 - Header identifying it as Short Leave Requests Report
 - Summary statistics (date, time window, total requests)
 - Excel attachment with all requests
@@ -117,7 +128,9 @@ The email sent at 1 PM includes:
 ## Testing
 
 ### Test Short Leave Submission
+
 1. Submit a leave request between 8 AM - 1 PM:
+
 ```bash
 # Will succeed
 curl -X POST http://localhost:5000/api/interns/leave-requests \
@@ -133,12 +146,15 @@ curl -X POST http://localhost:5000/api/interns/leave-requests \
 ```
 
 2. Try submitting outside 8 AM - 1 PM window:
+
 ```bash
 # Will be rejected with error message
 ```
 
 ### Test 1 PM Email Report
+
 Manually trigger the report (for testing):
+
 ```bash
 cd backend
 node -e "require('./services/shortLeaveEmailService').sendDailyShortLeaveReport()"
@@ -155,22 +171,26 @@ node -e "require('./services/shortLeaveEmailService').sendDailyShortLeaveReport(
 ## Troubleshooting
 
 ### Email Not Sending
+
 - Check `SHORT_LEAVE_EMAIL` and `SHORT_LEAVE_EMAIL_PASS` in `.env`
 - Verify SMTP host and port settings
 - Check if sender email has SMTP/app password enabled
 - Ensure recipient email group exists and accepts external emails
 
 ### Time Validation Issues
+
 - Verify server timezone matches Sri Lanka (Asia/Colombo)
 - Check moment.js is properly installed
 - Review server logs for time validation errors
 
 ### No Requests in Report
+
 - Verify requests were submitted between 8 AM - 1 PM
 - Check if requests are for the current day
 - Review database query date ranges in logs
 
 ## Future Enhancements
+
 - Add configurable time windows via admin panel
 - Support multiple recipient groups
 - Add manual resend functionality for failed emails

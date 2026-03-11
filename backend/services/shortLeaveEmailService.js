@@ -264,21 +264,35 @@ class ShortLeaveEmailService {
       };
 
       // Validate email configuration
-      if (!process.env.SHORT_LEAVE_EMAIL || !process.env.SHORT_LEAVE_EMAIL_PASS) {
+      if (!process.env.SHORT_LEAVE_EMAIL) {
         throw new Error(
-          "Email config missing: SHORT_LEAVE_EMAIL or SHORT_LEAVE_EMAIL_PASS not set",
+          "Email config missing: SHORT_LEAVE_EMAIL not set",
         );
       }
 
-      const transporter = nodemailer.createTransport({
-        host: process.env.SHORT_LEAVE_SMTP_HOST || "smtp.gmail.com",
-        port: process.env.SHORT_LEAVE_SMTP_PORT || 587,
+      // Configure transporter based on SMTP port
+      const smtpPort = parseInt(process.env.SHORT_LEAVE_SMTP_PORT || "25");
+      const smtpHost = process.env.SHORT_LEAVE_SMTP_HOST || "smtp.slt.com.lk";
+      
+      const transportConfig = {
+        host: smtpHost,
+        port: smtpPort,
         secure: false, // true for 465, false for other ports
-        auth: { 
-          user: process.env.SHORT_LEAVE_EMAIL, 
-          pass: process.env.SHORT_LEAVE_EMAIL_PASS 
-        },
-      });
+      };
+
+      // Port 25 typically doesn't need authentication (internal relay)
+      // Ports 587/465 require authentication
+      if (smtpPort !== 25 && process.env.SHORT_LEAVE_EMAIL_PASS) {
+        transportConfig.auth = {
+          user: process.env.SHORT_LEAVE_EMAIL,
+          pass: process.env.SHORT_LEAVE_EMAIL_PASS
+        };
+        console.log(`📧 Using authenticated SMTP on port ${smtpPort}`);
+      } else {
+        console.log(`📧 Using passwordless SMTP relay on port ${smtpPort}`);
+      }
+
+      const transporter = nodemailer.createTransport(transportConfig);
 
       const info = await transporter.sendMail(mailOptions);
       console.log(
