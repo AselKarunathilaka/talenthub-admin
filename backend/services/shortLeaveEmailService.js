@@ -6,7 +6,7 @@ const moment = require("moment");
 
 class ShortLeaveEmailService {
   /**
-   * Generate Excel file with short leave requests submitted between 8 AM - 1 PM
+   * Generate Excel file with short leave requests submitted between 8:30 AM - 1:00 PM
    */
   static generateShortLeaveRequestsExcel(shortLeaveRequests) {
     try {
@@ -22,7 +22,7 @@ class ShortLeaveEmailService {
       ]);
       excelData.push([
         "Request Window:",
-        "8:00 AM to 1:00 PM (submitted during this time)",
+        "8:30 AM to 1:00 PM (submitted during this time)",
       ]);
       excelData.push([
         "Total Short Leave Requests:",
@@ -131,7 +131,7 @@ class ShortLeaveEmailService {
     try {
       if (!shortLeaveRequests || shortLeaveRequests.length === 0) {
         console.log(
-          "📭 No short leave requests submitted today (8 AM - 1 PM) — skipping email",
+          "📝 No short leave requests submitted today (8:30 AM - 1:00 PM) — skipping email",
         );
         return {
           success: true,
@@ -145,7 +145,7 @@ class ShortLeaveEmailService {
         this.generateShortLeaveRequestsExcel(shortLeaveRequests);
 
       const todayStr = moment().utcOffset("+05:30").format("MMM DD, YYYY");
-      const subject = `📋 Short Leave Requests (8 AM - 1 PM) — ${shortLeaveRequests.length} Intern(s) — ${todayStr}`;
+      const subject = `📋 Short Leave Requests (8:30 AM - 1:00 PM) — ${shortLeaveRequests.length} Intern(s) — ${todayStr}`;
 
       // Build HTML table rows for interns (showing first 10 in email body)
       let tableRows = "";
@@ -199,14 +199,14 @@ class ShortLeaveEmailService {
   <div class="container">
     <div class="header">
       <h1 style="margin: 0;">📋 SHORT LEAVE REQUESTS REPORT</h1>
-      <p style="margin: 10px 0 0 0; font-size: 16px;">TalentHub Intern Management System — 1:00 PM Daily Summary</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px;">TalentHub Intern Management System — 1:30 PM Daily Summary</p>
     </div>
     <div class="content">
       <h2>Dear Digital Platforms Development Team,</h2>
       <div class="summary">
         <h3 style="margin-top: 0;">📊 Request Summary</h3>
         <p><strong>📅 Date:</strong> ${todayStr}</p>
-        <p><strong>⏰ Request Window:</strong> 8:00 AM - 1:00 PM (Sri Lanka Time)</p>
+        <p><strong>⏰ Request Window:</strong> 8:30 AM - 1:00 PM (Sri Lanka Time)</p>
         <p><strong>👥 Total Short Leave Requests:</strong> <span class="badge">${shortLeaveRequests.length}</span></p>
       </div>
       <div class="attachment-notice">
@@ -235,12 +235,12 @@ class ShortLeaveEmailService {
       <div class="actions">
         <h3 style="margin-top: 0;">⚡ Next Steps</h3>
         <ul>
-          <li><strong>Admin:</strong> Review and approve requests after 1:30 PM</li>
+          <li><strong>Admin:</strong> Already reviewed (1:00 PM - 1:30 PM approval window)</li>
           <li><strong>Gate Staff:</strong> Will receive approved list at 4:00 PM</li>
           <li><strong>Supervisors:</strong> Monitor intern attendance accordingly</li>
         </ul>
       </div>
-      <p style="font-size: 14px; color: #666;">This is an automated daily report generated at 1:00 PM by the TalentHub system.</p>
+      <p style="font-size: 14px; color: #666;">This is an automated daily report generated at 1:30 PM by the TalentHub system.</p>
       <p><strong>Best regards,</strong><br>SLT Mobitel — TalentHub Intern Management System<br>Digital Platforms Development Section</p>
     </div>
     <div class="footer">
@@ -326,13 +326,13 @@ class ShortLeaveEmailService {
   }
 
   /**
-   * Fetch today's short leave requests submitted between 8 AM - 1 PM and send email.
-   * Called by the scheduler at 1 PM.
+   * Fetch today's short leave requests submitted between 8:30 AM - 1:00 PM and send email.
+   * Called by the scheduler at 1:30 PM.
    */
   static async sendDailyShortLeaveReport() {
     const sriLankaNow = moment().utcOffset("+05:30");
     console.log("\n========================================");
-    console.log("📧 1 PM SHORT LEAVE REQUESTS REPORT");
+    console.log("📧 1:30 PM SHORT LEAVE REQUESTS REPORT");
     console.log(
       `📅 Date: ${sriLankaNow.format("MMMM DD, YYYY [at] h:mm A")} (SLT)`,
     );
@@ -342,8 +342,8 @@ class ShortLeaveEmailService {
       const LeaveRequest = require("../models/LeaveRequest");
 
       // Build today's date range for Sri Lanka timezone
-      const startOfDaySLT = sriLankaNow.clone().startOf("day").hour(8); // 8 AM today
-      const endOfRequestWindow = sriLankaNow.clone().startOf("day").hour(13); // 1 PM today
+      const startOfDaySLT = sriLankaNow.clone().startOf("day").hour(8).minute(30); // 8:30 AM today
+      const endOfRequestWindow = sriLankaNow.clone().startOf("day").hour(13); // 1:00 PM today
 
       // Convert to UTC for the MongoDB query
       const startUTC = startOfDaySLT.clone().utc().toDate();
@@ -360,14 +360,14 @@ class ShortLeaveEmailService {
         `🔍 For leave date: ${sriLankaNow.format("YYYY-MM-DD")} (today)`,
       );
 
-      // Query for leave requests submitted between 8 AM - 1 PM for TODAY's date
+      // Query for leave requests submitted between 8:30 AM - 1:00 PM for TODAY's date
       const shortLeaveRequests = await LeaveRequest.find({
         submittedAt: { $gte: startUTC, $lte: endUTC },
         leaveDate: { $gte: todayStart, $lte: todayEnd },
       }).populate("reviewedBy", "email");
 
       console.log(
-        `📊 Found ${shortLeaveRequests.length} short leave request(s) submitted between 8 AM - 1 PM for today`,
+        `📊 Found ${shortLeaveRequests.length} short leave request(s) submitted between 8:30 AM - 1:00 PM for today`,
       );
 
       // Recipient email group (configurable via environment variable)
