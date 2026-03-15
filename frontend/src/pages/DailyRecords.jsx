@@ -9,8 +9,6 @@ import {
   FaPlus,
   FaSearch,
   FaFilter,
-  FaArrowLeft,
-  FaSignOutAlt,
   FaBook,
   FaChevronLeft,
   FaChevronRight,
@@ -18,159 +16,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import Navigation from "../components/Navigation";
-
-// ── PDF Export Modal ─────────────────────────────────────────────────────────
-const ExportModal = ({ onClose, onExport, isExporting }) => {
-  const [mode, setMode] = useState("single"); // 'single' | 'range' | 'all'
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-
-  const handleExport = () => {
-    if (mode === "single" && date) {
-      onExport({ date });
-    } else if (mode === "range" && startDate && endDate) {
-      onExport({ startDate, endDate });
-    } else if (mode === "all") {
-      onExport({});
-    }
-  };
-
-  const isValid = () => {
-    if (mode === "single") return !!date;
-    if (mode === "range") return startDate && endDate && startDate <= endDate;
-    return true;
-  };
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md border border-gray-200">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <div className="bg-green-100 p-2 rounded-lg">
-              <FaFilePdf className="text-green-600" />
-            </div>
-            <h2 className="text-lg font-bold text-gray-800">
-              Export Log Report
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-100"
-          >
-            <FaTimes />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="px-6 py-5 space-y-5">
-          {/* Mode Selector */}
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              Select export range
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { value: "single", label: "Single Day" },
-                { value: "range", label: "Date Range" },
-                { value: "all", label: "All Records" },
-              ].map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setMode(opt.value)}
-                  className={`py-2 px-3 rounded-lg border text-sm font-medium transition ${
-                    mode === opt.value
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow"
-                      : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Date Inputs */}
-          {mode === "single" && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Date
-              </label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-              />
-            </div>
-          )}
-
-          {mode === "range" && (
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  From
-                </label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  To
-                </label>
-                <input
-                  type="date"
-                  value={endDate}
-                  min={startDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                />
-              </div>
-            </div>
-          )}
-
-          {mode === "all" && (
-            <p className="text-sm text-gray-500 bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
-              All your log records will be included in the exported PDF.
-            </p>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-medium transition"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleExport}
-            disabled={!isValid() || isExporting}
-            className="px-5 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold flex items-center gap-2 transition disabled:opacity-50 disabled:cursor-not-allowed shadow"
-          >
-            {isExporting ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                Exporting...
-              </>
-            ) : (
-              <>
-                <FaFilePdf />
-                Export PDF
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+import ExportModal from "../components/ExportModal";
 
 // ── Main Component ────────────────────────────────────────────────────────────
 const DailyRecords = () => {
@@ -314,11 +160,12 @@ const DailyRecords = () => {
 
       const { API_BASE_URL, API_ENDPOINTS } = await import("../api/apiConfig");
 
-      // Build query string
+      // Build query string — now includes `template`
       const qs = new URLSearchParams();
       if (params.date) qs.set("date", params.date);
       if (params.startDate) qs.set("startDate", params.startDate);
       if (params.endDate) qs.set("endDate", params.endDate);
+      if (params.template) qs.set("template", params.template);
 
       const url = `${API_BASE_URL}${API_ENDPOINTS.RECORDS.EXPORT_PDF}?${qs.toString()}`;
 
@@ -332,16 +179,23 @@ const DailyRecords = () => {
         throw new Error(errData.error || "Export failed");
       }
 
-      // Trigger browser download
       const blob = await response.blob();
       const downloadUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
+      // Detect file type from the Content-Disposition or Content-Type header
+      const contentType = response.headers.get("Content-Type") || "";
+      const ext = contentType.includes("spreadsheetml")
+        ? "xlsx"
+        : contentType.includes("wordprocessingml")
+          ? "docx"
+          : "pdf";
+
       a.download = params.date
-        ? `daily-records-${params.date}.pdf`
+        ? `daily-records-${params.date}-${params.template || "default"}.${ext}`
         : params.startDate
-          ? `daily-records-${params.startDate}-to-${params.endDate}.pdf`
-          : "daily-records-all.pdf";
+          ? `daily-records-${params.startDate}-to-${params.endDate}-${params.template || "default"}.${ext}`
+          : `daily-records-all-${params.template || "default"}.${ext}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -351,17 +205,6 @@ const DailyRecords = () => {
       setExportError(err.message || "Export failed. Please try again.");
     } finally {
       setIsExporting(false);
-    }
-  };
-
-  const handleLogout = () => {
-    if (isAdmin) {
-      localStorage.removeItem("adminInfo");
-      navigate("/admin-login");
-    } else {
-      localStorage.removeItem("studentInfo");
-      localStorage.removeItem("authToken");
-      navigate("/");
     }
   };
 
@@ -587,7 +430,7 @@ const DailyRecords = () => {
                     className="inline-flex items-center justify-center px-4 lg:px-5 py-2 lg:py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-sm"
                   >
                     <FaFilePdf className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-                    <span className="whitespace-nowrap">Export PDF</span>
+                    <span className="whitespace-nowrap">Export Records</span>
                   </button>
 
                   {/* Add New Entry — intern only */}
