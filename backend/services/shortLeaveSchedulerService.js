@@ -7,15 +7,16 @@ const ShortLeaveEmailService = require("./shortLeaveEmailService");
  * Call this once from server.js / app.js after DB connection is ready.
  */
 function initScheduler() {
-  // Cron: "30 13 * * *" = every day at 13:30 (1:30 PM)
+  // Cron: "0 13 * * *" = every day at 13:00 (1:00 PM)
   // timezone: 'Asia/Colombo' = Sri Lanka Standard Time (UTC+5:30)
-  // Send short leave requests submitted between 8:30 AM - 1:00 PM to digital platforms team
-  // Admin approval happens from 1:00 PM - 1:30 PM, then email is sent
+  // Send short leave requests submitted so far today to digital platforms team
+  // This gives admins time to review between 1:00 PM - 1:30 PM
+  // Note: Interns can submit from 8:30 AM - 4:30 PM throughout the day
   cron.schedule(
-    "30 13 * * *",
+    "0 13 * * *",
     async () => {
       console.log(
-        "\n⏰ [Scheduler] 1:30 PM Sri Lanka Time — triggering short leave requests report...",
+        "\n⏰ [Scheduler] 1:00 PM Sri Lanka Time — triggering short leave requests report...",
       );
       try {
         await ShortLeaveEmailService.sendDailyShortLeaveReport();
@@ -27,16 +28,17 @@ function initScheduler() {
   );
 
   console.log(
-    "✅ [Scheduler] Daily 1:30 PM short leave report job registered (Asia/Colombo timezone)",
+    "✅ [Scheduler] Daily 1:00 PM short leave report job registered (Asia/Colombo timezone)",
   );
 
-  // Cron: "0 16 * * *" = every day at 16:00 (4:00 PM)
+  // Cron: "30 13 * * *" = every day at 13:30 (1:30 PM)
   // timezone: 'Asia/Colombo' = Sri Lanka Standard Time (UTC+5:30)
+  // Send approved short leave requests after admin approval (1:00 PM - 1:30 PM window)
   cron.schedule(
-    "0 16 * * *",
+    "30 13 * * *",
     async () => {
       console.log(
-        "\n⏰ [Scheduler] 4:00 PM Sri Lanka Time — triggering daily approved leave report...",
+        "\n⏰ [Scheduler] 1:30 PM Sri Lanka Time — triggering daily approved leave report...",
       );
       try {
         await ApprovedLeaveNotificationService.sendDailyReport();
@@ -48,7 +50,7 @@ function initScheduler() {
   );
 
   console.log(
-    "✅ [Scheduler] Daily 4 PM approved leave report job registered (Asia/Colombo timezone)",
+    "✅ [Scheduler] Daily 1:30 PM approved leave report job registered (Asia/Colombo timezone)",
   );
 }
 

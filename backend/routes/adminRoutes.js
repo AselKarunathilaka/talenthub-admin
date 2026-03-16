@@ -17,6 +17,7 @@ const {
   getAdminInternLocations,
   getDistrictCounts,
   getInternLocationById,
+  triggerApprovedShortLeaveEmail,
 } = require("../controllers/adminController");
 const {
   exportOnLeaveExcel,
@@ -71,6 +72,9 @@ router.post(
   "/trigger/weekly-non-submission-check-excel",
   triggerWeeklyNonSubmissionCheckWithExcel,
 );
+
+// Manually trigger approved short leave email (1:30 PM report)
+router.post("/trigger/approved-short-leave-email", triggerApprovedShortLeaveEmail);
 
 router.get("/intern-locations", getAdminInternLocations);
 

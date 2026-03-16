@@ -1282,6 +1282,49 @@ const getInternLocationById = async (req, res) => {
   }
 };
 
+// Manually trigger approved short leave email
+const triggerApprovedShortLeaveEmail = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Verify admin user
+    const adminUser = await User.findById(userId);
+    if (!adminUser) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    console.log("\n========================================");
+    console.log("📧 MANUAL TRIGGER - APPROVED SHORT LEAVE EMAIL");
+    console.log(`Triggered by admin: ${adminUser.email}`);
+    console.log("========================================");
+
+    const ApprovedLeaveNotificationService = require("../services/approvedLeaveNotificationService");
+    
+    // Call the service to send the daily report
+    const result = await ApprovedLeaveNotificationService.sendDailyReport();
+
+    if (result.success) {
+      res.status(200).json({
+        success: true,
+        message: "Approved short leave email sent successfully",
+        data: result,
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: "Failed to send approved short leave email",
+        error: result.error,
+      });
+    }
+  } catch (error) {
+    console.error("Error triggering approved short leave email:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to trigger approved short leave email",
+    });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -1297,4 +1340,5 @@ module.exports = {
   getAdminInternLocations,
   getDistrictCounts,
   getInternLocationById,
+  triggerApprovedShortLeaveEmail,
 };

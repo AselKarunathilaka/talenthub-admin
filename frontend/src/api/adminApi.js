@@ -265,6 +265,31 @@ export const adminApi = {
       throw error;
     }
   },
+
+  // Manually trigger approved short leave email (1:30 PM report)
+  triggerApprovedShortLeaveEmail: async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/trigger/approved-short-leave-email`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.message || `Failed to trigger email: ${response.status}`,
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error triggering approved short leave email:", error);
+      throw error;
+    }
+  },
 };
 
 export { downloadApprovedLeaveReport };

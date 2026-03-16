@@ -71,20 +71,20 @@ class LeaveRequestService {
         throw new Error("Leave date cannot be in the past");
       }
 
-      // Validate short leave request time (8:30 AM to 1:00 PM Sri Lanka Time)
+      // Validate short leave request time (8:30 AM to 4:30 PM Sri Lanka Time)
       const moment = require("moment");
       const sriLankaNow = moment().utcOffset("+05:30");
       const currentHour = sriLankaNow.hour();
       const currentMinute = sriLankaNow.minute();
       
-      // Check if current time is between 8:30 AM and 1:00 PM
+      // Check if current time is between 8:30 AM and 4:30 PM
       const isWithinAllowedTime = 
         (currentHour === 8 && currentMinute >= 30) ||
-        (currentHour > 8 && currentHour < 13) ||
-        (currentHour === 13 && currentMinute === 0);
+        (currentHour > 8 && currentHour < 16) ||
+        (currentHour === 16 && currentMinute <= 30);
 
       if (!isWithinAllowedTime) {
-        throw new Error("Short leave requests can only be submitted between 8:30 AM and 1:00 PM Sri Lanka Time");
+        throw new Error("Short leave requests can only be submitted between 8:30 AM and 4:30 PM Sri Lanka Time");
       }
 
       // Create leave request

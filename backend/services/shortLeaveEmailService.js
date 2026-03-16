@@ -6,7 +6,7 @@ const moment = require("moment");
 
 class ShortLeaveEmailService {
   /**
-   * Generate Excel file with short leave requests submitted between 8:30 AM - 1:00 PM
+   * Generate Excel file with short leave requests submitted today (8:30 AM - 4:30 PM submission window)
    */
   static generateShortLeaveRequestsExcel(shortLeaveRequests) {
     try {
@@ -22,7 +22,7 @@ class ShortLeaveEmailService {
       ]);
       excelData.push([
         "Request Window:",
-        "8:30 AM to 1:00 PM (submitted during this time)",
+        "8:30 AM to 4:30 PM (submission allowed during this time)",
       ]);
       excelData.push([
         "Total Short Leave Requests:",
@@ -131,7 +131,7 @@ class ShortLeaveEmailService {
     try {
       if (!shortLeaveRequests || shortLeaveRequests.length === 0) {
         console.log(
-          "📝 No short leave requests submitted today (8:30 AM - 1:00 PM) — skipping email",
+          "📝 No short leave requests submitted today — skipping email",
         );
         return {
           success: true,
@@ -145,7 +145,7 @@ class ShortLeaveEmailService {
         this.generateShortLeaveRequestsExcel(shortLeaveRequests);
 
       const todayStr = moment().utcOffset("+05:30").format("MMM DD, YYYY");
-      const subject = `📋 Short Leave Requests (8:30 AM - 1:00 PM) — ${shortLeaveRequests.length} Intern(s) — ${todayStr}`;
+      const subject = `📋 Short Leave Requests — ${shortLeaveRequests.length} Intern(s) — ${todayStr}`;
 
       // Build HTML table rows for interns (showing first 10 in email body)
       let tableRows = "";
@@ -206,7 +206,7 @@ class ShortLeaveEmailService {
       <div class="summary">
         <h3 style="margin-top: 0;">📊 Request Summary</h3>
         <p><strong>📅 Date:</strong> ${todayStr}</p>
-        <p><strong>⏰ Request Window:</strong> 8:30 AM - 1:00 PM (Sri Lanka Time)</p>
+        <p><strong>⏰ Request Window:</strong> 8:30 AM - 4:30 PM (Sri Lanka Time)</p>
         <p><strong>👥 Total Short Leave Requests:</strong> <span class="badge">${shortLeaveRequests.length}</span></p>
       </div>
       <div class="attachment-notice">
@@ -326,8 +326,9 @@ class ShortLeaveEmailService {
   }
 
   /**
-   * Fetch today's short leave requests submitted between 8:30 AM - 1:00 PM and send email.
-   * Called by the scheduler at 1:30 PM.
+   * Fetch today's short leave requests submitted so far and send email.
+   * Called by the scheduler at 1 PM daily.
+   * Note: Interns can submit from 8:30 AM - 4:30 PM throughout the day.
    */
   static async sendDailyShortLeaveReport() {
     const sriLankaNow = moment().utcOffset("+05:30");
@@ -367,7 +368,7 @@ class ShortLeaveEmailService {
       }).populate("reviewedBy", "email");
 
       console.log(
-        `📊 Found ${shortLeaveRequests.length} short leave request(s) submitted between 8:30 AM - 1:00 PM for today`,
+        `📊 Found ${shortLeaveRequests.length} short leave request(s) submitted so far today`,
       );
 
       // Recipient email group (configurable via environment variable)

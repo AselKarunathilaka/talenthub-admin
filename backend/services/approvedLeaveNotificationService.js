@@ -180,14 +180,14 @@ class ApprovedLeaveNotificationService {
   <div class="container">
     <div class="header">
       <h1 style="margin: 0;">✅ DAILY APPROVED SHORT LEAVE REPORT</h1>
-      <p style="margin: 10px 0 0 0; font-size: 16px;">TalentHub Intern Management System — 4:00 PM Summary</p>
+      <p style="margin: 10px 0 0 0; font-size: 16px;">TalentHub Intern Management System — 1:30 PM Summary</p>
     </div>
     <div class="content">
       <h2>Dear Gate Staff & Team,</h2>
       <div class="summary">
         <h3 style="margin-top: 0;">📊 Daily Summary</h3>
         <p><strong>📅 Date:</strong> ${todayStr}</p>
-        <p><strong>⏰ Report Time:</strong> 4:00 PM (Sri Lanka Time)</p>
+        <p><strong>⏰ Report Time:</strong> 1:30 PM (Sri Lanka Time)</p>
         <p><strong>👥 Total Approved Interns Today:</strong> <span class="badge">${approvedLeaves.length}</span></p>
       </div>
       <div class="attachment-notice">
@@ -220,7 +220,7 @@ class ApprovedLeaveNotificationService {
           <li><strong>HR:</strong> Record approved leaves in the attendance system</li>
         </ul>
       </div>
-      <p style="font-size: 14px; color: #666;">This is an automated daily report generated at 4:00 PM by the TalentHub system.</p>
+      <p style="font-size: 14px; color: #666;">This is an automated daily report generated at 1:30 PM by the TalentHub system.</p>
       <p><strong>Best regards,</strong><br>SLT Mobitel — TalentHub System<br>Digital Platforms Development Section</p>
     </div>
     <div class="footer">
@@ -289,7 +289,7 @@ class ApprovedLeaveNotificationService {
   static async sendDailyReport() {
     const sriLankaNow = moment().utcOffset("+05:30");
     console.log("\n========================================");
-    console.log("📧 4 PM DAILY APPROVED LEAVES REPORT");
+    console.log("📧 1:30 PM DAILY APPROVED LEAVES REPORT");
     console.log(
       `📅 Date: ${sriLankaNow.format("MMMM DD, YYYY [at] h:mm A")} (SLT)`,
     );
