@@ -29,6 +29,7 @@ import {
   FaCalendarCheck,
   FaRegPaperPlane,
   FaMapMarkedAlt,
+  FaBullhorn,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -868,6 +869,22 @@ const AdminDashboard = () => {
                     Manage intern seating arrangements
                   </span>
                 </motion.button>
+
+                {/* Announcements */}
+                <motion.button
+                  onClick={() => navigate("/admin/announcements")}
+                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-sky-50 to-blue-50 hover:from-sky-100 hover:to-blue-100 text-gray-800 rounded-xl border border-sky-200 hover:border-sky-300 transition-all duration-300 shadow-sm hover:shadow-md"
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <FaBullhorn className="h-6 w-6 text-sky-500 mb-2" />
+                  <span className="text-sm font-medium text-center">
+                    Announcements
+                  </span>
+                  <span className="text-xs text-gray-600 text-center mt-1">
+                    Send notices to interns
+                  </span>
+                </motion.button>
               </div>
 
               {/* Additional Action Buttons */}
@@ -950,7 +967,6 @@ const AdminDashboard = () => {
 
                   <span className="truncate">Intern Locations</span>
                 </motion.button>
-                
               </div>
             </motion.div>
 

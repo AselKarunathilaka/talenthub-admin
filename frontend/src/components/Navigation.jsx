@@ -14,6 +14,7 @@ import {
   CalendarCheck,
   Youtube,
   Armchair,
+  Megaphone,
 } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import axios from "axios";
@@ -21,6 +22,18 @@ import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 
+// Read-state helpers (mirrors InternAnnouncements.jsx)
+const READ_KEY = "readAnnouncementIds";
+
+const getReadIds = () => {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
+  } catch {
+    return new Set();
+  }
+};
+
+// Component
 const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNavbarHidden, setIsNavbarHidden] = useState(false);
@@ -28,21 +41,24 @@ const Navigation = ({ children }) => {
   const [isScrollingUp, setIsScrollingUp] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
   const [internEmail, setInternEmail] = useState("");
   const [internName, setInternName] = useState("");
 
+  // Unread announcement count
+  const [unreadCount, setUnreadCount] = useState(0);
+
   const traineeId = localStorage.getItem("internId");
 
+  // Fetch trainee profile
   useEffect(() => {
     if (!traineeId) return;
-
     const fetchTraineeData = async () => {
       try {
         const res = await axios.get(
-          `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${traineeId}`
+          `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${traineeId}`,
         );
         if (res.data) {
-          // Prefer canonical field Trainee_Name, fallback to traineeName
           setInternEmail(res.data.Trainee_Email || res.data.email || "");
           setInternName(res.data.Trainee_Name || res.data.traineeName || "");
         }
@@ -50,58 +66,107 @@ const Navigation = ({ children }) => {
         console.error("Error fetching trainee data:", error);
       }
     };
-
     fetchTraineeData();
   }, [traineeId]);
 
-  // Close mobile menu when route changes
-  useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setIsMobileMenuOpen(false);
+  // Token helper — tries every key the intern login might use
+  const getInternToken = () => {
+    const authToken = localStorage.getItem("authToken");
+    if (authToken) return authToken;
+
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      try {
+        const parsed = JSON.parse(userData);
+        if (parsed.token) return parsed.token;
+        if (parsed.authToken) return parsed.authToken;
+      } catch {
+        return userData;
+      }
     }
+    return null;
+  };
+
+  const refreshUnreadCount = async () => {
+    try {
+      const token = getInternToken();
+      if (!token) return;
+
+      const res = await fetch(`${API_BASE_URL}/announcements/active`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const readIds = getReadIds();
+      const count = data.filter((a) => !readIds.has(a._id)).length;
+      setUnreadCount(count);
+    } catch {
+      // silently ignore
+    }
+  };
+
+  useEffect(() => {
+    if (!traineeId) return;
+    refreshUnreadCount();
+    // Re-check every 2 minutes in case admin sends a new announcement
+    const interval = setInterval(refreshUnreadCount, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [traineeId]);
+
+  // When the user navigates to /announcements, reset the badge immediately
+  useEffect(() => {
+    if (location.pathname === "/announcements") {
+      setUnreadCount(0);
+    }
+  }, [location.pathname]);
+
+  // Menu / scroll helpers (unchanged from original)
+  useEffect(() => {
+    if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
   }, [location]);
 
-  // Auto-close mobile menu on resize if window becomes large
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        setIsMobileMenuOpen(false);
-      }
+      if (window.innerWidth >= 1024) setIsMobileMenuOpen(false);
     };
-
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Handle navbar hide/show on scroll with improved logic
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerWidth >= 1024) {
         const currentScrollY = window.scrollY;
-
         if (currentScrollY > lastScrollY && currentScrollY > 100) {
-          // Scrolling down
           setIsScrollingUp(false);
           setIsNavbarHidden(true);
         } else if (currentScrollY < lastScrollY) {
-          // Scrolling up
           setIsScrollingUp(true);
           setIsNavbarHidden(false);
         }
-
         setLastScrollY(currentScrollY);
       }
     };
-
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  // Nav links
   const navLinks = [
     {
       to: "/dashboard",
       label: "Dashboard",
       icon: <Home className="h-5 w-5" />,
+    },
+    {
+      to: "/announcements",
+      label: "Announcements",
+      icon: <Megaphone className="h-5 w-5" />,
+      badge: unreadCount,
     },
     {
       to: "/scan-qr",
@@ -159,21 +224,20 @@ const Navigation = ({ children }) => {
     window.open(
       "https://youtube.com/@digitalserendib?si=9A0u6vWxGWY5EdnG",
       "_blank",
-      "noopener,noreferrer"
+      "noopener,noreferrer",
     );
   };
 
+  //  Render
   return (
     <>
-      {/* Top Navbar (Mobile) */}
+      {/*  Mobile Top Bar  */}
       <header className="lg:hidden bg-[#00102F] text-white fixed top-0 w-full z-50 shadow-lg">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex-shrink-0">
             <Link
               to="/"
-              onClick={() => {
-                localStorage.clear();
-              }}
+              onClick={() => localStorage.clear()}
               className="flex items-center"
             >
               <img
@@ -184,23 +248,25 @@ const Navigation = ({ children }) => {
             </Link>
           </div>
 
-          {/* Show user initials on mobile top bar */}
-          {internName ? (
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
-                {internName
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </div>
+          {/* Avatar + unread dot on mobile */}
+          <div className="flex items-center gap-3">
+            {unreadCount > 0 && (
+              <Link to="/announcements" className="relative">
+                <Megaphone className="h-5 w-5 text-white/70" />
+                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              </Link>
+            )}
+            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
+              {internName
+                ? internName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                : "U"}
             </div>
-          ) : (
-            <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
-                U
-              </div>
-            </div>
-          )}
+          </div>
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -217,28 +283,22 @@ const Navigation = ({ children }) => {
         </div>
       </header>
 
-      {/* Top Navbar (Desktop) */}
+      {/* ── Desktop Top Bar ─────────────────────────────────────────────── */}
       <header
         className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#00102F] to-[#001a4d] shadow-lg fixed top-0 right-0 z-30 h-[5.5rem] px-8
           transition-all duration-500 ease-out
-          ${
-            isNavbarHidden
-              ? "-translate-y-full opacity-0"
-              : "translate-y-0 opacity-100"
-          }
+          ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}
           ${isScrollingUp ? "shadow-xl" : ""}`}
-        style={{ left: "16rem", width: "calc(100% - 16rem)" }}
+        style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center space-x-4">
-            <h2 className="text-xl font-semibold text-white/90">
-              {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
-            </h2>
-          </div>
+          <h2 className="text-xl font-semibold text-white/90">
+            {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
+          </h2>
 
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-3 mr-4">
-              <div className="h-9 w-9 rounded-full bg-blue-100/10 flex items-center justify-center transition-all duration-300 group-hover:bg-blue-100/20 border border-blue-200/20">
+              <div className="h-9 w-9 rounded-full bg-blue-100/10 flex items-center justify-center border border-blue-200/20">
                 <User className="h-5 w-5 text-blue-300" />
               </div>
               <div className="flex flex-col">
@@ -255,25 +315,21 @@ const Navigation = ({ children }) => {
       {/* Overlay */}
       <div
         className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 backdrop-blur-sm
-          ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"}
-          lg:hidden`}
+          ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"} lg:hidden`}
         onClick={() => setIsMobileMenuOpen(false)}
         aria-hidden={!isMobileMenuOpen}
       />
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky inset-y-0 left-0 z-40 
-          bg-gradient-to-b from-[#00102F] to-[#00193d] transition-all duration-300 ease-out 
-          ${isMobileMenuOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"} 
-          lg:translate-x-0
-          w-64
-          h-screen
-          lg:top-0`}
+        className={`fixed lg:sticky inset-y-0 left-0 z-40
+          bg-gradient-to-b from-[#00102F] to-[#00193d] transition-all duration-300 ease-out
+          ${isMobileMenuOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"}
+          lg:translate-x-0 w-[270px] h-screen lg:top-0`}
         aria-label="Sidebar"
       >
         <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
+          {/* Sidebar header */}
           <div className="px-4 py-6 border-b border-gray-700/50 flex justify-between items-center">
             <Link
               to="/"
@@ -291,7 +347,7 @@ const Navigation = ({ children }) => {
             </Link>
           </div>
 
-          {/* User Profile in Mobile Drawer */}
+          {/* Mobile user profile */}
           <div className="lg:hidden px-4 py-5 border-b border-gray-700/50">
             <div className="flex items-center space-x-3">
               <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
@@ -303,10 +359,10 @@ const Navigation = ({ children }) => {
               <div className="flex flex-col">
                 <span className="text-xs text-blue-100/70">Welcome,</span>
                 <span className="text-sm font-medium text-white">
-                  {internName ? internName : "User"}
+                  {internName || "User"}
                 </span>
                 {internEmail && (
-                  <span className="text-xs text-gray-400/80 truncate max-w-[160px]">
+                  <span className="text-xs text-gray-400/80 truncate max-w-[180px]">
                     {internEmail}
                   </span>
                 )}
@@ -314,7 +370,7 @@ const Navigation = ({ children }) => {
             </div>
           </div>
 
-          {/* Nav Links */}
+          {/* Nav links */}
           <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
             {navLinks.map((link) => (
               <Link
@@ -329,24 +385,28 @@ const Navigation = ({ children }) => {
                 aria-current={isActive(link.to) ? "page" : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
+                {/* Icon with badge */}
                 <span
-                  className={`mr-3 ${
-                    isActive(link.to)
-                      ? "text-blue-300"
-                      : "text-gray-400 group-hover:text-white"
-                  }`}
+                  className={`mr-3 relative ${isActive(link.to) ? "text-blue-300" : "text-gray-400 group-hover:text-white"}`}
                 >
                   {link.icon}
+                  {link.badge > 0 && (
+                    <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                      {link.badge > 9 ? "9+" : link.badge}
+                    </span>
+                  )}
                 </span>
-                <span className="font-medium">{link.label}</span>
+
+                <span className="font-medium flex-1">{link.label}</span>
+
                 {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-blue-400 animate-pulse"></span>
+                  <span className="ml-auto h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
                 )}
               </Link>
             ))}
           </nav>
 
-          {/* Footer Section */}
+          {/* Footer */}
           <div className="p-4 border-t border-gray-700/50 space-y-2">
             <button
               onClick={handleYouTubeClick}
@@ -381,13 +441,10 @@ const Navigation = ({ children }) => {
         </div>
       </aside>
 
-      {/* Spacer for mobile header */}
-      <div className="lg:hidden h-16"></div>
+      {/* Spacers */}
+      <div className="lg:hidden h-16" />
+      <div className="hidden lg:block h-[5.5rem]" />
 
-      {/* Spacer for desktop top navbar */}
-      <div className="hidden lg:block h-[5.5rem]"></div>
-
-      {/* Main Content */}
       {children}
     </>
   );

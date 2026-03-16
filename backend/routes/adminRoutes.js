@@ -21,6 +21,11 @@ const {
 const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
+const {
+  createAnnouncement,
+  getAllAnnouncements,
+  deleteAnnouncement,
+} = require("../controllers/AnnouncementController");
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -72,5 +77,10 @@ router.get("/intern-locations", getAdminInternLocations);
 router.get("/district-counts", getDistrictCounts);
 
 router.get("/intern-location/:traineeId", getInternLocationById);
+
+// Announcement routes (admin only)
+router.get("/announcements", getAllAnnouncements);
+router.post("/announcements", createAnnouncement);
+router.delete("/announcements/:id", deleteAnnouncement);
 
 module.exports = router;

@@ -646,3 +646,44 @@ export const notificationUtils = {
     alert(`Info: ${message}`);
   },
 };
+
+// Announcement API
+export const announcementApi = {
+  // GET /api/admin/announcements
+  getAll: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    if (!res.ok)
+      throw new Error(`Failed to fetch announcements: ${res.status}`);
+    return res.json();
+  },
+
+  // POST /api/admin/announcements
+  create: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(
+        err.message || `Failed to create announcement: ${res.status}`,
+      );
+    }
+    return res.json();
+  },
+
+  // DELETE /api/admin/announcements/:id
+  delete: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok)
+      throw new Error(`Failed to delete announcement: ${res.status}`);
+    return res.json();
+  },
+};
