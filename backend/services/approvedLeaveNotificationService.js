@@ -235,7 +235,7 @@ class ApprovedLeaveNotificationService {
 
       // Create mail options with attachment
       const mailOptions = {
-        from: process.env.GMAIL_USER,
+        from: process.env.SHORT_LEAVE_EMAIL || "internship-management-systems@slt.com.lk",
         to: recipientEmails.to.join(", "),
         cc: recipientEmails.cc.join(", "),
         subject,
@@ -246,16 +246,32 @@ class ApprovedLeaveNotificationService {
       };
 
       // Validate email configuration
-      if (!process.env.GMAIL_USER || !process.env.GMAIL_PASS) {
+      if (!process.env.SHORT_LEAVE_EMAIL) {
         throw new Error(
-          "Email config missing: GMAIL_USER or GMAIL_PASS not set",
+          "Email config missing: SHORT_LEAVE_EMAIL not set",
         );
       }
 
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
-      });
+      // Configure SMTP for SLT mail server (port 25 relay, passwordless)
+      const smtpHost = process.env.SHORT_LEAVE_SMTP_HOST || "mail.slt.com.lk";
+      const smtpPort = parseInt(process.env.SHORT_LEAVE_SMTP_PORT || "25", 10);
+
+      const transportConfig = {
+        host: smtpHost,
+        port: smtpPort,
+        secure: false, // false for port 25
+        tls: { rejectUnauthorized: false }
+      };
+
+      // Add auth only if password is provided and not using port 25
+      if (smtpPort !== 25 && process.env.SHORT_LEAVE_EMAIL_PASS) {
+        transportConfig.auth = {
+          user: process.env.SHORT_LEAVE_EMAIL,
+          pass: process.env.SHORT_LEAVE_EMAIL_PASS
+        };
+      }
+
+      const transporter = nodemailer.createTransport(transportConfig);
 
       const info = await transporter.sendMail(mailOptions);
       console.log(`✅ Daily approved leaves email sent! ID: ${info.messageId}`);
