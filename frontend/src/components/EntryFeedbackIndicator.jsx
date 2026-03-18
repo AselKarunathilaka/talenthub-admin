@@ -35,7 +35,7 @@ const EntryFeedbackIndicator = ({ text }) => {
       } finally {
         setIsLoading(false);
       }
-    }, 500);
+    }, 2500);
 
     return () => clearTimeout(debounceRef.current);
   }, [text]);
