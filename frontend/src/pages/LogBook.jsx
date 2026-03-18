@@ -7,6 +7,8 @@ import {
   FiSmartphone, FiUmbrella, FiClock // Added umbrella icon for leave status and clock for time
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
+import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
+import { assessEntryQuality } from "../utils/entryHeuristics";
 
 // Utility function to check if current time is after 10 AM (Sri Lankan time)
 const checkLeaveTimeRestriction = () => {
@@ -106,6 +108,29 @@ const Logbook = () => {
       setStatusMessage({ type: 'error', text: 'Please select a task stack and fill in all required fields.' });
       setIsSubmitting(false);
       return;
+    }
+
+    // Block submission if any active field has a bad entry (RED=1 or YELLOW=2)
+    if (formData.status !== 'leave') {
+      const tasksQ = await assessEntryQuality(formData.tasks);
+      const challQ = await assessEntryQuality(formData.challenges);
+      const plansQ = await assessEntryQuality(formData.plans);
+      
+      if (tasksQ.level === 1 || tasksQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Tasks field: ${tasksQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
+      if (challQ.level === 1 || challQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Challenges field: ${challQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
+      if (plansQ.level === 1 || plansQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Plans field: ${plansQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
     try {
@@ -355,6 +380,7 @@ const Logbook = () => {
                             placeholder="What did you accomplish today? Be specific..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
+                          <EntryFeedbackIndicator text={formData.tasks} />
                         </div>
 
                         {/* Challenges Faced */}
@@ -371,6 +397,7 @@ const Logbook = () => {
                             placeholder="Any obstacles or difficulties you encountered..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
+                          <EntryFeedbackIndicator text={formData.challenges} />
                         </div>
 
                         {/* Plans for Tomorrow */}
@@ -387,6 +414,7 @@ const Logbook = () => {
                             placeholder="What will you focus on tomorrow?"
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
+                          <EntryFeedbackIndicator text={formData.plans} />
                         </div>
                       </>
                     ) : (
