@@ -255,19 +255,15 @@ function checkPlaceholder(text) {
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 
 /**
- * Assess the quality of a logbook entry.
- *
- * @param {string} text
- * @returns {Promise<{ level: 1|2|3, label: string, color: string, feedback: string }>}
+ * Synchronous fast check for local RED rules only.
+ * Returns null if it passes the local heuristics.
  */
-export async function assessEntryQuality(text) {
+export function evaluateLocalHeuristicsSync(text) {
   if (typeof text !== "string" || text.trim().length === 0) {
     return { level: 0, label: "", color: "", feedback: "" };
   }
 
   const trimmed = text.trim();
-
-  // Run all four heuristic checks locally first
   const results = [
     checkTooShort(trimmed),
     checkPlaceholder(trimmed),
@@ -284,6 +280,21 @@ export async function assessEntryQuality(text) {
       feedback: failed.reason,
     };
   }
+  return null; 
+}
+
+/**
+ * Assess the quality of a logbook entry (full check including LLM).
+ *
+ * @param {string} text
+ * @returns {Promise<{ level: 1|2|3, label: string, color: string, feedback: string }>}
+ */
+export async function assessEntryQuality(text) {
+  // 1. Run local checks first
+  const localCheck = evaluateLocalHeuristicsSync(text);
+  if (localCheck) return localCheck; // Returned Level 0 or Level 1
+
+  const trimmed = text.trim();
 
   // All hard rules passed locally — Check with backend LLM validator
   try {

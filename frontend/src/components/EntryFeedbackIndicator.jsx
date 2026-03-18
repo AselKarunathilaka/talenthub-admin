@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { assessEntryQuality } from "../utils/entryHeuristics";
+import { assessEntryQuality, evaluateLocalHeuristicsSync } from "../utils/entryHeuristics";
 
 /**
  * EntryFeedbackIndicator
@@ -14,10 +14,12 @@ import { assessEntryQuality } from "../utils/entryHeuristics";
 const EntryFeedbackIndicator = ({ text }) => {
   const [assessment, setAssessment] = useState({ level: 0 });
   const [isLoading, setIsLoading] = useState(false);
-  const debounceRef = useRef(null);
+  const debounceLocalRef = useRef(null);
+  const debounceLLMRef = useRef(null);
 
   useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (debounceLocalRef.current) clearTimeout(debounceLocalRef.current);
+    if (debounceLLMRef.current) clearTimeout(debounceLLMRef.current);
 
     if (!text || text.trim().length === 0) {
       setAssessment({ level: 0 });
@@ -25,8 +27,23 @@ const EntryFeedbackIndicator = ({ text }) => {
       return;
     }
 
-    setIsLoading(true);
-    debounceRef.current = setTimeout(async () => {
+    // 1. Fast local check (0.5s debounce)
+    debounceLocalRef.current = setTimeout(() => {
+      const localResult = evaluateLocalHeuristicsSync(text);
+      if (localResult) {
+        // It failed local checks (RED)
+        setAssessment(localResult);
+        setIsLoading(false);
+        // Clear the LLM timer so we don't call the API for RED entries
+        if (debounceLLMRef.current) clearTimeout(debounceLLMRef.current);
+      } else {
+        // Passed local checks. Show loader while waiting for LLM check
+        setIsLoading(true);
+      }
+    }, 500);
+
+    // 2. Slow LLM check (2.5s debounce for YELLOW/GREEN via API)
+    debounceLLMRef.current = setTimeout(async () => {
       try {
         const result = await assessEntryQuality(text);
         setAssessment(result);
@@ -37,7 +54,10 @@ const EntryFeedbackIndicator = ({ text }) => {
       }
     }, 2500);
 
-    return () => clearTimeout(debounceRef.current);
+    return () => {
+      clearTimeout(debounceLocalRef.current);
+      clearTimeout(debounceLLMRef.current);
+    };
   }, [text]);
 
   if (!text || text.trim().length === 0) return null;
@@ -52,7 +72,7 @@ const EntryFeedbackIndicator = ({ text }) => {
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-xs font-semibold text-gray-500">Evaluating...</span>
-          <p className="text-xs text-gray-400 mt-0.5">Checking entry quality...</p>
+          <p className="text-xs text-gray-400 mt-0.5">Checking entry quality with AI...</p>
         </div>
       </div>
     );
