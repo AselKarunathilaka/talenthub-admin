@@ -1,7 +1,8 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
-
+const { validateEntry } = require("../utils/heuristics");
+const { validateWithGemini } = require("../utils/llmValidator");
 // ── Shared helper: resolve internId from request user ────────────────────────
 const resolveIntern = async (userId, userEmail) => {
   let intern = await Intern.findById(userId);
@@ -261,10 +262,40 @@ const deleteDailyRecord = async (req, res) => {
   }
 };
 
+// Validate a logbook entry string
+const validateLogbookEntry = async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== "string") {
+      return res.status(400).json({ error: "Text string is required" });
+    }
+
+    // First do a fast local heuristics check
+    const localCheck = validateEntry(text);
+    if (!localCheck.isValid) {
+      // It failed basic rules (RED)
+      return res.status(200).json({ passes: false, isWorkRelated: null, reason: "Heuristics failed" });
+    }
+
+    // Now call Gemini to determine if it's work-related
+    const llmCheck = await validateWithGemini(text);
+
+    return res.status(200).json({
+      passes: true,
+      isWorkRelated: llmCheck.isWorkRelated,
+      reason: llmCheck.reason
+    });
+  } catch (error) {
+    console.error("Error validating logbook entry:", error);
+    res.status(500).json({ error: "Validation failed" });
+  }
+};
+
 module.exports = {
   createDailyRecord,
   getDailyRecords,
   getDailyRecordById,
   updateDailyRecord,
   deleteDailyRecord,
+  validateLogbookEntry,
 };

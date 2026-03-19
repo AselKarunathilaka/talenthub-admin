@@ -7,6 +7,7 @@ const {
   getDailyRecordById,
   updateDailyRecord,
   deleteDailyRecord,
+  validateLogbookEntry,
 } = require("../controllers/dailyRecordController");
 
 const {
@@ -22,6 +23,9 @@ router.use(authenticateUser);
 // ── Export routes (must be registered before /:id to avoid conflict) ──────────
 router.get("/export/templates", getAvailableTemplates);
 router.get("/export/pdf", exportDailyRecordsPDF);
+
+// ── Endpoint for LLM validation ───────────────────────────────────────────────
+router.post("/validate-entry", validateLogbookEntry);
 
 // ── CRUD routes ───────────────────────────────────────────────────────────────
 router.post("/", createDailyRecord);
