@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 /**
- * Validates whether a logbook entry is genuinely work-related using Gemini 2.5 Flash.
+ * Validates whether a logbook entry is genuinely work-related using Gemini 3.1 Flash Lite.
  * 
  * @param {string} text - The logbook entry text to evaluate
  * @returns {Promise<{ isWorkRelated: boolean, reason: string }>}
@@ -15,11 +15,11 @@ async function validateWithGemini(text) {
     }
 
     // Required console output to clearly see the LLM is being used
-    console.log("\n[LLM VALIDATOR] Using Gemini 2.5 Flash to evaluate entry...");
+    console.log("\n[LLM VALIDATOR] Using Gemini 3.1 Flash Lite to evaluate entry...");
     console.log(`[LLM VALIDATOR] Text to evaluate: "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
 
     const prompt = `
 You are a strict evaluator for a software engineering and IT internship logbook.
