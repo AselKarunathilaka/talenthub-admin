@@ -122,10 +122,7 @@ class ShortLeaveEmailService {
   /**
    * Send short leave requests email to the digital platforms team
    */
-  static async sendShortLeaveRequestsEmail(
-    shortLeaveRequests,
-    recipientEmail,
-  ) {
+  static async sendShortLeaveRequestsEmail(shortLeaveRequests, recipientEmail) {
     let excelFilePath = null;
 
     try {
@@ -141,8 +138,7 @@ class ShortLeaveEmailService {
       }
 
       console.log("📊 Generating short leave Excel report...");
-      excelFilePath =
-        this.generateShortLeaveRequestsExcel(shortLeaveRequests);
+      excelFilePath = this.generateShortLeaveRequestsExcel(shortLeaveRequests);
 
       const todayStr = moment().utcOffset("+05:30").format("MMM DD, YYYY");
       const subject = `📋 Short Leave Requests — ${shortLeaveRequests.length} Intern(s) — ${todayStr}`;
@@ -254,7 +250,9 @@ class ShortLeaveEmailService {
 
       // Create mail options with attachment
       const mailOptions = {
-        from: process.env.SHORT_LEAVE_EMAIL || "internship-management-systems@slt.com.lk",
+        from:
+          process.env.SHORT_LEAVE_EMAIL ||
+          "internship-management-systems@slt.com.lk",
         to: recipientEmail,
         subject,
         html: emailBody,
@@ -265,15 +263,13 @@ class ShortLeaveEmailService {
 
       // Validate email configuration
       if (!process.env.SHORT_LEAVE_EMAIL) {
-        throw new Error(
-          "Email config missing: SHORT_LEAVE_EMAIL not set",
-        );
+        throw new Error("Email config missing: SHORT_LEAVE_EMAIL not set");
       }
 
       // Configure transporter based on SMTP port
       const smtpPort = parseInt(process.env.SHORT_LEAVE_SMTP_PORT || "25");
-      const smtpHost = process.env.SHORT_LEAVE_SMTP_HOST || "smtp.slt.com.lk";
-      
+      const smtpHost = process.env.SHORT_LEAVE_SMTP_HOST || "mail.slt.com.lk";
+
       const transportConfig = {
         host: smtpHost,
         port: smtpPort,
@@ -285,7 +281,7 @@ class ShortLeaveEmailService {
       if (smtpPort !== 25 && process.env.SHORT_LEAVE_EMAIL_PASS) {
         transportConfig.auth = {
           user: process.env.SHORT_LEAVE_EMAIL,
-          pass: process.env.SHORT_LEAVE_EMAIL_PASS
+          pass: process.env.SHORT_LEAVE_EMAIL_PASS,
         };
         console.log(`📧 Using authenticated SMTP on port ${smtpPort}`);
       } else {
@@ -295,9 +291,7 @@ class ShortLeaveEmailService {
       const transporter = nodemailer.createTransport(transportConfig);
 
       const info = await transporter.sendMail(mailOptions);
-      console.log(
-        `✅ Short leave requests email sent! ID: ${info.messageId}`,
-      );
+      console.log(`✅ Short leave requests email sent! ID: ${info.messageId}`);
 
       // Clean up temp file
       if (fs.existsSync(excelFilePath)) {
@@ -312,10 +306,7 @@ class ShortLeaveEmailService {
         sentAt: moment().utcOffset("+05:30").format("YYYY-MM-DD HH:mm:ss"),
       };
     } catch (error) {
-      console.error(
-        "❌ Failed to send short leave requests email:",
-        error,
-      );
+      console.error("❌ Failed to send short leave requests email:", error);
       if (excelFilePath && fs.existsSync(excelFilePath)) {
         try {
           fs.unlinkSync(excelFilePath);
@@ -343,7 +334,11 @@ class ShortLeaveEmailService {
       const LeaveRequest = require("../models/LeaveRequest");
 
       // Build today's date range for Sri Lanka timezone
-      const startOfDaySLT = sriLankaNow.clone().startOf("day").hour(8).minute(30); // 8:30 AM today
+      const startOfDaySLT = sriLankaNow
+        .clone()
+        .startOf("day")
+        .hour(8)
+        .minute(30); // 8:30 AM today
       const endOfRequestWindow = sriLankaNow.clone().startOf("day").hour(13); // 1:00 PM today
 
       // Convert to UTC for the MongoDB query
@@ -372,7 +367,8 @@ class ShortLeaveEmailService {
       );
 
       // Recipient email group (configurable via environment variable)
-      const recipientEmail = process.env.SHORT_LEAVE_RECIPIENT || "digitalplatformsdev@slt.com.lk";
+      const recipientEmail =
+        process.env.SHORT_LEAVE_RECIPIENT || "digitalplatformsdev@slt.com.lk";
 
       const result = await this.sendShortLeaveRequestsEmail(
         shortLeaveRequests,
@@ -391,10 +387,7 @@ class ShortLeaveEmailService {
 
       return result;
     } catch (error) {
-      console.error(
-        "❌ Fatal error in sendDailyShortLeaveReport:",
-        error,
-      );
+      console.error("❌ Fatal error in sendDailyShortLeaveReport:", error);
       return { success: false, error: error.message };
     }
   }

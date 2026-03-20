@@ -368,20 +368,22 @@ const AdminLeaveManagement = () => {
     try {
       const result = await adminApi.triggerApprovedShortLeaveEmail();
 
-      if (result.success) {
+      if (result.success && !result.skipped) {
         toast.success(
-          `✅ Email sent successfully! ${result.data.internsCount || 0} approved intern(s)`,
+          `✅ Email sent successfully! ${result.data?.internsCount || 0} intern(s)`,
           { id: toastId, duration: 5000 },
         );
+      } else if (result.skipped) {
+        toast(`📭 Skipped: ${result.message}`, { id: toastId });
       } else {
-        toast.error("Failed to send email", { id: toastId });
+        // This will now show you the ACTUAL SMTP error
+        toast.error(`❌ Failed: ${result.message}`, {
+          id: toastId,
+          duration: 10000,
+        });
       }
     } catch (error) {
-      console.error("Error triggering approved short leave email:", error);
-      toast.error(
-        error.message || "Failed to trigger approved short leave email",
-        { id: toastId },
-      );
+      toast.error(error.message || "Failed to trigger email", { id: toastId });
     } finally {
       setTriggeringEmail(false);
     }
