@@ -366,7 +366,7 @@ const AdminDashboard = () => {
       );
       notificationUtils.showSuccess(
         `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
-        `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
+          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
       console.error(
@@ -419,7 +419,7 @@ const AdminDashboard = () => {
       );
       notificationUtils.showSuccess(
         `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
-        `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
+          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
       console.error("Error exporting weekly non-submissions CSV:", error);
@@ -771,7 +771,6 @@ const AdminDashboard = () => {
 
               {/* ── Primary 3 × 2 Grid ── */}
               <div className="grid grid-cols-3 gap-2 mb-2.5">
-
                 {/* 1 · Daily Records */}
                 <motion.button
                   onClick={() => navigate("/admin/daily-records")}
@@ -807,14 +806,16 @@ const AdminDashboard = () => {
                   onClick={() => setShowNotifications(!showNotifications)}
                   whileHover={{ scale: 1.03, y: -1 }}
                   whileTap={{ scale: 0.97 }}
-                  className={`flex flex-col items-center gap-2 py-4 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${showNotifications
-                    ? "bg-amber-100 border-amber-300"
-                    : "bg-amber-50 hover:bg-amber-100 border-amber-100 hover:border-amber-200"
-                    }`}
+                  className={`flex flex-col items-center gap-2 py-4 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                    showNotifications
+                      ? "bg-amber-100 border-amber-300"
+                      : "bg-amber-50 hover:bg-amber-100 border-amber-100 hover:border-amber-200"
+                  }`}
                 >
                   <div
-                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${showNotifications ? "bg-amber-200" : "bg-amber-100"
-                      }`}
+                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                      showNotifications ? "bg-amber-200" : "bg-amber-100"
+                    }`}
                   >
                     <FaClock className="h-3.5 w-3.5 text-amber-600" />
                   </div>
@@ -867,7 +868,6 @@ const AdminDashboard = () => {
                     Intern Locations
                   </span>
                 </motion.button>
-
               </div>
 
               {/* ── Thin Divider ── */}
@@ -881,22 +881,19 @@ const AdminDashboard = () => {
                 }}
                 whileHover={{ scale: 1.005 }}
                 whileTap={{ scale: 0.99 }}
-                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${showExports
-                  ? "bg-stone-100 border-stone-300"
-                  : "bg-stone-50 hover:bg-stone-100 border-stone-200 hover:border-stone-300"
-                  }`}
+                className={`w-full flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  showExports
+                    ? "bg-stone-100 border-stone-300"
+                    : "bg-stone-50 hover:bg-stone-100 border-stone-200 hover:border-stone-300"
+                }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-7 h-7 flex items-center justify-center rounded-lg bg-stone-200">
-                    <FaFileExport className="h-3 w-3 text-stone-600" />
-                  </div>
-                  <span className="text-xs font-semibold text-stone-600 tracking-wide">
-                    Exports
-                  </span>
-                </div>
+                <span className="text-xs font-semibold text-stone-600 tracking-wide">
+                  Exports
+                </span>
                 <motion.div
                   animate={{ rotate: showExports ? 180 : 0 }}
                   transition={{ duration: 0.22, ease: "easeInOut" }}
+                  className="mt-1" // proper spacing between text and arrow
                 >
                   <FaChevronDown className="h-3 w-3 text-stone-400" />
                 </motion.div>
@@ -914,10 +911,8 @@ const AdminDashboard = () => {
                     className="overflow-hidden"
                   >
                     <div className="pt-2 space-y-2">
-
                       {/* ── 3 Export Sub-buttons ── */}
                       <div className="grid grid-cols-3 gap-2">
-
                         {/* 7.1 · Submissions List */}
                         <motion.button
                           onClick={handleExportSubmittedCSV}
@@ -934,14 +929,17 @@ const AdminDashboard = () => {
                         {/* 7.2 · Non-Submissions */}
                         <motion.button
                           onClick={() =>
-                            setActiveExport(activeExport === "nonSub" ? null : "nonSub")
+                            setActiveExport(
+                              activeExport === "nonSub" ? null : "nonSub",
+                            )
                           }
                           whileHover={{ scale: 1.03, y: -1 }}
                           whileTap={{ scale: 0.97 }}
-                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${activeExport === "nonSub"
-                            ? "bg-red-100 border-red-200"
-                            : "bg-red-50 hover:bg-red-100 border-red-100 hover:border-red-200"
-                            }`}
+                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                            activeExport === "nonSub"
+                              ? "bg-red-100 border-red-200"
+                              : "bg-red-50 hover:bg-red-100 border-red-100 hover:border-red-200"
+                          }`}
                         >
                           <FaDownload className="h-4 w-4 text-red-500" />
                           <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
@@ -961,7 +959,6 @@ const AdminDashboard = () => {
                             On-Leave
                           </span>
                         </motion.button>
-
                       </div>
 
                       {/* ── Non-Submissions Expanded Panel (7.2 + 7.2.1) ── */}
@@ -976,19 +973,24 @@ const AdminDashboard = () => {
                             className="overflow-hidden"
                           >
                             <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-6">
-
                               {/* Section 1: Quick Action */}
                               <div className="space-y-3">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
                                   Quick Export
                                 </label>
                                 <motion.button
-                                  onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                                  whileHover={{ backgroundColor: "rgba(254, 242, 242, 1)" }}
+                                  onClick={
+                                    handleExportWeeklyNonSubmissionsWithinWeek
+                                  }
+                                  whileHover={{
+                                    backgroundColor: "rgba(254, 242, 242, 1)",
+                                  }}
                                   whileTap={{ scale: 0.99 }}
                                   className="w-full flex items-center justify-between py-3 px-4 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-sm font-medium transition-all duration-200 cursor-pointer group"
                                 >
-                                  <span className="group-hover:text-red-600 transition-colors">Current Week Non-Submissions</span>
+                                  <span className="group-hover:text-red-600 transition-colors">
+                                    Current Week Non-Submissions
+                                  </span>
                                   <FaFileExport className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
                                 </motion.button>
                               </div>
@@ -1003,7 +1005,9 @@ const AdminDashboard = () => {
                                     <input
                                       type="date"
                                       value={customStartDate}
-                                      onChange={(e) => setCustomStartDate(e.target.value)}
+                                      onChange={(e) =>
+                                        setCustomStartDate(e.target.value)
+                                      }
                                       className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
                                     />
                                   </div>
@@ -1011,7 +1015,9 @@ const AdminDashboard = () => {
                                     <input
                                       type="date"
                                       value={customEndDate}
-                                      onChange={(e) => setCustomEndDate(e.target.value)}
+                                      onChange={(e) =>
+                                        setCustomEndDate(e.target.value)
+                                      }
                                       className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
                                     />
                                   </div>
@@ -1021,23 +1027,23 @@ const AdminDashboard = () => {
                               {/* Action Button */}
                               <motion.button
                                 onClick={handleExportWeeklyNonSubmissionsCSV}
-                                whileHover={{ scale: 1.01, backgroundColor: "#ef4444" }}
+                                whileHover={{
+                                  scale: 1.01,
+                                  backgroundColor: "#ef4444",
+                                }}
                                 whileTap={{ scale: 0.98 }}
                                 className="w-full py-3 bg-red-500 text-white text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer shadow-md shadow-red-100"
                               >
                                 Download CSV Report
                               </motion.button>
-
                             </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
-
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
-
             </motion.div>
 
             {/* Notifications Panel */}
@@ -1086,14 +1092,14 @@ const AdminDashboard = () => {
                         whileHover={{
                           scale:
                             sendingNotifications ||
-                              !dashboardStats?.overdueList?.length
+                            !dashboardStats?.overdueList?.length
                               ? 1
                               : 1.03,
                         }}
                         whileTap={{
                           scale:
                             sendingNotifications ||
-                              !dashboardStats?.overdueList?.length
+                            !dashboardStats?.overdueList?.length
                               ? 1
                               : 0.98,
                         }}
@@ -1326,7 +1332,7 @@ const AdminDashboard = () => {
                             <div className="text-xs text-gray-500">
                               ⏰{" "}
                               {intern.daysSinceLastSubmission !== null &&
-                                intern.daysSinceLastSubmission !== undefined
+                              intern.daysSinceLastSubmission !== undefined
                                 ? `${intern.daysSinceLastSubmission} days ago`
                                 : "No submissions"}
                             </div>
@@ -1437,7 +1443,7 @@ const AdminDashboard = () => {
                               </div>
                               <div className="text-sm text-gray-600">
                                 {intern.daysSinceLastSubmission !== null &&
-                                  intern.daysSinceLastSubmission !== undefined
+                                intern.daysSinceLastSubmission !== undefined
                                   ? `${intern.daysSinceLastSubmission} days ago`
                                   : "No submissions"}
                               </div>
