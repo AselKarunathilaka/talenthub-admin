@@ -30,6 +30,7 @@ import {
   FaRegPaperPlane,
   FaMapMarkedAlt,
   FaBullhorn,
+  FaChevronDown,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -129,6 +130,8 @@ const AdminDashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showExports, setShowExports] = useState(false);
+  const [activeExport, setActiveExport] = useState(null); // null | 'nonSub'
 
   // Fetch dashboard data
   const fetchData = useCallback(async () => {
@@ -756,218 +759,291 @@ const AdminDashboard = () => {
 
             {/* Quick Actions Section */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-5"
+              className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-base md:text-lg font-semibold text-gray-900">
-                    Quick Actions
-                  </h2>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Admin tools for managing intern submissions
-                  </p>
-                </div>
-              </div>
+              {/* ── Header ── */}
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-gray-400 mb-4">
+                Quick Actions
+              </p>
 
-              {/* 3x2 Grid Layout for Quick Actions */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {/* Daily Records */}
+              {/* ── Primary 3 × 2 Grid ── */}
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
+                {/* 1 · Daily Records */}
                 <motion.button
                   onClick={() => navigate("/admin/daily-records")}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 text-gray-800 rounded-xl border border-emerald-200 hover:border-emerald-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <FaCalendarAlt className="h-6 w-6 text-emerald-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 group-hover:bg-emerald-200">
+                    <FaCalendarAlt className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
                     Daily Records
                   </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    All intern records
-                  </span>
                 </motion.button>
 
-                {/* Short Leave Requests */}
+                {/* 2 · Leave Requests */}
                 <motion.button
                   onClick={() => navigate("/admin/leave-requests")}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-gray-800 rounded-xl border border-purple-200 hover:border-purple-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <FaRunning className="h-6 w-6 text-purple-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    Short Leave Requests
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    Manage short leave requests
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-100">
+                    <FaRunning className="h-3.5 w-3.5 text-purple-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Leave Requests
                   </span>
                 </motion.button>
 
-                {/* Weekly Non-Submissions */}
-                <motion.button
-                  onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 text-gray-800 rounded-xl border border-indigo-200 hover:border-indigo-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaSlidersH className="h-6 w-6 text-indigo-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    Weekly Non-Submissions
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    Export weekly non-submitted intern list
-                  </span>
-                </motion.button>
-
-                {/* Show/Hide Overdue List */}
+                {/* 3 · Overdue List */}
                 <motion.button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-amber-50 to-orange-50 hover:from-amber-100 hover:to-orange-100 text-gray-800 rounded-xl border border-amber-200 hover:border-amber-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`flex flex-col items-center gap-2 py-4 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                    showNotifications
+                      ? "bg-amber-100 border-amber-300"
+                      : "bg-amber-50 hover:bg-amber-100 border-amber-100 hover:border-amber-200"
+                  }`}
                 >
-                  <FaClock className="h-6 w-6 text-amber-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    {showNotifications ? "Hide" : "Show"} Overdue List
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    View overdue interns
+                  <div
+                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                      showNotifications ? "bg-amber-200" : "bg-amber-100"
+                    }`}
+                  >
+                    <FaClock className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    {showNotifications ? "Hide Overdue" : "Overdue List"}
                   </span>
                 </motion.button>
 
-                {/* On-Leave List */}
-                <motion.button
-                  onClick={handleDownloadOnLeaveExcel}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-gray-800 rounded-xl border border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaRegFileExcel className="h-6 w-6 text-blue-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    On-Leave List
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    Export list of intern on-leave
-                  </span>
-                </motion.button>
-
-                {/* Seat Management */}
+                {/* 4 · Seat Layout */}
                 <motion.button
                   onClick={() => navigate("/admin/seat-management")}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-pink-50 to-rose-50 hover:from-pink-100 hover:to-rose-100 text-gray-800 rounded-xl border border-pink-200 hover:border-pink-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-100 hover:border-pink-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <FaChair className="h-6 w-6 text-pink-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    Intern Seat Management
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    Manage intern seating arrangements
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-pink-100">
+                    <FaChair className="h-3.5 w-3.5 text-pink-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Seat Layout
                   </span>
                 </motion.button>
 
-                {/* Announcements */}
+                {/* 5 · Announce */}
                 <motion.button
                   onClick={() => navigate("/admin/announcements")}
-                  className="group relative flex flex-col items-center justify-center p-4 bg-gradient-to-br from-sky-50 to-blue-50 hover:from-sky-100 hover:to-blue-100 text-gray-800 rounded-xl border border-sky-200 hover:border-sky-300 transition-all duration-300 shadow-sm hover:shadow-md"
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-100 hover:border-cyan-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <FaBullhorn className="h-6 w-6 text-sky-500 mb-2" />
-                  <span className="text-sm font-medium text-center">
-                    Announcements
-                  </span>
-                  <span className="text-xs text-gray-600 text-center mt-1">
-                    Send notices to interns
-                  </span>
-                </motion.button>
-              </div>
-
-              {/* Additional Action Buttons */}
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-2">
-                <motion.button
-                  onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center p-3 bg-gradient-to-br from-emerald-100 to-teal-100 hover:from-emerald-200 hover:to-teal-200 text-gray-800 rounded-xl border border-emerald-300 hover:border-emerald-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaFileExport className="mr-2 h-4 w-4 text-emerald-600" />
-                  <span className="truncate">Export Submissions List</span>
-                </motion.button>
-
-                {!showDateSelector ? (
-                  <motion.button
-                    onClick={handleShowDateSelector}
-                    className="group relative flex items-center justify-center p-3 bg-gradient-to-br from-indigo-100 to-violet-100 hover:from-indigo-200 hover:to-violet-200 text-gray-800 rounded-xl border border-indigo-300 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <FaDownload className="mr-2 h-4 w-4 text-indigo-600" />
-                    <span className="truncate">
-                      Export Non-Submissions List
-                    </span>
-                  </motion.button>
-                ) : (
-                  <div className="col-span-2 md:col-span-1 p-3 bg-indigo-50 rounded-xl border border-indigo-200">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-indigo-800">
-                        Select Date Range
-                      </span>
-                      <button
-                        onClick={() => setShowDateSelector(false)}
-                        className="text-xs text-indigo-600 hover:text-indigo-800"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="text-xs font-medium text-indigo-700 block mb-1">
-                          From:
-                        </label>
-                        <input
-                          type="date"
-                          value={customStartDate}
-                          onChange={(e) => setCustomStartDate(e.target.value)}
-                          className="w-full border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-medium text-indigo-700 block mb-1">
-                          To:
-                        </label>
-                        <input
-                          type="date"
-                          value={customEndDate}
-                          onChange={(e) => setCustomEndDate(e.target.value)}
-                          className="w-full border border-indigo-300 rounded px-2 py-1 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      onClick={handleExportWeeklyNonSubmissionsCSV}
-                      className="w-full mt-2 bg-indigo-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-indigo-700 transition-colors"
-                    >
-                      Download CSV
-                    </button>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-cyan-100">
+                    <FaBullhorn className="h-3.5 w-3.5 text-cyan-600" />
                   </div>
-                )}
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Announce
+                  </span>
+                </motion.button>
 
+                {/* 6 · Intern Locations */}
                 <motion.button
                   onClick={() => navigate("/admin/intern-locations")}
-                  className="group relative flex items-center justify-center gap-2 p-4 bg-gradient-to-br from-indigo-100 to-violet-100 hover:from-indigo-200 hover:to-violet-200 text-gray-800 rounded-xl border border-indigo-300 hover:border-indigo-400 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium"
-                  whileHover={{ y: -1 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <FaMapMarkedAlt className="h-6 w-6 text-blue-500" />
-
-                  <span className="truncate">Intern Locations</span>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100">
+                    <FaMapMarkedAlt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Intern Locations
+                  </span>
                 </motion.button>
               </div>
+
+              {/* ── Thin Divider ── */}
+              <div className="h-px bg-gray-100 mb-2.5" />
+
+              {/* 7 · Exports — Collapsible Drawer */}
+              <motion.button
+                onClick={() => {
+                  setShowExports(!showExports);
+                  if (showExports) setActiveExport(null);
+                }}
+                whileHover={{ scale: 1.005 }}
+                whileTap={{ scale: 0.99 }}
+                className={`w-full flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  showExports
+                    ? "bg-stone-100 border-stone-300"
+                    : "bg-stone-50 hover:bg-stone-100 border-stone-200 hover:border-stone-300"
+                }`}
+              >
+                <span className="text-xs font-semibold text-stone-600 tracking-wide">
+                  Exports
+                </span>
+                <motion.div
+                  animate={{ rotate: showExports ? 180 : 0 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  className="mt-1" // proper spacing between text and arrow
+                >
+                  <FaChevronDown className="h-3 w-3 text-stone-400" />
+                </motion.div>
+              </motion.button>
+
+              {/* ── Exports Drawer ── */}
+              <AnimatePresence>
+                {showExports && (
+                  <motion.div
+                    key="exports-panel"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-2 space-y-2">
+                      {/* ── 3 Export Sub-buttons ── */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* 7.1 · Submissions List */}
+                        <motion.button
+                          onClick={handleExportSubmittedCSV}
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
+                        >
+                          <FaRegFileExcel className="h-4 w-4 text-emerald-600" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            Submissions
+                          </span>
+                        </motion.button>
+
+                        {/* 7.2 · Non-Submissions */}
+                        <motion.button
+                          onClick={() =>
+                            setActiveExport(
+                              activeExport === "nonSub" ? null : "nonSub",
+                            )
+                          }
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                            activeExport === "nonSub"
+                              ? "bg-red-100 border-red-200"
+                              : "bg-red-50 hover:bg-red-100 border-red-100 hover:border-red-200"
+                          }`}
+                        >
+                          <FaDownload className="h-4 w-4 text-red-500" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            Non-Submissions
+                          </span>
+                        </motion.button>
+
+                        {/* 7.3 · On-Leave List */}
+                        <motion.button
+                          onClick={handleDownloadOnLeaveExcel}
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
+                        >
+                          <FaRegFileExcel className="h-4 w-4 text-purple-500" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            On-Leave
+                          </span>
+                        </motion.button>
+                      </div>
+
+                      {/* ── Non-Submissions Expanded Panel (7.2 + 7.2.1) ── */}
+                      <AnimatePresence>
+                        {activeExport === "nonSub" && (
+                          <motion.div
+                            key="nonsub-panel"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-6">
+                              {/* Section 1: Quick Action */}
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
+                                  Quick Export
+                                </label>
+                                <motion.button
+                                  onClick={
+                                    handleExportWeeklyNonSubmissionsWithinWeek
+                                  }
+                                  whileHover={{
+                                    backgroundColor: "rgba(254, 242, 242, 1)",
+                                  }}
+                                  whileTap={{ scale: 0.99 }}
+                                  className="w-full flex items-center justify-between py-3 px-4 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-sm font-medium transition-all duration-200 cursor-pointer group"
+                                >
+                                  <span className="group-hover:text-red-600 transition-colors">
+                                    Current Week Non-Submissions
+                                  </span>
+                                  <FaFileExport className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
+                                </motion.button>
+                              </div>
+
+                              {/* Section 2: Custom Range */}
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
+                                  Custom Date Range
+                                </label>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <input
+                                      type="date"
+                                      value={customStartDate}
+                                      onChange={(e) =>
+                                        setCustomStartDate(e.target.value)
+                                      }
+                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <input
+                                      type="date"
+                                      value={customEndDate}
+                                      onChange={(e) =>
+                                        setCustomEndDate(e.target.value)
+                                      }
+                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Button */}
+                              <motion.button
+                                onClick={handleExportWeeklyNonSubmissionsCSV}
+                                whileHover={{
+                                  scale: 1.01,
+                                  backgroundColor: "#ef4444",
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full py-3 bg-red-500 text-white text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer shadow-md shadow-red-100"
+                              >
+                                Download CSV Report
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
 
             {/* Notifications Panel */}
