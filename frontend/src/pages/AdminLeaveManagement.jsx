@@ -363,12 +363,17 @@ const AdminLeaveManagement = () => {
     }
 
     setTriggeringEmail(true);
-    const toastId = toast.loading("Sending approved short leave email...");
+    const toastId = toast.loading("Initiating email send...");
 
     try {
       const result = await adminApi.triggerApprovedShortLeaveEmail();
 
-      if (result.success && !result.skipped) {
+      if (result.processing) {
+        toast.success(
+          `✅ Email is being sent in the background. Check server logs for status.`,
+          { id: toastId, duration: 5000 },
+        );
+      } else if (result.success && !result.skipped) {
         toast.success(
           `✅ Email sent successfully! ${result.data?.internsCount || 0} intern(s)`,
           { id: toastId, duration: 5000 },

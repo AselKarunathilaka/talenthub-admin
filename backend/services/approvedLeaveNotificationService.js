@@ -260,7 +260,11 @@ class ApprovedLeaveNotificationService {
         host: smtpHost,
         port: smtpPort,
         secure: false, // false for port 25
-        tls: { rejectUnauthorized: false }
+        tls: { rejectUnauthorized: false },
+        // Add connection timeout to prevent hanging (30 seconds)
+        connectionTimeout: 30000,
+        greetingTimeout: 15000,
+        socketTimeout: 30000,
       };
 
       // Add auth only if password is provided and not using port 25
@@ -273,7 +277,13 @@ class ApprovedLeaveNotificationService {
 
       const transporter = nodemailer.createTransport(transportConfig);
 
-      const info = await transporter.sendMail(mailOptions);
+      // Send email with timeout wrapper
+      const emailPromise = transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000)
+      );
+      
+      const info = await Promise.race([emailPromise, timeoutPromise]);
       console.log(`✅ Daily approved leaves email sent! ID: ${info.messageId}`);
 
       if (fs.existsSync(excelFilePath)) {

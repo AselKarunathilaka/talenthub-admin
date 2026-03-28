@@ -277,8 +277,9 @@ export const adminApi = {
         },
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
+      // Accept both 200 (success) and 202 (accepted/processing)
+      if (!response.ok && response.status !== 202) {
+        const errorData = await response.json().catch(() => ({}));
         throw new Error(
           errorData.message || `Failed to trigger email: ${response.status}`,
         );
