@@ -1,8 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
-const fs = require("fs");
-const path = require("path");
 
 const {
   getDashboardStats,
@@ -21,6 +19,13 @@ const {
   getInternLocationById,
   triggerApprovedShortLeaveEmail,
 } = require("../controllers/adminController");
+
+const {
+  getPastInternLocations,
+  getPastInternDistrictCounts,
+  getPastInternSyncStats,
+} = require("../controllers/pastInternController");
+
 const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
@@ -30,10 +35,10 @@ const {
   deleteAnnouncement,
 } = require("../controllers/AnnouncementController");
 
-// Export on-leave interns as Excel
+// Export on-leave interns as Excel (no auth — keep before router.use)
 router.get("/on-leave/export", exportOnLeaveExcel);
 
-// All admin routes require authentication
+// All routes below require authentication
 router.use(authMiddleware);
 
 // Dashboard statistics
@@ -64,35 +69,30 @@ router.get("/intern/:internId", getInternDetails);
 router.post("/sync/slt-api", syncWithSLTAPI);
 
 // Manually trigger weekly non-submission check
-router.post(
-  "/trigger/weekly-non-submission-check",
-  triggerWeeklyNonSubmissionCheck,
-);
+router.post("/trigger/weekly-non-submission-check", triggerWeeklyNonSubmissionCheck);
 
 // Manually trigger weekly non-submission check with Excel attachment
-router.post(
-  "/trigger/weekly-non-submission-check-excel",
-  triggerWeeklyNonSubmissionCheckWithExcel,
-);
+router.post("/trigger/weekly-non-submission-check-excel", triggerWeeklyNonSubmissionCheckWithExcel);
 
 // Manually trigger approved short leave email (1:30 PM report)
-router.post(
-  "/trigger/approved-short-leave-email",
-  triggerApprovedShortLeaveEmail,
-);
+router.post("/trigger/approved-short-leave-email", triggerApprovedShortLeaveEmail);
 
+// Active intern locations
 router.get("/intern-locations", getAdminInternLocations);
-
 router.get("/district-counts", getDistrictCounts);
-
 router.get("/intern-location/:traineeId", getInternLocationById);
 
-// Announcement routes (admin only)
+// Past intern locations (served from DB — instant)
+router.get("/past-intern-locations", getPastInternLocations);
+router.get("/past-intern-district-counts", getPastInternDistrictCounts);
+router.get("/past-intern-sync-stats", getPastInternSyncStats);
+
+// Announcement routes
 router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
 
-router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
+router.get("/debug/smtp-test", async (req, res) => {
   const nodemailer = require("nodemailer");
   const logs = [];
 
