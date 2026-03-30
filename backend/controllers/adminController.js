@@ -1300,20 +1300,30 @@ const triggerApprovedShortLeaveEmail = async (req, res) => {
 
     const ApprovedLeaveNotificationService = require("../services/approvedLeaveNotificationService");
 
-    // Call the service to send the daily report
-    const result = await ApprovedLeaveNotificationService.sendDailyReport();
-
-    // Always return the full result so you can see SMTP errors in the UI
-    return res.status(200).json({
-      success: result.success,
-      skipped: result.skipped || false,
-      message: result.success
-        ? result.skipped
-          ? `Skipped: ${result.reason}`
-          : `Email sent to ${result.internsCount} intern(s)`
-        : `FAILED: ${result.error}`, // <-- this will now show in frontend toast
-      data: result,
+    // Respond immediately to prevent gateway timeout
+    res.status(202).json({
+      success: true,
+      message: "Email sending initiated. Processing in background...",
+      processing: true,
     });
+
+    // Process email in background (fire and forget)
+    setImmediate(async () => {
+      try {
+        const result = await ApprovedLeaveNotificationService.sendDailyReport();
+        
+        if (result.success && !result.skipped) {
+          console.log(`✅ Background email sent to ${result.internsCount} intern(s)`);
+        } else if (result.skipped) {
+          console.log(`📭 Background email skipped: ${result.reason}`);
+        } else {
+          console.error(`❌ Background email failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("❌ Background email error:", error);
+      }
+    });
+
   } catch (error) {
     console.error("Error triggering approved short leave email:", error);
     return res.status(500).json({
