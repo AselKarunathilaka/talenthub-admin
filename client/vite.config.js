@@ -1,12 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: "/talenthub-admin/",
+  base: "/",
   build: {
     outDir: "dist",
-    assetsDir: "", // Flattens assets, no /assets/ folder
+    assetsDir: "",
   },
 });

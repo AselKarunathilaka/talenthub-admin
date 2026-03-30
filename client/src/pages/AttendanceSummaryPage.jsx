@@ -20,7 +20,7 @@ import {
   generateAbsentReports,
   exportAbsentReport,
   exportAbsentPDF,
-} from "./../utils/attendanceSummary/reportUtils";
+} from "../utils/attendanceSummary/reportUtils";
 
 // Utility function to format date as dd/mm/yyyy
 const formatDate = (date) => {

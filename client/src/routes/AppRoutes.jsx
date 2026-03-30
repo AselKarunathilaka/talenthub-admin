@@ -22,7 +22,7 @@ import OnlineAttendancePage from "../pages/OnlineAttendancePage";
 import InstructionGuide from "../pages/InstructionGuide";
 import FileUpload from "../pages/FileUpload";
 import AvailbleIntern from "../pages/AvailbleIntern";
-import AttendanceSummaryPage from "../pages/AttendanceSummaryPage ";
+import AttendanceSummaryPage from "../pages/AttendanceSummaryPage";
 import InternsHisPage from "../pages/InternsPageV2";
 import DailyAttendanceQR from "../pages/DailyAttendanceQR";
 
