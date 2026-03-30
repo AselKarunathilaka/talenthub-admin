@@ -12,9 +12,6 @@ import {
   FaExclamationTriangle,
   FaHome,
   FaIdCard,
-  FaHistory,
-  FaToggleOn,
-  FaToggleOff,
 } from "react-icons/fa";
 import axios from "axios";
 import L from "leaflet";
@@ -29,21 +26,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-// Highlighted active intern (orange)
 const highlightIcon = new L.Icon({
   iconUrl:
     "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-});
-
-// Past intern marker (violet)
-const pastInternIcon = new L.Icon({
-  iconUrl:
-    "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png",
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
@@ -80,6 +65,7 @@ const SRI_LANKA_DISTRICTS = [
   "Vavuniya",
 ];
 
+// ── OMS spiderfy CSS (leg lines + hover) ─────────────────────────────────────
 const OMS_CSS = `
   .oms-shadow { stroke: #999; stroke-width: 1; }
   .leaflet-marker-icon { transition: opacity 0.2s; }
@@ -94,18 +80,25 @@ function FlyTo({ position }) {
   return null;
 }
 
-// ── OMS spiderfy layer ────────────────────────────────────────────────────────
-function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
+// ── OMS Layer: all markers visible, overlapping ones auto-spiderfied ──────────
+function SpiderfyLayer({ interns, highlightedId, onReady }) {
   const map = useMap();
   const omsRef = useRef(null);
   const layerRef = useRef(null);
+  const markerMapRef = useRef({});
 
   useEffect(() => {
+    // Dynamically load OMS (attaches to window.OverlappingMarkerSpiderfier)
     const scriptId = "oms-script";
 
     const init = () => {
-      if (layerRef.current) map.removeLayer(layerRef.current);
-      if (omsRef.current) omsRef.current.clearMarkers();
+      // Clear previous layer
+      if (layerRef.current) {
+        map.removeLayer(layerRef.current);
+      }
+      if (omsRef.current) {
+        omsRef.current.clearMarkers();
+      }
 
       const OMS = window.OverlappingMarkerSpiderfier;
       if (!OMS) return;
@@ -114,7 +107,7 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
         markersWontMove: true,
         markersWontHide: true,
         basicFormatEvents: true,
-        nearbyDistance: 20,
+        nearbyDistance: 20, // px — markers within 20px are spiderfied
         spiralFootSeparation: 26,
         spiralLengthStart: 11,
         spiralLengthFactor: 4,
@@ -128,36 +121,34 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
 
       interns.forEach((intern) => {
         const isHighlighted = intern.id === highlightedId;
-        const icon = isHighlighted
-          ? highlightIcon
-          : markerIcon || new L.Icon.Default();
-
         const marker = L.marker(
           [intern.coordinates[1], intern.coordinates[0]],
-          { icon, zIndexOffset: isHighlighted ? 1000 : 0 },
+          {
+            icon: isHighlighted ? highlightIcon : new L.Icon.Default(),
+            zIndexOffset: isHighlighted ? 1000 : 0,
+          },
         );
 
-        const badgeColor = intern.isPast ? "#7c3aed" : "#1e40af";
-        const badgeLabel = intern.isPast ? "Past Intern" : "Active";
-
         const popupContent = `
-          <div style="min-width:185px;font-size:13px;line-height:1.6">
-            <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-              <p style="font-weight:700;color:#1e293b;margin:0">${intern.name}</p>
-              <span style="font-size:10px;background:${badgeColor};color:#fff;padding:1px 6px;border-radius:10px;white-space:nowrap">${badgeLabel}</span>
-            </div>
+          <div style="min-width:175px;font-size:13px;line-height:1.6">
+            <p style="font-weight:700;color:#1e293b;margin:0 0 4px">${intern.name}</p>
             <p style="color:#475569;margin:0 0 2px">
               <span style="font-weight:600">ID:</span> ${intern.id}
             </p>
-            ${intern.district ? `<p style="color:#475569;margin:0 0 2px"><span style="font-weight:600">District:</span> ${intern.district}</p>` : ""}
-            ${intern.institute ? `<p style="color:#475569;margin:0 0 2px"><span style="font-weight:600">Institute:</span> ${intern.institute}</p>` : ""}
+            ${
+              intern.district
+                ? `<p style="color:#475569;margin:0 0 2px">
+                   <span style="font-weight:600">District:</span> ${intern.district}
+                 </p>`
+                : ""
+            }
             <p style="color:#94a3b8;font-size:11px;margin:4px 0 0;line-height:1.4">
               ${intern.address || "<em>No address</em>"}
             </p>
           </div>
         `;
 
-        marker.bindPopup(popupContent, { maxWidth: 260 });
+        marker.bindPopup(popupContent, { maxWidth: 240 });
         oms.addMarker(marker);
         layer.addLayer(marker);
         newMarkerMap[intern.id] = marker;
@@ -166,6 +157,7 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
       map.addLayer(layer);
       layerRef.current = layer;
       omsRef.current = oms;
+      markerMapRef.current = newMarkerMap;
 
       if (onReady) onReady(newMarkerMap);
     };
@@ -180,6 +172,7 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
     } else if (window.OverlappingMarkerSpiderfier) {
       init();
     } else {
+      // Script tag exists but hasn't loaded yet — wait
       const script = document.getElementById(scriptId);
       script.addEventListener("load", init, { once: true });
     }
@@ -204,21 +197,11 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
 const AdminInternLocations = () => {
   const navigate = useNavigate();
 
-  // Active interns
   const [interns, setInterns] = useState([]);
-  const [districtCounts, setDistrictCounts] = useState([]);       // active counts
-  const [pastDistrictCounts, setPastDistrictCounts] = useState([]); // past counts
+  const [districtCounts, setDistrictCounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Past interns toggle
-  const [showPastInterns, setShowPastInterns] = useState(false);
-  const [pastInterns, setPastInterns] = useState([]);
-  const [pastLoading, setPastLoading] = useState(false);
-  const [pastError, setPastError] = useState(null);
-  const [pastFetched, setPastFetched] = useState(false);
-
-  // Shared UI state
   const [selectedDistrict, setSelectedDistrict] = useState("All");
   const [idSearch, setIdSearch] = useState("");
   const [idSearchLoading, setIdSearchLoading] = useState(false);
@@ -240,7 +223,6 @@ const AdminInternLocations = () => {
     }
   }, []);
 
-  // ── Fetch active intern locations ─────────────────────────────────────────
   const fetchInternLocations = useCallback(
     async (token, district = "All") => {
       try {
@@ -273,7 +255,6 @@ const AdminInternLocations = () => {
     [API_BASE],
   );
 
-  // ── Fetch active district counts ──────────────────────────────────────────
   const fetchDistrictCounts = useCallback(
     async (token) => {
       try {
@@ -286,55 +267,6 @@ const AdminInternLocations = () => {
     [API_BASE],
   );
 
-  // ── Fetch past district counts ────────────────────────────────────────────
-  const fetchPastDistrictCounts = useCallback(
-    async (token) => {
-      try {
-        const res = await axios.get(
-          `${API_BASE}/admin/past-intern-district-counts`,
-          { headers: { Authorization: `Bearer ${token}` } },
-        );
-        if (res.data.success) setPastDistrictCounts(res.data.data);
-      } catch {}
-    },
-    [API_BASE],
-  );
-
-  // ── Fetch past intern locations ───────────────────────────────────────────
-  const fetchPastInternLocations = useCallback(
-    async (token, district = "All") => {
-      try {
-        setPastLoading(true);
-        setPastError(null);
-        const params = district !== "All" ? { district } : {};
-        const res = await axios.get(
-          `${API_BASE}/admin/past-intern-locations`,
-          { headers: { Authorization: `Bearer ${token}` }, params },
-        );
-        if (res.data.success) {
-          const valid = res.data.data.filter(
-            (i) =>
-              i.coordinates &&
-              Array.isArray(i.coordinates) &&
-              i.coordinates.length === 2 &&
-              i.coordinates[0] != null &&
-              i.coordinates[1] != null,
-          );
-          setPastInterns(valid);
-          setPastFetched(true);
-        } else {
-          setPastError("Failed to load past intern locations");
-        }
-      } catch {
-        setPastError("Failed to fetch past intern locations");
-      } finally {
-        setPastLoading(false);
-      }
-    },
-    [API_BASE],
-  );
-
-  // ── Initial load + 1-hour auto-refresh ───────────────────────────────────
   useEffect(() => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (!adminInfo.token) {
@@ -343,22 +275,14 @@ const AdminInternLocations = () => {
     }
     fetchInternLocations(adminInfo.token, "All");
     fetchDistrictCounts(adminInfo.token);
-    fetchPastDistrictCounts(adminInfo.token);
-
-    // Refresh every 1 hour (was 5 minutes — no need to hammer the server)
     const iv = setInterval(
-      () => {
-        fetchInternLocations(adminInfo.token, selectedDistrict);
-        fetchDistrictCounts(adminInfo.token);
-        fetchPastDistrictCounts(adminInfo.token);
-      },
-      60 * 60 * 1000,
+      () => fetchInternLocations(adminInfo.token, selectedDistrict),
+      300000,
     );
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Re-fetch when district filter changes ─────────────────────────────────
   useEffect(() => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (!adminInfo.token) return;
@@ -366,35 +290,8 @@ const AdminInternLocations = () => {
     setFlyTo(null);
     setListSearch("");
     fetchInternLocations(adminInfo.token, selectedDistrict);
-    if (showPastInterns && pastFetched) {
-      fetchPastInternLocations(adminInfo.token, selectedDistrict);
-    }
-  }, [selectedDistrict, fetchInternLocations, fetchPastInternLocations]);
+  }, [selectedDistrict, fetchInternLocations]);
 
-  // ── Toggle past interns ───────────────────────────────────────────────────
-  const handleTogglePastInterns = () => {
-    const next = !showPastInterns;
-    setShowPastInterns(next);
-    if (next && !pastFetched) {
-      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
-      if (adminInfo.token) {
-        fetchPastInternLocations(adminInfo.token, selectedDistrict);
-      }
-    }
-  };
-
-  // ── Combined district count (active + past when toggle is on) ─────────────
-  // This is what shows in the dropdown next to each district name
-  const countForDistrict = (d) => {
-    const activeCount =
-      districtCounts.find((c) => c._id === d)?.count ?? 0;
-    const pastCount = showPastInterns
-      ? (pastDistrictCounts.find((c) => c._id === d)?.count ?? 0)
-      : 0;
-    return activeCount + pastCount;
-  };
-
-  // ── ID search ─────────────────────────────────────────────────────────────
   const handleIdSearch = async () => {
     const trimmed = idSearch.trim();
     if (!trimmed) {
@@ -464,6 +361,9 @@ const AdminInternLocations = () => {
     }, 1500);
   };
 
+  const countForDistrict = (d) =>
+    districtCounts.find((c) => c._id === d)?.count ?? 0;
+
   const filteredListInterns = interns.filter((i) => {
     if (!listSearch.trim()) return true;
     const q = listSearch.toLowerCase();
@@ -477,7 +377,6 @@ const AdminInternLocations = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800">
       <main className="p-6 lg:p-8 max-w-7xl mx-auto">
-
         {/* ── HEADER ── */}
         <motion.div
           initial={{ opacity: 0, y: -15 }}
@@ -507,114 +406,25 @@ const AdminInternLocations = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Active intern count card */}
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              className="flex items-center gap-4 bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-100"
-            >
-              <div className="bg-blue-500 text-white p-4 rounded-xl shadow-lg">
-                <FaUsers className="text-2xl" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">
-                  {selectedDistrict === "All"
-                    ? "Active Interns with Location"
-                    : `Active in ${selectedDistrict}`}
-                </p>
-                <p className="text-3xl font-bold text-blue-600">
-                  {interns.length}
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Past interns toggle card */}
-            <motion.div
-              whileHover={{ scale: 1.03 }}
-              className="flex items-center gap-4 bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-100"
-            >
-              <div className="bg-violet-100 p-4 rounded-xl">
-                <FaHistory className="text-violet-600 text-xl" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Past Interns</p>
-                <p className="text-2xl font-bold text-violet-600">
-                  {pastFetched ? pastInterns.length : "—"}
-                </p>
-              </div>
-              <button
-                onClick={handleTogglePastInterns}
-                disabled={pastLoading}
-                className="ml-2 flex items-center gap-2 text-sm font-semibold transition-all duration-200"
-                title={showPastInterns ? "Hide past interns" : "Show past interns"}
-              >
-                {pastLoading ? (
-                  <span className="w-5 h-5 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
-                ) : showPastInterns ? (
-                  <FaToggleOn className="text-3xl text-violet-600" />
-                ) : (
-                  <FaToggleOff className="text-3xl text-gray-400" />
-                )}
-                <span className={showPastInterns ? "text-violet-600" : "text-gray-400"}>
-                  {showPastInterns ? "On" : "Off"}
-                </span>
-              </button>
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* ── PAST INTERN LOADING / ERROR ── */}
-        <AnimatePresence>
-          {pastLoading && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="bg-violet-50 border border-violet-200 text-violet-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-3"
-            >
-              <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin shrink-0" />
-              Loading past intern locations…
-            </motion.div>
-          )}
-          {pastError && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-2"
-            >
-              <FaExclamationTriangle className="shrink-0" />
-              {pastError}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── LEGEND (shown when past interns are visible) ── */}
-        {showPastInterns && pastFetched && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex items-center gap-6 bg-white px-5 py-3 rounded-xl shadow-sm border border-gray-100 mb-4 text-sm"
+            whileHover={{ scale: 1.03 }}
+            className="flex items-center gap-4 bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-100"
           >
-            <span className="font-semibold text-gray-600">Legend:</span>
-            <span className="flex items-center gap-2">
-              <img
-                src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
-                alt="active"
-                className="h-4"
-              />
-              <span className="text-gray-600">Active intern</span>
-            </span>
-            <span className="flex items-center gap-2">
-              <img
-                src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png"
-                alt="past"
-                className="h-4"
-              />
-              <span className="text-violet-700 font-medium">Past intern</span>
-            </span>
+            <div className="bg-blue-500 text-white p-4 rounded-xl shadow-lg">
+              <FaUsers className="text-2xl" />
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">
+                {selectedDistrict === "All"
+                  ? "Total Interns with Location"
+                  : `Interns in ${selectedDistrict}`}
+              </p>
+              <p className="text-3xl font-bold text-blue-600">
+                {interns.length}
+              </p>
+            </div>
           </motion.div>
-        )}
+        </motion.div>
 
         {/* ── FILTER & SEARCH BAR ── */}
         <motion.div
@@ -760,7 +570,9 @@ const AdminInternLocations = () => {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <p className="text-gray-500 text-sm">Loading intern locations...</p>
+              <p className="text-gray-500 text-sm">
+                Loading intern locations...
+              </p>
             </div>
           ) : (
             <MapContainer
@@ -774,33 +586,18 @@ const AdminInternLocations = () => {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               {flyTo && <FlyTo position={flyTo} />}
-
-              {/* Active interns layer */}
               <SpiderfyLayer
                 interns={interns}
                 highlightedId={highlightedIntern?.id}
-                markerIcon={null}
                 onReady={(markerMap) => {
-                  markerMapRef.current = { ...markerMapRef.current, ...markerMap };
+                  markerMapRef.current = markerMap;
                 }}
               />
-
-              {/* Past interns layer — only mounted when toggle is on */}
-              {showPastInterns && pastInterns.length > 0 && (
-                <SpiderfyLayer
-                  interns={pastInterns}
-                  highlightedId={null}
-                  markerIcon={pastInternIcon}
-                  onReady={(markerMap) => {
-                    markerMapRef.current = { ...markerMapRef.current, ...markerMap };
-                  }}
-                />
-              )}
             </MapContainer>
           )}
         </motion.div>
 
-        {/* ── DISTRICT INTERN LIST (active only) ── */}
+        {/* ── DISTRICT INTERN LIST ── */}
         <AnimatePresence>
           {selectedDistrict !== "All" && !loading && (
             <motion.div
@@ -817,7 +614,7 @@ const AdminInternLocations = () => {
                   </div>
                   <div>
                     <h3 className="font-bold text-gray-800 text-base">
-                      Active Interns in {selectedDistrict}
+                      Interns in {selectedDistrict}
                     </h3>
                     <p className="text-xs text-gray-400">
                       {filteredListInterns.length} of {interns.length} intern
@@ -899,7 +696,9 @@ const AdminInternLocations = () => {
                           </td>
                           <td className="px-6 py-3.5 text-gray-500 text-xs max-w-xs">
                             {intern.address ? (
-                              <span className="line-clamp-2">{intern.address}</span>
+                              <span className="line-clamp-2">
+                                {intern.address}
+                              </span>
                             ) : (
                               <span className="italic text-gray-300">
                                 No address on record
