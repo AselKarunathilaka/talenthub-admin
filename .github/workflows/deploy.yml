@@ -1,0 +1,137 @@
+name: Deploy TalentHub-Admin
+
+on:
+  workflow_dispatch:
+    inputs:
+      projectname:
+        description: 'Project name (used as folder / URL suffix)'
+        required: true
+        default: 'talenthub-admin'
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: ${{ github.event.inputs.projectname }}
+
+jobs:
+  # JOB 1: Backend Deployment
+  deploy-backend:
+    name: Deploy Backend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy backend files to server
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          source: "backend/"
+          target: "/home/${{ secrets.SSH_USER }}/${{ env.PROJECT }}"
+          strip_components: 0
+
+      - name: Deploy backend via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          envs: PROJECT
+          script: |
+            set -euo pipefail
+            echo ">>> Deploying Backend for ${PROJECT}"
+            PROJECT_DIR="/home/${{ secrets.SSH_USER }}/${PROJECT}"
+
+            mkdir -p "${PROJECT_DIR}"
+            cd "${PROJECT_DIR}/backend"
+
+            if pm2 describe "${PROJECT}-backend" &>/dev/null; then
+              pm2 delete "${PROJECT}-backend" || true
+            fi
+
+            npm install
+
+            cat > .env <<EOF
+            PORT=${{ secrets.BACKEND_PORT }}
+            NODE_ENV=${{ secrets.NODE_ENV }}
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
+            GMAIL_USER=${{ secrets.GMAIL_USER }}
+            GMAIL_PASS=${{ secrets.GMAIL_PASS }}
+
+            EOF
+
+            echo "Starting backend using pm2..."
+            pm2 start npm --name "${PROJECT}-backend" -- start
+            pm2 save
+            pm2 list
+            echo "Backend deployed successfully."
+
+  # JOB 2: Frontend Deployment
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-backend  
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy frontend files to server
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          source: "client/"
+          target: "/home/${{ secrets.SSH_USER }}/${{ env.PROJECT }}"
+          strip_components: 0
+
+      - name: Deploy frontend via SSH
+        uses: appleboy/ssh-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          envs: PROJECT
+          script: |
+            set -euo pipefail
+            echo ">>> Building Frontend for ${PROJECT}"
+            PROJECT_DIR="/home/${{ secrets.SSH_USER }}/${PROJECT}"
+
+            cd "${PROJECT_DIR}/client"
+
+            npm install
+
+            cat > .env <<EOF
+            VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
+            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+            EOF
+
+            npm run build
+
+            echo ">>> Deploying frontend build to /var/www/${PROJECT}"
+            sudo mkdir -p /var/www/${PROJECT}
+            sudo rm -rf /var/www/${PROJECT}/*
+            sudo mv dist/* /var/www/${PROJECT}/
+
+            sudo chown -R nginx:nginx /var/www/${PROJECT} || true
+            sudo chmod -R 755 /var/www/${PROJECT} || true
+            sudo chcon -R -t httpd_sys_content_t /var/www/${PROJECT} || true
+
+            echo "Restarting Nginx..."
+            sudo nginx -t
+            sudo systemctl reload nginx
+
+            echo "Frontend deployed successfully."
