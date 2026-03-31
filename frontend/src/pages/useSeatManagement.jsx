@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { API_BASE_URL } from "../api/apiConfig";
 
 // Left section seats configuration
-const leftSection = {
+export const leftSection = {
   topRow: [
     { number: 1, x: 3, y: 145 },
     { number: 2, x: 68, y: 145 },
@@ -53,7 +53,7 @@ const leftSection = {
 };
 
 // Right section seats configuration
-const rightSection = {
+export const rightSection = {
   straightSeats: [
     { number: 37, x: 722, y: 80 },
     { number: 38, x: 787, y: 80 },

@@ -19,12 +19,14 @@ import {
   FaUnlock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { Armchair } from "lucide-react";
 import logo from "../assets/sltlogo.jpg";
 import {
   adminSeatApi,
   seatBookingCsvUtils,
   seatNotificationUtils,
 } from "../api/adminSeatApi";
+import { leftSection, rightSection } from "./useSeatManagement";
 
 const TOTAL_SEATS = 88;
 
@@ -599,42 +601,120 @@ const AdminSeatManagement = () => {
                       </div>
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="w-4 h-4 bg-gray-400 rounded"></div>
+                          <div className="w-5 h-5 bg-gray-500 rounded-lg"></div>
                           <span>Locked</span>
                         </div>
                         <div className="flex items-center gap-2 text-xs">
-                          <div className="w-4 h-4 bg-green-400 rounded"></div>
+                          <div className="w-5 h-5 bg-cyan-400 rounded-lg"></div>
                           <span>Unlocked</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
-                      {Array.from({ length: TOTAL_SEATS }, (_, i) => i + 1).map((seatNum) => {
-                        const isLocked = lockedSeats.includes(seatNum);
-                        return (
-                          <motion.button
-                            key={seatNum}
-                            onClick={() => setLockConfirm({ seatNumber: seatNum, action: isLocked ? "unlock" : "lock" })}
-                            disabled={lockLoading}
-                            className={`relative flex flex-col items-center justify-center p-1.5 rounded-lg text-xs font-bold transition-all border ${
-                              isLocked
-                                ? "bg-gray-400 text-white border-gray-500 hover:bg-gray-500"
-                                : "bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
-                            } ${lockLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                            whileHover={lockLoading ? {} : { scale: 1.15 }}
-                            whileTap={lockLoading ? {} : { scale: 0.9 }}
-                            title={isLocked ? `Seat ${seatNum} (Locked) — Click to unlock` : `Seat ${seatNum} (Open) — Click to lock`}
+                    {/* Floor Plan Layout - Same as intern view */}
+                    <div className="bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
+                      <div
+                        className="relative mx-auto"
+                        style={{
+                          width: "100%",
+                          maxWidth: "1450px",
+                          height: "0",
+                          paddingBottom: "60%",
+                          minHeight: "400px",
+                        }}
+                      >
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            transform: "scale(0.8)",
+                            transformOrigin: "center center",
+                          }}
+                        >
+                          {/* Entrance bar */}
+                          <div
+                            className="absolute top-0 h-12 bg-gray-700 flex items-center"
+                            style={{ left: "-124px", width: "742px" }}
                           >
-                            {isLocked ? (
-                              <FaLock className="text-[10px] mb-0.5" />
-                            ) : (
-                              <FaUnlock className="text-[10px] mb-0.5" />
-                            )}
-                            <span>{seatNum}</span>
-                          </motion.button>
-                        );
-                      })}
+                            <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
+                              Entrance
+                            </div>
+                          </div>
+                          <div
+                            className="absolute h-12 bg-gray-700 flex items-center"
+                            style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
+                          ></div>
+                          <div
+                            className="absolute top-11 w-33 bg-gray-700"
+                            style={{ left: "486px", bottom: "-110px" }}
+                          ></div>
+
+                          {/* Left section background + pillar */}
+                          <div
+                            className="absolute bg-gray-400 rounded-lg"
+                            style={{ left: "-125px", top: "50px", width: "610px", height: "720px" }}
+                          >
+                            <div
+                              className="absolute bg-gray-600 rounded-full"
+                              style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
+                            ></div>
+                          </div>
+
+                          {/* Right section background + pillar */}
+                          <div
+                            className="absolute bg-gray-400 rounded-lg"
+                            style={{ left: "620px", top: "0px", width: "650px", height: "770px" }}
+                          >
+                            <div
+                              className="absolute bg-gray-600 rounded-full"
+                              style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
+                            ></div>
+                          </div>
+
+                          {/* AdminSeat component - renders on the floor plan */}
+                          {(() => {
+                            const AdminSeat = ({ number, x, y, angle, radius, centerX, centerY }) => {
+                              const isLocked = lockedSeats.includes(number);
+                              let posX = x;
+                              let posY = y;
+                              if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
+                                posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
+                                posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+                              }
+                              return (
+                                <div
+                                  onClick={() => !lockLoading && setLockConfirm({ seatNumber: number, action: isLocked ? "unlock" : "lock" })}
+                                  className={`absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer hover:scale-110 ${
+                                    isLocked
+                                      ? "bg-gray-500 text-white"
+                                      : "bg-cyan-400 text-white hover:bg-cyan-500"
+                                  }`}
+                                  style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
+                                  title={isLocked ? `Seat ${number} (Locked) — Click to unlock` : `Seat ${number} — Click to lock`}
+                                >
+                                  {isLocked ? <FaLock size={12} className="mb-[-2px]" /> : null}
+                                  <Armchair size={16} />
+                                  <span className="text-[10px] mt-0.5">{number}</span>
+                                </div>
+                              );
+                            };
+
+                            return (
+                              <>
+                                {leftSection.topRow.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                                {leftSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                {leftSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                {leftSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                {leftSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                {rightSection.straightSeats.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                                {rightSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                {rightSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                {rightSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                {rightSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
                     </div>
 
                     <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
