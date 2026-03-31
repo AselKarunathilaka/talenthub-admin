@@ -1,11 +1,37 @@
-const app = require("./app");
-const connectDB = require("./config/database");
+const express = require("express");
+const cors = require("cors");
 
+const authRoutes = require("./routes/authRoutes");
+const internRoutes = require("./routes/internRoutes");
+const uploadRoutes = require("./routes/uploadRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const qrCodeRoutes = require("./routes/qrCodeRoutes");
+const onlineAttendanceRoutes = require("./routes/onlineAttendanceRoutes");
 
-connectDB();
+const app = express();
 
-const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+const allowedOrigins = [
+  "https://talenthub-admin.vercel.app",
+  "http://localhost:5173",
+];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: false,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
+
+app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Backend is running");
@@ -15,20 +41,11 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "API is working" });
 });
 
-// const internData = {
-//     traineeId: "12345",
-//     traineeName: "Nawamina",
-//     fieldOfSpecialization: "MERN"
-//   };
-  
-//   fetch("https://internattendancebe.azurewebsites.net/api/interns/add-external", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json"
-//     },
-//     body: JSON.stringify(internData)
-//   })
-//   .then(response => response.json())
-//   .then(data => console.log("Success:", data))
-//   .catch(error => console.error("Error:", error));
-  
+app.use("/api/auth", authRoutes);
+app.use("/api/interns", internRoutes);
+app.use("/api/qrcode", qrCodeRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/projects", projectRoutes);
+app.use("/api/online-attendance", onlineAttendanceRoutes);
+
+module.exports = app;
