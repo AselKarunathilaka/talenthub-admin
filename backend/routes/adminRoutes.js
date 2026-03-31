@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const fs = require("fs");
+const path = require("path");
 
 const {
   getDashboardStats,
@@ -9,13 +11,25 @@ const {
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
-  getPreviousDaySubmissions,
+  getNonSubmissionsWithinAWeek,
   getWeeklyNonSubmissions,
   syncWithSLTAPI,
   triggerWeeklyNonSubmissionCheck,
-  triggerWeeklyNonSubmissionCheckWithExcel
+  triggerWeeklyNonSubmissionCheckWithExcel,
+  getAdminInternLocations,
+  getDistrictCounts,
+  getInternLocationById,
+  triggerApprovedShortLeaveEmail,
 } = require("../controllers/adminController");
-const { exportOnLeaveExcel } = require("../controllers/onLeaveExportController");
+const {
+  exportOnLeaveExcel,
+} = require("../controllers/onLeaveExportController");
+const {
+  createAnnouncement,
+  getAllAnnouncements,
+  deleteAnnouncement,
+} = require("../controllers/AnnouncementController");
+
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
 
@@ -34,8 +48,8 @@ router.get("/report/interns", getInternReport);
 // Get all daily records
 router.get("/daily-records", getAllDailyRecords);
 
-// Get previous day submissions
-router.get("/previous-day-submissions", getPreviousDaySubmissions);
+// Get non-submissions within a week from current date (last 5 working days)
+router.get("/non-submissions-within-week", getNonSubmissionsWithinAWeek);
 
 // Get weekly non-submissions (Monday to Friday of current week)
 router.get("/weekly-non-submissions", getWeeklyNonSubmissions);
@@ -50,9 +64,73 @@ router.get("/intern/:internId", getInternDetails);
 router.post("/sync/slt-api", syncWithSLTAPI);
 
 // Manually trigger weekly non-submission check
-router.post("/trigger/weekly-non-submission-check", triggerWeeklyNonSubmissionCheck);
+router.post(
+  "/trigger/weekly-non-submission-check",
+  triggerWeeklyNonSubmissionCheck,
+);
 
 // Manually trigger weekly non-submission check with Excel attachment
-router.post("/trigger/weekly-non-submission-check-excel", triggerWeeklyNonSubmissionCheckWithExcel);
+router.post(
+  "/trigger/weekly-non-submission-check-excel",
+  triggerWeeklyNonSubmissionCheckWithExcel,
+);
+
+// Manually trigger approved short leave email (1:30 PM report)
+router.post(
+  "/trigger/approved-short-leave-email",
+  triggerApprovedShortLeaveEmail,
+);
+
+router.get("/intern-locations", getAdminInternLocations);
+
+router.get("/district-counts", getDistrictCounts);
+
+router.get("/intern-location/:traineeId", getInternLocationById);
+
+// Announcement routes (admin only)
+router.get("/announcements", getAllAnnouncements);
+router.post("/announcements", createAnnouncement);
+router.delete("/announcements/:id", deleteAnnouncement);
+
+router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
+  const nodemailer = require("nodemailer");
+  const logs = [];
+
+  logs.push(`SMTP_HOST: ${process.env.SHORT_LEAVE_SMTP_HOST || "NOT SET"}`);
+  logs.push(`SMTP_PORT: ${process.env.SHORT_LEAVE_SMTP_PORT || "NOT SET"}`);
+  logs.push(`FROM_EMAIL: ${process.env.SHORT_LEAVE_EMAIL || "NOT SET"}`);
+  logs.push(`RECIPIENT: ${process.env.SHORT_LEAVE_RECIPIENT || "NOT SET"}`);
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SHORT_LEAVE_SMTP_HOST || "mail.slt.com.lk",
+      port: parseInt(process.env.SHORT_LEAVE_SMTP_PORT || "25"),
+      secure: false,
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 5000,
+    });
+
+    logs.push("Attempting SMTP verify...");
+    await transporter.verify();
+    logs.push("SMTP verify SUCCESS");
+
+    const info = await transporter.sendMail({
+      from: process.env.SHORT_LEAVE_EMAIL,
+      to: req.query.to || process.env.SHORT_LEAVE_EMAIL,
+      subject: "TalentHub SMTP Debug Test",
+      text: `Test sent at ${new Date().toISOString()}`,
+    });
+
+    logs.push(`Email sent! MessageId: ${info.messageId}`);
+    logs.push(`Response: ${info.response}`);
+
+    res.json({ success: true, logs });
+  } catch (err) {
+    logs.push(`ERROR: ${err.message}`);
+    logs.push(`CODE: ${err.code}`);
+    logs.push(`COMMAND: ${err.command}`);
+    res.json({ success: false, logs, error: err.message, code: err.code });
+  }
+});
 
 module.exports = router;

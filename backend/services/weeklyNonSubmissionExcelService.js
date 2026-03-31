@@ -212,8 +212,10 @@ class WeeklyNonSubmissionExcelService {
 
   /**
    * Send email with Excel attachment
+   * @param {Array} nonSubmittedInterns - List of interns who haven't submitted logs
+   * @param {Array|String} recipients - Email recipient(s) - can be array ['email1@example.com', 'email2@example.com'] or comma-separated string
    */
-  static async sendNonSubmissionEmailWithExcel(nonSubmittedInterns, recipientEmail = 'mgiri@slt.com.lk') {
+  static async sendNonSubmissionEmailWithExcel(nonSubmittedInterns, recipients = 'mgiri@slt.com.lk') {
     let excelFilePath = null;
 
     try {
@@ -225,6 +227,11 @@ class WeeklyNonSubmissionExcelService {
           reason: 'All interns have submitted logs'
         };
       }
+
+      // Convert recipients to comma-separated string if it's an array
+      const recipientEmail = Array.isArray(recipients) ? recipients.join(', ') : recipients;
+      const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+      console.log(`📧 Recipients: ${recipientList.join(', ')}`);
 
       // Generate Excel file
       console.log('📊 Generating Excel report...');
@@ -379,7 +386,7 @@ class WeeklyNonSubmissionExcelService {
     </div>
     
     <div class="footer">
-      <p style="margin: 5px 0;">📧 Recipient: ${recipientEmail}</p>
+      <p style="margin: 5px 0;">📧 Recipients: ${recipientList.join(', ')}</p>
       <p style="margin: 5px 0;">🕐 Generated: ${moment().format('MMMM DD, YYYY [at] h:mm A')}</p>
       <p style="margin: 5px 0;">© ${moment().format('YYYY')} SLT Mobitel - All Rights Reserved</p>
     </div>
@@ -413,7 +420,8 @@ class WeeklyNonSubmissionExcelService {
 
       const info = await transporter.sendMail(mailOptions);
       
-      console.log(`✅ Non-submission alert email sent to ${recipientEmail}`);
+      console.log(`✅ Non-submission alert email sent to ${recipientList.length} recipient(s)`);
+      recipientList.forEach(email => console.log(`   📧 ${email}`));
       console.log(`📧 Email ID: ${info.messageId}`);
       console.log(`📎 Attachment: ${path.basename(excelFilePath)}`);
       console.log(`📊 Interns listed: ${nonSubmittedInterns.length}`);
@@ -427,7 +435,8 @@ class WeeklyNonSubmissionExcelService {
       return {
         success: true,
         messageId: info.messageId,
-        recipient: recipientEmail,
+        recipients: recipientList,
+        recipientCount: recipientList.length,
         internsCount: nonSubmittedInterns.length,
         attachmentName: path.basename(excelFilePath)
       };
@@ -454,8 +463,10 @@ class WeeklyNonSubmissionExcelService {
 
   /**
    * Main function to check all interns and send alert with Excel attachment
+   * @param {Array|String} recipients - Email recipient(s) - can be array or comma-separated string
+   * @param {String} triggerType - Type of trigger ('scheduled' or 'manual')
    */
-  static async performWeeklyNonSubmissionCheckWithExcel(recipientEmail = 'mgiri@slt.com.lk', triggerType = 'scheduled') {
+  static async performWeeklyNonSubmissionCheckWithExcel(recipients = 'mgiri@slt.com.lk', triggerType = 'scheduled') {
     const startTime = new Date();
     console.log('\n🔍 Starting weekly logbook non-submission check (with Excel attachment)...');
     console.log(`📅 Checking past 5 working days from: ${moment().format('MMMM DD, YYYY')}`);
@@ -523,8 +534,9 @@ class WeeklyNonSubmissionExcelService {
       }
 
       // Send email with Excel attachment
-      console.log(`\n📧 Sending alert with Excel attachment to ${recipientEmail}...`);
-      const emailResult = await this.sendNonSubmissionEmailWithExcel(results.nonSubmittedList, recipientEmail);
+      const recipientList = Array.isArray(recipients) ? recipients : [recipients];
+      console.log(`\n📧 Sending alert with Excel attachment to ${recipientList.length} recipient(s)...`);
+      const emailResult = await this.sendNonSubmissionEmailWithExcel(results.nonSubmittedList, recipients);
       
       if (emailResult.success) {
         results.emailSent = true;

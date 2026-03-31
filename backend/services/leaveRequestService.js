@@ -71,6 +71,22 @@ class LeaveRequestService {
         throw new Error("Leave date cannot be in the past");
       }
 
+      // Validate short leave request time (8:30 AM to 4:30 PM Sri Lanka Time)
+      const moment = require("moment");
+      const sriLankaNow = moment().utcOffset("+05:30");
+      const currentHour = sriLankaNow.hour();
+      const currentMinute = sriLankaNow.minute();
+      
+      // Check if current time is between 8:30 AM and 4:30 PM
+      const isWithinAllowedTime = 
+        (currentHour === 8 && currentMinute >= 30) ||
+        (currentHour > 8 && currentHour < 16) ||
+        (currentHour === 16 && currentMinute <= 30);
+
+      if (!isWithinAllowedTime) {
+        throw new Error("Short leave requests can only be submitted between 8:30 AM and 4:30 PM Sri Lanka Time");
+      }
+
       // Create leave request
       console.log(
         `Creating leave request for intern: ${internId}, Trainee_ID: ${intern.Trainee_ID}`,
@@ -83,8 +99,9 @@ class LeaveRequestService {
         ...leaveRequestData,
       });
 
-      // Send notification email to admin
-      await this.notifyAdminNewRequest(leaveRequest);
+      // NOTE: Individual notification emails are disabled
+      // All short leave requests are sent together at 1 PM via scheduled email
+      // await this.notifyAdminNewRequest(leaveRequest);
 
       console.log(
         `Leave request created by intern ${internId}, stored Trainee_ID: ${leaveRequest.internTraineeId}`,
@@ -105,7 +122,7 @@ class LeaveRequestService {
 
   async generateApprovedLeavesPDF({ date }) {
     const leaveRequests = await this.getApprovedLeavesByDate(date);
-    const doc = new PDFDocument({ margin: 40, size: "A4" });
+    const doc = new PDFDocument({ margin: 40, size: "A4", bufferPages: true });
     const chunks = [];
 
     doc.on("data", (chunk) => {
@@ -175,6 +192,8 @@ class LeaveRequestService {
           "No approved short leave requests were recorded for the selected date.",
           { align: "center" },
         );
+
+      doc.flushPages();
       doc.end();
       return await pdfBuffer;
     }
@@ -345,6 +364,7 @@ class LeaveRequestService {
         );
     }
 
+    doc.flushPages();
     doc.end();
     return await pdfBuffer;
   }
@@ -371,6 +391,7 @@ class LeaveRequestService {
       const total = await leaveRequestRepository.countByInternId(
         internId,
         options.status,
+        { date: options.date },
       );
 
       return {
@@ -554,6 +575,155 @@ class LeaveRequestService {
     } catch (error) {
       console.error("Error sending intern notification:", error);
       // Don't throw error - notification failure shouldn't block status update
+    }
+  }
+
+  async updateLeaveRequestStatus(id, status, adminResponse, reviewedBy) {
+    try {
+      // Validate status
+      if (!["Approved", "Denied"].includes(status)) {
+        throw new Error("Invalid status. Must be Approved or Denied");
+      }
+
+      // Update leave request
+      const leaveRequest = await leaveRequestRepository.updateStatus(
+        id,
+        status,
+        adminResponse,
+        reviewedBy,
+      );
+
+      if (!leaveRequest) {
+        throw new Error("Leave request not found");
+      }
+
+      // Generate pass token if approved
+      if (status === "Approved" && !leaveRequest.passToken) {
+        leaveRequest.generatePassToken();
+        await leaveRequest.save();
+      }
+
+      // Send notification email to intern
+      await this.notifyInternStatusUpdate(leaveRequest);
+
+      console.log(
+        `Leave request ${id} updated to ${status} by admin ${reviewedBy}`,
+      );
+
+      return leaveRequest;
+    } catch (error) {
+      console.error("Error updating leave request status:", error);
+      throw error;
+    }
+  }
+
+  // Add new method to validate leave pass
+  async validateLeavePass(token) {
+    try {
+      const leaveRequest = await leaveRequestRepository.findByToken(token);
+
+      if (!leaveRequest) {
+        return {
+          valid: false,
+          reason: "Invalid leave pass",
+        };
+      }
+
+      if (leaveRequest.status !== "Approved") {
+        return {
+          valid: false,
+          reason: "Leave not approved",
+        };
+      }
+
+      if (leaveRequest.passUsed) {
+        return {
+          valid: false,
+          reason: "Pass already used",
+          usedAt: leaveRequest.passUsedAt,
+        };
+      }
+
+      // Check if leave date is today (Sri Lanka timezone)
+      const sriLankaTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Colombo",
+      });
+      const currentDate = new Date(sriLankaTime);
+      const leaveDate = new Date(leaveRequest.leaveDate);
+
+      const isSameDay =
+        currentDate.getFullYear() === leaveDate.getFullYear() &&
+        currentDate.getMonth() === leaveDate.getMonth() &&
+        currentDate.getDate() === leaveDate.getDate();
+
+      if (!isSameDay) {
+        return {
+          valid: false,
+          reason: "Pass is not valid for today",
+          leaveDate: leaveRequest.leaveDate,
+        };
+      }
+
+      // Check if current time is past 4:30 PM Sri Lanka time
+      const currentHour = currentDate.getHours();
+      const currentMinute = currentDate.getMinutes();
+      const isPastExpiry =
+        currentHour > 16 || (currentHour === 16 && currentMinute >= 30);
+
+      if (isPastExpiry) {
+        return {
+          valid: false,
+          reason: "Pass expired (after 4:30 PM)",
+          expired: true,
+        };
+      }
+
+      // Pass is valid
+      return {
+        valid: true,
+        leaveRequest: {
+          internName: leaveRequest.internName,
+          traineeId: leaveRequest.internTraineeId,
+          nationalId: leaveRequest.nationalId,
+          leaveDate: leaveRequest.leaveDate,
+          leaveTime: leaveRequest.leaveTime,
+          purpose: leaveRequest.purpose,
+          reason: leaveRequest.reason,
+          reviewedBy: leaveRequest.reviewedBy,
+          reviewedAt: leaveRequest.reviewedAt,
+        },
+      };
+    } catch (error) {
+      console.error("Error validating leave pass:", error);
+      throw error;
+    }
+  }
+
+  // Add new method to mark pass as used
+  async markPassAsUsed(token) {
+    try {
+      const leaveRequest = await leaveRequestRepository.findByToken(token);
+
+      if (!leaveRequest) {
+        throw new Error("Leave pass not found");
+      }
+
+      if (leaveRequest.passUsed) {
+        throw new Error("Pass already marked as used");
+      }
+
+      leaveRequest.passUsed = true;
+      leaveRequest.passUsedAt = new Date();
+      await leaveRequest.save();
+
+      return {
+        success: true,
+        message: "Exit marked successfully",
+        usedAt: leaveRequest.passUsedAt,
+      };
+    } catch (error) {
+      console.error("Error marking pass as used:", error);
+      throw error;
     }
   }
 }

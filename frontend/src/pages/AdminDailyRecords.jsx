@@ -1,208 +1,325 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  FaSearch, FaCalendarAlt, FaDownload, FaUser, FaArrowLeft,
-  FaFilter, FaSort, FaFileExport, FaEye, FaExclamationTriangle,
-  FaShieldAlt, FaTasks, FaRegSmile, FaRegClock, FaChartLine
-} from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import { adminApi, csvUtils, notificationUtils } from '../api/adminApi';
-import logo from '../assets/sltlogo.jpg';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FaSearch,
+  FaCalendarAlt,
+  FaUser,
+  FaArrowLeft,
+  FaSort,
+  FaFileExport,
+  FaEye,
+  FaExclamationTriangle,
+  FaShieldAlt,
+  FaRegClock,
+  FaChevronLeft,
+  FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
+  FaSpinner,
+  FaCalendarDay,
+} from "react-icons/fa";
+import { motion } from "framer-motion";
+import { adminApi, notificationUtils } from "../api/adminApi";
+import logo from "../assets/sltlogo.jpg";
+
+const LIMIT = 50;
+
+// "YYYY-MM-DD" in local time (avoids UTC midnight shift)
+const toDateStr = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+const todayStr = toDateStr(new Date());
 
 const AdminDailyRecords = () => {
   const navigate = useNavigate();
-  const [dailyRecords, setDailyRecords] = useState([]);
+
+  // data
+  const [records, setRecords] = useState([]);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    page: 1,
+    limit: LIMIT,
+    totalPages: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
+
+  // ui
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  const [sortBy, setSortBy] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
 
-  // Fetch all daily records
-  const fetchDailyRecords = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
+  // filters
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
 
-      // Check admin authentication
-      const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-      if (!adminInfo.token) {
-        setError('Admin authentication required');
-        navigate('/admin-login');
-        return;
+  const searchTimer = useRef(null);
+
+  // Core fetch
+  const fetchRecords = useCallback(
+    async ({
+      page = 1,
+      date = selectedDate,
+      search = searchTerm,
+      isInitial = false,
+    } = {}) => {
+      try {
+        isInitial ? setLoading(true) : setPageLoading(true);
+        setError(null);
+
+        const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+        if (!adminInfo.token) {
+          setError("Admin authentication required");
+          navigate("/admin-login");
+          return;
+        }
+
+        const data = await adminApi.getAllDailyRecords({
+          page,
+          limit: LIMIT,
+          search,
+          date,
+        });
+        setRecords(data.records);
+        setPagination(data.pagination);
+      } catch (err) {
+        console.error("Error fetching daily records:", err);
+        setError("Failed to load daily records. Please try again.");
+        if (err.message?.includes("403") || err.message?.includes("401")) {
+          localStorage.removeItem("adminInfo");
+          navigate("/admin-login");
+        }
+      } finally {
+        setLoading(false);
+        setPageLoading(false);
       }
-
-      // Fetch all daily records from the API
-      const records = await adminApi.getAllDailyRecords();
-      setDailyRecords(records);
-
-    } catch (error) {
-      console.error('Error fetching daily records:', error);
-      setError('Failed to load daily records. Please try again.');
-      
-      // If it's an auth error, redirect to login
-      if (error.message.includes('403') || error.message.includes('401')) {
-        localStorage.removeItem('adminInfo');
-        navigate('/admin-login');
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate]);
+    },
+    [navigate],
+  ); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    fetchDailyRecords();
-  }, [fetchDailyRecords]);
+    fetchRecords({ isInitial: true, date: todayStr });
+  }, [fetchRecords]);
 
-  // Filter and sort records
-  const getFilteredRecords = () => {
-    let filtered = [...dailyRecords];
-
-    // Search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter(record => 
-        record.Trainee_Name?.toLowerCase().includes(searchLower) ||
-        record.Trainee_ID?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Date filter
-    if (dateFilter) {
-      filtered = filtered.filter(record => {
-        const recordDate = new Date(record.date).toDateString();
-        const filterDate = new Date(dateFilter).toDateString();
-        return recordDate === filterDate;
-      });
-    }
-
-    // Sort records
-    filtered.sort((a, b) => {
-      let aValue, bValue;
-      
-      switch (sortBy) {
-        case 'date':
-          aValue = new Date(a.date);
-          bValue = new Date(b.date);
-          break;
-        case 'name':
-          aValue = a.Trainee_Name || '';
-          bValue = b.Trainee_Name || '';
-          break;
-        case 'traineeId':
-          aValue = a.Trainee_ID || '';
-          bValue = b.Trainee_ID || '';
-          break;
-        default:
-          return 0;
-      }
-
-      if (sortBy === 'date') {
-        return sortOrder === 'desc' ? bValue - aValue : aValue - bValue;
-      } else {
-        const comparison = aValue.localeCompare(bValue);
-        return sortOrder === 'desc' ? -comparison : comparison;
-      }
-    });
-
-    return filtered;
+  // Handlers
+  const switchDate = (val) => {
+    setSelectedDate(val);
+    setSearchTerm("");
+    fetchRecords({ page: 1, date: val, search: "" });
   };
 
-  const filteredRecords = getFilteredRecords();
+  const handleDateChange = (e) => switchDate(e.target.value);
+  const handleGoToToday = () => switchDate(todayStr);
 
-  // Export records to CSV
-  const handleExportCSV = async () => {
+  const handlePrevDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    switchDate(toDateStr(d));
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    switchDate(toDateStr(d));
+  };
+
+  // Debounced search within current date
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setSearchTerm(val);
+    clearTimeout(searchTimer.current);
+    searchTimer.current = setTimeout(() => {
+      fetchRecords({ page: 1, date: selectedDate, search: val });
+    }, 400);
+  };
+
+  const goToPage = (p) =>
+    fetchRecords({ page: p, date: selectedDate, search: searchTerm });
+
+  // Sort is local only (just reverses current page slice)
+  const displayedRecords =
+    sortOrder === "desc" ? records : [...records].reverse();
+
+  // CSV export
+  const handleExportCSV = () => {
     try {
-      if (filteredRecords.length === 0) {
-        notificationUtils.showInfo('No records to export.');
+      if (displayedRecords.length === 0) {
+        notificationUtils.showInfo("No records to export.");
         return;
       }
 
-      // Helper function to format date as YYYY-MM-DD
-      // Uses = formula prefix to force Excel to treat it as text and preserve the format
-      const formatDateForExport = (date) => {
-        if (!date) return '="N/A"';
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return '="N/A"';
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `="${year}-${month}-${day}"`;
+      const fmtDT = (d) => {
+        if (!d) return '="N/A"';
+        const dt = new Date(d);
+        if (isNaN(dt)) return '="N/A"';
+        return `="${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}"`;
       };
 
-      // Helper function to format datetime as YYYY-MM-DD HH:MM:SS
-      // Uses = formula prefix to force Excel to treat it as text and preserve the format
-      const formatDateTimeForExport = (date) => {
-        if (!date) return '="N/A"';
-        const d = new Date(date);
-        if (isNaN(d.getTime())) return '="N/A"';
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const hours = String(d.getHours()).padStart(2, '0');
-        const minutes = String(d.getMinutes()).padStart(2, '0');
-        const seconds = String(d.getSeconds()).padStart(2, '0');
-        return `="${year}-${month}-${day} ${hours}:${minutes}:${seconds}"`;
-      };
-
-      // Format data for CSV export
-      const csvData = filteredRecords.map(record => ({
-        'Date': formatDateForExport(record.date),
-        'Trainee Name': `"${record.Trainee_Name || 'N/A'}"`,
-        'Trainee ID': record.Trainee_ID || 'N/A',
-        'Created At': formatDateTimeForExport(record.createdAt)
+      const csvData = displayedRecords.map((r) => ({
+        Date: `="${r.date || "N/A"}"`,
+        "Trainee Name": `"${r.internId?.Trainee_Name || r.Trainee_Name || "N/A"}"`,
+        "Trainee ID": r.internId?.Trainee_ID || r.Trainee_ID || "N/A",
+        Status: r.status || "working",
+        "Submitted At": fmtDT(r.createdAt),
       }));
 
-      // Convert to CSV and download
-      const csv = convertToCSV(csvData);
-      downloadCSV(csv, `daily_records_${new Date().toISOString().split('T')[0]}.csv`);
-      
-      notificationUtils.showSuccess(`Daily records CSV with ${filteredRecords.length} records downloaded successfully`);
-    } catch (error) {
-      console.error('Error exporting CSV:', error);
-      notificationUtils.showError('Failed to export CSV report');
-    }
-  };
+      const headers = Object.keys(csvData[0]);
+      const csv = [
+        headers.join(","),
+        ...csvData.map((row) =>
+          headers
+            .map((h) => {
+              const v = String(row[h] || "");
+              return v.includes(",") || v.includes('"')
+                ? `"${v.replace(/"/g, '""')}"`
+                : v;
+            })
+            .join(","),
+        ),
+      ].join("\n");
 
-  // Helper function to convert array to CSV
-  const convertToCSV = (data) => {
-    if (data.length === 0) return '';
-    
-    const headers = Object.keys(data[0]);
-    const csvContent = [
-      headers.join(','),
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header] || '';
-          // Escape quotes and wrap in quotes if contains comma
-          return typeof value === 'string' && (value.includes(',') || value.includes('"')) 
-            ? `"${value.replace(/"/g, '""')}"` 
-            : value;
-        }).join(',')
-      )
-    ].join('\n');
-    
-    return csvContent;
-  };
-
-  // Helper function to download CSV
-  const downloadCSV = (csvContent, filename) => {
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    if (link.download !== undefined) {
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', filename);
-      link.style.visibility = 'hidden';
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = `daily_records_${selectedDate}${pagination.totalPages > 1 ? `_p${pagination.page}` : ""}.csv`;
+      link.style.display = "none";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      notificationUtils.showSuccess(
+        `Exported ${displayedRecords.length} records for ${selectedDate}`,
+      );
+    } catch (err) {
+      notificationUtils.showError("Failed to export CSV");
     }
   };
 
-  if (loading) {
+  // Pretty date label
+  const prettyDate = (dateStr) => {
+    const d = new Date(dateStr + "T00:00:00");
+    const long = d.toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+    if (dateStr === todayStr) return `Today — ${long}`;
+    const yest = new Date();
+    yest.setDate(yest.getDate() - 1);
+    if (dateStr === toDateStr(yest)) return `Yesterday — ${long}`;
+    return long;
+  };
+
+  // Status badge helper
+  const statusBadgeClass = (s) =>
+    ({
+      working: "bg-green-100 text-green-700 border-green-200",
+      wfh: "bg-blue-100  text-blue-700  border-blue-200",
+      leave: "bg-orange-100 text-orange-700 border-orange-200",
+    })[s] || "bg-gray-100 text-gray-600 border-gray-200";
+
+  const statusLabel = (s) =>
+    s === "wfh"
+      ? "WFH"
+      : s
+        ? s.charAt(0).toUpperCase() + s.slice(1)
+        : "Working";
+
+  // Pagination bar
+  const PaginationBar = () => {
+    const { page, totalPages, total, limit, hasNextPage, hasPrevPage } =
+      pagination;
+    if (!total) return null;
+
+    const from = (page - 1) * limit + 1;
+    const to = Math.min(page * limit, total);
+
+    const pageNums = (() => {
+      if (totalPages <= 7)
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      const s = new Set([1, totalPages]);
+      for (
+        let i = Math.max(2, page - 2);
+        i <= Math.min(totalPages - 1, page + 2);
+        i++
+      )
+        s.add(i);
+      return [...s].sort((a, b) => a - b);
+    })();
+
+    const btn = (onClick, disabled, icon, title) => (
+      <button
+        onClick={onClick}
+        disabled={disabled || pageLoading}
+        title={title}
+        className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
+      >
+        {icon}
+      </button>
+    );
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-2xl">
+        <p className="text-xs sm:text-sm text-gray-500">
+          Showing{" "}
+          <span className="font-semibold text-gray-700">
+            {from}–{to}
+          </span>{" "}
+          of <span className="font-semibold text-gray-700">{total}</span>{" "}
+          records
+        </p>
+        <div className="flex items-center gap-1">
+          {btn(
+            () => goToPage(1),
+            !hasPrevPage,
+            <FaAngleDoubleLeft className="h-3 w-3" />,
+            "First",
+          )}
+          {btn(
+            () => goToPage(page - 1),
+            !hasPrevPage,
+            <FaChevronLeft className="h-3 w-3" />,
+            "Previous",
+          )}
+          {pageNums.map((p, idx, arr) => (
+            <React.Fragment key={p}>
+              {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+                <span className="px-1 text-gray-400 text-xs">…</span>
+              )}
+              <button
+                onClick={() => goToPage(p)}
+                disabled={pageLoading}
+                className={`w-8 h-8 rounded-lg text-xs font-medium transition ${p === page ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-200"}`}
+              >
+                {p}
+              </button>
+            </React.Fragment>
+          ))}
+          {btn(
+            () => goToPage(page + 1),
+            !hasNextPage,
+            <FaChevronRight className="h-3 w-3" />,
+            "Next",
+          )}
+          {btn(
+            () => goToPage(totalPages),
+            !hasNextPage,
+            <FaAngleDoubleRight className="h-3 w-3" />,
+            "Last",
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // Loading / error screens
+  if (loading)
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
         <div className="text-center">
@@ -211,36 +328,31 @@ const AdminDailyRecords = () => {
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
             className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
           />
-          <p className="text-gray-600 font-medium">Loading daily records...</p>
+          <p className="text-gray-600 font-medium">Loading today's records…</p>
         </div>
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
         <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
-            <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
-          </motion.div>
+          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
           <p className="text-gray-700 mb-6">{error}</p>
           <div className="flex justify-center space-x-4">
-            <motion.button 
-              onClick={fetchDailyRecords}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
+            <motion.button
+              onClick={() =>
+                fetchRecords({ isInitial: true, date: selectedDate })
+              }
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl shadow-md"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
               Retry
             </motion.button>
-            <motion.button 
-              onClick={() => navigate('/admin/dashboard')}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all"
+            <motion.button
+              onClick={() => navigate("/admin/dashboard")}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -250,123 +362,104 @@ const AdminDailyRecords = () => {
         </div>
       </div>
     );
-  }
 
+  // Main render
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Enhanced floating background elements */}
+      {/* Background blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 20, 0],
-            rotate: [0, 5, 0]
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-        <motion.div 
-          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
-          animate={{
-            y: [0, 20, 0],
-            x: [0, -20, 0],
-            rotate: [0, -5, 0]
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2
-          }}
-        />
-        <motion.div 
-          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 15, 0],
-            rotate: [0, 3, 0]
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1
-          }}
-        />
-        <motion.div 
-          className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
-          animate={{
-            y: [0, 25, 0],
-            x: [0, -15, 0],
-            rotate: [0, -3, 0]
-          }}
-          transition={{
-            duration: 17,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3
-          }}
-        />
+        {[
+          {
+            cls: "w-80 h-80 bg-blue-100/40 -top-20 -left-20",
+            dur: 15,
+            delay: 0,
+          },
+          {
+            cls: "w-96 h-96 bg-cyan-100/40 top-1/4 right-0",
+            dur: 18,
+            delay: 2,
+          },
+          {
+            cls: "w-64 h-64 bg-green-100/40 bottom-20 left-1/4",
+            dur: 20,
+            delay: 1,
+          },
+          {
+            cls: "w-72 h-72 bg-purple-100/40 bottom-0 right-20",
+            dur: 17,
+            delay: 3,
+          },
+        ].map((b, i) => (
+          <motion.div
+            key={i}
+            className={`absolute rounded-full ${b.cls}`}
+            animate={{ y: [0, -20, 0], x: [0, 15, 0] }}
+            transition={{
+              duration: b.dur,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: b.delay,
+            }}
+          />
+        ))}
       </div>
 
       {/* Enhanced Top Navbar */}
-      <motion.header 
+      <motion.header
         className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ type: "spring", stiffness: 100 }}
       >
         <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-            <motion.div
-              className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-              onClick={() => {
-                localStorage.clear();
-                navigate('/admin-login');
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <motion.img 
-                src={logo} 
-                alt="SLT Logo" 
-                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm" 
-                whileHover={{ rotate: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              />
-              <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">SLT Admin Portal</span>
-                <span className="text-xs sm:text-sm text-gray-600 truncate">Daily Records</span>
-              </div>
-            </motion.div>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
+          <motion.div
+            className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
+            onClick={() => {
+              localStorage.clear();
+              navigate("/admin-login");
+            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <motion.img
+              src={logo}
+              alt="SLT Logo"
+              className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
+              whileHover={{ rotate: 5 }}
+              transition={{ type: "spring", stiffness: 300 }}
+            />
+            <div className="hidden sm:flex flex-col">
+              <span className="text-sm sm:text-lg font-semibold text-gray-900">
+                SLT Admin Portal
+              </span>
+              <span className="text-xs sm:text-sm text-gray-600">
+                Daily Records
+              </span>
+            </div>
+          </motion.div>
+          <div className="flex items-center space-x-2 sm:space-x-6">
             <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
-              <motion.div 
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center transition-all duration-300 group-hover:bg-gray-200 border border-gray-200 shadow-sm"
+              <motion.div
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center border border-gray-200 shadow-sm"
                 whileHover={{ scale: 1.1, rotate: 5 }}
               >
                 <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
               </motion.div>
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">Administrator</span>
+                <span className="text-sm font-medium text-gray-800">
+                  Administrator
+                </span>
               </div>
             </div>
-            
             <motion.button
               whileHover={{ scale: 1.05, y: -2 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
-                localStorage.removeItem('adminInfo');
-                navigate('/admin-login');
+                localStorage.removeItem("adminInfo");
+                navigate("/admin-login");
               }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
+              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
             >
               <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Logout</span>
@@ -377,11 +470,10 @@ const AdminDailyRecords = () => {
 
       {/* Main Content */}
       <div className="pt-[4.5rem] sm:pt-[5.5rem]">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6">
           <div className="max-w-7xl mx-auto">
-            
-            {/* Header with Back Button */}
-            <motion.div 
+            {/* Page header */}
+            <motion.div
               className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -389,333 +481,417 @@ const AdminDailyRecords = () => {
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
                 <motion.button
-                  onClick={() => navigate('/admin/dashboard')}
-                  className="flex items-center px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all border border-gray-200 shadow-sm hover:shadow-md"
+                  onClick={() => navigate("/admin/dashboard")}
+                  className="flex items-center px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all border border-gray-200 shadow-sm"
                   whileHover={{ x: -3 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <FaArrowLeft className="mr-2" />
-                  Back to Dashboard
+                  <FaArrowLeft className="mr-2" /> Back to Dashboard
                 </motion.button>
                 <div>
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
                       Daily Records
                     </span>
                   </h2>
-                  <p className="text-sm sm:text-base text-gray-600">View and manage all intern daily logbook records</p>
+                  <p className="text-sm text-gray-500">
+                    Browse submissions day by day
+                  </p>
                 </div>
               </div>
-              <motion.div 
-                className="text-left sm:text-right w-full sm:w-auto bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-gray-100 shadow-sm"
+
+              {/* Summary pill */}
+              <motion.div
+                className="bg-white/80 backdrop-blur-sm px-5 py-3 rounded-2xl border border-gray-100 shadow-sm text-right"
                 initial={{ scale: 0.9 }}
                 animate={{ scale: 1 }}
-                transition={{ delay: 0.2 }}
+                transition={{ delay: 0.15 }}
               >
-                <p className="text-xs sm:text-sm text-gray-500">Total Records</p>
-                <p className="text-xl sm:text-2xl font-bold text-cyan-600">{dailyRecords.length}</p>
+                <p className="text-xs text-gray-500">
+                  Submissions on this date
+                </p>
+                <p className="text-2xl font-bold text-cyan-600">
+                  {pagination.total}
+                </p>
               </motion.div>
             </motion.div>
 
-            {/* Statistics */}
-            <motion.div 
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
+            {/* Date Navigator */}
+            <motion.div
+              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
             >
-              <div className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs md:text-sm text-gray-500 mb-1">Total Records</p>
-                    <p className="text-xl md:text-2xl font-bold text-gray-800">{dailyRecords.length}</p>
-                  </div>
-                  <FaCalendarAlt className="text-xl md:text-2xl text-blue-500" />
-                </div>
-              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                {/* ← Prev */}
+                <motion.button
+                  onClick={handlePrevDay}
+                  disabled={pageLoading}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all shadow-sm disabled:opacity-40 w-full sm:w-auto justify-center"
+                  whileHover={{ x: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <FaChevronLeft className="h-3 w-3" /> Prev Day
+                </motion.button>
 
-              <div className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs md:text-sm text-gray-500 mb-1">Filtered Records</p>
-                    <p className="text-xl md:text-2xl font-bold text-green-600">{filteredRecords.length}</p>
-                  </div>
-                  <FaFilter className="text-xl md:text-2xl text-green-500" />
+                {/* Date picker + label */}
+                <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
+                  <label className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl px-4 py-2.5 w-full sm:w-auto cursor-pointer shadow-sm hover:shadow-md transition-all">
+                    <FaCalendarDay className="text-blue-500 flex-shrink-0" />
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      max={todayStr}
+                      onChange={handleDateChange}
+                      className="bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 font-semibold text-sm sm:text-base cursor-pointer w-full"
+                    />
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    {prettyDate(selectedDate)}
+                  </p>
                 </div>
-              </div>
 
-              <div className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm sm:col-span-2 lg:col-span-1">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs md:text-sm text-gray-500 mb-1">Unique Interns</p>
-                    <p className="text-xl md:text-2xl font-bold text-purple-600">
-                      {new Set(dailyRecords.map(r => r.Trainee_ID)).size}
-                    </p>
-                  </div>
-                  <FaUser className="text-xl md:text-2xl text-purple-500" />
-                </div>
+                {/* Next */}
+                <motion.button
+                  onClick={handleNextDay}
+                  disabled={selectedDate >= todayStr || pageLoading}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto justify-center"
+                  whileHover={{ x: 2 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Next Day <FaChevronRight className="h-3 w-3" />
+                </motion.button>
+
+                {/* Today shortcut — only shown when not on today */}
+                {selectedDate !== todayStr && (
+                  <motion.button
+                    onClick={handleGoToToday}
+                    disabled={pageLoading}
+                    className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-medium rounded-xl shadow-sm hover:shadow-md w-full sm:w-auto"
+                    initial={{ opacity: 0, scale: 0.85 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Jump to Today
+                  </motion.button>
+                )}
               </div>
             </motion.div>
 
-            {/* Controls */}
-            <motion.div 
-              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 lg:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 sm:mb-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.3 }}
+            {/* Search + controls */}
+            <motion.div
+              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
             >
-              <div className="flex flex-col space-y-3 sm:space-y-4 xl:flex-row xl:space-y-0 xl:space-x-4">
-                {/* Search */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <motion.input
-                      type="text"
-                      placeholder="Search by name or ID..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 shadow-sm"
-                      whileFocus={{ scale: 1.01 }}
-                    />
-                  </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    placeholder="Search by name or Trainee ID within this day…"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 shadow-sm"
+                  />
                 </div>
-
-                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 xl:space-x-4">
-                  {/* Date Filter */}
-                  <motion.div 
-                    className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"
-                    whileHover={{ y: -2 }}
+                <div className="flex gap-2">
+                  <motion.button
+                    onClick={() =>
+                      setSortOrder((o) => (o === "desc" ? "asc" : "desc"))
+                    }
+                    className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm shadow-sm hover:bg-gray-50"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
                   >
-                    <FaCalendarAlt className="text-blue-500 h-4 w-4 flex-shrink-0" />
-                    <input
-                      type="date"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      className="px-3 py-1.5 text-sm sm:text-base bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 flex-1 sm:flex-none"
-                    />
-                  </motion.div>
-
-                  {/* Sort */}
-                  <motion.div 
-                    className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"
-                    whileHover={{ y: -2 }}
-                  >
-                    <FaSort className="text-blue-500 h-4 w-4 flex-shrink-0" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-1.5 text-sm sm:text-base bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 flex-1 sm:flex-none"
-                    >
-                      <option value="date" className="bg-white">Sort by Date</option>
-                      <option value="name" className="bg-white">Sort by Name</option>
-                      <option value="traineeId" className="bg-white">Sort by Trainee ID</option>
-                    </select>
-                    <motion.button
-                      onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                      className="px-3 py-1.5 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors text-gray-700 text-sm sm:text-base flex-shrink-0"
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      {sortOrder === 'desc' ? '↓' : '↑'}
-                    </motion.button>
-                  </motion.div>
-
-                  {/* Export Button */}
+                    <FaSort className="text-blue-400" />
+                    {sortOrder === "desc" ? "↓ Newest first" : "↑ Oldest first"}
+                  </motion.button>
                   <motion.button
                     onClick={handleExportCSV}
-                    disabled={filteredRecords.length === 0}
-                    className="flex items-center justify-center px-3 md:px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl hover:from-green-600 hover:to-teal-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 text-sm md:text-base shadow-sm hover:shadow-md"
-                    whileHover={{ scale: filteredRecords.length > 0 ? 1.05 : 1 }}
-                    whileTap={{ scale: 0.95 }}
+                    disabled={displayedRecords.length === 0 || pageLoading}
+                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl text-sm shadow-sm hover:shadow-md transition-all disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed"
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
                   >
-                    <FaFileExport className="mr-2 h-3 w-3 md:h-4 md:w-4" />
-                    <span className="whitespace-nowrap">Export CSV</span>
+                    <FaFileExport className="h-3.5 w-3.5" /> Export CSV
                   </motion.button>
                 </div>
               </div>
-              <motion.p 
-                className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3 flex items-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                <FaRegSmile className="mr-1.5 text-amber-500" />
-                Showing {filteredRecords.length} of {dailyRecords.length} records
-              </motion.p>
+
+              <p className="text-xs text-gray-400 mt-2.5">
+                {pagination.total === 0
+                  ? `No submissions found for ${prettyDate(selectedDate)}`
+                  : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
+                {searchTerm && " · filtered by search"}
+              </p>
             </motion.div>
 
             {/* Records Table */}
-            <motion.div 
+            <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.3 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-3 md:py-4 border-b border-gray-100">
-                <h2 className="text-lg md:text-xl font-semibold text-gray-900">
-                  Daily Records ({filteredRecords.length})
-                </h2>
-              </div>
-
-              {filteredRecords.length === 0 ? (
-                <motion.div 
-                  className="text-center py-8 md:py-12 px-4 bg-white/50 rounded-2xl"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0 }}
-                >
+              {/* Table title bar */}
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                    Submissions —{" "}
+                    <span className="text-blue-600">
+                      {new Date(selectedDate + "T00:00:00").toLocaleDateString(
+                        "en-US",
+                        { month: "long", day: "numeric", year: "numeric" },
+                      )}
+                    </span>
+                  </h2>
+                  <p className="text-xs text-gray-400 mt-0.5">
+                    {pagination.total} record{pagination.total !== 1 ? "s" : ""}{" "}
+                    total
+                  </p>
+                </div>
+                {pageLoading && (
                   <motion.div
-                    animate={{ 
-                      y: [0, -10, 0],
-                      rotate: [0, 5, 0]
-                    }}
-                    transition={{ 
-                      duration: 3,
+                    animate={{ rotate: 360 }}
+                    transition={{
+                      duration: 0.7,
                       repeat: Infinity,
-                      ease: "easeInOut"
+                      ease: "linear",
                     }}
                   >
-                    <FaTasks className="mx-auto h-8 w-8 md:h-12 md:w-12 text-gray-400 mb-3 md:mb-4" />
+                    <FaSpinner className="text-blue-400 h-5 w-5" />
                   </motion.div>
-                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">No records found</h3>
-                  <p className="text-gray-500 text-sm md:text-base">
-                    {searchTerm || dateFilter 
-                      ? 'Try adjusting your search terms or date filter.' 
-                      : 'No daily records have been submitted yet.'
-                    }
-                  </p>
-                </motion.div>
-              ) : (
-                <>
-                  {/* Mobile Card View */}
-                  <div className="block lg:hidden">
-                    <div className="divide-y divide-gray-100">
-                      {filteredRecords.map((record) => (
-                        <motion.div 
-                          key={record._id} 
-                          className="p-4 hover:bg-gray-50/50 transition-colors"
-                          whileHover={{ y: -2 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-shrink-0 h-8 w-8">
-                                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                  <FaUser className="text-blue-600 h-3 w-3" />
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {record.Trainee_Name || 'N/A'}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  ID: {record.Trainee_ID || 'N/A'}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs font-medium text-gray-900">
-                                {new Date(record.date).toLocaleDateString('en-US', { 
-                                  month: 'short', 
-                                  day: 'numeric' 
-                                })}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {new Date(record.createdAt).toLocaleTimeString('en-US', { 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs text-gray-500">
-                              <FaRegClock className="inline mr-1" />
-                              {new Date(record.date).toLocaleDateString()}
-                            </div>
-                            <motion.button
-                              onClick={() => navigate(`/admin/intern/${record.internId}/records`)}
-                              className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              <FaEye className="mr-1 h-3 w-3" />
-                              View
-                            </motion.button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
+                )}
+              </div>
 
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Intern Details
-                          </th>
-                          <th className="px-6 py-3 pl-12 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredRecords.map((record) => (
-                          <motion.tr 
-                            key={record._id} 
-                            className="hover:bg-gray-50/80 transition-colors"
-                            whileHover={{ y: -2 }}
-                            transition={{ duration: 0.1 }}
+              {/* Body */}
+              <div className="relative">
+                {/* Page-change overlay */}
+                {pageLoading && (
+                  <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 0.7,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full"
+                    />
+                  </div>
+                )}
+
+                {!pageLoading && displayedRecords.length === 0 ? (
+                  /* Empty state */
+                  <motion.div
+                    className="text-center py-16 px-4"
+                    initial={{ opacity: 0, scale: 0.92 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                  >
+                    <motion.div
+                      animate={{ y: [0, -10, 0] }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                    >
+                      <FaCalendarDay className="mx-auto h-12 w-12 text-gray-200 mb-4" />
+                    </motion.div>
+                    <h3 className="text-base font-semibold text-gray-500 mb-1">
+                      No submissions for this day
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      {searchTerm
+                        ? "No interns match your search for this date."
+                        : selectedDate === todayStr
+                          ? "No interns have submitted their logbook today yet."
+                          : "No logbook entries were submitted on this date."}
+                    </p>
+                    {selectedDate !== todayStr && (
+                      <motion.button
+                        onClick={handleGoToToday}
+                        className="mt-5 px-5 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm rounded-xl shadow-sm"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Go to Today
+                      </motion.button>
+                    )}
+                  </motion.div>
+                ) : (
+                  <>
+                    {/* Mobile cards */}
+                    <div className="block lg:hidden divide-y divide-gray-100">
+                      {displayedRecords.map((record, idx) => {
+                        const name =
+                          record.internId?.Trainee_Name ||
+                          record.Trainee_Name ||
+                          "N/A";
+                        const tid =
+                          record.internId?.Trainee_ID ||
+                          record.Trainee_ID ||
+                          "N/A";
+                        const iid = record.internId?._id || record.internId;
+                        const status = record.status || "working";
+                        const rowNum = (pagination.page - 1) * LIMIT + idx + 1;
+                        return (
+                          <motion.div
+                            key={record._id}
+                            className="p-4 hover:bg-gray-50/60 transition-colors"
+                            whileHover={{ y: -1 }}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium text-gray-900">
-                                {new Date(record.date).toLocaleDateString()}
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {new Date(record.createdAt).toLocaleTimeString()}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                    <FaUser className="text-blue-600" />
-                                  </div>
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
+                                  <FaUser className="text-blue-600 h-4 w-4" />
                                 </div>
-                                <div className="ml-4">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {record.Trainee_Name || 'N/A'}
-                                  </div>
-                                  <div className="text-sm text-gray-500">
-                                    ID: {record.Trainee_ID || 'N/A'}
-                                  </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {rowNum}. {name}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    ID: {tid}
+                                  </p>
                                 </div>
                               </div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-center" colSpan={2}>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusBadgeClass(status)}`}
+                              >
+                                {statusLabel(status)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs text-gray-400">
+                                <FaRegClock className="inline mr-1" />
+                                {new Date(record.createdAt).toLocaleTimeString(
+                                  "en-US",
+                                  { hour: "2-digit", minute: "2-digit" },
+                                )}
+                              </p>
                               <motion.button
-                                onClick={() => navigate(`/admin/intern/${record.internId}/records`)}
-                                className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm mx-auto"
+                                onClick={() =>
+                                  navigate(`/admin/intern/${iid}/records`, {
+                                    state: { from: "daily-records" },
+                                  })
+                                }
+                                className="flex items-center text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs"
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
                               >
-                                <FaEye className="mr-2" />
-                                View Records
+                                <FaEye className="mr-1 h-3 w-3" /> View
                               </motion.button>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-100">
+                        <thead className="bg-gray-50/80">
+                          <tr>
+                            {[
+                              "#",
+                              "Intern",
+                              "Status",
+                              "Submitted At",
+                              "Actions",
+                            ].map((h) => (
+                              <th
+                                key={h}
+                                className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider"
+                              >
+                                {h}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {displayedRecords.map((record, idx) => {
+                            const name =
+                              record.internId?.Trainee_Name ||
+                              record.Trainee_Name ||
+                              "N/A";
+                            const tid =
+                              record.internId?.Trainee_ID ||
+                              record.Trainee_ID ||
+                              "N/A";
+                            const iid = record.internId?._id || record.internId;
+                            const status = record.status || "working";
+                            const rowNum =
+                              (pagination.page - 1) * LIMIT + idx + 1;
+                            return (
+                              <motion.tr
+                                key={record._id}
+                                className="hover:bg-gray-50/70 transition-colors bg-white"
+                                whileHover={{ y: -1 }}
+                              >
+                                <td className="px-6 py-4 text-sm text-gray-400 w-12">
+                                  {rowNum}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
+                                      <FaUser className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-900">
+                                        {name}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        ID: {tid}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(status)}`}
+                                  >
+                                    {statusLabel(status)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {new Date(
+                                    record.createdAt,
+                                  ).toLocaleTimeString("en-US", {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                    second: "2-digit",
+                                  })}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <motion.button
+                                    onClick={() =>
+                                      navigate(`/admin/intern/${iid}/records`, {
+                                        state: { from: "daily-records" },
+                                      })
+                                    }
+                                    className="inline-flex items-center gap-1.5 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1.5 rounded-xl text-sm transition-colors shadow-sm"
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                  >
+                                    <FaEye className="h-3.5 w-3.5" /> View
+                                    Records
+                                  </motion.button>
+                                </td>
+                              </motion.tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <PaginationBar />
             </motion.div>
           </div>
         </main>

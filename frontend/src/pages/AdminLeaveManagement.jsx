@@ -6,7 +6,7 @@ import {
   bulkUpdateLeaveRequestStatus,
   getLeaveRequestStats,
 } from "../api/leaveRequestApi";
-import { downloadApprovedLeaveReport } from "../api/adminApi";
+import { downloadApprovedLeaveReport, adminApi } from "../api/adminApi";
 import toast from "react-hot-toast";
 import {
   FiFileText,
@@ -22,6 +22,7 @@ import {
   FiSquare,
   FiCheckCircle,
   FiFilter,
+  FiSend,
 } from "react-icons/fi";
 import logo from "../assets/sltlogo.jpg";
 
@@ -62,6 +63,7 @@ const AdminLeaveManagement = () => {
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [sortBy, setSortBy] = useState("newest"); // newest, oldest, urgent
+  const [triggeringEmail, setTriggeringEmail] = useState(false);
 
   useEffect(() => {
     // Check if admin is logged in
@@ -350,6 +352,48 @@ const AdminLeaveManagement = () => {
     }
   };
 
+  // Manually trigger approved short leave email (1:30 PM report)
+  const handleTriggerApprovedShortLeaveEmail = async () => {
+    if (
+      !window.confirm(
+        "Are you sure you want to send the approved short leave email to gate staff now?",
+      )
+    ) {
+      return;
+    }
+
+    setTriggeringEmail(true);
+    const toastId = toast.loading("Initiating email send...");
+
+    try {
+      const result = await adminApi.triggerApprovedShortLeaveEmail();
+
+      if (result.processing) {
+        toast.success(
+          `✅ Email is being sent in the background. Check server logs for status.`,
+          { id: toastId, duration: 5000 },
+        );
+      } else if (result.success && !result.skipped) {
+        toast.success(
+          `✅ Email sent successfully! ${result.data?.internsCount || 0} intern(s)`,
+          { id: toastId, duration: 5000 },
+        );
+      } else if (result.skipped) {
+        toast(`📭 Skipped: ${result.message}`, { id: toastId });
+      } else {
+        // This will now show you the ACTUAL SMTP error
+        toast.error(`❌ Failed: ${result.message}`, {
+          id: toastId,
+          duration: 10000,
+        });
+      }
+    } catch (error) {
+      toast.error(error.message || "Failed to trigger email", { id: toastId });
+    } finally {
+      setTriggeringEmail(false);
+    }
+  };
+
   // Quick approve/deny without modal
   const handleQuickAction = async (requestId, action) => {
     if (!window.confirm(`Are you sure you want to ${action} this request?`)) {
@@ -535,13 +579,29 @@ const AdminLeaveManagement = () => {
                 )}
               </div>
 
-              <button
-                onClick={handleDownloadApprovedReport}
-                className="ml-auto bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-              >
-                <FiFileText />
-                Download Approved Leaves PDF
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleTriggerApprovedShortLeaveEmail}
+                  disabled={triggeringEmail}
+                  className={`bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 ${
+                    triggeringEmail ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  title="Manually send approved short leave email to gate staff"
+                >
+                  <FiSend className={triggeringEmail ? "animate-pulse" : ""} />
+                  {triggeringEmail
+                    ? "Sending Email..."
+                    : "📧 Send Approved Leaves Email"}
+                </button>
+
+                <button
+                  onClick={handleDownloadApprovedReport}
+                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                >
+                  <FiFileText />
+                  Download Approved Leaves PDF
+                </button>
+              </div>
             </div>
           </div>
         </div>

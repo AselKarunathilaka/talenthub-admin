@@ -149,7 +149,7 @@ export const bulkUpdateLeaveRequestStatus = async (requestIds, statusData) => {
       `${API_BASE_URL}/leave-requests/bulk/status`,
       {
         requestIds,
-        ...statusData
+        ...statusData,
       },
       {
         headers: getHeaders(),
@@ -183,6 +183,30 @@ export const getLeaveRequestStats = async (params = {}) => {
       params,
       headers: getHeaders(),
     });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Validate a leave pass by token (no auth required — public endpoint for gate staff)
+export const validateLeavePass = async (token) => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/leave-requests/pass/validate/${token}`,
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
+// Mark a leave pass as used by token (no auth required — public endpoint for gate staff)
+export const markPassAsUsed = async (token) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/leave-requests/pass/mark-used/${token}`,
+    );
     return response.data;
   } catch (error) {
     throw error.response?.data || error;

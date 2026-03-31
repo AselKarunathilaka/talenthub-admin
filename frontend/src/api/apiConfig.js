@@ -24,6 +24,9 @@ export const API_ENDPOINTS = {
     CREATE: "/records",
     UPDATE: "/records",
     DELETE: "/records",
+    EXPORT_PDF: "/records/export/pdf",
+    EXPORT_TEMPLATES: "/records/export/templates",
+    VALIDATE: "/records/validate-entry",
   },
 
   // Admin endpoints

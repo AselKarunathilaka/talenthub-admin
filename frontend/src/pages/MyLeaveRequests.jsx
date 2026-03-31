@@ -12,8 +12,11 @@ import {
   FiPlus,
   FiX,
   FiEye,
+  FiChevronLeft,
+  FiChevronRight,
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
+import { FiCheckCircle } from "react-icons/fi";
 
 const MyLeaveRequests = () => {
   const navigate = useNavigate();
@@ -25,7 +28,11 @@ const MyLeaveRequests = () => {
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [filter, setFilter] = useState("all");
+
+  // Date filter — defaults to today
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [selectedDate, setSelectedDate] = useState(todayStr);
+
   const [pagination, setPagination] = useState({
     page: 1,
     limit: 10,
@@ -34,7 +41,6 @@ const MyLeaveRequests = () => {
   });
 
   useEffect(() => {
-    // Check if user is logged in
     const authToken = localStorage.getItem("authToken");
     const internId = localStorage.getItem("internId");
 
@@ -44,7 +50,6 @@ const MyLeaveRequests = () => {
       return;
     }
 
-    // If we have token but no internId, just continue (token contains the ID)
     if (!internId) {
       console.warn(
         "No internId in localStorage, but authToken exists. Continuing...",
@@ -52,7 +57,7 @@ const MyLeaveRequests = () => {
     }
 
     fetchLeaveRequests();
-  }, [filter, pagination.page]);
+  }, [selectedDate, pagination.page]);
 
   const fetchLeaveRequests = async () => {
     console.log("[MyLeaveRequests] Starting to fetch leave requests...");
@@ -61,11 +66,8 @@ const MyLeaveRequests = () => {
       const params = {
         page: pagination.page,
         limit: pagination.limit,
+        date: selectedDate, // always filter by selected date
       };
-
-      if (filter !== "all") {
-        params.status = filter;
-      }
 
       console.log("[MyLeaveRequests] Calling API with params:", params);
       const response = await getMyLeaveRequests(params);
@@ -75,13 +77,7 @@ const MyLeaveRequests = () => {
       setPagination(response.pagination);
     } catch (error) {
       console.error("[MyLeaveRequests] Error fetching leave requests:", error);
-      console.error("[MyLeaveRequests] Error details:", {
-        message: error.message,
-        response: error.response,
-        status: error.response?.status,
-      });
 
-      // Handle authentication errors
       if (error.message === "Invalid Token" || error.response?.status === 401) {
         toast.error("Your session has expired. Please log in again.");
         localStorage.removeItem("authToken");
@@ -93,7 +89,6 @@ const MyLeaveRequests = () => {
       toast.error(error.message || "Failed to load leave requests");
     } finally {
       setLoading(false);
-      console.log("[MyLeaveRequests] Fetch complete. Loading state:", false);
     }
   };
 
@@ -121,13 +116,11 @@ const MyLeaveRequests = () => {
 
   const handleViewDocument = async (leaveRequestId) => {
     try {
-      // Get auth token
       const authToken = localStorage.getItem("authToken");
       const adminInfo = localStorage.getItem("adminInfo");
       const token =
         authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
 
-      // Fetch document with authentication
       const response = await fetch(
         `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
         {
@@ -141,12 +134,10 @@ const MyLeaveRequests = () => {
         throw new Error("Failed to load document");
       }
 
-      // Get the blob and create object URL
       const blob = await response.blob();
       const fileUrl = URL.createObjectURL(blob);
       const contentType = response.headers.get("Content-Type");
 
-      // Determine file type from content type
       const fileType = contentType?.includes("pdf")
         ? "pdf"
         : contentType?.includes("image")
@@ -161,7 +152,6 @@ const MyLeaveRequests = () => {
   };
 
   const closeDocumentViewer = () => {
-    // Revoke object URL to free memory
     if (documentViewer.url && documentViewer.url.startsWith("blob:")) {
       URL.revokeObjectURL(documentViewer.url);
     }
@@ -189,13 +179,48 @@ const MyLeaveRequests = () => {
     });
   };
 
+  const formatDisplayDate = (dateStr) => {
+    const date = new Date(dateStr + "T00:00:00");
+    return date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const isToday = selectedDate === todayStr;
+
+  const goToPrevDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d.toISOString().split("T")[0]);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
+  const goToNextDay = () => {
+    const d = new Date(selectedDate + "T00:00:00");
+    d.setDate(d.getDate() + 1);
+    const next = d.toISOString().split("T")[0];
+    // Don't allow navigating past today
+    if (next <= todayStr) {
+      setSelectedDate(next);
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    }
+  };
+
+  const goToToday = () => {
+    setSelectedDate(todayStr);
+    setPagination((prev) => ({ ...prev, page: 1 }));
+  };
+
   const hasRequestForToday = () => {
-    const today = new Date().toISOString().split("T")[0];
+    if (selectedDate !== todayStr) return false;
     return leaveRequests.some((request) => {
       const requestDate = new Date(request.leaveDate)
         .toISOString()
         .split("T")[0];
-      return requestDate === today;
+      return requestDate === todayStr;
     });
   };
 
@@ -209,15 +234,6 @@ const MyLeaveRequests = () => {
     }
     setShowForm(!showForm);
   };
-
-  console.log(
-    "[MyLeaveRequests] Rendering component. Loading:",
-    loading,
-    "Requests:",
-    leaveRequests.length,
-    "ShowForm:",
-    showForm,
-  );
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -264,25 +280,30 @@ const MyLeaveRequests = () => {
               </div>
             )}
 
-            {/* Filter Section */}
+            {/* Date Filter Section */}
             <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex flex-wrap gap-2">
-                {["all", "Pending", "Approved", "Denied"].map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => {
-                      setFilter(status);
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                {/* Date picker + Today button */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    max={todayStr}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
                       setPagination((prev) => ({ ...prev, page: 1 }));
                     }}
-                    className={`px-4 py-2 rounded-lg font-medium transition-all ${
-                      filter === status
-                        ? "bg-blue-600 text-white shadow-md"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {status === "all" ? "All Requests" : status}
-                  </button>
-                ))}
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  {!isToday && (
+                    <button
+                      onClick={goToToday}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-all whitespace-nowrap"
+                    >
+                      Go to Today
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -294,10 +315,15 @@ const MyLeaveRequests = () => {
             ) : leaveRequests.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
                 <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
-                <p className="text-gray-600 text-lg mb-4">
+                <p className="text-gray-600 text-lg mb-2">
                   No short leave requests found
                 </p>
-                {!showForm && (
+                <p className="text-gray-400 text-sm mb-6">
+                  {isToday
+                    ? "You haven't submitted any short leave requests today."
+                    : `No requests found for ${formatDisplayDate(selectedDate)}.`}
+                </p>
+                {isToday && !showForm && (
                   <button
                     onClick={handleNewRequestClick}
                     className="px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-all"
@@ -408,6 +434,17 @@ const MyLeaveRequests = () => {
                             className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-all"
                           >
                             <FiTrash2 /> Delete
+                          </button>
+                        )}
+                        {request.status === "Approved" && request.passToken && (
+                          <button
+                            onClick={() =>
+                              navigate(`/leave-pass/${request.passToken}`)
+                            }
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-lg transition-all shadow-md hover:shadow-lg transform hover:scale-105"
+                          >
+                            <FiCheckCircle />
+                            View Leave Pass
                           </button>
                         )}
                       </div>

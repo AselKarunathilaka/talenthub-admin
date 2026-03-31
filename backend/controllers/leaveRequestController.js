@@ -1,7 +1,6 @@
 const leaveRequestService = require("../services/leaveRequestService");
 const User = require("../models/User");
 const fs = require("fs");
-const ApprovedLeaveNotificationService = require("../services/approvedLeaveNotificationService");
 
 class LeaveRequestController {
   // Create a new leave request (Intern only)
@@ -94,13 +93,19 @@ class LeaveRequestController {
   async getMyLeaveRequests(req, res, next) {
     try {
       const internId = req.user.internId || req.user.id;
-      const { status, page = 1, limit = 10 } = req.query;
+      // Accept `date` param in addition to `status` and pagination
+      const { status, date, page = 1, limit = 10 } = req.query;
 
       const options = {
         status,
+        date, // pass date through to service → repository
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
       };
+
+      console.log(
+        `[getMyLeaveRequests] internId=${internId} date=${date} status=${status} page=${page}`,
+      );
 
       const result = await leaveRequestService.getLeaveRequestsByIntern(
         internId,
@@ -174,10 +179,9 @@ class LeaveRequestController {
       // Check if user is admin
       const adminUser = await User.findById(req.user.id);
       if (!adminUser) {
-        return res.status(403).json({
-          success: false,
-          message: "Admin access required",
-        });
+        return res
+          .status(403)
+          .json({ success: false, message: "Admin access required" });
       }
 
       const { id } = req.params;
@@ -185,10 +189,9 @@ class LeaveRequestController {
       const reviewedBy = req.user.id;
 
       if (!status) {
-        return res.status(400).json({
-          success: false,
-          message: "Status is required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Status is required" });
       }
 
       const leaveRequest = await leaveRequestService.updateLeaveRequestStatus(
@@ -198,33 +201,7 @@ class LeaveRequestController {
         reviewedBy,
       );
 
-      // If status is "Approved", trigger email notification with Excel
-      if (status === "Approved") {
-        console.log(
-          `📧 Triggering approved leave notification for request: ${id}`,
-        );
-
-        // Populate reviewedBy field for email
-        await leaveRequest.populate("reviewedBy", "email");
-
-        // Send notification (async, don't wait)
-        ApprovedLeaveNotificationService.notifyApprovedLeaves([leaveRequest])
-          .then((result) => {
-            if (result.success && !result.skipped) {
-              console.log(`✅ Notification sent for approved leave: ${id}`);
-            } else if (result.skipped) {
-              console.log(
-                `⏭️  Notification skipped for approved leave: ${id} - ${result.reason}`,
-              );
-            }
-          })
-          .catch((error) => {
-            console.error(
-              `❌ Error sending notification for approved leave: ${id}`,
-              error,
-            );
-          });
-      }
+      //No instant email — daily report at 4 PM handles notification
 
       res.status(200).json({
         success: true,
@@ -350,20 +327,15 @@ class LeaveRequestController {
     }
   }
 
-  // Bulk update leave request status (Admin only) - with email notification
+  // Bulk update leave request status (Admin only)
   async bulkUpdateLeaveRequestStatus(req, res, next) {
-    console.log("\n🔥🔥🔥 BULK UPDATE ENDPOINT HIT! 🔥🔥🔥");
-    console.log("Request body:", JSON.stringify(req.body, null, 2));
-    console.log("Request user:", JSON.stringify(req.user, null, 2));
-
     try {
       // Check if user is admin
       const adminUser = await User.findById(req.user.id);
       if (!adminUser) {
-        return res.status(403).json({
-          success: false,
-          message: "Admin access required",
-        });
+        return res
+          .status(403)
+          .json({ success: false, message: "Admin access required" });
       }
 
       const { requestIds, status, adminResponse } = req.body;
@@ -374,24 +346,16 @@ class LeaveRequestController {
         !Array.isArray(requestIds) ||
         requestIds.length === 0
       ) {
-        return res.status(400).json({
-          success: false,
-          message: "Request IDs array is required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Request IDs array is required" });
       }
-
       if (!status) {
-        return res.status(400).json({
-          success: false,
-          message: "Status is required",
-        });
+        return res
+          .status(400)
+          .json({ success: false, message: "Status is required" });
       }
 
-      console.log(
-        `📋 Bulk updating ${requestIds.length} leave requests to: ${status}`,
-      );
-
-      // Update all requests
       const updatedRequests = [];
       const errors = [];
 
@@ -404,54 +368,13 @@ class LeaveRequestController {
               adminResponse,
               reviewedBy,
             );
-          // Populate reviewedBy for email
-          await leaveRequest.populate("reviewedBy", "email");
           updatedRequests.push(leaveRequest);
         } catch (error) {
-          console.error(`Error updating request ${requestId}:`, error);
           errors.push({ requestId, error: error.message });
         }
       }
 
-      // If status is "Approved", send bulk notification email
-      if (status === "Approved" && updatedRequests.length > 0) {
-        console.log(`\n========================================`);
-        console.log(`📧 BULK APPROVAL EMAIL NOTIFICATION`);
-        console.log(`========================================`);
-        console.log(`📋 Total approved requests: ${updatedRequests.length}`);
-        console.log(`⏰ Current time: ${new Date().toLocaleString()}`);
-
-        // Log each approved request
-        updatedRequests.forEach((req, idx) => {
-          console.log(
-            `  ${idx + 1}. ${req.internName} (${req.nationalId}) - ${req.leaveTime}`,
-          );
-        });
-
-        // Send notification (async, don't wait for response)
-        ApprovedLeaveNotificationService.notifyApprovedLeaves(updatedRequests)
-          .then((result) => {
-            console.log(
-              `\n📬 Email notification result:`,
-              JSON.stringify(result, null, 2),
-            );
-            if (result.success && !result.skipped) {
-              console.log(
-                `✅ Bulk notification sent successfully for ${updatedRequests.length} approved leaves`,
-              );
-            } else if (result.skipped) {
-              console.log(`⏭️  Bulk notification skipped - ${result.reason}`);
-            } else {
-              console.log(`❌ Bulk notification failed - ${result.error}`);
-            }
-            console.log(`========================================\n`);
-          })
-          .catch((error) => {
-            console.error(`\n❌ ERROR sending bulk notification:`);
-            console.error(error);
-            console.log(`========================================\n`);
-          });
-      }
+      // No instant email — daily report at 4 PM handles notification
 
       res.status(200).json({
         success: true,
@@ -500,6 +423,65 @@ class LeaveRequestController {
       res.send(fileBuffer);
     } catch (error) {
       console.error("Error in getLeaveRequestDocument controller:", error);
+      next(error);
+    }
+  }
+
+  // Validate leave pass
+  async validateLeavePass(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const validation = await leaveRequestService.validateLeavePass(token);
+
+      res.status(200).json({
+        success: true,
+        data: validation,
+      });
+    } catch (error) {
+      console.error("Error in validateLeavePass controller:", error);
+      next(error);
+    }
+  }
+
+  // Mark pass as used
+  async markPassAsUsed(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const result = await leaveRequestService.markPassAsUsed(token);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      console.error("Error in markPassAsUsed controller:", error);
+      next(error);
+    }
+  }
+
+  // Get leave pass by token (for intern to view their own pass)
+  async getLeavePassByToken(req, res, next) {
+    try {
+      const { token } = req.params;
+
+      const validation = await leaveRequestService.validateLeavePass(token);
+
+      if (!validation.valid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.reason,
+          data: validation,
+        });
+      }
+
+      res.status(200).json({
+        success: true,
+        data: validation,
+      });
+    } catch (error) {
+      console.error("Error in getLeavePassByToken controller:", error);
       next(error);
     }
   }

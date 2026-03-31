@@ -20,6 +20,17 @@ import {
   FaEye,
   FaFileAlt,
   FaChair,
+  FaSignOutAlt,
+  FaRunning,
+  FaClock,
+  FaAngleDoubleLeft,
+  FaRegFileExcel,
+  FaSlidersH,
+  FaCalendarCheck,
+  FaRegPaperPlane,
+  FaMapMarkedAlt,
+  FaBullhorn,
+  FaChevronDown,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -30,7 +41,7 @@ const formatDateDisplay = (dateString) => {
   if (!dateString) return "N/A";
 
   try {
-    // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
+    // Handle ISO date strings ( 2024-10-19T10:30:00.000Z)
     if (dateString.includes("T") || dateString.includes("Z")) {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Invalid Date";
@@ -119,6 +130,8 @@ const AdminDashboard = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [showExports, setShowExports] = useState(false);
+  const [activeExport, setActiveExport] = useState(null); // null | 'nonSub'
 
   // Fetch dashboard data
   const fetchData = useCallback(async () => {
@@ -328,34 +341,40 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleExportPreviousDayCSV = async () => {
+  //export weekly non-submissions for the last 5 working days from today
+  const handleExportWeeklyNonSubmissionsWithinWeek = async () => {
     try {
-      // Get previous day submissions
-      const previousDaySubmissions = await adminApi.getPreviousDaySubmissions();
+      // Get non-submissions within the last 5 working days
+      const weeklyNonSubmissionsData =
+        await adminApi.getNonSubmissionsWithinAWeek();
 
-      if (previousDaySubmissions.length === 0) {
+      if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
-          "No interns submitted records on the previous day.",
+          "All interns have submitted records within the last 5 working days.",
         );
         return;
       }
 
-      // Format the date for filename
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const dateStr = yesterday.toISOString().split("T")[0];
+      // Format the start date for filename (5 working days back)
+      const startDateStr =
+        weeklyNonSubmissionsData.startDate ||
+        new Date().toISOString().split("T")[0];
 
       await csvUtils.downloadInternReport(
-        previousDaySubmissions,
-        `previous_day_submissions_${dateStr}`,
+        weeklyNonSubmissionsData,
+        `weekly_non_submissions_from_${startDateStr}`,
       );
       notificationUtils.showSuccess(
-        `Previous day submissions CSV report with ${previousDaySubmissions.length} interns downloaded successfully`,
+        `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
+          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
-      console.error("Error exporting previous day submissions CSV:", error);
+      console.error(
+        "Error exporting weekly non-submissions within week CSV:",
+        error,
+      );
       notificationUtils.showError(
-        "Failed to export previous day submissions CSV report",
+        "Failed to export weekly non-submissions within week CSV report",
       );
     }
   };
@@ -409,35 +428,6 @@ const AdminDashboard = () => {
       );
     }
   };
-  // ...existing code...
-  // Date range selection UI for weekly non-submissions
-  // Place this in your render/return block where you want the controls to appear
-  // Example placement: above the export button
-  // --- Date Range Picker UI ---
-  // <div className="mb-2">
-  //   {!showDateSelector && (
-  //     <button
-  //       onClick={handleShowDateSelector}
-  //       className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
-  //     >
-  //       Export Weekly Non-Submissions
-  //     </button>
-  //   )}
-  //   {showDateSelector && (
-  //     <div className="flex items-center space-x-2">
-  //       <label className="text-xs font-medium">Start Date:</label>
-  //       <input type="date" value={customStartDate} onChange={e => setCustomStartDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-  //       <label className="text-xs font-medium">End Date:</label>
-  //       <input type="date" value={customEndDate} onChange={e => setCustomEndDate(e.target.value)} className="border rounded px-2 py-1 text-xs" />
-  //       <button
-  //         onClick={handleExportWeeklyNonSubmissionsCSV}
-  //         className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-blue-700"
-  //       >
-  //         Download CSV
-  //       </button>
-  //     </div>
-  //   )}
-  // </div>
 
   const getFilteredInterns = () => {
     if (!internReport || internReport.length === 0) {
@@ -659,7 +649,7 @@ const AdminDashboard = () => {
               }}
               className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
             >
-              <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
+              <FaSignOutAlt className="h-3 w-3 sm:h-4 sm:w-4" />
               <span className="hidden sm:inline">Logout</span>
             </motion.button>
           </div>
@@ -767,257 +757,293 @@ const AdminDashboard = () => {
               </motion.div>
             </motion.div>
 
-            {/* Action Buttons */}
+            {/* Quick Actions Section */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-2 md:p-3 rounded-lg border border-gray-100 shadow-sm mb-2 md:mb-3"
+              className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-5"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs md:text-sm lg:text-base font-semibold text-gray-900">
-                  Quick Actions
-                </h2>
-                <div className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                  Admin Tools
-                </div>
-              </div>
-              <div className="flex flex-row flex-nowrap gap-1.5 overflow-x-auto pb-1">
-                <motion.button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded-md hover:from-amber-500 hover:to-orange-500 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaBell className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      {showNotifications ? "Hide" : "Show"} Notifications
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.overdueInterns || 0} overdue
-                    </span>
-                  </span>
-                </motion.button>
+              {/* ── Header ── */}
+              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-gray-400 mb-4">
+                Quick Actions
+              </p>
 
-                <motion.button
-                  onClick={handleSendNotifications}
-                  disabled={
-                    sendingNotifications || !dashboardStats?.overdueList?.length
-                  }
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-md hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{
-                    scale:
-                      sendingNotifications ||
-                      !dashboardStats?.overdueList?.length
-                        ? 1
-                        : 1.02,
-                  }}
-                  whileTap={{
-                    scale:
-                      sendingNotifications ||
-                      !dashboardStats?.overdueList?.length
-                        ? 1
-                        : 0.98,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  {sendingNotifications ? (
-                    <FaSpinner className="mr-1 h-2.5 w-2.5 animate-spin" />
-                  ) : (
-                    <FaBell className="mr-1 h-2.5 w-2.5" />
-                  )}
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Send Notifications
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {sendingNotifications
-                        ? "Sending..."
-                        : "Email overdue interns"}
-                    </span>
-                  </span>
-                </motion.button>
-
+              {/* ── Primary 3 × 2 Grid ── */}
+              <div className="grid grid-cols-3 gap-2 mb-2.5">
+                {/* 1 · Daily Records */}
                 <motion.button
                   onClick={() => navigate("/admin/daily-records")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-md hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaCalendarAlt className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      View Daily Records
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      All interns' records
-                    </span>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 group-hover:bg-emerald-200">
+                    <FaCalendarAlt className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Daily Records
                   </span>
                 </motion.button>
 
+                {/* 2 · Leave Requests */}
                 <motion.button
                   onClick={() => navigate("/admin/leave-requests")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-md hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileAlt className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Short Leave Requests
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Manage short leave requests
-                    </span>
-                  </span>
-                </motion.button>
-
-                <motion.button
-                  onClick={handleExportOverdueCSV}
-                  disabled={!dashboardStats?.overdueList?.length}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-md hover:from-red-700 hover:to-red-800 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-sm hover:shadow-md disabled:hover:shadow-sm text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{
-                    scale: !dashboardStats?.overdueList?.length ? 1 : 1.02,
-                  }}
-                  whileTap={{
-                    scale: !dashboardStats?.overdueList?.length ? 1 : 0.98,
-                  }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Overdue
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.overdueList?.length
-                        ? `${dashboardStats.overdueList.length} overdue`
-                        : "No overdue"}
-                    </span>
-                  </span>
-                </motion.button>
-
-                <motion.button
-                  onClick={handleExportSubmittedCSV}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-md hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaFileExport className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Submitted
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      {dashboardStats?.submittedInterns
-                        ? `${dashboardStats.submittedInterns} submitted`
-                        : "Submitted interns"}
-                    </span>
-                  </span>
-                </motion.button>
-
-                <motion.button
-                  onClick={handleExportPreviousDayCSV}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-md hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Export Previous Day
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Yesterday's submissions
-                    </span>
-                  </span>
-                </motion.button>
-
-                {!showDateSelector ? (
-                  <motion.button
-                    onClick={handleShowDateSelector}
-                    className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-md hover:from-purple-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                    <FaDownload className="mr-1 h-2.5 w-2.5" />
-                    <span className="flex-1 text-left">
-                      <span className="block text-xs leading-tight">
-                        Export Non-Submissions
-                      </span>
-                      <span className="block text-xs opacity-75 leading-tight">
-                        Select custom date range
-                      </span>
-                    </span>
-                  </motion.button>
-                ) : (
-                  <div className="flex items-center space-x-2 mb-2">
-                    <label className="text-xs font-medium">Start Date:</label>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
-                    />
-                    <label className="text-xs font-medium">End Date:</label>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="border rounded px-2 py-1 text-xs"
-                    />
-                    <button
-                      onClick={handleExportWeeklyNonSubmissionsCSV}
-                      className="bg-purple-600 text-white px-3 py-1 rounded text-xs font-medium hover:bg-purple-700"
-                    >
-                      Download CSV
-                    </button>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-100">
+                    <FaRunning className="h-3.5 w-3.5 text-purple-600" />
                   </div>
-                )}
-
-                <motion.button
-                  onClick={handleDownloadOnLeaveExcel}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-blue-700 to-blue-800 text-white rounded-md hover:from-blue-800 hover:to-blue-900 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaDownload className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Download On Leave
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Get list of on-leave interns
-                    </span>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Leave Requests
                   </span>
                 </motion.button>
 
+                {/* 3 · Overdue List */}
+                <motion.button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`flex flex-col items-center gap-2 py-4 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                    showNotifications
+                      ? "bg-amber-100 border-amber-300"
+                      : "bg-amber-50 hover:bg-amber-100 border-amber-100 hover:border-amber-200"
+                  }`}
+                >
+                  <div
+                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                      showNotifications ? "bg-amber-200" : "bg-amber-100"
+                    }`}
+                  >
+                    <FaClock className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    {showNotifications ? "Hide Overdue" : "Overdue List"}
+                  </span>
+                </motion.button>
+
+                {/* 4 · Seat Layout */}
                 <motion.button
                   onClick={() => navigate("/admin/seat-management")}
-                  className="group relative flex items-center justify-center px-1.5 md:px-2 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-md hover:from-indigo-600 hover:to-purple-700 transition-all duration-300 shadow-sm hover:shadow-md text-xs font-medium min-h-[1.75rem]"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-100 hover:border-pink-200 transition-colors duration-200 cursor-pointer"
                 >
-                  <div className="absolute inset-0 bg-white rounded-md opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-                  <FaChair className="mr-1 h-2.5 w-2.5" />
-                  <span className="flex-1 text-left">
-                    <span className="block text-xs leading-tight">
-                      Intern Seat Management
-                    </span>
-                    <span className="block text-xs opacity-75 leading-tight">
-                      Manage seating arrangements
-                    </span>
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-pink-100">
+                    <FaChair className="h-3.5 w-3.5 text-pink-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Seat Layout
+                  </span>
+                </motion.button>
+
+                {/* 5 · Announce */}
+                <motion.button
+                  onClick={() => navigate("/admin/announcements")}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-100 hover:border-cyan-200 transition-colors duration-200 cursor-pointer"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-cyan-100">
+                    <FaBullhorn className="h-3.5 w-3.5 text-cyan-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Announce
+                  </span>
+                </motion.button>
+
+                {/* 6 · Intern Locations */}
+                <motion.button
+                  onClick={() => navigate("/admin/intern-locations")}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200 transition-colors duration-200 cursor-pointer"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100">
+                    <FaMapMarkedAlt className="h-3.5 w-3.5 text-blue-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Intern Locations
                   </span>
                 </motion.button>
               </div>
+
+              {/* ── Thin Divider ── */}
+              <div className="h-px bg-gray-100 mb-2.5" />
+
+              {/* 7 · Exports — Collapsible Drawer */}
+              <motion.button
+                onClick={() => {
+                  setShowExports(!showExports);
+                  if (showExports) setActiveExport(null);
+                }}
+                whileHover={{ scale: 1.005 }}
+                whileTap={{ scale: 0.99 }}
+                className={`w-full flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  showExports
+                    ? "bg-stone-100 border-stone-300"
+                    : "bg-stone-50 hover:bg-stone-100 border-stone-200 hover:border-stone-300"
+                }`}
+              >
+                <span className="text-xs font-semibold text-stone-600 tracking-wide">
+                  Exports
+                </span>
+                <motion.div
+                  animate={{ rotate: showExports ? 180 : 0 }}
+                  transition={{ duration: 0.22, ease: "easeInOut" }}
+                  className="mt-1" // proper spacing between text and arrow
+                >
+                  <FaChevronDown className="h-3 w-3 text-stone-400" />
+                </motion.div>
+              </motion.button>
+
+              {/* ── Exports Drawer ── */}
+              <AnimatePresence>
+                {showExports && (
+                  <motion.div
+                    key="exports-panel"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    className="overflow-hidden"
+                  >
+                    <div className="pt-2 space-y-2">
+                      {/* ── 3 Export Sub-buttons ── */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {/* 7.1 · Submissions List */}
+                        <motion.button
+                          onClick={handleExportSubmittedCSV}
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
+                        >
+                          <FaRegFileExcel className="h-4 w-4 text-emerald-600" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            Submissions
+                          </span>
+                        </motion.button>
+
+                        {/* 7.2 · Non-Submissions */}
+                        <motion.button
+                          onClick={() =>
+                            setActiveExport(
+                              activeExport === "nonSub" ? null : "nonSub",
+                            )
+                          }
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
+                            activeExport === "nonSub"
+                              ? "bg-red-100 border-red-200"
+                              : "bg-red-50 hover:bg-red-100 border-red-100 hover:border-red-200"
+                          }`}
+                        >
+                          <FaDownload className="h-4 w-4 text-red-500" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            Non-Submissions
+                          </span>
+                        </motion.button>
+
+                        {/* 7.3 · On-Leave List */}
+                        <motion.button
+                          onClick={handleDownloadOnLeaveExcel}
+                          whileHover={{ scale: 1.03, y: -1 }}
+                          whileTap={{ scale: 0.97 }}
+                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
+                        >
+                          <FaRegFileExcel className="h-4 w-4 text-purple-500" />
+                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                            On-Leave
+                          </span>
+                        </motion.button>
+                      </div>
+
+                      {/* ── Non-Submissions Expanded Panel (7.2 + 7.2.1) ── */}
+                      <AnimatePresence>
+                        {activeExport === "nonSub" && (
+                          <motion.div
+                            key="nonsub-panel"
+                            initial={{ opacity: 0, y: -10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-6">
+                              {/* Section 1: Quick Action */}
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
+                                  Quick Export
+                                </label>
+                                <motion.button
+                                  onClick={
+                                    handleExportWeeklyNonSubmissionsWithinWeek
+                                  }
+                                  whileHover={{
+                                    backgroundColor: "rgba(254, 242, 242, 1)",
+                                  }}
+                                  whileTap={{ scale: 0.99 }}
+                                  className="w-full flex items-center justify-between py-3 px-4 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-sm font-medium transition-all duration-200 cursor-pointer group"
+                                >
+                                  <span className="group-hover:text-red-600 transition-colors">
+                                    Current Week Non-Submissions
+                                  </span>
+                                  <FaFileExport className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
+                                </motion.button>
+                              </div>
+
+                              {/* Section 2: Custom Range */}
+                              <div className="space-y-3">
+                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
+                                  Custom Date Range
+                                </label>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <input
+                                      type="date"
+                                      value={customStartDate}
+                                      onChange={(e) =>
+                                        setCustomStartDate(e.target.value)
+                                      }
+                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <input
+                                      type="date"
+                                      value={customEndDate}
+                                      onChange={(e) =>
+                                        setCustomEndDate(e.target.value)
+                                      }
+                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Action Button */}
+                              <motion.button
+                                onClick={handleExportWeeklyNonSubmissionsCSV}
+                                whileHover={{
+                                  scale: 1.01,
+                                  backgroundColor: "#ef4444",
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                className="w-full py-3 bg-red-500 text-white text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer shadow-md shadow-red-100"
+                              >
+                                Download CSV Report
+                              </motion.button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.div>
 
             {/* Notifications Panel */}
@@ -1030,9 +1056,64 @@ const AdminDashboard = () => {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-                    Overdue Interns ({dashboardStats?.overdueList?.length || 0})
-                  </h3>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
+                    <h3 className="text-base md:text-lg font-semibold text-gray-900">
+                      Overdue Interns (
+                      {dashboardStats?.overdueList?.length || 0})
+                    </h3>
+
+                    <div className="flex space-x-2">
+                      <motion.button
+                        onClick={handleExportOverdueCSV}
+                        disabled={!dashboardStats?.overdueList?.length}
+                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
+                        whileHover={{
+                          scale: !dashboardStats?.overdueList?.length
+                            ? 1
+                            : 1.03,
+                        }}
+                        whileTap={{
+                          scale: !dashboardStats?.overdueList?.length
+                            ? 1
+                            : 0.98,
+                        }}
+                      >
+                        <FaFileExport className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="truncate">Export Overdue List</span>
+                      </motion.button>
+
+                      <motion.button
+                        onClick={handleSendNotifications}
+                        disabled={
+                          sendingNotifications ||
+                          !dashboardStats?.overdueList?.length
+                        }
+                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
+                        whileHover={{
+                          scale:
+                            sendingNotifications ||
+                            !dashboardStats?.overdueList?.length
+                              ? 1
+                              : 1.03,
+                        }}
+                        whileTap={{
+                          scale:
+                            sendingNotifications ||
+                            !dashboardStats?.overdueList?.length
+                              ? 1
+                              : 0.98,
+                        }}
+                      >
+                        {sendingNotifications ? (
+                          <FaSpinner className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <FaRegPaperPlane className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="truncate">Remind All</span>
+                      </motion.button>
+                    </div>
+                  </div>
+
                   {dashboardStats?.overdueList?.length > 0 ? (
                     <div className="space-y-3">
                       {dashboardStats.overdueList.map((intern) => (

@@ -228,10 +228,6 @@ const AdminSeatManagement = () => {
     setSelectedDate(e.target.value);
   };
 
-  const clearDateFilter = () => {
-    setSelectedDate("");
-  };
-
   const handleExportCSV = () => {
     try {
       const dataToExport =
@@ -745,16 +741,6 @@ const AdminSeatManagement = () => {
                         onChange={handleDateChange}
                         className="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm shadow-sm"
                       />
-                      {selectedDate && (
-                        <motion.button
-                          onClick={clearDateFilter}
-                          className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-colors border border-gray-200 shadow-sm"
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                        >
-                          Clear
-                        </motion.button>
-                      )}
                     </div>
                   </div>
 

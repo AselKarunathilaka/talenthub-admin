@@ -116,7 +116,7 @@ const rightSection = {
     // { number: 79, angle: 7, radius: 210, locked: true },
   ],
   outerRing3: [
-    { number: 85, angle: 141, radius: 350 },
+    { number: 85, angle: 141, radius: 350, locked: true },
     { number: 86, angle: 130, radius: 330, locked: true },
     { number: 87, angle: 38, radius: 340, locked: true },
     { number: 88, angle: 26, radius: 350, locked: true },

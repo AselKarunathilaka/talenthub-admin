@@ -98,7 +98,7 @@ export const adminApi = {
     }
   },
 
-  // Get individual intern details with records (removed duplicate)
+  // Get individual intern details with records
   getInternDetails: async (internId) => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}`, {
@@ -139,7 +139,7 @@ export const adminApi = {
     }
   },
 
-  // Get all intern report data (for exports) (removed duplicate)
+  // Get all intern report data (for exports)
   getInternReport: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/report/interns`, {
@@ -159,17 +159,30 @@ export const adminApi = {
   },
 
   // Get all daily records
-  getAllDailyRecords: async () => {
+  getAllDailyRecords: async ({
+    page = 1,
+    limit = 50,
+    search = "",
+    date = "",
+  } = {}) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/daily-records`, {
-        method: "GET",
-        headers: getHeaders(),
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        ...(search ? { search } : {}),
+        ...(date ? { date } : {}),
       });
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/daily-records?${params.toString()}`,
+        { method: "GET", headers: getHeaders() },
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch daily records: ${response.status}`);
       }
 
+      // Returns { records: [...], pagination: { total, page, limit, totalPages, hasNextPage, hasPrevPage } }
       return await response.json();
     } catch (error) {
       console.error("Error fetching daily records:", error);
@@ -177,11 +190,11 @@ export const adminApi = {
     }
   },
 
-  // Get previous day submissions
-  getPreviousDaySubmissions: async () => {
+  // Get non-submissions within a week from current date (last 5 working days)
+  getNonSubmissionsWithinAWeek: async () => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/admin/previous-day-submissions`,
+        `${API_BASE_URL}/admin/non-submissions-within-week`,
         {
           method: "GET",
           headers: getHeaders(),
@@ -190,18 +203,18 @@ export const adminApi = {
 
       if (!response.ok) {
         throw new Error(
-          `Failed to fetch previous day submissions: ${response.status}`,
+          `Failed to fetch non-submissions within a week: ${response.status}`,
         );
       }
 
       return await response.json();
     } catch (error) {
-      console.error("Error fetching previous day submissions:", error);
+      console.error("Error fetching non-submissions within a week:", error);
       throw error;
     }
   },
 
-  // Get weekly non-submissions (Monday to Friday of current week)
+  // Get weekly non-submissions (Monday to Friday of current week or custom date range)
   getWeeklyNonSubmissions: async (weekType = null) => {
     try {
       let url = `${API_BASE_URL}/admin/weekly-non-submissions`;
@@ -249,6 +262,32 @@ export const adminApi = {
       return await response.json();
     } catch (error) {
       console.error("Error sending notifications:", error);
+      throw error;
+    }
+  },
+
+  // Manually trigger approved short leave email (1:30 PM report)
+  triggerApprovedShortLeaveEmail: async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/trigger/approved-short-leave-email`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+        },
+      );
+
+      // Accept both 200 (success) and 202 (accepted/processing)
+      if (!response.ok && response.status !== 202) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message || `Failed to trigger email: ${response.status}`,
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error triggering approved short leave email:", error);
       throw error;
     }
   },
@@ -336,20 +375,27 @@ export const csvUtils = {
     return csvRows.join("\n");
   },
 
-  // Convert previous day submissions data to CSV (without Total Records, Start Date and End Date fields)
-  convertPreviousDayToCSV: (data) => {
-    if (!data || !Array.isArray(data) || data.length === 0) {
+  // Convert weekly non-submissions within week data to CSV (for last 5 working days)
+  convertWeeklyNonSubmissionsWithinWeekToCSV: (data) => {
+    if (
+      !data ||
+      !data.nonSubmittedInterns ||
+      !Array.isArray(data.nonSubmittedInterns) ||
+      data.nonSubmittedInterns.length === 0
+    ) {
       return "";
     }
 
-    // Define CSV headers (without Total Records, Start Date and End Date)
+    // Define CSV headers
     const headers = [
       "Trainee ID",
       "Name",
       "Email",
       "Field of Specialization",
-      "Last Submission",
-      "Days Since Last Submission",
+      "Institute",
+      "Start Date",
+      "End Date",
+      "Week Period",
       "Status",
       "Export Date",
     ];
@@ -357,33 +403,38 @@ export const csvUtils = {
     // Get current date for export timestamp
     const exportDate = formatDateForExport(new Date());
 
+    // Extract week period from data - this comes from the API response
+    const weekPeriod = data.weekPeriod || "Last 5 Working Days";
+
+    // Sort interns by start date in ascending order
+    const sortedInterns = [...data.nonSubmittedInterns].sort((a, b) => {
+      const dateA = a.trainingStartDate
+        ? new Date(a.trainingStartDate)
+        : new Date(0);
+      const dateB = b.trainingStartDate
+        ? new Date(b.trainingStartDate)
+        : new Date(0);
+      return dateA - dateB;
+    });
+
     // Convert data to CSV rows
     const csvRows = [
       headers.join(","), // Header row
-      ...data.map((intern) => {
-        // Determine detailed status
-        let status = "Unknown";
-        if (intern.isOverdue) {
-          status = "Overdue";
-        } else if (intern.totalRecords === 0) {
-          status = "NotSubmitted";
-        } else {
-          status = "Submitted";
-        }
-
+      ...sortedInterns.map((intern) => {
         return [
           intern.traineeId || "",
           `"${intern.traineeName || ""}"`,
           intern.email || "",
           `"${intern.fieldOfSpecialization || ""}"`,
-          intern.lastSubmission
-            ? formatDateForExport(intern.lastSubmission)
-            : '="Never"',
-          intern.daysSinceLastSubmission !== null &&
-          intern.daysSinceLastSubmission !== undefined
-            ? intern.daysSinceLastSubmission
-            : "N/A",
-          status,
+          `"${intern.institute || "Not Specified"}"`,
+          intern.trainingStartDate
+            ? formatDateForExport(intern.trainingStartDate)
+            : '="Not Set"',
+          intern.trainingEndDate
+            ? formatDateForExport(intern.trainingEndDate)
+            : '="Not Set"',
+          `"${weekPeriod}"`,
+          intern.status || "Not Submitted Within Week",
           exportDate,
         ].join(",");
       }),
@@ -453,9 +504,6 @@ export const csvUtils = {
         }
 
         // Use totalRecords if available, or calculate it from backend data
-        // For overdueList from dashboard stats, there's no totalRecords property
-        // but we can check if the intern is in the overdue list which indicates they
-        // haven't submitted recently
         const totalRecords =
           intern.totalRecords !== undefined
             ? intern.totalRecords
@@ -514,8 +562,6 @@ export const csvUtils = {
       "Institute",
       "Start Date",
       "End Date",
-      "Working Days This Week",
-      "Missed Days",
       "Week Period",
       "Status",
       "Export Date",
@@ -523,6 +569,9 @@ export const csvUtils = {
 
     // Get current date for export timestamp
     const exportDate = formatDateForExport(new Date());
+
+    // Extract week period from data - this comes from the API response
+    const weekPeriod = data.weekPeriod || "Current Week";
 
     // Convert data to CSV rows
     const csvRows = [
@@ -540,9 +589,7 @@ export const csvUtils = {
           intern.trainingEndDate
             ? formatDateForExport(intern.trainingEndDate)
             : '="Not Set"',
-          intern.workingDaysThisWeek || 0,
-          intern.missedDays || 0,
-          `"${intern.weekPeriod || ""}"`,
+          `"${weekPeriod}"`,
           intern.status || "Not Submitted This Week",
           exportDate,
         ].join(",");
@@ -560,8 +607,9 @@ export const csvUtils = {
 
       // Use specialized CSV conversion based on report type
       let csvContent;
-      if (reportType.startsWith("previous_day_submissions")) {
-        csvContent = csvUtils.convertPreviousDayToCSV(reportData);
+      if (reportType.startsWith("weekly_non_submissions_within_week")) {
+        csvContent =
+          csvUtils.convertWeeklyNonSubmissionsWithinWeekToCSV(reportData);
       } else if (reportType === "overdue_interns") {
         csvContent = csvUtils.convertOverdueInternsToCSV(reportData);
       } else if (reportType.startsWith("weekly_non_submissions")) {
@@ -586,7 +634,7 @@ export const csvUtils = {
           break;
         default:
           // Handle special report types with custom filenames
-          if (reportType.startsWith("previous_day_submissions_")) {
+          if (reportType.startsWith("weekly_non_submissions_within_week_")) {
             filename = `${reportType}.csv`;
           } else if (reportType.startsWith("weekly_non_submissions_")) {
             filename = `${reportType}.csv`;
@@ -622,5 +670,46 @@ export const notificationUtils = {
   showInfo: (message) => {
     // You can integrate with a toast library here
     alert(`Info: ${message}`);
+  },
+};
+
+// Announcement API
+export const announcementApi = {
+  // GET /api/admin/announcements
+  getAll: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    if (!res.ok)
+      throw new Error(`Failed to fetch announcements: ${res.status}`);
+    return res.json();
+  },
+
+  // POST /api/admin/announcements
+  create: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(
+        err.message || `Failed to create announcement: ${res.status}`,
+      );
+    }
+    return res.json();
+  },
+
+  // DELETE /api/admin/announcements/:id
+  delete: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/announcements/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    if (!res.ok)
+      throw new Error(`Failed to delete announcement: ${res.status}`);
+    return res.json();
   },
 };

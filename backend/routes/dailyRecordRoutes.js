@@ -1,31 +1,37 @@
 const express = require("express");
 const authenticateUser = require("../middleware/authMiddleware");
+
 const {
   createDailyRecord,
   getDailyRecords,
   getDailyRecordById,
   updateDailyRecord,
-  deleteDailyRecord
+  deleteDailyRecord,
+  validateLogbookEntry,
 } = require("../controllers/dailyRecordController");
+
+const {
+  exportDailyRecordsPDF,
+  getAvailableTemplates,
+} = require("../controllers/logbookExportController");
 
 const router = express.Router();
 
 // All routes require authentication
 router.use(authenticateUser);
 
-// Create a new daily record
+// ── Export routes (must be registered before /:id to avoid conflict) ──────────
+router.get("/export/templates", getAvailableTemplates);
+router.get("/export/pdf", exportDailyRecordsPDF);
+
+// ── Endpoint for LLM validation ───────────────────────────────────────────────
+router.post("/validate-entry", validateLogbookEntry);
+
+// ── CRUD routes ───────────────────────────────────────────────────────────────
 router.post("/", createDailyRecord);
-
-// Get all daily records (filtered by user role)
 router.get("/", getDailyRecords);
-
-// Get a specific daily record by ID
 router.get("/:id", getDailyRecordById);
-
-// Update a daily record
 router.put("/:id", updateDailyRecord);
-
-// Delete a daily record
 router.delete("/:id", deleteDailyRecord);
 
 module.exports = router;

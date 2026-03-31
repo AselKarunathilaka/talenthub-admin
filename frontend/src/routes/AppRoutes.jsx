@@ -7,6 +7,7 @@ import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
 import DailyRecords from "../pages/DailyRecords";
 import MyLeaveRequests from "../pages/MyLeaveRequests";
+import ShortLeavePass from "../pages/ShortLeavePass";
 import SeatReservation from "../pages/SeatReservation";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
@@ -18,6 +19,9 @@ import AgreementGuard from "../components/AgreementGuard";
 import GateStaffLogin from "../pages/GateStaffLogin";
 import GateStaffDashboard from "../pages/GateStaffDashboard";
 import AdminSeatManagement from "../pages/AdminSeatManagement";
+import AdminInternLocations from "../pages/AdminInternLocations";
+import AdminAnnouncements from "../pages/AdminAnnouncements";
+import InternAnnouncements from "../pages/InternAnnouncements";
 
 const AppRoutes = () => {
   return (
@@ -38,6 +42,15 @@ const AppRoutes = () => {
         element={
           <AgreementGuard>
             <Dashboard />
+          </AgreementGuard>
+        }
+      />
+
+      <Route
+        path="/announcements"
+        element={
+          <AgreementGuard>
+            <InternAnnouncements />
           </AgreementGuard>
         }
       />
@@ -74,6 +87,14 @@ const AppRoutes = () => {
         }
       />
       <Route
+        path="/leave-pass/:token"
+        element={
+          <AgreementGuard>
+            <ShortLeavePass />
+          </AgreementGuard>
+        }
+      />
+      <Route
         path="/seat-reservation"
         element={
           <AgreementGuard>
@@ -96,6 +117,11 @@ const AppRoutes = () => {
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
+      <Route
+        path="/admin/intern-locations"
+        element={<AdminInternLocations />}
+      />
+      <Route path="/admin/announcements" element={<AdminAnnouncements />} />
     </Routes>
   );
 };
