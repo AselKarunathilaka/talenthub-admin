@@ -9,6 +9,7 @@ const {
   getBookingsByIntern,
   cancelBooking,
   getSeatAvailability,
+  getPublicLockedSeats,
 } = require("../controllers/seatBookingController");
 
 //Create a booking (JWT REQUIRED)
@@ -25,5 +26,8 @@ router.put("/bookings/cancel/:id", authenticateUser, cancelBooking);
 
 //Get seat availability (PUBLIC)
 router.get("/availability/:date", getSeatAvailability);
+
+//Get locked seats (PUBLIC - for intern seat map)
+router.get("/locked-seats", getPublicLockedSeats);
 
 module.exports = router;

@@ -1,5 +1,6 @@
 const SeatBooking = require("../models/SeatReserve");
 const Intern = require("../models/Intern");
+const LockedSeat = require("../models/LockedSeat");
 
 /**
  * Get all seat bookings with optional date filter
@@ -326,9 +327,144 @@ const getInternBookingHistory = async (req, res) => {
   }
 };
 
+/**
+ * Get all locked seats
+ * @route GET /api/admin/seat-bookings/locked
+ * @access Private (Admin only)
+ */
+const getLockedSeats = async (req, res) => {
+  try {
+    const lockedSeats = await LockedSeat.find()
+      .sort({ seatNumber: 1 })
+      .lean();
+
+    const lockedSeatNumbers = lockedSeats.map((s) => s.seatNumber);
+
+    res.status(200).json({
+      success: true,
+      lockedSeats: lockedSeatNumbers,
+      count: lockedSeatNumbers.length,
+      details: lockedSeats,
+    });
+  } catch (error) {
+    console.error("Error fetching locked seats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch locked seats",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Lock a seat
+ * @route POST /api/admin/seat-bookings/lock
+ * @access Private (Admin only)
+ */
+const lockSeat = async (req, res) => {
+  try {
+    const { seatNumber } = req.body;
+
+    if (!seatNumber || seatNumber < 1 || seatNumber > 96) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid seat number (1-96) is required",
+      });
+    }
+
+    // Check if already locked
+    const existing = await LockedSeat.findOne({ seatNumber });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: `Seat ${seatNumber} is already locked`,
+      });
+    }
+
+    // Check if seat has an active booking — if so, warn but still allow locking
+    const activeBooking = await SeatBooking.findOne({
+      seatNumber,
+      status: "active",
+      bookingDate: { $gte: new Date() },
+    });
+
+    await LockedSeat.create({
+      seatNumber,
+      lockedBy: req.user?.email || req.user?.id || "admin",
+      lockedAt: new Date(),
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Seat ${seatNumber} has been locked`,
+      seatNumber,
+      hasActiveBooking: !!activeBooking,
+      warning: activeBooking
+        ? `Note: Seat ${seatNumber} has an active booking that will remain. Future bookings are blocked.`
+        : null,
+    });
+  } catch (error) {
+    console.error("Error locking seat:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: `Seat ${req.body.seatNumber} is already locked`,
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: "Failed to lock seat",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * Unlock a seat
+ * @route POST /api/admin/seat-bookings/unlock
+ * @access Private (Admin only)
+ */
+const unlockSeat = async (req, res) => {
+  try {
+    const { seatNumber } = req.body;
+
+    if (!seatNumber || seatNumber < 1 || seatNumber > 96) {
+      return res.status(400).json({
+        success: false,
+        message: "Valid seat number (1-96) is required",
+      });
+    }
+
+    const result = await LockedSeat.findOneAndDelete({ seatNumber });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: `Seat ${seatNumber} is not currently locked`,
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Seat ${seatNumber} has been unlocked`,
+      seatNumber,
+    });
+  } catch (error) {
+    console.error("Error unlocking seat:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to unlock seat",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getSeatBookings,
   getBookingStats,
   getBookingBySeat,
   getInternBookingHistory,
+  getLockedSeats,
+  lockSeat,
+  unlockSeat,
 };

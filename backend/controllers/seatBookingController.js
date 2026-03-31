@@ -1,5 +1,6 @@
 const SeatBooking = require("../models/SeatReserve");
 const Intern = require("../models/Intern");
+const LockedSeat = require("../models/LockedSeat");
 
 // Create a new booking
 exports.createBooking = async (req, res) => {
@@ -43,6 +44,15 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Cannot book seats for past dates",
+      });
+    }
+
+    // Check if seat is locked by admin
+    const isLocked = await LockedSeat.findOne({ seatNumber });
+    if (isLocked) {
+      return res.status(400).json({
+        success: false,
+        message: `Seat ${seatNumber} is locked by admin and cannot be booked`,
       });
     }
 
@@ -310,6 +320,30 @@ exports.getSeatAvailability = async (req, res) => {
       success: false,
       message: "Server error while fetching seat availability",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// Get locked seats (PUBLIC - no auth needed)
+exports.getPublicLockedSeats = async (req, res) => {
+  try {
+    const lockedSeats = await LockedSeat.find()
+      .select("seatNumber")
+      .sort({ seatNumber: 1 })
+      .lean();
+
+    const lockedSeatNumbers = lockedSeats.map((s) => s.seatNumber);
+
+    res.status(200).json({
+      success: true,
+      lockedSeats: lockedSeatNumbers,
+      count: lockedSeatNumbers.length,
+    });
+  } catch (error) {
+    console.error("Error fetching public locked seats:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch locked seats",
     });
   }
 };

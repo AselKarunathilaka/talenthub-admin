@@ -171,6 +171,89 @@ export const adminSeatApi = {
       throw error;
     }
   },
+
+  /**
+   * Get all locked seat numbers
+   * @returns {Promise<Object>} - { success, lockedSeats, count }
+   */
+  getLockedSeats: async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seat-bookings/locked`,
+        {
+          method: "GET",
+          headers: getHeaders(),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch locked seats: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching locked seats:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Lock a seat
+   * @param {number} seatNumber - Seat number to lock
+   * @returns {Promise<Object>} - { success, message, seatNumber }
+   */
+  lockSeat: async (seatNumber) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seat-bookings/lock`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ seatNumber }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to lock seat: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error locking seat:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Unlock a seat
+   * @param {number} seatNumber - Seat number to unlock
+   * @returns {Promise<Object>} - { success, message, seatNumber }
+   */
+  unlockSeat: async (seatNumber) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seat-bookings/unlock`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ seatNumber }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to unlock seat: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error unlocking seat:", error);
+      throw error;
+    }
+  },
 };
 
 // CSV export utility for seat bookings

@@ -15,6 +15,8 @@ import {
   FaSearch,
   FaTimes,
   FaHistory,
+  FaLock,
+  FaUnlock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import logo from "../assets/sltlogo.jpg";
@@ -25,7 +27,6 @@ import {
 } from "../api/adminSeatApi";
 
 const TOTAL_SEATS = 88;
-const LOCKED_SEATS = 20;
 
 const AdminSeatManagement = () => {
   const navigate = useNavigate();
@@ -37,7 +38,14 @@ const AdminSeatManagement = () => {
   const [searchResults, setSearchResults] = useState(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [searchMessage, setSearchMessage] = useState(null); // { type: 'success' | 'error' | 'info', text: string }
+  const [searchMessage, setSearchMessage] = useState(null);
+
+  // Seat lock management state
+  const [lockedSeats, setLockedSeats] = useState([]);
+  const [lockedSeatsCount, setLockedSeatsCount] = useState(0);
+  const [lockLoading, setLockLoading] = useState(false);
+  const [showLockManager, setShowLockManager] = useState(false);
+  const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
 
   const getTodayDate = () => {
     const today = new Date();
@@ -52,8 +60,43 @@ const AdminSeatManagement = () => {
     availableSeats: TOTAL_SEATS,
   });
 
+  // Fetch locked seats from API
+  const fetchLockedSeats = async () => {
+    try {
+      const data = await adminSeatApi.getLockedSeats();
+      setLockedSeats(data.lockedSeats || []);
+      setLockedSeatsCount(data.count || 0);
+    } catch (err) {
+      console.error("Failed to fetch locked seats:", err);
+    }
+  };
+
+  // Handle lock/unlock a seat
+  const handleToggleLock = async (seatNumber, action) => {
+    setLockLoading(true);
+    try {
+      if (action === "lock") {
+        const result = await adminSeatApi.lockSeat(seatNumber);
+        seatNotificationUtils.showSuccess(result.message);
+        if (result.warning) {
+          setTimeout(() => seatNotificationUtils.showInfo(result.warning), 500);
+        }
+      } else {
+        const result = await adminSeatApi.unlockSeat(seatNumber);
+        seatNotificationUtils.showSuccess(result.message);
+      }
+      await fetchLockedSeats();
+    } catch (err) {
+      seatNotificationUtils.showError(err.message || `Failed to ${action} seat`);
+    } finally {
+      setLockLoading(false);
+      setLockConfirm(null);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
+    fetchLockedSeats();
   }, [selectedDate]);
 
   // Filter bookings based on search query
@@ -472,6 +515,7 @@ const AdminSeatManagement = () => {
 
             {/* Statistics Cards */}
             {!showHistory && (
+              <>
               <motion.div
                 className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6"
                 initial={{ opacity: 0 }}
@@ -479,9 +523,10 @@ const AdminSeatManagement = () => {
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
                 <motion.div
-                  className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
+                  className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm cursor-pointer"
                   whileHover={{ scale: 1.03 }}
                   transition={{ duration: 0.2 }}
+                  onClick={() => setShowLockManager(!showLockManager)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
@@ -489,10 +534,13 @@ const AdminSeatManagement = () => {
                         Locked Seats
                       </p>
                       <p className="text-xl sm:text-2xl font-bold text-gray-800">
-                        {LOCKED_SEATS}
+                        {lockedSeatsCount}
+                      </p>
+                      <p className="text-xs text-blue-500 mt-1">
+                        {showLockManager ? "Hide manager ▲" : "Click to manage ▼"}
                       </p>
                     </div>
-                    <FaUsers className="text-xl sm:text-2xl text-blue-500" />
+                    <FaLock className="text-xl sm:text-2xl text-blue-500" />
                   </div>
                 </motion.div>
 
@@ -525,13 +573,149 @@ const AdminSeatManagement = () => {
                         Available Seats
                       </p>
                       <p className="text-xl sm:text-2xl font-bold text-green-600">
-                        {TOTAL_SEATS - (stats.occupiedSeats + LOCKED_SEATS)}
+                        {TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}
                       </p>
                     </div>
                     <FaChair className="text-xl sm:text-2xl text-green-500" />
                   </div>
                 </motion.div>
               </motion.div>
+
+              {/* Seat Lock Manager Panel */}
+              <AnimatePresence>
+                {showLockManager && (
+                  <motion.div
+                    className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 mt-4"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                          <FaLock className="text-blue-500" />
+                          Manage Seat Locks
+                        </h3>
+                        <p className="text-sm text-gray-500 mt-1">
+                          Click a seat to lock/unlock it. Locked seats cannot be booked by interns.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 text-xs">
+                          <div className="w-4 h-4 bg-gray-400 rounded"></div>
+                          <span>Locked</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs">
+                          <div className="w-4 h-4 bg-green-400 rounded"></div>
+                          <span>Unlocked</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-8 sm:grid-cols-11 gap-1.5">
+                      {Array.from({ length: TOTAL_SEATS }, (_, i) => i + 1).map((seatNum) => {
+                        const isLocked = lockedSeats.includes(seatNum);
+                        return (
+                          <motion.button
+                            key={seatNum}
+                            onClick={() => setLockConfirm({ seatNumber: seatNum, action: isLocked ? "unlock" : "lock" })}
+                            disabled={lockLoading}
+                            className={`relative flex flex-col items-center justify-center p-1.5 rounded-lg text-xs font-bold transition-all border ${
+                              isLocked
+                                ? "bg-gray-400 text-white border-gray-500 hover:bg-gray-500"
+                                : "bg-green-100 text-green-700 border-green-300 hover:bg-green-200"
+                            } ${lockLoading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                            whileHover={lockLoading ? {} : { scale: 1.15 }}
+                            whileTap={lockLoading ? {} : { scale: 0.9 }}
+                            title={isLocked ? `Seat ${seatNum} (Locked) — Click to unlock` : `Seat ${seatNum} (Open) — Click to lock`}
+                          >
+                            {isLocked ? (
+                              <FaLock className="text-[10px] mb-0.5" />
+                            ) : (
+                              <FaUnlock className="text-[10px] mb-0.5" />
+                            )}
+                            <span>{seatNum}</span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
+                      <span>
+                        {lockedSeatsCount} of {TOTAL_SEATS} seats locked
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        Changes take effect immediately for intern bookings
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Lock Confirmation Modal */}
+              <AnimatePresence>
+                {lockConfirm && (
+                  <motion.div
+                    className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setLockConfirm(null)}
+                  >
+                    <motion.div
+                      className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
+                      initial={{ scale: 0.9, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0.9, opacity: 0 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-center mb-4">
+                        {lockConfirm.action === "lock" ? (
+                          <FaLock className="mx-auto text-3xl text-red-500 mb-3" />
+                        ) : (
+                          <FaUnlock className="mx-auto text-3xl text-green-500 mb-3" />
+                        )}
+                        <h3 className="text-lg font-bold text-gray-900">
+                          {lockConfirm.action === "lock" ? "Lock" : "Unlock"} Seat {lockConfirm.seatNumber}?
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {lockConfirm.action === "lock"
+                            ? "Interns will no longer be able to book this seat."
+                            : "This seat will become available for interns to book."}
+                        </p>
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setLockConfirm(null)}
+                          disabled={lockLoading}
+                          className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)}
+                          disabled={lockLoading}
+                          className={`flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                            lockConfirm.action === "lock"
+                              ? "bg-red-500 hover:bg-red-600"
+                              : "bg-green-500 hover:bg-green-600"
+                          }`}
+                        >
+                          {lockLoading ? (
+                            <FaSpinner className="animate-spin" />
+                          ) : lockConfirm.action === "lock" ? (
+                            <><FaLock /> Lock</>
+                          ) : (
+                            <><FaUnlock /> Unlock</>
+                          )}
+                        </button>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              </>
             )}
 
             {/* Date Filter and Export */}

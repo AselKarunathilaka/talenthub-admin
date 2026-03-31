@@ -141,13 +141,8 @@ const ALL_SEATS = [
 //Total unique seats
 const TOTAL_SEATS = ALL_SEATS.length;
 
-//Locked seat numbers array
-const LOCKED_SEATS = ALL_SEATS.filter((seat) => seat.locked).map(
-  (seat) => seat.number,
-);
-
-//Count of locked seats
-const LOCKED_SEATS_COUNT = LOCKED_SEATS.length;
+// NOTE: Locked seats are now fetched from the API (managed by admin)
+// The `locked: true` flags in seat configs above are kept for reference but no longer used.
 
 export const useSeatManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -163,11 +158,30 @@ export const useSeatManagement = () => {
   const [maxBookingDate, setMaxBookingDate] = useState("");
   const [takenSeatsByAnyone, setTakenSeatsByAnyone] = useState([]);
   const [allBookings, setAllBookings] = useState({});
+  const [lockedSeats, setLockedSeats] = useState([]);
+
+  // Fetch locked seats from API
+  const fetchLockedSeats = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/seat-reservation/locked-seats`,
+      );
+      if (!response.ok) {
+        throw new Error("Failed to fetch locked seats");
+      }
+      const data = await response.json();
+      setLockedSeats(data.lockedSeats || []);
+    } catch (err) {
+      console.error("Error fetching locked seats:", err);
+      // Fallback: empty locked seats
+      setLockedSeats([]);
+    }
+  }, []);
 
   //Computed values based on current state
   const totalUnavailableCount = takenSeatsByAnyone.length;
   const totalBookedCount = takenSeatsByAnyone.filter(
-    (seatNum) => !LOCKED_SEATS.includes(seatNum),
+    (seatNum) => !lockedSeats.includes(seatNum),
   ).length;
   const totalAvailableCount = TOTAL_SEATS - totalUnavailableCount;
 
@@ -349,7 +363,7 @@ export const useSeatManagement = () => {
 
       // 3. Combine with locked seats
       const allUnavailableSeats = [
-        ...new Set([...allTakenSeats, ...LOCKED_SEATS]),
+        ...new Set([...allTakenSeats, ...lockedSeats]),
       ];
 
       // 4. Get my bookings separately for cancellation purposes
@@ -398,7 +412,7 @@ export const useSeatManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [lockedSeats]);
 
   // Handle date change
   const handleDateChange = useCallback(
@@ -438,7 +452,7 @@ export const useSeatManagement = () => {
   // Handle seat click
   const handleSeatClick = useCallback(
     (seatNumber) => {
-      if (LOCKED_SEATS.includes(seatNumber)) return;
+      if (lockedSeats.includes(seatNumber)) return;
 
       // Check if seat is booked by anyone (not just the current intern)
       if (takenSeatsByAnyone.includes(seatNumber)) {
@@ -451,7 +465,7 @@ export const useSeatManagement = () => {
       setCurrentSeat(seatNumber);
       setShowModal(true);
     },
-    [takenSeatsByAnyone, selectedDate, formatDisplayDate],
+    [takenSeatsByAnyone, selectedDate, formatDisplayDate, lockedSeats],
   );
 
   // Handle modal close
@@ -519,7 +533,7 @@ export const useSeatManagement = () => {
   // Get seat status
   const getSeatStatus = useCallback(
     (seatNumber) => {
-      if (LOCKED_SEATS.includes(seatNumber)) return "locked";
+      if (lockedSeats.includes(seatNumber)) return "locked";
 
       // If seat is booked by anyone (including you) → show as "booked"
       if (takenSeatsByAnyone.includes(seatNumber)) return "booked";
@@ -527,7 +541,7 @@ export const useSeatManagement = () => {
       // Otherwise → available
       return "available";
     },
-    [takenSeatsByAnyone],
+    [takenSeatsByAnyone, lockedSeats],
   );
 
   // Initialize dates and load bookings
@@ -540,11 +554,14 @@ export const useSeatManagement = () => {
       setMinBookingDate(threeDayRange.minDate);
       setMaxBookingDate(threeDayRange.maxDate);
       setSelectedDate(formatDate(today));
+
+      // Fetch locked seats first, then load bookings
+      await fetchLockedSeats();
       await loadBookingsForDate(formatDate(today));
     };
 
     initializeDates();
-  }, [getThreeDayRange, loadBookingsForDate]);
+  }, [getThreeDayRange, loadBookingsForDate, fetchLockedSeats]);
 
   return {
     showModal,
