@@ -151,6 +151,13 @@ class InternRepository {
     const intern = await Intern.findById(internId);
     if (!intern) return null;
 
+    if (intern.isTestAccount) {
+      console.log(
+        `🛡️ Skipping removal of test account: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
+      );
+      return null;
+    }
+
     const doc = intern.toObject();
 
     // Use native collection driver — skips Mongoose validation, middleware,
@@ -175,7 +182,10 @@ class InternRepository {
    * bypassing Mongoose schema validation and 2dsphere index checks entirely.
    */
   static async removeMultipleInterns(internIds, reason = "not_in_api") {
-    const interns = await Intern.find({ _id: { $in: internIds } });
+    const interns = await Intern.find({
+      _id: { $in: internIds },
+      isTestAccount: { $ne: true },
+    });
 
     if (interns.length === 0) {
       return { deletedCount: 0, acknowledged: true };

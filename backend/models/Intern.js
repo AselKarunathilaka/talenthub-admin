@@ -21,15 +21,15 @@ const internSchema = new mongoose.Schema(
     Trainee_HomeAddress: { type: String, default: "" },
     district: { type: String, default: "" },
 
-   location: {
-    type: {
-      type: String,
-      enum: ["Point"],
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+      },
+      coordinates: {
+        type: [Number], // [longitude, latitude]
+      },
     },
-    coordinates: {
-      type: [Number], // [longitude, latitude]
-    },
-  },
 
     Training_StartDate: { type: Date },
     Training_EndDate: { type: Date },
@@ -47,6 +47,8 @@ const internSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
+    isTestAccount: { type: Boolean, default: false },
+    password: { type: String, default: "" },
   },
   { timestamps: true },
 );

@@ -66,8 +66,8 @@ class SLTApiScheduler {
    *     the current DB count (catches partial outage / truncated responses).
    */
   static async isApiResponseSafeForCleanup(apiTrainees) {
-    const MIN_EXPECTED_TRAINEES = 5; // absolute floor — tune to your org size
-    const MAX_DROP_PERCENT = 50; // allow up to 50% drop before suspecting outage
+    const MIN_EXPECTED_TRAINEES = 5;
+    const MAX_DROP_PERCENT = 50;
 
     if (!apiTrainees || apiTrainees.length < MIN_EXPECTED_TRAINEES) {
       console.warn(
@@ -78,15 +78,20 @@ class SLTApiScheduler {
     }
 
     const dbInterns = await InternRepository.getAllInterns();
-    if (dbInterns.length === 0) return true; // empty DB — nothing to protect
+
+    // Exclude test accounts — they never appear in the API so including them
+    // would artificially inflate the DB count and trigger a false-positive abort.
+    const realInterns = dbInterns.filter((i) => !i.isTestAccount);
+
+    if (realInterns.length === 0) return true; // empty DB — nothing to protect
 
     const dropPercent =
-      ((dbInterns.length - apiTrainees.length) / dbInterns.length) * 100;
+      ((realInterns.length - apiTrainees.length) / realInterns.length) * 100;
 
     if (dropPercent > MAX_DROP_PERCENT) {
       console.warn(
         `🛡️  Safety guard: API returned ${apiTrainees.length} trainees but DB has ` +
-          `${dbInterns.length} (${dropPercent.toFixed(1)}% drop > ${MAX_DROP_PERCENT}% threshold). ` +
+          `${realInterns.length} real interns (${dropPercent.toFixed(1)}% drop > ${MAX_DROP_PERCENT}% threshold). ` +
           `Cleanup ABORTED — Prohub may be down or returning partial data.`,
       );
       return false;
@@ -458,6 +463,7 @@ class SLTApiScheduler {
       );
 
       const internsToRemove = dbInterns.filter((intern) => {
+        if (intern.isTestAccount) return false;
         const traineeId = intern.Trainee_ID?.toString();
         return traineeId && !activeTraineeIds.has(traineeId);
       });
