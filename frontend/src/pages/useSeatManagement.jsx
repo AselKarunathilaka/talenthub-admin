@@ -165,6 +165,7 @@ export const useSeatManagement = () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/seat-reservation/locked-seats`,
+        { cache: "no-store" } // Prevent browser caching during polling
       );
       if (!response.ok) {
         throw new Error("Failed to fetch locked seats");
@@ -308,6 +309,7 @@ export const useSeatManagement = () => {
           headers: {
             ...getAuthHeaders(),
           },
+          cache: "no-store",
         },
       );
       if (!response.ok) {
@@ -561,6 +563,13 @@ export const useSeatManagement = () => {
     };
 
     initializeDates();
+
+    // Auto-refresh locked seats every 15 seconds so admin changes appear quickly
+    const pollInterval = setInterval(() => {
+      fetchLockedSeats();
+    }, 15000);
+
+    return () => clearInterval(pollInterval);
   }, [getThreeDayRange, loadBookingsForDate, fetchLockedSeats]);
 
   return {

@@ -88,6 +88,7 @@ const AdminSeatManagement = () => {
         seatNotificationUtils.showSuccess(result.message);
       }
       await fetchLockedSeats();
+      await fetchBookings(); // Refresh bookings too in case a locked seat had a booking
     } catch (err) {
       seatNotificationUtils.showError(err.message || `Failed to ${action} seat`);
     } finally {
@@ -96,10 +97,42 @@ const AdminSeatManagement = () => {
     }
   };
 
+  // Silent refresh for polling — doesn't trigger loading spinner
+  const silentRefresh = async () => {
+    try {
+      if (isWeekend(selectedDate)) return;
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (!adminInfo.token) return;
+
+      const data = await adminSeatApi.getSeatBookings(selectedDate || null);
+      setBookings(data.bookings || []);
+      setFilteredBookings(data.bookings || []);
+      setStats(data.stats);
+    } catch (err) {
+      console.error("Silent refresh failed:", err);
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
     fetchLockedSeats();
+
+    // Auto-refresh every 15 seconds — uses silent refresh to avoid loading spinner
+    const pollInterval = setInterval(() => {
+      silentRefresh();
+      fetchLockedSeats();
+    }, 15000);
+
+    return () => clearInterval(pollInterval);
   }, [selectedDate]);
+
+  // Build a seat-number -> booking lookup for the floor plan
+  const bookingsBySeat = {};
+  bookings.forEach((b) => {
+    if (b.seatNumber) {
+      bookingsBySeat[b.seatNumber] = b;
+    }
+  });
 
   // Filter bookings based on search query
   useEffect(() => {
@@ -470,38 +503,35 @@ const AdminSeatManagement = () => {
               <AnimatePresence>
                 {searchMessage && (
                   <motion.div
-                    className={`mt-4 p-3 rounded-xl border ${
-                      searchMessage.type === "success"
+                    className={`mt-4 p-3 rounded-xl border ${searchMessage.type === "success"
                         ? "bg-green-50 border-green-200"
                         : searchMessage.type === "error"
                           ? "bg-red-50 border-red-200"
                           : "bg-blue-50 border-blue-200"
-                    }`}
+                      }`}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
                   >
                     <div className="flex items-center justify-between">
                       <p
-                        className={`text-sm font-medium ${
-                          searchMessage.type === "success"
+                        className={`text-sm font-medium ${searchMessage.type === "success"
                             ? "text-green-800"
                             : searchMessage.type === "error"
                               ? "text-red-800"
                               : "text-blue-800"
-                        }`}
+                          }`}
                       >
                         {searchMessage.text}
                       </p>
                       <button
                         onClick={() => setSearchMessage(null)}
-                        className={`${
-                          searchMessage.type === "success"
+                        className={`${searchMessage.type === "success"
                             ? "text-green-600 hover:text-green-800"
                             : searchMessage.type === "error"
                               ? "text-red-600 hover:text-red-800"
                               : "text-blue-600 hover:text-blue-800"
-                        }`}
+                          }`}
                       >
                         <FaTimes className="h-4 w-4" />
                       </button>
@@ -514,283 +544,309 @@ const AdminSeatManagement = () => {
             {/* Statistics Cards */}
             {!showHistory && (
               <>
-              <motion.div
-                className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-              >
                 <motion.div
-                  className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm cursor-pointer"
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ duration: 0.2 }}
-                  onClick={() => setShowLockManager(!showLockManager)}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2, duration: 0.3 }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                        Locked Seats
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-gray-800">
-                        {lockedSeatsCount}
-                      </p>
-                      <p className="text-xs text-blue-500 mt-1">
-                        {showLockManager ? "Hide manager ▲" : "Click to manage ▼"}
-                      </p>
-                    </div>
-                    <FaLock className="text-xl sm:text-2xl text-blue-500" />
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                        Occupied Seats
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                        {stats.occupiedSeats}
-                      </p>
-                    </div>
-                    <FaCheckCircle className="text-xl sm:text-2xl text-purple-500" />
-                  </div>
-                </motion.div>
-
-                <motion.div
-                  className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                  whileHover={{ scale: 1.03 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                        Available Seats
-                      </p>
-                      <p className="text-xl sm:text-2xl font-bold text-green-600">
-                        {TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}
-                      </p>
-                    </div>
-                    <FaChair className="text-xl sm:text-2xl text-green-500" />
-                  </div>
-                </motion.div>
-              </motion.div>
-
-              {/* Seat Lock Manager Panel */}
-              <AnimatePresence>
-                {showLockManager && (
                   <motion.div
-                    className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 mt-4"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.3 }}
+                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm cursor-pointer"
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.2 }}
+                    onClick={() => setShowLockManager(!showLockManager)}
                   >
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
-                      <div>
-                        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                          <FaLock className="text-blue-500" />
-                          Manage Seat Locks
-                        </h3>
-                        <p className="text-sm text-gray-500 mt-1">
-                          Click a seat to lock/unlock it. Locked seats cannot be booked by interns.
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                          Locked Seats
+                        </p>
+                        <p className="text-xl sm:text-2xl font-bold text-gray-800">
+                          {lockedSeatsCount}
+                        </p>
+                        <p className="text-xs text-blue-500 mt-1">
+                          {showLockManager ? "Hide manager ▲" : "Click to manage ▼"}
                         </p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="w-5 h-5 bg-gray-500 rounded-lg"></div>
-                          <span>Locked</span>
+                      <FaLock className="text-xl sm:text-2xl text-blue-500" />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                          Occupied Seats
+                        </p>
+                        <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                          {stats.occupiedSeats}
+                        </p>
+                      </div>
+                      <FaCheckCircle className="text-xl sm:text-2xl text-purple-500" />
+                    </div>
+                  </motion.div>
+
+                  <motion.div
+                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                          Available Seats
+                        </p>
+                        <p className="text-xl sm:text-2xl font-bold text-green-600">
+                          {TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}
+                        </p>
+                      </div>
+                      <FaChair className="text-xl sm:text-2xl text-green-500" />
+                    </div>
+                  </motion.div>
+                </motion.div>
+
+                {/* Seat Lock Manager Panel */}
+                <AnimatePresence>
+                  {showLockManager && (
+                    <motion.div
+                      className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 mt-4"
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <FaLock className="text-blue-500" />
+                            Manage Seat Locks
+                          </h3>
+                          <p className="text-sm text-gray-500 mt-1">
+                            Click a seat to lock/unlock it. Locked seats cannot be booked by interns.
+                          </p>
                         </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <div className="w-5 h-5 bg-cyan-400 rounded-lg"></div>
-                          <span>Unlocked</span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-5 h-5 bg-gray-500 rounded-lg"></div>
+                            <span>Locked</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-5 h-5 bg-red-400 rounded-lg"></div>
+                            <span>Booked</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs">
+                            <div className="w-5 h-5 bg-cyan-400 rounded-lg"></div>
+                            <span>Available</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Floor Plan Layout - Same as intern view */}
-                    <div className="bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
-                      <div
-                        className="relative mx-auto"
-                        style={{
-                          width: "100%",
-                          maxWidth: "1450px",
-                          height: "0",
-                          paddingBottom: "60%",
-                          minHeight: "400px",
-                        }}
-                      >
+                      {/* Floor Plan Layout - Same as intern view */}
+                      <div className="bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
                         <div
-                          className="absolute inset-0"
+                          className="relative mx-auto"
                           style={{
-                            transform: "scale(0.8)",
-                            transformOrigin: "center center",
+                            width: "100%",
+                            maxWidth: "1450px",
+                            height: "0",
+                            paddingBottom: "60%",
+                            minHeight: "400px",
                           }}
                         >
-                          {/* Entrance bar */}
                           <div
-                            className="absolute top-0 h-12 bg-gray-700 flex items-center"
-                            style={{ left: "-124px", width: "742px" }}
+                            className="absolute inset-0"
+                            style={{
+                              transform: "scale(0.8)",
+                              transformOrigin: "center center",
+                            }}
                           >
-                            <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
-                              Entrance
+                            {/* Entrance bar */}
+                            <div
+                              className="absolute top-0 h-12 bg-gray-700 flex items-center"
+                              style={{ left: "-124px", width: "742px" }}
+                            >
+                              <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
+                                Entrance
+                              </div>
                             </div>
-                          </div>
-                          <div
-                            className="absolute h-12 bg-gray-700 flex items-center"
-                            style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
-                          ></div>
-                          <div
-                            className="absolute top-11 w-33 bg-gray-700"
-                            style={{ left: "486px", bottom: "-110px" }}
-                          ></div>
-
-                          {/* Left section background + pillar */}
-                          <div
-                            className="absolute bg-gray-400 rounded-lg"
-                            style={{ left: "-125px", top: "50px", width: "610px", height: "720px" }}
-                          >
                             <div
-                              className="absolute bg-gray-600 rounded-full"
-                              style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
+                              className="absolute h-12 bg-gray-700 flex items-center"
+                              style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
                             ></div>
-                          </div>
-
-                          {/* Right section background + pillar */}
-                          <div
-                            className="absolute bg-gray-400 rounded-lg"
-                            style={{ left: "620px", top: "0px", width: "650px", height: "770px" }}
-                          >
                             <div
-                              className="absolute bg-gray-600 rounded-full"
-                              style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
+                              className="absolute top-11 w-33 bg-gray-700"
+                              style={{ left: "486px", bottom: "-110px" }}
                             ></div>
-                          </div>
 
-                          {/* AdminSeat component - renders on the floor plan */}
-                          {(() => {
-                            const AdminSeat = ({ number, x, y, angle, radius, centerX, centerY }) => {
-                              const isLocked = lockedSeats.includes(number);
-                              let posX = x;
-                              let posY = y;
-                              if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
-                                posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
-                                posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
-                              }
+                            {/* Left section background + pillar */}
+                            <div
+                              className="absolute bg-gray-400 rounded-lg"
+                              style={{ left: "-125px", top: "50px", width: "610px", height: "720px" }}
+                            >
+                              <div
+                                className="absolute bg-gray-600 rounded-full"
+                                style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
+                              ></div>
+                            </div>
+
+                            {/* Right section background + pillar */}
+                            <div
+                              className="absolute bg-gray-400 rounded-lg"
+                              style={{ left: "620px", top: "0px", width: "650px", height: "770px" }}
+                            >
+                              <div
+                                className="absolute bg-gray-600 rounded-full"
+                                style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
+                              ></div>
+                            </div>
+
+                            {/* AdminSeat component - renders on the floor plan */}
+                            {(() => {
+                              const AdminSeat = ({ number, x, y, angle, radius, centerX, centerY }) => {
+                                const isLocked = lockedSeats.includes(number);
+                                const booking = bookingsBySeat[number];
+                                const isBooked = !!booking;
+                                let posX = x;
+                                let posY = y;
+                                if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
+                                  posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
+                                  posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+                                }
+
+                                // 3 states: locked (gray), booked (red), available (cyan)
+                                let bgClass, titleText;
+                                if (isLocked) {
+                                  bgClass = "bg-gray-500 text-white";
+                                  titleText = `Seat ${number} (Locked) — Click to unlock`;
+                                } else if (isBooked) {
+                                  bgClass = "bg-red-400 text-white hover:bg-red-500";
+                                  titleText = `Seat ${number} — Booked by: ${booking.traineeId || booking.internName || booking.email || "Unknown"}`;
+                                } else {
+                                  bgClass = "bg-cyan-400 text-white hover:bg-cyan-500";
+                                  titleText = `Seat ${number} — Click to lock`;
+                                }
+
+                                return (
+                                  <div
+                                    onClick={() => {
+                                      if (lockLoading) return;
+                                      if (isLocked) {
+                                        setLockConfirm({ seatNumber: number, action: "unlock" });
+                                      } else {
+                                        setLockConfirm({ seatNumber: number, action: "lock" });
+                                      }
+                                    }}
+                                    className={`absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer hover:scale-110 ${bgClass}`}
+                                    style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
+                                    title={titleText}
+                                  >
+                                    {isLocked ? <FaLock size={12} className="mb-[-2px]" /> : null}
+                                    <Armchair size={16} />
+                                    {isBooked && !isLocked ? (
+                                      <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5">{booking.traineeId || number}</span>
+                                    ) : (
+                                      <span className="text-[10px] mt-0.5">{number}</span>
+                                    )}
+                                  </div>
+                                );
+                              };
+
                               return (
-                                <div
-                                  onClick={() => !lockLoading && setLockConfirm({ seatNumber: number, action: isLocked ? "unlock" : "lock" })}
-                                  className={`absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer hover:scale-110 ${
-                                    isLocked
-                                      ? "bg-gray-500 text-white"
-                                      : "bg-cyan-400 text-white hover:bg-cyan-500"
-                                  }`}
-                                  style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-                                  title={isLocked ? `Seat ${number} (Locked) — Click to unlock` : `Seat ${number} — Click to lock`}
-                                >
-                                  {isLocked ? <FaLock size={12} className="mb-[-2px]" /> : null}
-                                  <Armchair size={16} />
-                                  <span className="text-[10px] mt-0.5">{number}</span>
-                                </div>
+                                <>
+                                  {leftSection.topRow.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                                  {leftSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                  {leftSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                  {leftSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                  {leftSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                                  {rightSection.straightSeats.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                                  {rightSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                  {rightSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                  {rightSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                  {rightSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                                </>
                               );
-                            };
-
-                            return (
-                              <>
-                                {leftSection.topRow.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
-                                {leftSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                {leftSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                {leftSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                {leftSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                {rightSection.straightSeats.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
-                                {rightSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                {rightSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                {rightSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                {rightSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                              </>
-                            );
-                          })()}
+                            })()}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
-                      <span>
-                        {lockedSeatsCount} of {TOTAL_SEATS} seats locked
-                      </span>
-                      <span className="text-xs text-gray-400">
-                        Changes take effect immediately for intern bookings
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Lock Confirmation Modal */}
-              <AnimatePresence>
-                {lockConfirm && (
-                  <motion.div
-                    className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    onClick={() => setLockConfirm(null)}
-                  >
-                    <motion.div
-                      className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
-                      initial={{ scale: 0.9, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      exit={{ scale: 0.9, opacity: 0 }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="text-center mb-4">
-                        {lockConfirm.action === "lock" ? (
-                          <FaLock className="mx-auto text-3xl text-red-500 mb-3" />
-                        ) : (
-                          <FaUnlock className="mx-auto text-3xl text-green-500 mb-3" />
-                        )}
-                        <h3 className="text-lg font-bold text-gray-900">
-                          {lockConfirm.action === "lock" ? "Lock" : "Unlock"} Seat {lockConfirm.seatNumber}?
-                        </h3>
-                        <p className="text-sm text-gray-600 mt-2">
-                          {lockConfirm.action === "lock"
-                            ? "Interns will no longer be able to book this seat."
-                            : "This seat will become available for interns to book."}
-                        </p>
-                      </div>
-                      <div className="flex gap-3">
-                        <button
-                          onClick={() => setLockConfirm(null)}
-                          disabled={lockLoading}
-                          className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)}
-                          disabled={lockLoading}
-                          className={`flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                            lockConfirm.action === "lock"
-                              ? "bg-red-500 hover:bg-red-600"
-                              : "bg-green-500 hover:bg-green-600"
-                          }`}
-                        >
-                          {lockLoading ? (
-                            <FaSpinner className="animate-spin" />
-                          ) : lockConfirm.action === "lock" ? (
-                            <><FaLock /> Lock</>
-                          ) : (
-                            <><FaUnlock /> Unlock</>
-                          )}
-                        </button>
+                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
+                        <span>
+                          {lockedSeatsCount} of {TOTAL_SEATS} seats locked
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          Changes take effect immediately for intern bookings
+                        </span>
                       </div>
                     </motion.div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                  )}
+                </AnimatePresence>
+
+                {/* Lock Confirmation Modal */}
+                <AnimatePresence>
+                  {lockConfirm && (
+                    <motion.div
+                      className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      onClick={() => setLockConfirm(null)}
+                    >
+                      <motion.div
+                        className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="text-center mb-4">
+                          {lockConfirm.action === "lock" ? (
+                            <FaLock className="mx-auto text-3xl text-red-500 mb-3" />
+                          ) : (
+                            <FaUnlock className="mx-auto text-3xl text-green-500 mb-3" />
+                          )}
+                          <h3 className="text-lg font-bold text-gray-900">
+                            {lockConfirm.action === "lock" ? "Lock" : "Unlock"} Seat {lockConfirm.seatNumber}?
+                          </h3>
+                          <p className="text-sm text-gray-600 mt-2">
+                            {lockConfirm.action === "lock"
+                              ? "Interns will no longer be able to book this seat."
+                              : "This seat will become available for interns to book."}
+                          </p>
+                        </div>
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => setLockConfirm(null)}
+                            disabled={lockLoading}
+                            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)}
+                            disabled={lockLoading}
+                            className={`flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${lockConfirm.action === "lock"
+                                ? "bg-red-500 hover:bg-red-600"
+                                : "bg-green-500 hover:bg-green-600"
+                              }`}
+                          >
+                            {lockLoading ? (
+                              <FaSpinner className="animate-spin" />
+                            ) : lockConfirm.action === "lock" ? (
+                              <><FaLock /> Lock</>
+                            ) : (
+                              <><FaUnlock /> Unlock</>
+                            )}
+                          </button>
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </>
             )}
 
@@ -940,11 +996,10 @@ const AdminSeatManagement = () => {
                               </div>
                             </div>
                             <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                booking.status === "active"
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === "active"
                                   ? "bg-green-100 text-green-600 border border-green-200"
                                   : "bg-red-100 text-red-600 border border-red-200"
-                              }`}
+                                }`}
                             >
                               {booking.status}
                             </span>
@@ -1028,11 +1083,10 @@ const AdminSeatManagement = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  booking.status === "active"
+                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === "active"
                                     ? "bg-green-100 text-green-600 border border-green-200"
                                     : "bg-red-100 text-red-600 border border-red-200"
-                                }`}
+                                  }`}
                               >
                                 {booking.status}
                               </span>

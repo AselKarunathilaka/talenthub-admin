@@ -82,6 +82,7 @@ export const adminSeatApi = {
       const response = await fetch(url, {
         method: "GET",
         headers: getHeaders(),
+        cache: "no-store", // Prevent browser caching the polling request
       });
 
       if (!response.ok) {
@@ -183,6 +184,7 @@ export const adminSeatApi = {
         {
           method: "GET",
           headers: getHeaders(),
+          cache: "no-store",
         },
       );
 
