@@ -7,9 +7,11 @@ const {
   getGoogleAuthUrl,
   gateStaffLogin,
   registerGateStaff,
+  internLogin,
 } = require("../controllers/authController");
 
 router.post("/google-login", googleLogin);
+router.post("/intern-login", internLogin); //email, password login for intern
 router.get("/google-auth-url", getGoogleAuthUrl);
 router.post("/login", login);
 router.post("/gate-staff-login", gateStaffLogin);

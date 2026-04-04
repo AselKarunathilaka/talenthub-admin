@@ -12,6 +12,20 @@ const googleLogin = async (req, res) => {
   }
 };
 
+const internLogin = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await authService.internLogin(email, password);
+    if (result.error) {
+      return res.status(400).json({ message: result.error });
+    }
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ message: "Login failed", error: error.message });
+  }
+};
+
 // Admin Login
 const login = async (req, res) => {
   const { email, password } = req.body;
@@ -90,4 +104,5 @@ module.exports = {
   getGoogleAuthUrl,
   gateStaffLogin,
   registerGateStaff,
+  internLogin,
 };
