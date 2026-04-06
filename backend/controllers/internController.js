@@ -4,6 +4,7 @@ const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
 const DailyRecord = require("../models/DailyRecord");
+const Project = require("../models/Project");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
@@ -744,6 +745,40 @@ const acceptAgreement = async (req, res) => {
   }
 };
 
+const checkInternProjects = async (req, res) => {
+  try {
+    const internId = req.params.id;
+    const intern = await InternService.getInternById(internId);
+
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    const teamName = intern.team;
+
+    // If intern has no team, they definitely have no project
+    if (!teamName || teamName.trim() === "") {
+      return res.status(200).json({ hasProject: false, projectCount: 0 });
+    }
+
+    // Search for projects whose team field contains this intern's team name
+    const projects = await Project.find({
+      team: { $regex: teamName.trim(), $options: "i" },
+    });
+
+    return res.status(200).json({
+      hasProject: projects.length > 0,
+      projectCount: projects.length,
+    });
+  } catch (error) {
+    console.error("Error checking intern projects:", error);
+    res.status(500).json({
+      message: "Error checking intern projects",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -777,5 +812,6 @@ module.exports = {
   // SLT API Scheduler endpoints
   triggerManualSLTSync,
   triggerComprehensiveUpdate,
-  acceptAgreement
+  acceptAgreement,
+  checkInternProjects,
 };
