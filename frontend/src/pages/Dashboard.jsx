@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
+import NoProjectNotification from "../components/NoProjectNotification";
 import {
   Users,
   CheckCircle,
@@ -41,6 +42,7 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [internData, setInternData] = useState(null);
   const [endDateNotification, setEndDateNotification] = useState(null);
+  const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
   const rowsPerPage = 10;
   const navigate = useNavigate();
   const cricketRegistrationLink =
@@ -154,6 +156,19 @@ const Dashboard = () => {
       loadAttendanceData(), // Load attendance data
     ]);
     setLoading(false);
+
+    // Check if intern has a project — show popup every time if not assigned
+    try {
+      const internId = localStorage.getItem("internId");
+      if (internId) {
+        const projectCheck = await api.get(`/interns/${internId}/projects/check`);
+        if (projectCheck && projectCheck.hasProject === false) {
+          setShowNoProjectPopup(true);
+        }
+      }
+    } catch (err) {
+      console.error("Error checking intern projects:", err);
+    }
   };
 
   useEffect(() => {
@@ -729,6 +744,11 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navigation onLogout={handleLogout} />
+      {showNoProjectPopup && (
+        <NoProjectNotification
+          onDismiss={() => setShowNoProjectPopup(false)}
+        />
+      )}
       {showCricketPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">
           <div className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-2xl">
