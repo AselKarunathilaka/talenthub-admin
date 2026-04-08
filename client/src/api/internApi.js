@@ -1,7 +1,7 @@
 import { api, backendUrl, getAuthHeaders } from "./apiConfig";
 
 const INTERN_API_URL = "/interns";
-const UPLOAD_API_URL = "/upload";
+const UPLOAD_API_URL = `${INTERN_API_URL}/upload`;
 
 const handleAuthError = (error) => {
   if (error.response?.status === 401) {
@@ -16,8 +16,6 @@ const handleAuthError = (error) => {
 
 export const fetchInterns = async (date) => {
   try {
-
-    // Append the date query parameter if provided
     const url = date ? `${INTERN_API_URL}?date=${date}` : INTERN_API_URL;
     const response = await api.get(url, getAuthHeaders());
     return response.data;
@@ -50,8 +48,6 @@ export const fetchInternById = async (internId) => {
   }
 };
 
-// UPDATED: Mark attendance now uses the new route (/interns/mark-attendance)
-// The request body will include internId, status, date, type, and timeMarked.
 export const markAttendance = async (internId, status, date, type = 'manual', timeMarked = null) => {
   try {
     const response = await api.post(
@@ -104,7 +100,7 @@ export const deleteIntern = async (internId) => {
 export const updateIntern = async (internId, internData) => {
   try {
     const response = await api.put(
-      `${INTERN_API_URL}/${internId}`,
+      `${INTERN_API_URL}/update/${internId}`,
       internData,
       getAuthHeaders()
     );
@@ -117,7 +113,7 @@ export const updateIntern = async (internId, internData) => {
 export const fetchAttendanceHistory = async (internId) => {
   try {
     const response = await api.get(
-      `${INTERN_API_URL}/attendance-history/${internId}`,
+      `${INTERN_API_URL}/attendance/${internId}`,
       getAuthHeaders()
     );
     return response.data;
@@ -174,5 +170,3 @@ export const fetchTodayAttendanceByType = async (type = null) => {
     return handleAuthError(error);
   }
 };
-
-

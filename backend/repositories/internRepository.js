@@ -1,5 +1,18 @@
 const Intern = require("../models/Intern");
 const mongoose = require("mongoose");
+const moment = require("moment-timezone");
+
+const getColomboDayRange = () => {
+  const start = moment().tz("Asia/Colombo").startOf("day").toDate();
+  const end = moment().tz("Asia/Colombo").endOf("day").toDate();
+  return { start, end };
+};
+
+const isWithinRange = (value, start, end) => {
+  if (!value) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date >= start && date <= end;
+};
 
 class InternRepository {
   static async addIntern(data) {
@@ -17,7 +30,6 @@ class InternRepository {
 
   static async findByEmail(email) {
     if (!email) return null;
-    // DB stores email under Trainee_Email (canonical). Use case-insensitive match to be robust.
     const escaped = String(email)
       .trim()
       .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -59,7 +71,6 @@ class InternRepository {
         throw new Error("Intern ID is required");
       }
 
-      // Validate if internId is a valid ObjectId
       if (!mongoose.Types.ObjectId.isValid(internId)) {
         console.error("Invalid ObjectId format:", internId);
         throw new Error("Invalid intern ID format");
@@ -76,7 +87,6 @@ class InternRepository {
       const attendanceDate = new Date(date).setHours(0, 0, 0, 0);
       const actualTimeMarked = timeMarked || new Date();
 
-      // Check if attendance for this type already exists for today
       const existingAttendanceIndex = intern.attendance.findIndex(
         (entry) =>
           new Date(entry.date).setHours(0, 0, 0, 0) === attendanceDate &&
@@ -98,7 +108,6 @@ class InternRepository {
         });
       }
 
-      // Save without validation to avoid fieldOfSpecialization validation issues
       const savedIntern = await intern.save({ validateBeforeSave: false });
       console.log("Attendance saved successfully");
       return savedIntern;
@@ -124,7 +133,6 @@ class InternRepository {
       intern.attendance.push({ date: new Date(date), status });
     }
 
-    // Save without validation to avoid fieldOfSpecialization validation issues
     return await intern.save({ validateBeforeSave: false });
   }
 
@@ -203,7 +211,6 @@ class InternRepository {
   }
 
   static async assignSingleToTeam(internId, teamName) {
-    // Find the intern by ID and update their team
     const updatedIntern = await Intern.findByIdAndUpdate(
       internId,
       { $set: { team: teamName } },
@@ -212,47 +219,38 @@ class InternRepository {
     return updatedIntern;
   }
 
-  // Updated to include online attendance
   static async getAttendanceStatsForToday() {
-    const today = new Date().setHours(0, 0, 0, 0);
+    const { start, end } = getColomboDayRange();
     const interns = await Intern.find();
     const stats = { present: 0, absent: 0 };
 
     interns.forEach((intern) => {
-      // Check physical attendance
-      const todayPhysicalAttendance = intern.attendance.find(
-        (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
+      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
+      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
+
+      const todayPhysicalAttendance = attendance.find((entry) =>
+        isWithinRange(entry?.date, start, end)
+      );
+      const todayOnlineAttendance = onlineAttendance.find((entry) =>
+        isWithinRange(entry?.date, start, end)
       );
 
-      // Check online attendance
-      const todayOnlineAttendance = intern.onlineAttendance?.find(
-        (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
-      );
-
-      // Count as present if either physical or online attendance is marked as Present
       const isPresent =
-        (todayPhysicalAttendance &&
-          todayPhysicalAttendance.status === "Present") ||
-        (todayOnlineAttendance && todayOnlineAttendance.status === "Present");
-
+        todayPhysicalAttendance?.status === "Present" ||
+        todayOnlineAttendance?.status === "Present";
       const isAbsent =
-        (todayPhysicalAttendance &&
-          todayPhysicalAttendance.status === "Absent") ||
-        (todayOnlineAttendance && todayOnlineAttendance.status === "Absent");
+        todayPhysicalAttendance?.status === "Absent" ||
+        todayOnlineAttendance?.status === "Absent";
 
-      if (isPresent) {
-        stats.present++;
-      } else if (isAbsent) {
-        stats.absent++;
-      }
+      if (isPresent) stats.present++;
+      else if (isAbsent) stats.absent++;
     });
 
     return stats;
   }
 
-  // Updated to include online attendance for meeting stats
   static async getAttendanceStatsByType(attendanceType = null) {
-    const today = new Date().setHours(0, 0, 0, 0);
+    const { start, end } = getColomboDayRange();
     const interns = await Intern.find();
     const stats = {
       dailyAttendance: { present: 0, absent: 0 },
@@ -261,152 +259,100 @@ class InternRepository {
     };
 
     interns.forEach((intern) => {
-      const todayPhysicalAttendance = intern.attendance.filter(
-        (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
+      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
+      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
+
+      const todayPhysicalAttendance = attendance.filter((entry) =>
+        isWithinRange(entry?.date, start, end)
+      );
+      const todayOnlineAttendance = onlineAttendance.filter((entry) =>
+        isWithinRange(entry?.date, start, end)
       );
 
-      const todayOnlineAttendance =
-        intern.onlineAttendance?.filter(
-          (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
-        ) || [];
+      const dailyAttendance = todayPhysicalAttendance.find((entry) => entry?.type === "daily_qr");
+      if (dailyAttendance?.status === "Present") stats.dailyAttendance.present++;
+      else if (dailyAttendance?.status === "Absent") stats.dailyAttendance.absent++;
 
-      // Check for daily attendance (daily_qr type)
-      const dailyAttendance = todayPhysicalAttendance.find(
-        (entry) => entry.type === "daily_qr"
-      );
-      if (dailyAttendance && dailyAttendance.status === "Present") {
-        stats.dailyAttendance.present++;
-      } else if (dailyAttendance && dailyAttendance.status === "Absent") {
-        stats.dailyAttendance.absent++;
-      }
-
-      // Check for meeting attendance (qr, manual, or online_attendance type)
       const physicalMeetingAttendance = todayPhysicalAttendance.find(
-        (entry) => entry.type === "qr" || entry.type === "manual"
+        (entry) => entry?.type === "qr" || entry?.type === "manual"
       );
       const onlineMeetingAttendance = todayOnlineAttendance.find(
-        (entry) => entry.type === "online_attendance"
+        (entry) => entry?.type === "online_attendance"
       );
 
-      // Count as present if either physical meeting or online meeting attendance is Present
       const hasMeetingPresent =
-        (physicalMeetingAttendance &&
-          physicalMeetingAttendance.status === "Present") ||
-        (onlineMeetingAttendance &&
-          onlineMeetingAttendance.status === "Present");
-
+        physicalMeetingAttendance?.status === "Present" ||
+        onlineMeetingAttendance?.status === "Present";
       const hasMeetingAbsent =
-        (physicalMeetingAttendance &&
-          physicalMeetingAttendance.status === "Absent") ||
-        (onlineMeetingAttendance &&
-          onlineMeetingAttendance.status === "Absent");
+        physicalMeetingAttendance?.status === "Absent" ||
+        onlineMeetingAttendance?.status === "Absent";
 
-      if (hasMeetingPresent) {
-        stats.meetingAttendance.present++;
-      } else if (hasMeetingAbsent) {
-        stats.meetingAttendance.absent++;
-      }
+      if (hasMeetingPresent) stats.meetingAttendance.present++;
+      else if (hasMeetingAbsent) stats.meetingAttendance.absent++;
 
-      // Total stats (any attendance type including online)
       const hasAnyAttendance =
-        todayPhysicalAttendance.some((entry) => entry.status === "Present") ||
-        todayOnlineAttendance.some((entry) => entry.status === "Present");
+        todayPhysicalAttendance.some((entry) => entry?.status === "Present") ||
+        todayOnlineAttendance.some((entry) => entry?.status === "Present");
+      const hasAnyAbsent = todayPhysicalAttendance.length > 0 || todayOnlineAttendance.length > 0;
 
-      const hasAnyAbsent =
-        todayPhysicalAttendance.length > 0 || todayOnlineAttendance.length > 0;
-
-      if (hasAnyAttendance) {
-        stats.total.present++;
-      } else if (hasAnyAbsent) {
-        stats.total.absent++;
-      }
+      if (hasAnyAttendance) stats.total.present++;
+      else if (hasAnyAbsent) stats.total.absent++;
     });
 
-    if (attendanceType === "daily") {
-      return stats.dailyAttendance;
-    } else if (attendanceType === "meeting") {
-      return stats.meetingAttendance;
-    }
-
+    if (attendanceType === "daily") return stats.dailyAttendance;
+    if (attendanceType === "meeting") return stats.meetingAttendance;
     return stats;
   }
 
-  // Updated to include online attendance records
   static async getTodayAttendanceByType(attendanceType = null) {
-    const today = new Date().setHours(0, 0, 0, 0);
+    const { start, end } = getColomboDayRange();
     const interns = await Intern.find();
     const attendedInterns = [];
 
     interns.forEach((intern) => {
-      const todayPhysicalAttendance = intern.attendance.filter(
-        (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
-      );
-
-      const todayOnlineAttendance =
-        intern.onlineAttendance?.filter(
-          (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today
-        ) || [];
+      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
+      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
+      const todayPhysicalAttendance = attendance.filter((entry) => isWithinRange(entry?.date, start, end));
+      const todayOnlineAttendance = onlineAttendance.filter((entry) => isWithinRange(entry?.date, start, end));
 
       let hasRelevantAttendance = false;
       let attendanceInfo = null;
 
       if (attendanceType === "daily") {
         const dailyAttendance = todayPhysicalAttendance.find(
-          (entry) => entry.type === "daily_qr" && entry.status === "Present"
+          (entry) => entry?.type === "daily_qr" && entry?.status === "Present"
         );
         if (dailyAttendance) {
           hasRelevantAttendance = true;
           attendanceInfo = {
             type: "Daily",
             time: dailyAttendance.timeMarked || dailyAttendance.date,
-            method:
-              dailyAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
+            method: dailyAttendance.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
           };
         }
       } else if (attendanceType === "meeting") {
-        // Include both physical meeting attendance and ALL online attendance records
         const physicalMeetingAttendance = todayPhysicalAttendance.find(
-          (entry) =>
-            (entry.type === "qr" || entry.type === "manual") &&
-            entry.status === "Present"
+          (entry) => (entry?.type === "qr" || entry?.type === "manual") && entry?.status === "Present"
         );
         const onlineMeetingAttendances = todayOnlineAttendance.filter(
-          (entry) =>
-            entry.type === "online_attendance" && entry.status === "Present"
+          (entry) => entry?.type === "online_attendance" && entry?.status === "Present"
         );
-
         const infoList = [];
 
         if (physicalMeetingAttendance) {
           infoList.push({
-            type:
-              physicalMeetingAttendance.type === "manual"
-                ? "Manual"
-                : "Meeting",
-            time:
-              physicalMeetingAttendance.timeMarked ||
-              physicalMeetingAttendance.date,
-            method:
-              physicalMeetingAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
+            type: physicalMeetingAttendance.type === "manual" ? "Manual" : "Meeting",
+            time: physicalMeetingAttendance.timeMarked || physicalMeetingAttendance.date,
+            method: physicalMeetingAttendance.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
           });
         }
 
-        // Add ALL online meeting attendance records instead of just one
-        onlineMeetingAttendances.forEach((onlineMeetingAttendance) => {
+        onlineMeetingAttendances.forEach((entry) => {
           infoList.push({
             type: "Online Meeting",
-            time:
-              onlineMeetingAttendance.timeMarked ||
-              onlineMeetingAttendance.date,
-            method:
-              onlineMeetingAttendance.markedBy === "csv_upload_system"
-                ? "CSV Upload"
-                : "Manual Entry",
-            meetingName: onlineMeetingAttendance.meetingName || "N/A",
+            time: entry.timeMarked || entry.date,
+            method: entry.markedBy === "csv_upload_system" ? "CSV Upload" : "Manual Entry",
+            meetingName: entry.meetingName || "N/A",
           });
         });
 
@@ -415,174 +361,40 @@ class InternRepository {
           attendanceInfo = infoList.length === 1 ? infoList[0] : infoList;
         }
       } else {
-        // Return all applicable attendance types for "All" view
-        const presentPhysicalAttendance = todayPhysicalAttendance.filter(
-          (entry) => entry.status === "Present"
-        );
-        const presentOnlineAttendance = todayOnlineAttendance.filter(
-          (entry) => entry.status === "Present"
-        );
         const infoList = [];
-
-        const dailyAttendance = presentPhysicalAttendance.find(
-          (entry) => entry.type === "daily_qr"
-        );
-        const meetingQRAttendance = presentPhysicalAttendance.find(
-          (entry) => entry.type === "qr"
-        );
-        const manualAttendance = presentPhysicalAttendance.find(
-          (entry) => entry.type === "manual"
-        );
-        const onlineAttendances = presentOnlineAttendance.filter(
-          (entry) => entry.type === "online_attendance"
-        );
-
-        // Add Daily if present
-        if (dailyAttendance) {
+        todayPhysicalAttendance.filter((entry) => entry?.status === "Present").forEach((entry) => {
           infoList.push({
-            type: "Daily",
-            time: dailyAttendance.timeMarked || dailyAttendance.date,
-            method:
-              dailyAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
-          });
-        }
-
-        // Add Meeting (QR) only when Daily is present
-        if (dailyAttendance && meetingQRAttendance) {
-          infoList.push({
-            type: "Meeting",
-            time: meetingQRAttendance.timeMarked || meetingQRAttendance.date,
-            method:
-              meetingQRAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
-          });
-        }
-
-        // Always include Manual if present, as a separate type
-        if (manualAttendance) {
-          infoList.push({
-            type: "Manual",
-            time: manualAttendance.timeMarked || manualAttendance.date,
-            method:
-              manualAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
-          });
-        }
-
-        // Add ALL online attendance records if present
-        onlineAttendances.forEach((onlineAttendance) => {
-          infoList.push({
-            type: "Online Meeting",
-            time: onlineAttendance.timeMarked || onlineAttendance.date,
-            method:
-              onlineAttendance.markedBy === "csv_upload_system"
-                ? "CSV Upload"
-                : "Manual Entry",
-            meetingName: onlineAttendance.meetingName || "N/A",
+            type: entry.type === "daily_qr" ? "Daily" : entry.type === "manual" ? "Manual" : "Meeting",
+            time: entry.timeMarked || entry.date,
+            method: entry.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
           });
         });
-
+        todayOnlineAttendance.filter((entry) => entry?.status === "Present").forEach((entry) => {
+          infoList.push({
+            type: "Online Meeting",
+            time: entry.timeMarked || entry.date,
+            method: entry.markedBy === "csv_upload_system" ? "CSV Upload" : "Manual Entry",
+            meetingName: entry.meetingName || "N/A",
+          });
+        });
         if (infoList.length > 0) {
           hasRelevantAttendance = true;
-          attendanceInfo = infoList;
+          attendanceInfo = infoList.length === 1 ? infoList[0] : infoList;
         }
       }
 
       if (hasRelevantAttendance) {
         attendedInterns.push({
-          Trainee_ID: intern.Trainee_ID,
-          Trainee_Name: intern.Trainee_Name,
-          field_of_spec_name: intern.field_of_spec_name,
-          Institute: intern.Institute,
-          Training_StartDate: intern.Training_StartDate,
-          Training_EndDate: intern.Training_EndDate,
-          Trainee_Email: intern.Trainee_Email,
-          Trainee_HomeAddress: intern.Trainee_HomeAddress,
-          attendanceInfo: attendanceInfo,
+          _id: intern._id,
+          traineeId: intern.Trainee_ID || intern.traineeId,
+          traineeName: intern.Trainee_Name || intern.traineeName,
+          fieldOfSpecialization: intern.field_of_spec_name || intern.fieldOfSpecialization,
+          attendanceInfo,
         });
       }
     });
 
     return attendedInterns;
-  }
-
-  static async updateAttendanceForSpecificDate(internId, date, status) {
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found");
-
-    const existingAttendance = intern.attendance.find(
-      (entry) =>
-        new Date(entry.date).setHours(0, 0, 0, 0) ===
-        new Date(date).setHours(0, 0, 0, 0)
-    );
-
-    if (existingAttendance) {
-      existingAttendance.status = status; // Update the existing attendance status
-    } else {
-      intern.attendance.push({ date: new Date(date), status }); // Add new attendance entry
-    }
-
-    // Save without validation to avoid fieldOfSpecialization validation issues
-    return await intern.save({ validateBeforeSave: false });
-  }
-
-  // Add an available day
-  // static async addAvailableDay(traineeId, day) {
-  //   const intern = await this.getInternByTraineeId(traineeId);
-  //   if (!intern) throw new Error("Intern not found");
-
-  //   if (!intern.availableDays.includes(day)) {
-  //     intern.availableDays.push(day);
-  //     await intern.save();
-  //   }
-
-  //   return intern;
-  // }
-
-  // // Remove an available day
-  // static async removeAvailableDay(traineeId, day) {
-  //   const intern = await this.getInternByTraineeId(traineeId);
-  //   if (!intern) throw new Error("Intern not found");
-
-  //   intern.availableDays = intern.availableDays.filter(d => d !== day);
-  //   await intern.save();
-
-  //   return intern;
-  // }
-
-  // Add an available day using ObjectId
-  static async addAvailableDay(id, day) {
-    const intern = await this.getInternById(id);
-    if (!intern) throw new Error("Intern not found");
-
-    if (!intern.availableDays.includes(day)) {
-      intern.availableDays.push(day);
-      // Save without validation to avoid fieldOfSpecialization validation issues
-      await intern.save({ validateBeforeSave: false });
-    }
-
-    return intern;
-  }
-
-  // Remove an available day using ObjectId
-  static async removeAvailableDay(id, day) {
-    const intern = await this.getInternById(id);
-    if (!intern) throw new Error("Intern not found");
-
-    intern.availableDays = intern.availableDays.filter((d) => d !== day);
-    // Save without validation to avoid fieldOfSpecialization validation issues
-    await intern.save({ validateBeforeSave: false });
-
-    return intern;
-  }
-
-  static async findByTraineeId(traineeId) {
-    // DB is canonical with Trainee_ID
-    return await Intern.findOne({ Trainee_ID: traineeId?.toString() });
   }
 }
 

@@ -49,4 +49,12 @@ const getGoogleAuthUrl = (req, res) => {
   res.status(200).json({ authUrl });
 };
 
-module.exports = { googleLogin, login, register, getGoogleAuthUrl };
+const verifyToken = async (req, res) => {
+  try {
+    return res.status(200).json({ valid: true, user: req.user });
+  } catch (error) {
+    return res.status(500).json({ valid: false, message: "Token verification failed", error: error.message });
+  }
+};
+
+module.exports = { googleLogin, login, register, getGoogleAuthUrl, verifyToken };

@@ -6,9 +6,9 @@ import Navbar from "../components/Navbar";
 import { Toaster, toast } from "react-hot-toast";
 
 const AddIntern = () => {
-  const [Trainee_ID, setTraineeId] = useState("");
-  const [Trainee_Name, setTraineeName] = useState("");
-  const [field_of_spec_name, setFieldOfSpecialization] = useState("");
+  const [traineeId, setTraineeId] = useState("");
+  const [traineeName, setTraineeName] = useState("");
+  const [fieldOfSpecialization, setFieldOfSpecialization] = useState("");
   const [specializations, setSpecializations] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +18,7 @@ const AddIntern = () => {
         const response = await api.get("/interns", getAuthHeaders());
         const fetchedInterns = response.data || [];
         const uniqueSpecializations = Array.from(
-          new Set(fetchedInterns.map((intern) => intern.field_of_spec_name).filter(Boolean))
+          new Set(fetchedInterns.map((intern) => intern.fieldOfSpecialization || intern.field_of_spec_name).filter(Boolean))
         ).sort();
         setSpecializations(uniqueSpecializations);
       } catch (error) {
@@ -32,7 +32,7 @@ const AddIntern = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!Trainee_ID || !Trainee_Name || !field_of_spec_name) {
+    if (!traineeId || !traineeName || !fieldOfSpecialization) {
       toast.error("Please fill in all required fields.");
       return;
     }
@@ -41,7 +41,7 @@ const AddIntern = () => {
     try {
       const response = await api.post(
         "/interns/add",
-        { Trainee_ID, Trainee_Name, field_of_spec_name },
+        { Trainee_ID: traineeId, Trainee_Name: traineeName, field_of_spec_name: fieldOfSpecialization },
         getAuthHeaders()
       );
 
@@ -60,20 +60,15 @@ const AddIntern = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Sidebar */}
       <Sidebar />
       
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Fixed position for Navbar to ensure it doesn't affect layout flow */}
         <div className="fixed top-0 left-0 right-0 z-10">
           <Navbar />
         </div>
         
-        {/* Main Content Area with significant top margin to clear navbar */}
         <div className="flex-1 overflow-y-auto p-6 mt-32">
           <div className="max-w-3xl mx-auto">
-            {/* Page Header */}
             <div className="flex items-center mb-8">
               <div className="bg-emerald-50 p-3 rounded-full mr-4">
                 <User className="text-emerald-600" size={24} />
@@ -84,10 +79,8 @@ const AddIntern = () => {
               </div>
             </div>
 
-            {/* Card Container */}
             <div className="bg-white rounded-xl shadow-md p-8 border border-gray-100">
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Trainee ID */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Trainee ID <span className="text-red-500">*</span>
@@ -107,7 +100,6 @@ const AddIntern = () => {
                   </div>
                 </div>
 
-                {/* Trainee Name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Trainee Name <span className="text-red-500">*</span>
@@ -127,7 +119,6 @@ const AddIntern = () => {
                   </div>
                 </div>
 
-                {/* Field of Specialization */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Field of Specialization <span className="text-red-500">*</span>
@@ -153,7 +144,6 @@ const AddIntern = () => {
                   </div>
                 </div>
 
-                {/* Submit Button */}
                 <div className="pt-4">
                   <button
                     type="submit"

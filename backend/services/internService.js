@@ -8,20 +8,15 @@ class InternService {
     return await InternRepository.addIntern(data);
   }
 
-  // Update the getAllInterns method
   async getAllInterns(date) {
-    // Feature toggle: if mode is 'external', fetch from API and sync to DB for attendance marking
     let interns;
     if (config.traineesApi.mode === "external") {
-      // First sync external interns to database to ensure they have _id fields for attendance marking
       await this.syncActiveInterns();
-      // Then fetch from database to get proper _id fields and existing attendance records
       interns = await InternRepository.getAllInterns();
     } else {
       interns = await InternRepository.getAllInterns();
     }
 
-    // Normalize field names for frontend compatibility
     interns = interns.map((intern) => {
       const normalized = {
         _id: intern._id,
@@ -52,7 +47,7 @@ class InternService {
       const endDate = moment.tz(date, "Asia/Colombo").endOf("day").toDate();
 
       interns = interns.map((intern) => {
-        const attendance = intern.attendance || []; // Ensure attendance is an array
+        const attendance = intern.attendance || [];
         const attendanceRecord = attendance.find((att) => {
           const attendanceDate = new Date(att.date).setHours(0, 0, 0, 0);
           return attendanceDate >= formattedDate && attendanceDate <= endDate;
@@ -74,7 +69,6 @@ class InternService {
     const intern = await InternRepository.getInternById(internId);
     if (!intern) return null;
 
-    // Normalize field names for frontend compatibility
     return {
       _id: intern._id,
       traineeId: intern.Trainee_ID || intern.traineeId,
@@ -94,26 +88,18 @@ class InternService {
     };
   }
 
-  /**
-   * Fetch active interns from external API (not from MongoDB).
-   */
   async getActiveInternsFromExternal() {
     return await traineesApiService.fetchAllActive();
   }
 
-  /**
-   * Synchronize external active interns into MongoDB (upsert by traineeId).
-   */
   async syncActiveInterns() {
     const externalInterns = await traineesApiService.fetchAllActive();
     const results = { created: 0, updated: 0, skipped: 0, errors: 0 };
 
     for (const ext of externalInterns) {
       try {
-        // Try find existing by traineeId
         const existing = await InternRepository.findByTraineeId(ext.traineeId);
         if (existing) {
-          // Update selective fields; do not overwrite attendance or team unless provided
           existing.Trainee_Name = ext.traineeName || existing.Trainee_Name;
           existing.field_of_spec_name =
             ext.fieldOfSpecialization || existing.field_of_spec_name;
@@ -128,7 +114,6 @@ class InternService {
           await existing.save({ validateBeforeSave: false });
           results.updated++;
         } else {
-          // Map external API fields to database model fields
           const mappedIntern = {
             Trainee_ID: ext.traineeId,
             Trainee_Name: ext.traineeName,
@@ -235,7 +220,7 @@ class InternService {
 
   async getAttendanceStatsForToday() {
     try {
-      return await InternRepository.getAttendanceStatsForToday(); // Now includes online attendance
+      return await InternRepository.getAttendanceStatsForToday();
     } catch (error) {
       throw new Error(
         "Error fetching attendance stats for today: " + error.message
@@ -245,7 +230,7 @@ class InternService {
 
   async getAttendanceStatsByType(attendanceType = null) {
     try {
-      return await InternRepository.getAttendanceStatsByType(attendanceType); // Now includes online attendance for meeting type
+      return await InternRepository.getAttendanceStatsByType(attendanceType);
     } catch (error) {
       throw new Error(
         "Error fetching attendance stats by type: " + error.message
@@ -255,7 +240,7 @@ class InternService {
 
   async getTodayAttendanceByType(attendanceType = null) {
     try {
-      return await InternRepository.getTodayAttendanceByType(attendanceType); // Now includes online attendance records
+      return await InternRepository.getTodayAttendanceByType(attendanceType);
     } catch (error) {
       throw new Error(
         "Error fetching today's attendance by type: " + error.message
@@ -272,14 +257,14 @@ class InternService {
   }
 
   async getWeeklyAttendanceStats() {
-    const startOfWeek = moment().startOf("week").toDate(); // Start of the current week (Sunday)
-    const endOfWeek = moment().endOf("week").toDate(); // End of the current week (Saturday)
+    const startOfWeek = moment().startOf("week").toDate();
+    const endOfWeek = moment().endOf("week").toDate();
 
-    // Fetch all interns and filter based on attendance status for the current week
     const interns = await InternRepository.getAllInterns();
 
     const attendedInterns = interns.filter((intern) => {
-      return intern.attendance.some((attendance) => {
+      const attendanceList = Array.isArray(intern.attendance) ? intern.attendance : [];
+      return attendanceList.some((attendance) => {
         const attendanceDate = new Date(attendance.date).setHours(0, 0, 0, 0);
         return (
           attendanceDate >= startOfWeek &&
@@ -290,7 +275,9 @@ class InternService {
     });
 
     const notAttendedInterns = interns.filter((intern) => {
-      return intern.attendance.every((attendance) => {
+      const attendanceList = Array.isArray(intern.attendance) ? intern.attendance : [];
+      if (attendanceList.length === 0) return true;
+      return attendanceList.every((attendance) => {
         const attendanceDate = new Date(attendance.date).setHours(0, 0, 0, 0);
         return (
           attendanceDate < startOfWeek ||
@@ -305,26 +292,6 @@ class InternService {
       notAttendedInterns,
     };
   }
-
-  // async addAvailableDay(traineeId, day) {
-  //   const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-  //   if (!validDays.includes(day)) {
-  //     throw new Error("Invalid day provided");
-  //   }
-
-  //   return await InternRepository.addAvailableDay(traineeId, day);
-  // }
-
-  // async removeAvailableDay(traineeId, day) {
-  //   const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-
-  //   if (!validDays.includes(day)) {
-  //     throw new Error("Invalid day provided");
-  //   }
-
-  //   return await InternRepository.removeAvailableDay(traineeId, day);
-  // }
 
   async addAvailableDay(id, day) {
     const validDays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
@@ -347,11 +314,9 @@ class InternService {
   }
 
   async updateInternEmail(traineeId, email) {
-    // Find the intern by traineeId and update the email
     const intern = await InternRepository.findByTraineeId(traineeId);
     if (!intern) throw new Error("Intern not found");
 
-    // Update the intern's email
     intern.email = email;
     await intern.save();
 
