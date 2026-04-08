@@ -234,6 +234,21 @@ const InternsPageV2 = () => {
     handleMarkAttendance(intern._id, status, shouldClear);
   };
 
+  const addFooter = (doc) => {
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageNumber = doc.internal.getCurrentPageInfo().pageNumber;
+
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text(`Page ${pageNumber}`, 14, pageHeight - 8);
+    doc.text(
+      "SLTMobitel Internship Attendance System",
+      pageWidth - 78,
+      pageHeight - 8
+    );
+  };
+
   const exportDetailedPdf = () => {
     const doc = new jsPDF("p", "mm", "a4");
 
@@ -243,11 +258,11 @@ const InternsPageV2 = () => {
         intern.attendanceStatus === "Absent"
     );
 
-    const presentCount = markedInterns.filter(
+    const presentCount = filteredInterns.filter(
       (intern) => intern.attendanceStatus === "Present"
     ).length;
 
-    const absentCount = markedInterns.filter(
+    const absentCount = filteredInterns.filter(
       (intern) => intern.attendanceStatus === "Absent"
     ).length;
 
@@ -307,11 +322,7 @@ const InternsPageV2 = () => {
       56
     );
     doc.text(`Search Filter: ${searchTerm || "None"}`, 14, 63);
-    doc.text(
-      `Marked Attendance Count: ${markedInterns.length}`,
-      14,
-      70
-    );
+    doc.text(`Marked Attendance Count: ${markedInterns.length}`, 14, 70);
     doc.text(`Present: ${presentCount}`, 14, 77);
     doc.text(`Absent: ${absentCount}`, 55, 77);
     doc.text(`Unmarked: ${unmarkedCount}`, 90, 77);
@@ -359,17 +370,27 @@ const InternsPageV2 = () => {
         4: { cellWidth: 25 },
       },
       margin: { left: 14, right: 14 },
+      didDrawPage: () => {
+        addFooter(doc);
+      },
     });
 
-    const tableEndY = doc.lastAutoTable.finalY + 10;
+    let summaryStartY = doc.lastAutoTable.finalY + 10;
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const minimumSpaceNeeded = 45;
+
+    if (summaryStartY + minimumSpaceNeeded > pageHeight - 20) {
+      doc.addPage();
+      summaryStartY = 20;
+    }
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(20, 40, 80);
-    doc.text("Attendance Summary by Specialization", 14, tableEndY);
+    doc.text("Attendance Summary by Specialization", 14, summaryStartY);
 
     autoTable(doc, {
-      startY: tableEndY + 4,
+      startY: summaryStartY + 4,
       head: [["Specialization", "Present", "Absent", "Unmarked"]],
       body: specializationSummaryRows.map((row) => [
         row.specialization,
@@ -398,18 +419,7 @@ const InternsPageV2 = () => {
       },
       margin: { left: 14, right: 14 },
       didDrawPage: () => {
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageNumber = doc.internal.getNumberOfPages();
-
-        doc.setFontSize(9);
-        doc.setTextColor(100);
-        doc.text(`Page ${pageNumber}`, 14, pageHeight - 8);
-        doc.text(
-          "SLTMobitel Internship Attendance System",
-          pageWidth - 78,
-          pageHeight - 8
-        );
+        addFooter(doc);
       },
     });
 
