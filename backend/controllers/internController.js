@@ -173,6 +173,29 @@ const updateAttendance = async (req, res) => {
   }
 };
 
+const clearAttendance = async (req, res) => {
+  const { id } = req.params;
+  const { date, type } = req.body;
+
+  try {
+    const updatedIntern = await InternService.clearAttendance(
+      id,
+      date,
+      type || "manual"
+    );
+
+    res.status(200).json({
+      message: "Attendance cleared successfully",
+      intern: updatedIntern,
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error clearing attendance",
+      error: error.message,
+    });
+  }
+};
+
 const assignToTeam = async (req, res) => {
   try {
     await InternService.assignToTeam(req.body.internIds, req.body.teamName);
@@ -618,6 +641,7 @@ module.exports = {
   getAttendanceStats,
   markAttendance,
   updateAttendance,
+  clearAttendance,
   assignToTeam,
   removeFromTeam,
   removeIntern,

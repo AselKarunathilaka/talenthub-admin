@@ -70,23 +70,24 @@ class InternService {
     if (!intern) return null;
 
     return {
-      _id: intern._id,
-      traineeId: intern.Trainee_ID || intern.traineeId,
-      traineeName: intern.Trainee_Name || intern.traineeName,
-      fieldOfSpecialization:
-        intern.field_of_spec_name || intern.fieldOfSpecialization,
-      trainingStartDate: intern.Training_StartDate || intern.trainingStartDate,
-      trainingEndDate: intern.Training_EndDate || intern.trainingEndDate,
-      institute: intern.Institute || intern.institute || "",
-      email: intern.Trainee_Email || intern.email || "",
-      homeAddress: intern.Trainee_HomeAddress || intern.homeAddress || "",
-      team: intern.team || "",
-      attendance: intern.attendance || [],
-      availableDays: intern.availableDays || [],
-      createdAt: intern.createdAt,
-      updatedAt: intern.updatedAt,
-    };
-  }
+  _id: intern._id,
+  traineeId: intern.Trainee_ID || intern.traineeId,
+  traineeName: intern.Trainee_Name || intern.traineeName,
+  fieldOfSpecialization:
+    intern.field_of_spec_name || intern.fieldOfSpecialization,
+  trainingStartDate: intern.Training_StartDate || intern.trainingStartDate,
+  trainingEndDate: intern.Training_EndDate || intern.trainingEndDate,
+  institute: intern.Institute || intern.institute || "",
+  email: intern.Trainee_Email || intern.email || "",
+  homeAddress: intern.Trainee_HomeAddress || intern.homeAddress || "",
+  team: intern.team || "",
+  attendance: intern.attendance || [],
+  onlineAttendance: intern.onlineAttendance || [],
+  availableDays: intern.availableDays || [],
+  createdAt: intern.createdAt,
+  updatedAt: intern.updatedAt,
+  };
+}
 
   async getActiveInternsFromExternal() {
     return await traineesApiService.fetchAllActive();

@@ -16,12 +16,129 @@ import {
 import { fetchTodayAttendanceByType } from "../../api/internApi";
 import { toast } from "react-hot-toast";
 
+const getTodayKey = () => new Date().toISOString().split("T")[0];
+
+const safeString = (value, fallback = "") => {
+  if (value === null || value === undefined) return fallback;
+  return String(value);
+};
+
+const formatTime = (value) => {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString();
+};
+
+const getNormalizedRecord = (record) => {
+  const rawType = record.rawType || record.type || "manual";
+
+  if (rawType === "daily_qr" || rawType === "Daily") {
+    return {
+      rawType: "daily_qr",
+      type: "Daily",
+      method: record.method || "QR Code Scan",
+      time: record.time || record.timeMarked || record.date || "",
+    };
+  }
+
+  if (rawType === "qr" || rawType === "Meeting") {
+    return {
+      rawType: "qr",
+      type: "Meeting",
+      method: record.method || "QR Code Scan",
+      time: record.time || record.timeMarked || record.date || "",
+    };
+  }
+
+  if (rawType === "online_attendance" || rawType === "Online Meeting") {
+    return {
+      rawType: "online_attendance",
+      type: "Online Meeting",
+      method: record.method || "CSV Upload",
+      time: record.time || record.timeMarked || record.date || "",
+    };
+  }
+
+  return {
+    rawType: "manual",
+    type: "Manual",
+    method: record.method || "Manual Method",
+    time: record.time || record.timeMarked || record.date || "",
+  };
+};
+
+const buildFormattedLog = (log) => {
+  const normalizedRecords = (log.attendanceRecords || []).map(getNormalizedRecord);
+
+  return {
+    ...log,
+    attendanceRecords: normalizedRecords,
+    types: normalizedRecords.map((record) => record.type),
+    methods: normalizedRecords.map((record) => record.method),
+    times: normalizedRecords.map((record) =>
+      record.type === "Online Meeting" ? "" : formatTime(record.time)
+    ),
+  };
+};
+
+const shouldShowForActiveTab = (rawType, activeAttendanceType) => {
+  if (activeAttendanceType === "all") return true;
+  if (activeAttendanceType === "daily") return rawType === "daily_qr";
+  return ["manual", "qr", "online_attendance"].includes(rawType);
+};
+
 const InternHistory = () => {
   const [attendanceLogs, setAttendanceLogs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [activeAttendanceType, setActiveAttendanceType] = useState("all");
+
+  const normalizeServerLogs = useCallback((logs) => {
+    const groupedLogs = {};
+
+    (logs || []).forEach((log, index) => {
+      const traineeId = safeString(log.traineeId ?? log.Trainee_ID ?? "", "").trim();
+      const traineeName = safeString(log.traineeName ?? log.Trainee_Name ?? "", "N/A").trim();
+      const fieldOfSpecialization = safeString(
+        log.fieldOfSpecialization ?? log.field_of_spec_name ?? "",
+        ""
+      ).trim();
+      const institute = safeString(log.institute ?? log.Institute ?? "", "").trim();
+      const internId = safeString(log._id ?? log.internId ?? "", "");
+      const key = traineeId || internId || `row-${index}`;
+
+      if (!groupedLogs[key]) {
+        groupedLogs[key] = {
+          key,
+          internId,
+          traineeId,
+          traineeName,
+          fieldOfSpecialization,
+          institute,
+          attendanceRecords: [],
+        };
+      }
+
+      const infoList = Array.isArray(log.attendanceInfo)
+        ? log.attendanceInfo
+        : log.attendanceInfo
+        ? [log.attendanceInfo]
+        : [];
+
+      infoList.forEach((info) => {
+        groupedLogs[key].attendanceRecords.push({
+          rawType: info.rawType || info.type,
+          type: info.type,
+          method: info.method,
+          time: info.time || info.timeMarked || info.date,
+        });
+      });
+    });
+
+    return Object.values(groupedLogs).map(buildFormattedLog);
+  }, []);
 
   const fetchAttendanceLogs = useCallback(
     async (isManualRefresh = false) => {
@@ -34,111 +151,30 @@ const InternHistory = () => {
 
         const attendanceType =
           activeAttendanceType === "all" ? null : activeAttendanceType;
+
         const logs = await fetchTodayAttendanceByType(attendanceType);
 
         if (logs) {
-          const groupedLogs = {};
-
-          logs.forEach((log) => {
-            const traineeId = log.Trainee_ID || log.traineeId || "";
-
-            if (!groupedLogs[traineeId]) {
-              groupedLogs[traineeId] = {
-                Trainee_ID: log.Trainee_ID,
-                Trainee_Name: log.Trainee_Name,
-                field_of_spec_name: log.field_of_spec_name,
-                Institute: log.Institute,
-                Training_StartDate: log.Training_StartDate,
-                Training_EndDate: log.Training_EndDate,
-                Trainee_Email: log.Trainee_Email,
-                Trainee_HomeAddress: log.Trainee_HomeAddress,
-                attendanceRecords: [],
-              };
-            }
-
-            // Process attendance info
-            if (Array.isArray(log.attendanceInfo)) {
-              log.attendanceInfo.forEach((info) => {
-                groupedLogs[traineeId].attendanceRecords.push(info);
-              });
-            } else if (log.attendanceInfo) {
-              groupedLogs[traineeId].attendanceRecords.push(log.attendanceInfo);
-            }
-          });
-
-          // Convert grouped logs to array and format combined data
-          const formattedLogs = Object.values(groupedLogs).map((log) => {
-            const types = [];
-            const methods = [];
-            const times = [];
-
-            log.attendanceRecords.forEach((record) => {
-              // Determine type
-              let type = "";
-              if (record.type === "Daily") type = "Daily";
-              else if (record.type === "Meeting") type = "Meeting";
-              else if (record.type === "Manual") type = "Manual";
-              else if (record.type === "Online Meeting")
-                type = "Online Meeting";
-              else type = record.type;
-
-              // Determine method
-              let method = "";
-              if (record.type === "Online Meeting") {
-                method =
-                  record.method === "CSV Upload"
-                    ? "CSV Upload"
-                    : "Manual Entry";
-              } else if (record.type === "Daily" || record.type === "Meeting") {
-                method = "QR Code Scan";
-              } else if (
-                record.type === "Manual" ||
-                record.method === "Manual Entry"
-              ) {
-                method = "Manual Method";
-              } else if (record.method === "QR Code Scan") {
-                method = "QR Code Scan";
-              } else {
-                method = record.method;
-              }
-
-              // Determine time - empty for online meetings
-              let time = "";
-              if (record.type !== "Online Meeting") {
-                time = new Date(record.time).toLocaleTimeString();
-              }
-
-              types.push(type);
-              methods.push(method);
-              times.push(time);
-            });
-
-            return {
-              ...log,
-              types: types,
-              methods: methods,
-              times: times,
-            };
-          });
-
-          setAttendanceLogs(formattedLogs);
+          setAttendanceLogs(normalizeServerLogs(logs));
         } else {
           setAttendanceLogs([]);
         }
       } catch (err) {
         console.error("Fetching logs error", err);
+
         if (isManualRefresh) {
           toast.error("Failed to fetch attendance logs", {
             icon: <AlertCircle size={18} />,
           });
         }
+
         setAttendanceLogs([]);
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);
       }
     },
-    [activeAttendanceType, attendanceLogs.length]
+    [activeAttendanceType, attendanceLogs.length, normalizeServerLogs]
   );
 
   useEffect(() => {
@@ -147,16 +183,110 @@ const InternHistory = () => {
     return () => clearInterval(interval);
   }, [fetchAttendanceLogs]);
 
+  useEffect(() => {
+    const handleRealtimeAttendanceChange = (event) => {
+      const detail = event.detail;
+      if (!detail) return;
+
+      const today = getTodayKey();
+      if (detail.attendanceDate !== today) return;
+
+      const traineeId = safeString(detail.traineeId ?? "", "").trim();
+      const traineeName = safeString(detail.traineeName ?? "", "N/A").trim();
+      const internId = safeString(detail.internId ?? "", "");
+      const rawType = detail.type || "manual";
+
+      setAttendanceLogs((prevLogs) => {
+        let nextLogs = prevLogs.map((log) => ({
+          ...log,
+          attendanceRecords: [...(log.attendanceRecords || [])],
+        }));
+
+        const existingIndex = nextLogs.findIndex(
+          (log) =>
+            log.traineeId === traineeId ||
+            (internId && log.internId === internId)
+        );
+
+        if (detail.cleared) {
+          if (existingIndex === -1) return prevLogs;
+
+          nextLogs[existingIndex].attendanceRecords = nextLogs[
+            existingIndex
+          ].attendanceRecords.filter((record) => record.rawType !== rawType);
+
+          if (nextLogs[existingIndex].attendanceRecords.length === 0) {
+            nextLogs.splice(existingIndex, 1);
+          } else {
+            nextLogs[existingIndex] = buildFormattedLog(nextLogs[existingIndex]);
+          }
+
+          return nextLogs;
+        }
+
+        if (!shouldShowForActiveTab(rawType, activeAttendanceType)) {
+          return prevLogs;
+        }
+
+        const newRecord = getNormalizedRecord({
+          rawType,
+          method:
+            rawType === "manual"
+              ? "Manual Method"
+              : rawType === "online_attendance"
+              ? "CSV Upload"
+              : "QR Code Scan",
+          time: detail.timeMarked,
+        });
+
+        if (existingIndex === -1) {
+          nextLogs.unshift(
+            buildFormattedLog({
+              key: traineeId || internId || `${Date.now()}`,
+              internId,
+              traineeId,
+              traineeName,
+              fieldOfSpecialization: detail.fieldOfSpecialization || "",
+              institute: detail.institute || "",
+              attendanceRecords: [newRecord],
+            })
+          );
+          return nextLogs;
+        }
+
+        nextLogs[existingIndex] = {
+          ...nextLogs[existingIndex],
+          traineeId: traineeId || nextLogs[existingIndex].traineeId,
+          traineeName: traineeName || nextLogs[existingIndex].traineeName,
+          fieldOfSpecialization:
+            detail.fieldOfSpecialization ||
+            nextLogs[existingIndex].fieldOfSpecialization,
+          institute: detail.institute || nextLogs[existingIndex].institute,
+          attendanceRecords: [
+            newRecord,
+            ...nextLogs[existingIndex].attendanceRecords.filter(
+              (record) => record.rawType !== rawType
+            ),
+          ],
+        };
+
+        nextLogs[existingIndex] = buildFormattedLog(nextLogs[existingIndex]);
+
+        return nextLogs;
+      });
+    };
+
+    window.addEventListener("attendance:changed", handleRealtimeAttendanceChange);
+    return () => {
+      window.removeEventListener("attendance:changed", handleRealtimeAttendanceChange);
+    };
+  }, [activeAttendanceType]);
+
   const filteredLogs = attendanceLogs.filter((log) => {
-    if (!log || typeof log !== "object") return false;
-    const traineeId =
-      typeof log.Trainee_ID === "string" ? log.Trainee_ID.toLowerCase() : "";
-    const name =
-      typeof log.Trainee_Name === "string"
-        ? log.Trainee_Name.toLowerCase()
-        : "";
-    const term = searchTerm ? searchTerm.toLowerCase() : "";
-    return traineeId.includes(term) || name.includes(term);
+    const traineeId = safeString(log.traineeId, "").toLowerCase();
+    const traineeName = safeString(log.traineeName, "").toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return traineeId.includes(term) || traineeName.includes(term);
   });
 
   return (
@@ -168,11 +298,8 @@ const InternHistory = () => {
               Today&apos;s Marked Attendance
             </h3>
             <p className="text-gray-500 text-sm mt-1">
-              Trainees who have checked in today • {filteredLogs.length}{" "}
-              trainees
-              {isRefreshing && (
-                <span className="text-blue-600 ml-2">• Updating...</span>
-              )}
+              Trainees who have checked in today • {filteredLogs.length} trainees
+              {isRefreshing && <span className="text-blue-600 ml-2">• Updating...</span>}
             </p>
           </div>
 
@@ -203,6 +330,7 @@ const InternHistory = () => {
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
                 </div>
+
                 <input
                   type="text"
                   value={searchTerm}
@@ -210,6 +338,7 @@ const InternHistory = () => {
                   placeholder="Search trainees..."
                   className="pl-10 pr-4 py-2 w-full bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
+
                 {searchTerm && (
                   <button
                     className="absolute inset-y-0 right-0 pr-3 flex items-center"
@@ -248,61 +377,47 @@ const InternHistory = () => {
         {isLoading ? (
           <div className="flex justify-center items-center py-12">
             <Loader className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">
-              Loading attendance data...
-            </span>
+            <span className="ml-2 text-gray-600">Loading attendance data...</span>
           </div>
         ) : filteredLogs.length > 0 ? (
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Trainee ID
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Attendance Type
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Method
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Check-in Time
                 </th>
               </tr>
             </thead>
+
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredLogs.map((log, index) => (
-                <tr key={index} className="hover:bg-gray-50">
+                <tr key={log.key || index} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <div className="flex items-center">
                       <User className="h-4 w-4 text-gray-400 mr-2" />
-                      {log.Trainee_ID || ""}
+                      {log.traineeId || "N/A"}
                     </div>
                   </td>
+
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     <div className="flex items-center">
                       <User className="h-4 w-4 text-gray-400 mr-2" />
-                      {log.Trainee_Name || ""}
+                      {log.traineeName || "N/A"}
                     </div>
                   </td>
+
                   <td className="px-6 py-4 text-sm text-gray-500">
                     <div className="flex flex-wrap gap-1">
                       {log.types.map((type, idx) => (
@@ -335,11 +450,13 @@ const InternHistory = () => {
                       ))}
                     </div>
                   </td>
+
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {log.methods.join(", ")}
                   </td>
+
                   <td className="px-6 py-4 text-sm text-gray-500">
-                    {log.times.filter((t) => t !== "").join(", ")}
+                    {log.times.filter(Boolean).join(", ") || "—"}
                   </td>
                 </tr>
               ))}
@@ -389,11 +506,11 @@ const InternHistory = () => {
                 : " attendance"}{" "}
               records
             </p>
+
             {searchTerm && filteredLogs.length !== attendanceLogs.length && (
               <p className="text-sm text-gray-500">
                 (Filtered from{" "}
-                <span className="font-medium">{attendanceLogs.length}</span>{" "}
-                total)
+                <span className="font-medium">{attendanceLogs.length}</span> total)
               </p>
             )}
           </div>

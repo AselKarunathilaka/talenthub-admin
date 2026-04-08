@@ -1,4 +1,4 @@
-import { api, backendUrl, getAuthHeaders } from "./apiConfig";
+import { api, getAuthHeaders } from "./apiConfig";
 
 const INTERN_API_URL = "/interns";
 const UPLOAD_API_URL = `${INTERN_API_URL}/upload`;
@@ -48,17 +48,36 @@ export const fetchInternById = async (internId) => {
   }
 };
 
-export const markAttendance = async (internId, status, date, type = 'manual', timeMarked = null) => {
+export const markAttendance = async (
+  internId,
+  status,
+  date,
+  type = "manual",
+  timeMarked = null
+) => {
   try {
     const response = await api.post(
       `${INTERN_API_URL}/mark-attendance`,
-      { 
-        internId, 
-        status, 
-        date, 
-        type, 
-        timeMarked: timeMarked || new Date().toISOString() 
+      {
+        internId,
+        status,
+        date,
+        type,
+        timeMarked: timeMarked || new Date().toISOString(),
       },
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    return handleAuthError(error);
+  }
+};
+
+export const clearAttendance = async (internId, date, type = "manual") => {
+  try {
+    const response = await api.post(
+      `${INTERN_API_URL}/attendance/${internId}/clear`,
+      { date, type },
       getAuthHeaders()
     );
     return response.data;
@@ -149,7 +168,7 @@ export const fetchAttendanceStatsForToday = async () => {
 
 export const fetchAttendanceStatsByType = async (type = null) => {
   try {
-    const url = type 
+    const url = type
       ? `${INTERN_API_URL}/attendance-stats-by-type?type=${type}`
       : `${INTERN_API_URL}/attendance-stats-by-type`;
     const response = await api.get(url, getAuthHeaders());
@@ -161,7 +180,7 @@ export const fetchAttendanceStatsByType = async (type = null) => {
 
 export const fetchTodayAttendanceByType = async (type = null) => {
   try {
-    const url = type 
+    const url = type
       ? `${INTERN_API_URL}/today-attendance-by-type?type=${type}`
       : `${INTERN_API_URL}/today-attendance-by-type`;
     const response = await api.get(url, getAuthHeaders());

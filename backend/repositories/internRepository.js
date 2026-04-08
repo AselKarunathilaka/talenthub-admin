@@ -14,6 +14,17 @@ const isWithinRange = (value, start, end) => {
   return !Number.isNaN(date.getTime()) && date >= start && date <= end;
 };
 
+const isSameDay = (left, right) => {
+  const leftDate = new Date(left);
+  const rightDate = new Date(right);
+
+  if (Number.isNaN(leftDate.getTime()) || Number.isNaN(rightDate.getTime())) {
+    return false;
+  }
+
+  return leftDate.setHours(0, 0, 0, 0) === rightDate.setHours(0, 0, 0, 0);
+};
+
 class InternRepository {
   static async addIntern(data) {
     const intern = new Intern(data);
@@ -44,8 +55,7 @@ class InternRepository {
 
     interns.forEach((intern) => {
       if (intern.attendance.length > 0) {
-        const latestAttendance =
-          intern.attendance[intern.attendance.length - 1];
+        const latestAttendance = intern.attendance[intern.attendance.length - 1];
         if (latestAttendance.status === "Present") {
           stats.present++;
         } else {
@@ -96,8 +106,7 @@ class InternRepository {
       if (existingAttendanceIndex !== -1) {
         console.log("Updating existing attendance entry for type:", type);
         intern.attendance[existingAttendanceIndex].status = status;
-        intern.attendance[existingAttendanceIndex].timeMarked =
-          actualTimeMarked;
+        intern.attendance[existingAttendanceIndex].timeMarked = actualTimeMarked;
       } else {
         console.log("Adding new attendance entry for type:", type);
         intern.attendance.push({
@@ -226,7 +235,9 @@ class InternRepository {
 
     interns.forEach((intern) => {
       const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
+      const onlineAttendance = Array.isArray(intern.onlineAttendance)
+        ? intern.onlineAttendance
+        : [];
 
       const todayPhysicalAttendance = attendance.find((entry) =>
         isWithinRange(entry?.date, start, end)
@@ -260,7 +271,9 @@ class InternRepository {
 
     interns.forEach((intern) => {
       const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
+      const onlineAttendance = Array.isArray(intern.onlineAttendance)
+        ? intern.onlineAttendance
+        : [];
 
       const todayPhysicalAttendance = attendance.filter((entry) =>
         isWithinRange(entry?.date, start, end)
@@ -269,7 +282,9 @@ class InternRepository {
         isWithinRange(entry?.date, start, end)
       );
 
-      const dailyAttendance = todayPhysicalAttendance.find((entry) => entry?.type === "daily_qr");
+      const dailyAttendance = todayPhysicalAttendance.find(
+        (entry) => entry?.type === "daily_qr"
+      );
       if (dailyAttendance?.status === "Present") stats.dailyAttendance.present++;
       else if (dailyAttendance?.status === "Absent") stats.dailyAttendance.absent++;
 
@@ -293,7 +308,8 @@ class InternRepository {
       const hasAnyAttendance =
         todayPhysicalAttendance.some((entry) => entry?.status === "Present") ||
         todayOnlineAttendance.some((entry) => entry?.status === "Present");
-      const hasAnyAbsent = todayPhysicalAttendance.length > 0 || todayOnlineAttendance.length > 0;
+      const hasAnyAbsent =
+        todayPhysicalAttendance.length > 0 || todayOnlineAttendance.length > 0;
 
       if (hasAnyAttendance) stats.total.present++;
       else if (hasAnyAbsent) stats.total.absent++;
@@ -311,9 +327,16 @@ class InternRepository {
 
     interns.forEach((intern) => {
       const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance) ? intern.onlineAttendance : [];
-      const todayPhysicalAttendance = attendance.filter((entry) => isWithinRange(entry?.date, start, end));
-      const todayOnlineAttendance = onlineAttendance.filter((entry) => isWithinRange(entry?.date, start, end));
+      const onlineAttendance = Array.isArray(intern.onlineAttendance)
+        ? intern.onlineAttendance
+        : [];
+
+      const todayPhysicalAttendance = attendance.filter((entry) =>
+        isWithinRange(entry?.date, start, end)
+      );
+      const todayOnlineAttendance = onlineAttendance.filter((entry) =>
+        isWithinRange(entry?.date, start, end)
+      );
 
       let hasRelevantAttendance = false;
       let attendanceInfo = null;
@@ -326,32 +349,50 @@ class InternRepository {
           hasRelevantAttendance = true;
           attendanceInfo = {
             type: "Daily",
+            rawType: "daily_qr",
             time: dailyAttendance.timeMarked || dailyAttendance.date,
-            method: dailyAttendance.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
+            method:
+              dailyAttendance.markedBy === "external_system"
+                ? "QR Code Scan"
+                : "Manual Entry",
           };
         }
       } else if (attendanceType === "meeting") {
         const physicalMeetingAttendance = todayPhysicalAttendance.find(
-          (entry) => (entry?.type === "qr" || entry?.type === "manual") && entry?.status === "Present"
+          (entry) =>
+            (entry?.type === "qr" || entry?.type === "manual") &&
+            entry?.status === "Present"
         );
         const onlineMeetingAttendances = todayOnlineAttendance.filter(
-          (entry) => entry?.type === "online_attendance" && entry?.status === "Present"
+          (entry) =>
+            entry?.type === "online_attendance" &&
+            entry?.status === "Present"
         );
+
         const infoList = [];
 
         if (physicalMeetingAttendance) {
           infoList.push({
             type: physicalMeetingAttendance.type === "manual" ? "Manual" : "Meeting",
-            time: physicalMeetingAttendance.timeMarked || physicalMeetingAttendance.date,
-            method: physicalMeetingAttendance.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
+            rawType: physicalMeetingAttendance.type,
+            time:
+              physicalMeetingAttendance.timeMarked || physicalMeetingAttendance.date,
+            method:
+              physicalMeetingAttendance.markedBy === "external_system"
+                ? "QR Code Scan"
+                : "Manual Method",
           });
         }
 
         onlineMeetingAttendances.forEach((entry) => {
           infoList.push({
             type: "Online Meeting",
+            rawType: "online_attendance",
             time: entry.timeMarked || entry.date,
-            method: entry.markedBy === "csv_upload_system" ? "CSV Upload" : "Manual Entry",
+            method:
+              entry.markedBy === "csv_upload_system"
+                ? "CSV Upload"
+                : "Manual Entry",
             meetingName: entry.meetingName || "N/A",
           });
         });
@@ -362,21 +403,43 @@ class InternRepository {
         }
       } else {
         const infoList = [];
-        todayPhysicalAttendance.filter((entry) => entry?.status === "Present").forEach((entry) => {
-          infoList.push({
-            type: entry.type === "daily_qr" ? "Daily" : entry.type === "manual" ? "Manual" : "Meeting",
-            time: entry.timeMarked || entry.date,
-            method: entry.markedBy === "external_system" ? "QR Code Scan" : "Manual Entry",
+
+        todayPhysicalAttendance
+          .filter((entry) => entry?.status === "Present")
+          .forEach((entry) => {
+            infoList.push({
+              type:
+                entry.type === "daily_qr"
+                  ? "Daily"
+                  : entry.type === "manual"
+                  ? "Manual"
+                  : "Meeting",
+              rawType: entry.type,
+              time: entry.timeMarked || entry.date,
+              method:
+                entry.markedBy === "external_system"
+                  ? "QR Code Scan"
+                  : entry.type === "manual"
+                  ? "Manual Method"
+                  : "Manual Entry",
+            });
           });
-        });
-        todayOnlineAttendance.filter((entry) => entry?.status === "Present").forEach((entry) => {
-          infoList.push({
-            type: "Online Meeting",
-            time: entry.timeMarked || entry.date,
-            method: entry.markedBy === "csv_upload_system" ? "CSV Upload" : "Manual Entry",
-            meetingName: entry.meetingName || "N/A",
+
+        todayOnlineAttendance
+          .filter((entry) => entry?.status === "Present")
+          .forEach((entry) => {
+            infoList.push({
+              type: "Online Meeting",
+              rawType: "online_attendance",
+              time: entry.timeMarked || entry.date,
+              method:
+                entry.markedBy === "csv_upload_system"
+                  ? "CSV Upload"
+                  : "Manual Entry",
+              meetingName: entry.meetingName || "N/A",
+            });
           });
-        });
+
         if (infoList.length > 0) {
           hasRelevantAttendance = true;
           attendanceInfo = infoList.length === 1 ? infoList[0] : infoList;
@@ -384,17 +447,112 @@ class InternRepository {
       }
 
       if (hasRelevantAttendance) {
+        const traineeId = String(intern.Trainee_ID || intern.traineeId || "");
+        const traineeName = intern.Trainee_Name || intern.traineeName || "";
+        const fieldOfSpecialization =
+          intern.field_of_spec_name || intern.fieldOfSpecialization || "";
+        const institute = intern.Institute || intern.institute || "";
+
         attendedInterns.push({
           _id: intern._id,
-          traineeId: intern.Trainee_ID || intern.traineeId,
-          traineeName: intern.Trainee_Name || intern.traineeName,
-          fieldOfSpecialization: intern.field_of_spec_name || intern.fieldOfSpecialization,
-          attendanceInfo,
+          internId: String(intern._id),
+          traineeId,
+          Trainee_ID: traineeId,
+          traineeName,
+          Trainee_Name: traineeName,
+          fieldOfSpecialization,
+          field_of_spec_name: fieldOfSpecialization,
+          institute,
+          Institute: institute,
+          Training_StartDate: intern.Training_StartDate,
+          Training_EndDate: intern.Training_EndDate,
+          Trainee_Email: intern.Trainee_Email,
+          Trainee_HomeAddress: intern.Trainee_HomeAddress,
+          attendanceInfo: attendanceInfo,
         });
       }
     });
 
     return attendedInterns;
+  }
+
+  static async clearAttendance(internId, date, type = "manual") {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
+
+    intern.attendance = (intern.attendance || []).filter((entry) => {
+      const sameDay = isSameDay(entry.date, date);
+      const sameType = (entry.type || "manual") === type;
+      return !(sameDay && sameType);
+    });
+
+    return await intern.save({ validateBeforeSave: false });
+  }
+
+  static async updateAttendanceForSpecificDate(
+    internId,
+    date,
+    status,
+    type = null,
+    clear = false
+  ) {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
+
+    const targetDate = new Date(date).setHours(0, 0, 0, 0);
+
+    if (clear) {
+      intern.attendance = (intern.attendance || []).filter((entry) => {
+        const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
+        const sameDate = entryDate === targetDate;
+        const sameType = type ? entry.type === type : true;
+        return !(sameDate && sameType);
+      });
+
+      return await intern.save({ validateBeforeSave: false });
+    }
+
+    const existingAttendance = (intern.attendance || []).find((entry) => {
+      const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
+      const sameDate = entryDate === targetDate;
+      const sameType = type ? entry.type === type : true;
+      return sameDate && sameType;
+    });
+
+    if (existingAttendance) {
+      existingAttendance.status = status;
+      if (type) {
+        existingAttendance.type = type;
+      }
+    } else {
+      intern.attendance.push({
+        date: new Date(date),
+        status,
+        ...(type ? { type } : {}),
+      });
+    }
+
+    return await intern.save({ validateBeforeSave: false });
+  }
+
+  static async addAvailableDay(id, day) {
+    return await Intern.findByIdAndUpdate(
+      id,
+      { $addToSet: { availableDays: day } },
+      { new: true }
+    );
+  }
+
+  static async removeAvailableDay(id, day) {
+    return await Intern.findByIdAndUpdate(
+      id,
+      { $pull: { availableDays: day } },
+      { new: true }
+    );
+  }
+
+  static async findByTraineeId(traineeId) {
+    return await Intern.findOne({ Trainee_ID: traineeId });
   }
 }
 
