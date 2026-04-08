@@ -12,6 +12,10 @@ import {
   Activity,
   Timer,
   Monitor,
+  Briefcase,
+  CheckCircle2,
+  XCircle,
+  MinusCircle,
 } from "lucide-react";
 import { fetchTodayAttendanceByType } from "../../api/internApi";
 import { toast } from "react-hot-toast";
@@ -71,6 +75,13 @@ const getNormalizedRecord = (record) => {
 const buildFormattedLog = (log) => {
   const normalizedRecords = (log.attendanceRecords || []).map(getNormalizedRecord);
 
+  let status = "Unmarked";
+  if ((log.attendanceRecords || []).some((record) => record.status === "Present")) {
+    status = "Present";
+  } else if ((log.attendanceRecords || []).some((record) => record.status === "Absent")) {
+    status = "Absent";
+  }
+
   return {
     ...log,
     attendanceRecords: normalizedRecords,
@@ -79,6 +90,7 @@ const buildFormattedLog = (log) => {
     times: normalizedRecords.map((record) =>
       record.type === "Online Meeting" ? "" : formatTime(record.time)
     ),
+    status,
   };
 };
 
@@ -86,6 +98,33 @@ const shouldShowForActiveTab = (rawType, activeAttendanceType) => {
   if (activeAttendanceType === "all") return true;
   if (activeAttendanceType === "daily") return rawType === "daily_qr";
   return ["manual", "qr", "online_attendance"].includes(rawType);
+};
+
+const getStatusBadge = (status) => {
+  if (status === "Present") {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+        <CheckCircle2 className="h-3 w-3 mr-1" />
+        Present
+      </span>
+    );
+  }
+
+  if (status === "Absent") {
+    return (
+      <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+        <XCircle className="h-3 w-3 mr-1" />
+        Absent
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+      <MinusCircle className="h-3 w-3 mr-1" />
+      Unmarked
+    </span>
+  );
 };
 
 const InternHistory = () => {
@@ -107,6 +146,7 @@ const InternHistory = () => {
       ).trim();
       const institute = safeString(log.institute ?? log.Institute ?? "", "").trim();
       const internId = safeString(log._id ?? log.internId ?? "", "");
+      const status = safeString(log.status ?? log.attendanceStatus ?? "Present", "Present").trim();
       const key = traineeId || internId || `row-${index}`;
 
       if (!groupedLogs[key]) {
@@ -117,6 +157,7 @@ const InternHistory = () => {
           traineeName,
           fieldOfSpecialization,
           institute,
+          status,
           attendanceRecords: [],
         };
       }
@@ -133,6 +174,7 @@ const InternHistory = () => {
           type: info.type,
           method: info.method,
           time: info.time || info.timeMarked || info.date,
+          status: info.status || status || "Present",
         });
       });
     });
@@ -149,9 +191,7 @@ const InternHistory = () => {
           setIsRefreshing(true);
         }
 
-        const attendanceType =
-          activeAttendanceType === "all" ? null : activeAttendanceType;
-
+        const attendanceType = activeAttendanceType === "all" ? null : activeAttendanceType;
         const logs = await fetchTodayAttendanceByType(attendanceType);
 
         if (logs) {
@@ -218,7 +258,10 @@ const InternHistory = () => {
           if (nextLogs[existingIndex].attendanceRecords.length === 0) {
             nextLogs.splice(existingIndex, 1);
           } else {
-            nextLogs[existingIndex] = buildFormattedLog(nextLogs[existingIndex]);
+            nextLogs[existingIndex] = buildFormattedLog({
+              ...nextLogs[existingIndex],
+              status: "Unmarked",
+            });
           }
 
           return nextLogs;
@@ -239,15 +282,18 @@ const InternHistory = () => {
           time: detail.timeMarked,
         });
 
+        newRecord.status = detail.status || "Present";
+
         if (existingIndex === -1) {
           nextLogs.unshift(
             buildFormattedLog({
-              key: traineeId || internId || `${Date.now()}`,
+              key: traineeId || internId || `row-${Date.now()}-${Math.round(Math.random() * 100000)}`,
               internId,
               traineeId,
               traineeName,
               fieldOfSpecialization: detail.fieldOfSpecialization || "",
               institute: detail.institute || "",
+              status: detail.status || "Present",
               attendanceRecords: [newRecord],
             })
           );
@@ -259,9 +305,9 @@ const InternHistory = () => {
           traineeId: traineeId || nextLogs[existingIndex].traineeId,
           traineeName: traineeName || nextLogs[existingIndex].traineeName,
           fieldOfSpecialization:
-            detail.fieldOfSpecialization ||
-            nextLogs[existingIndex].fieldOfSpecialization,
+            detail.fieldOfSpecialization || nextLogs[existingIndex].fieldOfSpecialization,
           institute: detail.institute || nextLogs[existingIndex].institute,
+          status: detail.status || nextLogs[existingIndex].status || "Present",
           attendanceRecords: [
             newRecord,
             ...nextLogs[existingIndex].attendanceRecords.filter(
@@ -271,7 +317,6 @@ const InternHistory = () => {
         };
 
         nextLogs[existingIndex] = buildFormattedLog(nextLogs[existingIndex]);
-
         return nextLogs;
       });
     };
@@ -285,8 +330,14 @@ const InternHistory = () => {
   const filteredLogs = attendanceLogs.filter((log) => {
     const traineeId = safeString(log.traineeId, "").toLowerCase();
     const traineeName = safeString(log.traineeName, "").toLowerCase();
+    const fieldOfSpecialization = safeString(log.fieldOfSpecialization, "").toLowerCase();
     const term = searchTerm.toLowerCase();
-    return traineeId.includes(term) || traineeName.includes(term);
+
+    return (
+      traineeId.includes(term) ||
+      traineeName.includes(term) ||
+      fieldOfSpecialization.includes(term)
+    );
   });
 
   return (
@@ -294,9 +345,7 @@ const InternHistory = () => {
       <div className="p-6 border-b border-gray-100">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-800">
-              Today&apos;s Marked Attendance
-            </h3>
+            <h3 className="text-lg font-semibold text-gray-800">Today&apos;s Marked Attendance</h3>
             <p className="text-gray-500 text-sm mt-1">
               Trainees who have checked in today • {filteredLogs.length} trainees
               {isRefreshing && <span className="text-blue-600 ml-2">• Updating...</span>}
@@ -326,7 +375,7 @@ const InternHistory = () => {
             </div>
 
             <div className="flex gap-2">
-              <div className="relative w-full sm:w-64">
+              <div className="relative w-full sm:w-72">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
                 </div>
@@ -335,7 +384,7 @@ const InternHistory = () => {
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search trainees..."
+                  placeholder="Search trainees or specialization..."
                   className="pl-10 pr-4 py-2 w-full bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
 
@@ -355,11 +404,7 @@ const InternHistory = () => {
                 className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Refresh attendance data"
               >
-                <RefreshCw
-                  className={`h-4 w-4 ${
-                    isLoading || isRefreshing ? "animate-spin" : ""
-                  }`}
-                />
+                <RefreshCw className={`h-4 w-4 ${isLoading || isRefreshing ? "animate-spin" : ""}`} />
               </button>
             </div>
           </div>
@@ -390,6 +435,12 @@ const InternHistory = () => {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Specialization
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Attendance Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,6 +467,17 @@ const InternHistory = () => {
                       <User className="h-4 w-4 text-gray-400 mr-2" />
                       {log.traineeName || "N/A"}
                     </div>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    <div className="flex items-center">
+                      <Briefcase className="h-4 w-4 text-gray-400 mr-2" />
+                      {log.fieldOfSpecialization || "N/A"}
+                    </div>
+                  </td>
+
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                    {getStatusBadge(log.status)}
                   </td>
 
                   <td className="px-6 py-4 text-sm text-gray-500">
@@ -467,19 +529,13 @@ const InternHistory = () => {
             {searchTerm ? (
               <>
                 <Search className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No matching records
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Try adjusting your search term
-                </p>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No matching records</h3>
+                <p className="mt-1 text-sm text-gray-500">Try adjusting your search term</p>
               </>
             ) : (
               <>
                 <Calendar className="mx-auto h-12 w-12 text-gray-300" />
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No attendance records
-                </h3>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No attendance records</h3>
                 <p className="mt-1 text-sm text-gray-500">
                   {activeAttendanceType === "daily"
                     ? "No daily attendance records found for today"
@@ -509,8 +565,7 @@ const InternHistory = () => {
 
             {searchTerm && filteredLogs.length !== attendanceLogs.length && (
               <p className="text-sm text-gray-500">
-                (Filtered from{" "}
-                <span className="font-medium">{attendanceLogs.length}</span> total)
+                (Filtered from <span className="font-medium">{attendanceLogs.length}</span> total)
               </p>
             )}
           </div>
