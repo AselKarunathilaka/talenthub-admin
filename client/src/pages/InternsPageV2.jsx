@@ -4,8 +4,18 @@ import { clearAttendance, markAttendance } from "../api/internApi";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import { toast, Toaster } from "react-hot-toast";
-import { Search, Filter, Calendar, Users } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Calendar,
+  Users,
+  ChevronLeft,
+  ChevronRight,
+  FileDown,
+} from "lucide-react";
 import InternHistory from "../components/interns/InternHistory";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 
@@ -16,6 +26,9 @@ const InternsPageV2 = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedSpecialization, setSelectedSpecialization] = useState("");
   const [savingAttendance, setSavingAttendance] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const internsPerPage = 10;
 
   const fetchInterns = async (dateToFetch = selectedDate) => {
     try {
@@ -37,6 +50,10 @@ const InternsPageV2 = () => {
     fetchInterns(selectedDate);
   }, [selectedDate]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, selectedSpecialization, selectedDate]);
+
   const specializations = useMemo(() => {
     return Array.from(
       new Set(
@@ -50,24 +67,36 @@ const InternsPageV2 = () => {
     ).sort();
   }, [interns]);
 
-  const filteredInterns = interns.filter((intern) => {
-    const searchTermLower = searchTerm.toLowerCase();
-    const traineeId = String(intern.traineeId ?? "").toLowerCase();
-    const traineeName = String(intern.traineeName ?? "").toLowerCase();
-    const team = String(intern.team ?? "").toLowerCase();
+  const filteredInterns = useMemo(() => {
+    return interns.filter((intern) => {
+      const searchTermLower = searchTerm.toLowerCase();
+      const traineeId = String(intern.traineeId ?? "").toLowerCase();
+      const traineeName = String(intern.traineeName ?? "").toLowerCase();
+      const team = String(intern.team ?? "").toLowerCase();
 
-    const matchesSearchTerm =
-      traineeId.includes(searchTermLower) ||
-      traineeName.includes(searchTermLower) ||
-      team.includes(searchTermLower) ||
-      !searchTerm;
+      const matchesSearchTerm =
+        traineeId.includes(searchTermLower) ||
+        traineeName.includes(searchTermLower) ||
+        team.includes(searchTermLower) ||
+        !searchTerm;
 
-    const specializationMatch =
-      selectedSpecialization === "" ||
-      intern.fieldOfSpecialization === selectedSpecialization;
+      const specializationMatch =
+        selectedSpecialization === "" ||
+        intern.fieldOfSpecialization === selectedSpecialization;
 
-    return matchesSearchTerm && specializationMatch;
-  });
+      return matchesSearchTerm && specializationMatch;
+    });
+  }, [interns, searchTerm, selectedSpecialization]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredInterns.length / internsPerPage)
+  );
+
+  const paginatedInterns = filteredInterns.slice(
+    (currentPage - 1) * internsPerPage,
+    currentPage * internsPerPage
+  );
 
   const emitAttendanceRealtimeUpdate = (
     intern,
@@ -95,13 +124,13 @@ const InternsPageV2 = () => {
 
   const handleMarkAttendance = async (id, status, shouldClear = false) => {
     if (!id) {
-      toast.error("Intern ID is missing or undefined!");
+      toast.error("Intern ID is missing.");
       return;
     }
 
     const intern = interns.find((item) => item._id === id);
     if (!intern) {
-      toast.error("Intern not found!");
+      toast.error("Intern not found.");
       return;
     }
 
@@ -120,11 +149,13 @@ const InternsPageV2 = () => {
       prevInterns.map((item) => {
         if (item._id !== id) return item;
 
-        const filteredAttendance = (item.attendance || []).filter(
-          (entry) =>
-            new Date(entry.date).toDateString() !==
-            new Date(selectedDate).toDateString()
-        );
+        const filteredAttendance = (item.attendance || []).filter((entry) => {
+          const sameDate =
+            new Date(entry.date).toDateString() ===
+            new Date(selectedDate).toDateString();
+          const sameType = (entry.type || "manual") === "manual";
+          return !(sameDate && sameType);
+        });
 
         return {
           ...item,
@@ -152,9 +183,7 @@ const InternsPageV2 = () => {
     try {
       if (shouldClear) {
         const response = await clearAttendance(id, selectedDate, "manual");
-        if (!response) {
-          throw new Error("Failed to clear attendance");
-        }
+        if (!response) throw new Error("Failed to clear attendance");
       } else {
         const response = await markAttendance(
           id,
@@ -163,9 +192,7 @@ const InternsPageV2 = () => {
           "manual",
           nowIso
         );
-        if (!response) {
-          throw new Error("Failed to mark attendance");
-        }
+        if (!response) throw new Error("Failed to mark attendance");
       }
 
       toast.success(
@@ -174,13 +201,7 @@ const InternsPageV2 = () => {
           : `Attendance marked as ${status} for ${intern.traineeName}`
       );
     } catch (error) {
-      console.error("Error updating attendance:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-        fullError: error,
-      });
-
+      console.error("Error updating attendance:", error);
       setInterns(previousInterns);
 
       emitAttendanceRealtimeUpdate(
@@ -195,7 +216,7 @@ const InternsPageV2 = () => {
         error.message ||
         "Unknown error occurred";
 
-      toast.error(`Error updating attendance: ${errorMessage}. Please try again.`);
+      toast.error(`Error updating attendance: ${errorMessage}`);
     } finally {
       setSavingAttendance((prev) => ({ ...prev, [id]: false }));
     }
@@ -203,11 +224,98 @@ const InternsPageV2 = () => {
 
   const handleAttendanceButtonDoubleClick = (event, intern, status) => {
     event.stopPropagation();
-
     if (savingAttendance[intern._id]) return;
-
     const shouldClear = intern.attendanceStatus === status;
     handleMarkAttendance(intern._id, status, shouldClear);
+  };
+
+  const exportDetailedPdf = () => {
+    const doc = new jsPDF("p", "mm", "a4");
+
+    const totalCount = filteredInterns.length;
+    const presentCount = filteredInterns.filter(
+      (intern) => intern.attendanceStatus === "Present"
+    ).length;
+    const absentCount = filteredInterns.filter(
+      (intern) => intern.attendanceStatus === "Absent"
+    ).length;
+    const neutralCount = filteredInterns.filter(
+      (intern) =>
+        !intern.attendanceStatus || intern.attendanceStatus === "Not Marked"
+    ).length;
+
+    doc.setFontSize(18);
+    doc.text("Intern Attendance Report", 14, 18);
+
+    doc.setFontSize(11);
+    doc.text(`Date: ${selectedDate}`, 14, 28);
+    doc.text(
+      `Generated At: ${new Date().toLocaleString()}`,
+      14,
+      35
+    );
+    doc.text(
+      `Specialization Filter: ${
+        selectedSpecialization || "All Specializations"
+      }`,
+      14,
+      42
+    );
+    doc.text(`Search Filter: ${searchTerm || "None"}`, 14, 49);
+    doc.text(`Total Attendance Count: ${totalCount}`, 14, 56);
+    doc.text(`Present: ${presentCount}`, 14, 63);
+    doc.text(`Absent: ${absentCount}`, 60, 63);
+    doc.text(`Not Marked: ${neutralCount}`, 100, 63);
+
+    autoTable(doc, {
+      startY: 72,
+      head: [
+        [
+          "Trainee ID",
+          "Name",
+          "Field of Specialization",
+          "Institute",
+          "Attendance",
+        ],
+      ],
+      body: filteredInterns.map((intern) => [
+        intern.traineeId || "",
+        intern.traineeName || "",
+        intern.fieldOfSpecialization || "",
+        intern.institute || "",
+        intern.attendanceStatus || "Not Marked",
+      ]),
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        overflow: "linebreak",
+      },
+      headStyles: {
+        fillColor: [22, 101, 52],
+      },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 45 },
+        2: { cellWidth: 42 },
+        3: { cellWidth: 45 },
+        4: { cellWidth: 25 },
+      },
+      didDrawPage: (data) => {
+        const pageSize = doc.internal.pageSize;
+        const pageHeight = pageSize.height
+          ? pageSize.height
+          : pageSize.getHeight();
+
+        doc.setFontSize(9);
+        doc.text(
+          `Page ${doc.internal.getNumberOfPages()}`,
+          data.settings.margin.left,
+          pageHeight - 8
+        );
+      },
+    });
+
+    doc.save(`Attendance_Report_${selectedDate}.pdf`);
   };
 
   return (
@@ -237,7 +345,7 @@ const InternsPageV2 = () => {
                 <h2 className="text-lg font-semibold text-gray-800">Filters</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="relative">
                   <Search
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -277,22 +385,39 @@ const InternsPageV2 = () => {
                     </option>
                   ))}
                 </select>
+
+                <button
+                  onClick={exportDetailedPdf}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition"
+                >
+                  <FileDown size={18} />
+                  Export PDF
+                </button>
               </div>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="p-6 border-b">
-                <h2 className="text-xl font-semibold text-gray-800">
-                  Intern Attendance
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Double-click Present or Absent to mark attendance. Double-click
-                  the active button again to clear it.
-                </p>
+              <div className="p-6 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">
+                    Intern Attendance
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Double-click Present or Absent to mark attendance. Double-click the active button again to clear it.
+                  </p>
+                </div>
+
+                <div className="text-sm text-gray-500">
+                  Showing {(currentPage - 1) * internsPerPage + 1}-
+                  {Math.min(currentPage * internsPerPage, filteredInterns.length)} of{" "}
+                  {filteredInterns.length}
+                </div>
               </div>
 
               {loading ? (
-                <div className="p-10 text-center text-gray-500">Loading interns...</div>
+                <div className="p-10 text-center text-gray-500">
+                  Loading interns...
+                </div>
               ) : (
                 <>
                   <div className="overflow-x-auto">
@@ -318,8 +443,8 @@ const InternsPageV2 = () => {
                       </thead>
 
                       <tbody>
-                        {filteredInterns.length > 0 ? (
-                          filteredInterns.map((intern) => (
+                        {paginatedInterns.length > 0 ? (
+                          paginatedInterns.map((intern) => (
                             <tr key={intern._id} className="hover:bg-gray-50">
                               <td className="p-4 border-b">{intern.traineeId}</td>
                               <td className="p-4 border-b">{intern.traineeName}</td>
@@ -356,8 +481,7 @@ const InternsPageV2 = () => {
                                         : ""
                                     }`}
                                   >
-                                    {savingAttendance[intern._id] &&
-                                    intern.attendanceStatus === "Present"
+                                    {savingAttendance[intern._id]
                                       ? "Saving..."
                                       : "✅ Present"}
                                   </button>
@@ -387,8 +511,7 @@ const InternsPageV2 = () => {
                                         : ""
                                     }`}
                                   >
-                                    {savingAttendance[intern._id] &&
-                                    intern.attendanceStatus === "Absent"
+                                    {savingAttendance[intern._id]
                                       ? "Saving..."
                                       : "❌ Absent"}
                                   </button>
@@ -398,10 +521,7 @@ const InternsPageV2 = () => {
                           ))
                         ) : (
                           <tr>
-                            <td
-                              colSpan="5"
-                              className="p-8 text-center text-gray-500"
-                            >
+                            <td colSpan="5" className="p-8 text-center text-gray-500">
                               No interns found.
                             </td>
                           </tr>
@@ -410,10 +530,33 @@ const InternsPageV2 = () => {
                     </table>
                   </div>
 
-                  <p className="mt-3 px-6 pb-6 text-sm text-gray-500">
-                    Double-click Present or Absent to mark attendance.
-                    Double-click the active button again to clear it.
-                  </p>
+                  {filteredInterns.length > 0 && (
+                    <div className="flex items-center justify-between px-6 py-4 border-t bg-gray-50">
+                      <button
+                        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="inline-flex items-center gap-2 px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        <ChevronLeft size={16} />
+                        Previous
+                      </button>
+
+                      <div className="text-sm font-medium text-gray-700">
+                        Page {currentPage} of {totalPages}
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                        }
+                        disabled={currentPage === totalPages}
+                        className="inline-flex items-center gap-2 px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                      >
+                        Next
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>

@@ -14,17 +14,6 @@ const isWithinRange = (value, start, end) => {
   return !Number.isNaN(date.getTime()) && date >= start && date <= end;
 };
 
-const isSameDay = (left, right) => {
-  const leftDate = new Date(left);
-  const rightDate = new Date(right);
-
-  if (Number.isNaN(leftDate.getTime()) || Number.isNaN(rightDate.getTime())) {
-    return false;
-  }
-
-  return leftDate.setHours(0, 0, 0, 0) === rightDate.setHours(0, 0, 0, 0);
-};
-
 class InternRepository {
   static async addIntern(data) {
     const intern = new Intern(data);
@@ -49,18 +38,20 @@ class InternRepository {
     });
   }
 
+  static async findByTraineeId(traineeId) {
+    return await Intern.findOne({ Trainee_ID: traineeId });
+  }
+
   static async getAttendanceStats() {
     const interns = await Intern.find();
     const stats = { present: 0, absent: 0 };
 
     interns.forEach((intern) => {
-      if (intern.attendance.length > 0) {
-        const latestAttendance = intern.attendance[intern.attendance.length - 1];
-        if (latestAttendance.status === "Present") {
-          stats.present++;
-        } else {
-          stats.absent++;
-        }
+      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
+      if (attendance.length > 0) {
+        const latestAttendance = attendance[attendance.length - 1];
+        if (latestAttendance.status === "Present") stats.present++;
+        else if (latestAttendance.status === "Absent") stats.absent++;
       }
     });
 
@@ -75,53 +66,45 @@ class InternRepository {
     timeMarked = null
   ) {
     try {
-      console.log("Repository: Marking attendance for intern:", internId);
-
-      if (!internId) {
-        throw new Error("Intern ID is required");
-      }
+      if (!internId) throw new Error("Intern ID is required");
 
       if (!mongoose.Types.ObjectId.isValid(internId)) {
-        console.error("Invalid ObjectId format:", internId);
         throw new Error("Invalid intern ID format");
       }
 
       const intern = await Intern.findById(internId);
-      if (!intern) {
-        console.error("Intern not found with ID:", internId);
-        throw new Error("Intern not found");
-      }
+      if (!intern) throw new Error("Intern not found");
 
-      console.log("Found intern:", intern.Trainee_Name);
+      if (!Array.isArray(intern.attendance)) {
+        intern.attendance = [];
+      }
 
       const attendanceDate = new Date(date).setHours(0, 0, 0, 0);
       const actualTimeMarked = timeMarked || new Date();
 
-      const existingAttendanceIndex = intern.attendance.findIndex(
-        (entry) =>
-          new Date(entry.date).setHours(0, 0, 0, 0) === attendanceDate &&
-          entry.type === type
-      );
+      const existingAttendanceIndex = intern.attendance.findIndex((entry) => {
+        const sameDate =
+          new Date(entry.date).setHours(0, 0, 0, 0) === attendanceDate;
+        const sameType = (entry.type || "manual") === type;
+        return sameDate && sameType;
+      });
 
       if (existingAttendanceIndex !== -1) {
-        console.log("Updating existing attendance entry for type:", type);
         intern.attendance[existingAttendanceIndex].status = status;
-        intern.attendance[existingAttendanceIndex].timeMarked = actualTimeMarked;
+        intern.attendance[existingAttendanceIndex].timeMarked =
+          actualTimeMarked;
+        intern.attendance[existingAttendanceIndex].type = type;
       } else {
-        console.log("Adding new attendance entry for type:", type);
         intern.attendance.push({
-          date: date,
+          date,
           status,
           type,
           timeMarked: actualTimeMarked,
         });
       }
 
-      const savedIntern = await intern.save({ validateBeforeSave: false });
-      console.log("Attendance saved successfully");
-      return savedIntern;
+      return await intern.save({ validateBeforeSave: false });
     } catch (error) {
-      console.error("Error in markAttendance repository:", error);
       throw error;
     }
   }
@@ -129,6 +112,10 @@ class InternRepository {
   static async updateAttendance(internId, date, status) {
     const intern = await Intern.findById(internId);
     if (!intern) throw new Error("Intern not found");
+
+    if (!Array.isArray(intern.attendance)) {
+      intern.attendance = [];
+    }
 
     const attendanceIndex = intern.attendance.findIndex(
       (entry) =>
@@ -140,6 +127,86 @@ class InternRepository {
       intern.attendance[attendanceIndex].status = status;
     } else {
       intern.attendance.push({ date: new Date(date), status });
+    }
+
+    return await intern.save({ validateBeforeSave: false });
+  }
+
+  static async clearAttendance(internId, date, type = "manual") {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
+
+    if (!Array.isArray(intern.attendance)) {
+      intern.attendance = [];
+    }
+
+    const targetDate = new Date(date).setHours(0, 0, 0, 0);
+
+    const originalLength = intern.attendance.length;
+
+    intern.attendance = intern.attendance.filter((entry) => {
+      const sameDate =
+        new Date(entry.date).setHours(0, 0, 0, 0) === targetDate;
+      const sameType = (entry.type || "manual") === type;
+      return !(sameDate && sameType);
+    });
+
+    if (intern.attendance.length === originalLength) {
+      return intern;
+    }
+
+    return await intern.save({ validateBeforeSave: false });
+  }
+
+  static async updateAttendanceForSpecificDate(
+    internId,
+    date,
+    status,
+    type = null,
+    clear = false
+  ) {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
+
+    if (!Array.isArray(intern.attendance)) {
+      intern.attendance = [];
+    }
+
+    const targetDate = new Date(date).setHours(0, 0, 0, 0);
+
+    if (clear) {
+      const originalLength = intern.attendance.length;
+
+      intern.attendance = intern.attendance.filter((entry) => {
+        const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
+        const sameDate = entryDate === targetDate;
+        const sameType = type ? (entry.type || "manual") === type : true;
+        return !(sameDate && sameType);
+      });
+
+      if (intern.attendance.length === originalLength) {
+        return intern;
+      }
+
+      return await intern.save({ validateBeforeSave: false });
+    }
+
+    const existingAttendance = intern.attendance.find((entry) => {
+      const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
+      const sameDate = entryDate === targetDate;
+      const sameType = type ? (entry.type || "manual") === type : true;
+      return sameDate && sameType;
+    });
+
+    if (existingAttendance) {
+      existingAttendance.status = status;
+      if (type) existingAttendance.type = type;
+    } else {
+      intern.attendance.push({
+        date: new Date(date),
+        status,
+        ...(type ? { type } : {}),
+      });
     }
 
     return await intern.save({ validateBeforeSave: false });
@@ -162,12 +229,11 @@ class InternRepository {
   }
 
   static async removeFromTeam(internId) {
-    const updatedIntern = await Intern.findByIdAndUpdate(
+    return await Intern.findByIdAndUpdate(
       internId,
       { $set: { team: "" } },
       { new: true }
     );
-    return updatedIntern;
   }
 
   static async removeIntern(internId) {
@@ -180,7 +246,7 @@ class InternRepository {
 
   static async getAllTeams() {
     try {
-      const teams = await Intern.aggregate([
+      return await Intern.aggregate([
         { $match: { team: { $ne: "" } } },
         { $group: { _id: "$team", members: { $push: "$$ROOT" } } },
         {
@@ -191,7 +257,6 @@ class InternRepository {
           },
         },
       ]);
-      return teams;
     } catch (error) {
       throw new Error("Error fetching teams: " + error.message);
     }
@@ -202,6 +267,7 @@ class InternRepository {
       { team: oldTeamName },
       { $set: { team: newTeamName } }
     );
+
     return {
       modifiedCount: result.modifiedCount,
       message: `Successfully updated ${result.modifiedCount} interns from ${oldTeamName} to ${newTeamName}`,
@@ -213,6 +279,7 @@ class InternRepository {
       { team: teamName },
       { $set: { team: "" } }
     );
+
     return {
       deletedCount: result.modifiedCount,
       message: `Team "${teamName}" deleted - ${result.modifiedCount} interns removed`,
@@ -220,12 +287,11 @@ class InternRepository {
   }
 
   static async assignSingleToTeam(internId, teamName) {
-    const updatedIntern = await Intern.findByIdAndUpdate(
+    return await Intern.findByIdAndUpdate(
       internId,
       { $set: { team: teamName } },
       { new: true }
     );
-    return updatedIntern;
   }
 
   static async getAttendanceStatsForToday() {
@@ -285,6 +351,7 @@ class InternRepository {
       const dailyAttendance = todayPhysicalAttendance.find(
         (entry) => entry?.type === "daily_qr"
       );
+
       if (dailyAttendance?.status === "Present") stats.dailyAttendance.present++;
       else if (dailyAttendance?.status === "Absent") stats.dailyAttendance.absent++;
 
@@ -345,6 +412,7 @@ class InternRepository {
         const dailyAttendance = todayPhysicalAttendance.find(
           (entry) => entry?.type === "daily_qr" && entry?.status === "Present"
         );
+
         if (dailyAttendance) {
           hasRelevantAttendance = true;
           attendanceInfo = {
@@ -363,6 +431,7 @@ class InternRepository {
             (entry?.type === "qr" || entry?.type === "manual") &&
             entry?.status === "Present"
         );
+
         const onlineMeetingAttendances = todayOnlineAttendance.filter(
           (entry) =>
             entry?.type === "online_attendance" &&
@@ -464,75 +533,12 @@ class InternRepository {
           field_of_spec_name: fieldOfSpecialization,
           institute,
           Institute: institute,
-          Training_StartDate: intern.Training_StartDate,
-          Training_EndDate: intern.Training_EndDate,
-          Trainee_Email: intern.Trainee_Email,
-          Trainee_HomeAddress: intern.Trainee_HomeAddress,
-          attendanceInfo: attendanceInfo,
+          attendanceInfo,
         });
       }
     });
 
     return attendedInterns;
-  }
-
-  static async clearAttendance(internId, date, type = "manual") {
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found");
-
-    intern.attendance = (intern.attendance || []).filter((entry) => {
-      const sameDay = isSameDay(entry.date, date);
-      const sameType = (entry.type || "manual") === type;
-      return !(sameDay && sameType);
-    });
-
-    return await intern.save({ validateBeforeSave: false });
-  }
-
-  static async updateAttendanceForSpecificDate(
-    internId,
-    date,
-    status,
-    type = null,
-    clear = false
-  ) {
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found");
-
-    const targetDate = new Date(date).setHours(0, 0, 0, 0);
-
-    if (clear) {
-      intern.attendance = (intern.attendance || []).filter((entry) => {
-        const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
-        const sameDate = entryDate === targetDate;
-        const sameType = type ? entry.type === type : true;
-        return !(sameDate && sameType);
-      });
-
-      return await intern.save({ validateBeforeSave: false });
-    }
-
-    const existingAttendance = (intern.attendance || []).find((entry) => {
-      const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
-      const sameDate = entryDate === targetDate;
-      const sameType = type ? entry.type === type : true;
-      return sameDate && sameType;
-    });
-
-    if (existingAttendance) {
-      existingAttendance.status = status;
-      if (type) {
-        existingAttendance.type = type;
-      }
-    } else {
-      intern.attendance.push({
-        date: new Date(date),
-        status,
-        ...(type ? { type } : {}),
-      });
-    }
-
-    return await intern.save({ validateBeforeSave: false });
   }
 
   static async addAvailableDay(id, day) {
@@ -549,10 +555,6 @@ class InternRepository {
       { $pull: { availableDays: day } },
       { new: true }
     );
-  }
-
-  static async findByTraineeId(traineeId) {
-    return await Intern.findOne({ Trainee_ID: traineeId });
   }
 }
 

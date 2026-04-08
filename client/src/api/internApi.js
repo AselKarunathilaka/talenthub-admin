@@ -75,9 +75,13 @@ export const markAttendance = async (
 
 export const clearAttendance = async (internId, date, type = "manual") => {
   try {
-    const response = await api.post(
-      `${INTERN_API_URL}/attendance/${internId}/clear`,
-      { date, type },
+    const response = await api.put(
+      `${INTERN_API_URL}/attendance/${internId}/update`,
+      {
+        date,
+        type,
+        clear: true,
+      },
       getAuthHeaders()
     );
     return response.data;
