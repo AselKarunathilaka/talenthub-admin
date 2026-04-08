@@ -98,6 +98,43 @@ const InternsPageV2 = () => {
     currentPage * internsPerPage
   );
 
+  const todayAttendanceRows = useMemo(() => {
+    return filteredInterns
+      .filter((intern) => {
+        const status = intern.attendanceStatus || "Not Marked";
+        return status === "Present" || status === "Absent";
+      })
+      .map((intern) => ({
+        key: intern._id,
+        internId: intern._id,
+        traineeId: String(intern.traineeId || ""),
+        traineeName: intern.traineeName || "N/A",
+        fieldOfSpecialization:
+          intern.fieldOfSpecialization || intern.field_of_spec_name || "",
+        institute: intern.institute || intern.Institute || "",
+        status: intern.attendanceStatus || "Not Marked",
+        attendanceType: "Manual",
+        rawType: "manual",
+        method: "Manual Method",
+        checkInTime: (() => {
+          const manualEntry = (intern.attendance || [])
+            .filter((entry) => {
+              const sameDate =
+                new Date(entry.date).toDateString() ===
+                new Date(selectedDate).toDateString();
+              return sameDate && (entry.type || "manual") === "manual";
+            })
+            .sort(
+              (a, b) =>
+                new Date(b.timeMarked || b.date) - new Date(a.timeMarked || a.date)
+            )[0];
+
+          return manualEntry?.timeMarked || manualEntry?.date || "";
+        })(),
+      }))
+      .sort((a, b) => a.traineeId.localeCompare(b.traineeId, undefined, { numeric: true }));
+  }, [filteredInterns, selectedDate]);
+
   const emitAttendanceRealtimeUpdate = (
     intern,
     status,
@@ -426,6 +463,14 @@ const InternsPageV2 = () => {
     doc.save(`Attendance_Report_${selectedDate}.pdf`);
   };
 
+  const resetFrontendView = async () => {
+    setSearchTerm("");
+    setSelectedSpecialization("");
+    setCurrentPage(1);
+    toast.success("Frontend view reset. No database data was changed.");
+    await fetchInterns(selectedDate);
+  };
+
   return (
     <div className="flex h-screen bg-gray-100">
       <Sidebar />
@@ -453,7 +498,7 @@ const InternsPageV2 = () => {
                 <h2 className="text-lg font-semibold text-gray-800">Filters</h2>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                 <div className="relative">
                   <Search
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -500,6 +545,13 @@ const InternsPageV2 = () => {
                 >
                   <FileDown size={18} />
                   Export PDF
+                </button>
+
+                <button
+                  onClick={resetFrontendView}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition"
+                >
+                  Reset View
                 </button>
               </div>
             </div>
@@ -673,7 +725,10 @@ const InternsPageV2 = () => {
               )}
             </div>
 
-            <InternHistory />
+            <InternHistory
+              rows={todayAttendanceRows}
+              onResetView={resetFrontendView}
+            />
           </div>
         </main>
       </div>
