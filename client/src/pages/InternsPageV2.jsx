@@ -82,7 +82,7 @@ const InternsPageV2 = () => {
 
       const specializationMatch =
         selectedSpecialization === "" ||
-        intern.fieldOfSpecialization === selectedSpecialization;
+        (intern.fieldOfSpecialization || "") === selectedSpecialization;
 
       return matchesSearchTerm && specializationMatch;
     });
@@ -183,7 +183,9 @@ const InternsPageV2 = () => {
     try {
       if (shouldClear) {
         const response = await clearAttendance(id, selectedDate, "manual");
-        if (!response) throw new Error("Failed to clear attendance");
+        if (!response) {
+          throw new Error("Failed to clear attendance");
+        }
       } else {
         const response = await markAttendance(
           id,
@@ -192,7 +194,9 @@ const InternsPageV2 = () => {
           "manual",
           nowIso
         );
-        if (!response) throw new Error("Failed to mark attendance");
+        if (!response) {
+          throw new Error("Failed to mark attendance");
+        }
       }
 
       toast.success(
@@ -225,6 +229,7 @@ const InternsPageV2 = () => {
   const handleAttendanceButtonDoubleClick = (event, intern, status) => {
     event.stopPropagation();
     if (savingAttendance[intern._id]) return;
+
     const shouldClear = intern.attendanceStatus === status;
     handleMarkAttendance(intern._id, status, shouldClear);
   };
@@ -232,43 +237,87 @@ const InternsPageV2 = () => {
   const exportDetailedPdf = () => {
     const doc = new jsPDF("p", "mm", "a4");
 
-    const totalCount = filteredInterns.length;
-    const presentCount = filteredInterns.filter(
+    const markedInterns = filteredInterns.filter(
+      (intern) =>
+        intern.attendanceStatus === "Present" ||
+        intern.attendanceStatus === "Absent"
+    );
+
+    const presentCount = markedInterns.filter(
       (intern) => intern.attendanceStatus === "Present"
     ).length;
-    const absentCount = filteredInterns.filter(
+
+    const absentCount = markedInterns.filter(
       (intern) => intern.attendanceStatus === "Absent"
     ).length;
-    const neutralCount = filteredInterns.filter(
+
+    const unmarkedCount = filteredInterns.filter(
       (intern) =>
         !intern.attendanceStatus || intern.attendanceStatus === "Not Marked"
     ).length;
 
-    doc.setFontSize(18);
-    doc.text("Intern Attendance Report", 14, 18);
+    const specializationMap = {};
 
-    doc.setFontSize(11);
-    doc.text(`Date: ${selectedDate}`, 14, 28);
-    doc.text(
-      `Generated At: ${new Date().toLocaleString()}`,
-      14,
-      35
+    filteredInterns.forEach((intern) => {
+      const spec =
+        intern.fieldOfSpecialization ||
+        intern.field_of_spec_name ||
+        "Unspecified";
+
+      if (!specializationMap[spec]) {
+        specializationMap[spec] = {
+          specialization: spec,
+          present: 0,
+          absent: 0,
+          unmarked: 0,
+        };
+      }
+
+      if (intern.attendanceStatus === "Present") {
+        specializationMap[spec].present += 1;
+      } else if (intern.attendanceStatus === "Absent") {
+        specializationMap[spec].absent += 1;
+      } else {
+        specializationMap[spec].unmarked += 1;
+      }
+    });
+
+    const specializationSummaryRows = Object.values(specializationMap).sort(
+      (a, b) => a.specialization.localeCompare(b.specialization)
     );
+
+    doc.setFillColor(245, 247, 250);
+    doc.rect(0, 0, 210, 32, "F");
+
+    doc.setTextColor(20, 40, 80);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.text("Intern Attendance Report", 14, 20);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+    doc.setTextColor(60, 60, 60);
+    doc.text(`Date: ${selectedDate}`, 14, 42);
+    doc.text(`Generated At: ${new Date().toLocaleString()}`, 14, 49);
     doc.text(
       `Specialization Filter: ${
         selectedSpecialization || "All Specializations"
       }`,
       14,
-      42
+      56
     );
-    doc.text(`Search Filter: ${searchTerm || "None"}`, 14, 49);
-    doc.text(`Total Attendance Count: ${totalCount}`, 14, 56);
-    doc.text(`Present: ${presentCount}`, 14, 63);
-    doc.text(`Absent: ${absentCount}`, 60, 63);
-    doc.text(`Not Marked: ${neutralCount}`, 100, 63);
+    doc.text(`Search Filter: ${searchTerm || "None"}`, 14, 63);
+    doc.text(
+      `Marked Attendance Count: ${markedInterns.length}`,
+      14,
+      70
+    );
+    doc.text(`Present: ${presentCount}`, 14, 77);
+    doc.text(`Absent: ${absentCount}`, 55, 77);
+    doc.text(`Unmarked: ${unmarkedCount}`, 90, 77);
 
     autoTable(doc, {
-      startY: 72,
+      startY: 85,
       head: [
         [
           "Trainee ID",
@@ -278,12 +327,55 @@ const InternsPageV2 = () => {
           "Attendance",
         ],
       ],
-      body: filteredInterns.map((intern) => [
+      body: markedInterns.map((intern) => [
         intern.traineeId || "",
         intern.traineeName || "",
         intern.fieldOfSpecialization || "",
         intern.institute || "",
-        intern.attendanceStatus || "Not Marked",
+        intern.attendanceStatus || "",
+      ]),
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+        overflow: "linebreak",
+        valign: "middle",
+      },
+      headStyles: {
+        fillColor: [47, 132, 191],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      bodyStyles: {
+        textColor: 40,
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 251],
+      },
+      columnStyles: {
+        0: { cellWidth: 22 },
+        1: { cellWidth: 48 },
+        2: { cellWidth: 42 },
+        3: { cellWidth: 48 },
+        4: { cellWidth: 25 },
+      },
+      margin: { left: 14, right: 14 },
+    });
+
+    const tableEndY = doc.lastAutoTable.finalY + 10;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(13);
+    doc.setTextColor(20, 40, 80);
+    doc.text("Attendance Summary by Specialization", 14, tableEndY);
+
+    autoTable(doc, {
+      startY: tableEndY + 4,
+      head: [["Specialization", "Present", "Absent", "Unmarked"]],
+      body: specializationSummaryRows.map((row) => [
+        row.specialization,
+        String(row.present),
+        String(row.absent),
+        String(row.unmarked),
       ]),
       styles: {
         fontSize: 9,
@@ -292,24 +384,30 @@ const InternsPageV2 = () => {
       },
       headStyles: {
         fillColor: [22, 101, 52],
+        textColor: 255,
+        fontStyle: "bold",
+      },
+      alternateRowStyles: {
+        fillColor: [248, 249, 251],
       },
       columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 45 },
-        2: { cellWidth: 42 },
-        3: { cellWidth: 45 },
-        4: { cellWidth: 25 },
+        0: { cellWidth: 90 },
+        1: { cellWidth: 28, halign: "center" },
+        2: { cellWidth: 28, halign: "center" },
+        3: { cellWidth: 28, halign: "center" },
       },
-      didDrawPage: (data) => {
-        const pageSize = doc.internal.pageSize;
-        const pageHeight = pageSize.height
-          ? pageSize.height
-          : pageSize.getHeight();
+      margin: { left: 14, right: 14 },
+      didDrawPage: () => {
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageNumber = doc.internal.getNumberOfPages();
 
         doc.setFontSize(9);
+        doc.setTextColor(100);
+        doc.text(`Page ${pageNumber}`, 14, pageHeight - 8);
         doc.text(
-          `Page ${doc.internal.getNumberOfPages()}`,
-          data.settings.margin.left,
+          "SLTMobitel Internship Attendance System",
+          pageWidth - 78,
           pageHeight - 8
         );
       },
@@ -408,7 +506,11 @@ const InternsPageV2 = () => {
                 </div>
 
                 <div className="text-sm text-gray-500">
-                  Showing {(currentPage - 1) * internsPerPage + 1}-
+                  Showing{" "}
+                  {filteredInterns.length === 0
+                    ? 0
+                    : (currentPage - 1) * internsPerPage + 1}
+                  -
                   {Math.min(currentPage * internsPerPage, filteredInterns.length)} of{" "}
                   {filteredInterns.length}
                 </div>
