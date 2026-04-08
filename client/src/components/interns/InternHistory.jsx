@@ -5,7 +5,6 @@ import {
   X,
   Calendar,
   Search,
-  RefreshCw,
   Users,
   Activity,
   Timer,

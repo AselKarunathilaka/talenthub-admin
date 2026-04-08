@@ -28,7 +28,13 @@ const InternsPageV2 = () => {
   const [savingAttendance, setSavingAttendance] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Frontend-only neutral reset layer. Does NOT touch DB.
+  // key format: `${selectedDate}__${internId}`
+  const [frontendNeutralOverrides, setFrontendNeutralOverrides] = useState({});
+
   const internsPerPage = 10;
+
+  const makeOverrideKey = (date, internId) => `${date}__${internId}`;
 
   const fetchInterns = async (dateToFetch = selectedDate) => {
     try {
@@ -67,8 +73,22 @@ const InternsPageV2 = () => {
     ).sort();
   }, [interns]);
 
+  const internsWithEffectiveStatus = useMemo(() => {
+    return interns.map((intern) => {
+      const overrideKey = makeOverrideKey(selectedDate, intern._id);
+      const isNeutralized = frontendNeutralOverrides[overrideKey] === true;
+
+      return {
+        ...intern,
+        effectiveAttendanceStatus: isNeutralized
+          ? "Not Marked"
+          : intern.attendanceStatus || "Not Marked",
+      };
+    });
+  }, [interns, selectedDate, frontendNeutralOverrides]);
+
   const filteredInterns = useMemo(() => {
-    return interns.filter((intern) => {
+    return internsWithEffectiveStatus.filter((intern) => {
       const searchTermLower = searchTerm.toLowerCase();
       const traineeId = String(intern.traineeId ?? "").toLowerCase();
       const traineeName = String(intern.traineeName ?? "").toLowerCase();
@@ -86,7 +106,7 @@ const InternsPageV2 = () => {
 
       return matchesSearchTerm && specializationMatch;
     });
-  }, [interns, searchTerm, selectedSpecialization]);
+  }, [internsWithEffectiveStatus, searchTerm, selectedSpecialization]);
 
   const totalPages = Math.max(
     1,
@@ -101,38 +121,41 @@ const InternsPageV2 = () => {
   const todayAttendanceRows = useMemo(() => {
     return filteredInterns
       .filter((intern) => {
-        const status = intern.attendanceStatus || "Not Marked";
+        const status = intern.effectiveAttendanceStatus || "Not Marked";
         return status === "Present" || status === "Absent";
       })
-      .map((intern) => ({
-        key: intern._id,
-        internId: intern._id,
-        traineeId: String(intern.traineeId || ""),
-        traineeName: intern.traineeName || "N/A",
-        fieldOfSpecialization:
-          intern.fieldOfSpecialization || intern.field_of_spec_name || "",
-        institute: intern.institute || intern.Institute || "",
-        status: intern.attendanceStatus || "Not Marked",
-        attendanceType: "Manual",
-        rawType: "manual",
-        method: "Manual Method",
-        checkInTime: (() => {
-          const manualEntry = (intern.attendance || [])
-            .filter((entry) => {
-              const sameDate =
-                new Date(entry.date).toDateString() ===
-                new Date(selectedDate).toDateString();
-              return sameDate && (entry.type || "manual") === "manual";
-            })
-            .sort(
-              (a, b) =>
-                new Date(b.timeMarked || b.date) - new Date(a.timeMarked || a.date)
-            )[0];
+      .map((intern) => {
+        const manualEntry = (intern.attendance || [])
+          .filter((entry) => {
+            const sameDate =
+              new Date(entry.date).toDateString() ===
+              new Date(selectedDate).toDateString();
+            return sameDate && (entry.type || "manual") === "manual";
+          })
+          .sort(
+            (a, b) =>
+              new Date(b.timeMarked || b.date) -
+              new Date(a.timeMarked || a.date)
+          )[0];
 
-          return manualEntry?.timeMarked || manualEntry?.date || "";
-        })(),
-      }))
-      .sort((a, b) => a.traineeId.localeCompare(b.traineeId, undefined, { numeric: true }));
+        return {
+          key: intern._id,
+          internId: intern._id,
+          traineeId: String(intern.traineeId || ""),
+          traineeName: intern.traineeName || "N/A",
+          fieldOfSpecialization:
+            intern.fieldOfSpecialization || intern.field_of_spec_name || "",
+          institute: intern.institute || intern.Institute || "",
+          status: intern.effectiveAttendanceStatus || "Not Marked",
+          attendanceType: "Manual",
+          rawType: "manual",
+          method: "Manual Method",
+          checkInTime: manualEntry?.timeMarked || manualEntry?.date || "",
+        };
+      })
+      .sort((a, b) =>
+        a.traineeId.localeCompare(b.traineeId, undefined, { numeric: true })
+      );
   }, [filteredInterns, selectedDate]);
 
   const emitAttendanceRealtimeUpdate = (
@@ -181,6 +204,14 @@ const InternsPageV2 = () => {
     const nowIso = new Date().toISOString();
 
     setSavingAttendance((prev) => ({ ...prev, [id]: true }));
+
+    // User is actively changing this row again, so remove neutral override for this row.
+    const overrideKey = makeOverrideKey(selectedDate, id);
+    setFrontendNeutralOverrides((prev) => {
+      const next = { ...prev };
+      delete next[overrideKey];
+      return next;
+    });
 
     setInterns((prevInterns) =>
       prevInterns.map((item) => {
@@ -267,7 +298,8 @@ const InternsPageV2 = () => {
     event.stopPropagation();
     if (savingAttendance[intern._id]) return;
 
-    const shouldClear = intern.attendanceStatus === status;
+    const currentStatus = intern.effectiveAttendanceStatus || "Not Marked";
+    const shouldClear = currentStatus === status;
     handleMarkAttendance(intern._id, status, shouldClear);
   };
 
@@ -287,25 +319,24 @@ const InternsPageV2 = () => {
   };
 
   const exportDetailedPdf = () => {
-    const doc = new jsPDF("p", "mm", "a4");
-
     const markedInterns = filteredInterns.filter(
       (intern) =>
-        intern.attendanceStatus === "Present" ||
-        intern.attendanceStatus === "Absent"
+        intern.effectiveAttendanceStatus === "Present" ||
+        intern.effectiveAttendanceStatus === "Absent"
     );
 
     const presentCount = filteredInterns.filter(
-      (intern) => intern.attendanceStatus === "Present"
+      (intern) => intern.effectiveAttendanceStatus === "Present"
     ).length;
 
     const absentCount = filteredInterns.filter(
-      (intern) => intern.attendanceStatus === "Absent"
+      (intern) => intern.effectiveAttendanceStatus === "Absent"
     ).length;
 
     const unmarkedCount = filteredInterns.filter(
       (intern) =>
-        !intern.attendanceStatus || intern.attendanceStatus === "Not Marked"
+        !intern.effectiveAttendanceStatus ||
+        intern.effectiveAttendanceStatus === "Not Marked"
     ).length;
 
     const specializationMap = {};
@@ -325,9 +356,9 @@ const InternsPageV2 = () => {
         };
       }
 
-      if (intern.attendanceStatus === "Present") {
+      if (intern.effectiveAttendanceStatus === "Present") {
         specializationMap[spec].present += 1;
-      } else if (intern.attendanceStatus === "Absent") {
+      } else if (intern.effectiveAttendanceStatus === "Absent") {
         specializationMap[spec].absent += 1;
       } else {
         specializationMap[spec].unmarked += 1;
@@ -337,6 +368,8 @@ const InternsPageV2 = () => {
     const specializationSummaryRows = Object.values(specializationMap).sort(
       (a, b) => a.specialization.localeCompare(b.specialization)
     );
+
+    const doc = new jsPDF("p", "mm", "a4");
 
     doc.setFillColor(245, 247, 250);
     doc.rect(0, 0, 210, 32, "F");
@@ -380,7 +413,7 @@ const InternsPageV2 = () => {
         intern.traineeName || "",
         intern.fieldOfSpecialization || "",
         intern.institute || "",
-        intern.attendanceStatus || "",
+        intern.effectiveAttendanceStatus || "",
       ]),
       styles: {
         fontSize: 9,
@@ -414,9 +447,8 @@ const InternsPageV2 = () => {
 
     let summaryStartY = doc.lastAutoTable.finalY + 10;
     const pageHeight = doc.internal.pageSize.getHeight();
-    const minimumSpaceNeeded = 45;
 
-    if (summaryStartY + minimumSpaceNeeded > pageHeight - 20) {
+    if (summaryStartY + 45 > pageHeight - 20) {
       doc.addPage();
       summaryStartY = 20;
     }
@@ -463,12 +495,22 @@ const InternsPageV2 = () => {
     doc.save(`Attendance_Report_${selectedDate}.pdf`);
   };
 
-  const resetFrontendView = async () => {
+  const resetFrontendView = () => {
+    const neutralMap = {};
+    interns.forEach((intern) => {
+      neutralMap[makeOverrideKey(selectedDate, intern._id)] = true;
+    });
+
+    setFrontendNeutralOverrides((prev) => ({
+      ...prev,
+      ...neutralMap,
+    }));
+
     setSearchTerm("");
     setSelectedSpecialization("");
     setCurrentPage(1);
-    toast.success("Frontend view reset. No database data was changed.");
-    await fetchInterns(selectedDate);
+
+    toast.success("View reset to neutral. Database data was not changed.");
   };
 
   return (
@@ -631,12 +673,12 @@ const InternsPageV2 = () => {
                                     }
                                     disabled={savingAttendance[intern._id]}
                                     title={
-                                      intern.attendanceStatus === "Present"
+                                      intern.effectiveAttendanceStatus === "Present"
                                         ? "Double-click to clear Present"
                                         : "Double-click to mark Present"
                                     }
                                     className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                                      intern.attendanceStatus === "Present"
+                                      intern.effectiveAttendanceStatus === "Present"
                                         ? "bg-green-700 text-white"
                                         : "bg-green-100 text-gray-500 hover:bg-green-200"
                                     } ${
@@ -661,12 +703,12 @@ const InternsPageV2 = () => {
                                     }
                                     disabled={savingAttendance[intern._id]}
                                     title={
-                                      intern.attendanceStatus === "Absent"
+                                      intern.effectiveAttendanceStatus === "Absent"
                                         ? "Double-click to clear Absent"
                                         : "Double-click to mark Absent"
                                     }
                                     className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
-                                      intern.attendanceStatus === "Absent"
+                                      intern.effectiveAttendanceStatus === "Absent"
                                         ? "bg-red-700 text-white"
                                         : "bg-red-100 text-gray-500 hover:bg-red-200"
                                     } ${
