@@ -1,8 +1,4 @@
 const app = require("./app");
-const connectDB = require("./config/database");
-
-
-connectDB();
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
@@ -31,4 +27,3 @@ app.get("/api/health", (req, res) => {
 //   .then(response => response.json())
 //   .then(data => console.log("Success:", data))
 //   .catch(error => console.error("Error:", error));
-  

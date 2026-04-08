@@ -3,6 +3,7 @@ const cors = require("cors");
 // const helmet = require("helmet");
 // const rateLimit = require("express-rate-limit");
 
+const connectDB = require("./config/database");
 const authRoutes = require("./routes/authRoutes");
 const internRoutes = require("./routes/internRoutes");
 const uploadRoutes = require("./routes/uploadRoutes");
@@ -12,31 +13,21 @@ const onlineAttendanceRoutes = require("./routes/onlineAttendanceRoutes");
 
 const app = express();
 
+// Connect DB (works for local + serverless cold starts)
+connectDB();
+
 // Middleware
-// app.use(cors());
 app.use(cors({ origin: "*" }));
-// app.use(helmet());
 app.use(express.json());
 
-// Request logging middleware
-// Logging middleware (disabled in production)
-// app.use((req, res, next) => {
-//   console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
-//   if (req.method === 'POST' && req.body) {
-//     console.log('Request body:', JSON.stringify(req.body, null, 2));
-//   }
-//   next();
-// });
+// Health routes
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
 
-// // Rate limiting setup
-// const apiLimiter = rateLimit({
-//   windowMs: 15 * 60 * 1000, // 15 minutes
-//   max: 100, // limit each IP to 100 requests per window
-//   message: "Too many requests from this IP, please try again later",
-// });
-
-// // Apply rate limiting globally
-// app.use(apiLimiter);
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ message: "API is working" });
+});
 
 // Routes
 app.use("/api/auth", authRoutes);

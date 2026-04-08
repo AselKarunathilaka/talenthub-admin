@@ -1,11 +1,16 @@
 import axios from "axios";
 
-export const backendUrl = import.meta.env.VITE_BACKEND_URL;
+const rawBackendUrl =
+  import.meta.env.VITE_BACKEND_URL ||
+  import.meta.env.VITE_API_BASE_URL ||
+  "http://localhost:5001";
+
+export const backendUrl = rawBackendUrl.replace(/\/+$/, "");
 
 const isTokenExpired = (token) => {
   if (!token) return true;
   try {
-    const { exp } = JSON.parse(atob(token.split('.')[1])); 
+    const { exp } = JSON.parse(atob(token.split(".")[1]));
     return exp * 1000 < Date.now();
   } catch (error) {
     console.error("Invalid token format:", error);
