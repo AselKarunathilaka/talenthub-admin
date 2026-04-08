@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Clock,
   User,
   X,
   Calendar,
   Search,
+  RefreshCw,
   Users,
   Activity,
   Timer,
@@ -85,15 +86,37 @@ const getTypeBadge = (type) => {
   );
 };
 
-const InternHistory = ({ rows = [], onResetView }) => {
+const InternHistory = ({ rows = [], onResetView, onRefreshData }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeAttendanceType, setActiveAttendanceType] = useState("all");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const runRefresh = async (showToast = false) => {
+    if (!onRefreshData) return;
+    try {
+      setIsRefreshing(true);
+      await onRefreshData(showToast);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      runRefresh(false);
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [onRefreshData]);
 
   const filteredLogs = useMemo(() => {
     return (rows || []).filter((row) => {
       const traineeId = safeString(row.traineeId, "").toLowerCase();
       const traineeName = safeString(row.traineeName, "").toLowerCase();
-      const specialization = safeString(row.fieldOfSpecialization, "").toLowerCase();
+      const specialization = safeString(
+        row.fieldOfSpecialization,
+        ""
+      ).toLowerCase();
       const type = safeString(row.attendanceType, "").toLowerCase();
       const term = searchTerm.toLowerCase();
 
@@ -173,8 +196,18 @@ const InternHistory = ({ rows = [], onResetView }) => {
               </div>
 
               <button
-                onClick={onResetView}
+                onClick={() => runRefresh(true)}
                 className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
+                title="Refresh latest data from database"
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+              </button>
+
+              <button
+                onClick={onResetView}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
                 title="Reset frontend view only"
               >
                 <RotateCcw className="h-4 w-4" />
@@ -294,7 +327,7 @@ const InternHistory = ({ rows = [], onResetView }) => {
 
           <div className="flex items-center gap-2 text-xs text-gray-400">
             <Clock className="h-3 w-3" />
-            <span>Uses current frontend page state</span>
+            <span>Refreshes from database every 10 seconds</span>
           </div>
         </div>
       )}

@@ -18,6 +18,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
+const STORAGE_KEY = "internAttendanceFrontendNeutralOverrides";
 
 const InternsPageV2 = () => {
   const [interns, setInterns] = useState([]);
@@ -27,18 +28,37 @@ const InternsPageV2 = () => {
   const [selectedSpecialization, setSelectedSpecialization] = useState("");
   const [savingAttendance, setSavingAttendance] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-
-  // Frontend-only neutral reset layer. Does NOT touch DB.
-  // key format: `${selectedDate}__${internId}`
   const [frontendNeutralOverrides, setFrontendNeutralOverrides] = useState({});
 
   const internsPerPage = 10;
 
   const makeOverrideKey = (date, internId) => `${date}__${internId}`;
 
-  const fetchInterns = async (dateToFetch = selectedDate) => {
+  useEffect(() => {
     try {
-      setLoading(true);
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        setFrontendNeutralOverrides(JSON.parse(saved));
+      }
+    } catch (error) {
+      console.error("Failed to load frontend reset state:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify(frontendNeutralOverrides)
+      );
+    } catch (error) {
+      console.error("Failed to save frontend reset state:", error);
+    }
+  }, [frontendNeutralOverrides]);
+
+  const fetchInterns = async (dateToFetch = selectedDate, showLoader = true) => {
+    try {
+      if (showLoader) setLoading(true);
       const response = await api.get(
         `/interns?date=${dateToFetch}`,
         getAuthHeaders()
@@ -48,7 +68,7 @@ const InternsPageV2 = () => {
       console.error("Error fetching interns:", error);
       toast.error("Failed to fetch intern data.");
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
@@ -205,7 +225,6 @@ const InternsPageV2 = () => {
 
     setSavingAttendance((prev) => ({ ...prev, [id]: true }));
 
-    // User is actively changing this row again, so remove neutral override for this row.
     const overrideKey = makeOverrideKey(selectedDate, id);
     setFrontendNeutralOverrides((prev) => {
       const next = { ...prev };
@@ -251,9 +270,7 @@ const InternsPageV2 = () => {
     try {
       if (shouldClear) {
         const response = await clearAttendance(id, selectedDate, "manual");
-        if (!response) {
-          throw new Error("Failed to clear attendance");
-        }
+        if (!response) throw new Error("Failed to clear attendance");
       } else {
         const response = await markAttendance(
           id,
@@ -262,9 +279,7 @@ const InternsPageV2 = () => {
           "manual",
           nowIso
         );
-        if (!response) {
-          throw new Error("Failed to mark attendance");
-        }
+        if (!response) throw new Error("Failed to mark attendance");
       }
 
       toast.success(
@@ -399,15 +414,13 @@ const InternsPageV2 = () => {
 
     autoTable(doc, {
       startY: 85,
-      head: [
-        [
-          "Trainee ID",
-          "Name",
-          "Field of Specialization",
-          "Institute",
-          "Attendance",
-        ],
-      ],
+      head: [[
+        "Trainee ID",
+        "Name",
+        "Field of Specialization",
+        "Institute",
+        "Attendance",
+      ]],
       body: markedInterns.map((intern) => [
         intern.traineeId || "",
         intern.traineeName || "",
@@ -440,9 +453,7 @@ const InternsPageV2 = () => {
         4: { cellWidth: 25 },
       },
       margin: { left: 14, right: 14 },
-      didDrawPage: () => {
-        addFooter(doc);
-      },
+      didDrawPage: () => addFooter(doc),
     });
 
     let summaryStartY = doc.lastAutoTable.finalY + 10;
@@ -487,9 +498,7 @@ const InternsPageV2 = () => {
         3: { cellWidth: 28, halign: "center" },
       },
       margin: { left: 14, right: 14 },
-      didDrawPage: () => {
-        addFooter(doc);
-      },
+      didDrawPage: () => addFooter(doc),
     });
 
     doc.save(`Attendance_Report_${selectedDate}.pdf`);
@@ -511,6 +520,11 @@ const InternsPageV2 = () => {
     setCurrentPage(1);
 
     toast.success("View reset to neutral. Database data was not changed.");
+  };
+
+  const refreshFromDatabase = async () => {
+    await fetchInterns(selectedDate, false);
+    toast.success("Attendance data refreshed from database.");
   };
 
   return (
@@ -770,6 +784,7 @@ const InternsPageV2 = () => {
             <InternHistory
               rows={todayAttendanceRows}
               onResetView={resetFrontendView}
+              onRefreshData={refreshFromDatabase}
             />
           </div>
         </main>
