@@ -13,7 +13,6 @@ import {
   Briefcase,
   CheckCircle2,
   XCircle,
-  RotateCcw,
 } from "lucide-react";
 
 const safeString = (value, fallback = "") => {
@@ -86,16 +85,16 @@ const getTypeBadge = (type) => {
   );
 };
 
-const InternHistory = ({ rows = [], onResetView, onRefreshData }) => {
+const InternHistory = ({ rows = [], onRefreshData }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeAttendanceType, setActiveAttendanceType] = useState("all");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const runRefresh = async (showToast = false) => {
+  const runRefresh = async () => {
     if (!onRefreshData) return;
     try {
       setIsRefreshing(true);
-      await onRefreshData(showToast);
+      await onRefreshData();
     } finally {
       setIsRefreshing(false);
     }
@@ -103,7 +102,7 @@ const InternHistory = ({ rows = [], onResetView, onRefreshData }) => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      runRefresh(false);
+      runRefresh();
     }, 10000);
 
     return () => clearInterval(interval);
@@ -196,21 +195,13 @@ const InternHistory = ({ rows = [], onResetView, onRefreshData }) => {
               </div>
 
               <button
-                onClick={() => runRefresh(true)}
+                onClick={runRefresh}
                 className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors"
                 title="Refresh latest data from database"
               >
                 <RefreshCw
                   className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
                 />
-              </button>
-
-              <button
-                onClick={onResetView}
-                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                title="Reset frontend view only"
-              >
-                <RotateCcw className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -323,11 +314,6 @@ const InternHistory = ({ rows = [], onResetView, onRefreshData }) => {
               Showing <span className="font-medium">{filteredLogs.length}</span>
               {searchTerm ? " matching" : ""} attendance records
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 text-xs text-gray-400">
-            <Clock className="h-3 w-3" />
-            <span>Refreshes from database every 10 seconds</span>
           </div>
         </div>
       )}

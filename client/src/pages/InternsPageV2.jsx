@@ -18,7 +18,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 const getTodayDate = () => new Date().toISOString().split("T")[0];
-const STORAGE_KEY = "internAttendanceFrontendNeutralOverrides";
+const STORAGE_KEY = "frontendAttendanceStateByDate";
 
 const InternsPageV2 = () => {
   const [interns, setInterns] = useState([]);
@@ -28,20 +28,20 @@ const InternsPageV2 = () => {
   const [selectedSpecialization, setSelectedSpecialization] = useState("");
   const [savingAttendance, setSavingAttendance] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
-  const [frontendNeutralOverrides, setFrontendNeutralOverrides] = useState({});
+  const [frontendAttendanceState, setFrontendAttendanceState] = useState({});
 
   const internsPerPage = 10;
 
-  const makeOverrideKey = (date, internId) => `${date}__${internId}`;
+  const makeKey = (date, internId) => `${date}__${internId}`;
 
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(STORAGE_KEY);
       if (saved) {
-        setFrontendNeutralOverrides(JSON.parse(saved));
+        setFrontendAttendanceState(JSON.parse(saved));
       }
     } catch (error) {
-      console.error("Failed to load frontend reset state:", error);
+      console.error("Failed to load frontend attendance state:", error);
     }
   }, []);
 
@@ -49,12 +49,12 @@ const InternsPageV2 = () => {
     try {
       sessionStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify(frontendNeutralOverrides)
+        JSON.stringify(frontendAttendanceState)
       );
     } catch (error) {
-      console.error("Failed to save frontend reset state:", error);
+      console.error("Failed to save frontend attendance state:", error);
     }
-  }, [frontendNeutralOverrides]);
+  }, [frontendAttendanceState]);
 
   const fetchInterns = async (dateToFetch = selectedDate, showLoader = true) => {
     try {
@@ -95,17 +95,15 @@ const InternsPageV2 = () => {
 
   const internsWithEffectiveStatus = useMemo(() => {
     return interns.map((intern) => {
-      const overrideKey = makeOverrideKey(selectedDate, intern._id);
-      const isNeutralized = frontendNeutralOverrides[overrideKey] === true;
+      const key = makeKey(selectedDate, intern._id);
+      const savedStatus = frontendAttendanceState[key];
 
       return {
         ...intern,
-        effectiveAttendanceStatus: isNeutralized
-          ? "Not Marked"
-          : intern.attendanceStatus || "Not Marked",
+        effectiveAttendanceStatus: savedStatus || "Not Marked",
       };
     });
-  }, [interns, selectedDate, frontendNeutralOverrides]);
+  }, [interns, selectedDate, frontendAttendanceState]);
 
   const filteredInterns = useMemo(() => {
     return internsWithEffectiveStatus.filter((intern) => {
@@ -144,62 +142,31 @@ const InternsPageV2 = () => {
         const status = intern.effectiveAttendanceStatus || "Not Marked";
         return status === "Present" || status === "Absent";
       })
-      .map((intern) => {
-        const manualEntry = (intern.attendance || [])
-          .filter((entry) => {
-            const sameDate =
-              new Date(entry.date).toDateString() ===
-              new Date(selectedDate).toDateString();
-            return sameDate && (entry.type || "manual") === "manual";
-          })
-          .sort(
-            (a, b) =>
-              new Date(b.timeMarked || b.date) -
-              new Date(a.timeMarked || a.date)
-          )[0];
-
-        return {
-          key: intern._id,
-          internId: intern._id,
-          traineeId: String(intern.traineeId || ""),
-          traineeName: intern.traineeName || "N/A",
-          fieldOfSpecialization:
-            intern.fieldOfSpecialization || intern.field_of_spec_name || "",
-          institute: intern.institute || intern.Institute || "",
-          status: intern.effectiveAttendanceStatus || "Not Marked",
-          attendanceType: "Manual",
-          rawType: "manual",
-          method: "Manual Method",
-          checkInTime: manualEntry?.timeMarked || manualEntry?.date || "",
-        };
-      })
+      .map((intern) => ({
+        key: intern._id,
+        internId: intern._id,
+        traineeId: String(intern.traineeId || ""),
+        traineeName: intern.traineeName || "N/A",
+        fieldOfSpecialization:
+          intern.fieldOfSpecialization || intern.field_of_spec_name || "",
+        institute: intern.institute || intern.Institute || "",
+        status: intern.effectiveAttendanceStatus,
+        attendanceType: "Manual",
+        rawType: "manual",
+        method: "Manual Method",
+        checkInTime: new Date().toISOString(),
+      }))
       .sort((a, b) =>
         a.traineeId.localeCompare(b.traineeId, undefined, { numeric: true })
       );
-  }, [filteredInterns, selectedDate]);
+  }, [filteredInterns]);
 
-  const emitAttendanceRealtimeUpdate = (
-    intern,
-    status,
-    shouldClear,
-    timeMarked
-  ) => {
-    window.dispatchEvent(
-      new CustomEvent("attendance:changed", {
-        detail: {
-          internId: intern._id,
-          traineeId: String(intern.traineeId ?? ""),
-          traineeName: intern.traineeName ?? "",
-          fieldOfSpecialization: intern.fieldOfSpecialization ?? "",
-          institute: intern.institute ?? "",
-          attendanceDate: selectedDate,
-          type: "manual",
-          status,
-          cleared: shouldClear,
-          timeMarked,
-        },
-      })
-    );
+  const writeFrontendStatus = (internId, status) => {
+    const key = makeKey(selectedDate, internId);
+    setFrontendAttendanceState((prev) => ({
+      ...prev,
+      [key]: status,
+    }));
   };
 
   const handleMarkAttendance = async (id, status, shouldClear = false) => {
@@ -214,58 +181,10 @@ const InternsPageV2 = () => {
       return;
     }
 
-    const previousInterns = interns.map((item) => ({
-      ...item,
-      attendance: Array.isArray(item.attendance) ? [...item.attendance] : [],
-    }));
-
-    const previousStatus = intern.attendanceStatus || "Not Marked";
     const nextStatus = shouldClear ? "Not Marked" : status;
-    const nowIso = new Date().toISOString();
 
     setSavingAttendance((prev) => ({ ...prev, [id]: true }));
-
-    const overrideKey = makeOverrideKey(selectedDate, id);
-    setFrontendNeutralOverrides((prev) => {
-      const next = { ...prev };
-      delete next[overrideKey];
-      return next;
-    });
-
-    setInterns((prevInterns) =>
-      prevInterns.map((item) => {
-        if (item._id !== id) return item;
-
-        const filteredAttendance = (item.attendance || []).filter((entry) => {
-          const sameDate =
-            new Date(entry.date).toDateString() ===
-            new Date(selectedDate).toDateString();
-          const sameType = (entry.type || "manual") === "manual";
-          return !(sameDate && sameType);
-        });
-
-        return {
-          ...item,
-          attendanceStatus: nextStatus,
-          attendance:
-            nextStatus === "Not Marked"
-              ? filteredAttendance
-              : [
-                  ...filteredAttendance,
-                  {
-                    date: selectedDate,
-                    status: nextStatus,
-                    type: "manual",
-                    timeMarked: nowIso,
-                    timestamp: nowIso,
-                  },
-                ],
-          updatedAt: nowIso,
-        };
-      })
-    );
-
-    emitAttendanceRealtimeUpdate(intern, nextStatus, shouldClear, nowIso);
+    writeFrontendStatus(id, nextStatus);
 
     try {
       if (shouldClear) {
@@ -277,7 +196,7 @@ const InternsPageV2 = () => {
           status,
           selectedDate,
           "manual",
-          nowIso
+          new Date().toISOString()
         );
         if (!response) throw new Error("Failed to mark attendance");
       }
@@ -289,21 +208,11 @@ const InternsPageV2 = () => {
       );
     } catch (error) {
       console.error("Error updating attendance:", error);
-      setInterns(previousInterns);
-
-      emitAttendanceRealtimeUpdate(
-        intern,
-        previousStatus,
-        previousStatus === "Not Marked",
-        nowIso
+      toast.error(
+        `Error updating attendance: ${
+          error.response?.data?.message || error.message || "Unknown error"
+        }`
       );
-
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Unknown error occurred";
-
-      toast.error(`Error updating attendance: ${errorMessage}`);
     } finally {
       setSavingAttendance((prev) => ({ ...prev, [id]: false }));
     }
@@ -349,9 +258,7 @@ const InternsPageV2 = () => {
     ).length;
 
     const unmarkedCount = filteredInterns.filter(
-      (intern) =>
-        !intern.effectiveAttendanceStatus ||
-        intern.effectiveAttendanceStatus === "Not Marked"
+      (intern) => intern.effectiveAttendanceStatus === "Not Marked"
     ).length;
 
     const specializationMap = {};
@@ -505,16 +412,12 @@ const InternsPageV2 = () => {
   };
 
   const resetFrontendView = () => {
-    const neutralMap = {};
+    const next = { ...frontendAttendanceState };
     interns.forEach((intern) => {
-      neutralMap[makeOverrideKey(selectedDate, intern._id)] = true;
+      next[makeKey(selectedDate, intern._id)] = "Not Marked";
     });
 
-    setFrontendNeutralOverrides((prev) => ({
-      ...prev,
-      ...neutralMap,
-    }));
-
+    setFrontendAttendanceState(next);
     setSearchTerm("");
     setSelectedSpecialization("");
     setCurrentPage(1);
@@ -524,7 +427,6 @@ const InternsPageV2 = () => {
 
   const refreshFromDatabase = async () => {
     await fetchInterns(selectedDate, false);
-    toast.success("Attendance data refreshed from database.");
   };
 
   return (
@@ -783,7 +685,6 @@ const InternsPageV2 = () => {
 
             <InternHistory
               rows={todayAttendanceRows}
-              onResetView={resetFrontendView}
               onRefreshData={refreshFromDatabase}
             />
           </div>

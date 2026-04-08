@@ -1,9 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  fetchInterns,
-  fetchAttendanceStatsForToday,
-  fetchAttendanceStatsByType,
-} from "../api/internApi";
+import { fetchInterns } from "../api/internApi";
 import DashboardCard from "../components/DashboardCard";
 import Layout from "../components/Layout";
 import {
@@ -14,7 +10,6 @@ import {
   Clock,
   Calendar,
   LayoutDashboardIcon,
-  RefreshCw,
 } from "lucide-react";
 import { Bar } from "react-chartjs-2";
 import {
@@ -38,6 +33,9 @@ ChartJS.register(
   Legend
 );
 
+const STORAGE_KEY = "frontendAttendanceStateByDate";
+const getTodayDate = () => new Date().toISOString().split("T")[0];
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -57,49 +55,30 @@ const itemVariants = {
 
 const Dashboard = () => {
   const [internCount, setInternCount] = useState(0);
-  const [attendanceStatsByType, setAttendanceStatsByType] = useState({
-    dailyAttendance: { present: 0, absent: 0 },
-    meetingAttendance: { present: 0, absent: 0 },
-    total: { present: 0, absent: 0 },
-  });
-  const [attendanceStatsToday, setAttendanceStatsToday] = useState({
-    present: 0,
-    absent: 0,
-  });
   const [loading, setLoading] = useState(true);
-  const [miniRefreshing, setMiniRefreshing] = useState(false);
   const [error, setError] = useState(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
   const [activeTab, setActiveTab] = useState("daily");
+  const [frontendState, setFrontendState] = useState({});
 
-  const loadData = async (showLoader = false) => {
+  const today = getTodayDate();
+
+  const loadDashboardBase = async () => {
     try {
-      if (showLoader) setLoading(true);
-      else setMiniRefreshing(true);
-
+      setLoading(true);
       setError(null);
       setIsNetworkError(false);
 
-      const [interns, statsToday, statsByType] = await Promise.all([
-        fetchInterns(),
-        fetchAttendanceStatsForToday(),
-        fetchAttendanceStatsByType(),
-      ]);
-
+      const interns = await fetchInterns();
       setInternCount(Array.isArray(interns) ? interns.length : 0);
-      setAttendanceStatsToday(
-        statsToday || {
-          present: 0,
-          absent: 0,
-        }
-      );
-      setAttendanceStatsByType(
-        statsByType || {
-          dailyAttendance: { present: 0, absent: 0 },
-          meetingAttendance: { present: 0, absent: 0 },
-          total: { present: 0, absent: 0 },
-        }
-      );
+
+      try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        setFrontendState(saved ? JSON.parse(saved) : {});
+      } catch (storageError) {
+        console.error("Failed to read frontend attendance state:", storageError);
+        setFrontendState({});
+      }
     } catch (error) {
       console.error("Dashboard fetch error:", error);
       setError(error.message || "Error fetching dashboard data.");
@@ -112,47 +91,60 @@ const Dashboard = () => {
       }
     } finally {
       setLoading(false);
-      setMiniRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadData(true);
+    loadDashboardBase();
 
-    const interval = setInterval(() => {
-      loadData(false);
-    }, 10000);
-
-    const handleOnline = () => {
-      loadData(false);
+    const handleFocus = () => {
+      try {
+        const saved = sessionStorage.getItem(STORAGE_KEY);
+        setFrontendState(saved ? JSON.parse(saved) : {});
+      } catch (storageError) {
+        console.error("Failed to reload frontend attendance state:", storageError);
+      }
     };
 
-    window.addEventListener("online", handleOnline);
+    const handleStorageLikeUpdate = () => {
+      handleFocus();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    window.addEventListener("attendance-frontend-state-changed", handleStorageLikeUpdate);
 
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("focus", handleFocus);
+      window.removeEventListener("attendance-frontend-state-changed", handleStorageLikeUpdate);
     };
   }, []);
 
+  const todayStatuses = useMemo(() => {
+    return Object.entries(frontendState)
+      .filter(([key]) => key.startsWith(`${today}__`))
+      .map(([, value]) => value);
+  }, [frontendState, today]);
+
+  const presentCount = todayStatuses.filter((value) => value === "Present").length;
+  const absentCount = todayStatuses.filter((value) => value === "Absent").length;
+
+  const attendanceStatsByType = useMemo(() => {
+    return {
+      dailyAttendance: { present: 0, absent: 0 },
+      meetingAttendance: { present: presentCount, absent: 0 },
+      total: { present: presentCount, absent: absentCount },
+    };
+  }, [presentCount, absentCount]);
+
   const activeData = useMemo(() => {
-    if (activeTab === "daily") {
-      return attendanceStatsByType?.dailyAttendance || { present: 0, absent: 0 };
-    }
-    if (activeTab === "meeting") {
-      return attendanceStatsByType?.meetingAttendance || {
-        present: 0,
-        absent: 0,
-      };
-    }
-    return attendanceStatsByType?.total || { present: 0, absent: 0 };
+    if (activeTab === "daily") return attendanceStatsByType.dailyAttendance;
+    if (activeTab === "meeting") return attendanceStatsByType.meetingAttendance;
+    return attendanceStatsByType.total;
   }, [activeTab, attendanceStatsByType]);
 
   const totalInterns = internCount || 0;
   const presentPercentage =
-    totalInterns > 0
-      ? Math.round(((activeData?.present || 0) / totalInterns) * 100)
-      : 0;
+    totalInterns > 0 ? Math.round(((activeData.present || 0) / totalInterns) * 100) : 0;
 
   const chartData = {
     labels: ["Present", "Absent"],
@@ -164,7 +156,7 @@ const Dashboard = () => {
             : activeTab === "meeting"
             ? "Meeting Attendance"
             : "Total Attendance",
-        data: [activeData?.present || 0, activeData?.absent || 0],
+        data: [activeData.present || 0, activeData.absent || 0],
         backgroundColor: ["rgba(34, 197, 94, 0.8)", "rgba(239, 68, 68, 0.8)"],
         borderColor: ["rgb(22, 163, 74)", "rgb(220, 38, 38)"],
         borderWidth: 1,
@@ -274,7 +266,7 @@ const Dashboard = () => {
             </div>
           )}
           <button
-            onClick={() => loadData(true)}
+            onClick={loadDashboardBase}
             className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition duration-300"
           >
             Retry
@@ -307,13 +299,7 @@ const Dashboard = () => {
             </div>
           </div>
 
-          <div className="mt-4 md:mt-0 flex items-center gap-3">
-            {miniRefreshing && (
-              <span className="text-sm text-gray-500 inline-flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Refreshing...
-              </span>
-            )}
+          <div className="mt-4 md:mt-0">
             <span className="bg-blue-50 text-blue-700 py-2 px-4 rounded-full text-sm font-medium">
               {new Date().toLocaleDateString("en-US", {
                 weekday: "long",
@@ -341,7 +327,7 @@ const Dashboard = () => {
           <motion.div variants={itemVariants}>
             <DashboardCard
               title="Daily Attendance"
-              count={attendanceStatsByType?.dailyAttendance?.present || 0}
+              count={0}
               color="bg-green-500"
               icon={<CheckCircle size={50} className="text-green-600" />}
             />
@@ -350,7 +336,7 @@ const Dashboard = () => {
           <motion.div variants={itemVariants}>
             <DashboardCard
               title="Meeting Attendance"
-              count={attendanceStatsByType?.meetingAttendance?.present || 0}
+              count={presentCount}
               color="bg-purple-500"
               icon={<CheckCircle size={50} className="text-purple-600" />}
             />
@@ -359,7 +345,7 @@ const Dashboard = () => {
           <motion.div variants={itemVariants}>
             <DashboardCard
               title="Total Present"
-              count={attendanceStatsByType?.total?.present || 0}
+              count={presentCount}
               color="bg-indigo-500"
               icon={<CheckCircle size={50} className="text-indigo-600" />}
             />
@@ -368,7 +354,7 @@ const Dashboard = () => {
           <motion.div variants={itemVariants}>
             <DashboardCard
               title="Total Absent"
-              count={attendanceStatsByType?.total?.absent || 0}
+              count={absentCount}
               color="bg-red-500"
               icon={<XCircle size={50} className="text-red-600" />}
             />
@@ -443,18 +429,18 @@ const Dashboard = () => {
                   Today&apos;s Snapshot
                 </div>
                 <div className="text-gray-700 text-sm">
-                  Present: <span className="font-semibold">{attendanceStatsToday.present || 0}</span>
+                  Present: <span className="font-semibold">{presentCount}</span>
                   {" • "}
-                  Absent: <span className="font-semibold">{attendanceStatsToday.absent || 0}</span>
+                  Absent: <span className="font-semibold">{absentCount}</span>
                 </div>
               </div>
 
               <div className="rounded-xl p-4 bg-gray-50">
                 <div className="text-sm text-gray-700 font-semibold mb-1">
-                  Auto Refresh
+                  Frontend Attendance State
                 </div>
                 <div className="text-gray-600 text-sm">
-                  Dashboard refreshes from the latest database data every 10 seconds.
+                  Dashboard updates only when attendance is marked or when the view is reset.
                 </div>
               </div>
             </div>
