@@ -163,10 +163,15 @@ const InternsPageV2 = () => {
 
   const writeFrontendStatus = (internId, status) => {
     const key = makeKey(selectedDate, internId);
-    setFrontendAttendanceState((prev) => ({
-      ...prev,
-      [key]: status,
-    }));
+    setFrontendAttendanceState((prev) => {
+      const next = {
+        ...prev,
+        [key]: status,
+      };
+
+      window.dispatchEvent(new Event("attendance-frontend-state-changed"));
+      return next;
+    });
   };
 
   const handleMarkAttendance = async (id, status, shouldClear = false) => {
@@ -418,6 +423,8 @@ const InternsPageV2 = () => {
     });
 
     setFrontendAttendanceState(next);
+    window.dispatchEvent(new Event("attendance-frontend-state-changed"));
+
     setSearchTerm("");
     setSelectedSpecialization("");
     setCurrentPage(1);

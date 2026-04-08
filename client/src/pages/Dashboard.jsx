@@ -131,7 +131,7 @@ const Dashboard = () => {
   const attendanceStatsByType = useMemo(() => {
     return {
       dailyAttendance: { present: 0, absent: 0 },
-      meetingAttendance: { present: presentCount, absent: 0 },
+      meetingAttendance: { present: presentCount, absent: absentCount },
       total: { present: presentCount, absent: absentCount },
     };
   }, [presentCount, absentCount]);

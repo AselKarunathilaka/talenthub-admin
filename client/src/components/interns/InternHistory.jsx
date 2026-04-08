@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Clock,
   User,
   X,
   Calendar,
@@ -14,6 +13,8 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
+
+const AUTO_REFRESH_INTERVAL_MS = 3 * 60 * 60 * 1000;
 
 const safeString = (value, fallback = "") => {
   if (value === null || value === undefined) return fallback;
@@ -92,6 +93,7 @@ const InternHistory = ({ rows = [], onRefreshData }) => {
 
   const runRefresh = async () => {
     if (!onRefreshData) return;
+
     try {
       setIsRefreshing(true);
       await onRefreshData();
@@ -101,9 +103,11 @@ const InternHistory = ({ rows = [], onRefreshData }) => {
   };
 
   useEffect(() => {
+    if (!onRefreshData) return undefined;
+
     const interval = setInterval(() => {
       runRefresh();
-    }, 10000);
+    }, AUTO_REFRESH_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [onRefreshData]);
