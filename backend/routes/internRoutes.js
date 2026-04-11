@@ -51,6 +51,9 @@ const {
   // Optional Filters (if you ever need them)
   getInternsByDay,
   getInternsByDayCount,
+
+  // Project check
+  checkInternProjects,
 } = require("../controllers/internController");
 
 const router = express.Router();
@@ -104,6 +107,9 @@ router.post("/upload-txt", upload.single("file"), uploadTXT);
 
 // =========================== AGREEMENT ===========================
 router.put("/:id/accept-agreement", acceptAgreement);
+
+// =========================== PROJECT CHECK ===========================
+router.get("/:id/projects/check", checkInternProjects);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);
