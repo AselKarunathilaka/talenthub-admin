@@ -22,6 +22,11 @@ const {
   triggerApprovedShortLeaveEmail,
 } = require("../controllers/adminController");
 const {
+  getPastInternLocations,
+  getPastInternDistrictCounts,
+  getPastInternSyncStats,
+} = require("../controllers/pastInternController");
+const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
 const {
@@ -86,6 +91,11 @@ router.get("/intern-locations", getAdminInternLocations);
 router.get("/district-counts", getDistrictCounts);
 
 router.get("/intern-location/:traineeId", getInternLocationById);
+
+// Past intern locations (served from DB — instant)
+router.get("/past-intern-locations", getPastInternLocations);
+router.get("/past-intern-district-counts", getPastInternDistrictCounts);
+router.get("/past-intern-sync-stats", getPastInternSyncStats);
 
 // Announcement routes (admin only)
 router.get("/announcements", getAllAnnouncements);
