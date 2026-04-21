@@ -76,13 +76,27 @@ const attendanceApi = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const today = new Date().toISOString().split("T")[0];
-    a.download = `Non_Attendance_Report_${today}.xlsx`;
+    // Use local date for filename — avoids UTC day-shift on CI/CD
+    const d = new Date();
+    const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    a.download = `Non_Attendance_Report_${localToday}.xlsx`;
     document.body.appendChild(a);
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+};
+
+// ── Timezone-safe "today" helper ─────────────────────────────────────────────
+// DO NOT use new Date().toISOString().split("T")[0] — that returns UTC date,
+// which is one day behind on CI/CD servers running in UTC when the user is in
+// Sri Lanka (UTC+5:30). Use local date parts instead.
+const getLocalToday = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -143,7 +157,9 @@ const TypeBadge = ({ type }) => {
 // ── Main Component ────────────────────────────────────────────────────────────
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
-  const today = new Date().toISOString().split("T")[0];
+
+  // Use local date parts — never toISOString() which returns UTC
+  const today = getLocalToday();
 
   const [selectedDate, setSelectedDate] = useState(today);
   const [data, setData] = useState(null);
@@ -783,7 +799,7 @@ const AdminInternAttendance = () => {
                     </div>
                   </div>
 
-                  {/* Desktop table — no horizontal scroll, Meeting column removed */}
+                  {/* Desktop table */}
                   <div className="hidden lg:block w-full">
                     <table className="w-full table-fixed divide-y divide-gray-100">
                       <thead className="bg-gray-50">

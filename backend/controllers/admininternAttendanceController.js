@@ -1,15 +1,18 @@
 const Intern = require("../models/Intern");
-const moment = require("moment");
+const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
 const WeeklyMeetingAttendanceService = require("../services/weeklymeetingattendanceservice");
 
+const TZ = "Asia/Colombo";
+
 // ---------------------------------------------------------------------------
-// Helper: Get interns present on a specific date
+// Helper: Get interns present on a specific date (LKT-aware)
 // ---------------------------------------------------------------------------
 async function getPresentsOnDate(dateStr) {
-  const targetDate = moment(dateStr, "YYYY-MM-DD").startOf("day");
+  // Interpret the date boundaries in Sri Lanka time, not UTC
+  const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
   const interns = await Intern.find({});
@@ -20,7 +23,8 @@ async function getPresentsOnDate(dateStr) {
     if (!intern.attendance || intern.attendance.length === 0) continue;
 
     const record = intern.attendance.find((r) => {
-      const recDate = moment(r.date);
+      // Convert the stored UTC date to LKT before comparing
+      const recDate = moment(r.date).tz(TZ);
       return (
         recDate.isSameOrAfter(targetDate) &&
         recDate.isBefore(nextDate) &&
@@ -38,14 +42,15 @@ async function getPresentsOnDate(dateStr) {
         institute: intern.Institute || "Not specified",
         team: intern.team || "Not specified",
         trainingStartDate: intern.Training_StartDate
-          ? moment(intern.Training_StartDate).format("MMM DD, YYYY")
+          ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
           : "Not specified",
         trainingEndDate: intern.Training_EndDate
-          ? moment(intern.Training_EndDate).format("MMM DD, YYYY")
+          ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
           : "Not specified",
         meetingName: record.meetingName || "—",
+        // Format timeMarked in Sri Lanka time
         timeMarked: record.timeMarked
-          ? moment(record.timeMarked).format("hh:mm A")
+          ? moment(record.timeMarked).tz(TZ).format("hh:mm A")
           : "—",
         type: record.type || "manual",
       });
@@ -136,9 +141,12 @@ exports.exportAttendanceExcel = async (req, res) => {
     excelData.push([]);
     excelData.push([
       "Report Generated:",
-      moment().format("MMMM DD, YYYY [at] h:mm A"),
+      moment().tz(TZ).format("MMMM DD, YYYY [at] h:mm A"),
     ]);
-    excelData.push(["Date:", moment(dateStr).format("MMMM DD, YYYY")]);
+    excelData.push([
+      "Date:",
+      moment.tz(dateStr, "YYYY-MM-DD", TZ).format("MMMM DD, YYYY"),
+    ]);
     excelData.push(["Total Present:", presentInterns.length]);
     excelData.push([]);
     excelData.push([]);
@@ -213,9 +221,16 @@ exports.exportAttendanceExcel = async (req, res) => {
     return res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// ---------------------------------------------------------------------------
+// GET /admin/attendance/export-non-attendance-excel
+// Downloads an Excel file of all interns who missed meetings in the past 14
+// working days (Sri Lanka calendar).
+// ---------------------------------------------------------------------------
 exports.exportNonAttendanceExcel = async (req, res) => {
   try {
-    const today = moment().startOf("day");
+    // Anchor today and the 14-day window to Sri Lanka time
+    const today = moment().tz(TZ).startOf("day");
     const fourteenDaysAgo = today.clone().subtract(14, "days");
 
     // ── Mirror the exact working-day + holiday logic from the service ──────
@@ -301,6 +316,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     const cursor = fourteenDaysAgo.clone();
     while (cursor.isSameOrBefore(today, "day")) {
       const dow = cursor.day();
+      // cursor is already TZ-aware so format() gives the LKT date string
       const dateStr = cursor.format("YYYY-MM-DD");
       if (dow !== 0 && dow !== 6 && !holidays.has(dateStr)) {
         workingDayStrings.add(dateStr);
@@ -314,15 +330,17 @@ exports.exportNonAttendanceExcel = async (req, res) => {
 
     for (const intern of interns) {
       // ── Skip new interns whose training started within the 14-day window ─
-      // Identical to WeeklyMeetingAttendanceService.isNewIntern()
       if (intern.Training_StartDate) {
-        const trainingStart = moment(intern.Training_StartDate).startOf("day");
+        const trainingStart = moment(intern.Training_StartDate)
+          .tz(TZ)
+          .startOf("day");
         if (trainingStart.isSameOrAfter(fourteenDaysAgo)) continue;
       }
 
-      // ── Check attendance on working days only (mirrors the service) ───────
+      // ── Check attendance on working days only ─────────────────────────────
+      // Convert stored UTC timestamp to LKT date string before comparing
       const attendedOnWorkingDay = (intern.attendance || []).some((r) => {
-        const dateStr = moment(r.date).format("YYYY-MM-DD");
+        const dateStr = moment(r.date).tz(TZ).format("YYYY-MM-DD");
         return workingDayStrings.has(dateStr) && r.status === "Present";
       });
 
@@ -337,8 +355,8 @@ exports.exportNonAttendanceExcel = async (req, res) => {
           const latest = allPresentRecords.reduce((a, b) =>
             moment(a.date).isAfter(moment(b.date)) ? a : b,
           );
-          // Mirror the service label: date + meeting name if available
-          lastMeetingDate = moment(latest.date).format("MMM DD, YYYY");
+          // Format the last-seen date in LKT
+          lastMeetingDate = moment(latest.date).tz(TZ).format("MMM DD, YYYY");
           if (latest.meetingName) {
             lastMeetingDate += ` — ${latest.meetingName}`;
           }
@@ -352,17 +370,17 @@ exports.exportNonAttendanceExcel = async (req, res) => {
           institute: intern.Institute || "Not specified",
           team: intern.team || "Not specified",
           trainingStartDate: intern.Training_StartDate
-            ? moment(intern.Training_StartDate).format("MMM DD, YYYY")
+            ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
             : "Not specified",
           trainingEndDate: intern.Training_EndDate
-            ? moment(intern.Training_EndDate).format("MMM DD, YYYY")
+            ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
             : "Not specified",
           lastMeetingDate,
         });
       }
     }
 
-    // Sort by Trainee ID ascending — same as the service
+    // Sort by Trainee ID ascending
     nonAttendees.sort((a, b) =>
       String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
     );
@@ -373,7 +391,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     excelData.push([]);
     excelData.push([
       "Report Generated:",
-      moment().format("MMMM DD, YYYY [at] h:mm A"),
+      moment().tz(TZ).format("MMMM DD, YYYY [at] h:mm A"),
     ]);
     excelData.push([
       "Period:",
@@ -428,7 +446,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       { wch: 20 },
       { wch: 20 },
       { wch: 20 },
-      { wch: 30 }, // wider to fit "MMM DD, YYYY — Meeting Name"
+      { wch: 30 },
     ];
 
     XLSX.utils.book_append_sheet(workbook, worksheet, "Non-Attendance Report");
@@ -436,7 +454,8 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     const tempDir = path.join(__dirname, "..", "temp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-    const today_str = moment().format("YYYY-MM-DD");
+    // Use LKT date for the filename
+    const today_str = moment().tz(TZ).format("YYYY-MM-DD");
     const filename = `Non_Attendance_Report_${today_str}.xlsx`;
     const filePath = path.join(tempDir, filename);
     XLSX.writeFile(workbook, filePath);
