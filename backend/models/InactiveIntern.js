@@ -13,10 +13,13 @@ const attendanceSchema = new mongoose.Schema({
   meetingName: { type: String },
 });
 
-// Store API-style keys as the canonical document shape so DB contains Trainee_* fields.
-const internSchema = new mongoose.Schema(
+const inactiveInternSchema = new mongoose.Schema(
   {
-    Trainee_ID: { type: String, required: true, unique: true },
+    // ✅ Preserve the exact same _id from the Intern document
+    _id: { type: mongoose.Schema.Types.ObjectId, required: true },
+
+    // All original Intern fields (identical to internSchema)
+    Trainee_ID: { type: String, required: true },
     Trainee_Name: { type: String, required: true },
     Trainee_HomeAddress: { type: String, default: "" },
     district: { type: String, default: "" },
@@ -27,7 +30,7 @@ const internSchema = new mongoose.Schema(
         enum: ["Point"],
       },
       coordinates: {
-        type: [Number], // [longitude, latitude]
+        type: [Number],
       },
     },
 
@@ -35,9 +38,8 @@ const internSchema = new mongoose.Schema(
     Training_EndDate: { type: Date },
     Trainee_Email: { type: String, default: "" },
     Institute: { type: String, default: "" },
-    field_of_spec_name: { type: String, required: true },
+    field_of_spec_name: { type: String, default: "" },
 
-    // keep other app-specific fields
     team: { type: String, default: "" },
     attendance: [attendanceSchema],
     availableDays: {
@@ -47,17 +49,26 @@ const internSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
-    isTestAccount: { type: Boolean, default: false },
-    password: { type: String, default: "" },
+
+    // ✅ Archival metadata — why/when this intern was archived
+    archivedAt: { type: Date, default: Date.now },
+    archiveReason: {
+      type: String,
+      enum: ["not_in_api", "manual_cleanup", "manual"],
+      default: "not_in_api",
+    },
+    // Preserve original timestamps from the Intern document
+    originalCreatedAt: { type: Date },
+    originalUpdatedAt: { type: Date },
   },
-  { timestamps: true },
+  {
+    timestamps: false, // We manage timestamps manually via originalCreatedAt/updatedAt
+    _id: false, // Prevent Mongoose from auto-generating a new _id
+  },
 );
 
-// Schema migration completed - now uses API-style fields as canonical
+inactiveInternSchema.index({ Trainee_ID: 1 });
+inactiveInternSchema.index({ archivedAt: -1 });
+inactiveInternSchema.index({ location: "2dsphere" }, { sparse: true });
 
-// Note: Unique index on Trainee_ID is declared via the field definition above.
-
-// IMPORTANT: GEO INDEX
-internSchema.index({ location: "2dsphere" });
-
-module.exports = mongoose.model("Intern", internSchema);
+module.exports = mongoose.model("InactiveIntern", inactiveInternSchema);

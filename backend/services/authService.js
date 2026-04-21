@@ -78,6 +78,36 @@ class AuthService {
     return { token, internId: intern._id, message: "Login successful!" }; // Return internId
   }
 
+  async internLogin(email, password) {
+    const intern = await InternRepository.findByEmail(email);
+    if (!intern) {
+      return { error: "Invalid email or password" };
+    }
+
+    if (!intern.isTestAccount) {
+      return {
+        error: "Email/password login is only available for test accounts.",
+      };
+    }
+
+    if (!intern.password) {
+      return { error: "No password set for this account." };
+    }
+
+    const isMatch = await bcrypt.compare(password, intern.password);
+    if (!isMatch) {
+      return { error: "Invalid email or password" };
+    }
+
+    const token = jwt.sign(
+      { id: intern._id, email: intern.Trainee_Email },
+      dotenv.jwtSecret,
+      { expiresIn: "1h" },
+    );
+
+    return { token, internId: intern._id, message: "Login successful!" };
+  }
+
   // Gate Staff Login
   async gateStaffLogin(email, password) {
     console.log("Gate staff login attempt:", email);

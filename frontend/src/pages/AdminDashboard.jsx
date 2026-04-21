@@ -868,6 +868,21 @@ const AdminDashboard = () => {
                     Intern Locations
                   </span>
                 </motion.button>
+
+                {/* 7. Attendance Viewer */}
+                <motion.button
+                  onClick={() => navigate("/admin/intern-attendance")}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 transition-colors duration-200 cursor-pointer"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-100">
+                    <FaCalendarCheck className="h-3.5 w-3.5 text-indigo-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    Attendance
+                  </span>
+                </motion.button>
               </div>
 
               {/* ── Thin Divider ── */}

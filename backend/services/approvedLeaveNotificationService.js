@@ -108,9 +108,41 @@ class ApprovedLeaveNotificationService {
   }
 
   /**
-   * Send the consolidated daily email — called only by the scheduler at 4 PM
+   * Build and return the Gmail nodemailer transporter.
+   * Reads credentials from GMAIL_USER / GMAIL_PASS env vars.
    */
-  static async sendApprovedLeavesEmail(approvedLeaves, recipientEmails) {
+  static _createTransporter() {
+    const gmailUser = process.env.GMAIL_USER;
+    const gmailPass = process.env.GMAIL_PASS;
+
+    if (!gmailUser || !gmailPass) {
+      throw new Error(
+        "Email config missing: GMAIL_USER and/or GMAIL_PASS not set",
+      );
+    }
+
+    return nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: gmailUser,
+        pass: gmailPass, // Gmail App Password (16-char, spaces allowed)
+      },
+      // Generous timeouts for Azure-hosted environments
+      connectionTimeout: 30000,
+      greetingTimeout: 15000,
+      socketTimeout: 30000,
+    });
+  }
+
+  /**
+   * Send the consolidated daily email.
+   * Called by the scheduler at 1:30 PM AND when the manual send button is triggered.
+   */
+  static async sendApprovedLeavesEmail(
+    approvedLeaves,
+    recipientEmails,
+    triggeredBy = "scheduler",
+  ) {
     let excelFilePath = null;
 
     try {
@@ -127,7 +159,7 @@ class ApprovedLeaveNotificationService {
       excelFilePath = this.generateApprovedLeavesExcel(approvedLeaves);
 
       const todayStr = moment().utcOffset("+05:30").format("MMM DD, YYYY");
-      const subject = `✅ Daily Approved Short Leave Report — ${approvedLeaves.length} Intern(s) — ${todayStr}`;
+      const subject = "Approved Intern Short Leave Report";
 
       // Build HTML table rows for interns (showing first 10 in email body)
       let tableRows = "";
@@ -154,7 +186,10 @@ class ApprovedLeaveNotificationService {
             </td>
           </tr>`;
       }
-
+      const reportTime =
+        triggeredBy === "scheduler"
+          ? "1:30 PM"
+          : moment().utcOffset("+05:30").format("h:mm A");
       const emailBody = `
 <!DOCTYPE html>
 <html>
@@ -187,7 +222,7 @@ class ApprovedLeaveNotificationService {
       <div class="summary">
         <h3 style="margin-top: 0;">📊 Daily Summary</h3>
         <p><strong>📅 Date:</strong> ${todayStr}</p>
-        <p><strong>⏰ Report Time:</strong> 1:30 PM (Sri Lanka Time)</p>
+        <p><strong>⏰ Report Time:</strong> ${reportTime} (Sri Lanka Time)</p>
         <p><strong>👥 Total Approved Interns Today:</strong> <span class="badge">${approvedLeaves.length}</span></p>
       </div>
       <div class="attachment-notice">
@@ -235,7 +270,7 @@ class ApprovedLeaveNotificationService {
 
       // Create mail options with attachment
       const mailOptions = {
-        from: process.env.SHORT_LEAVE_EMAIL || "internship-management-systems@slt.com.lk",
+        from: process.env.GMAIL_USER,
         to: recipientEmails.to.join(", "),
         cc: recipientEmails.cc.join(", "),
         subject,
@@ -245,46 +280,20 @@ class ApprovedLeaveNotificationService {
         ],
       };
 
-      // Validate email configuration
-      if (!process.env.SHORT_LEAVE_EMAIL) {
-        throw new Error(
-          "Email config missing: SHORT_LEAVE_EMAIL not set",
-        );
-      }
-
-      // Configure SMTP for SLT mail server (port 25 relay, passwordless)
-      const smtpHost = process.env.SHORT_LEAVE_SMTP_HOST || "mail.slt.com.lk";
-      const smtpPort = parseInt(process.env.SHORT_LEAVE_SMTP_PORT || "25", 10);
-
-      const transportConfig = {
-        host: smtpHost,
-        port: smtpPort,
-        secure: false, // false for port 25
-        tls: { rejectUnauthorized: false },
-        // Add connection timeout to prevent hanging (30 seconds)
-        connectionTimeout: 30000,
-        greetingTimeout: 15000,
-        socketTimeout: 30000,
-      };
-
-      // Add auth only if password is provided and not using port 25
-      if (smtpPort !== 25 && process.env.SHORT_LEAVE_EMAIL_PASS) {
-        transportConfig.auth = {
-          user: process.env.SHORT_LEAVE_EMAIL,
-          pass: process.env.SHORT_LEAVE_EMAIL_PASS
-        };
-      }
-
-      const transporter = nodemailer.createTransport(transportConfig);
+      // Build Gmail transporter (validates env vars internally)
+      const transporter = this._createTransporter();
 
       // Send email with timeout wrapper
       const emailPromise = transporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("Email sending timeout after 45 seconds")),
+          45000,
+        ),
       );
-      
+
       const info = await Promise.race([emailPromise, timeoutPromise]);
-      console.log(`✅ Daily approved leaves email sent! ID: ${info.messageId}`);
+      console.log(`Daily approved leaves email sent! ID: ${info.messageId}`);
 
       if (fs.existsSync(excelFilePath)) {
         fs.unlinkSync(excelFilePath);
@@ -310,9 +319,9 @@ class ApprovedLeaveNotificationService {
 
   /**
    * Fetch today's approved leaves from DB and send the daily email.
-   * Called by the scheduler at 4 PM — NOT called on individual approvals anymore.
+   * Called by the scheduler at 1:30 PM AND by the manual send button.
    */
-  static async sendDailyReport() {
+  static async sendDailyReport(triggeredBy = "scheduler") {
     const sriLankaNow = moment().utcOffset("+05:30");
     console.log("\n========================================");
     console.log("📧 1:30 PM DAILY APPROVED LEAVES REPORT");
@@ -343,19 +352,18 @@ class ApprovedLeaveNotificationService {
 
       console.log(`📊 Found ${approvedLeaves.length} approved leave(s) today`);
 
+      // ── Recipient list ────────────────────────────────────────────────────────
+      // Sending via Gmail (GMAIL_USER / GMAIL_PASS) — Azure-compatible
       const recipientEmails = {
-        to: [
-          "tharushi.20232322@iit.ac.lk",
-          "tharushicooray1@gmail.com",
-          "dimalshacooray@gmail.com",
-          "lakindu.20221402@iit.ac.lk",
-        ],
-        cc: ["lakindunaveesha263@gmail.com"],
+        to: ["mgiri@slt.com.lk"],
+        cc: ["dimalshacooray@gmail.com"],
       };
+      // ─────────────────────────────────────────────────────────────────────────
 
       const result = await this.sendApprovedLeavesEmail(
         approvedLeaves,
         recipientEmails,
+        triggeredBy,
       );
 
       if (result.success && !result.skipped) {

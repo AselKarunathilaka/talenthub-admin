@@ -21,6 +21,7 @@ import GateStaffDashboard from "../pages/GateStaffDashboard";
 import AdminSeatManagement from "../pages/AdminSeatManagement";
 import AdminInternLocations from "../pages/AdminInternLocations";
 import AdminAnnouncements from "../pages/AdminAnnouncements";
+import AdminInternAttendance from "../pages/Admininternattendance";
 import InternAnnouncements from "../pages/InternAnnouncements";
 
 const AppRoutes = () => {
@@ -122,6 +123,10 @@ const AppRoutes = () => {
         element={<AdminInternLocations />}
       />
       <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+      <Route
+        path="/admin/intern-attendance"
+        element={<AdminInternAttendance />}
+      />
     </Routes>
   );
 };

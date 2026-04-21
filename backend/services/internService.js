@@ -6,17 +6,16 @@ const geocodeAddress = require("../utils/geocode");
 
 class InternService {
   async addIntern(data) {
-
     const geo = await geocodeAddress(data.Trainee_HomeAddress);
 
-  if (geo) {
-    data.location = geo.location;
-    data.district = geo.district;
-  } else {
-    data.location = null;
-    data.district = "";
-  }
-  
+    if (geo) {
+      data.location = geo.location;
+      data.district = geo.district;
+    } else {
+      data.location = null;
+      data.district = "";
+    }
+
     return await InternRepository.addIntern(data);
   }
 
@@ -389,6 +388,7 @@ class InternService {
 
           // Find interns in DB that are not in API
           const internsToRemove = allDbInterns.filter((intern) => {
+            if (intern.isTestAccount) return false;
             const traineeId = intern.Trainee_ID?.toString();
             return traineeId && !activeTraineeIds.has(traineeId);
           });

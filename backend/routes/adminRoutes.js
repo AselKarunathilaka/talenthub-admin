@@ -22,6 +22,11 @@ const {
   triggerApprovedShortLeaveEmail,
 } = require("../controllers/adminController");
 const {
+  getPastInternLocations,
+  getPastInternDistrictCounts,
+  getPastInternSyncStats,
+} = require("../controllers/pastInternController");
+const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
 const {
@@ -29,6 +34,13 @@ const {
   getAllAnnouncements,
   deleteAnnouncement,
 } = require("../controllers/AnnouncementController");
+
+const {
+  getAttendanceByDate,
+  triggerAttendanceReport,
+  exportAttendanceExcel,
+  exportNonAttendanceExcel,
+} = require("../controllers/admininternAttendanceController");
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -82,15 +94,30 @@ router.post(
 );
 
 router.get("/intern-locations", getAdminInternLocations);
-
 router.get("/district-counts", getDistrictCounts);
-
 router.get("/intern-location/:traineeId", getInternLocationById);
+
+// Past intern locations (served from DB — instant)
+router.get("/past-intern-locations", getPastInternLocations);
+router.get("/past-intern-district-counts", getPastInternDistrictCounts);
+router.get("/past-intern-sync-stats", getPastInternSyncStats);
 
 // Announcement routes (admin only)
 router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
+
+// GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns
+router.get("/attendance/by-date", getAttendanceByDate);
+
+// POST /admin/attendance/trigger-report            → fire the weekly non-attendance email
+router.post("/attendance/trigger-report", triggerAttendanceReport);
+
+// GET  /admin/attendance/export-excel?date=YYYY-MM-DD → download Excel for a day
+router.get("/attendance/export-excel", exportAttendanceExcel);
+
+// GET /admin/attendance/export-non-attendance-excel → download non-attendance Excel (past 14 days)
+router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
 
 router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
   const nodemailer = require("nodemailer");

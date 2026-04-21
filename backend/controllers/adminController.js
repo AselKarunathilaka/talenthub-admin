@@ -1310,10 +1310,13 @@ const triggerApprovedShortLeaveEmail = async (req, res) => {
     // Process email in background (fire and forget)
     setImmediate(async () => {
       try {
-        const result = await ApprovedLeaveNotificationService.sendDailyReport();
-        
+        const result =
+          await ApprovedLeaveNotificationService.sendDailyReport("manual");
+
         if (result.success && !result.skipped) {
-          console.log(`✅ Background email sent to ${result.internsCount} intern(s)`);
+          console.log(
+            `✅ Background email sent to ${result.internsCount} intern(s)`,
+          );
         } else if (result.skipped) {
           console.log(`📭 Background email skipped: ${result.reason}`);
         } else {
@@ -1323,7 +1326,6 @@ const triggerApprovedShortLeaveEmail = async (req, res) => {
         console.error("❌ Background email error:", error);
       }
     });
-
   } catch (error) {
     console.error("Error triggering approved short leave email:", error);
     return res.status(500).json({
