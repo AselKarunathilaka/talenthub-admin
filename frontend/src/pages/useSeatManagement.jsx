@@ -479,21 +479,38 @@ export const useSeatManagement = () => {
 
   // Handle booking confirmation
   const handleDateBookingConfirm = useCallback(async () => {
+    const seatToBook = currentSeat;
+    // 1. Optimistic UI update: Close modal immediately
+    handleModalClose();
+    
+    // 2. Optimistic UI update: Turn seat red immediately 
+    setTakenSeatsByAnyone((prev) => [...prev, seatToBook]);
+    setDailyBookings((prev) => ({ 
+      ...prev, 
+      [seatToBook]: { dummy: true } 
+    }));
+    setAllBookings((prev) => ({ 
+      ...prev, 
+      [seatToBook]: { traineeId: "Booking...", dummy: true } 
+    }));
+
     try {
       const bookingData = {
-        seatNumber: currentSeat,
+        seatNumber: seatToBook,
         date: selectedDate,
       };
 
+      // 3. Make real backend call in background
       await createBooking(bookingData);
 
-      // Auto-refresh the seat layout
+      // 4. Silently fetch the real data to sync Trainee IDs
       await loadBookingsForDate(selectedDate);
 
-      handleModalClose();
       return true;
     } catch (err) {
       alert(err.message);
+      // Rollback on failure
+      await loadBookingsForDate(selectedDate);
       return false;
     }
   }, [

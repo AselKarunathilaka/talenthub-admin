@@ -3,6 +3,132 @@ import { X, Armchair, Calendar, Trash2 } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { useSeatManagement } from "./useSeatManagement";
 
+const SeatContext = React.createContext();
+
+const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
+  const { getSeatStatus, allBookings, dailyBookings, handleSeatClick } = React.useContext(SeatContext);
+  const status = getSeatStatus(number);
+  const bookingInfo = allBookings[number];
+  const isMyBooking = dailyBookings[number];
+
+  let posX = x;
+  let posY = y;
+
+  if (
+    angle !== undefined &&
+    radius !== undefined &&
+    centerX !== undefined &&
+    centerY !== undefined
+  ) {
+    posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
+    posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+  }
+
+  const baseClasses =
+    "absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md";
+
+  let statusClasses = "";
+
+  if (status === "locked") {
+    statusClasses = "bg-gray-500 text-white cursor-not-allowed opacity-80";
+  } else if (status === "booked") {
+    if (isMyBooking) {
+      statusClasses = "bg-red-300 text-white cursor-not-allowed";
+    } else {
+      statusClasses = "bg-red-300 text-white cursor-not-allowed";
+    }
+  } else {
+    statusClasses =
+      "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105 cursor-pointer";
+  }
+
+  return (
+    <div
+      onClick={() => handleSeatClick(number)}
+      className={`${baseClasses} ${statusClasses}`}
+      style={{
+        left: `${posX - 24}px`,
+        top: `${posY - 24}px`,
+      }}
+      title={
+        status === "locked"
+          ? `Seat ${number} (Locked)`
+          : status === "booked" && bookingInfo?.traineeId
+            ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
+            : status === "booked" && bookingInfo?.email
+              ? `Seat ${number} - Booked by: ${bookingInfo.email}`
+              : status === "booked"
+                ? `Seat ${number} (Already Booked)`
+                : `Seat ${number} (Available)`
+      }
+    >
+      {status === "booked" && <X size={12} className="mb-[-2px]" />}
+      <Armchair size={16} />
+      <span className="text-[10px] mt-0.5">{number}</span>
+    </div>
+  );
+};
+
+const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModalClose, handleDateBookingConfirm }) => {
+  const handleSubmit = async () => {
+    const success = await handleDateBookingConfirm();
+    if (success) {
+      handleModalClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+            Book Seat {currentSeat}
+          </h2>
+          <button
+            onClick={handleModalClose}
+            className="text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-3 bg-blue-50 rounded-md">
+            <p className="text-sm text-blue-700">
+              You are booking seat <strong>{currentSeat}</strong> for
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              <strong>{formatDisplayDate(selectedDate)}</strong>
+            </p>
+            <p className="text-xs text-blue-600 mt-1">
+              Your intern account will be used automatically
+            </p>
+          </div>
+
+          <div className="p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
+            ⚠ One seat per intern per day is allowed
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              onClick={handleModalClose}
+              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md transition-colors"
+            >
+              Confirm Booking
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const InternSeatManagement = () => {
   const {
     showModal,
@@ -26,136 +152,9 @@ const InternSeatManagement = () => {
     getSeatStatus,
   } = useSeatManagement();
 
-  const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
-    const status = getSeatStatus(number);
-    const bookingInfo = allBookings[number]; // Get booking info from allBookings
-    const isMyBooking = dailyBookings[number]; // Check if it's my booking
-
-    let posX = x;
-    let posY = y;
-
-    if (
-      angle !== undefined &&
-      radius !== undefined &&
-      centerX !== undefined &&
-      centerY !== undefined
-    ) {
-      posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
-      posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
-    }
-
-    const baseClasses =
-      "absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md";
-
-    let statusClasses = "";
-
-    if (status === "locked") {
-      statusClasses = "bg-gray-500 text-white cursor-not-allowed opacity-80";
-    } else if (status === "booked") {
-      // Optional: Use different color for my booking vs others
-      if (isMyBooking) {
-        statusClasses = "bg-red-300 text-white cursor-not-allowed"; // My booking (darker red)
-      } else {
-        statusClasses = "bg-red-300 text-white cursor-not-allowed"; // Others' booking
-      }
-    } else {
-      statusClasses =
-        "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105 cursor-pointer";
-    }
-
-    return (
-      <div
-        onClick={() => handleSeatClick(number)}
-        className={`${baseClasses} ${statusClasses}`}
-        style={{
-          left: `${posX - 24}px`,
-          top: `${posY - 24}px`,
-        }}
-        title={
-          status === "locked"
-            ? `Seat ${number} (Locked)`
-            : status === "booked" && bookingInfo?.traineeId // Change from dailyBookings to bookingInfo
-              ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
-              : status === "booked" && bookingInfo?.email
-                ? `Seat ${number} - Booked by: ${bookingInfo.email}`
-                : status === "booked"
-                  ? `Seat ${number} (Already Booked)`
-                  : `Seat ${number} (Available)`
-        }
-      >
-        {/* Show X icon only for booked seats, not for locked seats */}
-        {status === "booked" && <X size={12} className="mb-[-2px]" />}
-
-        <Armchair size={16} />
-
-        {/* Always show seat number for all seat types */}
-        <span className="text-[10px] mt-0.5">{number}</span>
-      </div>
-    );
-  };
-
-  const BookingModal = () => {
-    const handleSubmit = async () => {
-      const success = await handleDateBookingConfirm();
-      if (success) {
-        handleModalClose();
-      }
-    };
-
-    return (
-      <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-              Book Seat {currentSeat}
-            </h2>
-            <button
-              onClick={handleModalClose}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
-            >
-              <X size={24} />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <div className="p-3 bg-blue-50 rounded-md">
-              <p className="text-sm text-blue-700">
-                You are booking seat <strong>{currentSeat}</strong> for
-              </p>
-              <p className="text-sm text-blue-700 mt-1">
-                <strong>{formatDisplayDate(selectedDate)}</strong>
-              </p>
-              <p className="text-xs text-blue-600 mt-1">
-                Your intern account will be used automatically
-              </p>
-            </div>
-
-            <div className="p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
-              ⚠ One seat per intern per day is allowed
-            </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                onClick={handleModalClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md transition-colors"
-              >
-                Confirm Booking
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
+    <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick }}>
+      <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
       <Navigation />{" "}
       <div className="flex-1 w-full lg:mt-20 lg:px-10">
         <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
@@ -734,10 +733,19 @@ const InternSeatManagement = () => {
             </div>
           </div>
 
-          {showModal && <BookingModal />}
+          {showModal && (
+            <BookingModal
+              currentSeat={currentSeat}
+              formatDisplayDate={formatDisplayDate}
+              selectedDate={selectedDate}
+              handleModalClose={handleModalClose}
+              handleDateBookingConfirm={handleDateBookingConfirm}
+            />
+          )}
         </main>
       </div>
     </div>
+    </SeatContext.Provider>
   );
 };
 

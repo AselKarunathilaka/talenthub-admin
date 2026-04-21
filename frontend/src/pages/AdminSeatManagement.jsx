@@ -20,7 +20,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { Armchair } from "lucide-react";
-import logo from "../assets/sltlogo.jpg";
+
 import {
   adminSeatApi,
   seatBookingCsvUtils,
@@ -106,12 +106,12 @@ const AdminSeatManagement = () => {
 
       const data = await adminSeatApi.getSeatBookings(selectedDate || null);
       setBookings(data.bookings || []);
-      setFilteredBookings(data.bookings || []);
       setStats(data.stats);
     } catch (err) {
       console.error("Silent refresh failed:", err);
     }
   };
+
 
   useEffect(() => {
     fetchBookings();
@@ -124,6 +124,7 @@ const AdminSeatManagement = () => {
     }, 15000);
 
     return () => clearInterval(pollInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
   // Build a seat-number -> booking lookup for the floor plan
@@ -191,7 +192,6 @@ const AdminSeatManagement = () => {
       const data = await adminSeatApi.getSeatBookings(selectedDate || null);
 
       setBookings(data.bookings || []);
-      setFilteredBookings(data.bookings || []);
       setStats(data.stats);
     } catch (err) {
       setError(err.message || "Failed to fetch bookings");
