@@ -14,15 +14,18 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+
     if (!email || !password) {
       setMessage("Please fill in all fields.");
       return;
     }
 
     setLoading(true);
+    setMessage("");
 
     try {
       const response = await api.post("/auth/login", { email, password });
+
       if (response.data.token) {
         localStorage.setItem("token", response.data.token);
         navigate("/");
@@ -30,7 +33,9 @@ const Login = () => {
         setMessage("Invalid email or password.");
       }
     } catch (error) {
-      setMessage("Error logging in. Please try again.");
+      setMessage(
+        error?.response?.data?.message || "Error logging in. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -40,15 +45,13 @@ const Login = () => {
     navigate("/register");
   };
 
-  // Function to populate the login fields with predefined credentials
   const handleFillTestCredentials = () => {
-    setEmail('admin@slt.lk');
-    setPassword('admin@123');
+    setEmail("testuser@slt.com");
+    setPassword("test123");
   };
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-500 to-emerald-500">
-      {/* Left side - Illustration/Brand side */}
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 bg-black/5 backdrop-blur-sm">
         <div className="max-w-md">
           <div className="mb-8">
@@ -58,20 +61,23 @@ const Login = () => {
               className="h-16 w-auto object-contain"
             />
           </div>
-          <h1 className="text-4xl font-bold text-white mb-6">Welcome to the SLT Intern Attendance System</h1>
+          <h1 className="text-4xl font-bold text-white mb-6">
+            Welcome to the SLT Intern Attendance System
+          </h1>
           <p className="text-white/80 text-lg">
-            Track your attendance, manage your schedule, and stay connected with your team - all in one place.
+            Track your attendance, manage your schedule, and stay connected
+            with your team - all in one place.
           </p>
           <div className="mt-12 bg-white/10 p-6 rounded-xl border border-white/20">
             <p className="text-white italic">
-              "The SLT Intern Program helps build the future tech leaders through hands-on experience and mentorship."
+              "The SLT Intern Program helps build the future tech leaders
+              through hands-on experience and mentorship."
             </p>
             <p className="text-white/70 mt-4">- SLT Management</p>
           </div>
         </div>
       </div>
 
-      {/* Right side - Login form */}
       <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="lg:hidden mb-8 flex flex-col items-center">
@@ -80,16 +86,22 @@ const Login = () => {
               alt="SLT Logo"
               className="h-16 w-auto object-contain mb-4"
             />
-            <h2 className="text-white font-bold text-xl">Intern Attendance System</h2>
+            <h2 className="text-white font-bold text-xl">
+              Intern Attendance System
+            </h2>
           </div>
 
           <div className="bg-white/10 backdrop-blur-md w-full p-8 rounded-2xl shadow-xl border border-white/20">
             <h2 className="text-3xl font-bold text-white mb-2">Sign In</h2>
-            <p className="text-white/70 mb-8">Use your SLT email to access the system</p>
-            
+            <p className="text-white/70 mb-8">
+              Use your SLT email to access the system
+            </p>
+
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <label className="text-white/90 text-sm font-medium pl-1">Email Address</label>
+                <label className="text-white/90 text-sm font-medium pl-1">
+                  Email Address
+                </label>
                 <div className="relative">
                   <input
                     type="email"
@@ -99,12 +111,17 @@ const Login = () => {
                     required
                     placeholder="name@slt.lk"
                   />
-                  <User className="absolute left-4 top-3.5 text-white/50" size={20} />
+                  <User
+                    className="absolute left-4 top-3.5 text-white/50"
+                    size={20}
+                  />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-white/90 text-sm font-medium pl-1">Password</label>
+                <label className="text-white/90 text-sm font-medium pl-1">
+                  Password
+                </label>
                 <div className="relative">
                   <input
                     type="password"
@@ -114,7 +131,10 @@ const Login = () => {
                     required
                     placeholder="Enter your password"
                   />
-                  <Lock className="absolute left-4 top-3.5 text-white/50" size={20} />
+                  <Lock
+                    className="absolute left-4 top-3.5 text-white/50"
+                    size={20}
+                  />
                 </div>
               </div>
 
@@ -130,7 +150,7 @@ const Login = () => {
                     <span>Sign In</span>
                   )}
                 </button>
-                
+
                 <button
                   type="button"
                   onClick={handleRegister}
@@ -140,13 +160,12 @@ const Login = () => {
                   <span>Register New User</span>
                 </button>
 
-                {/* Button to populate test credentials */}
                 <button
                   type="button"
                   onClick={handleFillTestCredentials}
                   className="w-full bg-transparent border border-white/30 hover:bg-white/10 text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2"
                 >
-                  <span>Fill Admin Credentials</span>
+                  <span>Fill Test Credentials</span>
                 </button>
               </div>
 
@@ -163,6 +182,7 @@ const Login = () => {
           </div>
         </div>
       </div>
+
       <Toaster position="bottom-right" reverseOrder={false} />
     </div>
   );
