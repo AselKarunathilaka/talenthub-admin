@@ -1,7 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-// const helmet = require("helmet");
-// const rateLimit = require("express-rate-limit");
 
 const connectDB = require("./config/database");
 const authRoutes = require("./routes/authRoutes");
@@ -13,14 +11,25 @@ const onlineAttendanceRoutes = require("./routes/onlineAttendanceRoutes");
 
 const app = express();
 
-// Connect DB (works for local + serverless cold starts)
 connectDB();
 
-// Middleware
-app.use(cors({ origin: "*" }));
+const allowedOrigins = (process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin:
+      allowedOrigins.length > 0
+        ? allowedOrigins
+        : true,
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 
-// Health routes
 app.get("/", (req, res) => {
   res.send("Backend is running");
 });
@@ -29,7 +38,6 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ message: "API is working" });
 });
 
-// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/interns", internRoutes);
 app.use("/api/qrcode", qrCodeRoutes);

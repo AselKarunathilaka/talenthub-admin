@@ -45,11 +45,6 @@ const Login = () => {
     navigate("/register");
   };
 
-  const handleFillTestCredentials = () => {
-    setEmail("testuser@slt.com");
-    setPassword("test123");
-  };
-
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-500 to-emerald-500">
       <div className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 bg-black/5 backdrop-blur-sm">
@@ -158,14 +153,6 @@ const Login = () => {
                 >
                   <UserPlus size={18} />
                   <span>Register New User</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleFillTestCredentials}
-                  className="w-full bg-transparent border border-white/30 hover:bg-white/10 text-white font-medium py-3 px-4 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2"
-                >
-                  <span>Fill Test Credentials</span>
                 </button>
               </div>
 

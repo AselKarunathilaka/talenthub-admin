@@ -1,14 +1,9 @@
 const app = require("./app");
 
 const PORT = process.env.PORT || 5001;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 
-app.get("/", (req, res) => {
-  res.send("Backend is running");
-});
-
-app.get("/api/health", (req, res) => {
-  res.status(200).json({ message: "API is working" });
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 // const internData = {
