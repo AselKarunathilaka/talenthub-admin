@@ -12,23 +12,30 @@ const QRCode = require("qrcode");
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId, type } = req.query; // Get internId and type from query parameters
+    const { internId, type, meetingTitle } = req.query; // Get parameters including meetingTitle
     
     let sessionId;
     if (type === 'daily') {
       // Generate QR for daily attendance
       if (internId) {
-        sessionId = `daily_attendance_${internId}_${new Date().getTime()}`;
+        sessionId = `daily_attendance_${internId}_${Date.now()}`;
       } else {
-        sessionId = `daily_attendance_${new Date().getTime()}`;
+        sessionId = `daily_attendance_${Date.now()}`;
       }
     } else {
-      // Generate QR for meeting attendance (default when no type specified or type='meeting')
+      // Generate QR for meeting attendance (JSON format expected by scanner)
+      // Must include type and meetingTitle
+      const meetingData = {
+        type: 'meeting_attendance',
+        meetingTitle: meetingTitle || 'General Meeting',
+        timestamp: Date.now()
+      };
+      
       if (internId) {
-        sessionId = `attendance_session_${internId}_${new Date().getTime()}`;
-      } else {
-        sessionId = `attendance_session_${new Date().getTime()}`;
+        meetingData.internId = internId;
       }
+      
+      sessionId = JSON.stringify(meetingData);
     }
     
     const qrCode = await QRCode.toDataURL(sessionId); 
