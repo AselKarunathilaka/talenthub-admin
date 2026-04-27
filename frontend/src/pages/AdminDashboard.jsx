@@ -341,12 +341,25 @@ const AdminDashboard = () => {
     }
   };
 
-  //export weekly non-submissions for the last 5 working days from today
+  // Helper: sort interns by traineeId ascending (numeric-aware)
+  const sortByTraineeId = (interns) =>
+    [...interns].sort((a, b) =>
+      (a.traineeId || "").localeCompare(b.traineeId || "", undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+
+  // Export weekly non-submissions for the last 5 working days from today
   const handleExportWeeklyNonSubmissionsWithinWeek = async () => {
     try {
-      // Get non-submissions within the last 5 working days
       const weeklyNonSubmissionsData =
         await adminApi.getNonSubmissionsWithinAWeek();
+
+      // Sort the intern list by traineeId ascending before export
+      weeklyNonSubmissionsData.nonSubmittedInterns = sortByTraineeId(
+        weeklyNonSubmissionsData.nonSubmittedInterns,
+      );
 
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
@@ -399,6 +412,11 @@ const AdminDashboard = () => {
           weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
         }
       }
+
+      // Sort the intern list by traineeId ascending before export
+      weeklyNonSubmissionsData.nonSubmittedInterns = sortByTraineeId(
+        weeklyNonSubmissionsData.nonSubmittedInterns,
+      );
 
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
@@ -908,7 +926,7 @@ const AdminDashboard = () => {
                 <motion.div
                   animate={{ rotate: showExports ? 180 : 0 }}
                   transition={{ duration: 0.22, ease: "easeInOut" }}
-                  className="mt-1" // proper spacing between text and arrow
+                  className="mt-1"
                 >
                   <FaChevronDown className="h-3 w-3 text-stone-400" />
                 </motion.div>
