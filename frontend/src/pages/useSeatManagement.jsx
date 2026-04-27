@@ -48,7 +48,6 @@ export const leftSection = {
   outerRing3: [
     { number: 36, angle: 59, radius: 325, locked: true },
     { number: 35, angle: 47, radius: 335, locked: true },
-    //{ number: 53, angle: 42, radius: 325, locked: true },
   ],
 };
 
@@ -72,11 +71,9 @@ export const rightSection = {
     { number: 47, x: 1047, y: 145 },
     { number: 46, x: 1112, y: 145 },
     { number: 45, x: 1177, y: 145 },
-    //{ number: 9, x: 1224, y: 145 },
     { number: 54, x: 657, y: 210 },
     { number: 55, x: 722, y: 210 },
     { number: 56, x: 787, y: 210 },
-    // { number: 63, x: 1047, y: 210 },
     { number: 57, x: 1112, y: 210 },
     { number: 58, x: 1179, y: 210 },
   ],
@@ -91,7 +88,6 @@ export const rightSection = {
     { number: 60, angle: 250, radius: 115 },
   ],
   outerRing1: [
-    // { number: 90, angle: 161, radius: 280 },
     { number: 84, angle: 158, radius: 280 },
     { number: 83, angle: 142, radius: 270 },
     { number: 82, angle: 126, radius: 260 },
@@ -104,7 +100,6 @@ export const rightSection = {
     { number: 75, angle: 19, radius: 280 },
   ],
   outerRing2: [
-    // { number: 70, angle: 173, radius: 210, locked: true },
     { number: 67, angle: 165, radius: 190, locked: true },
     { number: 68, angle: 145, radius: 190 },
     { number: 69, angle: 123, radius: 180 },
@@ -113,18 +108,16 @@ export const rightSection = {
     { number: 72, angle: 57, radius: 180, locked: true },
     { number: 73, angle: 35, radius: 190, locked: true },
     { number: 74, angle: 15, radius: 190, locked: true },
-    // { number: 79, angle: 7, radius: 210, locked: true },
   ],
   outerRing3: [
     { number: 85, angle: 141, radius: 350, locked: true },
     { number: 86, angle: 130, radius: 330, locked: true },
     { number: 87, angle: 38, radius: 340, locked: true },
     { number: 88, angle: 26, radius: 350, locked: true },
-    //{ number: 95, angle: 24, radius: 350, locked: true },
   ],
 };
 
-// Calculate total seats and locked seats
+// Calculate total seats
 const ALL_SEATS = [
   ...leftSection.topRow,
   ...leftSection.pillarSeats,
@@ -138,11 +131,7 @@ const ALL_SEATS = [
   ...rightSection.outerRing3,
 ];
 
-//Total unique seats
 const TOTAL_SEATS = ALL_SEATS.length;
-
-// NOTE: Locked seats are now fetched from the API (managed by admin)
-// The `locked: true` flags in seat configs above are kept for reference but no longer used.
 
 export const useSeatManagement = () => {
   const [showModal, setShowModal] = useState(false);
@@ -160,26 +149,7 @@ export const useSeatManagement = () => {
   const [allBookings, setAllBookings] = useState({});
   const [lockedSeats, setLockedSeats] = useState([]);
 
-  // Fetch locked seats from API
-  const fetchLockedSeats = useCallback(async () => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/seat-reservation/locked-seats`,
-        { cache: "no-store" } // Prevent browser caching during polling
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch locked seats");
-      }
-      const data = await response.json();
-      setLockedSeats(data.lockedSeats || []);
-    } catch (err) {
-      console.error("Error fetching locked seats:", err);
-      // Fallback: empty locked seats
-      setLockedSeats([]);
-    }
-  }, []);
-
-  //Computed values based on current state
+  // Computed values
   const totalUnavailableCount = takenSeatsByAnyone.length;
   const totalBookedCount = takenSeatsByAnyone.filter(
     (seatNum) => !lockedSeats.includes(seatNum),
@@ -200,7 +170,6 @@ export const useSeatManagement = () => {
     const today = new Date();
     const threeDaysLater = new Date();
     threeDaysLater.setDate(today.getDate() + 3);
-
     return {
       minDate: today.toISOString().split("T")[0],
       maxDate: threeDaysLater.toISOString().split("T")[0],
@@ -210,28 +179,132 @@ export const useSeatManagement = () => {
   const getAuthHeaders = () => {
     const token = localStorage.getItem("authToken");
     if (!token) throw new Error("No auth token found");
-
-    return {
-      Authorization: `Bearer ${token}`,
-    };
+    return { Authorization: `Bearer ${token}` };
   };
+
+  // Fetch locked seats — uses functional setter so it never needs to be
+  // listed as a dependency of loadBookingsForDate
+  const fetchLockedSeats = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/seat-reservation/locked-seats`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) throw new Error("Failed to fetch locked seats");
+      const data = await response.json();
+      const fetched = data.lockedSeats || [];
+
+      // Update locked seats, then re-merge with whatever booked seats we have
+      setLockedSeats(fetched);
+      setTakenSeatsByAnyone((prev) => {
+        // Keep only the non-locked portion of prev, then re-add fresh locked seats
+        const bookedOnly = prev.filter((s) => !fetched.includes(s));
+        return [...new Set([...bookedOnly, ...fetched])];
+      });
+    } catch (err) {
+      console.error("Error fetching locked seats:", err);
+      setLockedSeats([]);
+    }
+  }, []); // stable — no state deps
+
+  // Load bookings for a specific date.
+  // Key fix: lockedSeats is read via a functional setter instead of being
+  // captured in the closure, so this function stays stable and does NOT
+  // trigger the init useEffect when lockedSeats change.
+  const loadBookingsForDate = useCallback(async (dateString) => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch all bookings for the date
+      const response = await fetch(
+        `${API_BASE_URL}/seat-reservation/bookings/date/${dateString}`,
+        { headers: getAuthHeaders() },
+      );
+
+      let allBookingsData = [];
+      if (response.ok) {
+        const result = await response.json();
+        allBookingsData = result.data || result;
+      } else {
+        console.error("Failed to fetch bookings for date");
+      }
+
+      // 2. Build bookings map and taken-seats list
+      const allBookingsMap = {};
+      const bookedSeats = [];
+
+      allBookingsData.forEach((booking) => {
+        const seatNum = booking.seatNumber;
+        allBookingsMap[seatNum] = {
+          internId: booking.internId,
+          traineeId: booking.traineeId,
+          email: booking.email,
+          date: booking.bookingDate,
+          bookedAt: booking.createdAt || booking.bookedAt,
+          id: booking._id,
+        };
+        bookedSeats.push(seatNum);
+      });
+
+      // 3. Merge booked seats with current locked seats using a functional
+      //    setter so we don't need lockedSeats in the dependency array
+      setLockedSeats((currentLocked) => {
+        setTakenSeatsByAnyone([...new Set([...bookedSeats, ...currentLocked])]);
+        return currentLocked; // locked seats unchanged
+      });
+
+      // 4. Fetch my own bookings for the cancellation table
+      const myBookingsResponse = await fetch(
+        `${API_BASE_URL}/seat-reservation/bookings/intern`,
+        { headers: getAuthHeaders() },
+      );
+
+      let myBookings = [];
+      if (myBookingsResponse.ok) {
+        myBookings = await myBookingsResponse.json();
+      }
+
+      // 5. Find my booking for this specific date
+      const targetDate = new Date(dateString);
+      targetDate.setHours(0, 0, 0, 0);
+
+      const myBookingForDate = myBookings.find((booking) => {
+        const bookingDate = new Date(booking.bookingDate);
+        bookingDate.setHours(0, 0, 0, 0);
+        return bookingDate.getTime() === targetDate.getTime();
+      });
+
+      // 6. Build my-only map for cancellation
+      const myOnly = {};
+      if (myBookingForDate) {
+        myOnly[myBookingForDate.seatNumber] = {
+          internId: myBookingForDate.internId,
+          traineeId: myBookingForDate.traineeId,
+          email: myBookingForDate.email,
+          date: myBookingForDate.bookingDate,
+          bookedAt: myBookingForDate.createdAt || myBookingForDate.bookedAt,
+          id: myBookingForDate._id,
+        };
+      }
+
+      setDailyBookings(myOnly);
+      setAllBookings(allBookingsMap);
+    } catch (err) {
+      console.error("Load error:", err);
+      setError("Failed to load seat bookings");
+    } finally {
+      setLoading(false);
+    }
+  }, []); // ✅ stable — lockedSeats read via functional setter, not closure
 
   // Fetch bookings by intern
   const fetchBookingsByIntern = useCallback(async () => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/seat-reservation/bookings/intern`,
-        {
-          headers: {
-            ...getAuthHeaders(),
-          },
-        },
+        { headers: { ...getAuthHeaders() } },
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch intern bookings");
-      }
-
+      if (!response.ok) throw new Error("Failed to fetch intern bookings");
       return await response.json();
     } catch (err) {
       console.error(err);
@@ -243,11 +316,8 @@ export const useSeatManagement = () => {
   const createBooking = useCallback(async (bookingData) => {
     try {
       setLoading(true);
-
       const token = localStorage.getItem("authToken");
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+      if (!token) throw new Error("Authentication required");
 
       const response = await fetch(
         `${API_BASE_URL}/seat-reservation/bookings`,
@@ -280,9 +350,7 @@ export const useSeatManagement = () => {
         `${API_BASE_URL}/seat-reservation/bookings/cancel/${bookingId}`,
         {
           method: "PUT",
-          headers: {
-            ...getAuthHeaders(),
-          },
+          headers: { ...getAuthHeaders() },
         },
       );
 
@@ -300,15 +368,13 @@ export const useSeatManagement = () => {
     }
   }, []);
 
-  // Fetch seat availability (all booked seats for the date)
+  // Fetch seat availability
   const fetchSeatAvailability = useCallback(async (dateString) => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/seat-reservation/availability/${dateString}`,
         {
-          headers: {
-            ...getAuthHeaders(),
-          },
+          headers: { ...getAuthHeaders() },
           cache: "no-store",
         },
       );
@@ -323,127 +389,32 @@ export const useSeatManagement = () => {
     }
   }, []);
 
-  // Load bookings for a specific date
-  // Update the loadBookingsForDate function in useSeatManagement hook
-  const loadBookingsForDate = useCallback(async (dateString) => {
-    try {
-      setLoading(true);
-
-      // 1. Get ALL bookings for this date (not just availability)
-      const response = await fetch(
-        `${API_BASE_URL}/seat-reservation/bookings/date/${dateString}`,
-        {
-          headers: getAuthHeaders(),
-        },
-      );
-
-      let allBookings = [];
-      if (response.ok) {
-        const result = await response.json();
-        allBookings = result.data || result;
-      } else {
-        console.error("Failed to fetch bookings for date");
-      }
-
-      // 2. Create a map of all bookings with booking details
-      const allBookingsMap = {};
-      const allTakenSeats = [];
-
-      allBookings.forEach((booking) => {
-        const seatNum = booking.seatNumber;
-        allBookingsMap[seatNum] = {
-          internId: booking.internId,
-          traineeId: booking.traineeId,
-          email: booking.email,
-          date: booking.bookingDate,
-          bookedAt: booking.createdAt || booking.bookedAt,
-          id: booking._id,
-          // Add any other relevant booking info
-        };
-        allTakenSeats.push(seatNum);
-      });
-
-      // 3. Combine with locked seats
-      const allUnavailableSeats = [
-        ...new Set([...allTakenSeats, ...lockedSeats]),
-      ];
-
-      // 4. Get my bookings separately for cancellation purposes
-      const myBookingsResponse = await fetch(
-        `${API_BASE_URL}/seat-reservation/bookings/intern`,
-        {
-          headers: getAuthHeaders(),
-        },
-      );
-
-      let myBookings = [];
-      if (myBookingsResponse.ok) {
-        myBookings = await myBookingsResponse.json();
-      }
-
-      // 5. Find my booking for THIS date
-      const targetDate = new Date(dateString);
-      targetDate.setHours(0, 0, 0, 0);
-
-      const myBookingForDate = myBookings.find((booking) => {
-        const bookingDate = new Date(booking.bookingDate);
-        bookingDate.setHours(0, 0, 0, 0);
-        return bookingDate.getTime() === targetDate.getTime();
-      });
-
-      // 6. Store my booking separately
-      const myOnly = {};
-      if (myBookingForDate) {
-        myOnly[myBookingForDate.seatNumber] = {
-          internId: myBookingForDate.internId,
-          traineeId: myBookingForDate.traineeId,
-          email: myBookingForDate.email,
-          date: myBookingForDate.bookingDate,
-          bookedAt: myBookingForDate.createdAt || myBookingForDate.bookedAt,
-          id: myBookingForDate._id,
-        };
-      }
-
-      // 7. Update state with ALL bookings and my bookings
-      setDailyBookings(myOnly); // Only my bookings (for cancellation)
-      setAllBookings(allBookingsMap); // Add this state
-      setTakenSeatsByAnyone(allUnavailableSeats);
-    } catch (err) {
-      console.error("Load error:", err);
-      setError("Failed to load seat bookings");
-    } finally {
-      setLoading(false);
-    }
-  }, [lockedSeats]);
-
   // Handle date change
   const handleDateChange = useCallback(
     async (newDate) => {
       const selected = new Date(newDate);
       const today = new Date();
       const threeDaysLater = new Date();
-
       threeDaysLater.setDate(today.getDate() + 3);
 
-      //Normalize times
       today.setHours(0, 0, 0, 0);
       selected.setHours(0, 0, 0, 0);
       threeDaysLater.setHours(0, 0, 0, 0);
 
-      //Block weekends
-      const day = selected.getDay(); // 0 = Sunday, 6 = Saturday
+      // Block weekends
+      const day = selected.getDay();
       if (day === 0 || day === 6) {
         alert("Seat booking is only allowed on weekdays (Monday to Friday).");
         return false;
       }
 
-      //Enforce today + next 3 days rule
+      // Enforce today + next 3 days rule
       if (selected < today || selected > threeDaysLater) {
         alert("You can only book seats for today and the next 3 days.");
         return false;
       }
 
-      //Valid weekday booking
+      // Update selectedDate FIRST, then load data for that date
       setSelectedDate(newDate);
       await loadBookingsForDate(newDate);
       return true;
@@ -456,7 +427,6 @@ export const useSeatManagement = () => {
     (seatNumber) => {
       if (lockedSeats.includes(seatNumber)) return;
 
-      // Check if seat is booked by anyone (not just the current intern)
       if (takenSeatsByAnyone.includes(seatNumber)) {
         alert(
           `This seat is already booked for ${formatDisplayDate(selectedDate)}.`,
@@ -480,18 +450,14 @@ export const useSeatManagement = () => {
   // Handle booking confirmation
   const handleDateBookingConfirm = useCallback(async () => {
     const seatToBook = currentSeat;
-    // 1. Optimistic UI update: Close modal immediately
+
+    // Optimistic UI update
     handleModalClose();
-    
-    // 2. Optimistic UI update: Turn seat red immediately 
     setTakenSeatsByAnyone((prev) => [...prev, seatToBook]);
-    setDailyBookings((prev) => ({ 
-      ...prev, 
-      [seatToBook]: { dummy: true } 
-    }));
-    setAllBookings((prev) => ({ 
-      ...prev, 
-      [seatToBook]: { traineeId: "Booking...", dummy: true } 
+    setDailyBookings((prev) => ({ ...prev, [seatToBook]: { dummy: true } }));
+    setAllBookings((prev) => ({
+      ...prev,
+      [seatToBook]: { traineeId: "Booking...", dummy: true },
     }));
 
     try {
@@ -500,10 +466,9 @@ export const useSeatManagement = () => {
         date: selectedDate,
       };
 
-      // 3. Make real backend call in background
       await createBooking(bookingData);
 
-      // 4. Silently fetch the real data to sync Trainee IDs
+      // Sync real data after successful booking
       await loadBookingsForDate(selectedDate);
 
       return true;
@@ -530,15 +495,11 @@ export const useSeatManagement = () => {
       const confirmed = window.confirm(
         `Are you sure you want to cancel the booking for Seat ${seatNumber}?`,
       );
-
       if (!confirmed) return;
 
       try {
         await cancelBooking(booking.id);
-
-        // Auto-refresh the seat layout
         await loadBookingsForDate(selectedDate);
-
         alert(
           `Booking for Seat ${seatNumber} has been cancelled successfully.`,
         );
@@ -553,17 +514,15 @@ export const useSeatManagement = () => {
   const getSeatStatus = useCallback(
     (seatNumber) => {
       if (lockedSeats.includes(seatNumber)) return "locked";
-
-      // If seat is booked by anyone (including you) → show as "booked"
       if (takenSeatsByAnyone.includes(seatNumber)) return "booked";
-
-      // Otherwise → available
       return "available";
     },
     [takenSeatsByAnyone, lockedSeats],
   );
 
-  // Initialize dates and load bookings
+  //Init effect — runs ONCE on mount only (empty deps)
+  // Separated from polling so that re-fetching locked seats never
+  // accidentally resets selectedDate back to today.
   useEffect(() => {
     const initializeDates = async () => {
       const today = new Date();
@@ -574,20 +533,22 @@ export const useSeatManagement = () => {
       setMaxBookingDate(threeDayRange.maxDate);
       setSelectedDate(formatDate(today));
 
-      // Fetch locked seats first, then load bookings
       await fetchLockedSeats();
       await loadBookingsForDate(formatDate(today));
     };
 
     initializeDates();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty — one-time init
 
-    // Auto-refresh locked seats every 15 seconds so admin changes appear quickly
+  //Polling effect — separate from init so it never resets the date
+  useEffect(() => {
     const pollInterval = setInterval(() => {
       fetchLockedSeats();
     }, 15000);
 
     return () => clearInterval(pollInterval);
-  }, [getThreeDayRange, loadBookingsForDate, fetchLockedSeats]);
+  }, [fetchLockedSeats]);
 
   return {
     showModal,
