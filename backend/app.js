@@ -18,6 +18,11 @@ const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 
+if (!process.env.TALENTHUB_FEDERATION_SECRET) {
+  console.error("CRITICAL: TALENTHUB_FEDERATION_SECRET not configured!");
+  process.exit(1);
+}
+
 const app = express();
 
 // Middleware
