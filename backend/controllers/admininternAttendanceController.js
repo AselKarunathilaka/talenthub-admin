@@ -11,19 +11,16 @@ const TZ = "Asia/Colombo";
 // Helper: Get interns present on a specific date (LKT-aware)
 // ---------------------------------------------------------------------------
 async function getPresentsOnDate(dateStr) {
-  // Interpret the date boundaries in Sri Lanka time, not UTC
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
   const interns = await Intern.find({});
-
   const presentInterns = [];
 
   for (const intern of interns) {
     if (!intern.attendance || intern.attendance.length === 0) continue;
 
     const record = intern.attendance.find((r) => {
-      // Convert the stored UTC date to LKT before comparing
       const recDate = moment(r.date).tz(TZ);
       return (
         recDate.isSameOrAfter(targetDate) &&
@@ -48,7 +45,6 @@ async function getPresentsOnDate(dateStr) {
           ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
           : "Not specified",
         meetingName: record.meetingName || "—",
-        // Format timeMarked in Sri Lanka time
         timeMarked: record.timeMarked
           ? moment(record.timeMarked).tz(TZ).format("hh:mm A")
           : "—",
@@ -57,19 +53,15 @@ async function getPresentsOnDate(dateStr) {
     }
   }
 
-  // Sort by Trainee ID ascending
-  presentInterns.sort((a, b) => {
-    const idA = String(a.id).toUpperCase();
-    const idB = String(b.id).toUpperCase();
-    return idA < idB ? -1 : idA > idB ? 1 : 0;
-  });
+  presentInterns.sort((a, b) =>
+    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
+  );
 
   return presentInterns;
 }
 
 // ---------------------------------------------------------------------------
 // GET /admin/attendance/by-date?date=YYYY-MM-DD
-// Returns the list of interns who were marked Present on the given date.
 // ---------------------------------------------------------------------------
 exports.getAttendanceByDate = async (req, res) => {
   try {
@@ -100,7 +92,7 @@ exports.getAttendanceByDate = async (req, res) => {
 // ---------------------------------------------------------------------------
 exports.triggerAttendanceReport = async (req, res) => {
   try {
-    const recipients = req.body?.recipients || ["dimalshacooray@gmail.com"]; // default dev address
+    const recipients = req.body?.recipients || ["dimalshacooray@gmail.com"];
 
     const result =
       await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
@@ -135,7 +127,6 @@ exports.exportAttendanceExcel = async (req, res) => {
     const presentInterns = await getPresentsOnDate(dateStr);
 
     const excelData = [];
-
     excelData.push(["MEETING ATTENDANCE REPORT"]);
     excelData.push(["TalentHub Intern Management System"]);
     excelData.push([]);
@@ -150,7 +141,6 @@ exports.exportAttendanceExcel = async (req, res) => {
     excelData.push(["Total Present:", presentInterns.length]);
     excelData.push([]);
     excelData.push([]);
-
     excelData.push([
       "No.",
       "Intern Name",
@@ -185,7 +175,6 @@ exports.exportAttendanceExcel = async (req, res) => {
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-
     worksheet["!cols"] = [
       { wch: 5 },
       { wch: 25 },
@@ -200,7 +189,6 @@ exports.exportAttendanceExcel = async (req, res) => {
       { wch: 12 },
       { wch: 12 },
     ];
-
     XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
 
     const tempDir = path.join(__dirname, "..", "temp");
@@ -224,160 +212,55 @@ exports.exportAttendanceExcel = async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // GET /admin/attendance/export-non-attendance-excel
-// Downloads an Excel file of all interns who missed meetings in the past 14
-// working days (Sri Lanka calendar).
+// Downloads an Excel file of interns who missed meetings in the past 14
+// working days. Delegates all filtering logic to WeeklyMeetingAttendanceService
+// so there is a single source of truth for holidays, working-day calculation,
+// new-intern exclusion, and non-attendance detection.
 // ---------------------------------------------------------------------------
 exports.exportNonAttendanceExcel = async (req, res) => {
   try {
-    // Anchor today and the 14-day window to Sri Lanka time
-    const today = moment().tz(TZ).startOf("day");
-    const fourteenDaysAgo = today.clone().subtract(14, "days");
+    // ── 1. Reuse the service's date-range helper ──────────────────────────
+    const { startDate, endDate } =
+      WeeklyMeetingAttendanceService.getTwoWeekRange();
 
-    // ── Mirror the exact working-day + holiday logic from the service ──────
-    function getSriLankanHolidays(years) {
-      const yearList = Array.isArray(years) ? years : [years];
-      const holidays = new Set();
-      yearList.forEach((y) => {
-        const fixed = [`${y}-01-01`, `${y}-02-04`, `${y}-05-01`, `${y}-12-25`];
-        fixed.forEach((d) => holidays.add(d));
-        const lunarApprox = {
-          2024: [
-            "2024-01-15",
-            "2024-02-23",
-            "2024-03-25",
-            "2024-04-12",
-            "2024-04-13",
-            "2024-04-14",
-            "2024-05-23",
-            "2024-05-24",
-            "2024-06-17",
-            "2024-06-21",
-            "2024-07-20",
-            "2024-08-19",
-            "2024-09-17",
-            "2024-10-02",
-            "2024-10-17",
-            "2024-10-31",
-            "2024-11-15",
-            "2024-12-15",
-          ],
-          2025: [
-            "2025-01-14",
-            "2025-02-26",
-            "2025-03-14",
-            "2025-03-31",
-            "2025-04-13",
-            "2025-04-14",
-            "2025-05-12",
-            "2025-05-13",
-            "2025-06-06",
-            "2025-06-07",
-            "2025-07-05",
-            "2025-08-03",
-            "2025-09-01",
-            "2025-09-05",
-            "2025-10-01",
-            "2025-10-20",
-            "2025-10-30",
-            "2025-11-29",
-          ],
-          2026: [
-            "2026-01-14",
-            "2026-02-15",
-            "2026-03-03",
-            "2026-03-20",
-            "2026-04-02",
-            "2026-04-13",
-            "2026-04-14",
-            "2026-05-01",
-            "2026-05-02",
-            "2026-05-28",
-            "2026-05-30",
-            "2026-06-29",
-            "2026-07-28",
-            "2026-08-27",
-            "2026-09-10",
-            "2026-09-25",
-            "2026-11-09",
-            "2026-11-24",
-            "2026-12-23",
-          ],
-        };
-        if (lunarApprox[y]) lunarApprox[y].forEach((d) => holidays.add(d));
-      });
-      return holidays;
-    }
+    // ── 2. Fetch and filter interns via the service ───────────────────────
+    const activeInterns =
+      await WeeklyMeetingAttendanceService.getActiveInterns();
 
-    const years = [];
-    for (let y = fourteenDaysAgo.year(); y <= today.year(); y++) years.push(y);
-    const holidays = getSriLankanHolidays(years);
-
-    const workingDayStrings = new Set();
-    const cursor = fourteenDaysAgo.clone();
-    while (cursor.isSameOrBefore(today, "day")) {
-      const dow = cursor.day();
-      // cursor is already TZ-aware so format() gives the LKT date string
-      const dateStr = cursor.format("YYYY-MM-DD");
-      if (dow !== 0 && dow !== 6 && !holidays.has(dateStr)) {
-        workingDayStrings.add(dateStr);
-      }
-      cursor.add(1, "day");
-    }
-    // ───────────────────────────────────────────────────────────────────────
-
-    const interns = await Intern.find({});
     const nonAttendees = [];
 
-    for (const intern of interns) {
-      // ── Skip new interns whose training started within the 14-day window ─
-      if (intern.Training_StartDate) {
-        const trainingStart = moment(intern.Training_StartDate)
-          .tz(TZ)
-          .startOf("day");
-        if (trainingStart.isSameOrAfter(fourteenDaysAgo)) continue;
-      }
+    for (const intern of activeInterns) {
+      // Skip interns whose training started within the review window
+      if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
 
-      // ── Check attendance on working days only ─────────────────────────────
-      // Convert stored UTC timestamp to LKT date string before comparing
-      const attendedOnWorkingDay = (intern.attendance || []).some((r) => {
-        const dateStr = moment(r.date).tz(TZ).format("YYYY-MM-DD");
-        return workingDayStrings.has(dateStr) && r.status === "Present";
+      // Skip interns who attended at least one meeting in the window
+      if (
+        WeeklyMeetingAttendanceService.hasAttendedMeetingInPastTwoWeeks(intern)
+      )
+        continue;
+
+      // Build the last-attended label (same logic as the service's main loop)
+      const lastRecord =
+        WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
+      const lastMeetingDate = lastRecord
+        ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+        : "No record found";
+
+      nonAttendees.push({
+        name: WeeklyMeetingAttendanceService.getInternName(intern),
+        id: WeeklyMeetingAttendanceService.getInternId(intern),
+        email: WeeklyMeetingAttendanceService.getInternEmail(intern),
+        fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
+        institute: intern.Institute || "Not specified",
+        team: intern.team || "Not specified",
+        trainingStartDate: intern.Training_StartDate
+          ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
+          : "Not specified",
+        trainingEndDate: intern.Training_EndDate
+          ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
+          : "Not specified",
+        lastMeetingDate,
       });
-
-      if (!attendedOnWorkingDay) {
-        // Find the most recent Present record across ALL time
-        const allPresentRecords = (intern.attendance || []).filter(
-          (r) => r.status === "Present",
-        );
-
-        let lastMeetingDate = "No record";
-        if (allPresentRecords.length > 0) {
-          const latest = allPresentRecords.reduce((a, b) =>
-            moment(a.date).isAfter(moment(b.date)) ? a : b,
-          );
-          // Format the last-seen date in LKT
-          lastMeetingDate = moment(latest.date).tz(TZ).format("MMM DD, YYYY");
-          if (latest.meetingName) {
-            lastMeetingDate += ` — ${latest.meetingName}`;
-          }
-        }
-
-        nonAttendees.push({
-          name: intern.Trainee_Name || "Unknown",
-          id: intern.Trainee_ID || "Unknown",
-          email: intern.Trainee_Email || "",
-          fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
-          institute: intern.Institute || "Not specified",
-          team: intern.team || "Not specified",
-          trainingStartDate: intern.Training_StartDate
-            ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
-            : "Not specified",
-          trainingEndDate: intern.Training_EndDate
-            ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
-            : "Not specified",
-          lastMeetingDate,
-        });
-      }
     }
 
     // Sort by Trainee ID ascending
@@ -385,6 +268,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
     );
 
+    // ── 3. Build Excel ────────────────────────────────────────────────────
     const excelData = [];
     excelData.push(["NON-ATTENDANCE REPORT (PAST 14 DAYS)"]);
     excelData.push(["TalentHub Intern Management System"]);
@@ -395,16 +279,14 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     ]);
     excelData.push([
       "Period:",
-      `${fourteenDaysAgo.format("MMM DD, YYYY")} – ${today.format("MMM DD, YYYY")}`,
+      `${startDate.format("MMM DD, YYYY")} – ${endDate.format("MMM DD, YYYY")}`,
     ]);
-    excelData.push(["Working Days in Window:", workingDayStrings.size]);
     excelData.push(["Total Non-Attendees:", nonAttendees.length]);
     excelData.push([]);
     excelData.push([
       "Note: Weekends, Sri Lankan public holidays, and new interns (training started within the period) are excluded.",
     ]);
     excelData.push([]);
-
     excelData.push([
       "No.",
       "Intern Name",
@@ -435,7 +317,6 @@ exports.exportNonAttendanceExcel = async (req, res) => {
 
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-
     worksheet["!cols"] = [
       { wch: 5 },
       { wch: 25 },
@@ -448,15 +329,13 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       { wch: 20 },
       { wch: 30 },
     ];
-
     XLSX.utils.book_append_sheet(workbook, worksheet, "Non-Attendance Report");
 
     const tempDir = path.join(__dirname, "..", "temp");
     if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-    // Use LKT date for the filename
-    const today_str = moment().tz(TZ).format("YYYY-MM-DD");
-    const filename = `Non_Attendance_Report_${today_str}.xlsx`;
+    const todayStr = moment().tz(TZ).format("YYYY-MM-DD");
+    const filename = `Non_Attendance_Report_${todayStr}.xlsx`;
     const filePath = path.join(tempDir, filename);
     XLSX.writeFile(workbook, filePath);
 
