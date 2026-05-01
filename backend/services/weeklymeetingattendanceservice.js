@@ -119,6 +119,12 @@ class WeeklyMeetingAttendanceService {
     return { startDate, endDate };
   }
 
+  // ── New-intern guard ──────────────────────────────────────────────────────
+
+  /**
+   * An intern is "new" if their Training_StartDate falls on or after the
+   * start of the two-week review window. They are excluded from the report.
+   */
   static isNewIntern(intern) {
     if (!intern.Training_StartDate) return false;
 
@@ -127,6 +133,8 @@ class WeeklyMeetingAttendanceService {
 
     return trainingStart.isSameOrAfter(startDate);
   }
+
+  // ── Attendance check ──────────────────────────────────────────────────────
 
   static hasAttendedMeetingInPastTwoWeeks(intern) {
     try {
@@ -142,7 +150,7 @@ class WeeklyMeetingAttendanceService {
         ),
       );
 
-      const hasPresent = intern.attendance.some((record) => {
+      return intern.attendance.some((record) => {
         const recordDate = moment(record.date);
         const dateStr = recordDate.format("YYYY-MM-DD");
         const isInRange =
@@ -153,8 +161,6 @@ class WeeklyMeetingAttendanceService {
 
         return isInRange && isWorkingDay && isPresent;
       });
-
-      return hasPresent;
     } catch (error) {
       console.error(
         `Error checking attendance for intern ${intern._id}:`,
@@ -165,9 +171,7 @@ class WeeklyMeetingAttendanceService {
   }
 
   static getLastAttendedMeeting(intern) {
-    if (!intern.attendance || intern.attendance.length === 0) {
-      return null;
-    }
+    if (!intern.attendance || intern.attendance.length === 0) return null;
 
     const presentRecords = intern.attendance
       .filter((r) => r.status === "Present")
@@ -175,6 +179,8 @@ class WeeklyMeetingAttendanceService {
 
     return presentRecords.length > 0 ? presentRecords[0] : null;
   }
+
+  // ── Field helpers ─────────────────────────────────────────────────────────
 
   static getInternName(intern) {
     return intern.Trainee_Name || intern.traineeName || "Unknown";
@@ -187,6 +193,8 @@ class WeeklyMeetingAttendanceService {
   static getInternEmail(intern) {
     return intern.Trainee_Email || intern.email || "";
   }
+
+  // ── Active-intern query ───────────────────────────────────────────────────
 
   static async getActiveInterns() {
     try {
@@ -216,6 +224,8 @@ class WeeklyMeetingAttendanceService {
     }
   }
 
+  // ── Excel generation ──────────────────────────────────────────────────────
+
   static generateExcelReport(nonAttendingInterns) {
     try {
       const { startDate, endDate } = this.getTwoWeekRange();
@@ -223,7 +233,7 @@ class WeeklyMeetingAttendanceService {
 
       const excelData = [];
 
-      excelData.push(["WEEKLY MEETING ATTENDANCE NON-ATTENDANCE REPORT"]);
+      excelData.push(["WEEKLY MEETING NON-ATTENDANCE REPORT"]);
       excelData.push(["TalentHub Intern Management System"]);
       excelData.push([]);
       excelData.push([
@@ -251,8 +261,7 @@ class WeeklyMeetingAttendanceService {
         "Last Meeting Attended",
       ]);
 
-      // ── Interns are already sorted by Trainee ID (ascending) before this
-      //    method is called in performWeeklyMeetingAttendanceCheck ──────────
+      // Already sorted by Trainee ID before this method is called
       nonAttendingInterns.forEach((intern, index) => {
         excelData.push([
           index + 1,
@@ -277,7 +286,7 @@ class WeeklyMeetingAttendanceService {
       excelData.push(["Immediate follow-up action is recommended."]);
       excelData.push([]);
       excelData.push([
-        "Note: Sri Lankan public holidays and weekends are excluded from the attendance window.",
+        "Note: Interns whose training started within the review period are excluded.",
       ]);
 
       const workbook = XLSX.utils.book_new();
@@ -303,9 +312,7 @@ class WeeklyMeetingAttendanceService {
       );
 
       const tempDir = path.join(__dirname, "..", "temp");
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
       const timestamp = moment().format("YYYY-MM-DD_HH-mm-ss");
       const filename = `Weekly_Meeting_Non_Attendance_Report_${timestamp}.xlsx`;
@@ -323,9 +330,11 @@ class WeeklyMeetingAttendanceService {
     }
   }
 
+  // ── Email sending ─────────────────────────────────────────────────────────
+
   static async sendNonAttendanceEmailWithExcel(
     nonAttendingInterns,
-    recipients = "mgiri@slt.com.lk",
+    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
   ) {
     let excelFilePath = null;
 
@@ -355,32 +364,7 @@ class WeeklyMeetingAttendanceService {
       const { startDate, endDate } = this.getTwoWeekRange();
       const periodLabel = `${startDate.format("MMM DD, YYYY")} - ${endDate.format("MMM DD, YYYY")}`;
 
-      const subject = `⚠️ Meeting Non-Attendance Alert - ${nonAttendingInterns.length} Interns - ${moment().format("MMM DD, YYYY")}`;
-
-      const displayInterns = nonAttendingInterns.slice(0, 10);
-      let tableRows = "";
-      displayInterns.forEach((intern, index) => {
-        tableRows += `
-          <tr style="border-bottom: 1px solid #ddd;">
-            <td style="padding: 12px 8px; text-align: center; border-right: 1px solid #ddd;">${index + 1}</td>
-            <td style="padding: 12px 8px; border-right: 1px solid #ddd;"><strong>${intern.name}</strong></td>
-            <td style="padding: 12px 8px; text-align: center; border-right: 1px solid #ddd;">${intern.id}</td>
-            <td style="padding: 12px 8px; border-right: 1px solid #ddd;">${intern.email}</td>
-            <td style="padding: 12px 8px; border-right: 1px solid #ddd;">${intern.fieldOfSpecialization}</td>
-            <td style="padding: 12px 8px; border-right: 1px solid #ddd;">${intern.institute}</td>
-            <td style="padding: 12px 8px; border-right: 1px solid #ddd;">${intern.team}</td>
-            <td style="padding: 12px 8px;">${intern.lastAttendedMeeting}</td>
-          </tr>`;
-      });
-
-      if (nonAttendingInterns.length > 10) {
-        tableRows += `
-          <tr style="background-color: #fff3cd;">
-            <td colspan="8" style="padding: 12px 8px; text-align: center;">
-              <strong>📎 See attached Excel file for complete list of all ${nonAttendingInterns.length} interns</strong>
-            </td>
-          </tr>`;
-      }
+      const subject = `Meeting Non-Attendance Alert - ${nonAttendingInterns.length} Intern(s) - ${moment().format("MMM DD, YYYY")}`;
 
       const emailBody = `
 <!DOCTYPE html>
@@ -389,18 +373,12 @@ class WeeklyMeetingAttendanceService {
   <meta charset="UTF-8">
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .container { max-width: 700px; margin: 0 auto; padding: 20px; }
     .header { background-color: #e65100; color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-    .content { background-color: #f9f9f9; padding: 20px; border: 1px solid #ddd; }
-    .summary { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
-    .actions { background-color: #d1ecf1; padding: 15px; border-left: 4px solid #17a2b8; margin: 20px 0; }
+    .content { background-color: #f9f9f9; padding: 25px; border: 1px solid #ddd; }
+    .info { background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0; }
     .attachment-notice { background-color: #d4edda; padding: 15px; border-left: 4px solid #28a745; margin: 20px 0; }
-    .info-notice { background-color: #e8f4f8; padding: 15px; border-left: 4px solid #5bc0de; margin: 20px 0; }
     .footer { background-color: #343a40; color: white; padding: 15px; text-align: center; border-radius: 0 0 5px 5px; font-size: 12px; }
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; background-color: white; }
-    th { background-color: #2c3e50; color: white; padding: 12px 8px; text-align: left; font-weight: bold; }
-    td { padding: 12px 8px; }
-    tr:hover { background-color: #f5f5f5; }
     .badge { background-color: #e65100; color: white; padding: 4px 12px; border-radius: 12px; font-weight: bold; }
   </style>
 </head>
@@ -412,86 +390,30 @@ class WeeklyMeetingAttendanceService {
     </div>
 
     <div class="content">
-      <h2>Dear Sir,</h2>
+      <p>Dear Sir,</p>
 
-      <div class="summary">
-        <h3 style="margin-top: 0;">📊 Report Summary</h3>
-        <p><strong>📅 Review Period:</strong> ${periodLabel}</p>
-        <p><strong>📊 Total Non-Attending Interns:</strong> <span class="badge">${nonAttendingInterns.length}</span></p>
-        <p><strong>⏰ Generated On:</strong> ${moment().format("MMMM DD, YYYY [at] h:mm A")}</p>
+      <p>This is an automated weekly report for the meeting attendance compliance check.</p>
+
+      <div class="info">
+        <p style="margin: 0;"><strong>📅 Review Period:</strong> ${periodLabel}</p>
+        <p style="margin: 8px 0 0 0;"><strong>📊 Non-Attending Interns:</strong> <span class="badge">${nonAttendingInterns.length}</span></p>
+        <p style="margin: 8px 0 0 0;"><strong>⏰ Generated On:</strong> ${moment().format("MMMM DD, YYYY [at] h:mm A")}</p>
       </div>
 
-      <div class="info-notice">
-        <h3 style="margin-top: 0;">ℹ️ Attendance Check Methodology</h3>
-        <p>This report <strong>excludes</strong> the following from the attendance window:</p>
-        <ul style="margin: 5px 0;">
-          <li>🗓️ <strong>Weekends</strong> (Saturdays &amp; Sundays)</li>
-          <li>🎉 <strong>Sri Lankan public holidays</strong> (gazetted national &amp; bank holidays)</li>
-          <li>🆕 <strong>New interns</strong> whose training commenced within the review period</li>
-        </ul>
-        <p style="margin-bottom: 0;">Only interns who were expected to attend meetings on working days are included.</p>
-      </div>
-
-      <div class="attachment-notice">
-        <h3 style="margin-top: 0;">📎 Excel Attachment Included</h3>
-        <p>A detailed Excel report with all non-attending interns is attached to this email.</p>
-        <p><strong>Filename:</strong> ${path.basename(excelFilePath)}</p>
-        <p>The Excel file contains complete information for all ${nonAttendingInterns.length} interns, <strong>sorted by Trainee ID (ascending)</strong>.</p>
-      </div>
-
-      <h3>📋 Non-Attending Interns (Preview - First ${displayInterns.length})</h3>
-      <p>The following interns have <strong>NOT</strong> attended any meetings in the past 2 weeks:</p>
-
-      <div style="overflow-x: auto;">
-        <table border="1" style="border: 1px solid #ddd;">
-          <thead>
-            <tr>
-              <th style="text-align: center;">#</th>
-              <th>Intern Name</th>
-              <th style="text-align: center;">ID</th>
-              <th>Email</th>
-              <th>Field of Specialization</th>
-              <th>Institute</th>
-              <th>Team</th>
-              <th>Last Meeting Attended</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${tableRows}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="summary">
-        <h3 style="margin-top: 0;">📋 Summary</h3>
-        <ul style="margin: 10px 0;">
-          <li><strong>Review period:</strong> ${periodLabel}</li>
-          <li><strong>Interns who attended meetings:</strong> Compliant</li>
-          <li><strong>Interns who did NOT attend any meetings:</strong> ${nonAttendingInterns.length} (see attached Excel file)</li>
-        </ul>
-      </div>
-
-      <div class="actions">
-        <h3 style="margin-top: 0;">⚡ Recommended Actions</h3>
-        <ul style="margin: 10px 0;">
-          <li>Review the attached Excel file for the complete list</li>
-          <li>Follow up with non-attending interns immediately</li>
-          <li>Remind them of the meeting attendance requirement</li>
-          <li>Investigate if absences are due to approved leave or other reasons</li>
-          <li>Consider disciplinary action for repeated non-attendance</li>
-        </ul>
-      </div>
-
-      <hr style="border: 0; border-top: 1px solid #ddd; margin: 20px 0;">
-
-      <p style="font-size: 14px; color: #666;">
-        This is an automated weekly report generated by the TalentHub Intern Management System.<br>
-        For questions or concerns, please review the system logs or contact the system administrator.
+      <p>
+        The attached Excel file contains the complete list of interns who have <strong>NOT</strong> attended
+        any meetings during the above two-week review period. Interns whose training commenced within this period are excluded from the report.
       </p>
 
-      <p style="margin-top: 20px;">
-        <strong>Best regards,</strong><br>
-        SLT Mobitel - TalentHub System<br>
+      <div class="attachment-notice">
+        <p style="margin: 0;"><strong>📎 Attachment:</strong> ${path.basename(excelFilePath)}</p>
+      </div>
+
+      <p>Please review the attached file and follow up with the listed interns at the earliest.</p>
+
+      <p style="margin-top: 30px;">
+        Best regards,<br>
+        <strong>SLT Mobitel – TalentHub System</strong><br>
         Digital Platforms Development Section
       </p>
     </div>
@@ -508,22 +430,16 @@ class WeeklyMeetingAttendanceService {
       const mailOptions = {
         from: process.env.GMAIL_USER,
         to: recipientEmail,
-        subject: subject,
+        subject,
         html: emailBody,
         attachments: [
-          {
-            filename: path.basename(excelFilePath),
-            path: excelFilePath,
-          },
+          { filename: path.basename(excelFilePath), path: excelFilePath },
         ],
       };
 
       const transporter = nodemailer.createTransport({
         service: "gmail",
-        auth: {
-          user: process.env.GMAIL_USER,
-          pass: process.env.GMAIL_PASS,
-        },
+        auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_PASS },
       });
 
       const info = await transporter.sendMail(mailOptions);
@@ -568,15 +484,14 @@ class WeeklyMeetingAttendanceService {
         }
       }
 
-      return {
-        success: false,
-        error: error.message,
-      };
+      return { success: false, error: error.message };
     }
   }
 
+  // ── Main entry point ──────────────────────────────────────────────────────
+
   static async performWeeklyMeetingAttendanceCheck(
-    recipients = "mgiri@slt.com.lk",
+    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
     triggerType = "scheduled",
   ) {
     const startTime = new Date();
@@ -674,16 +589,13 @@ class WeeklyMeetingAttendanceService {
         }
       }
 
-      // ── Sort non-attending interns by Trainee ID ascending before sending ─
-      // This ensures the Excel sheet and email preview table are both in a
-      // consistent, easy-to-scan order (e.g. SLT001, SLT002, SLT010 ...).
+      // Sort by Trainee ID ascending
       results.nonAttendingList.sort((a, b) => {
         const idA = String(a.id).toUpperCase();
         const idB = String(b.id).toUpperCase();
         return idA < idB ? -1 : idA > idB ? 1 : 0;
       });
 
-      // Send email
       const recipientList = Array.isArray(recipients)
         ? recipients
         : [recipients];
@@ -700,9 +612,8 @@ class WeeklyMeetingAttendanceService {
         results.emailSent = true;
         results.emailMessageId = emailResult.messageId;
         results.attachmentName = emailResult.attachmentName;
-        if (!emailResult.skipped) {
+        if (!emailResult.skipped)
           console.log("✅ Meeting attendance alert email sent successfully");
-        }
       } else {
         results.emailSent = false;
         results.emailError = emailResult.error;
@@ -736,16 +647,14 @@ class WeeklyMeetingAttendanceService {
         console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
         results.nonAttendingList.forEach((intern, index) => {
           console.log(`\n  ${index + 1}. ${intern.name} (${intern.id})`);
-          console.log(`     📧 Email:           ${intern.email}`);
+          console.log(`     📧 Email:         ${intern.email}`);
+          console.log(`     🎓 Field:         ${intern.fieldOfSpecialization}`);
+          console.log(`     🏫 Institute:     ${intern.institute}`);
+          console.log(`     👥 Team:          ${intern.team}`);
           console.log(
-            `     🎓 Field:           ${intern.fieldOfSpecialization}`,
+            `     📅 Training:      ${intern.trainingStartDate} - ${intern.trainingEndDate}`,
           );
-          console.log(`     🏫 Institute:       ${intern.institute}`);
-          console.log(`     👥 Team:            ${intern.team}`);
-          console.log(
-            `     📅 Training:        ${intern.trainingStartDate} - ${intern.trainingEndDate}`,
-          );
-          console.log(`     🕐 Last attended:   ${intern.lastAttendedMeeting}`);
+          console.log(`     🕐 Last attended: ${intern.lastAttendedMeeting}`);
         });
         console.log("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       }
@@ -763,10 +672,7 @@ class WeeklyMeetingAttendanceService {
         "❌ Fatal error during weekly meeting attendance check:",
         error,
       );
-      return {
-        success: false,
-        error: error.message,
-      };
+      return { success: false, error: error.message };
     }
   }
 }
