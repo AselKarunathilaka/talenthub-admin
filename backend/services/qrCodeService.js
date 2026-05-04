@@ -3,6 +3,7 @@ const InternRepository = require("../repositories/internRepository");
 
 const nodemailer = require("nodemailer");
 const dotenv = require("../config/dotenv");
+const sendEmail = require("../utils/emailSender");
 
 // Generate QR Code for marking attendance
 const generateQRCode = async (internId) => {
@@ -299,7 +300,8 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
           SLT Mobitel
           Digital Platforms Development Section
         `;
-        sendEmail(intern.Trainee_Email, emailSubject, emailBody);
+        // --- TEMPORARILY DISABLED EMAIL NOTIFICATION ---
+        // sendEmail(intern.Trainee_Email, emailSubject, emailBody);
       }
     } catch (error) {
       // Handle error (optional: log or rethrow)
