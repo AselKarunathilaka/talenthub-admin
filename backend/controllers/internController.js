@@ -8,6 +8,7 @@ const Project = require("../models/Project");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
 
 const addIntern = async (req, res) => {
   try {
@@ -761,14 +762,45 @@ const checkInternProjects = async (req, res) => {
       return res.status(200).json({ hasProject: false, projectCount: 0 });
     }
 
-    // Search for projects whose team field contains this intern's team name
-    const projects = await Project.find({
-      team: { $regex: teamName.trim(), $options: "i" },
+    // Fetch projects from TalentTrail External API
+    const apiKey = process.env.TALENTTRAIL_API_KEY;
+    if (!apiKey) {
+      console.error("TALENTTRAIL_API_KEY not configured");
+      return res.status(500).json({
+        message: "TalentTrail API key not configured",
+        error: "Missing TALENTTRAIL_API_KEY environment variable",
+      });
+    }
+
+    const response = await axios.get(
+      "https://talenttrail.slt.lk/api/external/projects",
+      {
+        headers: {
+          "X-API-Key": apiKey,
+        },
+      }
+    );
+
+    // The API returns an array of project objects
+    const projects = response.data;
+
+    if (!Array.isArray(projects)) {
+      console.error("Invalid response from TalentTrail API:", projects);
+      return res.status(500).json({
+        message: "Invalid response from TalentTrail API",
+        error: "Expected array of projects",
+      });
+    }
+
+    // Filter projects to find those where the intern's team is in assignedTeamNames
+    const matchingProjects = projects.filter((project) => {
+      const assignedTeamNames = project.assignedTeamNames || [];
+      return assignedTeamNames.includes(teamName.trim());
     });
 
     return res.status(200).json({
-      hasProject: projects.length > 0,
-      projectCount: projects.length,
+      hasProject: matchingProjects.length > 0,
+      projectCount: matchingProjects.length,
     });
   } catch (error) {
     console.error("Error checking intern projects:", error);
