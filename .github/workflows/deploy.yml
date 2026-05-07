@@ -1,137 +1,77 @@
-name: Deploy TalentHub-Admin
+name: Deploy TalentHub Admin
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      projectname:
-        description: 'Project name (used as folder / URL suffix)'
-        required: true
-        default: 'talenthub-admin'
-
-permissions:
-  contents: read
-
-env:
-  PROJECT: ${{ github.event.inputs.projectname }}
 
 jobs:
-  # JOB 1: Backend Deployment
-  deploy-backend:
-    name: Deploy Backend
+  deploy:
+    name: Deploy to Rocky Linux Server
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Copy backend files to server
-        uses: appleboy/scp-action@v0.1.5
+      - name: Deploy using SSH
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          source: "backend/"
-          target: "/home/${{ secrets.SSH_USER }}/${{ env.PROJECT }}"
-          strip_components: 0
-
-      - name: Deploy backend via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          envs: PROJECT
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           script: |
-            set -euo pipefail
-            echo ">>> Deploying Backend for ${PROJECT}"
-            PROJECT_DIR="/home/${{ secrets.SSH_USER }}/${PROJECT}"
+            set -e
 
-            mkdir -p "${PROJECT_DIR}"
-            cd "${PROJECT_DIR}/backend"
+            echo "Starting TalentHub Admin deployment..."
 
-            if pm2 describe "${PROJECT}-backend" &>/dev/null; then
-              pm2 delete "${PROJECT}-backend" || true
-            fi
+            echo "Moving to project directory..."
+            cd /home/dpd/apps/talenthub-admin
 
-            npm install
+            echo "Pulling latest code from main branch..."
+            git fetch origin main
+            git reset --hard origin/main
 
-            cat > .env <<EOF
+            echo "Creating backend environment file..."
+            cat > backend/.env <<EOF
             PORT=${{ secrets.BACKEND_PORT }}
-            NODE_ENV=${{ secrets.NODE_ENV }}
             MONGO_URI=${{ secrets.MONGO_URI }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
             GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
             GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
             GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
             GMAIL_USER=${{ secrets.GMAIL_USER }}
             GMAIL_PASS=${{ secrets.GMAIL_PASS }}
-
             EOF
 
-            echo "Starting backend using pm2..."
-            pm2 start npm --name "${PROJECT}-backend" -- start
-            pm2 save
-            pm2 list
-            echo "Backend deployed successfully."
-
-  # JOB 2: Frontend Deployment
-  deploy-frontend:
-    name: Deploy Frontend
-    runs-on: ubuntu-latest
-    needs: deploy-backend  
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Copy frontend files to server
-        uses: appleboy/scp-action@v0.1.5
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          source: "client/"
-          target: "/home/${{ secrets.SSH_USER }}/${{ env.PROJECT }}"
-          strip_components: 0
-
-      - name: Deploy frontend via SSH
-        uses: appleboy/ssh-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          port: ${{ secrets.SSH_PORT }}
-          username: ${{ secrets.SSH_USER }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          envs: PROJECT
-          script: |
-            set -euo pipefail
-            echo ">>> Building Frontend for ${PROJECT}"
-            PROJECT_DIR="/home/${{ secrets.SSH_USER }}/${PROJECT}"
-
-            cd "${PROJECT_DIR}/client"
-
+            echo "Installing backend dependencies..."
+            cd backend
             npm install
 
-            cat > .env <<EOF
+            echo "Restarting only TalentHub backend PM2 process..."
+            pm2 restart talenthub-admin-backend
+            pm2 save
+
+            echo "Creating frontend production environment file..."
+            cd ../client
+            cat > .env.production <<EOF
             VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
-            VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}
             EOF
 
+            echo "Installing frontend dependencies..."
+            npm install
+
+            echo "Building frontend..."
             npm run build
 
-            echo ">>> Deploying frontend build to /var/www/${PROJECT}"
-            sudo mkdir -p /var/www/${PROJECT}
-            sudo rm -rf /var/www/${PROJECT}/*
-            sudo mv dist/* /var/www/${PROJECT}/
+            echo "Deploying frontend build to Nginx web root..."
+            rm -rf /var/www/talenthub-admin/*
+            cp -r dist/* /var/www/talenthub-admin/
 
-            sudo chown -R nginx:nginx /var/www/${PROJECT} || true
-            sudo chmod -R 755 /var/www/${PROJECT} || true
-            sudo chcon -R -t httpd_sys_content_t /var/www/${PROJECT} || true
+            echo "Checking backend PM2 status..."
+            pm2 status
 
-            echo "Restarting Nginx..."
-            sudo nginx -t
-            sudo systemctl reload nginx
-
-            echo "Frontend deployed successfully."
+            echo "Deployment completed successfully."
