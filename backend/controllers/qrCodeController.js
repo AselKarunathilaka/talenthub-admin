@@ -61,7 +61,19 @@ const markAttendance = async (req, res) => {
 
 
 const scanQRCode = async (req, res) => {
-  const { qrCode, internId, scanType = 'daily', lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, scanType = 'daily', lat, lng } = req.body;
+
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
 
   try {
     // Validate QR code format based on scan type
@@ -162,7 +174,19 @@ const scanQRCode = async (req, res) => {
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId, meetingTitle, lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, meetingTitle, lat, lng } = req.body;
+
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
     // --- DISTANCE CHECKING TEMPORARILY DISABLED FOR TESTING ---
     /*
     const SLT_LAT = 6.9271;

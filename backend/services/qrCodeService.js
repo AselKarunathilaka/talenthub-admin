@@ -160,11 +160,12 @@ const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
 };
   
 // Mark meeting attendance
+// Uses a MongoDB transaction to ensure DailyRecord and Intern.attendance writes
+// are atomic — both succeed or both roll back, preventing data inconsistency.
 const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
   const mongoose = require("mongoose");
-  const externalSystemService = require("./externalSystemService");
   
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -172,21 +173,20 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   const moment = require('moment-timezone');
   const now = moment.tz('Asia/Colombo');
   const attendanceTime = now.toDate();
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const today = now.format('YYYY-MM-DD'); // YYYY-MM-DD format using Sri Lanka timezone
   const oneMinuteAgo = moment(now).subtract(60, 'seconds').toDate();
   
-  // CRITICAL: Use a SINGLE atomic findOneAndUpdate to prevent ALL race conditions
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
   
   if (dailyRecord) {
-    // ATOMIC DUPLICATE CHECK AND INSERT IN ONE OPERATION
-    // This uses MongoDB's atomic findOneAndUpdate with conditional logic
-    const updatedRecord = await DailyRecord.findOneAndUpdate(
-      {
-        _id: dailyRecord._id,
-        // Condition: NO recent present attendance for this meeting exists
-        $nor: [
+    // DailyRecord exists — use a transaction to atomically update both stores
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        // Step 1: Duplicate check — fail if a recent scan exists for this meeting
+        const hasDuplicate = await DailyRecord.findOne(
           {
+            _id: dailyRecord._id,
             meetingAttendance: {
               $elemMatch: {
                 meetingTitle,
@@ -195,38 +195,78 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
               }
             }
           }
-        ]
-      },
-      {
-        // First pull any old record for this meeting
-        $pull: { meetingAttendance: { meetingTitle } }
-      },
-      { new: true }
-    );
-    
-    if (!updatedRecord) {
-      // Record was NOT updated because a recent scan exists
-      throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
-    }
-    
-    // Now push the new attendance record
-    await DailyRecord.updateOne(
-      { _id: dailyRecord._id },
-      { 
-        $push: { 
-          meetingAttendance: {
-            meetingTitle,
-            attendanceStatus: 'present',
-            attendanceTime
-          }
+        ).session(session);
+
+        if (hasDuplicate) {
+          throw new Error("Duplicate meeting QR scan detected. Please wait before scanning again.");
         }
-      }
-    );
-    
+
+        // Step 2: Remove old entry for this meeting and push new one in a single operation
+        // First pull old entry
+        await DailyRecord.updateOne(
+          { _id: dailyRecord._id },
+          { $pull: { meetingAttendance: { meetingTitle } } },
+          { session }
+        );
+
+        // Then push the new attendance record
+        await DailyRecord.updateOne(
+          { _id: dailyRecord._id },
+          { 
+            $push: { 
+              meetingAttendance: {
+                meetingTitle,
+                attendanceStatus: 'present',
+                attendanceTime
+              }
+            }
+          },
+          { session }
+        );
+
+        // Step 3: Also write to Intern.attendance for admin dashboard compatibility
+        // Remove any existing meeting entry for today, then push fresh one
+        const today_start = moment.tz('Asia/Colombo').startOf('day').toDate();
+        const today_end = moment.tz('Asia/Colombo').endOf('day').toDate();
+
+        await Intern.updateOne(
+          { _id: internId },
+          {
+            $pull: {
+              attendance: {
+                type: 'qr',
+                meetingName: meetingTitle,
+                date: { $gte: today_start, $lte: today_end }
+              }
+            }
+          },
+          { session }
+        );
+
+        await Intern.updateOne(
+          { _id: internId },
+          {
+            $push: {
+              attendance: {
+                date: attendanceTime,
+                status: 'Present',
+                type: 'qr',
+                timeMarked: attendanceTime,
+                meetingName: meetingTitle,
+                qrCode: qrCode
+              }
+            }
+          },
+          { session }
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
     dailyRecord = await DailyRecord.findById(dailyRecord._id);
   } else {
-    // Fallback: log meeting attendance into legacy intern.attendance to ensure dashboard reflects it
-    // ATOMIC CHECK: Use findOneAndUpdate on Intern model
+    // No DailyRecord exists — write only to Intern.attendance (legacy path)
     const today_start = moment.tz('Asia/Colombo').startOf('day').toDate();
     const today_end = moment.tz('Asia/Colombo').endOf('day').toDate();
     
@@ -268,44 +308,27 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
     }
   }
   
-  // Sync with Attendance System if QR code is provided
+  // Sync with external Attendance System if QR code is provided
   if (qrCode && intern && intern.Trainee_ID) {
     try {
-      // Direct axios call to ensure external sync works
       const axios = require('axios');
       const externalConfig = require('../config/externalSystems');
       
       if (externalConfig.attendanceSystem.enabled) {
         const attendanceSystemUrl = `${externalConfig.attendanceSystem.baseUrl}${externalConfig.attendanceSystem.endpoints.scanMeeting}`;
-        // ...existing code...
-        const emailSubject = "Meeting Attendance Marked - SLT Mobitel";
-        const emailBody = `
-          Hello ${intern.Trainee_Name},
 
-          This is to confirm that your meeting attendance has been successfully recorded.
-          
-          📅 Date: ${attendanceDate}
-          ⏰ Time: ${attendanceTime}
-          🏢 Meeting: ${meetingTitle}
-          ✅ Status: Present
-          🆔 Intern ID: ${intern.Trainee_ID}
+        const syncData = {
+          qrSessionId: qrCode,
+          traineeId: intern.Trainee_ID
+        };
 
-          Your attendance has been recorded via QR code scan for the specified meeting.
-
-          If you have any issues or concerns, please do not hesitate to contact your supervisor.
-
-          Please do not reply to this email. This is an auto-generated message.
-
-          Best regards,
-          SLT Mobitel
-          Digital Platforms Development Section
-        `;
-        // --- TEMPORARILY DISABLED EMAIL NOTIFICATION ---
-        // sendEmail(intern.Trainee_Email, emailSubject, emailBody);
+        await axios.post(attendanceSystemUrl, syncData, {
+          timeout: externalConfig.attendanceSystem.timeout,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     } catch (error) {
-      // Handle error (optional: log or rethrow)
-      // For production, avoid logging sensitive info
+      // Continue with local processing even if external sync fails
     }
   }
   
@@ -327,10 +350,13 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
 // Mark daily attendance for an intern (do NOT auto-create DailyRecord/logbook)
 // Note: The logbook (DailyRecord) must be filled by the intern manually.
 // On QR scan, we only update attendance fields if a DailyRecord for today already exists.
+//
+// Uses a MongoDB transaction when updating both DailyRecord and Intern.attendance
+// to ensure atomic consistency — both writes succeed or both roll back.
 const markInternDailyAttendance = async (internId, qrCode) => {
   const DailyRecord = require("../models/DailyRecord");
   const Intern = require("../models/Intern");
-  const externalSystemService = require("./externalSystemService");
+  const mongoose = require("mongoose");
   
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -343,43 +369,44 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   const today = todaySriLanka.format('YYYY-MM-DD'); // YYYY-MM-DD format
   const oneMinuteAgo = moment.tz("Asia/Colombo").subtract(60, 'seconds').toDate();
 
-  // ATOMIC UPDATE for DailyRecord - prevent duplicates using findOneAndUpdate
-  const updatedDailyRecord = await DailyRecord.findOneAndUpdate(
-    {
-      internId,
-      date: today,
-      // Condition: Either no attendance marked yet OR last attendance was more than 60 seconds ago
-      $or: [
-        { attendance: { $ne: "present" } },
-        { attendanceTime: { $lt: oneMinuteAgo } },
-        { attendanceTime: null }
-      ]
-    },
-    {
-      $set: {
-        attendance: "present",
-        attendanceTime: attendanceTime
-      }
-    },
-    { new: true }
-  );
-
-  if (updatedDailyRecord === null) {
-    // DailyRecord exists but was NOT updated because a recent scan exists
-    const dailyRecord = await DailyRecord.findOne({ internId, date: today });
-    if (dailyRecord && dailyRecord.attendance === "present") {
+  // Check for duplicate scans before starting the transaction
+  const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
+  if (existingDailyRecord && existingDailyRecord.attendance === "present") {
+    if (existingDailyRecord.attendanceTime && existingDailyRecord.attendanceTime >= oneMinuteAgo) {
       throw new Error("Duplicate daily QR scan detected. Please wait before scanning again.");
     }
-    // If no dailyRecord exists, that's ok - continue to update intern.attendance
   }
 
-  // ATOMIC UPDATE for intern.attendance - prevent duplicates
-  const updatedIntern = await Intern.findOneAndUpdate(
-    {
-      _id: internId,
-      // Condition: NO recent daily_qr attendance exists in the last 60 seconds
-      $nor: [
+  // Use a transaction to atomically update BOTH DailyRecord and Intern.attendance
+  const session = await mongoose.startSession();
+  try {
+    await session.withTransaction(async () => {
+      // Step 1: Update DailyRecord (only if one exists for today)
+      if (existingDailyRecord) {
+        await DailyRecord.updateOne(
+          {
+            internId,
+            date: today,
+            $or: [
+              { attendance: { $ne: "present" } },
+              { attendanceTime: { $lt: oneMinuteAgo } },
+              { attendanceTime: null }
+            ]
+          },
+          {
+            $set: {
+              attendance: "present",
+              attendanceTime: attendanceTime
+            }
+          },
+          { session }
+        );
+      }
+
+      // Step 2: Push to Intern.attendance - prevent duplicates
+      const duplicateCheck = await Intern.findOne(
         {
+          _id: internId,
           attendance: {
             $elemMatch: {
               type: 'daily_qr',
@@ -389,30 +416,35 @@ const markInternDailyAttendance = async (internId, qrCode) => {
             }
           }
         }
-      ]
-    },
-    {
-      $push: {
-        attendance: {
-          date: todaySriLanka.toDate(),
-          status: "Present",
-          type: "daily_qr",
-          timeMarked: attendanceTime,
-          qrCode: qrCode
-        }
-      }
-    },
-    { new: true }
-  );
+      ).session(session);
 
-  if (!updatedIntern) {
-    throw new Error("Duplicate daily QR scan detected. Please wait before scanning again.");
+      if (duplicateCheck) {
+        throw new Error("Duplicate daily QR scan detected. Please wait before scanning again.");
+      }
+
+      await Intern.updateOne(
+        { _id: internId },
+        {
+          $push: {
+            attendance: {
+              date: todaySriLanka.toDate(),
+              status: "Present",
+              type: "daily_qr",
+              timeMarked: attendanceTime,
+              qrCode: qrCode
+            }
+          }
+        },
+        { session }
+      );
+    });
+  } finally {
+    await session.endSession();
   }
 
-  // Sync with external Attendance System
+  // Sync with external Attendance System (fire-and-forget, outside transaction)
   if (qrCode && intern.Trainee_ID) {
     try {
-      // Direct axios call to ensure external sync works
       const axios = require('axios');
       const externalConfig = require('../config/externalSystems');
       
@@ -424,18 +456,13 @@ const markInternDailyAttendance = async (internId, qrCode) => {
           traineeId: intern.Trainee_ID
         };
         
-        const syncResponse = await axios.post(attendanceSystemUrl, syncData, {
+        await axios.post(attendanceSystemUrl, syncData, {
           timeout: externalConfig.attendanceSystem.timeout,
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: { 'Content-Type': 'application/json' }
         });
-        
-        // External sync successful - no need to log in production
       }
     } catch (error) {
       // Continue with local processing even if external sync fails
-      // Error handling without console logs to avoid production noise
     }
   }
 
