@@ -332,6 +332,16 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
     }
   }
   
+  
+  // NEW: When meeting attendance is marked, also mark daily attendance automatically
+  try {
+    // We pass the same qrCode to both. markInternDailyAttendance handles its own duplicate checks.
+    await markInternDailyAttendance(internId, qrCode);
+  } catch (dailyError) {
+    // If daily attendance is already marked or fails, we still want to return the meeting success.
+    // So we just ignore errors from the "automatic" daily marking part.
+  }
+  
   return {
     intern: {
       id: intern._id,

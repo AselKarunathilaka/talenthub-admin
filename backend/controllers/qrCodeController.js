@@ -159,9 +159,19 @@ const scanQRCode = async (req, res) => {
       // For meeting/general attendance scans, use the old system (intern.attendance)
       const status = "Present";
       const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
+      
+      // Also attempt to mark daily attendance
+      let dailyAttendanceUpdated = false;
+      try {
+        await qrCodeService.markInternDailyAttendance(internId, qrCode);
+        dailyAttendanceUpdated = true;
+      } catch (e) {
+        // Ignore errors (like duplicates) for the automatic part
+      }
+
       res.status(200).json({ 
         message: "Attendance marked successfully",
-        dailyAttendanceUpdated: false
+        dailyAttendanceUpdated: dailyAttendanceUpdated
       });
     }
   } catch (error) {
