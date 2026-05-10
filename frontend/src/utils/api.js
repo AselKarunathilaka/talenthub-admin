@@ -1,29 +1,29 @@
 // src/utils/api.js
+import { handleUnauthorized } from "./sessionUtils";
+
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 const getAuthToken = () => {
-  const adminInfo = localStorage.getItem('adminInfo');
+  const adminInfo = localStorage.getItem("adminInfo");
   if (adminInfo) {
     try {
       const parsed = JSON.parse(adminInfo);
-      if (parsed.token) {
-        return parsed.token;
-      }
+      if (parsed.token) return parsed.token;
     } catch (error) {
-      console.error('Error parsing adminInfo:', error);
+      console.error("Error parsing adminInfo:", error);
     }
   }
 
-  const authToken = localStorage.getItem('authToken');
+  const authToken = localStorage.getItem("authToken");
   if (authToken) return authToken;
 
-  const userData = localStorage.getItem('userData');
+  const userData = localStorage.getItem("userData");
   if (userData) {
     try {
       const parsed = JSON.parse(userData);
       if (parsed.token) return parsed.token;
     } catch (error) {
-      console.error('Error parsing userData:', error);
+      console.error("Error parsing userData:", error);
     }
   }
 
@@ -32,11 +32,33 @@ const getAuthToken = () => {
 
 const createHeaders = (isJson = true) => {
   const token = getAuthToken();
-  const headers = {
-    ...(isJson && { 'Content-Type': 'application/json' }),
+  return {
+    ...(isJson && { "Content-Type": "application/json" }),
     ...(token && { Authorization: `Bearer ${token}` }),
   };
-  return headers;
+};
+
+// Check response for 401 and handle session expiry
+const checkAuth = async (res) => {
+  if (res.status === 401) {
+    // Try to read the error code from the response body
+    let code = "";
+    try {
+      const clone = res.clone();
+      const body = await clone.json();
+      code = body.code || "";
+    } catch (_) {}
+
+    const message =
+      code === "TOKEN_EXPIRED"
+        ? "Your session has expired. Please log in again."
+        : "Your session is invalid. Please log in again.";
+
+    handleUnauthorized(message);
+    // Throw so the calling code doesn't try to parse the response
+    throw new Error(message);
+  }
+  return res;
 };
 
 export const api = {
@@ -44,32 +66,36 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: createHeaders(),
     });
+    await checkAuth(res);
     return res.json();
   },
 
   post: async (endpoint, data) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
+      method: "POST",
       headers: createHeaders(),
       body: JSON.stringify(data),
     });
+    await checkAuth(res);
     return res.json();
   },
 
   put: async (endpoint, data) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'PUT',
+      method: "PUT",
       headers: createHeaders(),
       body: JSON.stringify(data),
     });
+    await checkAuth(res);
     return res.json();
   },
 
   delete: async (endpoint) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: createHeaders(),
     });
+    await checkAuth(res);
     return res.json();
   },
 };
