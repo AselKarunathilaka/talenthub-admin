@@ -1,3 +1,9 @@
+// Compatibility shim for Node >=25: define SlowBuffer and Buffer.equal
+// so older modules (e.g. buffer-equal-constant-time) don't crash.
+const _bufferShim = require('buffer');
+if (!_bufferShim.SlowBuffer) _bufferShim.SlowBuffer = Buffer;
+if (!Buffer.prototype.equal && Buffer.prototype.equals) Buffer.prototype.equal = Buffer.prototype.equals;
+
 const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");

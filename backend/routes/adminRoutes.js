@@ -41,6 +41,10 @@ const {
   exportAttendanceExcel,
   exportNonAttendanceExcel,
 } = require("../controllers/admininternAttendanceController");
+const {
+  getAttendanceSettings,
+  updateAttendanceSettings,
+} = require("../controllers/attendanceSettingsController");
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -118,6 +122,10 @@ router.get("/attendance/export-excel", exportAttendanceExcel);
 
 // GET /admin/attendance/export-non-attendance-excel → download non-attendance Excel (past 14 days)
 router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
+
+// Admin controlled attendance policy used by intern face/QR attendance flows
+router.get("/attendance/settings", getAttendanceSettings);
+router.put("/attendance/settings", updateAttendanceSettings);
 
 router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
   const nodemailer = require("nodemailer");

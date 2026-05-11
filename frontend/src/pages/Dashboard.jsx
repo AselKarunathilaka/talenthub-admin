@@ -414,13 +414,13 @@ const Dashboard = () => {
                 Recent Daily Attendance
               </h3>
               <motion.button
-                onClick={() => navigate("/scan-qr")}
+                onClick={() => navigate("/face-attendance")}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Clock className="h-3 w-3 mr-1" />
-                Scan QR
+                Mark Attendance
               </motion.button>
             </div>
 

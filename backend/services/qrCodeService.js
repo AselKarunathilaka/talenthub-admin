@@ -341,6 +341,22 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   const today = todaySriLanka.format('YYYY-MM-DD'); // YYYY-MM-DD format
   const oneMinuteAgo = moment.tz("Asia/Colombo").subtract(60, 'seconds').toDate();
 
+  // Check if face attendance already exists today - prevent QR if face is marked
+  const hasFaceAttendanceToday = Array.isArray(intern.attendance) &&
+    intern.attendance.some((entry) => {
+      const entryType = String(entry.type || "").toLowerCase();
+      return (
+        (entryType === "face" || entryType === "face_meeting") &&
+        entry.status === "Present" &&
+        entry.date &&
+        moment.tz(entry.date, "Asia/Colombo").isSame(todaySriLanka, "day")
+      );
+    });
+
+  if (hasFaceAttendanceToday) {
+    throw new Error("Face attendance already marked for today. QR backup is not needed.");
+  }
+
   // ATOMIC UPDATE for DailyRecord - prevent duplicates using findOneAndUpdate
   const updatedDailyRecord = await DailyRecord.findOneAndUpdate(
     {
@@ -375,12 +391,12 @@ const markInternDailyAttendance = async (internId, qrCode) => {
   const updatedIntern = await Intern.findOneAndUpdate(
     {
       _id: internId,
-      // Condition: NO recent daily_qr attendance exists in the last 60 seconds
+      // Condition: NO recent daily_qr or face attendance exists today
       $nor: [
         {
           attendance: {
             $elemMatch: {
-              type: 'daily_qr',
+              type: { $in: ['daily_qr', 'face'] },
               status: 'Present',
               date: { $gte: todaySriLanka.toDate(), $lte: todaySriLanka.clone().endOf('day').toDate() },
               timeMarked: { $gte: oneMinuteAgo }

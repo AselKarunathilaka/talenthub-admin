@@ -10,6 +10,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 
+const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
+
 const addIntern = async (req, res) => {
   try {
     const { Trainee_HomeAddress } = req.body;
@@ -318,12 +320,12 @@ const getAttendanceByInternId = async (req, res) => {
   const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Add ALL legacy meeting attendance from intern.attendance (including 'General Meeting' and those with no meetingName)
-    // Only skip entries that are daily QR scans (type: 'daily' | 'daily_qr')
+    // Add ALL legacy meeting attendance from intern.attendance.
+    // Skip daily/face attendance entries so they do not appear as meetings.
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
         const type = (entry.type || '').toLowerCase();
-        const isDailyEntry = type === 'daily' || type === 'daily_qr';
+        const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         if (isDailyEntry) return; // skip daily QR/daily entries
 
         // All other legacy entries are preserved as meeting attendance
@@ -378,7 +380,7 @@ const getAttendanceByInternId = async (req, res) => {
       }
     });
 
-    // Fallback: include daily QR scans from intern.attendance if DailyRecord doesn't exist for that date
+    // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {
       const datesWithDailyRecord = new Set(
         dailyAttendance.map((d) => new Date(d.date).toDateString())
@@ -387,7 +389,7 @@ const getAttendanceByInternId = async (req, res) => {
       if (intern.attendance && intern.attendance.length > 0) {
         intern.attendance.forEach((entry) => {
           const type = (entry.type || '').toLowerCase();
-          const isDaily = type === 'daily' || type === 'daily_qr';
+          const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
           if (!isDaily) return; // only consider daily scans here
 
           const entryDate = entry.date ? new Date(entry.date) : null;

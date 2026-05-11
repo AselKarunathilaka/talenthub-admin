@@ -16,6 +16,7 @@ import {
   FaClock,
   FaChartBar,
   FaEnvelope,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -84,6 +85,24 @@ const attendanceApi = {
     a.click();
     a.remove();
     window.URL.revokeObjectURL(url);
+  },
+
+  getSettings: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error((await res.json()).message || "Settings request failed");
+    return res.json();
+  },
+
+  updateSettings: async (settings) => {
+    const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error((await res.json()).message || "Settings update failed");
+    return res.json();
   },
 };
 
@@ -169,6 +188,9 @@ const AdminInternAttendance = () => {
   const [triggering, setTriggering] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [sltLocationRequired, setSltLocationRequired] = useState(true);
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
@@ -192,6 +214,46 @@ const AdminInternAttendance = () => {
   useEffect(() => {
     fetchAttendance(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      setSettingsLoading(true);
+      try {
+        const result = await attendanceApi.getSettings();
+        setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      } catch (err) {
+        showToast(err.message || "Failed to load attendance settings", "error");
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  const handleToggleLocationRequirement = async () => {
+    const nextValue = !sltLocationRequired;
+    setSltLocationRequired(nextValue);
+    setSettingsSaving(true);
+
+    try {
+      const result = await attendanceApi.updateSettings({
+        sltLocationRequired: nextValue,
+      });
+      setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      showToast(
+        nextValue
+          ? "SLT location requirement enabled for intern attendance"
+          : "SLT location requirement disabled. Interns can mark attendance anywhere",
+        "success",
+      );
+    } catch (err) {
+      setSltLocationRequired(!nextValue);
+      showToast(err.message || "Failed to update location setting", "error");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const handleExport = async () => {
     if (!data || data.count === 0) {
@@ -481,6 +543,57 @@ const AdminInternAttendance = () => {
               <p className="text-gray-600 text-sm md:text-base">
                 View daily attendance records and send non-attendance reports
               </p>
+            </motion.div>
+
+            <motion.div
+              className="bg-white/85 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.03, duration: 0.3 }}
+            >
+              <div className="px-4 md:px-6 py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                    sltLocationRequired ? "bg-blue-100" : "bg-amber-100"
+                  }`}>
+                    <FaMapMarkerAlt
+                      className={`h-4 w-4 ${
+                        sltLocationRequired ? "text-blue-600" : "text-amber-600"
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-900">
+                      SLT Location Requirement
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5 max-w-xl">
+                      {sltLocationRequired
+                        ? "Intern face attendance and QR backup require users to be within the SLT office radius."
+                        : "Location validation is off. Interns can mark face attendance and use QR backup from anywhere."}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleLocationRequirement}
+                  disabled={settingsLoading || settingsSaving}
+                  className={`relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    sltLocationRequired ? "bg-blue-600" : "bg-gray-300"
+                  }`}
+                  aria-pressed={sltLocationRequired}
+                  aria-label="Toggle SLT location requirement"
+                >
+                  <span
+                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
+                      sltLocationRequired ? "translate-x-9" : "translate-x-1"
+                    }`}
+                  />
+                  <span className="sr-only">
+                    {sltLocationRequired ? "Location required" : "Location not required"}
+                  </span>
+                </button>
+              </div>
             </motion.div>
 
             {/* ══════════════════════════════════════════════════

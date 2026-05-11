@@ -3,6 +3,7 @@ const InternService = require("../services/internService");
 const attendanceService = require("../services/attendanceService");
 const InternRepository = require("../repositories/internRepository");  
 const sendEmail = require("../utils/emailSender");  
+const AttendanceSettingsService = require("../services/attendanceSettingsService");
 
 const moment = require("moment");
 
@@ -63,31 +64,11 @@ const scanQRCode = async (req, res) => {
       if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
         return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
       }
-      // Location validation for SLT premises
-      const SLT_LAT = 6.9271;
-      const SLT_LNG = 79.8612;
-      const MAX_DISTANCE_METERS = 2000;
-      function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-        function deg2rad(deg) { return deg * (Math.PI/180); }
-        const R = 6371000; // Radius of the earth in meters
-        const dLat = deg2rad(lat2-lat1);
-        const dLon = deg2rad(lon2-lon1);
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-          Math.sin(dLon/2) * Math.sin(dLon/2)
-          ;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const d = R * c; // Distance in meters
-        return d;
-      }
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Location data is required to mark attendance." });
-      }
-      const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
-      if (distance > MAX_DISTANCE_METERS) {
-        return res.status(403).json({ message: `Attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
-      }
+      await AttendanceSettingsService.validateSltLocationIfRequired({
+        lat,
+        lng,
+        label: "Attendance",
+      });
     }
     const isValid = await qrCodeService.verifyQRCode(qrCode);
     if (!isValid) {
@@ -142,39 +123,24 @@ const scanQRCode = async (req, res) => {
       });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error processing QR code", error: error.message });
+    res.status(error.statusCode || 500).json({
+      message: error.locationRequired ? error.message : "Error processing QR code",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
   }
 };
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
   const { qrCode, internId, meetingTitle, lat, lng } = req.body;
-    // Location validation for SLT premises
-    const SLT_LAT = 6.9271;
-    const SLT_LNG = 79.8612;
-    const MAX_DISTANCE_METERS = 2000;
-    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-      function deg2rad(deg) { return deg * (Math.PI/180); }
-      const R = 6371000; // Radius of the earth in meters
-      const dLat = deg2rad(lat2-lat1);
-      const dLon = deg2rad(lon2-lon1);
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon/2) * Math.sin(dLon/2)
-        ;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const d = R * c; // Distance in meters
-      return d;
-    }
-    if (!lat || !lng) {
-      return res.status(400).json({ message: "Location data is required to mark meeting attendance." });
-    }
-    const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
-    if (distance > MAX_DISTANCE_METERS) {
-      return res.status(403).json({ message: `Meeting attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
-    }
   try {
+    await AttendanceSettingsService.validateSltLocationIfRequired({
+      lat,
+      lng,
+      label: "Meeting attendance",
+    });
+
     if (!meetingTitle) {
       return res.status(400).json({ message: "Meeting title is required." });
     }
@@ -206,7 +172,11 @@ const scanMeetingQRCode = async (req, res) => {
       meeting: result.meeting
     });
   } catch (error) {
-    res.status(500).json({ message: "Error processing meeting attendance", error: error.message });
+    res.status(error.statusCode || 500).json({
+      message: error.locationRequired ? error.message : "Error processing meeting attendance",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
   }
 };
 

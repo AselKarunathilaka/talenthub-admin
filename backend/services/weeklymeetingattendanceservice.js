@@ -150,6 +150,9 @@ class WeeklyMeetingAttendanceService {
         ),
       );
 
+      // Include meeting types: qr, meeting, face_meeting (excludes: face, daily, daily_qr)
+      const meetingOnlyTypes = new Set(["qr", "meeting", "face_meeting", ""]);
+
       return intern.attendance.some((record) => {
         const recordDate = moment(record.date);
         const dateStr = recordDate.format("YYYY-MM-DD");
@@ -158,8 +161,9 @@ class WeeklyMeetingAttendanceService {
           recordDate.isSameOrBefore(endDate);
         const isWorkingDay = workingDayStrings.has(dateStr);
         const isPresent = record.status === "Present";
+        const isMeetingType = meetingOnlyTypes.has(String(record.type || "").toLowerCase());
 
-        return isInRange && isWorkingDay && isPresent;
+        return isInRange && isWorkingDay && isPresent && isMeetingType;
       });
     } catch (error) {
       console.error(
@@ -173,8 +177,14 @@ class WeeklyMeetingAttendanceService {
   static getLastAttendedMeeting(intern) {
     if (!intern.attendance || intern.attendance.length === 0) return null;
 
+    // Include meeting types: qr, meeting, face_meeting (excludes: face, daily, daily_qr)
+    const meetingOnlyTypes = new Set(["qr", "meeting", "face_meeting", ""]);
+
     const presentRecords = intern.attendance
-      .filter((r) => r.status === "Present")
+      .filter((r) => {
+        const recordType = String(r.type || "").toLowerCase();
+        return r.status === "Present" && meetingOnlyTypes.has(recordType);
+      })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
     return presentRecords.length > 0 ? presentRecords[0] : null;
