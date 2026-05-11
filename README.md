@@ -10,6 +10,7 @@ TalentHub is an internship management platform for SLT Mobitel trainee operation
 - Gate-staff login and approved short-leave pass validation.
 - SLT Prohub trainee synchronization for active intern records.
 - Intern profile management, team assignment, availability, and location mapping.
+- **Face Recognition Attendance** with facial embedding (128-D vector), geolocation verification (2km radius from SLT), and 85% confidence threshold matching.
 - QR-based attendance and meeting attendance capture.
 - Daily logbook CRUD with PDF exports and institute-specific PDF templates.
 - AI-assisted logbook quality validation with local heuristics and optional Gemini validation.
