@@ -334,12 +334,15 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
   
   
   // NEW: When meeting attendance is marked, also mark daily attendance automatically
+  let dailyAttendanceMarked = false;
   try {
     // We pass the same qrCode to both. markInternDailyAttendance handles its own duplicate checks.
     await markInternDailyAttendance(internId, qrCode);
+    dailyAttendanceMarked = true;
+    console.log(`✅ Auto-marked daily attendance for intern ${intern.Trainee_ID} via meeting scan`);
   } catch (dailyError) {
     // If daily attendance is already marked or fails, we still want to return the meeting success.
-    // So we just ignore errors from the "automatic" daily marking part.
+    console.log(`ℹ️ Auto daily attendance skipped for intern ${intern.Trainee_ID}: ${dailyError.message}`);
   }
   
   return {
@@ -353,7 +356,8 @@ const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
       title: meetingTitle,
       status: "present",
       time: new Date()
-    }
+    },
+    dailyAttendanceMarked
   }
 };
 
