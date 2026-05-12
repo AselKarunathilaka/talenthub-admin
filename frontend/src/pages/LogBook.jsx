@@ -7,6 +7,7 @@ import {
   FiSmartphone, FiUmbrella, FiClock // Added umbrella icon for leave status and clock for time
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
+import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
 
 // Utility function to check if current time is after 10 AM (Sri Lankan time)
 const checkLeaveTimeRestriction = () => {
@@ -63,31 +64,6 @@ const Logbook = () => {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeRestriction, setTimeRestriction] = useState(checkLeaveTimeRestriction());
-  const [taskQuality, setTaskQuality] = useState(null); // null | 'poor' | 'fair' | 'good'
-  const [challengesQuality, setChallengesQuality] = useState(null);
-  const [plansQuality, setPlansQuality] = useState(null);
-
-  // Real-time quality assessment
-  const getTaskQuality = (text) => {
-    if (!text || text.trim().length === 0) return null;
-    const trimmed = text.trim();
-    const wordCount = trimmed.split(/\s+/).filter(w => w.length > 0).length;
-    const uniqueChars = new Set(trimmed.toLowerCase().replace(/\s/g, '').split(''));
-    const charRatio = uniqueChars.size / Math.max(trimmed.replace(/\s/g, '').length, 1);
-    if (trimmed.length < 20 || wordCount < 5 || charRatio < 0.3) return 'poor';
-    if (trimmed.length >= 80 && wordCount >= 10) return 'good';
-    return 'fair';
-  };
-
-  // Lighter quality check for optional fields (lower bar)
-  const getFieldQuality = (text, minLen = 10, minWords = 3) => {
-    if (!text || text.trim().length === 0) return null;
-    const trimmed = text.trim();
-    const wordCount = trimmed.split(/\s+/).filter(w => w.length > 0).length;
-    if (trimmed.length < minLen || wordCount < minWords) return 'poor';
-    if (trimmed.length >= 50 && wordCount >= 6) return 'good';
-    return 'fair';
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -219,14 +195,6 @@ const Logbook = () => {
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     setStatusMessage(null);
-    // Update quality indicators for all text fields
-    if (e.target.name === 'tasks') {
-      setTaskQuality(getTaskQuality(e.target.value));
-    } else if (e.target.name === 'challenges') {
-      setChallengesQuality(getFieldQuality(e.target.value));
-    } else if (e.target.name === 'plans') {
-      setPlansQuality(getFieldQuality(e.target.value));
-    }
   };
 
   const stackOptions = [
@@ -396,28 +364,9 @@ const Logbook = () => {
                             required={formData.status === 'working'}
                             rows={4}
                             placeholder="What did you accomplish today? Be specific about what you worked on, what you implemented or fixed..."
-                            className={`w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${taskQuality === 'poor' ? 'border-red-300 focus:ring-red-400' :
-                              taskQuality === 'fair' ? 'border-yellow-300 focus:ring-yellow-400' :
-                                taskQuality === 'good' ? 'border-green-300 focus:ring-green-400' :
-                                  'border-gray-200 focus:ring-blue-500'
-                              }`}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          {/* Real-time quality indicator */}
-                          {taskQuality && (
-                            <div className={`flex items-center gap-2 mt-1.5 text-xs font-medium ${taskQuality === 'poor' ? 'text-red-500' :
-                              taskQuality === 'fair' ? 'text-yellow-600' :
-                                'text-green-600'
-                              }`}>
-                              <div className="flex gap-1">
-                                <div className={`h-1.5 w-8 rounded-full ${taskQuality !== null ? (taskQuality === 'poor' ? 'bg-red-400' : taskQuality === 'fair' ? 'bg-yellow-400' : 'bg-green-400') : 'bg-gray-200'}`} />
-                                <div className={`h-1.5 w-8 rounded-full ${taskQuality === 'fair' || taskQuality === 'good' ? (taskQuality === 'fair' ? 'bg-yellow-400' : 'bg-green-400') : 'bg-gray-200'}`} />
-                                <div className={`h-1.5 w-8 rounded-full ${taskQuality === 'good' ? 'bg-green-400' : 'bg-gray-200'}`} />
-                              </div>
-                              {taskQuality === 'poor' && '⚠ Too brief or unclear — please describe your actual work'}
-                              {taskQuality === 'fair' && '✎ Good start — add more detail for a complete entry'}
-                              {taskQuality === 'good' && '✓ Great description!'}
-                            </div>
-                          )}
+                          <EntryFeedbackIndicator text={formData.tasks} />
                         </div>
 
                         {/* Challenges Faced */}
@@ -432,25 +381,9 @@ const Logbook = () => {
                             onChange={handleChange}
                             rows={3}
                             placeholder="Any obstacles or difficulties you encountered in your work today..."
-                            className={`w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${challengesQuality === 'poor' ? 'border-red-300 focus:ring-red-400' :
-                              challengesQuality === 'fair' ? 'border-yellow-300 focus:ring-yellow-400' :
-                                challengesQuality === 'good' ? 'border-green-300 focus:ring-green-400' :
-                                  'border-gray-200 focus:ring-blue-500'
-                              }`}
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          {/* Quality indicator + char count */}
-                          <div className="flex items-center justify-between mt-1">
-                            {challengesQuality ? (
-                              <span className={`text-xs font-medium ${challengesQuality === 'poor' ? 'text-red-500' :
-                                challengesQuality === 'fair' ? 'text-yellow-600' : 'text-green-600'
-                                }`}>
-                                {challengesQuality === 'poor' && '⚠ Too brief — describe a real challenge'}
-                                {challengesQuality === 'fair' && '✎ Getting there — add a bit more detail'}
-                                {challengesQuality === 'good' && '✓ Looks good!'}
-                              </span>
-                            ) : <span />}
-                            <span className="text-xs text-gray-400">{formData.challenges.length} chars</span>
-                          </div>
+                          <EntryFeedbackIndicator text={formData.challenges} />
                         </div>
 
                         {/* Plans for Tomorrow */}
@@ -464,26 +397,10 @@ const Logbook = () => {
                             value={formData.plans}
                             onChange={handleChange}
                             rows={3}
-                            placeholder="What work will you focus on tomorrow?"
-                            className={`w-full px-4 py-3 border rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${plansQuality === 'poor' ? 'border-red-300 focus:ring-red-400' :
-                              plansQuality === 'fair' ? 'border-yellow-300 focus:ring-yellow-400' :
-                                plansQuality === 'good' ? 'border-green-300 focus:ring-green-400' :
-                                  'border-gray-200 focus:ring-blue-500'
-                              }`}
+                            placeholder="What will you focus on tomorrow?"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          {/* Quality indicator + char count */}
-                          <div className="flex items-center justify-between mt-1">
-                            {plansQuality ? (
-                              <span className={`text-xs font-medium ${plansQuality === 'poor' ? 'text-red-500' :
-                                plansQuality === 'fair' ? 'text-yellow-600' : 'text-green-600'
-                                }`}>
-                                {plansQuality === 'poor' && '⚠ Too brief — describe your actual work plans'}
-                                {plansQuality === 'fair' && '✎ Good — add a bit more'}
-                                {plansQuality === 'good' && '✓ Great plan!'}
-                              </span>
-                            ) : <span />}
-                            <span className="text-xs text-gray-400">{formData.plans.length} chars</span>
-                          </div>
+                          <EntryFeedbackIndicator text={formData.plans} />
                         </div>
                       </>
                     ) : (

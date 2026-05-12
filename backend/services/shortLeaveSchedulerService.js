@@ -7,16 +7,16 @@ const ShortLeaveEmailService = require("./shortLeaveEmailService");
  * Call this once from server.js / app.js after DB connection is ready.
  */
 function initScheduler() {
-  // Cron: "0 13 * * *" = every day at 13:00 (1:00 PM)
+  // Cron: "30 13 * * *" = every day at 13:30 (1:00 PM)
   // timezone: 'Asia/Colombo' = Sri Lanka Standard Time (UTC+5:30)
   // Send short leave requests submitted so far today to digital platforms team
-  // This gives admins time to review between 1:00 PM - 1:30 PM
+  // This gives admins time to review between 1:30 PM - 2:00 PM
   // Note: Interns can submit from 8:30 AM - 4:30 PM throughout the day
   cron.schedule(
-    "0 13 * * *",
+    "30 13 * * *",
     async () => {
       console.log(
-        "\n⏰ [Scheduler] 1:00 PM Sri Lanka Time — triggering short leave requests report...",
+        "\n⏰ [Scheduler] 1:30 PM Sri Lanka Time — triggering short leave requests report...",
       );
       try {
         await ShortLeaveEmailService.sendDailyShortLeaveReport();
@@ -31,14 +31,14 @@ function initScheduler() {
     "✅ [Scheduler] Daily 1:00 PM short leave report job registered (Asia/Colombo timezone)",
   );
 
-  // Cron: "30 13 * * *" = every day at 13:30 (1:30 PM)
+  // Cron: "00 14 * * *" = every day at 14:00 (2:00 PM)
   // timezone: 'Asia/Colombo' = Sri Lanka Standard Time (UTC+5:30)
-  // Send approved short leave requests after admin approval (1:00 PM - 1:30 PM window)
+  // Send approved short leave requests after admin approval (1:30 PM - 2:00 PM window)
   cron.schedule(
-    "30 13 * * *",
+    "0 14 * * *",
     async () => {
       console.log(
-        "\n⏰ [Scheduler] 1:30 PM Sri Lanka Time — triggering daily approved leave report...",
+        "\n⏰ [Scheduler] 2:00 PM Sri Lanka Time — triggering daily approved leave report...",
       );
       try {
         await ApprovedLeaveNotificationService.sendDailyReport();

@@ -1,65 +1,78 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FaUser, FaLock, FaEye, FaEyeSlash, FaSpinner, FaShieldAlt, FaFingerprint, FaRocket } from 'react-icons/fa';
-import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE_URL, API_ENDPOINTS } from '../api/apiConfig';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  FaUser,
+  FaLock,
+  FaEye,
+  FaEyeSlash,
+  FaSpinner,
+  FaShieldAlt,
+  FaFingerprint,
+  FaRocket,
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import { getSessionMessage } from "../utils/sessionUtils";
 
 const AdminLogin = () => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    email: '',
-    password: ''
+    email: "",
+    password: "",
   });
+  const [sessionMsg] = React.useState(() => getSessionMessage());
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
-    if (error) setError('');
+    if (error) setError("");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError("");
 
     try {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ADMIN_LOGIN}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${API_BASE_URL}${API_ENDPOINTS.AUTH.ADMIN_LOGIN}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            userType: "admin",
+          }),
         },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          userType: 'admin'
-        }),
-      });
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Login failed');
+        throw new Error(data.error || "Login failed");
       }
 
       const adminInfo = {
         token: data.token,
         user: data.user,
-        loginTime: new Date().toISOString()
+        loginTime: new Date().toISOString(),
       };
 
-      localStorage.setItem('adminInfo', JSON.stringify(adminInfo));
-      navigate('/admin/dashboard');
-
+      localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+      navigate("/admin/dashboard");
     } catch (error) {
-      console.error('Admin login error:', error);
-      setError(error.message || 'Login failed. Please try again.');
+      console.error("Admin login error:", error);
+      setError(error.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -67,22 +80,22 @@ const AdminLogin = () => {
 
   const handleTestLogin = (email, password) => {
     setLoading(true);
-    setError('');
+    setError("");
 
     setTimeout(() => {
       const adminInfo = {
-        token: 'mock-admin-token-12345',
+        token: "mock-admin-token-12345",
         user: {
-          id: 'admin-001',
+          id: "admin-001",
           email,
-          name: 'Admin User',
-          role: 'admin'
+          name: "Admin User",
+          role: "admin",
         },
-        loginTime: new Date().toISOString()
+        loginTime: new Date().toISOString(),
       };
 
-      localStorage.setItem('adminInfo', JSON.stringify(adminInfo));
-      navigate('/admin/dashboard');
+      localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+      navigate("/admin/dashboard");
       setLoading(false);
     }, 1000);
   };
@@ -91,15 +104,27 @@ const AdminLogin = () => {
     <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-950 text-gray-100 overflow-hidden">
       {/* Floating background elements (same as login) */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute w-80 h-80 rounded-full bg-green-500/10 -top-20 -left-20 animate-float" style={{ animationDelay: "0s" }}></div>
-        <div className="absolute w-96 h-96 rounded-full bg-blue-600/10 top-1/4 right-0 animate-float" style={{ animationDelay: "3s" }}></div>
-        <div className="absolute w-64 h-64 rounded-full bg-purple-500/10 bottom-20 left-1/4 animate-float" style={{ animationDelay: "6s" }}></div>
-        <div className="absolute w-72 h-72 rounded-full bg-cyan-500/10 bottom-0 right-20 animate-float" style={{ animationDelay: "9s" }}></div>
+        <div
+          className="absolute w-80 h-80 rounded-full bg-green-500/10 -top-20 -left-20 animate-float"
+          style={{ animationDelay: "0s" }}
+        ></div>
+        <div
+          className="absolute w-96 h-96 rounded-full bg-blue-600/10 top-1/4 right-0 animate-float"
+          style={{ animationDelay: "3s" }}
+        ></div>
+        <div
+          className="absolute w-64 h-64 rounded-full bg-purple-500/10 bottom-20 left-1/4 animate-float"
+          style={{ animationDelay: "6s" }}
+        ></div>
+        <div
+          className="absolute w-72 h-72 rounded-full bg-cyan-500/10 bottom-0 right-20 animate-float"
+          style={{ animationDelay: "9s" }}
+        ></div>
       </div>
 
       {/* Main content */}
       <div className="relative z-10 min-h-screen flex items-center justify-center p-6">
-        <motion.div 
+        <motion.div
           className="w-full max-w-md"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -109,10 +134,10 @@ const AdminLogin = () => {
           <div className="bg-white/5 backdrop-blur-lg rounded-2xl shadow-2xl overflow-hidden border border-white/10">
             {/* Decorative Gradient Bar */}
             <div className="h-2 bg-gradient-to-r from-green-600/80 to-blue-600/80"></div>
-            
+
             {/* Header */}
             <div className="px-10 pt-10 pb-2 text-center">
-              <motion.div 
+              <motion.div
                 className="mx-auto mb-6 flex items-center justify-center"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -124,8 +149,8 @@ const AdminLogin = () => {
                   </div>
                 </div>
               </motion.div>
-              
-              <motion.h2 
+
+              <motion.h2
                 className="text-3xl font-bold text-white mb-2"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -143,15 +168,39 @@ const AdminLogin = () => {
             {/* Login Form */}
             <div className="px-10 py-8">
               <form className="space-y-6" onSubmit={handleSubmit}>
+                {sessionMsg && (
+                  <div className="bg-yellow-500/10 border-l-4 border-yellow-400 text-yellow-100 p-4 rounded-md text-sm flex items-start mb-2">
+                    <svg
+                      className="h-5 w-5 mr-2 flex-shrink-0"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <div>{sessionMsg}</div>
+                  </div>
+                )}
                 <AnimatePresence>
                   {error && (
-                    <motion.div 
+                    <motion.div
                       className="bg-red-500/10 border-l-4 border-red-400 text-red-100 p-4 rounded-md text-sm flex items-start"
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                     >
-                      <svg className="h-5 w-5 mr-2 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      <svg
+                        className="h-5 w-5 mr-2 flex-shrink-0"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                       <div>{error}</div>
                     </motion.div>
@@ -159,12 +208,15 @@ const AdminLogin = () => {
                 </AnimatePresence>
 
                 {/* Email Field */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.3 }}
                 >
-                  <label htmlFor="email" className="block text-sm font-medium text-white/80 mb-2">
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-white/80 mb-2"
+                  >
                     Admin Email
                   </label>
                   <div className="relative">
@@ -186,12 +238,15 @@ const AdminLogin = () => {
                 </motion.div>
 
                 {/* Password Field */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <label htmlFor="password" className="block text-sm font-medium text-white/80 mb-2">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium text-white/80 mb-2"
+                  >
                     Password
                   </label>
                   <div className="relative">
@@ -201,7 +256,7 @@ const AdminLogin = () => {
                     <input
                       id="password"
                       name="password"
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
                       required
                       value={formData.password}
@@ -232,7 +287,7 @@ const AdminLogin = () => {
                   <button
                     type="submit"
                     disabled={loading}
-                    className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white ${isHovered ? 'bg-gradient-to-r from-green-500 to-cyan-500' : 'bg-gradient-to-r from-green-400 to-cyan-400'} shadow-lg hover:shadow-green-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 overflow-hidden cursor-pointer`}
+                    className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-xl text-white ${isHovered ? "bg-gradient-to-r from-green-500 to-cyan-500" : "bg-gradient-to-r from-green-400 to-cyan-400"} shadow-lg hover:shadow-green-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 overflow-hidden cursor-pointer`}
                     onMouseEnter={() => setIsHovered(true)}
                     onMouseLeave={() => setIsHovered(false)}
                   >
@@ -241,7 +296,11 @@ const AdminLogin = () => {
                       <div className="flex items-center">
                         <motion.div
                           animate={{ rotate: 360 }}
-                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                          transition={{
+                            duration: 1,
+                            repeat: Infinity,
+                            ease: "linear",
+                          }}
                         >
                           <FaSpinner className="h-5 w-5 mr-2" />
                         </motion.div>
@@ -250,7 +309,9 @@ const AdminLogin = () => {
                     ) : (
                       <div className="flex items-center">
                         <FaFingerprint className="h-5 w-5 mr-2 transition-transform group-hover:scale-110" />
-                        <span className="tracking-wider">ACCESS ADMIN DASHBOARD</span>
+                        <span className="tracking-wider">
+                          ACCESS ADMIN DASHBOARD
+                        </span>
                       </div>
                     )}
                   </button>
@@ -262,7 +323,7 @@ const AdminLogin = () => {
             <div className="px-10 py-4 border-t border-white/10 text-center">
               <button
                 type="button"
-                onClick={() => navigate('/')}
+                onClick={() => navigate("/")}
                 className="text-xs text-white/60 hover:text-white/90 font-medium transition-colors cursor-pointer"
               >
                 ← Return to Intern Login
@@ -278,7 +339,8 @@ const AdminLogin = () => {
       {/* Global styles for animations */}
       <style jsx="true" global="true">{`
         @keyframes float {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0) translateX(0) rotate(0deg);
           }
           25% {

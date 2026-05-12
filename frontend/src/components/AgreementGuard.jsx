@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import AgreementModal from "./AgreementModal";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import { handleUnauthorized } from "../utils/sessionUtils";
 import toast from "react-hot-toast";
 
 const AgreementGuard = ({ children }) => {
@@ -23,16 +24,26 @@ const AgreementGuard = ({ children }) => {
         const response = await axios.get(
           `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${internId}`
         );
-        
+
         const intern = response.data;
         setInternData(intern);
 
-        // Check if agreement has been accepted
         if (!intern.agreementAccepted) {
           setShowAgreement(true);
         }
       } catch (error) {
         console.error("Error checking agreement status:", error);
+
+        // ✅ Handle session expiry
+        if (error.response?.status === 401) {
+          const code = error.response?.data?.code || "";
+          const msg = code === "TOKEN_EXPIRED"
+            ? "Your session has expired. Please log in again."
+            : "Your session is invalid. Please log in again.";
+          handleUnauthorized(msg);
+          return;
+        }
+
         toast.error("Failed to load user data");
         navigate("/");
       } finally {
@@ -48,11 +59,21 @@ const AgreementGuard = ({ children }) => {
       await axios.put(
         `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${internId}/accept-agreement`
       );
-      
       toast.success("Agreement accepted successfully!");
       setShowAgreement(false);
     } catch (error) {
       console.error("Error accepting agreement:", error);
+
+      // ✅ Handle session expiry
+      if (error.response?.status === 401) {
+        const code = error.response?.data?.code || "";
+        const msg = code === "TOKEN_EXPIRED"
+          ? "Your session has expired. Please log in again."
+          : "Your session is invalid. Please log in again.";
+        handleUnauthorized(msg);
+        return;
+      }
+
       toast.error("Failed to accept agreement. Please try again.");
       throw error;
     }

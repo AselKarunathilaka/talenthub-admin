@@ -1,5 +1,23 @@
 import axios from "axios";
 import { API_BASE_URL } from "./apiConfig";
+import { handleUnauthorized } from "../utils/sessionUtils";
+
+
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const code = error.response?.data?.code || "";
+      const msg = code === "TOKEN_EXPIRED"
+        ? "Your session has expired. Please log in again."
+        : "Your session is invalid. Please log in again.";
+      handleUnauthorized(msg);
+    }
+    return Promise.reject(error);
+  }
+);
+
+
 
 // Get auth token from localStorage
 const getAuthToken = () => {

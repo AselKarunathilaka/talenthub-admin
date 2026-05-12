@@ -1,4 +1,19 @@
 import { API_BASE_URL } from "./apiConfig";
+import { handleUnauthorized } from "../utils/sessionUtils";
+
+
+const checkAuth = async (res) => {
+  if (res.status === 401) {
+    let code = "";
+    try { const b = await res.clone().json(); code = b.code || ""; } catch (_) {}
+    const msg = code === "TOKEN_EXPIRED"
+      ? "Your session has expired. Please log in again."
+      : "Your session is invalid. Please log in again.";
+    handleUnauthorized(msg);
+    throw new Error(msg);
+  }
+};
+
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -55,6 +70,7 @@ const downloadApprovedLeaveReport = async ({
     },
   });
 
+  await checkAuth(response);
   if (!response.ok) {
     throw new Error(
       `Failed to download approved leave report: ${response.status}`,
@@ -75,6 +91,7 @@ export const adminApi = {
         ...(token && { Authorization: `Bearer ${token}` }),
       },
     });
+    await checkAuth(response);
     if (!response.ok) throw new Error("Failed to download on-leave Excel");
     return response.blob();
   },
@@ -87,6 +104,7 @@ export const adminApi = {
         headers: getHeaders(),
       });
 
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(`Failed to fetch dashboard stats: ${response.status}`);
       }
@@ -106,6 +124,7 @@ export const adminApi = {
         headers: getHeaders(),
       });
 
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(`Failed to fetch intern details: ${response.status}`);
       }
@@ -128,6 +147,7 @@ export const adminApi = {
         },
       );
 
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(`Failed to search interns: ${response.status}`);
       }
@@ -147,6 +167,7 @@ export const adminApi = {
         headers: getHeaders(),
       });
 
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(`Failed to fetch intern report: ${response.status}`);
       }
@@ -177,6 +198,7 @@ export const adminApi = {
         `${API_BASE_URL}/admin/daily-records?${params.toString()}`,
         { method: "GET", headers: getHeaders() },
       );
+      await checkAuth(response);
 
       if (!response.ok) {
         throw new Error(`Failed to fetch daily records: ${response.status}`);
@@ -201,6 +223,7 @@ export const adminApi = {
         },
       );
 
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(
           `Failed to fetch non-submissions within a week: ${response.status}`,
@@ -231,6 +254,7 @@ export const adminApi = {
         method: "GET",
         headers: getHeaders(),
       });
+      await checkAuth(response);
       if (!response.ok) {
         throw new Error(
           `Failed to fetch weekly non-submissions: ${response.status}`,
@@ -254,6 +278,7 @@ export const adminApi = {
           body: JSON.stringify({ overdueInterns }),
         },
       );
+      await checkAuth(response);
 
       if (!response.ok) {
         throw new Error(`Failed to send notifications: ${response.status}`);
@@ -276,6 +301,7 @@ export const adminApi = {
           headers: getHeaders(),
         },
       );
+      await checkAuth(response);
 
       // Accept both 200 (success) and 202 (accepted/processing)
       if (!response.ok && response.status !== 202) {
@@ -705,6 +731,7 @@ export const announcementApi = {
       method: "GET",
       headers: getHeaders(),
     });
+    await checkAuth(res);
     if (!res.ok)
       throw new Error(`Failed to fetch announcements: ${res.status}`);
     return res.json();
@@ -717,6 +744,7 @@ export const announcementApi = {
       headers: getHeaders(),
       body: JSON.stringify(payload),
     });
+    await checkAuth(res);
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(
@@ -732,6 +760,7 @@ export const announcementApi = {
       method: "DELETE",
       headers: getHeaders(),
     });
+    await checkAuth(res);
     if (!res.ok)
       throw new Error(`Failed to delete announcement: ${res.status}`);
     return res.json();
