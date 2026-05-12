@@ -62,6 +62,7 @@ const ScanQRCode = () => {
   const [meetingTitle, setMeetingTitle] = useState('');
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
+  const isProcessingRef = useRef(false);
 
   const checkCameraAccess = async () => {
     try {
@@ -82,11 +83,15 @@ const ScanQRCode = () => {
       return;
     }
 
+    isProcessingRef.current = false;
     const codeReader = new BrowserMultiFormatReader();
     setScanner(codeReader);
 
     codeReader.decodeFromVideoDevice(null, videoRef.current, async (result, error) => {
       if (result) {
+        if (isProcessingRef.current) return;
+        isProcessingRef.current = true;
+
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
 
@@ -94,6 +99,7 @@ const ScanQRCode = () => {
         if (!validateQRCodeFormat(qrData, scanMode, meetingTitle)) {
           const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
+          setTimeout(() => { isProcessingRef.current = false; }, 2000); // Unlock after 2s
           return;
         }
 
@@ -121,6 +127,7 @@ const ScanQRCode = () => {
                 } else {
                   if (!meetingTitle.trim()) {
                     toast.error("Please enter a meeting title first");
+                    isProcessingRef.current = false;
                     return;
                   }
                   const res = await api.post('/qrcode/scan-meeting', {
@@ -136,18 +143,23 @@ const ScanQRCode = () => {
               } catch (err) {
                 console.error("Failed to mark attendance:", err);
                 toast.error(err.response?.data?.message || "Failed to mark attendance");
+              } finally {
+                // If we didn't stop scanning (e.g. error occurred), unlock after a delay so they can try again
+                setTimeout(() => { isProcessingRef.current = false; }, 3000);
               }
             },
             (geoError) => {
               toast.error("Location access denied. Please enable location to mark attendance.");
+              isProcessingRef.current = false;
             }
           );
         } else {
           toast.error("Geolocation not supported by your browser.");
+          isProcessingRef.current = false;
         }
       }
 
-      if (error && !(error instanceof TypeError)) {
+      if (error && !(error instanceof TypeError) && error.name !== 'NotFoundException' && error.name !== 'NotFoundException2') {
         console.error("Scanning error:", error);
       }
     }).catch(err => {

@@ -1,1 +1,4 @@
 .DS_Store
+backend/scratch/testScan.js
+backend/testManualScan.js
+backend/checkInternAttendance.js

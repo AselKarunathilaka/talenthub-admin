@@ -31,6 +31,7 @@ import {
   FaMapMarkedAlt,
   FaBullhorn,
   FaChevronDown,
+  FaQrcode,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -899,6 +900,21 @@ const AdminDashboard = () => {
                   </div>
                   <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
                     Attendance
+                  </span>
+                </motion.button>
+
+                {/* 8. QR Generator */}
+                <motion.button
+                  onClick={() => navigate("/admin/qr-management")}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-100 hover:border-teal-200 transition-colors duration-200 cursor-pointer"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-teal-100">
+                    <FaQrcode className="h-3.5 w-3.5 text-teal-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    QR Generator
                   </span>
                 </motion.button>
               </div>
