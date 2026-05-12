@@ -63,6 +63,12 @@ const ScanQRCode = () => {
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
   const isProcessingRef = useRef(false);
+  const scanModeRef = useRef(scanMode);
+  const meetingTitleRef = useRef(meetingTitle);
+
+  // Keep refs in sync with state so the scanner callback always reads the latest values
+  useEffect(() => { scanModeRef.current = scanMode; }, [scanMode]);
+  useEffect(() => { meetingTitleRef.current = meetingTitle; }, [meetingTitle]);
 
   const checkCameraAccess = async () => {
     try {
@@ -94,10 +100,17 @@ const ScanQRCode = () => {
 
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
+        const currentScanMode = scanModeRef.current;
+        const currentMeetingTitle = meetingTitleRef.current;
+
+        // Debug: log scanned data so we can diagnose format mismatches
+        console.log('[QR Scanner] Scanned data:', qrData);
+        console.log('[QR Scanner] Current scan mode:', currentScanMode);
 
         // Validate QR code format before processing
-        if (!validateQRCodeFormat(qrData, scanMode, meetingTitle)) {
-          const expectedFormat = scanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
+        if (!validateQRCodeFormat(qrData, currentScanMode, currentMeetingTitle)) {
+          const expectedFormat = currentScanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
+          console.warn('[QR Scanner] Validation failed. Expected:', expectedFormat, 'Got:', qrData.substring(0, 100));
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
           setTimeout(() => { isProcessingRef.current = false; }, 2000); // Unlock after 2s
           return;
@@ -114,7 +127,7 @@ const ScanQRCode = () => {
               setScanSuccess(true);
               setTimeout(() => setScanSuccess(false), 1500);
               try {
-                if (scanMode === 'daily') {
+                if (currentScanMode === 'daily') {
                   const res = await api.post('/qrcode/scan', {
                     qrCode: qrData,
                     internId,
@@ -125,7 +138,7 @@ const ScanQRCode = () => {
                   toast.success(res.message || 'Daily attendance marked successfully!');
                   setIsScanning(false);
                 } else {
-                  if (!meetingTitle.trim()) {
+                  if (!currentMeetingTitle.trim()) {
                     toast.error("Please enter a meeting title first");
                     isProcessingRef.current = false;
                     return;
@@ -133,7 +146,7 @@ const ScanQRCode = () => {
                   const res = await api.post('/qrcode/scan-meeting', {
                     qrCode: qrData,
                     internId,
-                    meetingTitle: meetingTitle.trim(),
+                    meetingTitle: currentMeetingTitle.trim(),
                     lat,
                     lng
                   });
