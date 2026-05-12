@@ -28,7 +28,7 @@ const markAttendanceAndNotify = async (internId, status, date) => {
     const internName = updatedIntern.traineeName;
     const internTraineeId = updatedIntern.traineeId;
 
-    const currentTime = moment.tz("Asia/Colombo").format("h:mm A");
+    const currentTime = moment.tz("Asia/Colombo").format("HH:mm");
     const emailSubject = "General Attendance Marked - SLT Mobitel";
     const emailBody = `
       Hello ${internName},

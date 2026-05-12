@@ -126,7 +126,7 @@ const scanQRCode = async (req, res) => {
       if (intern && emailAddress) {
         const moment = require("moment-timezone");
         const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
-        const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
+        const attendanceTime = moment.tz("Asia/Colombo").format("HH:mm");
         const emailSubject = "Daily Attendance Marked - SLT Mobitel";
         const emailBody = `
           Hello ${intern.traineeName},
