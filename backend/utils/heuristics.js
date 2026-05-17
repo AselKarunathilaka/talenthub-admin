@@ -465,8 +465,18 @@ function validateEntry(text) {
   };
 }
 
+/**
+ * Strict fallback when Gemini is unavailable — approximates YELLOW/GREEN via word ratio.
+ */
+function passesStrictQualityFallback(text) {
+  const trimmed = (text || "").trim();
+  const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
+  return realWordRatio(trimmed) > 0.5 && wordCount >= 6;
+}
+
 module.exports = {
   validateEntry,
+  passesStrictQualityFallback,
   // Expose individual checkers for granular use / testing
   checkRepetitive,
   checkKeyboardSmash,
