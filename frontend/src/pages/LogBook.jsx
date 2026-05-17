@@ -1,41 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  FiBook, FiAlertTriangle, FiTarget,
+import { 
+  FiBook, FiAlertTriangle, FiTarget, 
   FiInfo, FiCalendar, FiCheckCircle, FiAlertCircle,
   FiLoader, FiArrowRight, FiMonitor, FiServer, FiClipboard, FiLayers, FiCloud, FiWifi,
   FiSmartphone, FiUmbrella, FiClock // Added umbrella icon for leave status and clock for time
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
 import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
+import { assessEntryQuality } from "../utils/entryHeuristics";
 
 // Utility function to check if current time is after 10 AM (Sri Lankan time)
 const checkLeaveTimeRestriction = () => {
   try {
     // Get current time and convert to Sri Lankan timezone
     const now = new Date();
-
+    
     // Calculate offset for Sri Lankan Time (UTC +5:30)
     const sriLankanOffset = 5.5 * 60; // 330 minutes
     const localOffset = now.getTimezoneOffset(); // minutes behind UTC
     const sriLankanTime = new Date(now.getTime() + (localOffset + sriLankanOffset) * 60000);
-
+    
     // Create 10 AM today in Sri Lankan time
     const tenAM = new Date(sriLankanTime);
     tenAM.setHours(10, 0, 0, 0);
-
-    const currentTime = sriLankanTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
+    
+    const currentTime = sriLankanTime.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
       minute: '2-digit',
-      hour12: false
+      hour12: false 
     });
-
+    
     const isAfter10AM = sriLankanTime > tenAM;
-
+    
     return {
       isAfter10AM,
       currentTime: currentTime + ' (Sri Lankan Time)',
-      message: isAfter10AM ?
+      message: isAfter10AM ? 
         `Leave applications are not allowed after 10:00 AM. Current time: ${currentTime} (Sri Lankan Time)` :
         'Leave application is allowed'
     };
@@ -71,7 +72,7 @@ const Logbook = () => {
     setStatusMessage(null);
 
     const authToken = localStorage.getItem('authToken');
-
+    
     if (!authToken) {
       setStatusMessage({ type: 'error', text: 'Authentication required. Please log in again.' });
       setIsSubmitting(false);
@@ -82,7 +83,7 @@ const Logbook = () => {
     // Adjust the payload based on status
     const isOnLeave = formData.status === 'leave';
     const isWorkFromHome = formData.status === 'wfh';
-
+    
     const payload = {
       date: new Date().toISOString().split('T')[0],
       stack: isOnLeave ? 'On Leave' : (isWorkFromHome ? formData.stack : formData.stack),
@@ -109,11 +110,34 @@ const Logbook = () => {
       return;
     }
 
+    // Block submission if any active field has a bad entry (RED=1 or YELLOW=2)
+    if (formData.status !== 'leave') {
+      const tasksQ = await assessEntryQuality(formData.tasks);
+      const challQ = await assessEntryQuality(formData.challenges);
+      const plansQ = await assessEntryQuality(formData.plans);
+      
+      if (tasksQ.level === 1 || tasksQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Tasks field: ${tasksQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
+      if (challQ.level === 1 || challQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Challenges field: ${challQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
+      if (plansQ.level === 1 || plansQ.level === 2) {
+        setStatusMessage({ type: 'error', text: `Plans field: ${plansQ.feedback}. Please improve it.` });
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       const { API_BASE_URL, API_ENDPOINTS } = await import('../api/apiConfig');
       const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`, {
         method: 'POST',
-        headers: {
+        headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authToken}`
         },
@@ -134,23 +158,14 @@ const Logbook = () => {
       } else {
         // Handle time restriction error specifically
         if (data.timeRestriction) {
-          setStatusMessage({
-            type: 'error',
+          setStatusMessage({ 
+            type: 'error', 
             text: data.error || 'Leave applications are not allowed after 10:00 AM.'
           });
           // Update the time restriction state
           setTimeRestriction(checkLeaveTimeRestriction());
         } else {
-          // Handle content quality validation errors from backend
-          if (data.details && Array.isArray(data.details) && data.details.length > 0) {
-            setStatusMessage({
-              type: 'error',
-              text: data.message || 'Submission rejected due to content quality issues.',
-              details: data.details
-            });
-          } else {
-            setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
-          }
+          setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
         }
       }
     } catch (error) {
@@ -198,21 +213,20 @@ const Logbook = () => {
   };
 
   const stackOptions = [
-    { value: "Front-end Development", label: "Front-end Development", icon: <FiMonitor className="mr-2" /> },
-    { value: "Back-end Development", label: "Back-end Development", icon: <FiServer className="mr-2" /> },
-    { value: "Full-stack Development", label: "Full-stack Development", icon: <FiServer className="mr-2" /> },
-    { value: "Project Management", label: "Project Management", icon: <FiClipboard className="mr-2" /> },
-    { value: "QA", label: "Quality Assurance", icon: <FiCheckCircle className="mr-2" /> },
-    { value: "Documentation", label: "Documentation", icon: <FiBook className="mr-2" /> },
-    { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers className="mr-2" /> },
-    { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
-    { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
-    { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> },
-    { value: "AI/ML", label: "Artificial Intelligence and Machine Learning", icon: <FiMonitor className="mr-2" /> },
-    { value: "DataScience", label: "Data Science", icon: <FiServer className="mr-2" /> },
-    { value: "BA", label: "Business Analysis", icon: <FiClipboard className="mr-2" /> }
+  { value: "Front-end Development", label: "Front-end Development", icon: <FiMonitor className="mr-2" /> },
+  { value: "Back-end Development", label: "Back-end Development", icon: <FiServer className="mr-2" /> },
+  { value: "Full-stack Development", label: "Full-stack Development", icon: <FiServer className="mr-2" /> },
+  { value: "Project Management", label: "Project Management", icon: <FiClipboard className="mr-2" /> },
+  { value: "QA", label: "Quality Assurance", icon: <FiCheckCircle className="mr-2" /> },
+  { value: "Documentation", label: "Documentation", icon: <FiBook className="mr-2" /> },
+  { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers className="mr-2" /> },
+  { value: "Cloud", label: "Cloud Services", icon: <FiCloud className="mr-2" /> },
+  { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi className="mr-2" /> },
+  { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone className="mr-2" /> },
+  { value: "AI/ML", label: "Artificial Intelligence and Machine Learning", icon: <FiMonitor className="mr-2" /> },
+  { value: "DataScience", label: "Data Science", icon: <FiServer className="mr-2" /> }
   ];
-
+    
 
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
@@ -363,7 +377,7 @@ const Logbook = () => {
                             onChange={handleChange}
                             required={formData.status === 'working'}
                             rows={4}
-                            placeholder="What did you accomplish today? Be specific about what you worked on, what you implemented or fixed..."
+                            placeholder="What did you accomplish today? Be specific..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
                           <EntryFeedbackIndicator text={formData.tasks} />
@@ -380,7 +394,7 @@ const Logbook = () => {
                             value={formData.challenges}
                             onChange={handleChange}
                             rows={3}
-                            placeholder="Any obstacles or difficulties you encountered in your work today..."
+                            placeholder="Any obstacles or difficulties you encountered..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
                           <EntryFeedbackIndicator text={formData.challenges} />
@@ -415,29 +429,19 @@ const Logbook = () => {
                     {/* Status message */}
                     {statusMessage && (
                       <div
-                        className={`flex items-start gap-3 p-4 rounded-xl border-l-4 ${statusMessage.type === 'error'
-                          ? 'bg-red-50 border-red-500 text-red-800'
-                          : 'bg-green-50 border-green-500 text-green-800'
-                          }`}
+                        className={`flex items-start gap-3 p-4 rounded-xl border-l-4 ${
+                          statusMessage.type === 'error'
+                            ? 'bg-red-50 border-red-500 text-red-800'
+                            : 'bg-green-50 border-green-500 text-green-800'
+                        }`}
                       >
                         {statusMessage.type === 'success' ? (
                           <FiCheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                         ) : (
                           <FiAlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
                         )}
-                        <div className="flex-1">
+                        <div>
                           <span className="font-medium">{statusMessage.text}</span>
-                          {/* Show detailed validation reasons from backend */}
-                          {statusMessage.details && statusMessage.details.length > 0 && (
-                            <ul className="mt-2 space-y-1">
-                              {statusMessage.details.map((reason, i) => (
-                                <li key={i} className="flex items-start gap-1.5 text-sm text-red-700">
-                                  <span className="mt-0.5 flex-shrink-0">→</span>
-                                  <span>{reason}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
                           {statusMessage.type === 'success' && (
                             <div className="text-green-700 text-xs mt-1">
                               Redirecting to records...
@@ -452,10 +456,11 @@ const Logbook = () => {
                       <button
                         type="submit"
                         disabled={isSubmitting}
-                        className={`w-full flex justify-center items-center px-6 py-3.5 rounded-xl text-base font-medium text-white transition-all duration-300 ${isSubmitting
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg'
-                          }`}
+                        className={`w-full flex justify-center items-center px-6 py-3.5 rounded-xl text-base font-medium text-white transition-all duration-300 ${
+                          isSubmitting
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg'
+                        }`}
                       >
                         {isSubmitting ? (
                           <>
@@ -482,7 +487,7 @@ const Logbook = () => {
                   <div className="p-2 bg-blue-100 rounded-lg mr-3">
                     <FiInfo className="h-5 w-5 text-blue-600" />
                   </div>
-
+                  
                   Tips for Better Logging
                 </h3>
                 <ul className="space-y-3 text-sm text-gray-600">
