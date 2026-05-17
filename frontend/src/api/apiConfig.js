@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
     EXPORT_PDF: "/records/export/pdf",
     EXPORT_TEMPLATES: "/records/export/templates",
     VALIDATE: "/records/validate-entry",
+    VALIDATE_BATCH: "/records/validate-batch",
   },
 
   // Admin endpoints

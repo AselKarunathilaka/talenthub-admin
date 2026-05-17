@@ -252,8 +252,6 @@ function checkPlaceholder(text) {
 
 // ─── Top-level quality assessment ──────────────────────────────────────────
 
-import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
-
 /**
  * Synchronous fast check for local RED rules only.
  * Returns null if it passes the local heuristics.
@@ -280,71 +278,36 @@ export function evaluateLocalHeuristicsSync(text) {
       feedback: failed.reason,
     };
   }
-  return null; 
+  return null;
 }
 
 /**
- * Assess the quality of a logbook entry (full check including LLM).
- *
- * @param {string} text
- * @returns {Promise<{ level: 1|2|3, label: string, color: string, feedback: string }>}
+ * Formats batch API result for EntryFeedbackIndicator (YELLOW or GREEN).
  */
-export async function assessEntryQuality(text) {
-  // 1. Run local checks first
-  const localCheck = evaluateLocalHeuristicsSync(text);
-  if (localCheck) return localCheck; // Returned Level 0 or Level 1
-
-  const trimmed = text.trim();
-
-  // All hard rules passed locally — Check with backend LLM validator
-  try {
-    const authToken = localStorage.getItem('authToken') || 
-                      JSON.parse(localStorage.getItem("studentInfo") || "{}").token;
-
-    const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RECORDS.VALIDATE}`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        ...(authToken && { 'Authorization': `Bearer ${authToken}` })
-      },
-      body: JSON.stringify({ text: trimmed }),
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (data.passes && data.isWorkRelated === false) {
-        return {
-          level: 2,
-          label: "Needs Improvement",
-          color: "yellow",
-          feedback: data.reason || "Entry may not be work-related. Include specific technical tasks or outcomes.",
-        };
-      }
-    }
-  } catch (error) {
-    console.warn("Validation API failed, falling back to local word ratio check", error);
-    
-    // Fallback if API fails
-    const ratio = realWordRatio(trimmed);
-    const wordCount = trimmed.split(/\s+/).filter(Boolean).length;
-
-    if (ratio < 0.5 || wordCount < 6) {
-      return {
-        level: 2,
-        label: "Needs Improvement",
-        color: "yellow",
-        feedback: wordCount < 6
-            ? "Try to be more descriptive — add details about what you did."
-            : "Entry may not be work-related. Include specific tasks, technologies, or outcomes.",
-      };
-    }
+export function formatValidationResult(valid, reason = "") {
+  if (!valid) {
+    return {
+      level: 2,
+      label: "Needs Improvement",
+      feedback:
+        reason ||
+        "This doesn't look work-related. Try describing your internship tasks.",
+      color: "yellow",
+    };
   }
-
-  // GREEN: good entry (LLM returned true or fallback passed)
   return {
     level: 3,
     label: "Good Entry",
+    feedback: "Work-related and acceptable.",
     color: "green",
-    feedback: "Great! Your entry appears specific, descriptive, and work-related.",
   };
+}
+
+/**
+ * Maps legacy { valid, reason } objects to indicator assessment.
+ */
+export function validationResultToAssessment(apiResult) {
+  if (!apiResult) return null;
+  if (typeof apiResult.level === "number") return apiResult;
+  return formatValidationResult(apiResult.valid !== false, apiResult.reason);
 }

@@ -14,3 +14,23 @@
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out;
 }
+
+@keyframes drawCircle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes drawCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-draw-circle {
+  animation: drawCircle 0.6s ease-out forwards;
+}
+
+.animate-draw-check {
+  animation: drawCheck 0.4s ease-out 0.4s forwards;
+}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   FiBook, FiAlertTriangle, FiTarget, 
@@ -8,7 +8,9 @@ import {
 } from 'react-icons/fi';
 import Navigation from "../components/Navigation";
 import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
-import { assessEntryQuality } from "../utils/entryHeuristics";
+import SuccessCheckmarkAnimation from "../components/SuccessCheckmarkAnimation";
+import { evaluateLocalHeuristicsSync, formatValidationResult } from "../utils/entryHeuristics";
+import { rateLimitedBatchValidate } from "../utils/batchValidation";
 
 // Utility function to check if current time is after 10 AM (Sri Lankan time)
 const checkLeaveTimeRestriction = () => {
@@ -65,11 +67,74 @@ const Logbook = () => {
   const [statusMessage, setStatusMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [timeRestriction, setTimeRestriction] = useState(checkLeaveTimeRestriction());
+  const [validationResults, setValidationResults] = useState({
+    tasks: null,
+    challenges: null,
+    plans: null,
+  });
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const pendingSubmitRef = useRef(null);
+
+  const HIGHLIGHT_MSG = 'Please fix the highlighted fields above.';
+
+  const submitRecord = useCallback(async (authToken, recordPayload) => {
+    try {
+      const { API_BASE_URL, API_ENDPOINTS } = await import('../api/apiConfig');
+      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify(recordPayload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setStatusMessage({ type: 'success', text: 'Log submitted successfully!' });
+        setValidationResults({ tasks: null, challenges: null, plans: null });
+        setFormData({
+          stack: '',
+          tasks: '',
+          challenges: '',
+          plans: '',
+          status: 'working',
+        });
+      } else if (data.timeRestriction) {
+        setStatusMessage({
+          type: 'error',
+          text: data.error || 'Leave applications are not allowed after 10:00 AM.',
+        });
+        setTimeRestriction(checkLeaveTimeRestriction());
+      } else {
+        setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
+      }
+    } catch (error) {
+      console.error('Submit error:', error);
+      setStatusMessage({ type: 'error', text: 'Failed to submit log. Check your connection.' });
+    } finally {
+      setIsSubmitting(false);
+      setShowSuccessAnimation(false);
+      pendingSubmitRef.current = null;
+    }
+  }, []);
+
+  const handleAnimationComplete = useCallback(() => {
+    const pending = pendingSubmitRef.current;
+    if (pending) {
+      submitRecord(pending.authToken, pending.payload);
+    } else {
+      setIsSubmitting(false);
+      setShowSuccessAnimation(false);
+    }
+  }, [submitRecord]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setStatusMessage(null);
+    setShowSuccessAnimation(false);
 
     const authToken = localStorage.getItem('authToken');
     
@@ -110,70 +175,99 @@ const Logbook = () => {
       return;
     }
 
-    // Block submission if any active field has a bad entry (RED=1 or YELLOW=2)
+    // Local RED checks + lenient batch validation (YELLOW/GREEN per field)
     if (formData.status !== 'leave') {
-      const tasksQ = await assessEntryQuality(formData.tasks);
-      const challQ = await assessEntryQuality(formData.challenges);
-      const plansQ = await assessEntryQuality(formData.plans);
-      
-      if (tasksQ.level === 1 || tasksQ.level === 2) {
-        setStatusMessage({ type: 'error', text: `Tasks field: ${tasksQ.feedback}. Please improve it.` });
-        setIsSubmitting(false);
-        return;
-      }
-      if (challQ.level === 1 || challQ.level === 2) {
-        setStatusMessage({ type: 'error', text: `Challenges field: ${challQ.feedback}. Please improve it.` });
-        setIsSubmitting(false);
-        return;
-      }
-      if (plansQ.level === 1 || plansQ.level === 2) {
-        setStatusMessage({ type: 'error', text: `Plans field: ${plansQ.feedback}. Please improve it.` });
-        setIsSubmitting(false);
-        return;
-      }
-    }
+      const fieldChecks = [
+        { key: 'tasks', value: formData.tasks },
+        { key: 'challenges', value: formData.challenges },
+        { key: 'plans', value: formData.plans },
+      ];
 
-    try {
-      const { API_BASE_URL, API_ENDPOINTS } = await import('../api/apiConfig');
-      const res = await fetch(`${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`
-        },
-        body: JSON.stringify(payload),
-      });
+      for (const { value } of fieldChecks) {
+        if (!value || !value.trim()) continue;
 
-      const data = await res.json();
-
-      if (res.ok) {
-        setStatusMessage({ type: 'success', text: 'Log submitted successfully!' });
-        setFormData({
-          stack: '',
-          tasks: '',
-          challenges: '',
-          plans: '',
-          status: 'working'  // Reset to default
-        });
-      } else {
-        // Handle time restriction error specifically
-        if (data.timeRestriction) {
-          setStatusMessage({ 
-            type: 'error', 
-            text: data.error || 'Leave applications are not allowed after 10:00 AM.'
-          });
-          // Update the time restriction state
-          setTimeRestriction(checkLeaveTimeRestriction());
-        } else {
-          setStatusMessage({ type: 'error', text: data.error || 'Submission failed.' });
+        const localFail = evaluateLocalHeuristicsSync(value);
+        if (localFail) {
+          setStatusMessage({ type: 'error', text: HIGHLIGHT_MSG });
+          setIsSubmitting(false);
+          return;
         }
       }
-    } catch (error) {
-      console.error('Submit error:', error);
-      setStatusMessage({ type: 'error', text: 'Failed to submit log. Check your connection.' });
+
+      try {
+        const validationResponse = await rateLimitedBatchValidate({
+          tasks: formData.tasks.trim(),
+          challenges: formData.challenges.trim(),
+          plans: formData.plans.trim(),
+        });
+
+        if (!validationResponse.ok) {
+          setStatusMessage({
+            type: 'error',
+            text: 'Validation service unavailable. Please try again shortly.',
+          });
+          setIsSubmitting(false);
+          return;
+        }
+
+        const results = await validationResponse.json();
+        const trimmed = {
+          tasks: formData.tasks.trim(),
+          challenges: formData.challenges.trim(),
+          plans: formData.plans.trim(),
+        };
+
+        const isFieldValid = (key) => {
+          if (!trimmed[key]) return true;
+          const field = results[key];
+          return field?.valid !== false;
+        };
+
+        const allValid = ['tasks', 'challenges', 'plans'].every(isFieldValid);
+
+        if (allValid) {
+          setValidationResults({ tasks: null, challenges: null, plans: null });
+          pendingSubmitRef.current = { authToken, payload };
+          setShowSuccessAnimation(true);
+          return;
+        }
+
+        setValidationResults({
+          tasks: trimmed.tasks
+            ? formatValidationResult(
+                results.tasks?.valid !== false,
+                results.tasks?.reason,
+              )
+            : null,
+          challenges: trimmed.challenges
+            ? formatValidationResult(
+                results.challenges?.valid !== false,
+                results.challenges?.reason,
+              )
+            : null,
+          plans: trimmed.plans
+            ? formatValidationResult(
+                results.plans?.valid !== false,
+                results.plans?.reason,
+              )
+            : null,
+        });
+
+        setStatusMessage({ type: 'error', text: HIGHLIGHT_MSG });
+        setIsSubmitting(false);
+        return;
+      } catch (validationError) {
+        console.error('Batch validation error:', validationError);
+        setStatusMessage({
+          type: 'error',
+          text: 'Validation failed. Check your connection and try again.',
+        });
+        setIsSubmitting(false);
+        return;
+      }
     }
 
-    setIsSubmitting(false);
+    await submitRecord(authToken, payload);
   };
 
   useEffect(() => {
@@ -208,8 +302,12 @@ const Logbook = () => {
   }, [timeRestriction.isAfter10AM, formData.status]);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     setStatusMessage(null);
+    if (name === 'tasks' || name === 'challenges' || name === 'plans') {
+      setValidationResults((prev) => ({ ...prev, [name]: null }));
+    }
   };
 
   const stackOptions = [
@@ -229,6 +327,10 @@ const Logbook = () => {
     
 
   return (
+    <>
+      {showSuccessAnimation && (
+        <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
+      )}
     <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
       <Navigation />
 
@@ -380,7 +482,10 @@ const Logbook = () => {
                             placeholder="What did you accomplish today? Be specific..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          <EntryFeedbackIndicator text={formData.tasks} />
+                          <EntryFeedbackIndicator
+                            text={formData.tasks}
+                            forcedResult={validationResults.tasks}
+                          />
                         </div>
 
                         {/* Challenges Faced */}
@@ -397,7 +502,10 @@ const Logbook = () => {
                             placeholder="Any obstacles or difficulties you encountered..."
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          <EntryFeedbackIndicator text={formData.challenges} />
+                          <EntryFeedbackIndicator
+                            text={formData.challenges}
+                            forcedResult={validationResults.challenges}
+                          />
                         </div>
 
                         {/* Plans for Tomorrow */}
@@ -414,7 +522,10 @@ const Logbook = () => {
                             placeholder="What will you focus on tomorrow?"
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300"
                           />
-                          <EntryFeedbackIndicator text={formData.plans} />
+                          <EntryFeedbackIndicator
+                            text={formData.plans}
+                            forcedResult={validationResults.plans}
+                          />
                         </div>
                       </>
                     ) : (
@@ -455,14 +566,14 @@ const Logbook = () => {
                     <div className="pt-4">
                       <button
                         type="submit"
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || showSuccessAnimation}
                         className={`w-full flex justify-center items-center px-6 py-3.5 rounded-xl text-base font-medium text-white transition-all duration-300 ${
-                          isSubmitting
+                          isSubmitting || showSuccessAnimation
                             ? 'bg-gray-400 cursor-not-allowed'
                             : 'bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg'
                         }`}
                       >
-                        {isSubmitting ? (
+                        {isSubmitting || showSuccessAnimation ? (
                           <>
                             <FiLoader className="animate-spin h-5 w-5 mr-2" />
                             Submitting...
@@ -551,6 +662,7 @@ const Logbook = () => {
         </main>
       </div>
     </div>
+    </>
   );
 };
 
