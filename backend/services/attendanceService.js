@@ -28,7 +28,7 @@ const markAttendanceAndNotify = async (internId, status, date) => {
     const internName = updatedIntern.traineeName;
     const internTraineeId = updatedIntern.traineeId;
 
-    const currentTime = moment.tz("Asia/Colombo").format("h:mm A");
+    const currentTime = moment.tz("Asia/Colombo").format("HH:mm");
     const emailSubject = "General Attendance Marked - SLT Mobitel";
     const emailBody = `
       Hello ${internName},
@@ -53,7 +53,9 @@ const markAttendanceAndNotify = async (internId, status, date) => {
 
     // Send the email notification if the intern has an email address
     if (internEmail) {
-      sendEmail(internEmail, emailSubject, emailBody);
+      // --- TEMPORARILY DISABLED EMAIL NOTIFICATION ---
+      // sendEmail(internEmail, emailSubject, emailBody);
+      console.log(`Email feature temporarily disabled. Would have sent to: ${internEmail}`);
     } else {
       // Log the attendance marking without email notification
       console.log(`No email found for intern ${internName} (ID: ${internTraineeId}). Attendance marked, but no email sent.`);

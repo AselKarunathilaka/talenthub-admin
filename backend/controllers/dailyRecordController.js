@@ -2,7 +2,17 @@ const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
 const { validateEntry } = require("../utils/heuristics");
-const { validateWithGemini } = require("../utils/llmValidator");
+const { validateWithGemini, validateBatchWithGemini } = require("../utils/llmValidator");
+
+const BATCH_FIELDS = ["tasks", "challenges", "plans"];
+
+function failOpenBatchResult() {
+  return {
+    tasks: { valid: true, reason: "" },
+    challenges: { valid: true, reason: "" },
+    plans: { valid: true, reason: "" },
+  };
+}
 // ── Shared helper: resolve internId from request user ────────────────────────
 const resolveIntern = async (userId, userEmail) => {
   let intern = await Intern.findById(userId);
@@ -291,6 +301,51 @@ const validateLogbookEntry = async (req, res) => {
   }
 };
 
+// Validate all three logbook fields in one Gemini call (submit-time only)
+const validateBatchEntries = async (req, res) => {
+  try {
+    const { tasks, challenges, plans } = req.body;
+
+    if (
+      typeof tasks !== "string" ||
+      typeof challenges !== "string" ||
+      typeof plans !== "string"
+    ) {
+      return res.status(400).json({
+        error: "tasks, challenges, and plans must be strings",
+      });
+    }
+
+    if (!tasks.trim()) {
+      return res.status(400).json({ error: "tasks is required" });
+    }
+
+    for (const field of BATCH_FIELDS) {
+      const text = req.body[field];
+      if (!text || !text.trim()) continue;
+
+      const localCheck = validateEntry(text);
+      if (!localCheck.isValid) {
+        const reason =
+          localCheck.checks.tooShort.reason ||
+          localCheck.checks.placeholder.reason ||
+          localCheck.checks.repetitive.reason ||
+          localCheck.checks.keyboardSmash.reason ||
+          "Entry failed basic quality checks.";
+        const response = failOpenBatchResult();
+        response[field] = { valid: false, reason };
+        return res.status(200).json(response);
+      }
+    }
+
+    const result = await validateBatchWithGemini(tasks, challenges, plans);
+    return res.status(200).json(result);
+  } catch (error) {
+    console.warn("Batch validation failed — failing open:", error.message);
+    return res.status(200).json(failOpenBatchResult());
+  }
+};
+
 module.exports = {
   createDailyRecord,
   getDailyRecords,
@@ -298,4 +353,5 @@ module.exports = {
   updateDailyRecord,
   deleteDailyRecord,
   validateLogbookEntry,
+  validateBatchEntries,
 };

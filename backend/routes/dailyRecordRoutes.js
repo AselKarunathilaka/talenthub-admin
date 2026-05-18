@@ -8,6 +8,7 @@ const {
   updateDailyRecord,
   deleteDailyRecord,
   validateLogbookEntry,
+  validateBatchEntries,
 } = require("../controllers/dailyRecordController");
 
 const {
@@ -26,6 +27,7 @@ router.get("/export/pdf", exportDailyRecordsPDF);
 
 // ── Endpoint for LLM validation ───────────────────────────────────────────────
 router.post("/validate-entry", validateLogbookEntry);
+router.post("/validate-batch", validateBatchEntries);
 
 // ── CRUD routes ───────────────────────────────────────────────────────────────
 router.post("/", createDailyRecord);

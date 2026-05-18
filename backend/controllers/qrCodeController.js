@@ -13,23 +13,30 @@ const QRCode = require("qrcode");
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId, type } = req.query; // Get internId and type from query parameters
+    const { internId, type, meetingTitle } = req.query; // Get parameters including meetingTitle
     
     let sessionId;
     if (type === 'daily') {
       // Generate QR for daily attendance
       if (internId) {
-        sessionId = `daily_attendance_${internId}_${new Date().getTime()}`;
+        sessionId = `daily_attendance_${internId}_${Date.now()}`;
       } else {
-        sessionId = `daily_attendance_${new Date().getTime()}`;
+        sessionId = `daily_attendance_${Date.now()}`;
       }
     } else {
-      // Generate QR for meeting attendance (default when no type specified or type='meeting')
+      // Generate QR for meeting attendance (JSON format expected by scanner)
+      // Must include type and meetingTitle
+      const meetingData = {
+        type: 'meeting_attendance',
+        meetingTitle: meetingTitle || 'General Meeting',
+        timestamp: Date.now()
+      };
+
       if (internId) {
-        sessionId = `attendance_session_${internId}_${new Date().getTime()}`;
-      } else {
-        sessionId = `attendance_session_${new Date().getTime()}`;
+        meetingData.internId = internId;
       }
+
+      sessionId = JSON.stringify(meetingData);
     }
     
     const qrCode = await QRCode.toDataURL(sessionId); 
@@ -55,7 +62,19 @@ const markAttendance = async (req, res) => {
 
 
 const scanQRCode = async (req, res) => {
-  const { qrCode, internId, scanType = 'daily', lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, scanType = 'daily', lat, lng } = req.body;
+
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
 
   try {
     // Validate QR code format based on scan type
@@ -82,10 +101,11 @@ const scanQRCode = async (req, res) => {
       // Get intern info for email notification
       const intern = await InternService.getInternById(internId);
       // Send email notification for daily attendance
-      if (intern && intern.email) {
+      const emailAddress = intern?.Trainee_Email || intern?.email;
+      if (intern && emailAddress) {
         const moment = require("moment-timezone");
         const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
-        const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
+        const attendanceTime = moment.tz("Asia/Colombo").format("HH:mm");
         const emailSubject = "Daily Attendance Marked - SLT Mobitel";
         const emailBody = `
           Hello ${intern.traineeName},
@@ -107,24 +127,37 @@ const scanQRCode = async (req, res) => {
           SLT Mobitel
           Digital Platforms Development Section
         `;
-        sendEmail(intern.email, emailSubject, emailBody);
+        // --- TEMPORARILY DISABLED EMAIL NOTIFICATION ---
+        // sendEmail(emailAddress, emailSubject, emailBody);
       }
       res.status(200).json({ 
-        message: "Daily attendance marked successfully and email sent!",
+        message: "Daily attendance marked successfully",
         dailyAttendanceUpdated: true
       });
     } else {
       // For meeting/general attendance scans, use the old system (intern.attendance)
       const status = "Present";
       const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
+
+      // Also attempt to mark daily attendance
+      let dailyAttendanceUpdated = false;
+      try {
+        await qrCodeService.markInternDailyAttendance(internId, qrCode);
+        dailyAttendanceUpdated = true;
+      } catch (e) {
+        // Ignore errors (like duplicates) for the automatic part
+      }
+
       res.status(200).json({ 
-        message: "Attendance marked successfully and email sent!",
-        dailyAttendanceUpdated: false
+        message: "Attendance marked successfully",
+        dailyAttendanceUpdated: dailyAttendanceUpdated
       });
     }
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      message: error.locationRequired ? error.message : "Error processing QR code",
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: error.locationRequired || error.message?.includes("Duplicate")
+        ? error.message
+        : "Error processing QR code",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
     });
@@ -133,7 +166,19 @@ const scanQRCode = async (req, res) => {
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId, meetingTitle, lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, meetingTitle, lat, lng } = req.body;
+
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
   try {
     await AttendanceSettingsService.validateSltLocationIfRequired({
       lat,
@@ -166,14 +211,20 @@ const scanMeetingQRCode = async (req, res) => {
     }
     // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
+    const message = result.dailyAttendanceMarked
+      ? "Meeting attendance marked successfully. Daily attendance also recorded."
+      : "Meeting attendance marked successfully.";
     res.status(200).json({ 
-      message: "Meeting attendance marked successfully",
+      message,
       intern: result.intern,
-      meeting: result.meeting
+      meeting: result.meeting,
+      dailyAttendanceMarked: result.dailyAttendanceMarked
     });
   } catch (error) {
-    res.status(error.statusCode || 500).json({
-      message: error.locationRequired ? error.message : "Error processing meeting attendance",
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: error.locationRequired || error.message?.includes("Duplicate")
+        ? error.message
+        : "Error processing meeting attendance",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
     });

@@ -317,6 +317,30 @@ export const adminApi = {
       throw error;
     }
   },
+
+  // Generate QR Code
+  generateQRCode: async (type = 'meeting', meetingTitle = '') => {
+    try {
+      let url = `${API_BASE_URL}/qrcode/generate-qrcode?type=${type}`;
+      if (type === 'meeting' && meetingTitle) {
+        url += `&meetingTitle=${encodeURIComponent(meetingTitle)}`;
+      }
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate QR code: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error generating QR code:", error);
+      throw error;
+    }
+  },
 };
 
 export { downloadApprovedLeaveReport };

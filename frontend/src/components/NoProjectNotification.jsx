@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FolderOpen, AlertTriangle, X, ArrowRight } from 'lucide-react';
+import { FolderOpen, AlertTriangle, ArrowRight } from 'lucide-react';
 
 /**
  * NoProjectNotification Component
@@ -44,15 +44,6 @@ const NoProjectNotification = ({ onDismiss }) => {
                 background: 'linear-gradient(90deg, #f59e0b, #f97316, #ef4444)',
               }}
             />
-
-            {/* Close button */}
-            <button
-              onClick={handleDismiss}
-              className="absolute right-4 top-5 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
-              aria-label="Close notification"
-            >
-              <X className="h-5 w-5" />
-            </button>
 
             {/* Content */}
             <div className="px-6 pt-6 pb-8">

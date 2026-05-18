@@ -4,6 +4,11 @@ import { handleUnauthorized } from "./sessionUtils";
 export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
 export const getAuthToken = () => {
+  // Prefer intern token first — most API calls need intern identity.
+  // Admin pages use their own adminApi helper which reads adminInfo directly.
+  const authToken = localStorage.getItem("authToken");
+  if (authToken) return authToken;
+
   const adminInfo = localStorage.getItem("adminInfo");
   if (adminInfo) {
     try {
@@ -13,9 +18,6 @@ export const getAuthToken = () => {
       console.error("Error parsing adminInfo:", error);
     }
   }
-
-  const authToken = localStorage.getItem("authToken");
-  if (authToken) return authToken;
 
   const userData = localStorage.getItem("userData");
   if (userData) {
