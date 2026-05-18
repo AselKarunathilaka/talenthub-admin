@@ -103,6 +103,7 @@ const FaceAttendance = () => {
   const distanceKm = getDistanceKm(location);
   const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
+  const canStartCamera = mode === "enroll" || locationValid;
   const enrollmentProgress = Math.min(enrollmentFrames.length, 5);
 
   const attachStreamToVideo = async () => {
@@ -233,7 +234,7 @@ const FaceAttendance = () => {
   };
 
   const startCamera = async () => {
-    if (!requireValidLocation("You must be within SLT office radius.")) return;
+    if (mode !== "enroll" && !requireValidLocation("You must be within SLT office radius.")) return;
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("Camera access requires a supported browser on HTTPS or localhost.");
       return;
@@ -309,8 +310,6 @@ const FaceAttendance = () => {
       toast.error("Capture at least 5 frames before completing enrollment.");
       return;
     }
-
-    if (!requireValidLocation("You must be within SLT office radius to enroll.")) return;
 
     setLoading(true);
     try {
@@ -514,18 +513,24 @@ const FaceAttendance = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold text-slate-950">Face Attendance</h1>
               <p className="text-slate-500 mt-1">
-                Face recognition is the primary method. QR remains available as backup.
+                Face recognition works alongside the existing QR Attendance flow.
               </p>
             </div>
             <div
               className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
-                locationValid
+                mode === "enroll" || locationValid
                   ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                   : "border-red-200 bg-red-50 text-red-700"
               }`}
             >
-              {locationValid ? <MapPin className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-              {!sltLocationRequired
+              {mode === "enroll" || locationValid ? (
+                <MapPin className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
+              )}
+              {mode === "enroll"
+                ? "Face enrollment works from anywhere"
+                : !sltLocationRequired
                 ? "Location check off by admin"
                 : locationValid
                   ? `Within office radius (${distanceKm.toFixed(2)} km)`
@@ -557,7 +562,7 @@ const FaceAttendance = () => {
               className="inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-100"
             >
               <QrCode className="w-4 h-4" />
-              QR Backup
+              QR Attendance
             </button>
           </div>
 
@@ -718,7 +723,7 @@ const FaceAttendance = () => {
                     <button
                       type="button"
                       onClick={startCamera}
-                      disabled={loading || !locationValid}
+                      disabled={loading || !canStartCamera}
                       className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
                     >
                       <Camera className="w-5 h-5" />
@@ -745,7 +750,7 @@ const FaceAttendance = () => {
                   </div>
                   <div className="flex gap-3">
                     <CheckCircle className="w-4 h-4 text-emerald-600 mt-0.5" />
-                    <span>Use QR backup if face recognition fails.</span>
+                    <span>Use QR Attendance if face recognition fails.</span>
                   </div>
                 </div>
               </aside>
@@ -755,8 +760,8 @@ const FaceAttendance = () => {
           {activeTab === "qr" && (
             <section className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden max-w-4xl">
               <div className="border-b border-slate-200 p-4 md:p-5">
-                <h2 className="text-lg font-semibold text-slate-900">QR Backup Scanner</h2>
-                <p className="text-sm text-slate-500 mt-1">Use this only when face attendance cannot be completed.</p>
+                <h2 className="text-lg font-semibold text-slate-900">QR Attendance Scanner</h2>
+                <p className="text-sm text-slate-500 mt-1">Use the existing QR attendance scanner when needed.</p>
               </div>
 
               <div className="p-4 md:p-5 space-y-5">

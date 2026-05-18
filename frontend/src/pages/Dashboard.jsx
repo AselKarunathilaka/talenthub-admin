@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
 import NoProjectNotification from "../components/NoProjectNotification";
+import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import {
   Users,
   CheckCircle,
@@ -42,8 +43,12 @@ const Dashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [internData, setInternData] = useState(null);
   const [endDateNotification, setEndDateNotification] = useState(null);
+  const [showFaceModal, setShowFaceModal] = useState(false);
+  const [projectPopupPending, setProjectPopupPending] = useState(false);
   const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
   const rowsPerPage = 10;
+  const initialLoadStartedRef = useRef(false);
+  const faceModalOpenRef = useRef(false);
   const navigate = useNavigate();
   const cricketRegistrationLink =
     "https://linktr.ee/CricketFiestaRegistrationLinks";
@@ -149,6 +154,16 @@ const Dashboard = () => {
     }
   };
 
+  const checkFaceEnrollment = async () => {
+    try {
+      const data = await api.get("/face-attendance/profile");
+      return Boolean(data.profile && data.profile.isActive);
+    } catch (error) {
+      console.error("Error checking face enrollment:", error);
+      return true;
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     await Promise.all([
@@ -157,13 +172,27 @@ const Dashboard = () => {
     ]);
     setLoading(false);
 
+    const internId = localStorage.getItem("internId");
+    const shouldPromptFace = Boolean(
+      internId &&
+        !(await checkFaceEnrollment()),
+    );
+
+    if (shouldPromptFace) {
+      faceModalOpenRef.current = true;
+      setShowFaceModal(true);
+    }
+
     // Check if intern has a project — show popup every time if not assigned
     try {
-      const internId = localStorage.getItem("internId");
       if (internId) {
         const projectCheck = await api.get(`/interns/${internId}/projects/check`);
         if (projectCheck && projectCheck.hasProject === false) {
-          setShowNoProjectPopup(true);
+          if (shouldPromptFace || faceModalOpenRef.current) {
+            setProjectPopupPending(true);
+          } else {
+            setShowNoProjectPopup(true);
+          }
         }
       }
     } catch (err) {
@@ -189,6 +218,11 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (initialLoadStartedRef.current) {
+      return;
+    }
+
+    initialLoadStartedRef.current = true;
     loadAllData();
   }, []);
 
@@ -197,6 +231,15 @@ const Dashboard = () => {
     localStorage.removeItem("internId");
     localStorage.removeItem("userData");
     navigate("/");
+  };
+
+  const closeFaceRegistration = () => {
+    faceModalOpenRef.current = false;
+    setShowFaceModal(false);
+    if (projectPopupPending) {
+      setProjectPopupPending(false);
+      setShowNoProjectPopup(true);
+    }
   };
 
   const totalAttendance = attendanceStats.present + attendanceStats.absent;
@@ -744,6 +787,13 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navigation onLogout={handleLogout} />
+      {showFaceModal && (
+        <FaceRegistrationModal
+          isOpen={showFaceModal}
+          onClose={closeFaceRegistration}
+          onEnrollmentComplete={closeFaceRegistration}
+        />
+      )}
       {showNoProjectPopup && (
         <NoProjectNotification
           onDismiss={() => setShowNoProjectPopup(false)}

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Camera, X, Check, AlertCircle, Loader } from "lucide-react";
+import { Camera, Check, Loader, ShieldCheck, X } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
@@ -177,15 +177,15 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   if (!modelsLoaded) {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-        <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl shadow-2xl p-8 max-w-sm w-full border border-indigo-100">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border-t-4 border-orange-500">
           <div className="flex flex-col items-center">
-            <div className="w-16 h-16 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
-              <Loader className="w-8 h-8 animate-spin text-white" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center mb-6">
+              <Loader className="w-8 h-8 animate-spin text-orange-600" />
             </div>
-            <p className="text-center text-indigo-900 font-semibold text-lg">
+            <p className="text-center text-gray-900 font-semibold text-lg">
               Initializing face recognition...
             </p>
-            <p className="text-center text-indigo-600 text-sm mt-2">
+            <p className="text-center text-gray-500 text-sm mt-2">
               Loading advanced face detection models
             </p>
           </div>
@@ -196,44 +196,47 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border-t-4 border-indigo-600">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 p-6 text-white relative">
-          <button
-            onClick={onClose}
-            className="absolute top-4 right-4 hover:bg-white/20 p-2 rounded-xl transition transform hover:scale-110"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-              <Camera className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold">Register Your Face</h2>
-              <p className="text-indigo-100 text-sm mt-0.5">
-                One-time setup for secure attendance
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-red-500" />
 
-        <div className="p-6 md:p-8">
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-5 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all duration-200"
+          aria-label="Close face registration"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="px-6 pt-6 pb-8">
           {/* Intro Step */}
           {step === "intro" && (
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-indigo-50 to-purple-50 border-l-4 border-indigo-600 rounded-xl p-5">
-                <p className="text-sm text-indigo-900 leading-relaxed">
-                  📸 <strong>Quick & Secure:</strong> Register your face once to enable fast, secure attendance marking. Only your face signature is stored—no photos.
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center">
+                  <Camera className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-gray-900">Register Your Face</h2>
+                <p className="text-gray-600 text-sm mt-2 leading-relaxed">
+                  One-time setup for secure attendance. You can complete this before continuing.
+                </p>
+              </div>
+
+              <div className="rounded-xl p-4 flex items-start gap-3 bg-amber-50 border border-amber-200">
+                <ShieldCheck className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-amber-800 text-xs leading-relaxed">
+                  Only your mathematical face signature is stored. No photos are saved.
                 </p>
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-bold text-gray-800 text-lg">What you need:</h3>
+                <h3 className="font-bold text-gray-900 text-base">What you need:</h3>
                 <div className="space-y-2.5">
-                  <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50/30 transition">
-                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-white" />
+                  <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-800">3 clear face photos</p>
@@ -241,9 +244,9 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50/30 transition">
-                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-white" />
+                  <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-800">Good lighting</p>
@@ -251,9 +254,9 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                     </div>
                   </div>
                   
-                  <div className="flex items-start gap-3 p-3 bg-white rounded-lg border border-indigo-100 hover:border-indigo-300 hover:bg-indigo-50/30 transition">
-                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-white" />
+                  <div className="flex items-start gap-3 p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="w-7 h-7 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <Check className="w-4 h-4 text-white" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-800">Clear face visibility</p>
@@ -266,7 +269,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
               <div className="space-y-2.5">
                 <button
                   onClick={startCamera}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-bold py-4 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-3 shadow-lg"
+                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 text-white font-bold py-4 rounded-xl transition hover:shadow-lg flex items-center justify-center gap-3"
                 >
                   <Camera className="w-5 h-5" />
                   Start Face Registration
@@ -279,21 +282,17 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                   Skip for Now
                 </button>
               </div>
-
-              <div className="text-xs text-gray-500 text-center p-3 bg-gray-50 rounded-lg">
-                ℹ️ You can register your face anytime from your dashboard
-              </div>
             </div>
           )}
 
           {/* Capturing Step */}
           {step === "capturing" && (
             <div className="space-y-5">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 rounded-lg p-4 text-sm text-blue-900">
-                <strong>📍 Position Tip:</strong> Center your face in the frame. Good lighting helps!
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                <strong>Position tip:</strong> Center your face in the frame. Good lighting helps.
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden border-4 border-indigo-300 shadow-lg bg-black" style={{ aspectRatio: "4/3" }}>
+              <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-black" style={{ aspectRatio: "4/3" }}>
                 <video
                   ref={videoRef}
                   autoPlay
@@ -314,11 +313,11 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-700">Progress</span>
-                  <span className="text-sm font-bold text-indigo-600">{frameCountRef.current}/3 frames</span>
+                  <span className="text-sm font-bold text-orange-600">{frameCountRef.current}/3 frames</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-indigo-600 to-purple-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                    className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
                     style={{ width: `${(frameCountRef.current / 3) * 100}%` }}
                   >
                     {(frameCountRef.current / 3) * 100 > 15 && (
@@ -332,7 +331,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                 <button
                   onClick={captureFrame}
                   disabled={frameCountRef.current >= 3}
-                  className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2"
                 >
                   <Camera className="w-5 h-5" />
                   Capture Frame ({frameCountRef.current}/3)
@@ -349,8 +348,8 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                 </button>
               </div>
 
-              <div className="text-xs text-gray-600 text-center p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                💡 Move your head slightly for each frame to capture different angles
+              <div className="text-xs text-amber-800 text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                Move your head slightly for each frame to capture different angles.
               </div>
             </div>
           )}
@@ -358,7 +357,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
           {/* Review Step */}
           {step === "review" && (
             <div className="space-y-5">
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-xl p-5">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
                     <Check className="w-4 h-4 text-white" />
@@ -372,7 +371,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                 </div>
               </div>
 
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 text-sm text-indigo-900">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
                 <p className="leading-relaxed">
                   Your face signature will be <strong>securely encrypted</strong> and stored on our servers. No photos are kept—only mathematical face data.
                 </p>
@@ -382,7 +381,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                 <button
                   onClick={submitEnrollment}
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition transform hover:scale-105 flex items-center justify-center gap-2 shadow-lg"
+                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2"
                 >
                   {loading ? (
                     <>
@@ -414,19 +413,19 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
           {step === "success" && (
             <div className="space-y-6 py-4">
               <div className="flex justify-center">
-                <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center shadow-lg">
-                  <Check className="w-10 h-10 text-white" />
+                <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
+                  <Check className="w-8 h-8 text-green-600" />
                 </div>
               </div>
               
               <div className="text-center space-y-3">
-                <h3 className="text-2xl font-bold text-gray-800">Registration Complete! ✨</h3>
+                <h3 className="text-xl font-bold text-gray-900">Registration Complete</h3>
                 <p className="text-gray-600 leading-relaxed">
                   Your face has been successfully registered. You're all set to use face recognition for attendance.
                 </p>
               </div>
 
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 rounded-lg p-4 space-y-2 text-sm text-green-900">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 space-y-2 text-sm text-green-900">
                 <div className="flex items-center gap-2">
                   <Check className="w-4 h-4 flex-shrink-0" />
                   <span>Face signature stored securely</span>

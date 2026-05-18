@@ -6,26 +6,12 @@ import { api } from "../utils/api";
 import logo from "../assets/sltlogo.jpg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
-import FaceRegistrationModal from "../components/FaceRegistrationModal";
 
 const Login = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [error, setError] = useState(null);
-  const [showFaceModal, setShowFaceModal] = useState(false);
-  const [currentInternId, setCurrentInternId] = useState(null);
-
-  const checkFaceEnrollment = async () => {
-    try {
-      const data = await api.get("/face-attendance/profile");
-      return data.profile && data.profile.isActive;
-    } catch (error) {
-      console.error("Error checking face enrollment:", error);
-      return false;
-    }
-  };
-
   const handleGoogleLogin = async (response) => {
     try {
       setIsLoading(true);
@@ -38,18 +24,7 @@ const Login = () => {
       if (data.token) {
         localStorage.setItem("internId", data.internId);
         localStorage.setItem("authToken", data.token);
-        setCurrentInternId(data.internId);
-
-        // Check if user has face enrolled
-        const hasFace = await checkFaceEnrollment();
-        
-        if (hasFace) {
-          // User already has face enrolled, proceed to dashboard
-          navigate("/dashboard");
-        } else {
-          // Show face registration modal
-          setShowFaceModal(true);
-        }
+        navigate("/dashboard");
       } else {
         setError(data.message || "Authentication failed. Please try again.");
       }
@@ -61,14 +36,6 @@ const Login = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleFaceEnrollmentComplete = () => {
-    navigate("/dashboard");
-  };
-
-  const handleSkipFaceEnrollment = () => {
-    navigate("/dashboard");
   };
 
   return (
@@ -459,14 +426,6 @@ const Login = () => {
           animation: float 12s ease-in-out infinite;
         }
       `}</style>
-
-      {/* Face Registration Modal */}
-      <FaceRegistrationModal
-        isOpen={showFaceModal}
-        onClose={handleSkipFaceEnrollment}
-        internId={currentInternId}
-        onEnrollmentComplete={handleFaceEnrollmentComplete}
-      />
     </div>
   );
 };

@@ -176,7 +176,7 @@ const Navigation = ({ children }) => {
     },
     {
       to: "/scan-qr",
-      label: "QR Backup",
+      label: "QR Attendance",
       icon: <QrCode className="h-5 w-5" />,
     },
     {
