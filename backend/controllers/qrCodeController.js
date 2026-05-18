@@ -126,7 +126,7 @@ const scanQRCode = async (req, res) => {
       if (intern && emailAddress) {
         const moment = require("moment-timezone");
         const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
-        const attendanceTime = moment.tz("Asia/Colombo").format("h:mm A");
+        const attendanceTime = moment.tz("Asia/Colombo").format("HH:mm");
         const emailSubject = "Daily Attendance Marked - SLT Mobitel";
         const emailBody = `
           Hello ${intern.traineeName},
@@ -250,10 +250,14 @@ const scanMeetingQRCode = async (req, res) => {
     }
     // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
+    const message = result.dailyAttendanceMarked
+      ? "Meeting attendance marked successfully. Daily attendance also recorded."
+      : "Meeting attendance marked successfully.";
     res.status(200).json({ 
-      message: "Meeting attendance marked successfully",
+      message,
       intern: result.intern,
-      meeting: result.meeting
+      meeting: result.meeting,
+      dailyAttendanceMarked: result.dailyAttendanceMarked
     });
   } catch (error) {
     if (error.message && error.message.includes("Duplicate")) {

@@ -46,7 +46,7 @@ async function getPresentsOnDate(dateStr) {
           : "Not specified",
         meetingName: record.meetingName || "—",
         timeMarked: record.timeMarked
-          ? moment(record.timeMarked).tz(TZ).format("hh:mm A")
+          ? moment(record.timeMarked).tz(TZ).format("HH:mm")
           : "—",
         type: record.type || "manual",
       });
@@ -132,7 +132,7 @@ exports.exportAttendanceExcel = async (req, res) => {
     excelData.push([]);
     excelData.push([
       "Report Generated:",
-      moment().tz(TZ).format("MMMM DD, YYYY [at] h:mm A"),
+      moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm"),
     ]);
     excelData.push([
       "Date:",
@@ -275,7 +275,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     excelData.push([]);
     excelData.push([
       "Report Generated:",
-      moment().tz(TZ).format("MMMM DD, YYYY [at] h:mm A"),
+      moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm"),
     ]);
     excelData.push([
       "Period:",
