@@ -196,6 +196,7 @@ const AdminQRManagement = () => {
                   )}
                 </motion.button>
               </div>
+
             </div>
 
             {/* Right Panel: Display */}

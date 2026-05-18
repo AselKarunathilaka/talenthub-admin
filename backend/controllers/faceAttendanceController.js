@@ -2,6 +2,7 @@ const FaceAttendanceService = require("../services/faceAttendanceService");
 const Intern = require("../models/Intern");
 const mongoose = require("mongoose");
 const AttendanceSettingsService = require("../services/attendanceSettingsService");
+const FaceMeetingPinService = require("../services/faceMeetingPinService");
 
 const resolveInternId = (req) => {
   return req.user?.id || req.body.internId || req.params.internId || null;
@@ -37,13 +38,22 @@ const registerFaceProfile = async (req, res) => {
 
 const verifyFaceAttendance = async (req, res) => {
   try {
-    const { descriptor, metadata = {}, qrBackupUsed = false, attendanceType = "daily" } = req.body;
+    const {
+      descriptor,
+      metadata = {},
+      qrBackupUsed = false,
+      attendanceType = "daily",
+      meetingTitle,
+      meetingPin,
+    } = req.body;
     const result = await FaceAttendanceService.markAttendanceWithFace({
       descriptor,
       source: metadata.source || "browser-camera",
       metadata,
       qrBackupUsed,
       attendanceType,
+      meetingTitle,
+      meetingPin,
       expectedInternId: req.user?.id,
     });
 
@@ -80,7 +90,7 @@ const verifyFaceAttendance = async (req, res) => {
     });
   } catch (error) {
     return res.status(error.statusCode || 500).json({
-      message: error.locationRequired ? error.message : "Failed to verify face attendance.",
+      message: error.locationRequired || error.statusCode ? error.message : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
     });
@@ -155,6 +165,19 @@ const getAttendanceSettings = async (req, res) => {
   }
 };
 
+const getCurrentMeetingPin = async (req, res) => {
+  try {
+    const { meetingTitle } = req.query;
+    const pinData = FaceMeetingPinService.getCurrentPin(meetingTitle);
+    return res.status(200).json(pinData);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to generate face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerFaceProfile,
   verifyFaceAttendance,
@@ -162,4 +185,5 @@ module.exports = {
   getFaceLogs,
   getFaceProfileByIdentifier,
   getAttendanceSettings,
+  getCurrentMeetingPin,
 };

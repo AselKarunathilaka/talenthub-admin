@@ -45,6 +45,9 @@ const {
   getAttendanceSettings,
   updateAttendanceSettings,
 } = require("../controllers/attendanceSettingsController");
+const {
+  getCurrentMeetingPin,
+} = require("../controllers/faceAttendanceController");
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -126,6 +129,7 @@ router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);
 router.put("/attendance/settings", updateAttendanceSettings);
+router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
 
 router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
   const nodemailer = require("nodemailer");

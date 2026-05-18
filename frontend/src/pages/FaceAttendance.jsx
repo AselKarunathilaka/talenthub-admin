@@ -89,6 +89,7 @@ const FaceAttendance = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [qrMode, setQrMode] = useState("daily");
   const [meetingTitle, setMeetingTitle] = useState("");
+  const [meetingPin, setMeetingPin] = useState("");
   const [qrScanning, setQrScanning] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
   const [qrScanSuccess, setQrScanSuccess] = useState(false);
@@ -352,6 +353,16 @@ const FaceAttendance = () => {
   const handleFaceRecognition = async () => {
     if (!requireValidLocation("You must be within SLT office radius to mark attendance.")) return;
 
+    if (attendanceType === "meeting" && !meetingTitle.trim()) {
+      toast.error("Enter the meeting title before marking meeting attendance.");
+      return;
+    }
+
+    if (attendanceType === "meeting" && !/^\d{6}$/.test(meetingPin.trim())) {
+      toast.error("Enter the 6-digit meeting PIN from the meeting room.");
+      return;
+    }
+
     setLoading(true);
     const frameData = await captureFrameForDescriptor();
 
@@ -367,9 +378,13 @@ const FaceAttendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType,
+          meetingTitle: attendanceType === "meeting" ? meetingTitle.trim() : undefined,
+          meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
             location: location || null,
             source: "browser-camera",
+            meetingTitle: attendanceType === "meeting" ? meetingTitle.trim() : undefined,
+            meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           },
         }),
       });
@@ -613,33 +628,62 @@ const FaceAttendance = () => {
 
                 <div className="p-4 md:p-5 space-y-5">
                   {mode === "recognize" && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setAttendanceType("daily")}
-                        className={`rounded-lg border p-4 text-left transition ${
-                          attendanceType === "daily"
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-200 hover:border-blue-300"
-                        }`}
-                      >
-                        <ShieldCheck className="w-5 h-5 text-blue-600 mb-2" />
-                        <div className="font-semibold text-slate-900">Daily Attendance</div>
-                        <div className="text-sm text-slate-500 mt-1">Marks today's regular attendance.</div>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAttendanceType("meeting")}
-                        className={`rounded-lg border p-4 text-left transition ${
-                          attendanceType === "meeting"
-                            ? "border-blue-500 bg-blue-50"
-                            : "border-slate-200 hover:border-blue-300"
-                        }`}
-                      >
-                        <Users className="w-5 h-5 text-blue-600 mb-2" />
-                        <div className="font-semibold text-slate-900">Daily + Meeting</div>
-                        <div className="text-sm text-slate-500 mt-1">Marks daily attendance and today's meeting.</div>
-                      </button>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setAttendanceType("daily")}
+                          className={`rounded-lg border p-4 text-left transition ${
+                            attendanceType === "daily"
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-slate-200 hover:border-blue-300"
+                          }`}
+                        >
+                          <ShieldCheck className="w-5 h-5 text-blue-600 mb-2" />
+                          <div className="font-semibold text-slate-900">Daily Attendance</div>
+                          <div className="text-sm text-slate-500 mt-1">Marks today's regular attendance.</div>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAttendanceType("meeting")}
+                          className={`rounded-lg border p-4 text-left transition ${
+                            attendanceType === "meeting"
+                              ? "border-blue-500 bg-blue-50"
+                              : "border-slate-200 hover:border-blue-300"
+                          }`}
+                        >
+                          <Users className="w-5 h-5 text-blue-600 mb-2" />
+                          <div className="font-semibold text-slate-900">Daily + Meeting</div>
+                          <div className="text-sm text-slate-500 mt-1">Marks daily attendance and today's meeting.</div>
+                        </button>
+                      </div>
+
+                      {attendanceType === "meeting" && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Meeting title *</span>
+                            <input
+                              type="text"
+                              value={meetingTitle}
+                              onChange={(event) => setMeetingTitle(event.target.value)}
+                              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              placeholder="Enter today's meeting title"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="text-sm font-medium text-slate-700">Meeting PIN *</span>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={meetingPin}
+                              onChange={(event) => setMeetingPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                              className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 tracking-[0.25em] font-semibold outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              placeholder="000000"
+                            />
+                          </label>
+                        </div>
+                      )}
                     </div>
                   )}
 

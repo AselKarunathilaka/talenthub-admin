@@ -4,6 +4,7 @@ const DailyRecord = require("../models/DailyRecord");
 const InternFaceProfile = require("../models/InternFaceProfile");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const AttendanceSettingsService = require("./attendanceSettingsService");
+const FaceMeetingPinService = require("./faceMeetingPinService");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
 const ALL_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face", "meeting", "face_meeting", "qr"]);
@@ -59,6 +60,31 @@ async function upsertDailyRecordAttendance(internId, attendanceDate) {
 
   dailyRecord.attendance = "present";
   dailyRecord.attendanceTime = attendanceDate;
+  await dailyRecord.save();
+  return dailyRecord;
+}
+
+async function upsertDailyRecordMeetingAttendance(internId, attendanceDate, meetingTitle) {
+  const dailyRecord = await DailyRecord.findOne({
+    internId,
+    date: toAttendanceDateKey(attendanceDate),
+  });
+
+  if (!dailyRecord) {
+    return null;
+  }
+
+  dailyRecord.attendance = "present";
+  dailyRecord.attendanceTime = attendanceDate;
+  dailyRecord.meetingAttendance = Array.isArray(dailyRecord.meetingAttendance)
+    ? dailyRecord.meetingAttendance.filter((meeting) => meeting.meetingTitle !== meetingTitle)
+    : [];
+  dailyRecord.meetingAttendance.push({
+    meetingTitle,
+    attendanceStatus: "present",
+    attendanceTime: attendanceDate,
+  });
+
   await dailyRecord.save();
   return dailyRecord;
 }
@@ -178,18 +204,34 @@ class FaceAttendanceService {
     metadata = {},
     qrBackupUsed = false,
     attendanceType = "daily",
+    meetingTitle = "",
+    meetingPin = "",
     expectedInternId = null,
   }) {
     const normalizedAttendanceType = VALID_FACE_ATTENDANCE_TYPES.has(String(attendanceType).toLowerCase())
       ? String(attendanceType).toLowerCase()
       : "daily";
+    const normalizedMeetingTitle = String(meetingTitle || metadata.meetingTitle || "").trim();
     const location = metadata.location || {};
+
+    if (normalizedAttendanceType === "meeting" && !normalizedMeetingTitle) {
+      const error = new Error("Meeting title is required for meeting attendance.");
+      error.statusCode = 400;
+      throw error;
+    }
 
     await AttendanceSettingsService.validateSltLocationIfRequired({
       lat: location.latitude ?? location.lat,
       lng: location.longitude ?? location.lng,
       label: "Face attendance",
     });
+
+    if (normalizedAttendanceType === "meeting") {
+      FaceMeetingPinService.validatePin({
+        meetingTitle: normalizedMeetingTitle,
+        pin: meetingPin || metadata.meetingPin,
+      });
+    }
 
     const match = await this.findBestMatch(descriptor, { expectedInternId });
 
@@ -225,43 +267,65 @@ class FaceAttendanceService {
     const attendanceDate = moment.tz("Asia/Colombo").toDate();
     const attendanceDateKey = toAttendanceDateKey(attendanceDate);
 
-    // Check if ANY attendance is already marked for today (daily OR meeting)
-    const alreadyMarked = Array.isArray(intern.attendance)
-      ? intern.attendance.some((entry) => {
-          const entryType = String(entry.type || "").toLowerCase();
-          return (
-            ALL_ATTENDANCE_TYPES.has(entryType) &&
-            entry.status === "Present" &&
-            entry.date &&
-            isSameAttendanceDay(entry.date, attendanceDate)
-          );
-        })
-      : false;
+    const attendanceEntries = Array.isArray(intern.attendance) ? intern.attendance : [];
+    const dailyAlreadyMarked = attendanceEntries.some((entry) => {
+      const entryType = String(entry.type || "").toLowerCase();
+      return (
+        ALL_ATTENDANCE_TYPES.has(entryType) &&
+        entryType !== "meeting" &&
+        entryType !== "face_meeting" &&
+        entryType !== "qr" &&
+        entry.status === "Present" &&
+        entry.date &&
+        isSameAttendanceDay(entry.date, attendanceDate)
+      );
+    });
+    const meetingAlreadyMarked =
+      normalizedAttendanceType === "meeting" &&
+      attendanceEntries.some((entry) => {
+        const entryType = String(entry.type || "").toLowerCase();
+        return (
+          (entryType === "meeting" || entryType === "face_meeting" || entryType === "qr") &&
+          entry.status === "Present" &&
+          entry.meetingName === normalizedMeetingTitle &&
+          entry.date &&
+          isSameAttendanceDay(entry.date, attendanceDate)
+        );
+      });
+    const alreadyMarked =
+      normalizedAttendanceType === "meeting"
+        ? dailyAlreadyMarked && meetingAlreadyMarked
+        : dailyAlreadyMarked;
 
     if (!alreadyMarked) {
-      intern.attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      
-      // Mark daily attendance
-      intern.attendance.push({
-        date: attendanceDate,
-        status: "Present",
-        type: "face",
-        timeMarked: attendanceDate,
-      });
+      intern.attendance = attendanceEntries;
 
-      // If meeting attendance type, also mark meeting
-      if (normalizedAttendanceType === "meeting") {
+      if (!dailyAlreadyMarked) {
+        intern.attendance.push({
+          date: attendanceDate,
+          status: "Present",
+          type: "face",
+          timeMarked: attendanceDate,
+        });
+      }
+
+      if (normalizedAttendanceType === "meeting" && !meetingAlreadyMarked) {
         intern.attendance.push({
           date: attendanceDate,
           status: "Present",
           type: "face_meeting",
           timeMarked: attendanceDate,
+          meetingName: normalizedMeetingTitle,
         });
       }
 
       await intern.save();
 
-      await upsertDailyRecordAttendance(intern._id, attendanceDate);
+      if (normalizedAttendanceType === "meeting") {
+        await upsertDailyRecordMeetingAttendance(intern._id, attendanceDate, normalizedMeetingTitle);
+      } else {
+        await upsertDailyRecordAttendance(intern._id, attendanceDate);
+      }
     }
 
     const log = await FaceAttendanceLog.create({
@@ -280,6 +344,7 @@ class FaceAttendanceService {
       metadata: {
         ...metadata,
         attendanceType: normalizedAttendanceType,
+        meetingTitle: normalizedMeetingTitle || undefined,
         alreadyMarked,
       },
     });

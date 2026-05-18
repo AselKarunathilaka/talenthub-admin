@@ -341,6 +341,32 @@ export const adminApi = {
       throw error;
     }
   },
+
+  getFaceMeetingPin: async (meetingTitle = '') => {
+    try {
+      const query = `meetingTitle=${encodeURIComponent(meetingTitle)}`;
+      const requestOptions = {
+        method: "GET",
+        headers: getHeaders(),
+      };
+
+      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin?${query}`, requestOptions);
+
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin?${query}`, requestOptions);
+      }
+
+      await checkAuth(response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to generate face attendance PIN: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Error generating face attendance PIN:", error);
+      throw error;
+    }
+  },
 };
 
 export { downloadApprovedLeaveReport };
