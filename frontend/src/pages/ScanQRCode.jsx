@@ -84,7 +84,7 @@ const ScanQRCode = () => {
     if (scanner || !hasCameraAccess) return;
 
     if (scanMode === 'meeting' && !meetingTitle.trim()) {
-      toast.error('Please enter a meeting title first');
+      toast.error('Please enter a project name first');
       setShowMeetingInput(true);
       return;
     }
@@ -139,7 +139,7 @@ const ScanQRCode = () => {
                   setIsScanning(false);
                 } else {
                   if (!currentMeetingTitle.trim()) {
-                    toast.error("Please enter a meeting title first");
+                    toast.error("Please enter a project name first");
                     isProcessingRef.current = false;
                     return;
                   }
@@ -301,13 +301,13 @@ const ScanQRCode = () => {
                   className="mt-4 pt-4 border-t border-gray-200"
                 >
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meeting Title *
+                    Project Name *
                   </label>
                   <input
                     type="text"
                     value={meetingTitle}
                     onChange={(e) => setMeetingTitle(e.target.value)}
-                    placeholder="Enter meeting title..."
+                    placeholder="Enter project name..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
                 </motion.div>
