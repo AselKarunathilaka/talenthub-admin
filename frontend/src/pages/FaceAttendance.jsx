@@ -104,7 +104,11 @@ const FaceAttendance = () => {
   const distanceKm = getDistanceKm(location);
   const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
-  const canStartCamera = mode === "enroll" || locationValid;
+  const meetingDetailsReady = meetingTitle.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
+  const attendanceLocationReady = attendanceType === "meeting" ? actualLocationValid : locationValid;
+  const canStartCamera =
+    mode === "enroll" ||
+    (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
   const enrollmentProgress = Math.min(enrollmentFrames.length, 5);
 
   const attachStreamToVideo = async () => {
@@ -235,6 +239,11 @@ const FaceAttendance = () => {
   };
 
   const startCamera = async () => {
+    if (mode !== "enroll" && attendanceType === "meeting" && !actualLocationValid) {
+      toast.error(locationError || "You must be within SLT office radius to mark meeting attendance.");
+      return;
+    }
+
     if (mode !== "enroll" && !requireValidLocation("You must be within SLT office radius.")) return;
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("Camera access requires a supported browser on HTTPS or localhost.");

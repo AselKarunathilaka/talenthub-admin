@@ -220,11 +220,17 @@ class FaceAttendanceService {
       throw error;
     }
 
-    await AttendanceSettingsService.validateSltLocationIfRequired({
+    const locationPayload = {
       lat: location.latitude ?? location.lat,
       lng: location.longitude ?? location.lng,
-      label: "Face attendance",
-    });
+      label: normalizedAttendanceType === "meeting" ? "Face meeting attendance" : "Face attendance",
+    };
+
+    if (normalizedAttendanceType === "meeting") {
+      await AttendanceSettingsService.validateSltLocationRequired(locationPayload);
+    } else {
+      await AttendanceSettingsService.validateSltLocationIfRequired(locationPayload);
+    }
 
     if (normalizedAttendanceType === "meeting") {
       FaceMeetingPinService.validatePin({

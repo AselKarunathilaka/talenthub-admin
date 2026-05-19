@@ -99,8 +99,42 @@ async function validateSltLocationIfRequired({ lat, lng, label = "Attendance" })
   };
 }
 
+async function validateSltLocationRequired({ lat, lng, label = "Attendance" }) {
+  if (lat === undefined || lng === undefined || lat === null || lng === null) {
+    const error = new Error("Location data is required to mark attendance.");
+    error.statusCode = 400;
+    error.locationRequired = true;
+    throw error;
+  }
+
+  const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng));
+  if (!Number.isFinite(distance)) {
+    const error = new Error("Valid location data is required to mark attendance.");
+    error.statusCode = 400;
+    error.locationRequired = true;
+    throw error;
+  }
+
+  if (distance > MAX_DISTANCE_METERS) {
+    const error = new Error(
+      `${label} can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.`,
+    );
+    error.statusCode = 403;
+    error.locationRequired = true;
+    error.distanceMeters = distance;
+    throw error;
+  }
+
+  return {
+    required: true,
+    valid: true,
+    distanceMeters: distance,
+  };
+}
+
 module.exports = {
   getAttendanceSettings,
   updateAttendanceSettings,
   validateSltLocationIfRequired,
+  validateSltLocationRequired,
 };
