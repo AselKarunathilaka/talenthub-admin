@@ -16,7 +16,7 @@ const AdminQRManagement = () => {
 
   const handleGenerate = async () => {
     if (activeTab === 'meeting' && !meetingTitle.trim()) {
-      toast.error('Please enter a meeting title');
+      toast.error('Please enter a project name');
       return;
     }
 
@@ -159,17 +159,17 @@ const AdminQRManagement = () => {
                   {activeTab === 'meeting' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 mb-8">
                       <div>
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Meeting Title</label>
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Project Name</label>
                         <input
                           type="text"
                           value={meetingTitle}
                           onChange={(e) => setMeetingTitle(e.target.value)}
-                          placeholder="e.g., Monthly Progress Review"
+                          placeholder="e.g., TalentHub Development"
                           className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-gray-800 outline-none"
                         />
                       </div>
                       <div className="p-4 bg-blue-50 text-blue-800 rounded-2xl text-sm font-medium border border-blue-100">
-                        This will generate a secure JSON-encoded QR code specifically for this meeting event.
+                        This will generate a secure JSON-encoded QR code specifically for this project.
                       </div>
                     </motion.div>
                   )}
