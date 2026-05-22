@@ -42,6 +42,10 @@ const {
   exportNonAttendanceExcel,
 } = require("../controllers/admininternAttendanceController");
 
+const {
+  getCertificateData,
+} = require("../controllers/certificateController");
+
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
 
@@ -71,6 +75,9 @@ router.post("/notifications/overdue", sendOverdueNotifications);
 
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);
+
+// Get certificate data (enriched from TalentTrail)
+router.get("/intern/:internId/certificate-data", getCertificateData);
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);
