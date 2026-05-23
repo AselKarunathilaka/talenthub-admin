@@ -99,68 +99,110 @@ class TalentTrailService {
 
   /**
    * Get enriched certificate data for a specific intern.
-   * Aggregates: intern details, projects, attendance count.
+   * Aggregates: intern details, projects, modules, attendance count.
    *
    * @param {string} internCode – Trainee ID / intern code (e.g. "INT-2026-001")
    * @param {string} email – Intern email (fallback lookup)
    */
   async getCertificateData(internCode, email) {
     try {
-      // 1. Find the intern in TalentTrail
+      // ── Step 1: Find the intern in TalentTrail ────────────────────────
       let ttIntern = null;
 
       if (internCode) {
         try {
           ttIntern = await this.getInternByCode(internCode);
-        } catch { /* not found by code, try list */ }
+        } catch { /* not found by code */ }
       }
 
-      // Fallback: search by email in full list
+      // Fallback: match by email from full intern list
       if (!ttIntern && email) {
         try {
           const allInterns = await this.getInterns();
-          ttIntern = allInterns.find(
-            (i) => i.email?.toLowerCase() === email.toLowerCase()
-          );
+          ttIntern = Array.isArray(allInterns)
+            ? allInterns.find(
+                (i) => i.email?.toLowerCase() === email.toLowerCase()
+              )
+            : null;
         } catch { /* ignore */ }
       }
 
-      // 2. Get projects the intern is involved in
-      let internProjects = [];
-      try {
-        if (ttIntern) {
-          const [allTeams, allTeamMembers, allProjects] = await Promise.all([
-            this.getTeams(),
-            this.getTeamMembers(),
-            this.getProjects(),
-          ]);
-
-          // Find teams this intern belongs to
-          const internTeamIds = allTeamMembers
-            .filter((tm) => tm.internId === ttIntern.internId)
-            .map((tm) => tm.teamId);
-
-          // Find projects assigned to those teams
-          const projectIds = new Set();
-          allProjects.forEach((p) => {
-            if (p.assignedTeamIds?.some((tid) => internTeamIds.includes(tid))) {
-              projectIds.add(p.projectId);
-            }
-          });
-
-          internProjects = allProjects.filter((p) =>
-            projectIds.has(p.projectId)
-          );
-        }
-      } catch (err) {
-        console.warn("Failed to fetch projects for intern:", err.message);
+      if (!ttIntern) {
+        return { talentTrailIntern: null, projects: [], attendanceCount: 0 };
       }
 
-      // 3. Get meeting attendance count
+      // ── Step 2: Find teams this intern belongs to ─────────────────────
+      // GET /team-members → filter by internId
+      let internTeamIds = [];
+      try {
+        const allMembers = await this.getTeamMembers();
+        internTeamIds = Array.isArray(allMembers)
+          ? allMembers
+              .filter((tm) => tm.internId === ttIntern.internId)
+              .map((tm) => tm.teamId)
+          : [];
+      } catch (err) {
+        console.warn("Failed to fetch team members:", err.message);
+      }
+
+      // ── Step 3: Find all projects via team assignments ─────────────────
+      // Use GET /project-teams/team/{teamId} for each team (direct endpoint)
+      let internProjects = [];
+      try {
+        if (internTeamIds.length > 0) {
+          // Fetch project-team records for each team in parallel
+          const teamProjectResults = await Promise.all(
+            internTeamIds.map((tid) =>
+              this.getTeamProjects(tid).catch(() => [])
+            )
+          );
+
+          // Collect unique project IDs from team assignments
+          const projectIds = new Set();
+          teamProjectResults.flat().forEach((pt) => {
+            if (pt.projectId) projectIds.add(pt.projectId);
+          });
+
+          if (projectIds.size > 0) {
+            // Fetch full project details in parallel
+            const projectDetails = await Promise.all(
+              [...projectIds].map((pid) =>
+                this.authGet(`/projects/${pid}`).catch(() => null)
+              )
+            );
+
+            internProjects = projectDetails.filter(Boolean).map((p) => ({
+              projectId: p.projectId,
+              projectName: p.projectName || "N/A",
+              supervisorName: p.supervisorName || "N/A",
+              status: p.status || "N/A",
+              description: p.description || "",
+              startDate: p.startDate || null,
+              targetDate: p.targetDate || null,
+            }));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch intern projects:", err.message);
+      }
+
+      // ── Step 4: Count meeting attendance ──────────────────────────────
+      // GET /project-attendance returns records for the authenticated context.
+      // Since we use an admin token, it returns all records — we count PRESENT
+      // records that belong to the projects this intern is assigned to.
       let attendanceCount = 0;
       try {
         const attendance = await this.getProjectAttendance();
-        if (Array.isArray(attendance)) {
+        if (Array.isArray(attendance) && internProjects.length > 0) {
+          const internProjectIds = new Set(
+            internProjects.map((p) => p.projectId)
+          );
+          attendanceCount = attendance.filter(
+            (a) =>
+              a.status === "PRESENT" && internProjectIds.has(a.projectId)
+          ).length;
+        } else if (Array.isArray(attendance)) {
+          // No project info — count all PRESENT as best-effort
           attendanceCount = attendance.filter(
             (a) => a.status === "PRESENT"
           ).length;
@@ -170,7 +212,7 @@ class TalentTrailService {
       }
 
       return {
-        talentTrailIntern: ttIntern || null,
+        talentTrailIntern: ttIntern,
         projects: internProjects,
         attendanceCount,
       };
