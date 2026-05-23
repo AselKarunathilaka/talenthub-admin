@@ -29,26 +29,28 @@ const getCertificateData = async (req, res) => {
     // 3. Merge data — prefer TalentTrail data where available
     const ttIntern = ttData.talentTrailIntern;
 
+    // Count meeting attendance from local DB (attendance array with status "Present")
+    const localAttendanceCount = Array.isArray(localIntern.attendance)
+      ? localIntern.attendance.filter((a) => a.status === "Present").length
+      : 0;
+
     const certificateData = {
       intern: {
-        name: ttIntern?.name || localIntern.Trainee_Name || localIntern.traineeName || "N/A",
+        name: ttIntern?.name || localIntern.Trainee_Name || "N/A",
         traineeId: traineeId || "N/A",
         email: email || "N/A",
-        institute: ttIntern?.institute || localIntern.Institute || localIntern.institute || "N/A",
+        institute: ttIntern?.institute || localIntern.Institute || "N/A",
         fieldOfSpecialization:
           ttIntern?.fieldOfSpecialization ||
-          localIntern.Field_of_Specialization ||
-          localIntern.fieldOfSpecialization ||
+          localIntern.field_of_spec_name ||
           "N/A",
         trainingStartDate:
           ttIntern?.trainingStartDate ||
-          localIntern.Training_Start_Date ||
-          localIntern.trainingStartDate ||
+          localIntern.Training_StartDate ||
           null,
         trainingEndDate:
           ttIntern?.trainingEndDate ||
-          localIntern.Training_End_Date ||
-          localIntern.trainingEndDate ||
+          localIntern.Training_EndDate ||
           null,
         status: ttIntern?.status || localIntern.status || "N/A",
       },
@@ -58,7 +60,7 @@ const getCertificateData = async (req, res) => {
         status: p.status || "N/A",
         description: p.description || "",
       })),
-      attendanceCount: ttData.attendanceCount,
+      attendanceCount: ttData.attendanceCount || localAttendanceCount,
       source: {
         talentTrailConnected: !!ttIntern,
         projectsFromTalentTrail: ttData.projects.length > 0,
