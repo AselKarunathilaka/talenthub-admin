@@ -64,7 +64,7 @@ async function upsertDailyRecordAttendance(internId, attendanceDate) {
   return dailyRecord;
 }
 
-async function upsertDailyRecordMeetingAttendance(internId, attendanceDate, meetingTitle) {
+async function upsertDailyRecordMeetingAttendance(internId, attendanceDate, meetingTitle, meetingSessionId) {
   const dailyRecord = await DailyRecord.findOne({
     internId,
     date: toAttendanceDateKey(attendanceDate),
@@ -81,6 +81,7 @@ async function upsertDailyRecordMeetingAttendance(internId, attendanceDate, meet
     : [];
   dailyRecord.meetingAttendance.push({
     meetingTitle,
+    meetingSessionId,
     attendanceStatus: "present",
     attendanceTime: attendanceDate,
   });
@@ -226,14 +227,11 @@ class FaceAttendanceService {
       label: normalizedAttendanceType === "meeting" ? "Face meeting attendance" : "Face attendance",
     };
 
-    if (normalizedAttendanceType === "meeting") {
-      await AttendanceSettingsService.validateSltLocationRequired(locationPayload);
-    } else {
-      await AttendanceSettingsService.validateSltLocationIfRequired(locationPayload);
-    }
+    await AttendanceSettingsService.validateSltLocationIfRequired(locationPayload);
 
+    let meetingPinData = null;
     if (normalizedAttendanceType === "meeting") {
-      FaceMeetingPinService.validatePin({
+      meetingPinData = FaceMeetingPinService.validatePin({
         meetingTitle: normalizedMeetingTitle,
         pin: meetingPin || metadata.meetingPin,
       });
@@ -322,13 +320,19 @@ class FaceAttendanceService {
           type: "face_meeting",
           timeMarked: attendanceDate,
           meetingName: normalizedMeetingTitle,
+          meetingSessionId: meetingPinData?.meetingSessionId,
         });
       }
 
       await intern.save();
 
       if (normalizedAttendanceType === "meeting") {
-        await upsertDailyRecordMeetingAttendance(intern._id, attendanceDate, normalizedMeetingTitle);
+        await upsertDailyRecordMeetingAttendance(
+          intern._id,
+          attendanceDate,
+          normalizedMeetingTitle,
+          meetingPinData?.meetingSessionId,
+        );
       } else {
         await upsertDailyRecordAttendance(intern._id, attendanceDate);
       }
@@ -351,6 +355,7 @@ class FaceAttendanceService {
         ...metadata,
         attendanceType: normalizedAttendanceType,
         meetingTitle: normalizedMeetingTitle || undefined,
+        meetingSessionId: meetingPinData?.meetingSessionId,
         alreadyMarked,
       },
     });

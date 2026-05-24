@@ -10,10 +10,11 @@ const AdminPinManagement = () => {
   const navigate = useNavigate();
   const [meetingTitle, setMeetingTitle] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
+  const [stopLoading, setStopLoading] = useState(false);
   const [facePinData, setFacePinData] = useState(null);
   const [pinCountdown, setPinCountdown] = useState(0);
 
-  const fetchFacePin = useCallback(async () => {
+  const fetchFacePin = useCallback(async (rotate = false) => {
     if (!meetingTitle.trim()) {
       toast.error('Please enter a meeting title first');
       return;
@@ -21,7 +22,7 @@ const AdminPinManagement = () => {
 
     try {
       setPinLoading(true);
-      const response = await adminApi.getFaceMeetingPin(meetingTitle.trim());
+      const response = await adminApi.getFaceMeetingPin(meetingTitle.trim(), { rotate });
       setFacePinData(response);
       setPinCountdown(response.ttlSeconds || 0);
     } catch (error) {
@@ -53,11 +54,28 @@ const AdminPinManagement = () => {
     setPinCountdown(0);
   }, [meetingTitle]);
 
-  const stopPinGeneration = () => {
-    setFacePinData(null);
-    setPinCountdown(0);
-    toast.success('PIN generation stopped');
+  const stopPinGeneration = async () => {
+    if (!meetingTitle.trim()) {
+      setFacePinData(null);
+      setPinCountdown(0);
+      return;
+    }
+
+    try {
+      setStopLoading(true);
+      await adminApi.stopFaceMeetingPin(meetingTitle.trim());
+      setFacePinData(null);
+      setPinCountdown(0);
+      toast.success('Current PIN stopped. Generate again for a fresh PIN.');
+    } catch (error) {
+      toast.error(error.message || 'Failed to stop current PIN');
+      console.error(error);
+    } finally {
+      setStopLoading(false);
+    }
   };
+
+  const generateButtonLabel = facePinData ? 'Generate Fresh PIN' : 'Generate PIN';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans">
@@ -120,14 +138,14 @@ const AdminPinManagement = () => {
 
                   <button
                     type="button"
-                    onClick={fetchFacePin}
+                    onClick={() => fetchFacePin(true)}
                     disabled={pinLoading || !meetingTitle.trim()}
                     className="mt-6 w-full py-4 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-100 transition-all flex items-center justify-center space-x-3 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {pinLoading ? (
                       <><FaSpinner className="animate-spin text-xl" /><span>Generating...</span></>
                     ) : (
-                      <><FaKey className="text-xl" /><span>Generate PIN</span></>
+                      <><FaKey className="text-xl" /><span>{generateButtonLabel}</span></>
                     )}
                   </button>
                 </div>
@@ -150,11 +168,12 @@ const AdminPinManagement = () => {
                     <button
                       type="button"
                       onClick={stopPinGeneration}
-                      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-500 shadow-sm transition hover:bg-red-50 hover:text-red-600"
-                      aria-label="Stop PIN generation"
-                      title="Stop PIN generation"
+                      disabled={stopLoading}
+                      className="absolute right-4 top-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-500 shadow-sm transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      aria-label="Stop current PIN"
+                      title="Stop current PIN"
                     >
-                      <FaTimes className="h-4 w-4" />
+                      {stopLoading ? <FaSpinner className="h-4 w-4 animate-spin" /> : <FaTimes className="h-4 w-4" />}
                     </button>
                     <div className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-700">Current PIN</div>
                     <div className="mt-5 text-6xl sm:text-7xl font-extrabold tracking-[0.18em] text-gray-900">

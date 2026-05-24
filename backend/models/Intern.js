@@ -11,6 +11,7 @@ const attendanceSchema = new mongoose.Schema({
   timeMarked: { type: Date },
   qrCode: { type: String },
   meetingName: { type: String },
+  meetingSessionId: { type: String },
 });
 
 // Store API-style keys as the canonical document shape so DB contains Trainee_* fields.

@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   Square,
   Users,
+  X,
 } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
@@ -105,7 +106,7 @@ const FaceAttendance = () => {
   const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReady = meetingTitle.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
-  const attendanceLocationReady = attendanceType === "meeting" ? actualLocationValid : locationValid;
+  const attendanceLocationReady = locationValid;
   const canStartCamera =
     mode === "enroll" ||
     (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
@@ -239,7 +240,12 @@ const FaceAttendance = () => {
   };
 
   const startCamera = async () => {
-    if (mode !== "enroll" && attendanceType === "meeting" && !actualLocationValid) {
+    if (
+      mode !== "enroll" &&
+      attendanceType === "meeting" &&
+      sltLocationRequired &&
+      !actualLocationValid
+    ) {
       toast.error(locationError || "You must be within SLT office radius to mark meeting attendance.");
       return;
     }
@@ -696,82 +702,6 @@ const FaceAttendance = () => {
                     </div>
                   )}
 
-                  {cameraActive && (
-                    <div className="space-y-4">
-                      <div className="relative aspect-video rounded-lg overflow-hidden bg-black border border-slate-200">
-                        <video ref={videoRef} autoPlay muted playsInline className="w-full h-full object-cover" />
-                        <canvas ref={canvasRef} className="hidden" width={640} height={480} />
-                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                          <div className="w-36 h-44 rounded-full border-2 border-emerald-300/80 shadow-[0_0_0_999px_rgba(15,23,42,0.18)]" />
-                        </div>
-                      </div>
-
-                      {mode === "enroll" && (
-                        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
-                          <div className="flex items-center justify-between text-sm font-semibold text-blue-900">
-                            <span>Enrollment frames</span>
-                            <span>{enrollmentProgress}/5</span>
-                          </div>
-                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
-                            <div
-                              className="h-full rounded-full bg-blue-600 transition-all"
-                              style={{ width: `${(enrollmentProgress / 5) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      )}
-
-                      {cooldown && (
-                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                          Attendance was recorded. Please wait before trying again.
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {mode === "enroll" ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={handleEnrollmentCapture}
-                              disabled={loading || enrollmentFrames.length >= 5}
-                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
-                            >
-                              {loading ? <Loader className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
-                              Capture Frame
-                            </button>
-                            <button
-                              type="button"
-                              onClick={completeEnrollment}
-                              disabled={loading || enrollmentFrames.length < 5}
-                              className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
-                            >
-                              <CheckCircle className="w-4 h-4" />
-                              Complete Enrollment
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={handleFaceRecognition}
-                            disabled={loading || cooldown}
-                            className="sm:col-span-1 inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
-                          >
-                            {loading ? <Loader className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                            Mark Attendance
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={stopCamera}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
-                        >
-                          <Square className="w-4 h-4" />
-                          Stop Camera
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
                   {!cameraActive && (
                     <button
                       type="button"
@@ -807,6 +737,109 @@ const FaceAttendance = () => {
                   </div>
                 </div>
               </aside>
+            </div>
+          )}
+
+          {cameraActive && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
+              <div className="w-full max-w-3xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 md:px-5">
+                  <div>
+                    <h2 className="text-base font-semibold text-slate-900">
+                      {mode === "enroll"
+                        ? "Enroll Face"
+                        : attendanceType === "meeting"
+                          ? "Daily + Meeting Attendance"
+                          : "Daily Attendance"}
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      Keep your face centered in the frame.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    aria-label="Close camera"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4 p-4 md:p-5">
+                  <div className="relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-black">
+                    <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+                    <canvas ref={canvasRef} className="hidden" width={640} height={480} />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <div className="h-44 w-36 rounded-full border-2 border-emerald-300/80 shadow-[0_0_0_999px_rgba(15,23,42,0.18)]" />
+                    </div>
+                  </div>
+
+                  {mode === "enroll" && (
+                    <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+                      <div className="flex items-center justify-between text-sm font-semibold text-blue-900">
+                        <span>Enrollment frames</span>
+                        <span>{enrollmentProgress}/5</span>
+                      </div>
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
+                        <div
+                          className="h-full rounded-full bg-blue-600 transition-all"
+                          style={{ width: `${(enrollmentProgress / 5) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {cooldown && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                      Attendance was recorded. Please wait before trying again.
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {mode === "enroll" ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handleEnrollmentCapture}
+                          disabled={loading || enrollmentFrames.length >= 5}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
+                        >
+                          {loading ? <Loader className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+                          Capture Frame
+                        </button>
+                        <button
+                          type="button"
+                          onClick={completeEnrollment}
+                          disabled={loading || enrollmentFrames.length < 5}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Complete Enrollment
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleFaceRecognition}
+                        disabled={loading || cooldown}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
+                      >
+                        {loading ? <Loader className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                        Mark Attendance
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={stopCamera}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200 px-4 py-3 font-semibold text-slate-700 hover:bg-slate-50"
+                    >
+                      <Square className="h-4 w-4" />
+                      Stop Camera
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

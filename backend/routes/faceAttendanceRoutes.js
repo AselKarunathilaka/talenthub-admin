@@ -8,6 +8,7 @@ const {
   getFaceProfileByIdentifier,
   getAttendanceSettings,
   getCurrentMeetingPin,
+  stopCurrentMeetingPin,
 } = require("../controllers/faceAttendanceController");
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get("/profile", getFaceProfile);
 router.get("/logs", getFaceLogs);
 router.get("/settings", getAttendanceSettings);
 router.get("/meeting-pin", getCurrentMeetingPin);
+router.post("/meeting-pin/stop", stopCurrentMeetingPin);
 router.get("/profile/:identifier", getFaceProfileByIdentifier);
 
 // Face enrollment and scanning endpoints

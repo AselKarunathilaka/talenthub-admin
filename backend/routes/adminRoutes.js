@@ -47,6 +47,7 @@ const {
 } = require("../controllers/attendanceSettingsController");
 const {
   getCurrentMeetingPin,
+  stopCurrentMeetingPin,
 } = require("../controllers/faceAttendanceController");
 
 const { getCertificateData } = require("../controllers/certificateController");
@@ -138,6 +139,7 @@ router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
 router.get("/attendance/settings", getAttendanceSettings);
 router.put("/attendance/settings", updateAttendanceSettings);
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
+router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 
 router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
   const nodemailer = require("nodemailer");

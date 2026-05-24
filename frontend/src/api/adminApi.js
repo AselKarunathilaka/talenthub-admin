@@ -342,9 +342,12 @@ export const adminApi = {
     }
   },
 
-  getFaceMeetingPin: async (meetingTitle = '') => {
+  getFaceMeetingPin: async (meetingTitle = '', options = {}) => {
     try {
-      const query = `meetingTitle=${encodeURIComponent(meetingTitle)}`;
+      const query = new URLSearchParams({
+        meetingTitle,
+        ...(options.rotate ? { rotate: "true" } : {}),
+      }).toString();
       const requestOptions = {
         method: "GET",
         headers: getHeaders(),
@@ -364,6 +367,32 @@ export const adminApi = {
       return await response.json();
     } catch (error) {
       console.error("Error generating face attendance PIN:", error);
+      throw error;
+    }
+  },
+
+  stopFaceMeetingPin: async (meetingTitle = '') => {
+    try {
+      const requestOptions = {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ meetingTitle }),
+      };
+
+      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin/stop`, requestOptions);
+
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin/stop`, requestOptions);
+      }
+
+      await checkAuth(response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to stop face attendance PIN: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Error stopping face attendance PIN:", error);
       throw error;
     }
   },

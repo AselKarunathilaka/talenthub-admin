@@ -55,6 +55,10 @@ const DailyRecordSchema = new mongoose.Schema(
           type: String,
           required: true,
         },
+        meetingSessionId: {
+          type: String,
+          default: "",
+        },
         attendanceStatus: {
           type: String,
           enum: ["present", "absent"],

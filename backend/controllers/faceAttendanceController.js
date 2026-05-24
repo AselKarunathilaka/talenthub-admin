@@ -167,12 +167,30 @@ const getAttendanceSettings = async (req, res) => {
 
 const getCurrentMeetingPin = async (req, res) => {
   try {
-    const { meetingTitle } = req.query;
-    const pinData = FaceMeetingPinService.getCurrentPin(meetingTitle);
+    const { meetingTitle, rotate } = req.query;
+    const pinData = FaceMeetingPinService.getCurrentPin(meetingTitle, Date.now(), {
+      rotate: rotate === "true",
+    });
     return res.status(200).json(pinData);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Failed to generate face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
+const stopCurrentMeetingPin = async (req, res) => {
+  try {
+    const { meetingTitle } = req.body || {};
+    FaceMeetingPinService.rotatePin(meetingTitle);
+    return res.status(200).json({
+      message: "Current face attendance PIN stopped.",
+      meetingTitle: String(meetingTitle || "").trim(),
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to stop face attendance PIN.",
       error: error.message,
     });
   }
@@ -186,4 +204,5 @@ module.exports = {
   getFaceProfileByIdentifier,
   getAttendanceSettings,
   getCurrentMeetingPin,
+  stopCurrentMeetingPin,
 };

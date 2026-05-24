@@ -13,6 +13,7 @@ const TZ = "Asia/Colombo";
 async function getPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
+  const meetingTypes = new Set(["meeting", "face_meeting", "qr"]);
 
   const interns = await Intern.find({});
   const presentInterns = [];
@@ -20,16 +21,31 @@ async function getPresentsOnDate(dateStr) {
   for (const intern of interns) {
     if (!intern.attendance || intern.attendance.length === 0) continue;
 
-    const record = intern.attendance.find((r) => {
+    const meetingRecords = intern.attendance.filter((r) => {
       const recDate = moment(r.date).tz(TZ);
+      const type = String(r.type || "").toLowerCase();
       return (
         recDate.isSameOrAfter(targetDate) &&
         recDate.isBefore(nextDate) &&
-        r.status === "Present"
+        r.status === "Present" &&
+        meetingTypes.has(type)
       );
     });
 
-    if (record) {
+    if (meetingRecords.length > 0) {
+      const meetings = meetingRecords
+        .map((record) => ({
+          meetingName: record.meetingName || "General Meeting",
+          timeMarked: record.timeMarked
+            ? moment(record.timeMarked).tz(TZ).format("HH:mm")
+            : record.date
+              ? moment(record.date).tz(TZ).format("HH:mm")
+              : "—",
+          type: record.type || "meeting",
+        }))
+        .sort((a, b) => a.timeMarked.localeCompare(b.timeMarked));
+      const firstMeeting = meetings[0];
+
       presentInterns.push({
         _id: intern._id,
         name: intern.Trainee_Name || "Unknown",
@@ -44,11 +60,11 @@ async function getPresentsOnDate(dateStr) {
         trainingEndDate: intern.Training_EndDate
           ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
           : "Not specified",
-        meetingName: record.meetingName || "—",
-        timeMarked: record.timeMarked
-          ? moment(record.timeMarked).tz(TZ).format("HH:mm")
-          : "—",
-        type: record.type || "manual",
+        meetingName: meetings.map((meeting) => meeting.meetingName).join(", "),
+        meetingCount: meetings.length,
+        meetings,
+        timeMarked: firstMeeting?.timeMarked || "—",
+        type: firstMeeting?.type || "meeting",
       });
     }
   }
@@ -151,9 +167,9 @@ exports.exportAttendanceExcel = async (req, res) => {
       "Team",
       "Training Start Date",
       "Training End Date",
-      "Meeting Name",
-      "Time Marked",
-      "Type",
+      "Meeting Count",
+      "Meeting Names",
+      "Meeting Times",
     ]);
 
     presentInterns.forEach((intern, index) => {
@@ -167,9 +183,9 @@ exports.exportAttendanceExcel = async (req, res) => {
         intern.team,
         intern.trainingStartDate,
         intern.trainingEndDate,
+        intern.meetingCount,
         intern.meetingName,
-        intern.timeMarked,
-        intern.type,
+        intern.meetings.map((meeting) => meeting.timeMarked).join(", "),
       ]);
     });
 
