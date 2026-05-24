@@ -7,7 +7,7 @@ import {
   FaUser, FaEnvelope, FaIdCard, FaBuilding, FaUsers, 
   FaCalendarAlt, FaChartLine, FaArrowLeft, FaExclamationTriangle,
   FaCheckCircle, FaTimesCircle, FaShieldAlt, FaFileAlt, FaTasks,
-  FaClock, FaChartPie, FaHistory, FaRegCalendarCheck, FaEye
+  FaClock, FaChartPie, FaHistory, FaRegCalendarCheck, FaEye, FaCertificate
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi } from '../api/adminApi';
@@ -440,6 +440,15 @@ const AdminInternDetails = () => {
                               >
                                 <FaEnvelope className="mr-2" />
                                 Contact
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => navigate(`/admin/intern/${internId}/certificate`)}
+                                className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl hover:from-amber-400 hover:to-yellow-400 transition-colors text-sm shadow-sm hover:shadow-md"
+                              >
+                                <FaCertificate className="mr-2" />
+                                Certificate
                               </motion.button>
                             </div>
                           </div>

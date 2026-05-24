@@ -49,6 +49,11 @@ const {
   getCurrentMeetingPin,
 } = require("../controllers/faceAttendanceController");
 
+const { getCertificateData } = require("../controllers/certificateController");
+
+// Manually trigger TalentTrail sync
+const { syncTalentTrailData } = require("../services/talentTrailSyncService");
+
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
 
@@ -78,6 +83,9 @@ router.post("/notifications/overdue", sendOverdueNotifications);
 
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);
+
+// Get certificate data (enriched from TalentTrail)
+router.get("/intern/:internId/certificate-data", getCertificateData);
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);
@@ -169,6 +177,15 @@ router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
     logs.push(`CODE: ${err.code}`);
     logs.push(`COMMAND: ${err.command}`);
     res.json({ success: false, logs, error: err.message, code: err.code });
+  }
+});
+
+router.post("/sync/talent-trail", async (req, res) => {
+  try {
+    const result = await syncTalentTrailData();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

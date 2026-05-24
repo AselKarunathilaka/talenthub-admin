@@ -10,6 +10,7 @@ const InternService = require("./services/internService");
 const WeeklyScheduler = require("./services/weeklyScheduler");
 const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
+const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
 
 connectDB();
 
@@ -44,6 +45,8 @@ const server = app.listen(PORT, () => {
 
   // Initialize daily 4 PM approved leave report scheduler
   initScheduler();
+
+  startTalentTrailSyncJob();
 });
 
 // Set server timeout to handle longer requests (5 minutes)

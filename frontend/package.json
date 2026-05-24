@@ -21,6 +21,8 @@
     "chart.js": "^4.5.0",
     "face-api.js": "^0.22.2",
     "framer-motion": "^12.7.4",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^0.485.0",

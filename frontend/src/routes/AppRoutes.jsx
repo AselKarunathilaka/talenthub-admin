@@ -26,6 +26,7 @@ import AdminInternAttendance from "../pages/Admininternattendance";
 import InternAnnouncements from "../pages/InternAnnouncements";
 import AdminQRManagement from "../pages/AdminQRManagement";
 import AdminPinManagement from "../pages/AdminPinManagement";
+import AdminInternCertificate from "../pages/AdminInternCertificate";
 
 const AppRoutes = () => {
   return (
@@ -140,6 +141,10 @@ const AppRoutes = () => {
       />
       <Route path="/admin/qr-management" element={<AdminQRManagement />} />
       <Route path="/admin/pin-management" element={<AdminPinManagement />} />
+      <Route
+        path="/admin/intern/:internId/certificate"
+        element={<AdminInternCertificate />}
+      />
     </Routes>
   );
 };
