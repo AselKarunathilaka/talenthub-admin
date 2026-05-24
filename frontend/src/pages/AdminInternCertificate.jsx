@@ -185,11 +185,11 @@ const AdminInternCertificate = () => {
               </div>
             </motion.div>
 
-            {/* Data source indicator */}
-            {source && (
+            {/* Data source indicator — only show green badge when TalentTrail is connected */}
+            {source?.talentTrailConnected && (
               <motion.div className="mb-4 flex flex-wrap gap-2" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.1 }}>
-                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${source.talentTrailConnected ? 'bg-green-50 text-green-700 border-green-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
-                  {source.talentTrailConnected ? '✓ TalentTrail Connected' : '⚠ TalentTrail Unavailable (using local data)'}
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                  ✓ TalentTrail Connected
                 </span>
                 {source.projectsFromTalentTrail && (
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
@@ -282,8 +282,22 @@ const AdminInternCertificate = () => {
 
                 {projects.length === 0 && (
                   <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <p className="text-sm text-gray-500">No project assignments found</p>
+                    <p className="text-sm text-gray-500">
+                      {source?.talentTrailConnected
+                        ? 'No project assignments found'
+                        : 'No project assignments found in local records'}
+                    </p>
                   </div>
+                )}
+
+                {/* Subtle offline note — shown only when TalentTrail is unreachable */}
+                {source && !source.talentTrailConnected && (
+                  <motion.p
+                    className="text-xs text-gray-400 text-center mt-2 mb-2"
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
+                  >
+                    ℹ Data sourced from local TalentHub records
+                  </motion.p>
                 )}
 
                 {/* Download button */}
