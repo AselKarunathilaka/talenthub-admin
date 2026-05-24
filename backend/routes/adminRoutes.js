@@ -42,9 +42,10 @@ const {
   exportNonAttendanceExcel,
 } = require("../controllers/admininternAttendanceController");
 
-const {
-  getCertificateData,
-} = require("../controllers/certificateController");
+const { getCertificateData } = require("../controllers/certificateController");
+
+// Manually trigger TalentTrail sync
+const { syncTalentTrailData } = require("../services/talentTrailSyncService");
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -164,6 +165,15 @@ router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
     logs.push(`CODE: ${err.code}`);
     logs.push(`COMMAND: ${err.command}`);
     res.json({ success: false, logs, error: err.message, code: err.code });
+  }
+});
+
+router.post("/sync/talent-trail", async (req, res) => {
+  try {
+    const result = await syncTalentTrailData();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
