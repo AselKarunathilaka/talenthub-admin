@@ -811,7 +811,7 @@ const Logbook = () => {
                                 </ol>
                                 <p className="text-xs text-amber-700 border-t border-amber-200 pt-2 mt-2">
                                   Already joined a team? Team data is synced
-                                  every 30 minutes — please wait a moment and
+                                  every 5 minutes — please wait a moment and
                                   refresh, or contact your administrator if the
                                   issue persists.
                                 </p>
