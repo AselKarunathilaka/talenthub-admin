@@ -1,23 +1,28 @@
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const Intern = require("../models/Intern");
+const User = require("../models/User");
 
 /**
  * Blocks logbook submission for interns who have no project team assignments
  * on TalentTrail. Checks the projects array directly rather than the derived
  * hasActiveProject flag, since the flag may be stale or incorrectly set.
  *
- * Admins (users found in the User collection) bypass this check entirely.
+ * Admins (users found in the User collection) bypass this check entirely,
+ * identified via email from the JWT payload.
  */
 const requireActiveProject = async (req, res, next) => {
   try {
     const { id: userId, email: userEmail } = req.user;
 
-    // Let admins through without any project check
-    const User = require("../models/User");
-    const adminUser = await User.findById(userId);
+    // Admins are identified by presence in the User collection.
+    // Using email from the JWT rather than ID avoids cross-collection
+    // ObjectId ambiguity (the ID could belong to Intern or User).
+    const adminUser = await User.findOne({ email: userEmail });
     if (adminUser) return next();
 
-    // Resolve this request to an intern email
+    // From here on this is definitely an intern request.
+    // Use the email from the JWT if present; fall back to a DB lookup
+    // only if the token was issued without one (legacy path).
     let email = userEmail;
     if (!email) {
       const intern = await Intern.findById(userId).select("Trainee_Email");
@@ -51,7 +56,7 @@ const requireActiveProject = async (req, res, next) => {
     if (!hasProjects) {
       return res.status(403).json({
         error:
-          "You must be assigned to a project team before submitting logbook entries. ",
+          "You must be assigned to a project team before submitting logbook entries.",
         code: "NO_ACTIVE_PROJECT",
         lastSyncedAt: syncRecord.lastSyncedAt,
       });
