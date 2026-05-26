@@ -62,7 +62,7 @@ async function validateWithGemini(text) {
     console.log(`[LLM VALIDATOR] Text to evaluate: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`);
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
     const prompt = `
 You are a lenient evaluator for a software engineering and IT internship logbook.
@@ -127,7 +127,7 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   console.log("\n[LLM VALIDATOR] Lenient batch validation with Gemini...");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite-preview" });
+  const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
 
   const prompt = LENIENT_BATCH_PROMPT(tasks, challenges, plans);
   const response = await model.generateContent(prompt);
