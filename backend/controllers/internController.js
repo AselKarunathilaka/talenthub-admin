@@ -761,13 +761,13 @@ const checkInternProjects = async (req, res) => {
 
     if (!syncRecord) {
       // No TalentTrail record yet — intern hasn't been synced
-      return res.status(200).json({ hasProject: false, projectCount: 0 });
+      return res.status(200).json({ projects: null, projectCount: 0 });
     }
 
-    // Check the projects array directly (same pattern as requireActiveProject middleware)
+    // Check the projects array directly
     const projects = Array.isArray(syncRecord.projects) ? syncRecord.projects : [];
     return res.status(200).json({
-      hasProject: projects.length > 0,
+      projects: projects.length > 0 ? projects : null,
       projectCount: projects.length,
     });
   } catch (error) {

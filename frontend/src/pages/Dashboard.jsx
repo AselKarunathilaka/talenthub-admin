@@ -162,7 +162,7 @@ const Dashboard = () => {
       const internId = localStorage.getItem("internId");
       if (internId) {
         const projectCheck = await api.get(`/interns/${internId}/projects/check`);
-        if (projectCheck && projectCheck.hasProject === false) {
+        if (projectCheck && (!projectCheck.projects || projectCheck.projects.length === 0)) {
           setShowNoProjectPopup(true);
         }
       }
