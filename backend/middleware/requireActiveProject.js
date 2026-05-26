@@ -3,10 +3,20 @@ const Intern = require("../models/Intern");
 const User = require("../models/User");
 
 /**
+ * Specializations that are exempt from the project-assignment restriction.
+ * Interns in these fields can submit logbook entries regardless of whether
+ * they have a project assigned in TalentTrail.
+ */
+const EXEMPT_SPECIALIZATIONS = ["Cloud", "CICD", "QA"];
+
+/**
  * Blocks logbook submission for interns who have no project team assignments
  * on TalentTrail. Checks the projects array across ALL sync documents for the
  * intern's email, since duplicate records can exist for the same email.
  * If ANY document has at least one project, the intern is allowed through.
+ *
+ * Interns whose field_of_spec_name is in EXEMPT_SPECIALIZATIONS are also
+ * allowed through regardless of their project assignment status.
  *
  * Admins (users found in the User collection) bypass this check entirely,
  * identified via email from the JWT payload.
@@ -20,15 +30,40 @@ const requireActiveProject = async (req, res, next) => {
     if (adminUser) return next();
 
     // From here on this is definitely an intern request.
+    // Resolve email and fetch the intern record in one step so we also have
+    // field_of_spec_name available for the specialization bypass check.
     let email = userEmail;
-    if (!email) {
-      const intern = await Intern.findById(userId).select("Trainee_Email");
+    let internSpecialization = null;
+
+    if (email) {
+      // Look up the intern by email to get their specialization
+      const intern = await Intern.findOne({
+        Trainee_Email: { $regex: new RegExp(`^${email}$`, "i") },
+      }).select("field_of_spec_name");
+
+      if (intern) {
+        internSpecialization = intern.field_of_spec_name;
+      }
+    } else {
+      // Legacy path: token was issued without email, fall back to ID lookup
+      const intern = await Intern.findById(userId).select(
+        "Trainee_Email field_of_spec_name",
+      );
       if (!intern) {
         return res.status(404).json({
           error: "Intern record not found.",
         });
       }
       email = intern.Trainee_Email;
+      internSpecialization = intern.field_of_spec_name;
+    }
+
+    // Bypass the project check for exempt specializations
+    if (
+      internSpecialization &&
+      EXEMPT_SPECIALIZATIONS.includes(internSpecialization.trim())
+    ) {
+      return next();
     }
 
     // Look up ALL TalentTrail sync records for this email.
