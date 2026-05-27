@@ -97,10 +97,17 @@ const verifyFaceAttendance = async (req, res) => {
       dailyAttendanceMarked: result.dailyAttendanceMarked,
     });
   } catch (error) {
-    const isDuplicate = error.message?.includes("Duplicate");
-    return res.status(error.statusCode || (isDuplicate ? 400 : 500)).json({
+    const rawMessage = error.message || "";
+    const isUserActionError =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
+    return res.status(error.statusCode || (isUserActionError ? 400 : 500)).json({
       message:
-        error.locationRequired || error.statusCode || isDuplicate
+        isUserActionError
           ? error.message
           : "Failed to verify face attendance.",
       error: error.message,

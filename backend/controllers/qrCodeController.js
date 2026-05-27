@@ -234,8 +234,16 @@ const scanMeetingQRCode = async (req, res) => {
       dailyAttendanceMarked: result.dailyAttendanceMarked
     });
   } catch (error) {
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
     res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
-      message: error.locationRequired || error.message?.includes("Duplicate")
+      message: shouldShowSpecificMessage
         ? error.message
         : "Error processing meeting attendance",
       error: error.message,

@@ -45,6 +45,12 @@ const throwDailyAlreadyMarked = () => {
   throw error;
 };
 
+const throwAttendanceError = (message, statusCode = 400) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  throw error;
+};
+
 const markDailyAttendance = async ({
   internId,
   sessionId = null,
@@ -188,7 +194,7 @@ const markMeetingAttendance = async ({
         }).session(session);
 
         if (hasDuplicate) {
-          throw new Error(duplicateMessage);
+          throwAttendanceError(duplicateMessage);
         }
 
         await DailyRecord.updateOne(
@@ -306,7 +312,7 @@ const markMeetingAttendance = async ({
     );
 
     if (!updatedIntern) {
-      throw new Error(duplicateMessage);
+      throwAttendanceError(duplicateMessage);
     }
 
     await Intern.updateOne(
