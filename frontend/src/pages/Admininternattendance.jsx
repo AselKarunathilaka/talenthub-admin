@@ -559,47 +559,46 @@ const AdminInternAttendance = () => {
             </motion.div>
 
             <motion.div
-              className="bg-white/85 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              initial={{ opacity: 0, y: 10 }}
+              className="flex justify-end"
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.03, duration: 0.3 }}
+              transition={{ delay: 0.03, duration: 0.25 }}
             >
-              <div className="px-4 md:px-6 py-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    sltLocationRequired ? "bg-blue-100" : "bg-amber-100"
-                  }`}>
-                    <FaMapMarkerAlt
-                      className={`h-4 w-4 ${
-                        sltLocationRequired ? "text-blue-600" : "text-amber-600"
-                      }`}
-                    />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      SLT Location Requirement
-                    </h3>
-                    <p className="text-xs text-gray-500 mt-0.5 max-w-xl">
-                      {sltLocationRequired
-                        ? "Intern face attendance and QR backup require users to be within the SLT office radius."
-                        : "Location validation is off. Interns can mark face attendance and use QR backup from anywhere."}
-                    </p>
-                  </div>
+              <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-white/90 px-3 py-2 shadow-sm">
+                <div className="inline-flex items-center gap-2">
+                  <FaMapMarkerAlt
+                    className={`h-3.5 w-3.5 ${
+                      sltLocationRequired ? "text-blue-600" : "text-gray-400"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-gray-700">
+                    SLT location
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      sltLocationRequired
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {sltLocationRequired ? "Required" : "Off"}
+                  </span>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleToggleLocationRequirement}
                   disabled={settingsLoading || settingsSaving}
-                  className={`relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
                     sltLocationRequired ? "bg-blue-600" : "bg-gray-300"
                   }`}
                   aria-pressed={sltLocationRequired}
                   aria-label="Toggle SLT location requirement"
+                  title="Toggle SLT location requirement"
                 >
                   <span
-                    className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform ${
-                      sltLocationRequired ? "translate-x-9" : "translate-x-1"
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      sltLocationRequired ? "translate-x-5" : "translate-x-0.5"
                     }`}
                   />
                   <span className="sr-only">

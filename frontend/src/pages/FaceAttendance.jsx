@@ -369,7 +369,7 @@ const FaceAttendance = () => {
     if (!requireValidLocation("You must be within SLT office radius to mark attendance.")) return;
 
     if (attendanceType === "meeting" && !meetingTitle.trim()) {
-      toast.error("Enter the meeting title before marking meeting attendance.");
+      toast.error("Enter the project name before marking meeting attendance.");
       return;
     }
 
@@ -442,7 +442,7 @@ const FaceAttendance = () => {
     if (!requireValidLocation("You must be within SLT office radius to use QR backup.")) return;
 
     if (qrMode === "meeting" && !meetingTitle.trim()) {
-      toast.error("Enter the meeting title before scanning.");
+      toast.error("Enter the project name before scanning.");
       return;
     }
 
@@ -460,7 +460,7 @@ const FaceAttendance = () => {
           toast.error(
             qrMode === "daily"
               ? "Scan a valid daily attendance QR code."
-              : "Scan the QR code generated for this meeting.",
+              : "Scan the QR code generated for this project.",
           );
           return;
         }
@@ -561,10 +561,10 @@ const FaceAttendance = () => {
               {mode === "enroll"
                 ? "Face enrollment works from anywhere"
                 : !sltLocationRequired
-                ? "Location check off by admin"
+                ? "Ready to scan"
                 : locationValid
-                  ? `Within office radius (${distanceKm.toFixed(2)} km)`
-                  : locationError || "Outside the allowed office radius"}
+                  ? "Ready to scan"
+                  : "Outside SLT premises"}
             </div>
           </div>
 
@@ -676,13 +676,13 @@ const FaceAttendance = () => {
                       {attendanceType === "meeting" && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <label className="block">
-                            <span className="text-sm font-medium text-slate-700">Meeting title *</span>
+                            <span className="text-sm font-medium text-slate-700">Project Name *</span>
                             <input
                               type="text"
                               value={meetingTitle}
                               onChange={(event) => setMeetingTitle(event.target.value)}
                               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                              placeholder="Enter today's meeting title"
+                              placeholder="Enter today's project name"
                             />
                           </label>
                           <label className="block">
@@ -878,13 +878,13 @@ const FaceAttendance = () => {
 
                 {qrMode === "meeting" && (
                   <label className="block">
-                    <span className="text-sm font-medium text-slate-700">Meeting title</span>
+                    <span className="text-sm font-medium text-slate-700">Project Name</span>
                     <input
                       type="text"
                       value={meetingTitle}
                       onChange={(event) => setMeetingTitle(event.target.value)}
                       className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                      placeholder="Enter the exact meeting title"
+                      placeholder="Enter the exact project name"
                     />
                   </label>
                 )}

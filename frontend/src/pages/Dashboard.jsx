@@ -13,6 +13,8 @@ import {
   Calendar,
   Clock,
   ChevronDown,
+  QrCode,
+  Camera,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
@@ -336,6 +338,31 @@ const Dashboard = () => {
     }));
   };
 
+  const getMeetingMethodMeta = (method) => {
+    const normalizedMethod = String(method || "").toLowerCase();
+    if (normalizedMethod === "face" || normalizedMethod === "face_meeting") {
+      return {
+        label: "Face",
+        className: "bg-indigo-50 text-indigo-700 border-indigo-100",
+        Icon: Camera,
+      };
+    }
+
+    if (normalizedMethod === "qr" || normalizedMethod === "daily_qr" || normalizedMethod === "meeting") {
+      return {
+        label: "QR",
+        className: "bg-purple-50 text-purple-700 border-purple-100",
+        Icon: QrCode,
+      };
+    }
+
+    return {
+      label: "Unknown",
+      className: "bg-gray-50 text-gray-600 border-gray-100",
+      Icon: Clock,
+    };
+  };
+
   const renderContent = () => {
     if (loading) {
       return (
@@ -524,9 +551,10 @@ const Dashboard = () => {
 
             {attendanceHistory.length > 0 ? (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
+                <div className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                   <div>Date</div>
                   <div className="text-center">Status</div>
+                  <div className="text-center">Type</div>
                   <div className="text-center">Time</div>
                   <div className="text-right">Day</div>
                 </div>
@@ -563,10 +591,15 @@ const Dashboard = () => {
                         formattedDate = entry.date || "N/A";
                       }
 
+                      const methodMeta = getMeetingMethodMeta(
+                        entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                      );
+                      const MethodIcon = methodMeta.Icon;
+
                       return (
                         <motion.div
                           key={`${entry.date}-${index}`}
-                          className="grid grid-cols-4 items-center p-3 hover:bg-gray-50"
+                          className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 items-center p-3 hover:bg-gray-50"
                           whileHover={{ backgroundColor: "#f9f9f9" }}
                           transition={{ duration: 0.1 }}
                         >
@@ -587,6 +620,12 @@ const Dashboard = () => {
                                 <XCircle className="h-3 w-3 mr-1" />
                               )}
                               {entry.status}
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                              <MethodIcon className="h-3 w-3" />
+                              {methodMeta.label}
                             </span>
                           </div>
                           <div className="text-center text-xs text-gray-600">
@@ -798,41 +837,55 @@ const Dashboard = () => {
 
                       {isExpanded && (
                         <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-2">
-                          <div className="grid grid-cols-[1fr_8rem_7rem] px-3 pb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+                          <div className="grid grid-cols-[1fr_7rem_8rem_7rem] px-3 pb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
                             <div>Meeting name</div>
+                            <div className="text-center">Type</div>
                             <div className="text-center">Time</div>
                             <div className="text-right">Status</div>
                           </div>
                           <div className="space-y-2">
-                            {group.meetings.map((entry, index) => (
-                              <div
-                                key={`${group.dateKey}-${entry.meetingName || entry.type}-${index}`}
-                                className="grid grid-cols-[1fr_8rem_7rem] items-center rounded-md bg-white px-3 py-2 text-sm"
-                              >
-                                <div className="font-medium text-gray-900">
-                                  {entry.meetingName || entry.type || "Meeting"}
+                            {group.meetings.map((entry, index) => {
+                              const methodMeta = getMeetingMethodMeta(
+                                entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                              );
+                              const MethodIcon = methodMeta.Icon;
+
+                              return (
+                                <div
+                                  key={`${group.dateKey}-${entry.meetingName || entry.type}-${index}`}
+                                  className="grid grid-cols-[1fr_7rem_8rem_7rem] items-center rounded-md bg-white px-3 py-2 text-sm"
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {entry.meetingName || entry.type || "Meeting"}
+                                  </div>
+                                  <div className="text-center">
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                                      <MethodIcon className="h-3 w-3" />
+                                      {methodMeta.label}
+                                    </span>
+                                  </div>
+                                  <div className="text-center text-gray-600">
+                                    {entry.time || "N/A"}
+                                  </div>
+                                  <div className="text-right">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        entry.status === "Present"
+                                          ? "bg-green-100 text-green-800"
+                                          : "bg-red-100 text-red-800"
+                                      }`}
+                                    >
+                                      {entry.status === "Present" ? (
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                      ) : (
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                      )}
+                                      {entry.status}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-center text-gray-600">
-                                  {entry.time || "N/A"}
-                                </div>
-                                <div className="text-right">
-                                  <span
-                                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                      entry.status === "Present"
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-red-100 text-red-800"
-                                    }`}
-                                  >
-                                    {entry.status === "Present" ? (
-                                      <CheckCircle className="h-3 w-3 mr-1" />
-                                    ) : (
-                                      <XCircle className="h-3 w-3 mr-1" />
-                                    )}
-                                    {entry.status}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

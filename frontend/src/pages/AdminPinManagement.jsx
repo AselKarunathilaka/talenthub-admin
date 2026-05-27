@@ -16,7 +16,7 @@ const AdminPinManagement = () => {
 
   const fetchFacePin = useCallback(async (rotate = false) => {
     if (!meetingTitle.trim()) {
-      toast.error('Please enter a meeting title first');
+      toast.error('Please enter a project name first');
       return;
     }
 
@@ -122,18 +122,18 @@ const AdminPinManagement = () => {
                 <div className="relative z-10">
                   <h3 className="text-xl font-bold text-gray-800 mb-6">Configuration</h3>
                   <label className="block">
-                    <span className="block text-sm font-bold text-gray-700 mb-2">Meeting Title</span>
+                    <span className="block text-sm font-bold text-gray-700 mb-2">Project Name</span>
                     <input
                       type="text"
                       value={meetingTitle}
                       onChange={(event) => setMeetingTitle(event.target.value)}
-                      placeholder="e.g., Monthly Progress Review"
+                      placeholder="e.g., TalentHub Development"
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium text-gray-800 outline-none"
                     />
                   </label>
 
                   <div className="mt-5 p-4 bg-emerald-50 text-emerald-800 rounded-2xl text-sm font-medium border border-emerald-100">
-                    Generate this PIN inside the meeting cabin. Interns must enter the current PIN before marking Face Attendance Daily + Meeting.
+                    Generate this PIN for the selected project. Interns must enter the current PIN before marking Face Attendance Daily + Meeting.
                   </div>
 
                   <button
@@ -157,7 +157,7 @@ const AdminPinManagement = () => {
                 {!facePinData ? (
                   <div className="text-center text-gray-400 space-y-4">
                     <FaShieldAlt className="w-24 h-24 mx-auto opacity-20" />
-                    <p className="text-lg font-medium">Enter meeting title and generate to view PIN</p>
+                    <p className="text-lg font-medium">Enter project name and generate to view PIN</p>
                   </div>
                 ) : (
                   <motion.div

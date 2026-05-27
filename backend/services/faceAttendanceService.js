@@ -1,13 +1,13 @@
 const moment = require("moment-timezone");
 const Intern = require("../models/Intern");
-const DailyRecord = require("../models/DailyRecord");
 const InternFaceProfile = require("../models/InternFaceProfile");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const AttendanceSettingsService = require("./attendanceSettingsService");
 const FaceMeetingPinService = require("./faceMeetingPinService");
+const AttendanceWorkflowService = require("./attendanceWorkflowService");
+const externalConfig = require("../config/externalSystems");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
-const ALL_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face", "meeting", "face_meeting", "qr"]);
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
 
 function normalizeDescriptor(descriptorInput) {
@@ -42,52 +42,6 @@ function euclideanDistance(left, right) {
 
 function toAttendanceDateKey(date = new Date()) {
   return moment.tz(date, "Asia/Colombo").format("YYYY-MM-DD");
-}
-
-function isSameAttendanceDay(leftDate, rightDate) {
-  return moment.tz(leftDate, "Asia/Colombo").isSame(moment.tz(rightDate, "Asia/Colombo"), "day");
-}
-
-async function upsertDailyRecordAttendance(internId, attendanceDate) {
-  const dailyRecord = await DailyRecord.findOne({
-    internId,
-    date: toAttendanceDateKey(attendanceDate),
-  });
-
-  if (!dailyRecord) {
-    return null;
-  }
-
-  dailyRecord.attendance = "present";
-  dailyRecord.attendanceTime = attendanceDate;
-  await dailyRecord.save();
-  return dailyRecord;
-}
-
-async function upsertDailyRecordMeetingAttendance(internId, attendanceDate, meetingTitle, meetingSessionId) {
-  const dailyRecord = await DailyRecord.findOne({
-    internId,
-    date: toAttendanceDateKey(attendanceDate),
-  });
-
-  if (!dailyRecord) {
-    return null;
-  }
-
-  dailyRecord.attendance = "present";
-  dailyRecord.attendanceTime = attendanceDate;
-  dailyRecord.meetingAttendance = Array.isArray(dailyRecord.meetingAttendance)
-    ? dailyRecord.meetingAttendance.filter((meeting) => meeting.meetingTitle !== meetingTitle)
-    : [];
-  dailyRecord.meetingAttendance.push({
-    meetingTitle,
-    meetingSessionId,
-    attendanceStatus: "present",
-    attendanceTime: attendanceDate,
-  });
-
-  await dailyRecord.save();
-  return dailyRecord;
 }
 
 class FaceAttendanceService {
@@ -271,71 +225,37 @@ class FaceAttendanceService {
     const attendanceDate = moment.tz("Asia/Colombo").toDate();
     const attendanceDateKey = toAttendanceDateKey(attendanceDate);
 
-    const attendanceEntries = Array.isArray(intern.attendance) ? intern.attendance : [];
-    const dailyAlreadyMarked = attendanceEntries.some((entry) => {
-      const entryType = String(entry.type || "").toLowerCase();
-      return (
-        ALL_ATTENDANCE_TYPES.has(entryType) &&
-        entryType !== "meeting" &&
-        entryType !== "face_meeting" &&
-        entryType !== "qr" &&
-        entry.status === "Present" &&
-        entry.date &&
-        isSameAttendanceDay(entry.date, attendanceDate)
-      );
-    });
-    const meetingAlreadyMarked =
-      normalizedAttendanceType === "meeting" &&
-      attendanceEntries.some((entry) => {
-        const entryType = String(entry.type || "").toLowerCase();
-        return (
-          (entryType === "meeting" || entryType === "face_meeting" || entryType === "qr") &&
-          entry.status === "Present" &&
-          entry.meetingName === normalizedMeetingTitle &&
-          entry.date &&
-          isSameAttendanceDay(entry.date, attendanceDate)
-        );
-      });
-    const alreadyMarked =
+    const faceSessionId =
       normalizedAttendanceType === "meeting"
-        ? dailyAlreadyMarked && meetingAlreadyMarked
-        : dailyAlreadyMarked;
+        ? meetingPinData?.meetingSessionId
+        : `face_daily_${intern._id}_${attendanceDate.getTime()}`;
+    let dailyAttendanceMarked = false;
 
-    if (!alreadyMarked) {
-      intern.attendance = attendanceEntries;
-
-      if (!dailyAlreadyMarked) {
-        intern.attendance.push({
-          date: attendanceDate,
-          status: "Present",
-          type: "face",
-          timeMarked: attendanceDate,
-        });
-      }
-
-      if (normalizedAttendanceType === "meeting" && !meetingAlreadyMarked) {
-        intern.attendance.push({
-          date: attendanceDate,
-          status: "Present",
-          type: "face_meeting",
-          timeMarked: attendanceDate,
-          meetingName: normalizedMeetingTitle,
-          meetingSessionId: meetingPinData?.meetingSessionId,
-        });
-      }
-
-      await intern.save();
-
-      if (normalizedAttendanceType === "meeting") {
-        await upsertDailyRecordMeetingAttendance(
-          intern._id,
-          attendanceDate,
-          normalizedMeetingTitle,
-          meetingPinData?.meetingSessionId,
-        );
-      } else {
-        await upsertDailyRecordAttendance(intern._id, attendanceDate);
-      }
+    if (normalizedAttendanceType === "meeting") {
+      const result = await AttendanceWorkflowService.markMeetingAttendance({
+        internId: intern._id,
+        meetingTitle: normalizedMeetingTitle,
+        sessionId: faceSessionId,
+        method: "face_meeting",
+        meetingSessionId: meetingPinData?.meetingSessionId,
+        attendanceDate,
+        duplicateMessage: "Duplicate face meeting attendance detected. Please wait before scanning again.",
+        syncEndpoint: externalConfig.attendanceSystem.endpoints.scanMeeting,
+        dailySyncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+        autoMarkDaily: true,
+        dailyMethod: "face",
+      });
+      dailyAttendanceMarked = result.dailyAttendanceMarked;
+    } else {
+      await AttendanceWorkflowService.markDailyAttendance({
+        internId: intern._id,
+        sessionId: faceSessionId,
+        method: "face",
+        attendanceDate,
+        duplicateMessage: "Duplicate face attendance detected. Please wait before scanning again.",
+        syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+      });
+      dailyAttendanceMarked = true;
     }
 
     const log = await FaceAttendanceLog.create({
@@ -356,7 +276,7 @@ class FaceAttendanceService {
         attendanceType: normalizedAttendanceType,
         meetingTitle: normalizedMeetingTitle || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,
-        alreadyMarked,
+        dailyAttendanceMarked,
       },
     });
 
@@ -365,10 +285,11 @@ class FaceAttendanceService {
 
     return {
       ...match,
-      alreadyMarked,
+      alreadyMarked: false,
       log,
       attendanceDate,
       attendanceDateKey,
+      dailyAttendanceMarked,
       intern: {
         _id: intern._id,
         traineeId: intern.Trainee_ID,

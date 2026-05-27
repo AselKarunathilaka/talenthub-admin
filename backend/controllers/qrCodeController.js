@@ -154,10 +154,17 @@ const scanQRCode = async (req, res) => {
       });
     }
   } catch (error) {
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Invalid QR code") ||
+      rawMessage.includes("Meeting title") ||
+      rawMessage.includes("expired");
+
     res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
-      message: error.locationRequired || error.message?.includes("Duplicate")
-        ? error.message
-        : "Error processing QR code",
+      message: shouldShowSpecificMessage ? error.message : "Error processing QR code",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
     });

@@ -78,7 +78,12 @@ const verifyFaceAttendance = async (req, res) => {
     }
 
     return res.status(200).json({
-      message: "Face attendance marked successfully.",
+      message:
+        attendanceType === "meeting"
+          ? result.dailyAttendanceMarked
+            ? "Face meeting attendance marked successfully. Daily attendance also recorded."
+            : "Face meeting attendance marked successfully."
+          : "Face attendance marked successfully.",
       matched: true,
       alreadyMarked: false,
       confidence: result.confidence,
@@ -87,10 +92,15 @@ const verifyFaceAttendance = async (req, res) => {
       profile: result.profile,
       log: result.log,
       attendanceDate: result.attendanceDateKey,
+      dailyAttendanceMarked: result.dailyAttendanceMarked,
     });
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      message: error.locationRequired || error.statusCode ? error.message : "Failed to verify face attendance.",
+    const isDuplicate = error.message?.includes("Duplicate");
+    return res.status(error.statusCode || (isDuplicate ? 400 : 500)).json({
+      message:
+        error.locationRequired || error.statusCode || isDuplicate
+          ? error.message
+          : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
     });
