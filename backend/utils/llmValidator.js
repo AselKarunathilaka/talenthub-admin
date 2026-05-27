@@ -1,3 +1,4 @@
+require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const BATCH_FIELD_KEYS = ["tasks", "challenges", "plans"];
@@ -54,12 +55,18 @@ async function validateWithGemini(text) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn("[LLM VALIDATOR] GEMINI_API_KEY is not set. Falling back to acceptance.");
+      console.warn(
+        "[LLM VALIDATOR] GEMINI_API_KEY is not set. Falling back to acceptance.",
+      );
       return { isWorkRelated: true, reason: "" };
     }
 
-    console.log("\n[LLM VALIDATOR] Using Gemini 3.1 Flash Lite to evaluate entry...");
-    console.log(`[LLM VALIDATOR] Text to evaluate: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`);
+    console.log(
+      "\n[LLM VALIDATOR] Using Gemini 3.1 Flash Lite to evaluate entry...",
+    );
+    console.log(
+      `[LLM VALIDATOR] Text to evaluate: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`,
+    );
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
@@ -86,7 +93,9 @@ Respond strictly in JSON format without Markdown formatting or markdown backtick
 
     const parsed = JSON.parse(cleanJson);
 
-    console.log(`[LLM VALIDATOR] Result: isWorkRelated=${parsed.isWorkRelated}\n`);
+    console.log(
+      `[LLM VALIDATOR] Result: isWorkRelated=${parsed.isWorkRelated}\n`,
+    );
 
     return {
       isWorkRelated: !!parsed.isWorkRelated,
