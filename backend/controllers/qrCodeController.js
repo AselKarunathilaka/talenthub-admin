@@ -3,16 +3,20 @@ const InternService = require("../services/internService");
 const attendanceService = require("../services/attendanceService");
 const InternRepository = require("../repositories/internRepository");  
 const sendEmail = require("../utils/emailSender");  
+const AttendanceSettingsService = require("../services/attendanceSettingsService");
 
 const moment = require("moment");
 
 const QRCode = require("qrcode");
 
+const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+const getProjectKey = (value) => normalizeProjectName(value);
 
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId, type, meetingTitle } = req.query; // Get parameters including meetingTitle
+    const { internId, type, projectName, meetingTitle } = req.query;
+    const normalizedProjectName = normalizeProjectName(projectName || meetingTitle || "General Meeting");
     
     let sessionId;
     if (type === 'daily') {
@@ -24,17 +28,18 @@ const generateQRCode = async (req, res) => {
       }
     } else {
       // Generate QR for meeting attendance (JSON format expected by scanner)
-      // Must include type and meetingTitle
+      // Keep meetingTitle for backward compatibility with older scanners.
       const meetingData = {
         type: 'meeting_attendance',
-        meetingTitle: meetingTitle || 'General Meeting',
+        projectName: normalizedProjectName,
+        meetingTitle: normalizedProjectName,
         timestamp: Date.now()
       };
-      
+
       if (internId) {
         meetingData.internId = internId;
       }
-      
+
       sessionId = JSON.stringify(meetingData);
     }
     
@@ -82,33 +87,11 @@ const scanQRCode = async (req, res) => {
       if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
         return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
       }
-      // --- DISTANCE CHECKING TEMPORARILY DISABLED FOR TESTING ---
-      /*
-      const SLT_LAT = 6.9271;
-      const SLT_LNG = 79.8612;
-      const MAX_DISTANCE_METERS = 2000;
-      function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-        function deg2rad(deg) { return deg * (Math.PI/180); }
-        const R = 6371000; // Radius of the earth in meters
-        const dLat = deg2rad(lat2-lat1);
-        const dLon = deg2rad(lon2-lon1);
-        const a = 
-          Math.sin(dLat/2) * Math.sin(dLat/2) +
-          Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-          Math.sin(dLon/2) * Math.sin(dLon/2)
-          ;
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        const d = R * c; // Distance in meters
-        return d;
-      }
-      if (!lat || !lng) {
-        return res.status(400).json({ message: "Location data is required to mark attendance." });
-      }
-      const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
-      if (distance > MAX_DISTANCE_METERS) {
-        return res.status(403).json({ message: `Attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
-      }
-      */
+      await AttendanceSettingsService.validateSltLocationIfRequired({
+        lat,
+        lng,
+        label: "Attendance",
+      });
     }
     const isValid = await qrCodeService.verifyQRCode(qrCode);
     if (!isValid) {
@@ -159,7 +142,7 @@ const scanQRCode = async (req, res) => {
       // For meeting/general attendance scans, use the old system (intern.attendance)
       const status = "Present";
       const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
-      
+
       // Also attempt to mark daily attendance
       let dailyAttendanceUpdated = false;
       try {
@@ -175,16 +158,28 @@ const scanQRCode = async (req, res) => {
       });
     }
   } catch (error) {
-    if (error.message && error.message.includes("Duplicate")) {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: "Error processing QR code", error: error.message });
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Invalid QR code") ||
+      rawMessage.includes("Meeting title") ||
+      rawMessage.includes("Project name") ||
+      rawMessage.includes("expired");
+
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: shouldShowSpecificMessage ? error.message : "Error processing QR code",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
   }
 };
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId: bodyInternId, meetingTitle, lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, projectName, meetingTitle, lat, lng } = req.body;
+  const submittedProjectName = normalizeProjectName(projectName || meetingTitle || "");
 
   // Identity verification: use token identity, reject mismatches
   const tokenInternId = req.user?.id;
@@ -197,36 +192,15 @@ const scanMeetingQRCode = async (req, res) => {
   if (bodyInternId && bodyInternId !== tokenInternId) {
     return res.status(403).json({ message: "You can only mark your own attendance." });
   }
-    // --- DISTANCE CHECKING TEMPORARILY DISABLED FOR TESTING ---
-    /*
-    const SLT_LAT = 6.9271;
-    const SLT_LNG = 79.8612;
-    const MAX_DISTANCE_METERS = 2000;
-    function getDistanceFromLatLonInMeters(lat1, lon1, lat2, lon2) {
-      function deg2rad(deg) { return deg * (Math.PI/180); }
-      const R = 6371000; // Radius of the earth in meters
-      const dLat = deg2rad(lat2-lat1);
-      const dLon = deg2rad(lon2-lon1);
-      const a = 
-        Math.sin(dLat/2) * Math.sin(dLat/2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon/2) * Math.sin(dLon/2)
-        ;
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const d = R * c; // Distance in meters
-      return d;
-    }
-    if (!lat || !lng) {
-      return res.status(400).json({ message: "Location data is required to mark meeting attendance." });
-    }
-    const distance = getDistanceFromLatLonInMeters(Number(lat), Number(lng), SLT_LAT, SLT_LNG);
-    if (distance > MAX_DISTANCE_METERS) {
-      return res.status(403).json({ message: `Meeting attendance can only be marked within SLT premises. Your location is ${Math.round(distance)} meters away.` });
-    }
-    */
   try {
-    if (!meetingTitle) {
-      return res.status(400).json({ message: "Meeting title is required." });
+    await AttendanceSettingsService.validateSltLocationIfRequired({
+      lat,
+      lng,
+      label: "Meeting attendance",
+    });
+
+    if (!submittedProjectName) {
+      return res.status(400).json({ message: "Project name is required." });
     }
     // Try to parse QR code as JSON
     let qrPayload;
@@ -239,9 +213,9 @@ const scanMeetingQRCode = async (req, res) => {
     if (qrPayload.type !== "meeting_attendance") {
       return res.status(400).json({ message: "Invalid QR code type. Please scan a valid meeting attendance QR code." });
     }
-    // Validate meeting title matches
-    if (qrPayload.meetingTitle !== meetingTitle) {
-      return res.status(400).json({ message: `Meeting title mismatch. QR code is for '${qrPayload.meetingTitle}', but you entered '${meetingTitle}'.` });
+    const qrProjectName = normalizeProjectName(qrPayload.projectName || qrPayload.meetingTitle || "");
+    if (getProjectKey(qrProjectName) !== getProjectKey(submittedProjectName)) {
+      return res.status(400).json({ message: `Project name mismatch. QR code is for '${qrProjectName}', but you entered '${submittedProjectName}'.` });
     }
     // Optionally, check expiry (1 hour)
     const now = Date.now();
@@ -249,7 +223,7 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired." });
     }
     // Mark meeting attendance in TalentHub system
-    const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
+    const result = await qrCodeService.markMeetingAttendance(internId, submittedProjectName, qrCode);
     const message = result.dailyAttendanceMarked
       ? "Meeting attendance marked successfully. Daily attendance also recorded."
       : "Meeting attendance marked successfully.";
@@ -260,10 +234,21 @@ const scanMeetingQRCode = async (req, res) => {
       dailyAttendanceMarked: result.dailyAttendanceMarked
     });
   } catch (error) {
-    if (error.message && error.message.includes("Duplicate")) {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: "Error processing meeting attendance", error: error.message });
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: shouldShowSpecificMessage
+        ? error.message
+        : "Error processing meeting attendance",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
   }
 };
 

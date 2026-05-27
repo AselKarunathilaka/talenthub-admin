@@ -1,9 +1,9 @@
 // src/utils/api.js
 import { handleUnauthorized } from "./sessionUtils";
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
 
-const getAuthToken = () => {
+export const getAuthToken = () => {
   // Prefer intern token first — most API calls need intern identity.
   // Admin pages use their own adminApi helper which reads adminInfo directly.
   const authToken = localStorage.getItem("authToken");
@@ -32,7 +32,7 @@ const getAuthToken = () => {
   return null;
 };
 
-const createHeaders = (isJson = true) => {
+export const createHeaders = (isJson = true) => {
   const token = getAuthToken();
   return {
     ...(isJson && { "Content-Type": "application/json" }),
@@ -49,7 +49,9 @@ const checkAuth = async (res) => {
       const clone = res.clone();
       const body = await clone.json();
       code = body.code || "";
-    } catch (_) {}
+    } catch {
+      code = "";
+    }
 
     const message =
       code === "TOKEN_EXPIRED"
@@ -60,6 +62,22 @@ const checkAuth = async (res) => {
     // Throw so the calling code doesn't try to parse the response
     throw new Error(message);
   }
+  return res;
+};
+
+export const apiFetch = async (endpoint, options = {}) => {
+  const isFormData = options.body instanceof FormData;
+  const headers = {
+    ...createHeaders(!isFormData),
+    ...(options.headers || {}),
+  };
+
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  await checkAuth(res);
   return res;
 };
 

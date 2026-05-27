@@ -16,6 +16,8 @@ import {
   FaClock,
   FaChartBar,
   FaEnvelope,
+  FaMapMarkerAlt,
+  FaChevronDown,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -85,6 +87,24 @@ const attendanceApi = {
     a.remove();
     window.URL.revokeObjectURL(url);
   },
+
+  getSettings: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error((await res.json()).message || "Settings request failed");
+    return res.json();
+  },
+
+  updateSettings: async (settings) => {
+    const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
+      method: "PUT",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error((await res.json()).message || "Settings update failed");
+    return res.json();
+  },
 };
 
 // ── Timezone-safe "today" helper ─────────────────────────────────────────────
@@ -135,6 +155,10 @@ const TypeBadge = ({ type }) => {
       label: "Daily QR",
       cls: "bg-indigo-100 text-indigo-700 border-indigo-200",
     },
+    face_meeting: {
+      label: "Face Meeting",
+      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    },
     manual: {
       label: "Manual",
       cls: "bg-amber-100 text-amber-700 border-amber-200",
@@ -147,7 +171,7 @@ const TypeBadge = ({ type }) => {
   };
   return (
     <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}
+      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}
     >
       {label}
     </span>
@@ -169,6 +193,10 @@ const AdminInternAttendance = () => {
   const [triggering, setTriggering] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [toast, setToast] = useState(null);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [expandedInterns, setExpandedInterns] = useState({});
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
@@ -192,6 +220,46 @@ const AdminInternAttendance = () => {
   useEffect(() => {
     fetchAttendance(selectedDate);
   }, [selectedDate]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      setSettingsLoading(true);
+      try {
+        const result = await attendanceApi.getSettings();
+        setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      } catch (err) {
+        showToast(err.message || "Failed to load attendance settings", "error");
+      } finally {
+        setSettingsLoading(false);
+      }
+    };
+
+    fetchSettings();
+  }, []);
+
+  const handleToggleLocationRequirement = async () => {
+    const nextValue = !sltLocationRequired;
+    setSltLocationRequired(nextValue);
+    setSettingsSaving(true);
+
+    try {
+      const result = await attendanceApi.updateSettings({
+        sltLocationRequired: nextValue,
+      });
+      setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      showToast(
+        nextValue
+          ? "SLT location requirement enabled for intern attendance"
+          : "SLT location requirement disabled. Interns can mark attendance anywhere",
+        "success",
+      );
+    } catch (err) {
+      setSltLocationRequired(!nextValue);
+      showToast(err.message || "Failed to update location setting", "error");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const handleExport = async () => {
     if (!data || data.count === 0) {
@@ -234,6 +302,13 @@ const AdminInternAttendance = () => {
 
   const removeRecipient = (email) =>
     setRecipients((prev) => prev.filter((r) => r !== email));
+
+  const toggleInternMeetings = (internId) => {
+    setExpandedInterns((current) => ({
+      ...current,
+      [internId]: !current[internId],
+    }));
+  };
 
   const handleTriggerReport = async () => {
     if (recipients.length === 0) {
@@ -453,7 +528,7 @@ const AdminInternAttendance = () => {
       {/* ── Page ── */}
       <div className="pt-2 sm:pt-4">
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto space-y-4 md:space-y-5">
+          <div className="max-w-[92rem] mx-auto space-y-4 md:space-y-5">
             {/* ── Header ── */}
             <motion.div
               initial={{ opacity: 0, y: -10 }}
@@ -481,6 +556,56 @@ const AdminInternAttendance = () => {
               <p className="text-gray-600 text-sm md:text-base">
                 View daily attendance records and send non-attendance reports
               </p>
+            </motion.div>
+
+            <motion.div
+              className="flex justify-end"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.03, duration: 0.25 }}
+            >
+              <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-white/90 px-3 py-2 shadow-sm">
+                <div className="inline-flex items-center gap-2">
+                  <FaMapMarkerAlt
+                    className={`h-3.5 w-3.5 ${
+                      sltLocationRequired ? "text-blue-600" : "text-gray-400"
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-gray-700">
+                    SLT location
+                  </span>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      sltLocationRequired
+                        ? "bg-blue-50 text-blue-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {sltLocationRequired ? "Required" : "Off"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleToggleLocationRequirement}
+                  disabled={settingsLoading || settingsSaving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+                    sltLocationRequired ? "bg-blue-600" : "bg-gray-300"
+                  }`}
+                  aria-pressed={sltLocationRequired}
+                  aria-label="Toggle SLT location requirement"
+                  title="Toggle SLT location requirement"
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+                      sltLocationRequired ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                  <span className="sr-only">
+                    {sltLocationRequired ? "Location required" : "Location not required"}
+                  </span>
+                </button>
+              </div>
             </motion.div>
 
             {/* ══════════════════════════════════════════════════
@@ -793,6 +918,36 @@ const AdminInternAttendance = () => {
                                 🕐 {intern.timeMarked}
                               </p>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => toggleInternMeetings(intern._id)}
+                              className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
+                            >
+                              <span>
+                                {intern.meetingCount || intern.meetings?.length || 0} meeting
+                                {(intern.meetingCount || intern.meetings?.length || 0) !== 1 ? "s" : ""}
+                              </span>
+                              <FaChevronDown
+                                className={`h-3 w-3 transition-transform ${
+                                  expandedInterns[intern._id] ? "rotate-180" : ""
+                                }`}
+                              />
+                            </button>
+                            {expandedInterns[intern._id] && (
+                              <div className="mt-2 space-y-1 rounded-xl border border-blue-100 bg-blue-50/50 p-2">
+                                {(intern.meetings || []).map((meeting, index) => (
+                                  <div
+                                    key={`${intern._id}-${meeting.meetingName}-${index}`}
+                                    className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs"
+                                  >
+                                    <span className="font-medium text-gray-800">
+                                      {meeting.meetingName}
+                                    </span>
+                                    <span className="text-gray-500">{meeting.timeMarked}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </motion.div>
                       ))}
@@ -801,91 +956,132 @@ const AdminInternAttendance = () => {
 
                   {/* Desktop table */}
                   <div className="hidden lg:block w-full">
-                    <table className="w-full table-fixed divide-y divide-gray-100">
+                    <table className="w-full divide-y divide-gray-100">
                       <thead className="bg-gray-50">
                         <tr>
                           <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             #
                           </th>
-                          <th className="w-1/4 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="min-w-[18rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Intern
                           </th>
-                          <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="min-w-[18rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Contact
                           </th>
-                          <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="min-w-[14rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Team / Field
                           </th>
-                          <th className="w-1/5 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="min-w-[14rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Institute
                           </th>
-                          <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Time
+                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                            Meetings
                           </th>
-                          <th className="w-24 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                             Type
                           </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {filtered.map((intern, idx) => (
-                          <motion.tr
-                            key={intern._id}
-                            className="hover:bg-gray-50 transition-colors"
-                            whileHover={{ y: -1 }}
-                            transition={{ duration: 0.1 }}
-                          >
-                            <td className="px-4 py-4 text-sm text-gray-400 font-mono">
-                              {idx + 1}
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center space-x-3 min-w-0">
-                                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                  <FaUser className="text-indigo-600 text-xs" />
+                          <React.Fragment key={intern._id}>
+                            <motion.tr
+                              className="hover:bg-gray-50 transition-colors"
+                              whileHover={{ y: -1 }}
+                              transition={{ duration: 0.1 }}
+                            >
+                              <td className="px-4 py-4 text-sm text-gray-400 font-mono">
+                                {idx + 1}
+                              </td>
+                              <td className="px-4 py-4">
+                                <div className="flex items-center space-x-3 min-w-0">
+                                  <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                    <FaUser className="text-indigo-600 text-xs" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold text-gray-900 truncate">
+                                      {intern.name}
+                                    </p>
+                                    <p className="text-xs text-gray-500 truncate">
+                                      {intern.id}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-gray-900 truncate">
-                                    {intern.name}
-                                  </p>
-                                  <p className="text-xs text-gray-500 truncate">
-                                    {intern.id}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <p
-                                className="text-sm text-gray-800 truncate"
-                                title={intern.email}
-                              >
-                                {intern.email}
-                              </p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <p className="text-sm font-medium text-gray-800 truncate">
-                                {intern.team}
-                              </p>
-                              <p className="text-xs text-gray-500 truncate">
-                                {intern.fieldOfSpecialization}
-                              </p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <p className="text-sm text-gray-700 truncate">
-                                {intern.institute}
-                              </p>
-                            </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center space-x-1.5 text-sm text-gray-700">
-                                <FaClock className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                                <span className="truncate">
-                                  {intern.timeMarked}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-4">
-                              <TypeBadge type={intern.type} />
-                            </td>
-                          </motion.tr>
+                              </td>
+                              <td className="px-4 py-4">
+                                <p
+                                  className="text-sm text-gray-800 truncate"
+                                  title={intern.email}
+                                >
+                                  {intern.email}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <p className="text-sm font-medium text-gray-800 truncate">
+                                  {intern.team}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {intern.fieldOfSpecialization}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <p className="text-sm text-gray-700 truncate">
+                                  {intern.institute}
+                                </p>
+                              </td>
+                              <td className="px-4 py-4">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleInternMeetings(intern._id)}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                                >
+                                  <span>
+                                    {intern.meetingCount || intern.meetings?.length || 0}
+                                  </span>
+                                  <FaChevronDown
+                                    className={`h-3 w-3 transition-transform ${
+                                      expandedInterns[intern._id] ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </button>
+                              </td>
+                              <td className="px-4 py-4">
+                                <TypeBadge type={intern.type} />
+                              </td>
+                            </motion.tr>
+                            {expandedInterns[intern._id] && (
+                              <tr>
+                                <td colSpan={7} className="bg-blue-50/40 px-4 py-3">
+                                  <div className="ml-14 rounded-xl border border-blue-100 bg-white p-3">
+                                    <div className="grid grid-cols-[1fr_8rem_8rem] px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                                      <div>Meeting Name</div>
+                                      <div className="text-center">Time</div>
+                                      <div className="text-right">Type</div>
+                                    </div>
+                                    <div className="space-y-2">
+                                      {(intern.meetings || []).map((meeting, index) => (
+                                        <div
+                                          key={`${intern._id}-${meeting.meetingName}-${index}`}
+                                          className="grid grid-cols-[1fr_8rem_8rem] items-center rounded-lg bg-gray-50 px-2 py-2 text-sm"
+                                        >
+                                          <div className="font-medium text-gray-900">
+                                            {meeting.meetingName}
+                                          </div>
+                                          <div className="flex items-center justify-center gap-1.5 text-gray-600">
+                                            <FaClock className="h-3 w-3 text-gray-400" />
+                                            {meeting.timeMarked}
+                                          </div>
+                                          <div className="text-right">
+                                            <TypeBadge type={meeting.type} />
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         ))}
                       </tbody>
                     </table>

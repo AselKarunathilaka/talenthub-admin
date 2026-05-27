@@ -2,6 +2,7 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import ScanQRCode from "../pages/ScanQRCode";
+import FaceAttendance from "../pages/FaceAttendance";
 import Dashboard from "../pages/Dashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
@@ -24,6 +25,7 @@ import AdminAnnouncements from "../pages/AdminAnnouncements";
 import AdminInternAttendance from "../pages/Admininternattendance";
 import InternAnnouncements from "../pages/InternAnnouncements";
 import AdminQRManagement from "../pages/AdminQRManagement";
+import AdminPinManagement from "../pages/AdminPinManagement";
 import AdminInternCertificate from "../pages/AdminInternCertificate";
 
 const AppRoutes = () => {
@@ -37,6 +39,14 @@ const AppRoutes = () => {
         element={
           <AgreementGuard>
             <ScanQRCode />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/face-attendance"
+        element={
+          <AgreementGuard>
+            <FaceAttendance />
           </AgreementGuard>
         }
       />
@@ -130,7 +140,11 @@ const AppRoutes = () => {
         element={<AdminInternAttendance />}
       />
       <Route path="/admin/qr-management" element={<AdminQRManagement />} />
-      <Route path="/admin/intern/:internId/certificate" element={<AdminInternCertificate />} />
+      <Route path="/admin/pin-management" element={<AdminPinManagement />} />
+      <Route
+        path="/admin/intern/:internId/certificate"
+        element={<AdminInternCertificate />}
+      />
     </Routes>
   );
 };

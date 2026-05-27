@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
 import NoProjectNotification from "../components/NoProjectNotification";
+import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import {
   Users,
   CheckCircle,
@@ -11,6 +12,9 @@ import {
   Loader2,
   Calendar,
   Clock,
+  ChevronDown,
+  QrCode,
+  Camera,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
@@ -37,13 +41,18 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [expandedMeetingDates, setExpandedMeetingDates] = useState({});
   const [error, setError] = useState(null);
   const [isNetworkError, setIsNetworkError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [internData, setInternData] = useState(null);
   const [endDateNotification, setEndDateNotification] = useState(null);
+  const [showFaceModal, setShowFaceModal] = useState(false);
+  const [projectPopupPending, setProjectPopupPending] = useState(false);
   const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
   const rowsPerPage = 10;
+  const initialLoadStartedRef = useRef(false);
+  const faceModalOpenRef = useRef(false);
   const navigate = useNavigate();
   const cricketRegistrationLink =
     "https://linktr.ee/CricketFiestaRegistrationLinks";
@@ -111,19 +120,26 @@ const Dashboard = () => {
         setMeetingAttendance(meetingAttendanceData);
         setFilteredMeetingAttendance(meetingAttendanceData);
 
-        // Set attendance stats with fallback
-        const stats = response.stats || {
-          present: dailyAttendanceData.filter(
-            (entry) => entry.status === "Present",
-          ).length,
-          absent: dailyAttendanceData.filter(
-            (entry) => entry.status === "Absent",
-          ).length,
+        const meetingDateKey = (entry) => {
+          const date = entry.date ? new Date(entry.date) : null;
+          return date && !Number.isNaN(date.getTime())
+            ? date.toISOString().slice(0, 10)
+            : String(entry.date || "");
         };
+        const meetingPresentDays = new Set(
+          meetingAttendanceData
+            .filter((entry) => entry.status === "Present")
+            .map(meetingDateKey),
+        ).size;
+        const meetingAbsentDays = new Set(
+          meetingAttendanceData
+            .filter((entry) => entry.status === "Absent")
+            .map(meetingDateKey),
+        ).size;
 
         setAttendanceStats({
-          present: stats.present,
-          absent: stats.absent,
+          present: meetingPresentDays,
+          absent: meetingAbsentDays,
         });
 
         // Set daily attendance stats based on the daily attendance data
@@ -149,6 +165,16 @@ const Dashboard = () => {
     }
   };
 
+  const checkFaceEnrollment = async () => {
+    try {
+      const data = await api.get("/face-attendance/profile");
+      return Boolean(data.profile && data.profile.isActive);
+    } catch (error) {
+      console.error("Error checking face enrollment:", error);
+      return true;
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     await Promise.all([
@@ -157,13 +183,30 @@ const Dashboard = () => {
     ]);
     setLoading(false);
 
+    const internId = localStorage.getItem("internId");
+    const shouldPromptFace = Boolean(
+      internId &&
+        !(await checkFaceEnrollment()),
+    );
+
+    if (shouldPromptFace) {
+      faceModalOpenRef.current = true;
+      setShowFaceModal(true);
+    }
+
     // Check if intern has a project — show popup every time if not assigned
     try {
-      const internId = localStorage.getItem("internId");
       if (internId) {
         const projectCheck = await api.get(`/interns/${internId}/projects/check`);
-        if (projectCheck && (!projectCheck.projects || projectCheck.projects.length === 0)) {
-          setShowNoProjectPopup(true);
+        const hasProject =
+          projectCheck?.hasProject === true ||
+          (Array.isArray(projectCheck?.projects) && projectCheck.projects.length > 0);
+        if (projectCheck && !hasProject) {
+          if (shouldPromptFace || faceModalOpenRef.current) {
+            setProjectPopupPending(true);
+          } else {
+            setShowNoProjectPopup(true);
+          }
         }
       }
     } catch (err) {
@@ -189,6 +232,11 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    if (initialLoadStartedRef.current) {
+      return;
+    }
+
+    initialLoadStartedRef.current = true;
     loadAllData();
   }, []);
 
@@ -197,6 +245,15 @@ const Dashboard = () => {
     localStorage.removeItem("internId");
     localStorage.removeItem("userData");
     navigate("/");
+  };
+
+  const closeFaceRegistration = () => {
+    faceModalOpenRef.current = false;
+    setShowFaceModal(false);
+    if (projectPopupPending) {
+      setProjectPopupPending(false);
+      setShowNoProjectPopup(true);
+    }
   };
 
   const totalAttendance = attendanceStats.present + attendanceStats.absent;
@@ -236,6 +293,74 @@ const Dashboard = () => {
       setFilteredMeetingAttendance(meetingAttendance);
     }
     setCurrentPage(1);
+  };
+
+  const getMeetingDateGroups = () => {
+    const groups = new Map();
+
+    filteredMeetingAttendance.forEach((entry) => {
+      let date;
+      try {
+        date = entry.date ? new Date(entry.date) : new Date();
+        if (Number.isNaN(date.getTime())) {
+          throw new Error("Invalid date");
+        }
+      } catch {
+        date = null;
+      }
+
+      const dateKey = date ? date.toISOString().slice(0, 10) : String(entry.date || "unknown");
+      const fallbackLabel = entry.date || "N/A";
+      const group = groups.get(dateKey) || {
+        dateKey,
+        formattedDate: date
+          ? date.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : fallbackLabel,
+        dayName: date ? date.toLocaleDateString("en-US", { weekday: "short" }) : "N/A",
+        meetings: [],
+      };
+
+      group.meetings.push(entry);
+      groups.set(dateKey, group);
+    });
+
+    return Array.from(groups.values());
+  };
+
+  const toggleMeetingDate = (dateKey) => {
+    setExpandedMeetingDates((current) => ({
+      ...current,
+      [dateKey]: !current[dateKey],
+    }));
+  };
+
+  const getMeetingMethodMeta = (method) => {
+    const normalizedMethod = String(method || "").toLowerCase();
+    if (normalizedMethod === "face" || normalizedMethod === "face_meeting") {
+      return {
+        label: "Face",
+        className: "bg-indigo-50 text-indigo-700 border-indigo-100",
+        Icon: Camera,
+      };
+    }
+
+    if (normalizedMethod === "qr" || normalizedMethod === "daily_qr" || normalizedMethod === "meeting") {
+      return {
+        label: "QR",
+        className: "bg-purple-50 text-purple-700 border-purple-100",
+        Icon: QrCode,
+      };
+    }
+
+    return {
+      label: "Unknown",
+      className: "bg-gray-50 text-gray-600 border-gray-100",
+      Icon: Clock,
+    };
   };
 
   const renderContent = () => {
@@ -414,21 +539,22 @@ const Dashboard = () => {
                 Recent Daily Attendance
               </h3>
               <motion.button
-                onClick={() => navigate("/scan-qr")}
+                onClick={() => navigate("/face-attendance")}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Clock className="h-3 w-3 mr-1" />
-                Scan QR
+                Mark Attendance
               </motion.button>
             </div>
 
             {attendanceHistory.length > 0 ? (
               <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
+                <div className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                   <div>Date</div>
                   <div className="text-center">Status</div>
+                  <div className="text-center">Type</div>
                   <div className="text-center">Time</div>
                   <div className="text-right">Day</div>
                 </div>
@@ -465,10 +591,15 @@ const Dashboard = () => {
                         formattedDate = entry.date || "N/A";
                       }
 
+                      const methodMeta = getMeetingMethodMeta(
+                        entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                      );
+                      const MethodIcon = methodMeta.Icon;
+
                       return (
                         <motion.div
                           key={`${entry.date}-${index}`}
-                          className="grid grid-cols-4 items-center p-3 hover:bg-gray-50"
+                          className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 items-center p-3 hover:bg-gray-50"
                           whileHover={{ backgroundColor: "#f9f9f9" }}
                           transition={{ duration: 0.1 }}
                         >
@@ -489,6 +620,12 @@ const Dashboard = () => {
                                 <XCircle className="h-3 w-3 mr-1" />
                               )}
                               {entry.status}
+                            </span>
+                          </div>
+                          <div className="text-center">
+                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                              <MethodIcon className="h-3 w-3" />
+                              {methodMeta.label}
                             </span>
                           </div>
                           <div className="text-center text-xs text-gray-600">
@@ -650,78 +787,109 @@ const Dashboard = () => {
 
           {filteredMeetingAttendance.length > 0 ? (
             <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="grid grid-cols-4 text-sm font-medium text-gray-500 bg-gray-50 p-3">
+              <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_5rem_10rem] gap-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
                 <div>Date</div>
-                <div className="text-center">Meeting name</div>
-                <div className="text-center">Status</div>
-                <div className="text-right">Day</div>
+                <div className="text-center">Meetings</div>
+                <div className="text-center">Present</div>
+                <div className="text-center">Day</div>
+                <div className="text-center">Details</div>
               </div>
 
               <div className="divide-y divide-gray-100">
-                {filteredMeetingAttendance.map((entry, index) => {
-                  console.log("Processing meeting entry:", entry); // Debug log
-
-                  // Handle date parsing more robustly
-                  let date, dayName, formattedDate;
-                  try {
-                    date = entry.date ? new Date(entry.date) : new Date();
-                    if (isNaN(date.getTime())) {
-                      throw new Error("Invalid date");
-                    }
-                    dayName = date.toLocaleDateString("en-US", {
-                      weekday: "short",
-                    });
-                    formattedDate = date.toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    });
-                  } catch (error) {
-                    console.error(
-                      "Meeting date parsing error:",
-                      error,
-                      "Entry:",
-                      entry,
-                    );
-                    dayName = "N/A";
-                    formattedDate = entry.date || "N/A";
-                  }
-
+                {getMeetingDateGroups().map((group) => {
+                  const isExpanded = expandedMeetingDates[group.dateKey] ?? false;
+                  const presentCount = group.meetings.filter((entry) => entry.status === "Present").length;
                   return (
-                    <motion.div
-                      key={`${entry.date}-${entry.type}-${index}`}
-                      className="grid grid-cols-4 items-center p-3 hover:bg-gray-50"
-                      whileHover={{ backgroundColor: "#f9f9f9" }}
-                      transition={{ duration: 0.1 }}
-                    >
-                      <div className="text-sm font-medium text-gray-800">
-                        {formattedDate}
-                      </div>
-                      <div className="text-center">
-                        <span className="text-sm text-gray-900 font-medium">
-                          {entry.meetingName || entry.type || "Meeting"}
-                        </span>
-                      </div>
-                      <div className="text-center">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            entry.status === "Present"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {entry.status === "Present" ? (
+                    <div key={group.dateKey}>
+                      <motion.button
+                        type="button"
+                        onClick={() => toggleMeetingDate(group.dateKey)}
+                        className="grid w-full grid-cols-[1.2fr_0.9fr_0.9fr_5rem_10rem] gap-3 items-center p-3 text-left hover:bg-gray-50"
+                        whileHover={{ backgroundColor: "#f9f9f9" }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        <div className="text-sm font-medium text-gray-800">
+                          {group.formattedDate}
+                        </div>
+                        <div className="text-center text-sm text-gray-700">
+                          {group.meetings.length} meeting{group.meetings.length !== 1 ? "s" : ""}
+                        </div>
+                        <div className="text-center">
+                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-xs font-medium text-green-800">
                             <CheckCircle className="h-3 w-3 mr-1" />
-                          ) : (
-                            <XCircle className="h-3 w-3 mr-1" />
-                          )}
-                          {entry.status}
-                        </span>
-                      </div>
-                      <div className="text-right text-xs text-gray-500">
-                        {dayName}
-                      </div>
-                    </motion.div>
+                            {presentCount} Present
+                          </span>
+                        </div>
+                        <div className="text-center text-xs text-gray-500">
+                          {group.dayName}
+                        </div>
+                        <div className="flex justify-center">
+                          <span className="inline-flex items-center gap-2 rounded-md bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                            {isExpanded ? "Hide meetings" : "View meetings"}
+                          <ChevronDown
+                              className={`h-3 w-3 transition-transform ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                          </span>
+                        </div>
+                      </motion.button>
+
+                      {isExpanded && (
+                        <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-2">
+                          <div className="grid grid-cols-[1fr_7rem_8rem_7rem] px-3 pb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
+                            <div>Meeting name</div>
+                            <div className="text-center">Type</div>
+                            <div className="text-center">Time</div>
+                            <div className="text-right">Status</div>
+                          </div>
+                          <div className="space-y-2">
+                            {group.meetings.map((entry, index) => {
+                              const methodMeta = getMeetingMethodMeta(
+                                entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                              );
+                              const MethodIcon = methodMeta.Icon;
+
+                              return (
+                                <div
+                                  key={`${group.dateKey}-${entry.meetingName || entry.type}-${index}`}
+                                  className="grid grid-cols-[1fr_7rem_8rem_7rem] items-center rounded-md bg-white px-3 py-2 text-sm"
+                                >
+                                  <div className="font-medium text-gray-900">
+                                    {entry.meetingName || entry.type || "Meeting"}
+                                  </div>
+                                  <div className="text-center">
+                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                                      <MethodIcon className="h-3 w-3" />
+                                      {methodMeta.label}
+                                    </span>
+                                  </div>
+                                  <div className="text-center text-gray-600">
+                                    {entry.time || "N/A"}
+                                  </div>
+                                  <div className="text-right">
+                                    <span
+                                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        entry.status === "Present"
+                                          ? "bg-green-100 text-green-800"
+                                          : "bg-red-100 text-red-800"
+                                      }`}
+                                    >
+                                      {entry.status === "Present" ? (
+                                        <CheckCircle className="h-3 w-3 mr-1" />
+                                      ) : (
+                                        <XCircle className="h-3 w-3 mr-1" />
+                                      )}
+                                      {entry.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -744,6 +912,13 @@ const Dashboard = () => {
   return (
     <div className="flex min-h-screen bg-gray-50">
       <Navigation onLogout={handleLogout} />
+      {showFaceModal && (
+        <FaceRegistrationModal
+          isOpen={showFaceModal}
+          onClose={closeFaceRegistration}
+          onEnrollmentComplete={closeFaceRegistration}
+        />
+      )}
       {showNoProjectPopup && (
         <NoProjectNotification
           onDismiss={() => setShowNoProjectPopup(false)}

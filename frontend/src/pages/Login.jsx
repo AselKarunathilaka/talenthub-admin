@@ -12,7 +12,6 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [error, setError] = useState(null);
-
   const handleGoogleLogin = async (response) => {
     try {
       setIsLoading(true);

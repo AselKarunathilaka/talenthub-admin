@@ -41,6 +41,15 @@ const {
   exportAttendanceExcel,
   exportNonAttendanceExcel,
 } = require("../controllers/admininternAttendanceController");
+const {
+  getAttendanceSettings,
+  updateAttendanceSettings,
+} = require("../controllers/attendanceSettingsController");
+const {
+  getCurrentMeetingPin,
+  validateCurrentMeetingPin,
+  stopCurrentMeetingPin,
+} = require("../controllers/faceAttendanceController");
 
 const { getCertificateData } = require("../controllers/certificateController");
 
@@ -126,6 +135,13 @@ router.get("/attendance/export-excel", exportAttendanceExcel);
 
 // GET /admin/attendance/export-non-attendance-excel → download non-attendance Excel (past 14 days)
 router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
+
+// Admin controlled attendance policy used by intern face/QR attendance flows
+router.get("/attendance/settings", getAttendanceSettings);
+router.put("/attendance/settings", updateAttendanceSettings);
+router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
+router.post("/face-attendance/meeting-pin/validate", validateCurrentMeetingPin);
+router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 
 // Debug: test SMTP connection and send a test email
 router.get("/debug/smtp-test", async (req, res) => {

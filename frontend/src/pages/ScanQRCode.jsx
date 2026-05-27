@@ -1,13 +1,42 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { BrowserMultiFormatReader } from '@zxing/library';
-import { api } from '../utils/api';
-import { Camera, Scan, XCircle, Info, CheckCircle, ChevronRight } from 'lucide-react';
+import { apiFetch } from '../utils/api';
+import { AlertCircle, Camera, Scan, XCircle, Info, CheckCircle, ChevronRight, MapPin } from 'lucide-react';
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 
+const SLT_OFFICE = {
+  latitude: 6.9271,
+  longitude: 79.8612,
+  radiusKm: 2,
+};
+
+const normalizeProjectName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
+const getProjectKey = (value) => normalizeProjectName(value);
+
+const getDistanceKm = (fromLocation) => {
+  if (!Number.isFinite(fromLocation?.lat) || !Number.isFinite(fromLocation?.lng)) return null;
+
+  const earthRadiusKm = 6371;
+  const dLat = ((fromLocation.lat - SLT_OFFICE.latitude) * Math.PI) / 180;
+  const dLng = ((fromLocation.lng - SLT_OFFICE.longitude) * Math.PI) / 180;
+  const officeLatRad = (SLT_OFFICE.latitude * Math.PI) / 180;
+  const currentLatRad = (fromLocation.lat * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(officeLatRad) *
+      Math.cos(currentLatRad) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return earthRadiusKm * c;
+};
+
 // Function to validate QR code format based on scan mode
-const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = '') => {
+const validateQRCodeFormat = (qrCode, scanMode, projectName = '') => {
   if (!qrCode || typeof qrCode !== 'string') {
     return false;
   }
@@ -32,16 +61,16 @@ const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = '') => {
     } catch (e) {
       return false;
     }
-    // Must have type and meetingTitle
+    const qrProjectName = normalizeProjectName(parsed.projectName || parsed.meetingTitle || '');
+    // Must have type and projectName
     if (
       parsed.type !== 'meeting_attendance' ||
-      typeof parsed.meetingTitle !== 'string' ||
-      !parsed.meetingTitle.trim()
+      !qrProjectName
     ) {
       return false;
     }
-    // Meeting title must match
-    if (meetingTitle.trim() && parsed.meetingTitle.trim() !== meetingTitle.trim()) {
+    // Project name must match
+    if (projectName.trim() && getProjectKey(qrProjectName) !== getProjectKey(projectName)) {
       return false;
     }
     // Timestamp validation (optional, if present)
@@ -59,16 +88,25 @@ const ScanQRCode = () => {
   const [hasCameraAccess, setHasCameraAccess] = useState(true);
   const [scanMode, setScanMode] = useState('daily'); // 'daily' or 'meeting'
   const [location, setLocation] = useState({ lat: null, lng: null });
-  const [meetingTitle, setMeetingTitle] = useState('');
+  const [locationError, setLocationError] = useState("");
+  const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [projectName, setProjectName] = useState('');
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
   const isProcessingRef = useRef(false);
   const scanModeRef = useRef(scanMode);
-  const meetingTitleRef = useRef(meetingTitle);
+  const projectNameRef = useRef(projectName);
+  const sltLocationRequiredRef = useRef(sltLocationRequired);
 
   // Keep refs in sync with state so the scanner callback always reads the latest values
   useEffect(() => { scanModeRef.current = scanMode; }, [scanMode]);
-  useEffect(() => { meetingTitleRef.current = meetingTitle; }, [meetingTitle]);
+  useEffect(() => { projectNameRef.current = projectName; }, [projectName]);
+  useEffect(() => { sltLocationRequiredRef.current = sltLocationRequired; }, [sltLocationRequired]);
+
+  const distanceKm = getDistanceKm(location);
+  const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
+  const locationValid = !sltLocationRequired || actualLocationValid;
+  const canStartScanner = hasCameraAccess && locationValid;
 
   const checkCameraAccess = async () => {
     try {
@@ -83,7 +121,12 @@ const ScanQRCode = () => {
   const startScanning = () => {
     if (scanner || !hasCameraAccess) return;
 
-    if (scanMode === 'meeting' && !meetingTitle.trim()) {
+    if (!locationValid) {
+      toast.error(locationError || "You must be within SLT office radius to scan QR attendance.");
+      return;
+    }
+
+    if (scanMode === 'meeting' && !projectName.trim()) {
       toast.error('Please enter a project name first');
       setShowMeetingInput(true);
       return;
@@ -101,14 +144,42 @@ const ScanQRCode = () => {
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
         const currentScanMode = scanModeRef.current;
-        const currentMeetingTitle = meetingTitleRef.current;
+        const currentProjectName = projectNameRef.current;
 
         // Debug: log scanned data so we can diagnose format mismatches
         console.log('[QR Scanner] Scanned data:', qrData);
         console.log('[QR Scanner] Current scan mode:', currentScanMode);
 
+        // For meeting mode, provide explicit mismatch feedback before generic validation
+        if (currentScanMode === 'meeting') {
+          try {
+            const parsed = JSON.parse(qrData);
+            const scannedProjectName = normalizeProjectName(parsed?.projectName || parsed?.meetingTitle || '');
+            const typedProjectName = normalizeProjectName(currentProjectName || '');
+
+            if (!typedProjectName) {
+              toast.error('Please enter a project name first');
+              setShowMeetingInput(true);
+              setTimeout(() => { isProcessingRef.current = false; }, 1500);
+              return;
+            }
+
+            if (
+              parsed?.type === 'meeting_attendance' &&
+              scannedProjectName &&
+              getProjectKey(scannedProjectName) !== getProjectKey(typedProjectName)
+            ) {
+              toast.error(`Project name does not match QR project name: "${scannedProjectName}"`);
+              setTimeout(() => { isProcessingRef.current = false; }, 2000);
+              return;
+            }
+          } catch (e) {
+            // Let generic validation handle non-JSON or invalid meeting QR payloads.
+          }
+        }
+
         // Validate QR code format before processing
-        if (!validateQRCodeFormat(qrData, currentScanMode, currentMeetingTitle)) {
+        if (!validateQRCodeFormat(qrData, currentScanMode, currentProjectName)) {
           const expectedFormat = currentScanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
           console.warn('[QR Scanner] Validation failed. Expected:', expectedFormat, 'Got:', qrData.substring(0, 100));
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
@@ -116,59 +187,64 @@ const ScanQRCode = () => {
           return;
         }
 
-        // Get geolocation for both daily and meeting attendance
-        let lat = null, lng = null;
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            async (position) => {
-              lat = position.coords.latitude;
-              lng = position.coords.longitude;
-              setLocation({ lat, lng });
-              setScanSuccess(true);
-              setTimeout(() => setScanSuccess(false), 1500);
-              try {
-                if (currentScanMode === 'daily') {
-                  const res = await api.post('/qrcode/scan', {
-                    qrCode: qrData,
-                    internId,
-                    scanType: 'daily',
-                    lat,
-                    lng
-                  });
-                  toast.success(res.message || 'Daily attendance marked successfully!');
-                  setIsScanning(false);
-                } else {
-                  if (!currentMeetingTitle.trim()) {
-                    toast.error("Please enter a project name first");
-                    isProcessingRef.current = false;
-                    return;
-                  }
-                  const res = await api.post('/qrcode/scan-meeting', {
-                    qrCode: qrData,
-                    internId,
-                    meetingTitle: currentMeetingTitle.trim(),
-                    lat,
-                    lng
-                  });
-                  toast.success(res.message || 'Meeting attendance marked successfully!');
-                  setIsScanning(false);
-                }
-              } catch (err) {
-                console.error("Failed to mark attendance:", err);
-                toast.error(err.response?.data?.message || "Failed to mark attendance");
-              } finally {
-                // If we didn't stop scanning (e.g. error occurred), unlock after a delay so they can try again
-                setTimeout(() => { isProcessingRef.current = false; }, 3000);
-              }
-            },
-            (geoError) => {
-              toast.error("Location access denied. Please enable location to mark attendance.");
-              isProcessingRef.current = false;
-            }
-          );
-        } else {
-          toast.error("Geolocation not supported by your browser.");
+        if (!locationValid) {
+          toast.error(locationError || "You must be within SLT office radius to scan QR attendance.");
+          stopScanning();
           isProcessingRef.current = false;
+          return;
+        }
+
+        const lat = location.lat;
+        const lng = location.lng;
+        setScanSuccess(true);
+        setTimeout(() => setScanSuccess(false), 1500);
+        try {
+          if (currentScanMode === 'daily') {
+            const response = await apiFetch('/qrcode/scan', {
+              method: 'POST',
+              body: JSON.stringify({
+                qrCode: qrData,
+                internId,
+                scanType: 'daily',
+                lat,
+                lng
+              })
+            });
+            const res = await response.json();
+            if (!response.ok) {
+              throw new Error(res.message || 'Failed to mark attendance');
+            }
+            toast.success(res.message || 'Daily attendance marked successfully!');
+            setIsScanning(false);
+          } else {
+            if (!currentProjectName.trim()) {
+              toast.error("Please enter a project name first");
+              isProcessingRef.current = false;
+              return;
+            }
+            const response = await apiFetch('/qrcode/scan-meeting', {
+              method: 'POST',
+              body: JSON.stringify({
+                qrCode: qrData,
+                internId,
+                projectName: currentProjectName.trim(),
+                lat,
+                lng
+              })
+            });
+            const res = await response.json();
+            if (!response.ok) {
+              throw new Error(res.message || 'Failed to mark meeting attendance');
+            }
+            toast.success(res.message || 'Meeting attendance marked successfully!');
+            setIsScanning(false);
+          }
+        } catch (err) {
+          console.error("Failed to mark attendance:", err);
+          toast.error(err.message || "Failed to mark attendance");
+        } finally {
+          // If we didn't stop scanning (e.g. error occurred), unlock after a delay so they can try again
+          setTimeout(() => { isProcessingRef.current = false; }, 3000);
         }
       }
 
@@ -187,12 +263,70 @@ const ScanQRCode = () => {
       scanner.reset();
       setScanner(null);
     }
+    isProcessingRef.current = false;
+    setScanSuccess(false);
     setIsScanning(false);
+  };
+
+  const handleScanModeChange = (nextMode) => {
+    stopScanning();
+    setScanMode(nextMode);
+    setShowMeetingInput(nextMode === 'meeting');
   };
 
   useEffect(() => {
     checkCameraAccess();
   }, []);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await apiFetch("/face-attendance/settings");
+        const result = await response.json();
+        const isLocationRequired = result.settings?.sltLocationRequired !== false;
+        setSltLocationRequired(isLocationRequired);
+        if (!isLocationRequired) {
+          setLocationError("");
+          toast.dismiss();
+        }
+      } catch (error) {
+        console.error("Failed to load attendance settings:", error);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    if (!sltLocationRequired) {
+      setLocationError("");
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setLocationError("Geolocation is not supported by this browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        });
+        setLocationError("");
+      },
+      (error) => {
+        console.warn("Geolocation error:", error);
+        setLocationError("Location permission is required for attendance.");
+        if (sltLocationRequiredRef.current && isScanning) {
+          toast.error("Location access denied. Please enable location to mark attendance.");
+          stopScanning();
+        }
+      },
+      { enableHighAccuracy: true, timeout: 12000 },
+    );
+  }, [isScanning, sltLocationRequired]);
 
   useEffect(() => {
     if (isScanning && hasCameraAccess) {
@@ -229,9 +363,29 @@ const ScanQRCode = () => {
         animate="animate"
       >
         <motion.main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-7xl" variants={itemVariants}>
-          <motion.div className="mb-6 md:mb-8" variants={itemVariants}>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">QR Code Scanner</h1>
-            <p className="text-gray-500 mt-1 text-sm md:text-base">Scan your attendance QR code quickly and easily</p>
+          <motion.div className="mb-6 md:mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between" variants={itemVariants}>
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">QR Code Scanner</h1>
+              <p className="text-gray-500 mt-1 text-sm md:text-base">Scan your attendance QR code quickly and easily</p>
+            </div>
+            <div
+              className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
+                locationValid
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-red-200 bg-red-50 text-red-700"
+              }`}
+            >
+              {locationValid ? (
+                <MapPin className="w-4 h-4" />
+              ) : (
+                <AlertCircle className="w-4 h-4" />
+              )}
+              {!sltLocationRequired
+                ? "Ready to scan"
+                : locationValid
+                  ? "Ready to scan"
+                  : "Outside SLT premises"}
+            </div>
           </motion.div>
 
           {/* Mode Selection */}
@@ -242,10 +396,7 @@ const ScanQRCode = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setScanMode('daily');
-                    setShowMeetingInput(false);
-                  }}
+                  onClick={() => handleScanModeChange('daily')}
                   className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                     scanMode === 'daily'
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
@@ -268,10 +419,7 @@ const ScanQRCode = () => {
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    setScanMode('meeting');
-                    setShowMeetingInput(true);
-                  }}
+                  onClick={() => handleScanModeChange('meeting')}
                   className={`p-4 rounded-lg border-2 transition-all duration-200 ${
                     scanMode === 'meeting'
                       ? 'border-green-500 bg-green-50 text-green-700'
@@ -305,8 +453,8 @@ const ScanQRCode = () => {
                   </label>
                   <input
                     type="text"
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
                     placeholder="Enter project name..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />
@@ -361,12 +509,18 @@ const ScanQRCode = () => {
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 z-10 p-4 text-center">
                         <Camera size={48} className="text-gray-300 mb-3 animate-camera-icon" />
                         <h3 className="font-medium text-gray-500 mb-1">
-                          {hasCameraAccess ? 'Camera is ready' : 'Camera access required'}
+                          {!hasCameraAccess
+                            ? 'Camera access required'
+                            : !locationValid
+                              ? 'Location access required'
+                              : 'Camera is ready'}
                         </h3>
                         <p className="text-gray-400 text-sm max-w-xs">
-                          {hasCameraAccess
-                            ? 'Press start to begin scanning'
-                            : 'Please enable camera permissions to scan'}
+                          {!hasCameraAccess
+                            ? 'Please enable camera permissions to scan'
+                            : !locationValid
+                              ? locationError || 'You must be within SLT office radius to scan'
+                              : 'Press start to begin scanning'}
                         </p>
                       </div>
                     )}
@@ -416,13 +570,29 @@ const ScanQRCode = () => {
 
                   <div className="mt-4 flex flex-col sm:flex-row gap-3">
                     <motion.button
-                      onClick={() => setIsScanning(!isScanning)}
-                      disabled={!hasCameraAccess}
+                      onClick={() => {
+                        if (isScanning) {
+                          setIsScanning(false);
+                          return;
+                        }
+
+                        if (!canStartScanner) {
+                          toast.error(
+                            !hasCameraAccess
+                              ? "Please enable camera permissions to scan."
+                              : locationError || "You must be within SLT office radius to scan QR attendance.",
+                          );
+                          return;
+                        }
+
+                        setIsScanning(true);
+                      }}
+                      disabled={!isScanning && !canStartScanner}
                       className={`flex-1 py-3 px-4 rounded-lg flex items-center justify-center font-medium text-sm transition-all ${
                         isScanning
                           ? 'bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 animate-pulse-soft'
                           : 'bg-gradient-to-r from-blue-100 to-blue-200 text-gray-800 hover:shadow-md hover:from-blue-200 hover:to-blue-300'
-                      } ${!hasCameraAccess ? 'opacity-50 cursor-not-allowed animate-shake' : ''}`}
+                      } ${!isScanning && !canStartScanner ? 'opacity-50 cursor-not-allowed animate-shake' : ''}`}
                       whileTap={{ scale: 0.95 }}
                     >
                       {isScanning ? (

@@ -1,0 +1,259 @@
+const FaceAttendanceService = require("../services/faceAttendanceService");
+const Intern = require("../models/Intern");
+const mongoose = require("mongoose");
+const AttendanceSettingsService = require("../services/attendanceSettingsService");
+const FaceMeetingPinService = require("../services/faceMeetingPinService");
+
+const resolveInternId = (req) => {
+  return req.user?.id || req.body.internId || req.params.internId || null;
+};
+
+const registerFaceProfile = async (req, res) => {
+  try {
+    const internId = resolveInternId(req);
+    const { descriptor, metadata = {} } = req.body;
+
+    if (!internId) {
+      return res.status(400).json({ message: "Intern ID is required." });
+    }
+
+    const result = await FaceAttendanceService.registerFaceProfile({
+      internId,
+      descriptor,
+      source: metadata.source || "browser-camera",
+      metadata,
+    });
+
+    return res.status(201).json({
+      message: "Face profile saved successfully.",
+      profile: result.profile,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Failed to save face profile.",
+      error: error.message,
+    });
+  }
+};
+
+const verifyFaceAttendance = async (req, res) => {
+  try {
+    const {
+      descriptor,
+      metadata = {},
+      qrBackupUsed = false,
+      attendanceType = "daily",
+      projectName,
+      meetingTitle,
+      meetingPin,
+    } = req.body;
+    const result = await FaceAttendanceService.markAttendanceWithFace({
+      descriptor,
+      source: metadata.source || "browser-camera",
+      metadata,
+      qrBackupUsed,
+      attendanceType,
+      projectName,
+      meetingTitle,
+      meetingPin,
+      expectedInternId: req.user?.id,
+    });
+
+    if (!result.matched) {
+      const messageByReason = {
+        profile_missing_for_intern: "No face profile is registered for your account. Please enroll your face first.",
+        profile_missing: "No active face profile found. Please enroll your face first.",
+        profile_has_no_embeddings: "Your face profile is incomplete. Please re-enroll your face.",
+        face_not_recognized: "Face did not match your registered profile. Try again with better lighting or re-enroll your face.",
+      };
+
+      return res.status(404).json({
+        message: messageByReason[result.reason] || "No matching face profile found. Try again or use QR backup.",
+        matched: false,
+        reason: result.reason,
+        threshold: result.threshold,
+        bestDistance: result.bestDistance,
+      });
+    }
+
+    if (result.alreadyMarked) {
+      return res.status(400).json({
+        message: "Already marked today attendance",
+        matched: true,
+        alreadyMarked: true,
+        confidence: result.confidence,
+        distance: result.distance,
+        intern: result.intern,
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        attendanceType === "meeting"
+          ? result.dailyAttendanceMarked
+            ? "Face meeting attendance marked successfully. Daily attendance also recorded."
+            : "Face meeting attendance marked successfully."
+          : "Face attendance marked successfully.",
+      matched: true,
+      alreadyMarked: false,
+      confidence: result.confidence,
+      distance: result.distance,
+      intern: result.intern,
+      profile: result.profile,
+      log: result.log,
+      attendanceDate: result.attendanceDateKey,
+      dailyAttendanceMarked: result.dailyAttendanceMarked,
+    });
+  } catch (error) {
+    const rawMessage = error.message || "";
+    const isUserActionError =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
+    return res.status(error.statusCode || (isUserActionError ? 400 : 500)).json({
+      message:
+        isUserActionError
+          ? error.message
+          : "Failed to verify face attendance.",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
+  }
+};
+
+const getFaceProfile = async (req, res) => {
+  try {
+    const internId = resolveInternId(req);
+    if (!internId) {
+      return res.status(400).json({ message: "Intern ID is required." });
+    }
+
+    const profile = await FaceAttendanceService.getProfileByInternId(internId);
+    return res.status(200).json({ profile });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load face profile.",
+      error: error.message,
+    });
+  }
+};
+
+const getFaceLogs = async (req, res) => {
+  try {
+    const internId = resolveInternId(req);
+    if (!internId) {
+      return res.status(400).json({ message: "Intern ID is required." });
+    }
+
+    const limit = req.query.limit || 25;
+    const logs = await FaceAttendanceService.getLogsByInternId(internId, limit);
+    return res.status(200).json({ logs });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load face attendance logs.",
+      error: error.message,
+    });
+  }
+};
+
+const getFaceProfileByIdentifier = async (req, res) => {
+  try {
+    const identifier = req.params.identifier || req.params.traineeId;
+    const intern = mongoose.Types.ObjectId.isValid(identifier)
+      ? await Intern.findById(identifier)
+      : await Intern.findOne({ Trainee_ID: identifier });
+
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found." });
+    }
+
+    const faceProfile = await FaceAttendanceService.getProfileByInternId(intern._id);
+    return res.status(200).json({ profile: faceProfile });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load face profile.",
+      error: error.message,
+    });
+  }
+};
+
+const getAttendanceSettings = async (req, res) => {
+  try {
+    const settings = await AttendanceSettingsService.getAttendanceSettings();
+    return res.status(200).json({ settings });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load attendance settings.",
+      error: error.message,
+    });
+  }
+};
+
+const getCurrentMeetingPin = async (req, res) => {
+  try {
+    const { projectName, meetingTitle, rotate } = req.query;
+    const pinData = FaceMeetingPinService.getCurrentPin(projectName || meetingTitle, Date.now(), {
+      rotate: rotate === "true",
+    });
+    return res.status(200).json(pinData);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to generate face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
+const validateCurrentMeetingPin = async (req, res) => {
+  try {
+    const { projectName, meetingTitle, meetingPin, pin } = req.body || {};
+    const pinData = FaceMeetingPinService.validatePin({
+      projectName: projectName || meetingTitle,
+      pin: meetingPin || pin,
+    });
+
+    return res.status(200).json({
+      valid: true,
+      projectName: pinData.projectName,
+      expiresAt: pinData.expiresAt,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      valid: false,
+      message: error.message || "Invalid or expired face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
+const stopCurrentMeetingPin = async (req, res) => {
+  try {
+    const { projectName, meetingTitle } = req.body || {};
+    const submittedProjectName = projectName || meetingTitle;
+    FaceMeetingPinService.rotatePin(submittedProjectName);
+    return res.status(200).json({
+      message: "Current face attendance PIN stopped.",
+      projectName: String(submittedProjectName || "").trim(),
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to stop face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  registerFaceProfile,
+  verifyFaceAttendance,
+  getFaceProfile,
+  getFaceLogs,
+  getFaceProfileByIdentifier,
+  getAttendanceSettings,
+  getCurrentMeetingPin,
+  validateCurrentMeetingPin,
+  stopCurrentMeetingPin,
+};

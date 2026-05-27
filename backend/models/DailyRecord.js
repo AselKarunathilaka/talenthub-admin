@@ -51,9 +51,26 @@ const DailyRecordSchema = new mongoose.Schema(
     },
     meetingAttendance: [
       {
+        projectName: {
+          type: String,
+          default: "",
+        },
+        projectKey: {
+          type: String,
+          default: "",
+        },
         meetingTitle: {
           type: String,
           required: true,
+        },
+        meetingSessionId: {
+          type: String,
+          default: "",
+        },
+        method: {
+          type: String,
+          enum: ["qr", "face_meeting", "meeting", "manual"],
+          default: "qr",
         },
         attendanceStatus: {
           type: String,

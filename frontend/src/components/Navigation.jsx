@@ -5,6 +5,7 @@ import {
   X,
   Home,
   QrCode,
+  Camera,
   Calendar,
   LogOut,
   User,
@@ -167,6 +168,11 @@ const Navigation = ({ children }) => {
       label: "Announcements",
       icon: <Megaphone className="h-5 w-5" />,
       badge: unreadCount,
+    },
+    {
+      to: "/face-attendance",
+      label: "Face Attendance",
+      icon: <Camera className="h-5 w-5" />,
     },
     {
       to: "/scan-qr",

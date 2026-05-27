@@ -8,6 +8,26 @@ const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
 
+const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
+const MEETING_ATTENDANCE_TYPES = new Set(["qr", "face_meeting", "meeting"]);
+
+const getDateKey = (date) => {
+  const parsedDate = date ? new Date(date) : null;
+  return parsedDate && !Number.isNaN(parsedDate.getTime())
+    ? parsedDate.toISOString().slice(0, 10)
+    : String(date || "");
+};
+
+const getMeetingKey = (date, meetingName) =>
+  `${getDateKey(date)}::${String(meetingName || "General Meeting").trim().toLowerCase()}`;
+
+const normalizeAttendanceMethod = (type) => {
+  const normalizedType = String(type || "").toLowerCase();
+  if (normalizedType === "face" || normalizedType === "face_meeting") return "face";
+  if (normalizedType === "qr" || normalizedType === "daily_qr" || normalizedType === "meeting") return "qr";
+  return normalizedType || "unknown";
+};
+
 const addIntern = async (req, res) => {
   try {
     const { Trainee_HomeAddress } = req.body;
@@ -316,21 +336,59 @@ const getAttendanceByInternId = async (req, res) => {
   const dailyAttendance = [];
     const meetingAttendance = [];
     
-    // Add ALL legacy meeting attendance from intern.attendance (including 'General Meeting' and those with no meetingName)
-    // Only skip entries that are daily QR scans (type: 'daily' | 'daily_qr')
+    const meetingMethodByKey = new Map();
+    const dailyMethodByDate = new Map();
+    const dailyRecordMeetingKeys = new Set();
+
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach(entry => {
         const type = (entry.type || '').toLowerCase();
-        const isDailyEntry = type === 'daily' || type === 'daily_qr';
+        if (DAILY_ATTENDANCE_TYPES.has(type)) {
+          const markedAt = entry.timeMarked || entry.date;
+          const dateKey = getDateKey(entry.date);
+          const current = dailyMethodByDate.get(dateKey);
+          if (!current || new Date(markedAt) > new Date(current.markedAt)) {
+            dailyMethodByDate.set(dateKey, {
+              method: normalizeAttendanceMethod(type),
+              markedAt,
+            });
+          }
+        }
+
+        if (!MEETING_ATTENDANCE_TYPES.has(type)) return;
+
+        const meetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic || 'General Meeting';
+        meetingMethodByKey.set(getMeetingKey(entry.date, meetingName), normalizeAttendanceMethod(type));
+      });
+    }
+
+    dailyRecords.forEach(record => {
+      if (record.meetingAttendance && record.meetingAttendance.length > 0) {
+        record.meetingAttendance.forEach(meeting => {
+          const projectName = meeting.projectName || meeting.meetingTitle;
+          dailyRecordMeetingKeys.add(getMeetingKey(record.date, projectName));
+        });
+      }
+    });
+
+    // Add legacy meeting attendance from intern.attendance when no DailyRecord meeting exists.
+    // Skip daily/face attendance entries so they do not appear as meetings.
+    if (intern.attendance && intern.attendance.length > 0) {
+      intern.attendance.forEach(entry => {
+        const type = (entry.type || '').toLowerCase();
+        const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         if (isDailyEntry) return; // skip daily QR/daily entries
 
         // All other legacy entries are preserved as meeting attendance
-        const legacyMeetingName = entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
+        const legacyMeetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
+        if (dailyRecordMeetingKeys.has(getMeetingKey(entry.date, legacyMeetingName))) return;
+
         meetingAttendance.push({
           date: entry.date,
           status: entry.status || 'Present',
           meetingName: legacyMeetingName || 'General Meeting',
           type: 'Meeting',
+          attendanceMethod: normalizeAttendanceMethod(type),
           time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit'
@@ -345,10 +403,19 @@ const getAttendanceByInternId = async (req, res) => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== 'absent') {
         const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
+        const meetingDerivedMethod = record.meetingAttendance
+          ?.map((meeting) => {
+            const projectName = meeting.projectName || meeting.meetingTitle;
+            return meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName));
+          })
+          .find(Boolean);
         dailyAttendance.push({
           date: record.date,
           status: record.attendance === 'present' ? 'Present' : record.attendance === 'late' ? 'Late' : 'Absent',
           type: 'Daily',
+          attendanceMethod: dailyMethodByDate.get(getDateKey(record.date))?.method ||
+            normalizeAttendanceMethod(meetingDerivedMethod) ||
+            'unknown',
           time: attendanceTime ? attendanceTime.toLocaleTimeString('en-US', {
             hour: '2-digit',
             minute: '2-digit'
@@ -361,11 +428,16 @@ const getAttendanceByInternId = async (req, res) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach(meeting => {
           const attendanceTime = new Date(meeting.attendanceTime);
+          const projectName = meeting.projectName || meeting.meetingTitle;
           meetingAttendance.push({
             date: record.date,
             status: "Present",
-            meetingName: meeting.meetingTitle,
+            meetingName: projectName,
+            projectName,
             type: 'Meeting',
+            attendanceMethod: normalizeAttendanceMethod(
+              meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName))
+            ),
             time: attendanceTime.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit'
@@ -376,7 +448,7 @@ const getAttendanceByInternId = async (req, res) => {
       }
     });
 
-    // Fallback: include daily QR scans from intern.attendance if DailyRecord doesn't exist for that date
+    // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {
       const datesWithDailyRecord = new Set(
         dailyAttendance.map((d) => new Date(d.date).toDateString())
@@ -385,7 +457,7 @@ const getAttendanceByInternId = async (req, res) => {
       if (intern.attendance && intern.attendance.length > 0) {
         intern.attendance.forEach((entry) => {
           const type = (entry.type || '').toLowerCase();
-          const isDaily = type === 'daily' || type === 'daily_qr';
+          const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
           if (!isDaily) return; // only consider daily scans here
 
           const entryDate = entry.date ? new Date(entry.date) : null;
@@ -398,12 +470,14 @@ const getAttendanceByInternId = async (req, res) => {
             date: entryDate,
             status: (entry.status || 'Present'),
             type: 'Daily',
+            attendanceMethod: normalizeAttendanceMethod(type),
             time: (entry.timeMarked ? new Date(entry.timeMarked) : entryDate).toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit'
             }),
             attendanceTime: entry.timeMarked || entry.date
           });
+          datesWithDailyRecord.add(dayKey);
         });
       }
     } catch (e) {
@@ -412,17 +486,25 @@ const getAttendanceByInternId = async (req, res) => {
 
     // Sort daily attendance by date (newest first)
     dailyAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+    const uniqueDailyAttendance = [];
+    const seenDailyDates = new Set();
+    dailyAttendance.forEach((entry) => {
+      const dayKey = getDateKey(entry.date);
+      if (seenDailyDates.has(dayKey)) return;
+      seenDailyDates.add(dayKey);
+      uniqueDailyAttendance.push(entry);
+    });
     
     // Sort meeting attendance by date (newest first)
     meetingAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Combine for backward compatibility
-    const combinedAttendance = [...dailyAttendance, ...meetingAttendance];
+    const combinedAttendance = [...uniqueDailyAttendance, ...meetingAttendance];
     combinedAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
 
     const response = {
       attendance: combinedAttendance, // Keep for backward compatibility
-      dailyAttendance: dailyAttendance,
+      dailyAttendance: uniqueDailyAttendance,
       meetingAttendance: meetingAttendance,
       stats: {
         present: meetingAttendance.filter(entry => entry.status === "Present").length,
@@ -431,9 +513,9 @@ const getAttendanceByInternId = async (req, res) => {
     };
 
     console.log("Backend Response:", {
-      dailyAttendanceCount: dailyAttendance.length,
+      dailyAttendanceCount: uniqueDailyAttendance.length,
       meetingAttendanceCount: meetingAttendance.length,
-      dailyAttendanceSample: dailyAttendance.slice(0, 2),
+      dailyAttendanceSample: uniqueDailyAttendance.slice(0, 2),
       meetingAttendanceSample: meetingAttendance.slice(0, 2),
       combinedCount: combinedAttendance.length
     });

@@ -32,6 +32,7 @@ import {
   FaBullhorn,
   FaChevronDown,
   FaQrcode,
+  FaKey,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -915,6 +916,21 @@ const AdminDashboard = () => {
                   </div>
                   <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
                     QR Generator
+                  </span>
+                </motion.button>
+
+                {/* 9. PIN Generator */}
+                <motion.button
+                  onClick={() => navigate("/admin/pin-management")}
+                  whileHover={{ scale: 1.03, y: -1 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
+                >
+                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100">
+                    <FaKey className="h-3.5 w-3.5 text-emerald-600" />
+                  </div>
+                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
+                    PIN Generator
                   </span>
                 </motion.button>
               </div>

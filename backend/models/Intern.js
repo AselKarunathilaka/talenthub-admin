@@ -5,12 +5,15 @@ const attendanceSchema = new mongoose.Schema({
   status: { type: String, enum: ["Present", "Absent"], default: "Absent" },
   type: {
     type: String,
-    enum: ["manual", "qr", "daily_qr", "daily"],
+      enum: ["manual", "qr", "daily_qr", "daily", "face", "meeting", "face_meeting"],
     default: "manual",
   },
   timeMarked: { type: Date },
   qrCode: { type: String },
+  projectName: { type: String },
+  projectKey: { type: String },
   meetingName: { type: String },
+  meetingSessionId: { type: String },
 });
 
 // Store API-style keys as the canonical document shape so DB contains Trainee_* fields.

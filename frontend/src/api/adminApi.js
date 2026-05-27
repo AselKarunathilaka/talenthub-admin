@@ -319,11 +319,11 @@ export const adminApi = {
   },
 
   // Generate QR Code
-  generateQRCode: async (type = 'meeting', meetingTitle = '') => {
+  generateQRCode: async (type = 'meeting', projectName = '') => {
     try {
       let url = `${API_BASE_URL}/qrcode/generate-qrcode?type=${type}`;
-      if (type === 'meeting' && meetingTitle) {
-        url += `&meetingTitle=${encodeURIComponent(meetingTitle)}`;
+      if (type === 'meeting' && projectName) {
+        url += `&projectName=${encodeURIComponent(projectName)}`;
       }
       
       const response = await fetch(url, {
@@ -338,6 +338,61 @@ export const adminApi = {
       return await response.json();
     } catch (error) {
       console.error("Error generating QR code:", error);
+      throw error;
+    }
+  },
+
+  getFaceMeetingPin: async (projectName = '', options = {}) => {
+    try {
+      const query = new URLSearchParams({
+        projectName,
+        ...(options.rotate ? { rotate: "true" } : {}),
+      }).toString();
+      const requestOptions = {
+        method: "GET",
+        headers: getHeaders(),
+      };
+
+      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin?${query}`, requestOptions);
+
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin?${query}`, requestOptions);
+      }
+
+      await checkAuth(response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to generate face attendance PIN: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Error generating face attendance PIN:", error);
+      throw error;
+    }
+  },
+
+  stopFaceMeetingPin: async (projectName = '') => {
+    try {
+      const requestOptions = {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ projectName }),
+      };
+
+      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin/stop`, requestOptions);
+
+      if (response.status === 404) {
+        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin/stop`, requestOptions);
+      }
+
+      await checkAuth(response);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to stop face attendance PIN: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error("Error stopping face attendance PIN:", error);
       throw error;
     }
   },
