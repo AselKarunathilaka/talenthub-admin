@@ -60,9 +60,17 @@ const verifyFaceAttendance = async (req, res) => {
     });
 
     if (!result.matched) {
+      const messageByReason = {
+        profile_missing_for_intern: "No face profile is registered for your account. Please enroll your face first.",
+        profile_missing: "No active face profile found. Please enroll your face first.",
+        profile_has_no_embeddings: "Your face profile is incomplete. Please re-enroll your face.",
+        face_not_recognized: "Face did not match your registered profile. Try again with better lighting or re-enroll your face.",
+      };
+
       return res.status(404).json({
-        message: "No matching face profile found. Try again or use QR backup.",
+        message: messageByReason[result.reason] || "No matching face profile found. Try again or use QR backup.",
         matched: false,
+        reason: result.reason,
         threshold: result.threshold,
         bestDistance: result.bestDistance,
       });
@@ -199,6 +207,28 @@ const getCurrentMeetingPin = async (req, res) => {
   }
 };
 
+const validateCurrentMeetingPin = async (req, res) => {
+  try {
+    const { projectName, meetingTitle, meetingPin, pin } = req.body || {};
+    const pinData = FaceMeetingPinService.validatePin({
+      projectName: projectName || meetingTitle,
+      pin: meetingPin || pin,
+    });
+
+    return res.status(200).json({
+      valid: true,
+      projectName: pinData.projectName,
+      expiresAt: pinData.expiresAt,
+    });
+  } catch (error) {
+    return res.status(error.statusCode || 400).json({
+      valid: false,
+      message: error.message || "Invalid or expired face attendance PIN.",
+      error: error.message,
+    });
+  }
+};
+
 const stopCurrentMeetingPin = async (req, res) => {
   try {
     const { projectName, meetingTitle } = req.body || {};
@@ -224,5 +254,6 @@ module.exports = {
   getFaceProfileByIdentifier,
   getAttendanceSettings,
   getCurrentMeetingPin,
+  validateCurrentMeetingPin,
   stopCurrentMeetingPin,
 };

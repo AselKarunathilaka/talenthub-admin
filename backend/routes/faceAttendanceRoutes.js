@@ -8,6 +8,7 @@ const {
   getFaceProfileByIdentifier,
   getAttendanceSettings,
   getCurrentMeetingPin,
+  validateCurrentMeetingPin,
   stopCurrentMeetingPin,
 } = require("../controllers/faceAttendanceController");
 
@@ -20,6 +21,7 @@ router.get("/profile", getFaceProfile);
 router.get("/logs", getFaceLogs);
 router.get("/settings", getAttendanceSettings);
 router.get("/meeting-pin", getCurrentMeetingPin);
+router.post("/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/meeting-pin/stop", stopCurrentMeetingPin);
 router.get("/profile/:identifier", getFaceProfileByIdentifier);
 

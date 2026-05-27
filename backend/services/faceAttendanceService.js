@@ -116,7 +116,17 @@ class FaceAttendanceService {
       "Trainee_Name Trainee_ID Trainee_Email attendance",
     );
 
+    if (!profiles.length) {
+      return {
+        matched: false,
+        reason: expectedInternId ? "profile_missing_for_intern" : "profile_missing",
+        threshold: FACE_MATCH_THRESHOLD,
+        bestDistance: null,
+      };
+    }
+
     let bestMatch = null;
+    let hasUsableEmbedding = false;
 
     for (const profile of profiles) {
       if (!Array.isArray(profile.embeddings) || profile.embeddings.length === 0) {
@@ -124,6 +134,7 @@ class FaceAttendanceService {
       }
 
       for (const sample of profile.embeddings) {
+        hasUsableEmbedding = true;
         const distance = euclideanDistance(sample, normalizedDescriptor);
         if (!bestMatch || distance < bestMatch.distance) {
           bestMatch = {
@@ -137,6 +148,7 @@ class FaceAttendanceService {
     if (!bestMatch || bestMatch.distance > FACE_MATCH_THRESHOLD) {
       return {
         matched: false,
+        reason: hasUsableEmbedding ? "face_not_recognized" : "profile_has_no_embeddings",
         threshold: FACE_MATCH_THRESHOLD,
         bestDistance: bestMatch ? bestMatch.distance : null,
       };

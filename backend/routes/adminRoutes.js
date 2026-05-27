@@ -47,6 +47,7 @@ const {
 } = require("../controllers/attendanceSettingsController");
 const {
   getCurrentMeetingPin,
+  validateCurrentMeetingPin,
   stopCurrentMeetingPin,
 } = require("../controllers/faceAttendanceController");
 
@@ -139,6 +140,7 @@ router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
 router.get("/attendance/settings", getAttendanceSettings);
 router.put("/attendance/settings", updateAttendanceSettings);
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
+router.post("/face-attendance/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 
 // Debug: test SMTP connection and send a test email

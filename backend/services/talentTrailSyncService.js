@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const axios = require("axios");
 const https = require("https");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const Intern = require("../models/Intern");
@@ -9,57 +9,70 @@ const FEDERATED_EMAIL = "admin@slt.lk";
 
 const sslAgent = new https.Agent({ rejectUnauthorized: false });
 
+const talentTrailClient = axios.create({
+  baseURL: BASE_URL,
+  httpsAgent: sslAgent,
+  timeout: 30000,
+});
+
+function formatAxiosError(error, fallbackMessage) {
+  const status = error.response?.status;
+  const statusText = error.response?.statusText;
+  const details =
+    typeof error.response?.data === "string"
+      ? error.response.data
+      : error.response?.data?.message || error.response?.data?.error;
+
+  return [
+    fallbackMessage,
+    status ? `${status}${statusText ? ` ${statusText}` : ""}` : null,
+    details,
+  ].filter(Boolean).join(": ");
+}
+
 async function getTalentTrailToken() {
-  const res = await fetch(`${BASE_URL}/auth/federated-login`, {
-    method: "POST",
-    agent: sslAgent,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Service-Token": SERVICE_TOKEN,
-    },
-    body: JSON.stringify({
-      email: FEDERATED_EMAIL,
-      source: "talenthub",
-      timestamp: Date.now(),
-    }),
-  });
+  try {
+    const res = await talentTrailClient.post(
+      "/auth/federated-login",
+      {
+        email: FEDERATED_EMAIL,
+        source: "talenthub",
+        timestamp: Date.now(),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Service-Token": SERVICE_TOKEN,
+        },
+      },
+    );
 
-  if (!res.ok) {
-    throw new Error(`TalentTrail auth failed: ${res.status} ${res.statusText}`);
+    return res.data.token;
+  } catch (error) {
+    throw new Error(formatAxiosError(error, "TalentTrail auth failed"));
   }
+}
 
-  const data = await res.json();
-  return data.token;
+async function getTalentTrailData(path, token, label) {
+  try {
+    const res = await talentTrailClient.get(path, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.data;
+  } catch (error) {
+    throw new Error(formatAxiosError(error, `Failed to fetch ${label}`));
+  }
 }
 
 async function fetchAllInterns(token) {
-  const res = await fetch(`${BASE_URL}/interns`, {
-    agent: sslAgent,
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!res.ok) throw new Error(`Failed to fetch interns: ${res.status}`);
-  return res.json();
+  return getTalentTrailData("/interns", token, "interns");
 }
 
 async function buildInternProjectMap(token) {
-  const [teamsRes, projectsRes] = await Promise.all([
-    fetch(`${BASE_URL}/teams`, {
-      agent: sslAgent,
-      headers: { Authorization: `Bearer ${token}` },
-    }),
-    fetch(`${BASE_URL}/projects`, {
-      agent: sslAgent,
-      headers: { Authorization: `Bearer ${token}` },
-    }),
+  const [teams, projects] = await Promise.all([
+    getTalentTrailData("/teams", token, "teams"),
+    getTalentTrailData("/projects", token, "projects"),
   ]);
-
-  if (!teamsRes.ok)
-    throw new Error(`Failed to fetch teams: ${teamsRes.status}`);
-  if (!projectsRes.ok)
-    throw new Error(`Failed to fetch projects: ${projectsRes.status}`);
-
-  const teams = await teamsRes.json();
-  const projects = await projectsRes.json();
 
   const projectMap = new Map(projects.map((p) => [p.projectId, p]));
 
@@ -71,13 +84,7 @@ async function buildInternProjectMap(token) {
     }
   }
 
-  const teamMembersRes = await fetch(`${BASE_URL}/team-members`, {
-    agent: sslAgent,
-    headers: { Authorization: `Bearer ${token}` },
-  });
-  if (!teamMembersRes.ok)
-    throw new Error(`Failed to fetch team-members: ${teamMembersRes.status}`);
-  const teamMembers = await teamMembersRes.json();
+  const teamMembers = await getTalentTrailData("/team-members", token, "team-members");
 
   const internProjectMap = new Map();
 

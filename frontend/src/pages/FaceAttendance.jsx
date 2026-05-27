@@ -241,6 +241,23 @@ const FaceAttendance = () => {
     return false;
   };
 
+  const validateMeetingPinBeforeCamera = async () => {
+    const response = await apiFetch("/face-attendance/meeting-pin/validate", {
+      method: "POST",
+      body: JSON.stringify({
+        projectName: normalizeProjectName(projectName),
+        meetingPin: meetingPin.trim(),
+      }),
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.valid) {
+      throw new Error(result.message || "Invalid or expired face attendance PIN.");
+    }
+
+    return result;
+  };
+
   const startCamera = async () => {
     if (
       mode !== "enroll" &&
@@ -253,6 +270,28 @@ const FaceAttendance = () => {
     }
 
     if (mode !== "enroll" && !requireValidLocation("You must be within SLT office radius.")) return;
+    if (mode !== "enroll" && attendanceType === "meeting") {
+      if (!projectName.trim()) {
+        toast.error("Enter the project name before starting the camera.");
+        return;
+      }
+
+      if (!/^\d{6}$/.test(meetingPin.trim())) {
+        toast.error("Enter the 6-digit meeting PIN before starting the camera.");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        await validateMeetingPinBeforeCamera();
+      } catch (error) {
+        toast.error(error.message || "Invalid or expired face attendance PIN.");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
     if (!navigator.mediaDevices?.getUserMedia) {
       toast.error("Camera access requires a supported browser on HTTPS or localhost.");
       return;
