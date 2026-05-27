@@ -52,13 +52,13 @@ const {
 
 const { getCertificateData } = require("../controllers/certificateController");
 
-// Manually trigger TalentTrail sync
 const { syncTalentTrailData } = require("../services/talentTrailSyncService");
 
+// ── Public routes (no auth) ───────────────────────────────────────────────────
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
 
-// All admin routes require authentication
+// ── All routes below require authentication ───────────────────────────────────
 router.use(authMiddleware);
 
 // Dashboard statistics
@@ -141,7 +141,8 @@ router.put("/attendance/settings", updateAttendanceSettings);
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 
-router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
+// Debug: test SMTP connection and send a test email
+router.get("/debug/smtp-test", async (req, res) => {
   const nodemailer = require("nodemailer");
   const logs = [];
 
@@ -182,6 +183,7 @@ router.get("/debug/smtp-test", authMiddleware, async (req, res) => {
   }
 });
 
+// Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {
   try {
     const result = await syncTalentTrailData();

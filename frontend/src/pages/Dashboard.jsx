@@ -196,7 +196,10 @@ const Dashboard = () => {
     try {
       if (internId) {
         const projectCheck = await api.get(`/interns/${internId}/projects/check`);
-        if (projectCheck && projectCheck.hasProject === false) {
+        const hasProject =
+          projectCheck?.hasProject === true ||
+          (Array.isArray(projectCheck?.projects) && projectCheck.projects.length > 0);
+        if (projectCheck && !hasProject) {
           if (shouldPromptFace || faceModalOpenRef.current) {
             setProjectPopupPending(true);
           } else {

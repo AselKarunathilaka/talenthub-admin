@@ -811,7 +811,7 @@ const Logbook = () => {
                                 </ol>
                                 <p className="text-xs text-amber-700 border-t border-amber-200 pt-2 mt-2">
                                   Already joined a team? Team data is synced
-                                  every 30 minutes — please wait a moment and
+                                  every 5 minutes — please wait a moment and
                                   refresh, or contact your administrator if the
                                   issue persists.
                                 </p>
@@ -904,29 +904,6 @@ const Logbook = () => {
                       Use "Work From Home" when working remotely
                     </li>
                   </ul>
-                </div>
-
-                {/* Team assignment notice */}
-                <div className="bg-amber-50 rounded-2xl border border-amber-200 p-6">
-                  <h3 className="text-base font-semibold text-amber-800 mb-2 flex items-center">
-                    <div className="p-2 bg-amber-100 rounded-lg mr-3">
-                      <FiAlertTriangle className="h-4 w-4 text-amber-600" />
-                    </div>
-                    Team Assignment Required
-                  </h3>
-                  <p className="text-sm text-amber-700 mb-3">
-                    You must be assigned to a project team on TalentTrail before
-                    submitting logbook entries.
-                  </p>
-                  <a
-                    href="https://talenttrail.slt.lk"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-sm font-medium text-amber-800 underline decoration-amber-500 hover:text-amber-900"
-                  >
-                    Visit talenttrail.slt.lk
-                    <FiArrowRight className="ml-1 h-3 w-3" />
-                  </a>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6">

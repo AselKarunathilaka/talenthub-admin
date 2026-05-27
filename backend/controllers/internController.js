@@ -4,11 +4,9 @@ const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
 const DailyRecord = require("../models/DailyRecord");
-const Project = require("../models/Project");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 
 const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
 
@@ -757,52 +755,22 @@ const checkInternProjects = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    const teamName = intern.team;
+    // Look up the locally-synced TalentTrail record by email
+    const InternTalentTrailSync = require("../models/InternTalentTrailSync");
+    const syncRecord = await InternTalentTrailSync.findOne({
+      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
+    }).select("projects lastSyncedAt");
 
-    // If intern has no team, they definitely have no project
-    if (!teamName || teamName.trim() === "") {
-      return res.status(200).json({ hasProject: false, projectCount: 0 });
+    if (!syncRecord) {
+      // No TalentTrail record yet — intern hasn't been synced
+      return res.status(200).json({ projects: null, projectCount: 0 });
     }
 
-    // Fetch projects from TalentTrail External API
-    const apiKey = process.env.TALENTTRAIL_API_KEY;
-    if (!apiKey) {
-      console.error("TALENTTRAIL_API_KEY not configured");
-      return res.status(500).json({
-        message: "TalentTrail API key not configured",
-        error: "Missing TALENTTRAIL_API_KEY environment variable",
-      });
-    }
-
-    const response = await axios.get(
-      "https://talenttrail.slt.lk/api/external/projects",
-      {
-        headers: {
-          "X-API-Key": apiKey,
-        },
-      }
-    );
-
-    // The API returns an array of project objects
-    const projects = response.data;
-
-    if (!Array.isArray(projects)) {
-      console.error("Invalid response from TalentTrail API:", projects);
-      return res.status(500).json({
-        message: "Invalid response from TalentTrail API",
-        error: "Expected array of projects",
-      });
-    }
-
-    // Filter projects to find those where the intern's team is in assignedTeamNames
-    const matchingProjects = projects.filter((project) => {
-      const assignedTeamNames = project.assignedTeamNames || [];
-      return assignedTeamNames.includes(teamName.trim());
-    });
-
+    // Check the projects array directly
+    const projects = Array.isArray(syncRecord.projects) ? syncRecord.projects : [];
     return res.status(200).json({
-      hasProject: matchingProjects.length > 0,
-      projectCount: matchingProjects.length,
+      projects: projects.length > 0 ? projects : null,
+      projectCount: projects.length,
     });
   } catch (error) {
     console.error("Error checking intern projects:", error);

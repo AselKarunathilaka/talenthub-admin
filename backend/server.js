@@ -46,7 +46,14 @@ const server = app.listen(PORT, () => {
   // Initialize daily 4 PM approved leave report scheduler
   initScheduler();
 
-  startTalentTrailSyncJob();
+  // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
+  console.log("⏳ Starting TalentTrail sync job...");
+  try {
+    startTalentTrailSyncJob();
+    console.log("✅ TalentTrail sync job registered");
+  } catch (err) {
+    console.error("❌ TalentTrail sync job failed to start:", err.message);
+  }
 });
 
 // Set server timeout to handle longer requests (5 minutes)
