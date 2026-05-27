@@ -26,8 +26,10 @@ const SLT_OFFICE = {
 };
 
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+const getProjectKey = (value) => normalizeProjectName(value);
 
-const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = "") => {
+const validateQRCodeFormat = (qrCode, scanMode, projectName = "") => {
   if (!qrCode || typeof qrCode !== "string") return false;
 
   if (scanMode === "daily") {
@@ -42,11 +44,11 @@ const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = "") => {
 
   try {
     const parsed = JSON.parse(qrCode);
+    const qrProjectName = normalizeProjectName(parsed.projectName || parsed.meetingTitle || "");
     return (
       parsed.type === "meeting_attendance" &&
-      typeof parsed.meetingTitle === "string" &&
-      parsed.meetingTitle.trim() &&
-      (!meetingTitle.trim() || parsed.meetingTitle.trim() === meetingTitle.trim()) &&
+      qrProjectName &&
+      (!projectName.trim() || getProjectKey(qrProjectName) === getProjectKey(projectName)) &&
       (!parsed.timestamp || !Number.isNaN(parseInt(parsed.timestamp, 10)))
     );
   } catch {
@@ -89,7 +91,7 @@ const FaceAttendance = () => {
   const [cooldown, setCooldown] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [qrMode, setQrMode] = useState("daily");
-  const [meetingTitle, setMeetingTitle] = useState("");
+  const [projectName, setProjectName] = useState("");
   const [meetingPin, setMeetingPin] = useState("");
   const [qrScanning, setQrScanning] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
@@ -105,7 +107,7 @@ const FaceAttendance = () => {
   const distanceKm = getDistanceKm(location);
   const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
-  const meetingDetailsReady = meetingTitle.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
+  const meetingDetailsReady = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const attendanceLocationReady = locationValid;
   const canStartCamera =
     mode === "enroll" ||
@@ -368,7 +370,7 @@ const FaceAttendance = () => {
   const handleFaceRecognition = async () => {
     if (!requireValidLocation("You must be within SLT office radius to mark attendance.")) return;
 
-    if (attendanceType === "meeting" && !meetingTitle.trim()) {
+    if (attendanceType === "meeting" && !projectName.trim()) {
       toast.error("Enter the project name before marking meeting attendance.");
       return;
     }
@@ -393,12 +395,12 @@ const FaceAttendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType,
-          meetingTitle: attendanceType === "meeting" ? meetingTitle.trim() : undefined,
+          projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
           meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
             location: location || null,
             source: "browser-camera",
-            meetingTitle: attendanceType === "meeting" ? meetingTitle.trim() : undefined,
+            projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
             meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           },
         }),
@@ -441,7 +443,7 @@ const FaceAttendance = () => {
   const startQRScanner = async () => {
     if (!requireValidLocation("You must be within SLT office radius to use QR backup.")) return;
 
-    if (qrMode === "meeting" && !meetingTitle.trim()) {
+    if (qrMode === "meeting" && !projectName.trim()) {
       toast.error("Enter the project name before scanning.");
       return;
     }
@@ -456,7 +458,7 @@ const FaceAttendance = () => {
         if (!result || processedQrRef.current) return;
 
         const qrData = result.getText();
-        if (!validateQRCodeFormat(qrData, qrMode, meetingTitle)) {
+        if (!validateQRCodeFormat(qrData, qrMode, projectName)) {
           toast.error(
             qrMode === "daily"
               ? "Scan a valid daily attendance QR code."
@@ -485,7 +487,7 @@ const FaceAttendance = () => {
               body: JSON.stringify(
                 qrMode === "daily"
                   ? { ...payload, scanType: "daily" }
-                  : { ...payload, meetingTitle: meetingTitle.trim() },
+                  : { ...payload, projectName: projectName.trim() },
               ),
             },
           );
@@ -679,8 +681,8 @@ const FaceAttendance = () => {
                             <span className="text-sm font-medium text-slate-700">Project Name *</span>
                             <input
                               type="text"
-                              value={meetingTitle}
-                              onChange={(event) => setMeetingTitle(event.target.value)}
+                              value={projectName}
+                              onChange={(event) => setProjectName(event.target.value)}
                               className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                               placeholder="Enter today's project name"
                             />
@@ -881,8 +883,8 @@ const FaceAttendance = () => {
                     <span className="text-sm font-medium text-slate-700">Project Name</span>
                     <input
                       type="text"
-                      value={meetingTitle}
-                      onChange={(event) => setMeetingTitle(event.target.value)}
+                      value={projectName}
+                      onChange={(event) => setProjectName(event.target.value)}
                       className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
                       placeholder="Enter the exact project name"
                     />

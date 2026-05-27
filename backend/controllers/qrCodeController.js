@@ -9,11 +9,14 @@ const moment = require("moment");
 
 const QRCode = require("qrcode");
 
+const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+const getProjectKey = (value) => normalizeProjectName(value);
 
 
 const generateQRCode = async (req, res) => {
   try {
-    const { internId, type, meetingTitle } = req.query; // Get parameters including meetingTitle
+    const { internId, type, projectName, meetingTitle } = req.query;
+    const normalizedProjectName = normalizeProjectName(projectName || meetingTitle || "General Meeting");
     
     let sessionId;
     if (type === 'daily') {
@@ -25,10 +28,11 @@ const generateQRCode = async (req, res) => {
       }
     } else {
       // Generate QR for meeting attendance (JSON format expected by scanner)
-      // Must include type and meetingTitle
+      // Keep meetingTitle for backward compatibility with older scanners.
       const meetingData = {
         type: 'meeting_attendance',
-        meetingTitle: meetingTitle || 'General Meeting',
+        projectName: normalizedProjectName,
+        meetingTitle: normalizedProjectName,
         timestamp: Date.now()
       };
 
@@ -161,6 +165,7 @@ const scanQRCode = async (req, res) => {
       rawMessage.includes("already marked") ||
       rawMessage.includes("Invalid QR code") ||
       rawMessage.includes("Meeting title") ||
+      rawMessage.includes("Project name") ||
       rawMessage.includes("expired");
 
     res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
@@ -173,7 +178,8 @@ const scanQRCode = async (req, res) => {
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId: bodyInternId, meetingTitle, lat, lng } = req.body;
+  const { qrCode, internId: bodyInternId, projectName, meetingTitle, lat, lng } = req.body;
+  const submittedProjectName = normalizeProjectName(projectName || meetingTitle || "");
 
   // Identity verification: use token identity, reject mismatches
   const tokenInternId = req.user?.id;
@@ -193,8 +199,8 @@ const scanMeetingQRCode = async (req, res) => {
       label: "Meeting attendance",
     });
 
-    if (!meetingTitle) {
-      return res.status(400).json({ message: "Meeting title is required." });
+    if (!submittedProjectName) {
+      return res.status(400).json({ message: "Project name is required." });
     }
     // Try to parse QR code as JSON
     let qrPayload;
@@ -207,9 +213,9 @@ const scanMeetingQRCode = async (req, res) => {
     if (qrPayload.type !== "meeting_attendance") {
       return res.status(400).json({ message: "Invalid QR code type. Please scan a valid meeting attendance QR code." });
     }
-    // Validate meeting title matches
-    if (qrPayload.meetingTitle !== meetingTitle) {
-      return res.status(400).json({ message: `Meeting title mismatch. QR code is for '${qrPayload.meetingTitle}', but you entered '${meetingTitle}'.` });
+    const qrProjectName = normalizeProjectName(qrPayload.projectName || qrPayload.meetingTitle || "");
+    if (getProjectKey(qrProjectName) !== getProjectKey(submittedProjectName)) {
+      return res.status(400).json({ message: `Project name mismatch. QR code is for '${qrProjectName}', but you entered '${submittedProjectName}'.` });
     }
     // Optionally, check expiry (1 hour)
     const now = Date.now();
@@ -217,7 +223,7 @@ const scanMeetingQRCode = async (req, res) => {
       return res.status(400).json({ message: "QR code is expired." });
     }
     // Mark meeting attendance in TalentHub system
-    const result = await qrCodeService.markMeetingAttendance(internId, meetingTitle, qrCode);
+    const result = await qrCodeService.markMeetingAttendance(internId, submittedProjectName, qrCode);
     const message = result.dailyAttendanceMarked
       ? "Meeting attendance marked successfully. Daily attendance also recorded."
       : "Meeting attendance marked successfully.";

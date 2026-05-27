@@ -357,7 +357,7 @@ const getAttendanceByInternId = async (req, res) => {
 
         if (!MEETING_ATTENDANCE_TYPES.has(type)) return;
 
-        const meetingName = entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic || 'General Meeting';
+        const meetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic || 'General Meeting';
         meetingMethodByKey.set(getMeetingKey(entry.date, meetingName), normalizeAttendanceMethod(type));
       });
     }
@@ -365,7 +365,8 @@ const getAttendanceByInternId = async (req, res) => {
     dailyRecords.forEach(record => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach(meeting => {
-          dailyRecordMeetingKeys.add(getMeetingKey(record.date, meeting.meetingTitle));
+          const projectName = meeting.projectName || meeting.meetingTitle;
+          dailyRecordMeetingKeys.add(getMeetingKey(record.date, projectName));
         });
       }
     });
@@ -379,7 +380,7 @@ const getAttendanceByInternId = async (req, res) => {
         if (isDailyEntry) return; // skip daily QR/daily entries
 
         // All other legacy entries are preserved as meeting attendance
-        const legacyMeetingName = entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
+        const legacyMeetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
         if (dailyRecordMeetingKeys.has(getMeetingKey(entry.date, legacyMeetingName))) return;
 
         meetingAttendance.push({
@@ -403,7 +404,10 @@ const getAttendanceByInternId = async (req, res) => {
       if (record.attendance && record.attendance !== 'absent') {
         const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
         const meetingDerivedMethod = record.meetingAttendance
-          ?.map((meeting) => meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, meeting.meetingTitle)))
+          ?.map((meeting) => {
+            const projectName = meeting.projectName || meeting.meetingTitle;
+            return meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName));
+          })
           .find(Boolean);
         dailyAttendance.push({
           date: record.date,
@@ -424,13 +428,15 @@ const getAttendanceByInternId = async (req, res) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach(meeting => {
           const attendanceTime = new Date(meeting.attendanceTime);
+          const projectName = meeting.projectName || meeting.meetingTitle;
           meetingAttendance.push({
             date: record.date,
             status: "Present",
-            meetingName: meeting.meetingTitle,
+            meetingName: projectName,
+            projectName,
             type: 'Meeting',
             attendanceMethod: normalizeAttendanceMethod(
-              meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, meeting.meetingTitle))
+              meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName))
             ),
             time: attendanceTime.toLocaleTimeString('en-US', {
               hour: '2-digit',

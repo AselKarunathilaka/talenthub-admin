@@ -12,6 +12,9 @@ const SLT_OFFICE = {
   radiusKm: 2,
 };
 
+const normalizeProjectName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
+const getProjectKey = (value) => normalizeProjectName(value);
+
 const getDistanceKm = (fromLocation) => {
   if (!Number.isFinite(fromLocation?.lat) || !Number.isFinite(fromLocation?.lng)) return null;
 
@@ -33,7 +36,7 @@ const getDistanceKm = (fromLocation) => {
 };
 
 // Function to validate QR code format based on scan mode
-const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = '') => {
+const validateQRCodeFormat = (qrCode, scanMode, projectName = '') => {
   if (!qrCode || typeof qrCode !== 'string') {
     return false;
   }
@@ -58,16 +61,16 @@ const validateQRCodeFormat = (qrCode, scanMode, meetingTitle = '') => {
     } catch (e) {
       return false;
     }
-    // Must have type and meetingTitle
+    const qrProjectName = normalizeProjectName(parsed.projectName || parsed.meetingTitle || '');
+    // Must have type and projectName
     if (
       parsed.type !== 'meeting_attendance' ||
-      typeof parsed.meetingTitle !== 'string' ||
-      !parsed.meetingTitle.trim()
+      !qrProjectName
     ) {
       return false;
     }
-    // Meeting title must match
-    if (meetingTitle.trim() && parsed.meetingTitle.trim() !== meetingTitle.trim()) {
+    // Project name must match
+    if (projectName.trim() && getProjectKey(qrProjectName) !== getProjectKey(projectName)) {
       return false;
     }
     // Timestamp validation (optional, if present)
@@ -87,17 +90,17 @@ const ScanQRCode = () => {
   const [location, setLocation] = useState({ lat: null, lng: null });
   const [locationError, setLocationError] = useState("");
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
-  const [meetingTitle, setMeetingTitle] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
   const isProcessingRef = useRef(false);
   const scanModeRef = useRef(scanMode);
-  const meetingTitleRef = useRef(meetingTitle);
+  const projectNameRef = useRef(projectName);
   const sltLocationRequiredRef = useRef(sltLocationRequired);
 
   // Keep refs in sync with state so the scanner callback always reads the latest values
   useEffect(() => { scanModeRef.current = scanMode; }, [scanMode]);
-  useEffect(() => { meetingTitleRef.current = meetingTitle; }, [meetingTitle]);
+  useEffect(() => { projectNameRef.current = projectName; }, [projectName]);
   useEffect(() => { sltLocationRequiredRef.current = sltLocationRequired; }, [sltLocationRequired]);
 
   const distanceKm = getDistanceKm(location);
@@ -123,7 +126,7 @@ const ScanQRCode = () => {
       return;
     }
 
-    if (scanMode === 'meeting' && !meetingTitle.trim()) {
+    if (scanMode === 'meeting' && !projectName.trim()) {
       toast.error('Please enter a project name first');
       setShowMeetingInput(true);
       return;
@@ -141,7 +144,7 @@ const ScanQRCode = () => {
         const qrData = result.getText();
         const internId = localStorage.getItem("internId");
         const currentScanMode = scanModeRef.current;
-        const currentMeetingTitle = meetingTitleRef.current;
+        const currentProjectName = projectNameRef.current;
 
         // Debug: log scanned data so we can diagnose format mismatches
         console.log('[QR Scanner] Scanned data:', qrData);
@@ -151,10 +154,10 @@ const ScanQRCode = () => {
         if (currentScanMode === 'meeting') {
           try {
             const parsed = JSON.parse(qrData);
-            const scannedMeetingTitle = String(parsed?.meetingTitle || '').trim();
-            const typedMeetingTitle = String(currentMeetingTitle || '').trim();
+            const scannedProjectName = normalizeProjectName(parsed?.projectName || parsed?.meetingTitle || '');
+            const typedProjectName = normalizeProjectName(currentProjectName || '');
 
-            if (!typedMeetingTitle) {
+            if (!typedProjectName) {
               toast.error('Please enter a project name first');
               setShowMeetingInput(true);
               setTimeout(() => { isProcessingRef.current = false; }, 1500);
@@ -163,10 +166,10 @@ const ScanQRCode = () => {
 
             if (
               parsed?.type === 'meeting_attendance' &&
-              scannedMeetingTitle &&
-              scannedMeetingTitle !== typedMeetingTitle
+              scannedProjectName &&
+              getProjectKey(scannedProjectName) !== getProjectKey(typedProjectName)
             ) {
-              toast.error(`Project name does not match QR meeting title: "${scannedMeetingTitle}"`);
+              toast.error(`Project name does not match QR project name: "${scannedProjectName}"`);
               setTimeout(() => { isProcessingRef.current = false; }, 2000);
               return;
             }
@@ -176,7 +179,7 @@ const ScanQRCode = () => {
         }
 
         // Validate QR code format before processing
-        if (!validateQRCodeFormat(qrData, currentScanMode, currentMeetingTitle)) {
+        if (!validateQRCodeFormat(qrData, currentScanMode, currentProjectName)) {
           const expectedFormat = currentScanMode === 'daily' ? 'daily attendance' : 'meeting attendance';
           console.warn('[QR Scanner] Validation failed. Expected:', expectedFormat, 'Got:', qrData.substring(0, 100));
           toast.error(`Invalid QR code format. Please scan a valid ${expectedFormat} QR code.`);
@@ -214,7 +217,7 @@ const ScanQRCode = () => {
             toast.success(res.message || 'Daily attendance marked successfully!');
             setIsScanning(false);
           } else {
-            if (!currentMeetingTitle.trim()) {
+            if (!currentProjectName.trim()) {
               toast.error("Please enter a project name first");
               isProcessingRef.current = false;
               return;
@@ -224,7 +227,7 @@ const ScanQRCode = () => {
               body: JSON.stringify({
                 qrCode: qrData,
                 internId,
-                meetingTitle: currentMeetingTitle.trim(),
+                projectName: currentProjectName.trim(),
                 lat,
                 lng
               })
@@ -450,8 +453,8 @@ const ScanQRCode = () => {
                   </label>
                   <input
                     type="text"
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
                     placeholder="Enter project name..."
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   />

@@ -9,34 +9,34 @@ function getPinSecret() {
   return process.env.FACE_MEETING_PIN_SECRET || process.env.TALENTHUB_FEDERATION_SECRET || dotenv.jwtSecret;
 }
 
-function normalizeMeetingTitle(meetingTitle) {
-  return String(meetingTitle || "").trim();
+function normalizeProjectName(projectName) {
+  return String(projectName || "").trim().replace(/\s+/g, " ");
 }
 
-function getMeetingKey(meetingTitle) {
-  return normalizeMeetingTitle(meetingTitle).toLowerCase();
+function getProjectKey(projectName) {
+  return normalizeProjectName(projectName);
 }
 
-function getPinVersion(meetingTitle) {
-  return meetingPinStates.get(getMeetingKey(meetingTitle))?.version || 0;
+function getPinVersion(projectName) {
+  return meetingPinStates.get(getProjectKey(projectName))?.version || 0;
 }
 
-function assertMeetingTitle(meetingTitle) {
-  const normalizedTitle = normalizeMeetingTitle(meetingTitle);
+function assertProjectName(projectName) {
+  const normalizedName = normalizeProjectName(projectName);
 
-  if (!normalizedTitle) {
-    const error = new Error("Meeting title is required to generate a face attendance PIN.");
+  if (!normalizedName) {
+    const error = new Error("Project name is required to generate a face attendance PIN.");
     error.statusCode = 400;
     throw error;
   }
 
-  return normalizedTitle;
+  return normalizedName;
 }
 
-function rotatePin(meetingTitle) {
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
-  const key = getMeetingKey(normalizedTitle);
-  const nextVersion = getPinVersion(normalizedTitle) + 1;
+function rotatePin(projectName) {
+  const normalizedName = assertProjectName(projectName);
+  const key = getProjectKey(normalizedName);
+  const nextVersion = getPinVersion(normalizedName) + 1;
 
   meetingPinStates.set(key, {
     version: nextVersion,
@@ -48,10 +48,10 @@ function rotatePin(meetingTitle) {
   return nextVersion;
 }
 
-function activatePin(meetingTitle, now = Date.now()) {
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
-  const key = getMeetingKey(normalizedTitle);
-  const nextVersion = getPinVersion(normalizedTitle) + 1;
+function activatePin(projectName, now = Date.now()) {
+  const normalizedName = assertProjectName(projectName);
+  const key = getProjectKey(normalizedName);
+  const nextVersion = getPinVersion(normalizedName) + 1;
   const state = {
     version: nextVersion,
     sessionId: crypto.randomUUID(),
@@ -63,20 +63,20 @@ function activatePin(meetingTitle, now = Date.now()) {
   return state;
 }
 
-function getActivePinState(meetingTitle, now = Date.now()) {
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
-  const state = meetingPinStates.get(getMeetingKey(normalizedTitle));
+function getActivePinState(projectName, now = Date.now()) {
+  const normalizedName = assertProjectName(projectName);
+  const state = meetingPinStates.get(getProjectKey(normalizedName));
 
   if (!state?.issuedAt || state.expiresAt <= now) {
-    return activatePin(normalizedTitle, now);
+    return activatePin(normalizedName, now);
   }
 
   return state;
 }
 
-function buildPin(meetingTitle, issuedAt, version) {
+function buildPin(projectName, issuedAt, version) {
   const secret = getPinSecret();
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
+  const normalizedName = assertProjectName(projectName);
 
   if (!secret) {
     throw new Error("Face meeting PIN secret is not configured.");
@@ -84,27 +84,28 @@ function buildPin(meetingTitle, issuedAt, version) {
 
   const digest = crypto
     .createHmac("sha256", secret)
-    .update(`${normalizedTitle}:${issuedAt}:${version}`)
+    .update(`${getProjectKey(normalizedName)}:${issuedAt}:${version}`)
     .digest();
   const number = digest.readUInt32BE(0) % (10 ** PIN_LENGTH);
   return String(number).padStart(PIN_LENGTH, "0");
 }
 
-function getCurrentPin(meetingTitle, now = Date.now(), options = {}) {
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
-  const state = options.rotate ? activatePin(normalizedTitle, now) : getActivePinState(normalizedTitle, now);
+function getCurrentPin(projectName, now = Date.now(), options = {}) {
+  const normalizedName = assertProjectName(projectName);
+  const state = options.rotate ? activatePin(normalizedName, now) : getActivePinState(normalizedName, now);
 
   return {
-    meetingTitle: normalizedTitle,
+    projectName: normalizedName,
+    meetingTitle: normalizedName,
     meetingSessionId: state.sessionId,
-    pin: buildPin(normalizedTitle, state.issuedAt, state.version),
+    pin: buildPin(normalizedName, state.issuedAt, state.version),
     expiresAt: new Date(state.expiresAt),
     generatedAt: new Date(state.issuedAt),
     ttlSeconds: Math.max(0, Math.ceil((state.expiresAt - now) / 1000)),
   };
 }
 
-function validatePin({ meetingTitle, pin, now = Date.now() }) {
+function validatePin({ projectName, meetingTitle, pin, now = Date.now() }) {
   const submittedPin = String(pin || "").trim();
 
   if (!submittedPin) {
@@ -119,11 +120,11 @@ function validatePin({ meetingTitle, pin, now = Date.now() }) {
     throw error;
   }
 
-  const normalizedTitle = assertMeetingTitle(meetingTitle);
-  const state = meetingPinStates.get(getMeetingKey(normalizedTitle));
+  const normalizedName = assertProjectName(projectName || meetingTitle);
+  const state = meetingPinStates.get(getProjectKey(normalizedName));
   const expectedPin =
     state?.issuedAt && state.expiresAt > now
-      ? buildPin(normalizedTitle, state.issuedAt, state.version)
+      ? buildPin(normalizedName, state.issuedAt, state.version)
       : "";
   const expectedBuffer = Buffer.from(expectedPin);
   const submittedBuffer = Buffer.from(submittedPin);
@@ -139,7 +140,8 @@ function validatePin({ meetingTitle, pin, now = Date.now() }) {
 
   return {
     meetingSessionId: state.sessionId,
-    meetingTitle: normalizedTitle,
+    projectName: normalizedName,
+    meetingTitle: normalizedName,
     expiresAt: new Date(state.expiresAt),
   };
 }

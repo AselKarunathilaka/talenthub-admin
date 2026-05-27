@@ -9,13 +9,13 @@ import logo from '../assets/sltlogo.jpg';
 const AdminQRManagement = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('meeting'); // 'meeting' or 'daily'
-  const [meetingTitle, setMeetingTitle] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [loading, setLoading] = useState(false);
   const [qrCodeData, setQrCodeData] = useState(null);
   const [isFullScreen, setIsFullScreen] = useState(false);
 
   const handleGenerate = async () => {
-    if (activeTab === 'meeting' && !meetingTitle.trim()) {
+    if (activeTab === 'meeting' && !projectName.trim()) {
       toast.error('Please enter a project name');
       return;
     }
@@ -23,7 +23,7 @@ const AdminQRManagement = () => {
     try {
       setLoading(true);
       setQrCodeData(null);
-      const response = await adminApi.generateQRCode(activeTab, activeTab === 'meeting' ? meetingTitle : '');
+      const response = await adminApi.generateQRCode(activeTab, activeTab === 'meeting' ? projectName : '');
       setQrCodeData(response);
       toast.success(`${activeTab === 'meeting' ? 'Meeting' : 'Daily'} QR Code generated successfully`);
     } catch (error) {
@@ -75,7 +75,7 @@ const AdminQRManagement = () => {
               Close Fullscreen
             </button>
             <h1 className="text-5xl font-extrabold text-gray-900 mb-6 tracking-tight">
-              {activeTab === 'meeting' ? meetingTitle : 'Daily Attendance'}
+              {activeTab === 'meeting' ? projectName : 'Daily Attendance'}
             </h1>
             <p className="text-2xl text-gray-500 mb-12">Please scan using your TalentHub App</p>
             <div className="bg-white p-6 rounded-3xl shadow-2xl border-4 border-gray-100">
@@ -162,8 +162,8 @@ const AdminQRManagement = () => {
                         <label className="block text-sm font-bold text-gray-700 mb-2">Project Name</label>
                         <input
                           type="text"
-                          value={meetingTitle}
-                          onChange={(e) => setMeetingTitle(e.target.value)}
+                          value={projectName}
+                          onChange={(e) => setProjectName(e.target.value)}
                           placeholder="e.g., TalentHub Development"
                           className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all font-medium text-gray-800 outline-none"
                         />

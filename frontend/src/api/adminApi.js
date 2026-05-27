@@ -319,11 +319,11 @@ export const adminApi = {
   },
 
   // Generate QR Code
-  generateQRCode: async (type = 'meeting', meetingTitle = '') => {
+  generateQRCode: async (type = 'meeting', projectName = '') => {
     try {
       let url = `${API_BASE_URL}/qrcode/generate-qrcode?type=${type}`;
-      if (type === 'meeting' && meetingTitle) {
-        url += `&meetingTitle=${encodeURIComponent(meetingTitle)}`;
+      if (type === 'meeting' && projectName) {
+        url += `&projectName=${encodeURIComponent(projectName)}`;
       }
       
       const response = await fetch(url, {
@@ -342,10 +342,10 @@ export const adminApi = {
     }
   },
 
-  getFaceMeetingPin: async (meetingTitle = '', options = {}) => {
+  getFaceMeetingPin: async (projectName = '', options = {}) => {
     try {
       const query = new URLSearchParams({
-        meetingTitle,
+        projectName,
         ...(options.rotate ? { rotate: "true" } : {}),
       }).toString();
       const requestOptions = {
@@ -371,12 +371,12 @@ export const adminApi = {
     }
   },
 
-  stopFaceMeetingPin: async (meetingTitle = '') => {
+  stopFaceMeetingPin: async (projectName = '') => {
     try {
       const requestOptions = {
         method: "POST",
         headers: getHeaders(),
-        body: JSON.stringify({ meetingTitle }),
+        body: JSON.stringify({ projectName }),
       };
 
       let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin/stop`, requestOptions);

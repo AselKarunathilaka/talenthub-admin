@@ -164,13 +164,13 @@ const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
 // Mark meeting attendance
 // Uses a MongoDB transaction to ensure DailyRecord and Intern.attendance writes
 // are atomic — both succeed or both roll back, preventing data inconsistency.
-const markMeetingAttendance = async (internId, meetingTitle, qrCode = null) => {
+const markMeetingAttendance = async (internId, projectName, qrCode = null) => {
   const result = await AttendanceWorkflowService.markMeetingAttendance({
     internId,
-    meetingTitle,
+    projectName,
     sessionId: qrCode,
     method: "qr",
-    duplicateMessage: "Duplicate meeting QR scan detected. Please wait before scanning again.",
+    duplicateMessage: "Attendance for this project is already marked today.",
     syncEndpoint: externalConfig.attendanceSystem.endpoints.scanMeeting,
     dailySyncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
     autoMarkDaily: true,

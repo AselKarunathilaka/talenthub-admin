@@ -10,6 +10,8 @@ const attendanceSchema = new mongoose.Schema({
   },
   timeMarked: { type: Date },
   qrCode: { type: String },
+  projectName: { type: String },
+  projectKey: { type: String },
   meetingName: { type: String },
   meetingSessionId: { type: String },
 });

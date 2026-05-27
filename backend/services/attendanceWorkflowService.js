@@ -8,6 +8,12 @@ const externalConfig = require("../config/externalSystems");
 const DAILY_ATTENDANCE_TYPES = ["daily_qr", "face"];
 const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting"];
 
+const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getProjectKey = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+const getExactProjectRegex = (value) => new RegExp(`^${escapeRegExp(String(value || "").trim().replace(/\s+/g, " "))}$`);
+
 const getAttendanceMoment = (attendanceDate = null) =>
   attendanceDate ? moment.tz(attendanceDate, "Asia/Colombo") : moment.tz("Asia/Colombo");
 
@@ -56,10 +62,6 @@ const markDailyAttendance = async ({
   const todayEnd = now.clone().endOf("day");
   const today = todayStart.format("YYYY-MM-DD");
   const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
-
-  if (existingDailyRecord?.attendance === "present") {
-    throwDailyAlreadyMarked();
-  }
 
   const session = await mongoose.startSession();
   try {
@@ -136,12 +138,13 @@ const markDailyAttendance = async ({
 
 const markMeetingAttendance = async ({
   internId,
+  projectName,
   meetingTitle,
   sessionId = null,
   method = "qr",
   meetingSessionId = null,
   attendanceDate = null,
-  duplicateMessage = "Duplicate meeting attendance detected. Please wait before scanning again.",
+  duplicateMessage = "Attendance for this project is already marked today.",
   syncEndpoint = null,
   dailySyncEndpoint = null,
   autoMarkDaily = true,
@@ -150,17 +153,20 @@ const markMeetingAttendance = async ({
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
 
-  const normalizedMeetingTitle = String(meetingTitle || "").trim();
-  if (!normalizedMeetingTitle) {
-    throw new Error("Meeting title is required.");
+  const normalizedProjectName = String(projectName || meetingTitle || "").trim().replace(/\s+/g, " ");
+  if (!normalizedProjectName) {
+    const error = new Error("Project name is required.");
+    error.statusCode = 400;
+    throw error;
   }
+  const projectKey = getProjectKey(normalizedProjectName);
+  const projectRegex = getExactProjectRegex(normalizedProjectName);
 
   const now = getAttendanceMoment(attendanceDate);
   const attendanceTime = now.toDate();
   const todayStart = now.clone().startOf("day");
   const todayEnd = now.clone().endOf("day");
   const today = todayStart.format("YYYY-MM-DD");
-  const oneMinuteAgo = now.clone().subtract(60, "seconds").toDate();
   let dailyRecord = await DailyRecord.findOne({ internId, date: today });
 
   if (dailyRecord) {
@@ -171,9 +177,12 @@ const markMeetingAttendance = async ({
           _id: dailyRecord._id,
           meetingAttendance: {
             $elemMatch: {
-              meetingTitle: normalizedMeetingTitle,
               attendanceStatus: "present",
-              attendanceTime: { $gte: oneMinuteAgo },
+              $or: [
+                { projectKey },
+                { projectName: projectRegex },
+                { meetingTitle: projectRegex },
+              ],
             },
           },
         }).session(session);
@@ -189,7 +198,15 @@ const markMeetingAttendance = async ({
               attendance: "present",
               attendanceTime,
             },
-            $pull: { meetingAttendance: { meetingTitle: normalizedMeetingTitle } },
+            $pull: {
+              meetingAttendance: {
+                $or: [
+                  { projectKey },
+                  { projectName: projectRegex },
+                  { meetingTitle: projectRegex },
+                ],
+              },
+            },
           },
           { session },
         );
@@ -199,7 +216,9 @@ const markMeetingAttendance = async ({
           {
             $push: {
               meetingAttendance: {
-                meetingTitle: normalizedMeetingTitle,
+                projectName: normalizedProjectName,
+                projectKey,
+                meetingTitle: normalizedProjectName,
                 meetingSessionId: meetingSessionId || sessionId,
                 method,
                 attendanceStatus: "present",
@@ -216,7 +235,7 @@ const markMeetingAttendance = async ({
             $pull: {
               attendance: {
                 type: { $in: MEETING_ATTENDANCE_TYPES },
-                meetingName: normalizedMeetingTitle,
+                meetingName: normalizedProjectName,
                 date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
               },
             },
@@ -233,7 +252,9 @@ const markMeetingAttendance = async ({
                 status: "Present",
                 type: method,
                 timeMarked: attendanceTime,
-                meetingName: normalizedMeetingTitle,
+                meetingName: normalizedProjectName,
+                projectName: normalizedProjectName,
+                projectKey,
                 qrCode: method === "qr" ? sessionId : undefined,
                 meetingSessionId: method === "face_meeting" ? meetingSessionId || sessionId : undefined,
               },
@@ -257,9 +278,12 @@ const markMeetingAttendance = async ({
               $elemMatch: {
                 type: { $in: MEETING_ATTENDANCE_TYPES },
                 status: "Present",
-                meetingName: normalizedMeetingTitle,
+                $or: [
+                  { projectKey },
+                  { projectName: projectRegex },
+                  { meetingName: projectRegex },
+                ],
                 date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
-                timeMarked: { $gte: oneMinuteAgo },
               },
             },
           },
@@ -269,7 +293,11 @@ const markMeetingAttendance = async ({
         $pull: {
           attendance: {
             type: { $in: MEETING_ATTENDANCE_TYPES },
-            meetingName: normalizedMeetingTitle,
+            $or: [
+              { projectKey },
+              { projectName: projectRegex },
+              { meetingName: projectRegex },
+            ],
             date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
           },
         },
@@ -290,7 +318,9 @@ const markMeetingAttendance = async ({
             status: "Present",
             type: method,
             timeMarked: attendanceTime,
-            meetingName: normalizedMeetingTitle,
+            meetingName: normalizedProjectName,
+            projectName: normalizedProjectName,
+            projectKey,
             qrCode: method === "qr" ? sessionId : undefined,
             meetingSessionId: method === "face_meeting" ? meetingSessionId || sessionId : undefined,
           },
@@ -324,7 +354,8 @@ const markMeetingAttendance = async ({
   return {
     intern,
     meeting: {
-      title: normalizedMeetingTitle,
+      title: normalizedProjectName,
+      projectName: normalizedProjectName,
       status: "present",
       time: attendanceTime,
     },

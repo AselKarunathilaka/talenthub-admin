@@ -43,6 +43,7 @@ const verifyFaceAttendance = async (req, res) => {
       metadata = {},
       qrBackupUsed = false,
       attendanceType = "daily",
+      projectName,
       meetingTitle,
       meetingPin,
     } = req.body;
@@ -52,6 +53,7 @@ const verifyFaceAttendance = async (req, res) => {
       metadata,
       qrBackupUsed,
       attendanceType,
+      projectName,
       meetingTitle,
       meetingPin,
       expectedInternId: req.user?.id,
@@ -177,8 +179,8 @@ const getAttendanceSettings = async (req, res) => {
 
 const getCurrentMeetingPin = async (req, res) => {
   try {
-    const { meetingTitle, rotate } = req.query;
-    const pinData = FaceMeetingPinService.getCurrentPin(meetingTitle, Date.now(), {
+    const { projectName, meetingTitle, rotate } = req.query;
+    const pinData = FaceMeetingPinService.getCurrentPin(projectName || meetingTitle, Date.now(), {
       rotate: rotate === "true",
     });
     return res.status(200).json(pinData);
@@ -192,11 +194,12 @@ const getCurrentMeetingPin = async (req, res) => {
 
 const stopCurrentMeetingPin = async (req, res) => {
   try {
-    const { meetingTitle } = req.body || {};
-    FaceMeetingPinService.rotatePin(meetingTitle);
+    const { projectName, meetingTitle } = req.body || {};
+    const submittedProjectName = projectName || meetingTitle;
+    FaceMeetingPinService.rotatePin(submittedProjectName);
     return res.status(200).json({
       message: "Current face attendance PIN stopped.",
-      meetingTitle: String(meetingTitle || "").trim(),
+      projectName: String(submittedProjectName || "").trim(),
     });
   } catch (error) {
     return res.status(error.statusCode || 500).json({

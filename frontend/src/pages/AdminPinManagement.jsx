@@ -8,21 +8,21 @@ import logo from '../assets/sltlogo.jpg';
 
 const AdminPinManagement = () => {
   const navigate = useNavigate();
-  const [meetingTitle, setMeetingTitle] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [pinLoading, setPinLoading] = useState(false);
   const [stopLoading, setStopLoading] = useState(false);
   const [facePinData, setFacePinData] = useState(null);
   const [pinCountdown, setPinCountdown] = useState(0);
 
   const fetchFacePin = useCallback(async (rotate = false) => {
-    if (!meetingTitle.trim()) {
+    if (!projectName.trim()) {
       toast.error('Please enter a project name first');
       return;
     }
 
     try {
       setPinLoading(true);
-      const response = await adminApi.getFaceMeetingPin(meetingTitle.trim(), { rotate });
+      const response = await adminApi.getFaceMeetingPin(projectName.trim(), { rotate });
       setFacePinData(response);
       setPinCountdown(response.ttlSeconds || 0);
     } catch (error) {
@@ -31,7 +31,7 @@ const AdminPinManagement = () => {
     } finally {
       setPinLoading(false);
     }
-  }, [meetingTitle]);
+  }, [projectName]);
 
   useEffect(() => {
     if (!facePinData) return undefined;
@@ -52,10 +52,10 @@ const AdminPinManagement = () => {
   useEffect(() => {
     setFacePinData(null);
     setPinCountdown(0);
-  }, [meetingTitle]);
+  }, [projectName]);
 
   const stopPinGeneration = async () => {
-    if (!meetingTitle.trim()) {
+    if (!projectName.trim()) {
       setFacePinData(null);
       setPinCountdown(0);
       return;
@@ -63,7 +63,7 @@ const AdminPinManagement = () => {
 
     try {
       setStopLoading(true);
-      await adminApi.stopFaceMeetingPin(meetingTitle.trim());
+      await adminApi.stopFaceMeetingPin(projectName.trim());
       setFacePinData(null);
       setPinCountdown(0);
       toast.success('Current PIN stopped. Generate again for a fresh PIN.');
@@ -125,8 +125,8 @@ const AdminPinManagement = () => {
                     <span className="block text-sm font-bold text-gray-700 mb-2">Project Name</span>
                     <input
                       type="text"
-                      value={meetingTitle}
-                      onChange={(event) => setMeetingTitle(event.target.value)}
+                      value={projectName}
+                      onChange={(event) => setProjectName(event.target.value)}
                       placeholder="e.g., TalentHub Development"
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 transition-all font-medium text-gray-800 outline-none"
                     />
@@ -139,7 +139,7 @@ const AdminPinManagement = () => {
                   <button
                     type="button"
                     onClick={() => fetchFacePin(true)}
-                    disabled={pinLoading || !meetingTitle.trim()}
+                    disabled={pinLoading || !projectName.trim()}
                     className="mt-6 w-full py-4 bg-gradient-to-r from-emerald-600 to-cyan-600 hover:from-emerald-700 hover:to-cyan-700 text-white rounded-2xl font-bold text-lg shadow-lg shadow-emerald-100 transition-all flex items-center justify-center space-x-3 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {pinLoading ? (
@@ -183,7 +183,7 @@ const AdminPinManagement = () => {
                       Changes in {Math.floor(pinCountdown / 60)}:{String(pinCountdown % 60).padStart(2, '0')}
                     </div>
                     <div className="mt-3 text-sm text-gray-500 truncate">
-                      {facePinData.meetingTitle}
+                      {facePinData.projectName}
                     </div>
                   </motion.div>
                 )}

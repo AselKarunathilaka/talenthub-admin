@@ -9,6 +9,7 @@ const externalConfig = require("../config/externalSystems");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
+const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
 function normalizeDescriptor(descriptorInput) {
   const rawDescriptor = Array.isArray(descriptorInput)
@@ -159,6 +160,7 @@ class FaceAttendanceService {
     metadata = {},
     qrBackupUsed = false,
     attendanceType = "daily",
+    projectName = "",
     meetingTitle = "",
     meetingPin = "",
     expectedInternId = null,
@@ -166,11 +168,13 @@ class FaceAttendanceService {
     const normalizedAttendanceType = VALID_FACE_ATTENDANCE_TYPES.has(String(attendanceType).toLowerCase())
       ? String(attendanceType).toLowerCase()
       : "daily";
-    const normalizedMeetingTitle = String(meetingTitle || metadata.meetingTitle || "").trim();
+    const normalizedProjectName = normalizeProjectName(
+      projectName || metadata.projectName || meetingTitle || metadata.meetingTitle || "",
+    );
     const location = metadata.location || {};
 
-    if (normalizedAttendanceType === "meeting" && !normalizedMeetingTitle) {
-      const error = new Error("Meeting title is required for meeting attendance.");
+    if (normalizedAttendanceType === "meeting" && !normalizedProjectName) {
+      const error = new Error("Project name is required for meeting attendance.");
       error.statusCode = 400;
       throw error;
     }
@@ -186,7 +190,7 @@ class FaceAttendanceService {
     let meetingPinData = null;
     if (normalizedAttendanceType === "meeting") {
       meetingPinData = FaceMeetingPinService.validatePin({
-        meetingTitle: normalizedMeetingTitle,
+        projectName: normalizedProjectName,
         pin: meetingPin || metadata.meetingPin,
       });
     }
@@ -234,12 +238,12 @@ class FaceAttendanceService {
     if (normalizedAttendanceType === "meeting") {
       const result = await AttendanceWorkflowService.markMeetingAttendance({
         internId: intern._id,
-        meetingTitle: normalizedMeetingTitle,
+        projectName: normalizedProjectName,
         sessionId: faceSessionId,
         method: "face_meeting",
         meetingSessionId: meetingPinData?.meetingSessionId,
         attendanceDate,
-        duplicateMessage: "Duplicate face meeting attendance detected. Please wait before scanning again.",
+        duplicateMessage: "Attendance for this project is already marked today.",
         syncEndpoint: externalConfig.attendanceSystem.endpoints.scanMeeting,
         dailySyncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
         autoMarkDaily: true,
@@ -274,7 +278,8 @@ class FaceAttendanceService {
       metadata: {
         ...metadata,
         attendanceType: normalizedAttendanceType,
-        meetingTitle: normalizedMeetingTitle || undefined,
+        projectName: normalizedProjectName || undefined,
+        meetingTitle: normalizedProjectName || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,
         dailyAttendanceMarked,
       },
