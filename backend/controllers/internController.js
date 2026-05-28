@@ -10,7 +10,7 @@ const path = require('path');
 const TalentTrailService = require("../services/talentTrailService");
 
 const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
-const MEETING_ATTENDANCE_TYPES = new Set(["qr", "face_meeting", "meeting"]);
+const MEETING_ATTENDANCE_TYPES = new Set(["qr", "face_meeting", "meeting", "manual"]);
 
 const getDateKey = (date) => {
   const parsedDate = date ? new Date(date) : null;
