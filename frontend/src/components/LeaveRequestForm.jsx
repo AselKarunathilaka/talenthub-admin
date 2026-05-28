@@ -8,12 +8,14 @@ const isValidSriLankanNIC = (nic) => {
   return nicRegex.test(nic);
 };
 
-const LeaveRequestForm = ({ onSuccess }) => {
+const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
+  const isStudyLeave = requestType === "study_leave";
   const [formData, setFormData] = useState({
     leaveDate: "",
-    leaveTime: "",
+    studyEndDate: "",
+    leaveTime: isStudyLeave ? "Full Day" : "",
     nationalId: "",
-    purpose: "Personal",
+    purpose: isStudyLeave ? "Study" : "Personal",
     reason: "",
   });
 
@@ -55,7 +57,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
     // Required field validation
     if (
       !formData.leaveDate ||
-      !formData.leaveTime ||
+      (!isStudyLeave && !formData.leaveTime) ||
       !formData.nationalId ||
       !formData.purpose ||
       !formData.reason
@@ -78,9 +80,8 @@ const LeaveRequestForm = ({ onSuccess }) => {
       return;
     }
 
-    // Date validation - ensure it's today
     const today = new Date().toISOString().split("T")[0];
-    if (formData.leaveDate !== today) {
+    if (!isStudyLeave && formData.leaveDate !== today) {
       toast.error(
         "Leave date must be today. Past or future dates are not allowed.",
         {
@@ -90,28 +91,58 @@ const LeaveRequestForm = ({ onSuccess }) => {
       return;
     }
 
+    if (isStudyLeave) {
+      if (!formData.studyEndDate) {
+        toast.error("Please select the final study leave date");
+        return;
+      }
+
+      if (formData.studyEndDate < formData.leaveDate) {
+        toast.error("End date cannot be before start date");
+        return;
+      }
+
+      if (!proofDocument) {
+        toast.error("Proof document is required for formal study leave");
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
       const submitData = new FormData();
       submitData.append("leaveDate", formData.leaveDate);
-      submitData.append("leaveTime", formData.leaveTime);
+      submitData.append(
+        "studyEndDate",
+        formData.studyEndDate || formData.leaveDate,
+      );
+      submitData.append(
+        "leaveTime",
+        isStudyLeave ? "Full Day" : formData.leaveTime,
+      );
       submitData.append("nationalId", formData.nationalId);
       submitData.append("purpose", formData.purpose);
       submitData.append("reason", formData.reason);
+      submitData.append("requestType", requestType);
       if (proofDocument) {
         submitData.append("proofDocument", proofDocument);
       }
 
       await createLeaveRequest(submitData);
-      toast.success("Leave request submitted successfully");
+      toast.success(
+        isStudyLeave
+          ? "Study leave request submitted successfully"
+          : "Leave request submitted successfully",
+      );
 
       // Reset form
       setFormData({
         leaveDate: "",
-        leaveTime: "",
+        studyEndDate: "",
+        leaveTime: isStudyLeave ? "Full Day" : "",
         nationalId: "",
-        purpose: "Personal",
+        purpose: isStudyLeave ? "Study" : "Personal",
         reason: "",
       });
 
@@ -150,10 +181,14 @@ const LeaveRequestForm = ({ onSuccess }) => {
       {/* Header */}
       <div className="mb-6 pb-6 border-b border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800">
-          Short Leave Permission Request
+          {isStudyLeave
+            ? "Formal Study Leave Request"
+            : "Short Leave Permission Request"}
         </h2>
         <p className="text-gray-600 text-sm mt-1">
-          Submit your request to exit SLT premises early
+          {isStudyLeave
+            ? "Submit exam-period study leave with required proof document"
+            : "Submit your request to exit SLT premises early"}
         </p>
       </div>
 
@@ -163,7 +198,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <FiCalendar className="inline mr-2 text-blue-600" />
-              Leave Date *
+              {isStudyLeave ? "Study Leave Start Date *" : "Leave Date *"}
             </label>
             <input
               type="date"
@@ -171,14 +206,34 @@ const LeaveRequestForm = ({ onSuccess }) => {
               value={formData.leaveDate}
               onChange={handleChange}
               min={today}
-              max={today}
+              max={isStudyLeave ? undefined : today}
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Only today's date is allowed
+              {isStudyLeave
+                ? "Select the first exam or study leave date"
+                : "Only today's date is allowed"}
             </p>
           </div>
+
+          {isStudyLeave && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <FiCalendar className="inline mr-2 text-blue-600" />
+                Study Leave End Date *
+              </label>
+              <input
+                type="date"
+                name="studyEndDate"
+                value={formData.studyEndDate}
+                onChange={handleChange}
+                min={formData.leaveDate || today}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -205,6 +260,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
               )}
           </div>
 
+          {!isStudyLeave && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <FiClock className="inline mr-2 text-blue-600" />
@@ -219,6 +275,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
+          )}
         </div>
 
         {/* Purpose */}
@@ -233,8 +290,14 @@ const LeaveRequestForm = ({ onSuccess }) => {
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
           >
-            <option value="Personal">Personal</option>
-            <option value="Official">Official</option>
+            {isStudyLeave ? (
+              <option value="Study">Study</option>
+            ) : (
+              <>
+                <option value="Personal">Personal</option>
+                <option value="Official">Official</option>
+              </>
+            )}
           </select>
         </div>
 
@@ -261,7 +324,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <FiUpload className="inline mr-2 text-blue-600" />
-            Proof Document (optional)
+            Proof Document {isStudyLeave ? "*" : "(optional)"}
           </label>
 
           <input
@@ -269,6 +332,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
             id="proofDocument"
             onChange={handleFileChange}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+            required={isStudyLeave}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
           />
           {proofDocument && (
@@ -289,7 +353,11 @@ const LeaveRequestForm = ({ onSuccess }) => {
               : "bg-blue-600 hover:bg-blue-700"
           }`}
         >
-          {loading ? "Submitting..." : "Submit Short Leave Request"}
+          {loading
+            ? "Submitting..."
+            : isStudyLeave
+              ? "Submit Study Leave Request"
+              : "Submit Short Leave Request"}
         </button>
       </form>
     </div>

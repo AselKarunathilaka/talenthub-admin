@@ -13,11 +13,15 @@ class LeaveRequestRepository {
   }
 
   async findByInternId(internId, options = {}) {
-    const { status, date, limit, skip } = options;
-    let query = LeaveRequest.find({ intern: internId });
+    const { status, date, limit, skip, requestType } = options;
+    const filter = { intern: internId };
 
     if (status) {
-      query = query.where("status").equals(status);
+      filter.status = status;
+    }
+
+    if (requestType) {
+      filter.requestType = requestType;
     }
 
     // Date filter: match the leaveDate field to the selected calendar day
@@ -28,13 +32,22 @@ class LeaveRequestRepository {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      query = query.where("leaveDate").gte(startOfDay).lte(endOfDay);
+      filter.$or = [
+        { leaveDate: { $gte: startOfDay, $lte: endOfDay } },
+        {
+          requestType: "study_leave",
+          leaveDate: { $lte: endOfDay },
+          studyEndDate: { $gte: startOfDay },
+        },
+      ];
 
       console.log(`[findByInternId] Date filter: ${date}`, {
         startOfDay,
         endOfDay,
       });
     }
+
+    let query = LeaveRequest.find(filter);
 
     if (skip) {
       query = query.skip(skip);
@@ -50,11 +63,15 @@ class LeaveRequestRepository {
   }
 
   async findAll(options = {}) {
-    const { status, limit, skip, date } = options;
-    let query = LeaveRequest.find();
+    const { status, limit, skip, date, requestType } = options;
+    const filter = {};
 
     if (status) {
-      query = query.where("status").equals(status);
+      filter.status = status;
+    }
+
+    if (requestType) {
+      filter.requestType = requestType;
     }
 
     if (date) {
@@ -64,10 +81,14 @@ class LeaveRequestRepository {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      query = query.where("leaveDate", {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      });
+      filter.$or = [
+        { leaveDate: { $gte: startOfDay, $lte: endOfDay } },
+        {
+          requestType: "study_leave",
+          leaveDate: { $lte: endOfDay },
+          studyEndDate: { $gte: startOfDay },
+        },
+      ];
 
       console.log("Date filter applied:", {
         date: date,
@@ -75,6 +96,8 @@ class LeaveRequestRepository {
         endOfDay: endOfDay,
       });
     }
+
+    let query = LeaveRequest.find(filter);
 
     if (skip) {
       query = query.skip(skip);
@@ -106,11 +129,15 @@ class LeaveRequestRepository {
   }
 
   async countByInternId(internId, status = null, options = {}) {
-    const { date } = options;
+    const { date, requestType } = options;
     const query = { intern: internId };
 
     if (status) {
       query.status = status;
+    }
+
+    if (requestType) {
+      query.requestType = requestType;
     }
 
     // Date filter for intern-scoped count
@@ -121,10 +148,14 @@ class LeaveRequestRepository {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      query.leaveDate = {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      };
+      query.$or = [
+        { leaveDate: { $gte: startOfDay, $lte: endOfDay } },
+        {
+          requestType: "study_leave",
+          leaveDate: { $lte: endOfDay },
+          studyEndDate: { $gte: startOfDay },
+        },
+      ];
     }
 
     return await LeaveRequest.countDocuments(query);
@@ -132,11 +163,15 @@ class LeaveRequestRepository {
 
   // Add date filtering to countAll method
   async countAll(status = null, options = {}) {
-    const { date } = options;
+    const { date, requestType } = options;
     const query = {};
 
     if (status) {
       query.status = status;
+    }
+
+    if (requestType) {
+      query.requestType = requestType;
     }
 
     // Single date filtering
@@ -147,10 +182,14 @@ class LeaveRequestRepository {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      query.leaveDate = {
-        $gte: startOfDay,
-        $lte: endOfDay,
-      };
+      query.$or = [
+        { leaveDate: { $gte: startOfDay, $lte: endOfDay } },
+        {
+          requestType: "study_leave",
+          leaveDate: { $lte: endOfDay },
+          studyEndDate: { $gte: startOfDay },
+        },
+      ];
     }
 
     return await LeaveRequest.countDocuments(query);

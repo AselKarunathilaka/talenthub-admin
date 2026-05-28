@@ -18,7 +18,27 @@ import {
 import { useNavigate } from "react-router-dom";
 import { FiCheckCircle } from "react-icons/fi";
 
-const MyLeaveRequests = () => {
+const MyLeaveRequests = ({ requestType = "short_leave" }) => {
+  const isStudyLeave = requestType === "study_leave";
+  const pageCopy = isStudyLeave
+    ? {
+        title: "My Study Leave Requests",
+        description: "View and manage your exam-period study leave requests",
+        newButton: "New Study Leave Request",
+        duplicate:
+          "You already have a study leave request for today. Only one request per day is allowed.",
+        emptyTitle: "No study leave requests found",
+        emptyToday: "You haven't submitted any study leave requests today.",
+      }
+    : {
+        title: "My Short Leave Requests",
+        description: "View and manage your short leave permission requests",
+        newButton: "New Short Leave Request",
+        duplicate:
+          "You already have a short leave request for today. Only one request per day is allowed.",
+        emptyTitle: "No short leave requests found",
+        emptyToday: "You haven't submitted any short leave requests today.",
+      };
   const navigate = useNavigate();
   const [documentViewer, setDocumentViewer] = useState({
     show: false,
@@ -57,7 +77,7 @@ const MyLeaveRequests = () => {
     }
 
     fetchLeaveRequests();
-  }, [selectedDate, pagination.page]);
+  }, [selectedDate, pagination.page, requestType]);
 
   const fetchLeaveRequests = async () => {
     console.log("[MyLeaveRequests] Starting to fetch leave requests...");
@@ -67,6 +87,7 @@ const MyLeaveRequests = () => {
         page: pagination.page,
         limit: pagination.limit,
         date: selectedDate, // always filter by selected date
+        requestType,
       };
 
       console.log("[MyLeaveRequests] Calling API with params:", params);
@@ -227,7 +248,7 @@ const MyLeaveRequests = () => {
   const handleNewRequestClick = () => {
     if (hasRequestForToday()) {
       toast.error(
-        "You already have a short leave request for today. Only one request per day is allowed.",
+        pageCopy.duplicate,
         { duration: 4000 },
       );
       return;
@@ -247,10 +268,10 @@ const MyLeaveRequests = () => {
               <div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-blue-600" />
-                  My Short Leave Requests
+                  {pageCopy.title}
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  View and manage your short leave permission requests
+                  {pageCopy.description}
                 </p>
               </div>
               <button
@@ -267,7 +288,7 @@ const MyLeaveRequests = () => {
                   </>
                 ) : (
                   <>
-                    <FiPlus /> New Short Leave Request
+                    <FiPlus /> {pageCopy.newButton}
                   </>
                 )}
               </button>
@@ -276,7 +297,10 @@ const MyLeaveRequests = () => {
             {/* Form Section */}
             {showForm && (
               <div className="mb-6">
-                <LeaveRequestForm onSuccess={handleFormSuccess} />
+                <LeaveRequestForm
+                  onSuccess={handleFormSuccess}
+                  requestType={requestType}
+                />
               </div>
             )}
 
@@ -316,11 +340,11 @@ const MyLeaveRequests = () => {
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
                 <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
                 <p className="text-gray-600 text-lg mb-2">
-                  No short leave requests found
+                  {pageCopy.emptyTitle}
                 </p>
                 <p className="text-gray-400 text-sm mb-6">
                   {isToday
-                    ? "You haven't submitted any short leave requests today."
+                    ? pageCopy.emptyToday
                     : `No requests found for ${formatDisplayDate(selectedDate)}.`}
                 </p>
                 {isToday && !showForm && (
@@ -351,7 +375,9 @@ const MyLeaveRequests = () => {
                             </div>
                             <div className="text-sm text-gray-600 flex items-center gap-1">
                               <FiClock className="text-gray-400" />
-                              {request.leaveTime}
+                              {isStudyLeave && request.studyEndDate
+                                ? `Until ${formatDate(request.studyEndDate)}`
+                                : request.leaveTime}
                             </div>
                           </div>
                         </div>
@@ -436,7 +462,9 @@ const MyLeaveRequests = () => {
                             <FiTrash2 /> Delete
                           </button>
                         )}
-                        {request.status === "Approved" && request.passToken && (
+                        {!isStudyLeave &&
+                          request.status === "Approved" &&
+                          request.passToken && (
                           <button
                             onClick={() =>
                               navigate(`/leave-pass/${request.passToken}`)

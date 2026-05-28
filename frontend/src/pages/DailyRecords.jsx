@@ -578,6 +578,11 @@ const DailyRecords = () => {
                                   On Leave
                                 </span>
                               )}
+                              {record.status === "study_leave" && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                                  Study Leave
+                                </span>
+                              )}
                             </div>
                             <p className="text-gray-700 text-xs md:text-sm line-clamp-3 break-words leading-relaxed">
                               {record.task}
@@ -767,6 +772,11 @@ const DailyRecords = () => {
                               {record.status === "leave" && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   On Leave
+                                </span>
+                              )}
+                              {record.status === "study_leave" && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                                  Study Leave
                                 </span>
                               )}
                             </div>

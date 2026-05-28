@@ -96,7 +96,15 @@ const AppRoutes = () => {
         path="/leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests />
+            <MyLeaveRequests requestType="short_leave" />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/study-leave-requests"
+        element={
+          <AgreementGuard>
+            <MyLeaveRequests requestType="study_leave" />
           </AgreementGuard>
         }
       />
@@ -127,7 +135,14 @@ const AppRoutes = () => {
         path="/admin/intern/:internId/records"
         element={<AdminInternRecords />}
       />
-      <Route path="/admin/leave-requests" element={<AdminLeaveManagement />} />
+      <Route
+        path="/admin/leave-requests"
+        element={<AdminLeaveManagement requestType="short_leave" />}
+      />
+      <Route
+        path="/admin/study-leave-requests"
+        element={<AdminLeaveManagement requestType="study_leave" />}
+      />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />

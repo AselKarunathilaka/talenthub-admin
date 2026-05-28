@@ -226,6 +226,7 @@ function buildSheet(ws, internInfo, records, dateLabel) {
       if (rec) {
         if (rec.task) parts.push(rec.task);
         if (rec.status === "leave") parts.push("[On Leave]");
+        if (rec.status === "study_leave") parts.push("[Study Leave]");
         if (rec.status === "wfh") parts.push("[WFH]");
         if (rec.stack && rec.stack !== "On Leave")
           parts.push(`Stack: ${rec.stack}`);

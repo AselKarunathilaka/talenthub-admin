@@ -36,7 +36,10 @@ const getApprovedLeaves = async (req, res) => {
     }
 
     // Fetch all approved leave requests and populate intern details
-    const approvedLeaves = await LeaveRequest.find({ status: "Approved" })
+    const approvedLeaves = await LeaveRequest.find({
+      status: "Approved",
+      requestType: "short_leave",
+    })
       .populate("intern", "Trainee_ID Trainee_Name Trainee_Email nationalId") 
       .sort({ leaveDate: -1, submittedAt: -1 }) // Sort by leave date (most recent first)
       .lean();
@@ -117,6 +120,7 @@ const getApprovedLeavesByDate = async (req, res) => {
     // Fetch approved leaves for the specific date
     const approvedLeaves = await LeaveRequest.find({
       status: "Approved",
+      requestType: "short_leave",
       leaveDate: {
         $gte: startDate,
         $lte: endDate,

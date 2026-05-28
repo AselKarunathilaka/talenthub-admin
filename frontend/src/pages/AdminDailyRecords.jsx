@@ -222,11 +222,14 @@ const AdminDailyRecords = () => {
       working: "bg-green-100 text-green-700 border-green-200",
       wfh: "bg-blue-100  text-blue-700  border-blue-200",
       leave: "bg-orange-100 text-orange-700 border-orange-200",
+      study_leave: "bg-sky-100 text-sky-700 border-sky-200",
     })[s] || "bg-gray-100 text-gray-600 border-gray-200";
 
   const statusLabel = (s) =>
     s === "wfh"
       ? "WFH"
+      : s === "study_leave"
+        ? "Study Leave"
       : s
         ? s.charAt(0).toUpperCase() + s.slice(1)
         : "Working";

@@ -17,6 +17,7 @@ import {
   Youtube,
   Armchair,
   Megaphone,
+  GraduationCap,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -164,6 +165,17 @@ const Navigation = ({ children }) => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
+  const navLinks = [
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#50b748" },
+    { to: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />, hoverColor: "#f43f5e", badge: unreadCount },
+    { to: "/face-attendance", label: "Face Attendance", icon: <Camera className="h-5 w-5" />, hoverColor: "#f97316" },
+    { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" />, hoverColor: "#dfdf66ff" },
+    { to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#a78bfa" },
+    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#00b4eb" },
+    { to: "/study-leave-requests", label: "Study Leave Requests", icon: <GraduationCap className="h-5 w-5" />, hoverColor: "#6366f1" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
+  ];
   const isActive = (path) => location.pathname === path;
 
   const handleLogout = () => {
