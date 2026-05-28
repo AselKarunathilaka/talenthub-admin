@@ -25,6 +25,7 @@ import {
   FiSend,
 } from "react-icons/fi";
 import logo from "../assets/sltlogo.jpg";
+import { API_BASE_URL } from "../api/apiConfig";
 
 const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
@@ -185,7 +186,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         (adminInfo ? JSON.parse(adminInfo).token : null) || authToken;
 
       const response = await fetch(
-        `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
+        `${API_BASE_URL}/leave-requests/${leaveRequestId}/document`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -194,7 +195,12 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load document");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            errorData.error ||
+            `Failed to load document (${response.status})`,
+        );
       }
 
       const blob = await response.blob();
@@ -210,7 +216,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       setDocumentViewer({ show: true, url: fileUrl, type: fileType });
     } catch (error) {
       console.error("Error loading document:", error);
-      toast.error("Failed to load document");
+      toast.error(error.message || "Failed to load document");
     }
   };
 

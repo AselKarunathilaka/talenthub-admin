@@ -434,11 +434,15 @@ class LeaveRequestController {
       const fileBuffer = Buffer.from(leaveRequest.proofDocument.data, "base64");
 
       // Set appropriate headers
+      const safeFilename = String(
+        leaveRequest.proofDocument.filename || "proof-document",
+      ).replace(/["\r\n]/g, "");
+
       res.setHeader("Content-Type", leaveRequest.proofDocument.contentType);
       res.setHeader("Content-Length", fileBuffer.length);
       res.setHeader(
         "Content-Disposition",
-        `inline; filename="${leaveRequest.proofDocument.filename}"`,
+        `inline; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`,
       );
 
       // Send the file

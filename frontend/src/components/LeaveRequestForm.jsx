@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { createLeaveRequest } from "../api/leaveRequestApi";
 import toast from "react-hot-toast";
-import { FiFileText, FiCalendar, FiClock, FiUpload } from "react-icons/fi";
+import { FiFileText, FiCalendar, FiClock, FiUpload, FiX } from "react-icons/fi";
 
 const isValidSriLankanNIC = (nic) => {
   const nicRegex = /^(\d{9}[VXvx]|\d{12})$/;
@@ -46,6 +46,13 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       }
       setProofDocument(file);
     }
+  };
+
+  const handleRemoveProofDocument = () => {
+    setProofDocument(null);
+
+    const fileInput = document.getElementById("proofDocument");
+    if (fileInput) fileInput.value = "";
   };
 
   /* ===============================
@@ -167,7 +174,12 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           { duration: 4000 },
         );
       } else {
-        toast.error(error.message || "Failed to submit leave request");
+        const errorMessage =
+          error.message ||
+          error.error ||
+          error.details?.join?.(", ") ||
+          "Failed to submit leave request";
+        toast.error(errorMessage);
       }
     } finally {
       setLoading(false);
@@ -332,13 +344,23 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
             id="proofDocument"
             onChange={handleFileChange}
             accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-            required={isStudyLeave}
+            aria-required={isStudyLeave}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg"
           />
           {proofDocument && (
-            <div className="mt-2 flex items-center gap-2 text-sm text-green-600">
-              <FiFileText />
-              {proofDocument.name}
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+              <span className="flex items-center gap-2 text-green-600 min-w-0">
+                <FiFileText className="flex-shrink-0" />
+                <span className="truncate max-w-full">{proofDocument.name}</span>
+              </span>
+              <button
+                type="button"
+                onClick={handleRemoveProofDocument}
+                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <FiX />
+                Remove
+              </button>
             </div>
           )}
         </div>

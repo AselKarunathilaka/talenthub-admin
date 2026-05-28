@@ -17,6 +17,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { FiCheckCircle } from "react-icons/fi";
+import { API_BASE_URL } from "../api/apiConfig";
 
 const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
@@ -143,7 +144,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
         authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
 
       const response = await fetch(
-        `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
+        `${API_BASE_URL}/leave-requests/${leaveRequestId}/document`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -152,7 +153,12 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load document");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            errorData.error ||
+            `Failed to load document (${response.status})`,
+        );
       }
 
       const blob = await response.blob();
@@ -168,7 +174,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
       setDocumentViewer({ show: true, url: fileUrl, type: fileType });
     } catch (error) {
       console.error("Error loading document:", error);
-      toast.error("Failed to load document");
+      toast.error(error.message || "Failed to load document");
     }
   };
 
