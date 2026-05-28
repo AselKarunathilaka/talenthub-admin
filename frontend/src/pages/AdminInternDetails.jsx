@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Pie, Bar } from 'react-chartjs-2';
 import { Chart, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement } from 'chart.js';
 Chart.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement);
@@ -7,11 +7,36 @@ import {
   FaUser, FaEnvelope, FaIdCard, FaBuilding, FaUsers, 
   FaCalendarAlt, FaChartLine, FaArrowLeft, FaExclamationTriangle,
   FaCheckCircle, FaTimesCircle, FaShieldAlt, FaFileAlt, FaTasks,
-  FaClock, FaChartPie, FaHistory, FaRegCalendarCheck, FaEye, FaCertificate
+  FaClock, FaChartPie, FaHistory, FaRegCalendarCheck, FaEye, FaCertificate,
+  FaCalendarCheck, FaChevronLeft, FaChevronRight, FaCircle, FaVideo, FaUserCheck
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi } from '../api/adminApi';
 import logo from '../assets/sltlogo.jpg';
+
+// ─── Helper: get all calendar days for a given month ───────────────────────
+const getCalendarDays = (year, month) => {
+  const days = [];
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  // Monday-start: 0=Mon…6=Sun
+  let startDow = firstDay.getDay(); // 0=Sun…6=Sat
+  startDow = startDow === 0 ? 6 : startDow - 1; // convert to Mon=0
+  for (let i = 0; i < startDow; i++) days.push(null); // padding
+  for (let d = 1; d <= lastDay.getDate(); d++) days.push(new Date(year, month, d));
+  return days;
+};
+
+// ─── Helper: colour + label for a day dot ───────────────────────────────────
+const getDayMeta = (dailyMap, date) => {
+  if (!date) return null;
+  const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  const entry = dailyMap[key];
+  if (!entry) return { color: '#d1d5db', label: 'No Record', bg: 'bg-gray-200' };
+  const st = (entry.status || '').toLowerCase();
+  if (st === 'present') return { color: '#22c55e', label: 'Present', bg: 'bg-green-500' };
+  return { color: '#d1d5db', label: 'No Record', bg: 'bg-gray-200' };
+};
 
 const AdminInternDetails = () => {
   const { internId } = useParams();
@@ -22,9 +47,35 @@ const AdminInternDetails = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [recentRecords, setRecentRecords] = useState([]);
 
+  // Attendance tab state
+  const [attendanceData, setAttendanceData] = useState(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [attendanceSubTab, setAttendanceSubTab] = useState('daily'); // 'daily' | 'meeting'
+  const [tooltip, setTooltip] = useState(null); // { x, y, label }
+
   useEffect(() => {
     fetchInternDetails();
+    fetchAttendance();
   }, [internId]);
+
+  const fetchAttendance = useCallback(async () => {
+    if (attendanceData) return; // already loaded
+    try {
+      setAttendanceLoading(true);
+      setAttendanceError(null);
+      const data = await adminApi.getInternAttendance(internId);
+      setAttendanceData(data);
+    } catch (err) {
+      console.error('Error fetching attendance:', err);
+      setAttendanceError('Failed to load attendance data.');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }, [internId, attendanceData]);
 
   const fetchInternDetails = async () => {
     try {
@@ -382,10 +433,13 @@ const AdminInternDetails = () => {
             {/* Tabs Navigation */}
             <div className="mb-4 sm:mb-6 border-b border-gray-200">
               <nav className="flex space-x-1 overflow-x-auto">
-                {['overview', 'activity', 'records'].map((tab) => (
+                {['overview', 'activity', 'records', 'attendance'].map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => {
+                      setActiveTab(tab);
+                      if (tab === 'attendance') fetchAttendance();
+                    }}
                     className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex-shrink-0 ${
                       activeTab === tab
                         ? 'bg-white text-blue-600 border-t border-l border-r border-gray-200'
@@ -549,7 +603,59 @@ const AdminInternDetails = () => {
                           ></div>
                         </div>
                       </div>
+
+                      {/* Attendance Summary (New) */}
+                      <div className="bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 p-4 sm:p-5 shadow-sm col-span-1 lg:col-span-2">
+                        <h3 className="text-sm font-semibold text-indigo-900 mb-3 flex items-center">
+                          <FaCalendarCheck className="mr-2 text-indigo-500" />
+                          Attendance Summary
+                        </h3>
+                        {attendanceLoading ? (
+                          <div className="h-16 flex items-center justify-center">
+                            <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-6 h-6 border-t-2 border-b-2 border-indigo-500 rounded-full" />
+                          </div>
+                        ) : attendanceError ? (
+                          <div className="text-red-500 text-xs text-center py-2">{attendanceError}</div>
+                        ) : attendanceData ? (
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            {(() => {
+                              const daily = attendanceData.dailyAttendance || [];
+                              const meeting = attendanceData.meetingAttendance || [];
+                              
+                              const totalDailyPresent = daily.filter(e => (e.status||'').toLowerCase() === 'present').length;
+                              const totalDailyAbsent  = daily.filter(e => (e.status||'').toLowerCase() === 'absent').length;
+                              
+                              const totalMeetingPresent = meeting.filter(e => (e.status||'').toLowerCase() === 'present').length;
+                              const totalMeetingAbsent  = meeting.filter(e => (e.status||'').toLowerCase() !== 'present').length;
+
+                              return (
+                                <>
+                                  <div className="bg-white/60 rounded-xl p-3 border border-indigo-50 flex flex-col items-center justify-center text-center">
+                                    <span className="text-2xl font-bold text-green-600">{totalDailyPresent}</span>
+                                    <span className="text-[10px] sm:text-xs text-gray-600 font-medium">Daily Present</span>
+                                  </div>
+                                  <div className="bg-white/60 rounded-xl p-3 border border-indigo-50 flex flex-col items-center justify-center text-center">
+                                    <span className="text-2xl font-bold text-red-500">{totalDailyAbsent}</span>
+                                    <span className="text-[10px] sm:text-xs text-gray-600 font-medium">Daily Absent</span>
+                                  </div>
+                                  <div className="bg-white/60 rounded-xl p-3 border border-indigo-50 flex flex-col items-center justify-center text-center">
+                                    <span className="text-2xl font-bold text-blue-600">{totalMeetingPresent}</span>
+                                    <span className="text-[10px] sm:text-xs text-gray-600 font-medium">Meetings Attended</span>
+                                  </div>
+                                  <div className="bg-white/60 rounded-xl p-3 border border-indigo-50 flex flex-col items-center justify-center text-center">
+                                    <span className="text-2xl font-bold text-orange-500">{totalMeetingAbsent}</span>
+                                    <span className="text-[10px] sm:text-xs text-gray-600 font-medium">Meetings Missed</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        ) : (
+                          <div className="text-gray-500 text-xs text-center py-2">No attendance data available</div>
+                        )}
+                      </div>
                     </motion.div>
+
 
                     {/* Charts Section */}
                     <motion.div 
@@ -897,6 +1003,225 @@ const AdminInternDetails = () => {
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {activeTab === 'attendance' && (() => {
+                  // ── Build lookup maps from attendance data ──────────────────
+                  const dailyMap = {};
+                  if (attendanceData?.dailyAttendance) {
+                    attendanceData.dailyAttendance.forEach(entry => {
+                      const d = new Date(entry.date);
+                      if (!isNaN(d.getTime())) {
+                        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                        dailyMap[key] = entry;
+                      }
+                    });
+                  }
+
+                  // Group meeting attendance by date for the calendar
+                  const meetingMap = {};
+                  if (attendanceData?.meetingAttendance) {
+                    attendanceData.meetingAttendance.forEach(entry => {
+                      const d = new Date(entry.date);
+                      if (!isNaN(d.getTime())) {
+                        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                        // If there are multiple meetings in a day, present takes priority
+                        if (!meetingMap[key] || (entry.status || '').toLowerCase() === 'present') {
+                          meetingMap[key] = entry;
+                        }
+                      }
+                    });
+                  }
+
+                  // Determine active map based on selected sub-tab
+                  const activeMap = attendanceSubTab === 'daily' ? dailyMap : meetingMap;
+                  const activeData = attendanceSubTab === 'daily' ? (attendanceData?.dailyAttendance || []) : (attendanceData?.meetingAttendance || []);
+
+                  // Calendar helpers
+                  const year  = calendarMonth.getFullYear();
+                  const month = calendarMonth.getMonth();
+                  const calDays = getCalendarDays(year, month);
+                  const monthLabel = calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                  // Monthly stats for current view
+                  const monthKeys = Object.keys(activeMap).filter(k => {
+                    const [y, m] = k.split('-').map(Number);
+                    return y === year && m === month + 1;
+                  });
+                  const mPresent = monthKeys.filter(k => (activeMap[k]?.status || '').toLowerCase() === 'present').length;
+
+                  return (
+                    <div className="space-y-5">
+                      {/* ── Header ────────────────────────────────────────── */}
+                      <motion.div
+                        className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                      >
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center mb-4">
+                          <FaCalendarCheck className="mr-2 text-blue-500" />
+                          Attendance Overview
+                        </h3>
+
+                        {/* Sub-tabs: Daily / Meeting */}
+                        <div className="flex space-x-2 mb-5">
+                          {['daily', 'meeting'].map(sub => (
+                            <button
+                              key={sub}
+                              onClick={() => setAttendanceSubTab(sub)}
+                              className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all flex items-center gap-2 ${
+                                attendanceSubTab === sub
+                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              {sub === 'daily' ? <FaRegCalendarCheck className="text-lg opacity-90" /> : <FaVideo className="text-lg opacity-90" />}
+                              {sub === 'daily' ? 'Daily Attendance' : 'Meeting Attendance'}
+                            </button>
+                          ))}
+                        </div>
+
+                        {/* Loading / Error states */}
+                        {attendanceLoading && (
+                          <div className="flex justify-center items-center py-16">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                              className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full"
+                            />
+                          </div>
+                        )}
+                        {attendanceError && !attendanceLoading && (
+                          <div className="text-center py-12 text-red-500 text-sm">{attendanceError}</div>
+                        )}
+
+                        {/* ════════ ATTENDANCE CALENDAR ════════ */}
+                        {!attendanceLoading && !attendanceError && (
+                          <div>
+                            {/* Month navigation + stats strip */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronLeft className="h-3 w-3" />
+                                </button>
+                                <span className="text-sm font-semibold text-gray-800 min-w-[130px] text-center">{monthLabel}</span>
+                                <button
+                                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronRight className="h-3 w-3" />
+                                </button>
+                              </div>
+                              {/* Stats pills */}
+                              <div className="flex flex-wrap gap-2 text-xs">
+                                <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full border border-green-200">
+                                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Present: {mPresent}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Calendar grid */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr>
+                                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                                      <th key={d} className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]">{d}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Array.from({ length: Math.ceil(calDays.length / 7) }, (_, w) => (
+                                    <tr key={w}>
+                                      {calDays.slice(w * 7, w * 7 + 7).map((day, di) => {
+                                        const meta = getDayMeta(dailyMap, day);
+                                        const isToday = day && day.toDateString() === new Date().toDateString();
+                                        return (
+                                          <td key={di} className="py-1 text-center">
+                                            {day ? (
+                                              <div className="flex justify-center group relative py-1">
+                                                <div
+                                                  className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm ${
+                                                    isToday ? 'ring-2 ring-blue-400 ring-offset-1' : ''
+                                                  }`}
+                                                  style={{ backgroundColor: meta?.color ?? '#e5e7eb' }}
+                                                  onMouseEnter={e => {
+                                                    const r = e.target.getBoundingClientRect();
+                                                    setTooltip({ x: r.left, y: r.top, label: meta?.label ?? 'No Record', date: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) });
+                                                  }}
+                                                  onMouseLeave={() => setTooltip(null)}
+                                                >
+                                                  <span className={`text-[10px] sm:text-xs font-semibold ${
+                                                    (meta?.label === 'Present') ? 'text-white' : (isToday ? 'text-blue-700' : 'text-gray-600')
+                                                  }`}>
+                                                    {day.getDate()}
+                                                  </span>
+                                                </div>
+                                              </div>
+                                            ) : <div className="h-10" />}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-3 text-xs text-gray-600">
+                              {[
+                                { color: '#22c55e', label: 'Present' },
+                                { color: '#d1d5db', label: 'No Record' },
+                              ].map(({ color, label }) => (
+                                <span key={label} className="flex items-center gap-1.5">
+                                  <span className="w-3 h-3 rounded-full inline-block flex-shrink-0" style={{ backgroundColor: color }}></span>
+                                  {label}
+                                </span>
+                              ))}
+                            </div>
+
+                            {/* All-time summary circles */}
+                            <div className="mt-8 flex justify-center gap-8 sm:gap-16">
+                              <div className="flex flex-col items-center">
+                                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-green-100 flex items-center justify-center bg-white shadow-sm mb-2">
+                                  <span className="text-2xl sm:text-3xl font-bold text-green-500">
+                                    {(attendanceData?.dailyAttendance || []).filter(e => (e.status||'').toLowerCase() === 'present').length}
+                                  </span>
+                                </div>
+                                <span className="text-xs sm:text-sm font-medium text-gray-600 text-center">Daily<br/>Present</span>
+                              </div>
+                              <div className="flex flex-col items-center">
+                                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-blue-100 flex items-center justify-center bg-white shadow-sm mb-2">
+                                  <span className="text-2xl sm:text-3xl font-bold text-blue-500">
+                                    {(attendanceData?.meetingAttendance || []).filter(e => (e.status||'').toLowerCase() === 'present').length}
+                                  </span>
+                                </div>
+                                <span className="text-xs sm:text-sm font-medium text-gray-600 text-center">Meetings<br/>Attended</span>
+                              </div>
+                            </div>
+
+                            {activeData.length === 0 && (
+                              <div className="mt-6 text-center py-10 text-gray-400 text-sm">No {attendanceSubTab} attendance records found.</div>
+                            )}
+                          </div>
+                        )}
+                      </motion.div>
+                    </div>
+                  );
+                })()}
+
+                {/* Global tooltip for calendar dots */}
+                {tooltip && (
+                  <div
+                    className="fixed z-50 bg-gray-900 text-white text-xs rounded-lg px-3 py-2 pointer-events-none shadow-xl"
+                    style={{ top: tooltip.y - 48, left: tooltip.x + 12 }}
+                  >
+                    <span className="text-gray-300">{tooltip.date}</span><br/>
+                    <span className="font-semibold">{tooltip.label}</span>
                   </div>
                 )}
 

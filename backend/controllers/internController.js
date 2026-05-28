@@ -7,6 +7,7 @@ const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
 const fs = require('fs');
 const path = require('path');
+const TalentTrailService = require("../services/talentTrailService");
 
 const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
 const MEETING_ATTENDANCE_TYPES = new Set(["qr", "face_meeting", "meeting"]);
@@ -413,6 +414,7 @@ const getAttendanceByInternId = async (req, res) => {
           date: record.date,
           status: record.attendance === 'present' ? 'Present' : record.attendance === 'late' ? 'Late' : 'Absent',
           type: 'Daily',
+          recordStatus: record.status, // working | leave | wfh — used for Study Leave / WFH colour coding
           attendanceMethod: dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             'unknown',
@@ -447,6 +449,36 @@ const getAttendanceByInternId = async (req, res) => {
         });
       }
     });
+
+    // --- TALENTTRAIL EXTERNAL API INTEGRATION ---
+    try {
+      const ttData = await TalentTrailService.getCertificateData(intern.internCode, intern.email);
+      if (ttData && ttData.attendanceRecords && ttData.attendanceRecords.length > 0) {
+        ttData.attendanceRecords.forEach(record => {
+          const attendanceTime = record.date ? new Date(record.date) : new Date();
+          const projectName = record.projectName || 'External Project';
+          // Avoid duplicating if we already have it from DailyRecord
+          if (!dailyRecordMeetingKeys.has(getMeetingKey(attendanceTime, projectName))) {
+            meetingAttendance.push({
+              date: attendanceTime,
+              status: record.status === 'PRESENT' ? 'Present' : (record.status === 'LATE' ? 'Late' : 'Absent'),
+              meetingName: projectName,
+              projectName: projectName,
+              type: 'Meeting',
+              attendanceMethod: 'talenttrail', // Mark source as external
+              time: attendanceTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit'
+              }),
+              isMeeting: true
+            });
+            dailyRecordMeetingKeys.add(getMeetingKey(attendanceTime, projectName));
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Failed to fetch external TalentTrail meeting attendance:", e.message);
+    }
 
     // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {

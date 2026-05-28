@@ -5,7 +5,7 @@ import { handleUnauthorized } from "../utils/sessionUtils";
 const checkAuth = async (res) => {
   if (res.status === 401) {
     let code = "";
-    try { const b = await res.clone().json(); code = b.code || ""; } catch (_) {}
+    try { const b = await res.clone().json(); code = b.code || ""; } catch { /* ignore */ }
     const msg = code === "TOKEN_EXPIRED"
       ? "Your session has expired. Please log in again."
       : "Your session is invalid. Please log in again.";
@@ -132,6 +132,26 @@ export const adminApi = {
       return await response.json();
     } catch (error) {
       console.error("Error fetching intern details:", error);
+      throw error;
+    }
+  },
+
+  // Get individual intern's attendance (daily + meeting) separated
+  getInternAttendance: async (internId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/interns/attendance/${internId}`, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      await checkAuth(response);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch intern attendance: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching intern attendance:", error);
       throw error;
     }
   },

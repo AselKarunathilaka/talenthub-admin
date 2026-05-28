@@ -191,18 +191,20 @@ class TalentTrailService {
       // Since we use an admin token, it returns all records — we count PRESENT
       // records that belong to the projects this intern is assigned to.
       let attendanceCount = 0;
+      let attendanceRecords = [];
       try {
         const attendance = await this.getProjectAttendance();
         if (Array.isArray(attendance) && internProjects.length > 0) {
           const internProjectIds = new Set(
             internProjects.map((p) => p.projectId)
           );
-          attendanceCount = attendance.filter(
-            (a) =>
-              a.status === "PRESENT" && internProjectIds.has(a.projectId)
-          ).length;
+          attendanceRecords = attendance.filter(
+            (a) => internProjectIds.has(a.projectId)
+          );
+          attendanceCount = attendanceRecords.filter((a) => a.status === "PRESENT").length;
         } else if (Array.isArray(attendance)) {
-          // No project info — count all PRESENT as best-effort
+          // No project info — return all records as best-effort
+          attendanceRecords = attendance;
           attendanceCount = attendance.filter(
             (a) => a.status === "PRESENT"
           ).length;
@@ -215,6 +217,7 @@ class TalentTrailService {
         talentTrailIntern: ttIntern,
         projects: internProjects,
         attendanceCount,
+        attendanceRecords,
       };
     } catch (err) {
       console.error("getCertificateData error:", err.message);
@@ -222,6 +225,7 @@ class TalentTrailService {
         talentTrailIntern: null,
         projects: [],
         attendanceCount: 0,
+        attendanceRecords: [],
         error: err.message,
       };
     }
