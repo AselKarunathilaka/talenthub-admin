@@ -1,4 +1,5 @@
 const Intern = require("../models/Intern");
+const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -7,13 +8,129 @@ const WeeklyMeetingAttendanceService = require("../services/weeklymeetingattenda
 
 const TZ = "Asia/Colombo";
 
+// Meeting attendance types (excludes daily/face recognition only)
+const MEETING_ATTENDANCE_TYPES = new Set([
+  "qr",
+  "face_meeting",
+  "meeting",
+  "manual_meeting",
+  "manual",
+]);
+
+// ---------------------------------------------------------------------------
+// Helper: Sri Lankan Public Holidays
+// ---------------------------------------------------------------------------
+function getSriLankanHolidays(years) {
+  const yearList = Array.isArray(years) ? years : [years];
+  const holidays = new Set();
+
+  yearList.forEach((y) => {
+    const fixed = [`${y}-01-01`, `${y}-02-04`, `${y}-05-01`, `${y}-12-25`];
+    fixed.forEach((d) => holidays.add(d));
+
+    const lunarApprox = {
+      2024: [
+        "2024-01-15",
+        "2024-02-23",
+        "2024-03-25",
+        "2024-04-12",
+        "2024-04-13",
+        "2024-04-14",
+        "2024-05-23",
+        "2024-05-24",
+        "2024-06-17",
+        "2024-06-21",
+        "2024-07-20",
+        "2024-08-19",
+        "2024-09-17",
+        "2024-10-02",
+        "2024-10-17",
+        "2024-10-31",
+        "2024-11-15",
+        "2024-12-15",
+      ],
+      2025: [
+        "2025-01-14",
+        "2025-02-26",
+        "2025-03-14",
+        "2025-03-31",
+        "2025-04-13",
+        "2025-04-14",
+        "2025-05-12",
+        "2025-05-13",
+        "2025-06-06",
+        "2025-06-07",
+        "2025-07-05",
+        "2025-08-03",
+        "2025-09-01",
+        "2025-09-05",
+        "2025-10-01",
+        "2025-10-20",
+        "2025-10-30",
+        "2025-11-29",
+      ],
+      2026: [
+        "2026-01-14",
+        "2026-02-15",
+        "2026-03-03",
+        "2026-03-20",
+        "2026-04-02",
+        "2026-04-13",
+        "2026-04-14",
+        "2026-05-01",
+        "2026-05-02",
+        "2026-05-28",
+        "2026-05-30",
+        "2026-06-29",
+        "2026-07-28",
+        "2026-08-27",
+        "2026-09-10",
+        "2026-09-25",
+        "2026-11-09",
+        "2026-11-24",
+        "2026-12-23",
+      ],
+    };
+
+    if (lunarApprox[y]) {
+      lunarApprox[y].forEach((d) => holidays.add(d));
+    }
+  });
+
+  return holidays;
+}
+
+// Helper: Get working days in two-week range
+function getWorkingDaysInTwoWeekRange(startDate, endDate) {
+  const years = [];
+  for (let y = startDate.year(); y <= endDate.year(); y++) years.push(y);
+  const holidays = getSriLankanHolidays(years);
+
+  const workingDays = [];
+  const cursor = startDate.clone();
+
+  while (cursor.isSameOrBefore(endDate, "day")) {
+    const dayOfWeek = cursor.day();
+    const dateStr = cursor.format("YYYY-MM-DD");
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    const isHoliday = holidays.has(dateStr);
+
+    if (!isWeekend && !isHoliday) {
+      workingDays.push(cursor.clone());
+    }
+
+    cursor.add(1, "day");
+  }
+
+  return workingDays;
+}
+
 // ---------------------------------------------------------------------------
 // Helper: Get interns present on a specific date (LKT-aware)
 // ---------------------------------------------------------------------------
 async function getPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
-  const meetingTypes = new Set(["meeting", "face_meeting", "qr"]);
 
   const interns = await Intern.find({});
   const presentInterns = [];
@@ -28,7 +145,7 @@ async function getPresentsOnDate(dateStr) {
         recDate.isSameOrAfter(targetDate) &&
         recDate.isBefore(nextDate) &&
         r.status === "Present" &&
-        meetingTypes.has(type)
+        MEETING_ATTENDANCE_TYPES.has(type)
       );
     });
 
@@ -229,9 +346,8 @@ exports.exportAttendanceExcel = async (req, res) => {
 // ---------------------------------------------------------------------------
 // GET /admin/attendance/export-non-attendance-excel
 // Downloads an Excel file of interns who missed meetings in the past 14
-// working days. Delegates all filtering logic to WeeklyMeetingAttendanceService
-// so there is a single source of truth for holidays, working-day calculation,
-// new-intern exclusion, and non-attendance detection.
+// working days. Only checks MEETING attendance types (qr, face_meeting, meeting,
+// manual_meeting, manual). Includes projects from InternTalentTrailSync.
 // ---------------------------------------------------------------------------
 exports.exportNonAttendanceExcel = async (req, res) => {
   try {
@@ -239,28 +355,69 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     const { startDate, endDate } =
       WeeklyMeetingAttendanceService.getTwoWeekRange();
 
-    // ── 2. Fetch and filter interns via the service ───────────────────────
+    // ── 2. Fetch active interns ────────────────────────────────────────────
     const activeInterns =
       await WeeklyMeetingAttendanceService.getActiveInterns();
 
+    // ── 3. Helper function to check meeting attendance ────────────────────
+    const hasAttendedMeeting = (intern) => {
+      if (!intern.attendance || intern.attendance.length === 0) return false;
+
+      const workingDays = getWorkingDaysInTwoWeekRange(startDate, endDate);
+      const workingDayStrings = new Set(
+        workingDays.map((d) => d.format("YYYY-MM-DD")),
+      );
+
+      return intern.attendance.some((record) => {
+        const recordDate = moment(record.date).tz(TZ).format("YYYY-MM-DD");
+        const recordType = String(record.type || "").toLowerCase();
+
+        return (
+          record.status === "Present" &&
+          MEETING_ATTENDANCE_TYPES.has(recordType) &&
+          workingDayStrings.has(recordDate)
+        );
+      });
+    };
+
+    // ── 4. Build project lookup from InternTalentTrailSync ────────────────
+    const talentTrailDocs = await InternTalentTrailSync.find({});
+    const projectsByEmail = {};
+
+    for (const doc of talentTrailDocs) {
+      const email = String(doc.email || "").toLowerCase();
+      const projectNames = (doc.projects || []).map((p) => p.projectName);
+
+      if (!projectsByEmail[email]) {
+        projectsByEmail[email] = [];
+      }
+      projectsByEmail[email].push(...projectNames);
+    }
+
+    // ── 5. Filter non-attendees ────────────────────────────────────────────
     const nonAttendees = [];
 
     for (const intern of activeInterns) {
-      // Skip interns whose training started within the review window
+      // Skip new interns
       if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
 
       // Skip interns who attended at least one meeting in the window
-      if (
-        WeeklyMeetingAttendanceService.hasAttendedMeetingInPastTwoWeeks(intern)
-      )
-        continue;
+      if (hasAttendedMeeting(intern)) continue;
 
-      // Build the last-attended label (same logic as the service's main loop)
+      // Build the last-attended label (from any meeting type)
       const lastRecord =
         WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
       const lastMeetingDate = lastRecord
         ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
         : "No record found";
+
+      // Get projects from InternTalentTrailSync
+      const internEmail = String(
+        WeeklyMeetingAttendanceService.getInternEmail(intern),
+      ).toLowerCase();
+      const projectList = projectsByEmail[internEmail] || [];
+      const projectsString =
+        projectList.length > 0 ? projectList.join(", ") : "Not assigned";
 
       nonAttendees.push({
         name: WeeklyMeetingAttendanceService.getInternName(intern),
@@ -268,7 +425,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
         email: WeeklyMeetingAttendanceService.getInternEmail(intern),
         fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
         institute: intern.Institute || "Not specified",
-        team: intern.team || "Not specified",
+        projects: projectsString,
         trainingStartDate: intern.Training_StartDate
           ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
           : "Not specified",
@@ -284,9 +441,11 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
     );
 
-    // ── 3. Build Excel ────────────────────────────────────────────────────
+    // ── 6. Build Excel ────────────────────────────────────────────────────
     const excelData = [];
-    excelData.push(["NON-ATTENDANCE REPORT (PAST 14 DAYS)"]);
+    excelData.push([
+      "NON-ATTENDANCE REPORT (MEETING ATTENDANCE - PAST 14 DAYS)",
+    ]);
     excelData.push(["TalentHub Intern Management System"]);
     excelData.push([]);
     excelData.push([
@@ -297,10 +456,10 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       "Period:",
       `${startDate.format("MMM DD, YYYY")} – ${endDate.format("MMM DD, YYYY")}`,
     ]);
-    excelData.push(["Total Non-Attendees:", nonAttendees.length]);
+    excelData.push(["Total Non-Attendees (Meetings):", nonAttendees.length]);
     excelData.push([]);
     excelData.push([
-      "Note: Weekends, Sri Lankan public holidays, and new interns (training started within the period) are excluded.",
+      "Note: This report only considers MEETING attendance. Weekends, Sri Lankan public holidays, and new interns (training started within the period) are excluded.",
     ]);
     excelData.push([]);
     excelData.push([
@@ -310,7 +469,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       "Email Address",
       "Field of Specialization",
       "Institute",
-      "Team",
+      "Projects",
       "Training Start Date",
       "Training End Date",
       "Last Meeting Attended",
@@ -324,7 +483,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
         intern.email,
         intern.fieldOfSpecialization,
         intern.institute,
-        intern.team,
+        intern.projects,
         intern.trainingStartDate,
         intern.trainingEndDate,
         intern.lastMeetingDate,
@@ -340,7 +499,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       { wch: 30 },
       { wch: 25 },
       { wch: 30 },
-      { wch: 20 },
+      { wch: 35 },
       { wch: 20 },
       { wch: 20 },
       { wch: 30 },

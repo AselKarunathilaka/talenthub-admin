@@ -1,4 +1,5 @@
 const Intern = require("../models/Intern");
+const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const nodemailer = require("nodemailer");
 const moment = require("moment");
 const XLSX = require("xlsx");
@@ -150,20 +151,29 @@ class WeeklyMeetingAttendanceService {
         ),
       );
 
-      // Include meeting types: qr, meeting, face_meeting (excludes: face, daily, daily_qr)
-      const meetingOnlyTypes = new Set(["qr", "meeting", "face_meeting", ""]);
+      // Meeting types only: qr, face_meeting, meeting, manual_meeting, manual
+      const meetingOnlyTypes = new Set([
+        "qr",
+        "meeting",
+        "face_meeting",
+        "manual_meeting",
+        "manual",
+      ]);
 
       return intern.attendance.some((record) => {
         const recordDate = moment(record.date);
         const dateStr = recordDate.format("YYYY-MM-DD");
+        const recordType = String(record.type || "").toLowerCase();
         const isInRange =
           recordDate.isSameOrAfter(startDate) &&
           recordDate.isSameOrBefore(endDate);
-        const isWorkingDay = workingDayStrings.has(dateStr);
-        const isPresent = record.status === "Present";
-        const isMeetingType = meetingOnlyTypes.has(String(record.type || "").toLowerCase());
 
-        return isInRange && isWorkingDay && isPresent && isMeetingType;
+        return (
+          isInRange &&
+          record.status === "Present" &&
+          meetingOnlyTypes.has(recordType) &&
+          workingDayStrings.has(dateStr)
+        );
       });
     } catch (error) {
       console.error(
@@ -177,8 +187,14 @@ class WeeklyMeetingAttendanceService {
   static getLastAttendedMeeting(intern) {
     if (!intern.attendance || intern.attendance.length === 0) return null;
 
-    // Include meeting types: qr, meeting, face_meeting (excludes: face, daily, daily_qr)
-    const meetingOnlyTypes = new Set(["qr", "meeting", "face_meeting", ""]);
+    // Meeting types only: qr, face_meeting, meeting, manual_meeting, manual
+    const meetingOnlyTypes = new Set([
+      "qr",
+      "meeting",
+      "face_meeting",
+      "manual_meeting",
+      "manual",
+    ]);
 
     const presentRecords = intern.attendance
       .filter((r) => {
@@ -236,10 +252,24 @@ class WeeklyMeetingAttendanceService {
 
   // ── Excel generation ──────────────────────────────────────────────────────
 
-  static generateExcelReport(nonAttendingInterns) {
+  static async generateExcelReport(nonAttendingInterns) {
     try {
       const { startDate, endDate } = this.getTwoWeekRange();
       const periodLabel = `${startDate.format("MMM DD, YYYY")} - ${endDate.format("MMM DD, YYYY")}`;
+
+      // ── Build project lookup from InternTalentTrailSync ────────────────
+      const talentTrailDocs = await InternTalentTrailSync.find({});
+      const projectsByEmail = {};
+
+      for (const doc of talentTrailDocs) {
+        const email = String(doc.email || "").toLowerCase();
+        const projectNames = (doc.projects || []).map((p) => p.projectName);
+
+        if (!projectsByEmail[email]) {
+          projectsByEmail[email] = [];
+        }
+        projectsByEmail[email].push(...projectNames);
+      }
 
       const excelData = [];
 
@@ -265,7 +295,7 @@ class WeeklyMeetingAttendanceService {
         "Email Address",
         "Field of Specialization",
         "Institute",
-        "Team",
+        "Projects",
         "Training Start Date",
         "Training End Date",
         "Last Meeting Attended",
@@ -273,6 +303,11 @@ class WeeklyMeetingAttendanceService {
 
       // Already sorted by Trainee ID before this method is called
       nonAttendingInterns.forEach((intern, index) => {
+        const internEmail = String(intern.email || "").toLowerCase();
+        const projectList = projectsByEmail[internEmail] || [];
+        const projectsString =
+          projectList.length > 0 ? projectList.join(", ") : "Not assigned";
+
         excelData.push([
           index + 1,
           intern.name,
@@ -280,7 +315,7 @@ class WeeklyMeetingAttendanceService {
           intern.email,
           intern.fieldOfSpecialization,
           intern.institute,
-          intern.team,
+          projectsString,
           intern.trainingStartDate,
           intern.trainingEndDate,
           intern.lastAttendedMeeting,
@@ -309,7 +344,7 @@ class WeeklyMeetingAttendanceService {
         { wch: 30 },
         { wch: 25 },
         { wch: 30 },
-        { wch: 20 },
+        { wch: 35 },
         { wch: 20 },
         { wch: 20 },
         { wch: 25 },
@@ -369,7 +404,7 @@ class WeeklyMeetingAttendanceService {
       console.log(`📧 Recipients: ${recipientList.join(", ")}`);
 
       console.log("📊 Generating meeting attendance Excel report...");
-      excelFilePath = this.generateExcelReport(nonAttendingInterns);
+      excelFilePath = await this.generateExcelReport(nonAttendingInterns);
 
       const { startDate, endDate } = this.getTwoWeekRange();
       const periodLabel = `${startDate.format("MMM DD, YYYY")} - ${endDate.format("MMM DD, YYYY")}`;
@@ -571,7 +606,6 @@ class WeeklyMeetingAttendanceService {
               fieldOfSpecialization:
                 intern.field_of_spec_name || "Not specified",
               institute: intern.Institute || "Not specified",
-              team: intern.team || "Not specified",
               trainingStartDate: intern.Training_StartDate
                 ? moment(intern.Training_StartDate).format("MMM DD, YYYY")
                 : "Not specified",
