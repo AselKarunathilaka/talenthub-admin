@@ -5,7 +5,18 @@ const attendanceSchema = new mongoose.Schema({
   status: { type: String, enum: ["Present", "Absent"], default: "Absent" },
   type: {
     type: String,
-      enum: ["manual", "qr", "daily_qr", "daily", "face", "meeting", "face_meeting"],
+    enum: [
+      "manual",
+      "qr",
+      "daily_qr",
+      "daily",
+      "face",
+      "meeting",
+      "face_meeting",
+      // ── Added for admin manual marking ───────────────────────────────────
+      "manual_daily", // Admin manually marks a daily check-in
+      "manual_meeting", // Admin manually marks meeting attendance
+    ],
     default: "manual",
   },
   timeMarked: { type: Date },
@@ -40,7 +51,6 @@ const internSchema = new mongoose.Schema(
     Institute: { type: String, default: "" },
     field_of_spec_name: { type: String, required: true },
 
-    // keep other app-specific fields
     team: { type: String, default: "" },
     attendance: [attendanceSchema],
     availableDays: {
@@ -55,10 +65,6 @@ const internSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
-
-// Schema migration completed - now uses API-style fields as canonical
-
-// Note: Unique index on Trainee_ID is declared via the field definition above.
 
 // IMPORTANT: GEO INDEX
 internSchema.index({ location: "2dsphere" });

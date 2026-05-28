@@ -18,6 +18,7 @@ import {
   FaEnvelope,
   FaMapMarkerAlt,
   FaChevronDown,
+  FaEdit,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -78,7 +79,6 @@ const attendanceApi = {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    // Use local date for filename — avoids UTC day-shift on CI/CD
     const d = new Date();
     const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     a.download = `Non_Attendance_Report_${localToday}.xlsx`;
@@ -92,7 +92,8 @@ const attendanceApi = {
     const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
       headers: getAuthHeaders(),
     });
-    if (!res.ok) throw new Error((await res.json()).message || "Settings request failed");
+    if (!res.ok)
+      throw new Error((await res.json()).message || "Settings request failed");
     return res.json();
   },
 
@@ -102,15 +103,13 @@ const attendanceApi = {
       headers: getAuthHeaders(),
       body: JSON.stringify(settings),
     });
-    if (!res.ok) throw new Error((await res.json()).message || "Settings update failed");
+    if (!res.ok)
+      throw new Error((await res.json()).message || "Settings update failed");
     return res.json();
   },
 };
 
 // ── Timezone-safe "today" helper ─────────────────────────────────────────────
-// DO NOT use new Date().toISOString().split("T")[0] — that returns UTC date,
-// which is one day behind on CI/CD servers running in UTC when the user is in
-// Sri Lanka (UTC+5:30). Use local date parts instead.
 const getLocalToday = () => {
   const d = new Date();
   const year = d.getFullYear();
@@ -164,6 +163,15 @@ const TypeBadge = ({ type }) => {
       cls: "bg-amber-100 text-amber-700 border-amber-200",
     },
     daily: { label: "Daily", cls: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+    // ── NEW types ──────────────────────────────────────────────────────────────
+    manual_daily: {
+      label: "Manual Daily",
+      cls: "bg-teal-100 text-teal-700 border-teal-200",
+    },
+    manual_meeting: {
+      label: "Manual Meeting",
+      cls: "bg-orange-100 text-orange-700 border-orange-200",
+    },
   };
   const { label, cls } = map[type] || {
     label: type,
@@ -182,7 +190,6 @@ const TypeBadge = ({ type }) => {
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
 
-  // Use local date parts — never toISOString() which returns UTC
   const today = getLocalToday();
 
   const [selectedDate, setSelectedDate] = useState(today);
@@ -233,7 +240,6 @@ const AdminInternAttendance = () => {
         setSettingsLoading(false);
       }
     };
-
     fetchSettings();
   }, []);
 
@@ -241,7 +247,6 @@ const AdminInternAttendance = () => {
     const nextValue = !sltLocationRequired;
     setSltLocationRequired(nextValue);
     setSettingsSaving(true);
-
     try {
       const result = await attendanceApi.updateSettings({
         sltLocationRequired: nextValue,
@@ -535,7 +540,8 @@ const AdminInternAttendance = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex items-center space-x-4 mb-2">
+              {/* ── Nav row: Back + Manual Attendance button ── */}
+              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <motion.button
                   onClick={() => navigate("/admin/dashboard")}
                   className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
@@ -547,7 +553,19 @@ const AdminInternAttendance = () => {
                     Back to Dashboard
                   </span>
                 </motion.button>
+
+                {/* ── NEW: Manual Attendance shortcut ── */}
+                <motion.button
+                  onClick={() => navigate("/admin/manual-attendance")}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-sm text-sm font-semibold transition-all"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <FaEdit className="h-3.5 w-3.5" />
+                  Manual Attendance
+                </motion.button>
               </div>
+
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
                   Meeting Attendance
@@ -558,6 +576,7 @@ const AdminInternAttendance = () => {
               </p>
             </motion.div>
 
+            {/* SLT Location Toggle */}
             <motion.div
               className="flex justify-end"
               initial={{ opacity: 0, y: 8 }}
@@ -567,50 +586,38 @@ const AdminInternAttendance = () => {
               <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-white/90 px-3 py-2 shadow-sm">
                 <div className="inline-flex items-center gap-2">
                   <FaMapMarkerAlt
-                    className={`h-3.5 w-3.5 ${
-                      sltLocationRequired ? "text-blue-600" : "text-gray-400"
-                    }`}
+                    className={`h-3.5 w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
                   />
                   <span className="text-xs font-semibold text-gray-700">
                     SLT location
                   </span>
                   <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                      sltLocationRequired
-                        ? "bg-blue-50 text-blue-700"
-                        : "bg-gray-100 text-gray-600"
-                    }`}
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${sltLocationRequired ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}
                   >
                     {sltLocationRequired ? "Required" : "Off"}
                   </span>
                 </div>
-
                 <button
                   type="button"
                   onClick={handleToggleLocationRequirement}
                   disabled={settingsLoading || settingsSaving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-                    sltLocationRequired ? "bg-blue-600" : "bg-gray-300"
-                  }`}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
                   aria-pressed={sltLocationRequired}
                   aria-label="Toggle SLT location requirement"
-                  title="Toggle SLT location requirement"
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
-                      sltLocationRequired ? "translate-x-5" : "translate-x-0.5"
-                    }`}
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-5" : "translate-x-0.5"}`}
                   />
                   <span className="sr-only">
-                    {sltLocationRequired ? "Location required" : "Location not required"}
+                    {sltLocationRequired
+                      ? "Location required"
+                      : "Location not required"}
                   </span>
                 </button>
               </div>
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                SECTION DIVIDER — Non-Attendance Report
-            ══════════════════════════════════════════════════ */}
+            {/* Non-Attendance Report section divider */}
             <motion.div
               className="flex items-center gap-3"
               initial={{ opacity: 0 }}
@@ -623,9 +630,7 @@ const AdminInternAttendance = () => {
               <div className="flex-1 h-px bg-gray-200" />
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                TOP CARD — Non-Attendance Report Actions
-            ══════════════════════════════════════════════════ */}
+            {/* Non-Attendance Report card */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0, y: 10 }}
@@ -645,7 +650,6 @@ const AdminInternAttendance = () => {
                   </p>
                 </div>
               </div>
-
               <div className="px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <p className="text-xs text-gray-500 max-w-sm">
                   Download or email the non-attendance report for all active
@@ -672,7 +676,6 @@ const AdminInternAttendance = () => {
                       {exportingNonAttendance ? "Exporting…" : "Export Report"}
                     </span>
                   </motion.button>
-
                   <motion.button
                     onClick={() => setShowTriggerModal(true)}
                     whileHover={{ scale: 1.04 }}
@@ -686,9 +689,7 @@ const AdminInternAttendance = () => {
               </div>
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                SECTION DIVIDER — Daily Attendance
-            ══════════════════════════════════════════════════ */}
+            {/* Daily Attendance section divider */}
             <motion.div
               className="flex items-center gap-3"
               initial={{ opacity: 0 }}
@@ -701,9 +702,7 @@ const AdminInternAttendance = () => {
               <div className="flex-1 h-px bg-gray-200" />
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                TOOLBAR — Date filter + Search + Export Excel
-            ══════════════════════════════════════════════════ */}
+            {/* Toolbar */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
@@ -723,7 +722,6 @@ const AdminInternAttendance = () => {
                   </p>
                 </div>
               </div>
-
               <div className="p-4 md:p-5">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
@@ -754,7 +752,6 @@ const AdminInternAttendance = () => {
                         )}
                       </div>
                     </div>
-
                     {/* Search */}
                     <div className="flex-1 sm:max-w-xs">
                       <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
@@ -780,8 +777,7 @@ const AdminInternAttendance = () => {
                       </div>
                     </div>
                   </div>
-
-                  {/* Export Excel button */}
+                  {/* Export */}
                   <div className="flex flex-wrap gap-2">
                     <motion.button
                       onClick={handleExport}
@@ -810,9 +806,7 @@ const AdminInternAttendance = () => {
               </div>
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                ATTENDANCE TABLE
-            ══════════════════════════════════════════════════ */}
+            {/* Attendance Table */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
@@ -924,28 +918,37 @@ const AdminInternAttendance = () => {
                               className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
                             >
                               <span>
-                                {intern.meetingCount || intern.meetings?.length || 0} meeting
-                                {(intern.meetingCount || intern.meetings?.length || 0) !== 1 ? "s" : ""}
+                                {intern.meetingCount ||
+                                  intern.meetings?.length ||
+                                  0}{" "}
+                                meeting
+                                {(intern.meetingCount ||
+                                  intern.meetings?.length ||
+                                  0) !== 1
+                                  ? "s"
+                                  : ""}
                               </span>
                               <FaChevronDown
-                                className={`h-3 w-3 transition-transform ${
-                                  expandedInterns[intern._id] ? "rotate-180" : ""
-                                }`}
+                                className={`h-3 w-3 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
                               />
                             </button>
                             {expandedInterns[intern._id] && (
                               <div className="mt-2 space-y-1 rounded-xl border border-blue-100 bg-blue-50/50 p-2">
-                                {(intern.meetings || []).map((meeting, index) => (
-                                  <div
-                                    key={`${intern._id}-${meeting.meetingName}-${index}`}
-                                    className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs"
-                                  >
-                                    <span className="font-medium text-gray-800">
-                                      {meeting.meetingName}
-                                    </span>
-                                    <span className="text-gray-500">{meeting.timeMarked}</span>
-                                  </div>
-                                ))}
+                                {(intern.meetings || []).map(
+                                  (meeting, index) => (
+                                    <div
+                                      key={`${intern._id}-${meeting.meetingName}-${index}`}
+                                      className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs"
+                                    >
+                                      <span className="font-medium text-gray-800">
+                                        {meeting.meetingName}
+                                      </span>
+                                      <span className="text-gray-500">
+                                        {meeting.timeMarked}
+                                      </span>
+                                    </div>
+                                  ),
+                                )}
                               </div>
                             )}
                           </div>
@@ -1032,16 +1035,18 @@ const AdminInternAttendance = () => {
                               <td className="px-4 py-4">
                                 <button
                                   type="button"
-                                  onClick={() => toggleInternMeetings(intern._id)}
+                                  onClick={() =>
+                                    toggleInternMeetings(intern._id)
+                                  }
                                   className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
                                 >
                                   <span>
-                                    {intern.meetingCount || intern.meetings?.length || 0}
+                                    {intern.meetingCount ||
+                                      intern.meetings?.length ||
+                                      0}
                                   </span>
                                   <FaChevronDown
-                                    className={`h-3 w-3 transition-transform ${
-                                      expandedInterns[intern._id] ? "rotate-180" : ""
-                                    }`}
+                                    className={`h-3 w-3 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
                                   />
                                 </button>
                               </td>
@@ -1051,7 +1056,10 @@ const AdminInternAttendance = () => {
                             </motion.tr>
                             {expandedInterns[intern._id] && (
                               <tr>
-                                <td colSpan={7} className="bg-blue-50/40 px-4 py-3">
+                                <td
+                                  colSpan={7}
+                                  className="bg-blue-50/40 px-4 py-3"
+                                >
                                   <div className="ml-14 rounded-xl border border-blue-100 bg-white p-3">
                                     <div className="grid grid-cols-[1fr_8rem_8rem] px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
                                       <div>Meeting Name</div>
@@ -1059,23 +1067,25 @@ const AdminInternAttendance = () => {
                                       <div className="text-right">Type</div>
                                     </div>
                                     <div className="space-y-2">
-                                      {(intern.meetings || []).map((meeting, index) => (
-                                        <div
-                                          key={`${intern._id}-${meeting.meetingName}-${index}`}
-                                          className="grid grid-cols-[1fr_8rem_8rem] items-center rounded-lg bg-gray-50 px-2 py-2 text-sm"
-                                        >
-                                          <div className="font-medium text-gray-900">
-                                            {meeting.meetingName}
+                                      {(intern.meetings || []).map(
+                                        (meeting, index) => (
+                                          <div
+                                            key={`${intern._id}-${meeting.meetingName}-${index}`}
+                                            className="grid grid-cols-[1fr_8rem_8rem] items-center rounded-lg bg-gray-50 px-2 py-2 text-sm"
+                                          >
+                                            <div className="font-medium text-gray-900">
+                                              {meeting.meetingName}
+                                            </div>
+                                            <div className="flex items-center justify-center gap-1.5 text-gray-600">
+                                              <FaClock className="h-3 w-3 text-gray-400" />
+                                              {meeting.timeMarked}
+                                            </div>
+                                            <div className="text-right">
+                                              <TypeBadge type={meeting.type} />
+                                            </div>
                                           </div>
-                                          <div className="flex items-center justify-center gap-1.5 text-gray-600">
-                                            <FaClock className="h-3 w-3 text-gray-400" />
-                                            {meeting.timeMarked}
-                                          </div>
-                                          <div className="text-right">
-                                            <TypeBadge type={meeting.type} />
-                                          </div>
-                                        </div>
-                                      ))}
+                                        ),
+                                      )}
                                     </div>
                                   </div>
                                 </td>

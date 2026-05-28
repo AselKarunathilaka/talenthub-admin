@@ -185,8 +185,7 @@ const Dashboard = () => {
 
     const internId = localStorage.getItem("internId");
     const shouldPromptFace = Boolean(
-      internId &&
-        !(await checkFaceEnrollment()),
+      internId && !(await checkFaceEnrollment()),
     );
 
     if (shouldPromptFace) {
@@ -197,10 +196,13 @@ const Dashboard = () => {
     // Check if intern has a project — show popup every time if not assigned
     try {
       if (internId) {
-        const projectCheck = await api.get(`/interns/${internId}/projects/check`);
+        const projectCheck = await api.get(
+          `/interns/${internId}/projects/check`,
+        );
         const hasProject =
           projectCheck?.hasProject === true ||
-          (Array.isArray(projectCheck?.projects) && projectCheck.projects.length > 0);
+          (Array.isArray(projectCheck?.projects) &&
+            projectCheck.projects.length > 0);
         if (projectCheck && !hasProject) {
           if (shouldPromptFace || faceModalOpenRef.current) {
             setProjectPopupPending(true);
@@ -309,7 +311,9 @@ const Dashboard = () => {
         date = null;
       }
 
-      const dateKey = date ? date.toISOString().slice(0, 10) : String(entry.date || "unknown");
+      const dateKey = date
+        ? date.toISOString().slice(0, 10)
+        : String(entry.date || "unknown");
       const fallbackLabel = entry.date || "N/A";
       const group = groups.get(dateKey) || {
         dateKey,
@@ -320,7 +324,9 @@ const Dashboard = () => {
               day: "numeric",
             })
           : fallbackLabel,
-        dayName: date ? date.toLocaleDateString("en-US", { weekday: "short" }) : "N/A",
+        dayName: date
+          ? date.toLocaleDateString("en-US", { weekday: "short" })
+          : "N/A",
         meetings: [],
       };
 
@@ -339,8 +345,16 @@ const Dashboard = () => {
   };
 
   const getMeetingMethodMeta = (method) => {
-    const normalizedMethod = String(method || "").toLowerCase();
-    if (normalizedMethod === "face" || normalizedMethod === "face_meeting") {
+    const normalizedMethod = String(method || "")
+      .toLowerCase()
+      .trim();
+
+    // Face recognition - handles both raw and normalized values
+    if (
+      normalizedMethod === "face recognition" ||
+      normalizedMethod === "face" ||
+      normalizedMethod === "face_meeting"
+    ) {
       return {
         label: "Face",
         className: "bg-indigo-50 text-indigo-700 border-indigo-100",
@@ -348,11 +362,29 @@ const Dashboard = () => {
       };
     }
 
-    if (normalizedMethod === "qr" || normalizedMethod === "daily_qr" || normalizedMethod === "meeting") {
+    // QR - handles both raw and normalized values
+    if (
+      normalizedMethod === "qr" ||
+      normalizedMethod === "daily_qr" ||
+      normalizedMethod === "meeting"
+    ) {
       return {
         label: "QR",
         className: "bg-purple-50 text-purple-700 border-purple-100",
         Icon: QrCode,
+      };
+    }
+
+    // Manual - handles both raw and normalized values
+    if (
+      normalizedMethod === "manual" ||
+      normalizedMethod === "manual_meeting" ||
+      normalizedMethod === "manual_daily"
+    ) {
+      return {
+        label: "Manual",
+        className: "bg-amber-50 text-amber-700 border-amber-100",
+        Icon: Users,
       };
     }
 
@@ -592,7 +624,10 @@ const Dashboard = () => {
                       }
 
                       const methodMeta = getMeetingMethodMeta(
-                        entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                        entry.attendanceMethod ||
+                          entry.method ||
+                          entry.markedBy ||
+                          entry.type,
                       );
                       const MethodIcon = methodMeta.Icon;
 
@@ -623,7 +658,9 @@ const Dashboard = () => {
                             </span>
                           </div>
                           <div className="text-center">
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}
+                            >
                               <MethodIcon className="h-3 w-3" />
                               {methodMeta.label}
                             </span>
@@ -797,8 +834,11 @@ const Dashboard = () => {
 
               <div className="divide-y divide-gray-100">
                 {getMeetingDateGroups().map((group) => {
-                  const isExpanded = expandedMeetingDates[group.dateKey] ?? false;
-                  const presentCount = group.meetings.filter((entry) => entry.status === "Present").length;
+                  const isExpanded =
+                    expandedMeetingDates[group.dateKey] ?? false;
+                  const presentCount = group.meetings.filter(
+                    (entry) => entry.status === "Present",
+                  ).length;
                   return (
                     <div key={group.dateKey}>
                       <motion.button
@@ -812,7 +852,8 @@ const Dashboard = () => {
                           {group.formattedDate}
                         </div>
                         <div className="text-center text-sm text-gray-700">
-                          {group.meetings.length} meeting{group.meetings.length !== 1 ? "s" : ""}
+                          {group.meetings.length} meeting
+                          {group.meetings.length !== 1 ? "s" : ""}
                         </div>
                         <div className="text-center">
                           <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-xs font-medium text-green-800">
@@ -826,11 +867,11 @@ const Dashboard = () => {
                         <div className="flex justify-center">
                           <span className="inline-flex items-center gap-2 rounded-md bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
                             {isExpanded ? "Hide meetings" : "View meetings"}
-                          <ChevronDown
+                            <ChevronDown
                               className={`h-3 w-3 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
+                                isExpanded ? "rotate-180" : ""
+                              }`}
+                            />
                           </span>
                         </div>
                       </motion.button>
@@ -846,7 +887,10 @@ const Dashboard = () => {
                           <div className="space-y-2">
                             {group.meetings.map((entry, index) => {
                               const methodMeta = getMeetingMethodMeta(
-                                entry.attendanceMethod || entry.method || entry.markedBy || entry.type,
+                                entry.attendanceMethod ||
+                                  entry.method ||
+                                  entry.markedBy ||
+                                  entry.type,
                               );
                               const MethodIcon = methodMeta.Icon;
 
@@ -856,10 +900,14 @@ const Dashboard = () => {
                                   className="grid grid-cols-[1fr_7rem_8rem_7rem] items-center rounded-md bg-white px-3 py-2 text-sm"
                                 >
                                   <div className="font-medium text-gray-900">
-                                    {entry.meetingName || entry.type || "Meeting"}
+                                    {entry.meetingName ||
+                                      entry.type ||
+                                      "Meeting"}
                                   </div>
                                   <div className="text-center">
-                                    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}>
+                                    <span
+                                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}
+                                    >
                                       <MethodIcon className="h-3 w-3" />
                                       {methodMeta.label}
                                     </span>
@@ -920,9 +968,7 @@ const Dashboard = () => {
         />
       )}
       {showNoProjectPopup && (
-        <NoProjectNotification
-          onDismiss={() => setShowNoProjectPopup(false)}
-        />
+        <NoProjectNotification onDismiss={() => setShowNoProjectPopup(false)} />
       )}
       {showCricketPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">

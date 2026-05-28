@@ -5,12 +5,25 @@ const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
 const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
 
-const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
-const MEETING_ATTENDANCE_TYPES = new Set(["qr", "face_meeting", "meeting", "manual"]);
+// Doc 3 sets (more complete — includes manual_daily and manual_meeting)
+const DAILY_ATTENDANCE_TYPES = new Set([
+  "daily",
+  "daily_qr",
+  "face",
+  "manual_daily",
+]);
+
+const MEETING_ATTENDANCE_TYPES = new Set([
+  "qr",
+  "face_meeting",
+  "meeting",
+  "manual_meeting",
+  "manual",
+]);
 
 const getDateKey = (date) => {
   const parsedDate = date ? new Date(date) : null;
@@ -20,12 +33,34 @@ const getDateKey = (date) => {
 };
 
 const getMeetingKey = (date, meetingName) =>
-  `${getDateKey(date)}::${String(meetingName || "General Meeting").trim().toLowerCase()}`;
+  `${getDateKey(date)}::${String(meetingName || "General Meeting")
+    .trim()
+    .toLowerCase()}`;
 
+// Doc 3 normalizeAttendanceMethod (more complete — covers manual_meeting, manual_daily, face recognition)
 const normalizeAttendanceMethod = (type) => {
   const normalizedType = String(type || "").toLowerCase();
-  if (normalizedType === "face" || normalizedType === "face_meeting") return "face";
-  if (normalizedType === "qr" || normalizedType === "daily_qr" || normalizedType === "meeting") return "qr";
+
+  // Face recognition attendance
+  if (normalizedType === "face" || normalizedType === "face_meeting") {
+    return "face recognition";
+  }
+
+  // QR attendance
+  if (normalizedType === "qr" || normalizedType === "daily_qr") {
+    return "qr";
+  }
+
+  // Manual attendance
+  if (
+    normalizedType === "meeting" ||
+    normalizedType === "manual_meeting" ||
+    normalizedType === "manual" ||
+    normalizedType === "manual_daily"
+  ) {
+    return "manual";
+  }
+
   return normalizedType || "unknown";
 };
 
@@ -43,11 +78,14 @@ const addIntern = async (req, res) => {
       }
     }
 
-
-    const newIntern = await InternService.addIntern({...req.body,
+    const newIntern = await InternService.addIntern({
+      ...req.body,
       location,
-      district,});
-    res.status(201).json({ message: "Intern added successfully!", intern: newIntern });
+      district,
+    });
+    res
+      .status(201)
+      .json({ message: "Intern added successfully!", intern: newIntern });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -78,19 +116,25 @@ const addExternalIntern = async (req, res) => {
       district,
     });
 
-    res.status(201).json({ message: "Intern added successfully!", intern: newIntern });
+    res
+      .status(201)
+      .json({ message: "Intern added successfully!", intern: newIntern });
   } catch (error) {
-    res.status(500).json({ message: "Error adding intern", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error adding intern", error: error.message });
   }
 };
 
 const getAllInterns = async (req, res) => {
-  const { date } = req.query;  // If date is missing, it will be undefined
+  const { date } = req.query; // If date is missing, it will be undefined
   try {
     const interns = await InternService.getAllInterns(date);
     res.status(200).json(interns);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching interns", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching interns", error: error.message });
   }
 };
 
@@ -102,7 +146,9 @@ const getInternById = async (req, res) => {
     }
     res.status(200).json(intern);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching intern", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching intern", error: error.message });
   }
 };
 
@@ -114,7 +160,9 @@ const getInternByIdEach = async (req, res) => {
     }
     res.status(200).json(intern);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching intern", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching intern", error: error.message });
   }
 };
 
@@ -130,29 +178,52 @@ const getAttendanceStats = async (req, res) => {
 const markAttendance = async (req, res) => {
   const { internId, status, date } = req.body;
   try {
-    const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status, date);
-    res.status(200).json({ message: "Attendance marked successfully", intern: updatedIntern });
+    const updatedIntern = await attendanceService.markAttendanceAndNotify(
+      internId,
+      status,
+      date,
+    );
+    res.status(200).json({
+      message: "Attendance marked successfully",
+      intern: updatedIntern,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error marking attendance", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error marking attendance", error: error.message });
   }
 };
 
 const updateAttendance = async (req, res) => {
   try {
     const { date, status } = req.body;
-    const updatedIntern = await InternService.updateAttendance(req.params.id, date, status);
-    res.status(200).json({ message: "Attendance updated successfully", intern: updatedIntern });
+    const updatedIntern = await InternService.updateAttendance(
+      req.params.id,
+      date,
+      status,
+    );
+    res.status(200).json({
+      message: "Attendance updated successfully",
+      intern: updatedIntern,
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error updating attendance", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating attendance", error: error.message });
   }
 };
 
 const assignToTeam = async (req, res) => {
   try {
     await InternService.assignToTeam(req.body.internIds, req.body.teamName);
-    res.status(200).json({ message: "Interns successfully assigned to the team" });
+    res
+      .status(200)
+      .json({ message: "Interns successfully assigned to the team" });
   } catch (error) {
-    res.status(500).json({ message: "Error assigning interns to team", error: error.message });
+    res.status(500).json({
+      message: "Error assigning interns to team",
+      error: error.message,
+    });
   }
 };
 
@@ -162,11 +233,16 @@ const removeFromTeam = async (req, res) => {
     const { teamName } = req.params;
 
     if (!internId || !teamName) {
-      return res.status(400).json({ message: "Intern ID and Team Name are required." });
+      return res
+        .status(400)
+        .json({ message: "Intern ID and Team Name are required." });
     }
 
     const decodedTeamName = decodeURIComponent(teamName);
-    const result = await InternService.removeFromTeam(internId, decodedTeamName);
+    const result = await InternService.removeFromTeam(
+      internId,
+      decodedTeamName,
+    );
     if (result) {
       return res.status(200).json({ message: "Intern removed from the team." });
     } else {
@@ -186,19 +262,28 @@ const removeIntern = async (req, res) => {
     }
     res.status(200).json({ message: "Intern removed successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Error removing intern", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error removing intern", error: error.message });
   }
 };
 
 const updateIntern = async (req, res) => {
   try {
-    const updatedIntern = await InternService.updateIntern(req.params.id, req.body);
+    const updatedIntern = await InternService.updateIntern(
+      req.params.id,
+      req.body,
+    );
     if (!updatedIntern) {
       return res.status(404).json({ message: "Intern not found" });
     }
-    res.status(200).json({ message: "Intern updated successfully", intern: updatedIntern });
+    res
+      .status(200)
+      .json({ message: "Intern updated successfully", intern: updatedIntern });
   } catch (error) {
-    res.status(500).json({ message: "Error updating intern", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating intern", error: error.message });
   }
 };
 
@@ -221,7 +306,9 @@ const uploadInterns = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error uploading file:", error);
-    res.status(500).json({ message: "Error processing file", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error processing file", error: error.message });
   }
 };
 
@@ -230,7 +317,9 @@ const getAllTeams = async (req, res) => {
     const teams = await InternService.getAllTeams();
     res.status(200).json(teams);
   } catch (error) {
-    res.status(500).json({ message: "Error fetching teams", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error fetching teams", error: error.message });
   }
 };
 
@@ -244,10 +333,15 @@ const updateTeamName = async (req, res) => {
     }
 
     const decodedOldTeamName = decodeURIComponent(oldTeamName);
-    const result = await InternService.updateTeamName(decodedOldTeamName, newTeamName);
+    const result = await InternService.updateTeamName(
+      decodedOldTeamName,
+      newTeamName,
+    );
     res.status(200).json(result);
   } catch (error) {
-    res.status(500).json({ message: "Error updating team", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error updating team", error: error.message });
   }
 };
 
@@ -257,11 +351,16 @@ const assignSingleToTeam = async (req, res) => {
     const { teamName } = req.params;
 
     if (!internId || !teamName) {
-      return res.status(400).json({ message: "Intern ID and Team Name are required." });
+      return res
+        .status(400)
+        .json({ message: "Intern ID and Team Name are required." });
     }
 
     const decodedTeamName = decodeURIComponent(teamName);
-    const result = await InternService.assignSingleToTeam(internId, decodedTeamName);
+    const result = await InternService.assignSingleToTeam(
+      internId,
+      decodedTeamName,
+    );
     if (result) {
       return res.status(200).json({ message: "Intern added to the team!" });
     } else {
@@ -289,28 +388,38 @@ const deleteTeam = async (req, res) => {
 const getAttendanceStatsForToday = async (req, res) => {
   try {
     const stats = await InternService.getAttendanceStatsForToday();
-    res.status(200).json(stats);  // Returns { present: 10, absent: 5 }
+    res.status(200).json(stats); // Returns { present: 10, absent: 5 }
   } catch (error) {
     console.error("Error fetching today's attendance stats:", error);
-    res.status(500).json({ message: "Error fetching today's attendance stats." });
+    res
+      .status(500)
+      .json({ message: "Error fetching today's attendance stats." });
   }
 };
 
 const updateAttendanceForSpecificDate = async (req, res) => {
   const { id } = req.params;
-  const { date, status } = req.body;  // Date and status (Present/Absent)
+  const { date, status } = req.body; // Date and status (Present/Absent)
 
   try {
-    const updatedIntern = await InternService.updateAttendanceForSpecificDate(id, date, status);
+    const updatedIntern = await InternService.updateAttendanceForSpecificDate(
+      id,
+      date,
+      status,
+    );
     res.status(200).json(updatedIntern);
   } catch (error) {
-    res.status(500).json({ message: "Error updating attendance for the selected date", error: error.message });
+    res.status(500).json({
+      message: "Error updating attendance for the selected date",
+      error: error.message,
+    });
   }
 };
 
 const getWeeklyAttendanceStats = async (req, res) => {
   try {
-    const { attendedInterns, notAttendedInterns } = await InternService.getWeeklyAttendanceStats();
+    const { attendedInterns, notAttendedInterns } =
+      await InternService.getWeeklyAttendanceStats();
     res.status(200).json({
       attendedInterns,
       notAttendedInterns,
@@ -331,19 +440,21 @@ const getAttendanceByInternId = async (req, res) => {
     }
 
     // Get daily records for this intern to include meeting attendance
-    const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
+    const dailyRecords = await DailyRecord.find({ internId }).sort({
+      date: -1,
+    });
 
-  // Prepare daily attendance from BOTH sources (DailyRecord first, then fallback to intern.attendance)
-  const dailyAttendance = [];
+    // Prepare daily attendance from BOTH sources (DailyRecord first, then fallback to intern.attendance)
+    const dailyAttendance = [];
     const meetingAttendance = [];
-    
+
     const meetingMethodByKey = new Map();
     const dailyMethodByDate = new Map();
     const dailyRecordMeetingKeys = new Set();
 
     if (intern.attendance && intern.attendance.length > 0) {
-      intern.attendance.forEach(entry => {
-        const type = (entry.type || '').toLowerCase();
+      intern.attendance.forEach((entry) => {
+        const type = (entry.type || "").toLowerCase();
         if (DAILY_ATTENDANCE_TYPES.has(type)) {
           const markedAt = entry.timeMarked || entry.date;
           const dateKey = getDateKey(entry.date);
@@ -358,14 +469,24 @@ const getAttendanceByInternId = async (req, res) => {
 
         if (!MEETING_ATTENDANCE_TYPES.has(type)) return;
 
-        const meetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic || 'General Meeting';
-        meetingMethodByKey.set(getMeetingKey(entry.date, meetingName), normalizeAttendanceMethod(type));
+        const meetingName =
+          entry.projectName ||
+          entry.meetingName ||
+          entry.meeting ||
+          entry.title ||
+          entry.subject ||
+          entry.topic ||
+          "General Meeting";
+        meetingMethodByKey.set(
+          getMeetingKey(entry.date, meetingName),
+          normalizeAttendanceMethod(type),
+        );
       });
     }
 
-    dailyRecords.forEach(record => {
+    dailyRecords.forEach((record) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
-        record.meetingAttendance.forEach(meeting => {
+        record.meetingAttendance.forEach((meeting) => {
           const projectName = meeting.projectName || meeting.meetingTitle;
           dailyRecordMeetingKeys.add(getMeetingKey(record.date, projectName));
         });
@@ -375,60 +496,86 @@ const getAttendanceByInternId = async (req, res) => {
     // Add legacy meeting attendance from intern.attendance when no DailyRecord meeting exists.
     // Skip daily/face attendance entries so they do not appear as meetings.
     if (intern.attendance && intern.attendance.length > 0) {
-      intern.attendance.forEach(entry => {
-        const type = (entry.type || '').toLowerCase();
+      intern.attendance.forEach((entry) => {
+        const type = (entry.type || "").toLowerCase();
         const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         if (isDailyEntry) return; // skip daily QR/daily entries
 
         // All other legacy entries are preserved as meeting attendance
-        const legacyMeetingName = entry.projectName || entry.meetingName || entry.meeting || entry.title || entry.subject || entry.topic;
-        if (dailyRecordMeetingKeys.has(getMeetingKey(entry.date, legacyMeetingName))) return;
+        const legacyMeetingName =
+          entry.projectName ||
+          entry.meetingName ||
+          entry.meeting ||
+          entry.title ||
+          entry.subject ||
+          entry.topic;
+        if (
+          dailyRecordMeetingKeys.has(
+            getMeetingKey(entry.date, legacyMeetingName),
+          )
+        )
+          return;
 
         meetingAttendance.push({
           date: entry.date,
-          status: entry.status || 'Present',
-          meetingName: legacyMeetingName || 'General Meeting',
-          type: 'Meeting',
+          status: entry.status || "Present",
+          meetingName: legacyMeetingName || "General Meeting",
+          type: "Meeting",
           attendanceMethod: normalizeAttendanceMethod(type),
-          time: entry.date ? new Date(entry.date).toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : null,
-          isMeeting: true
+          time: entry.date
+            ? new Date(entry.date).toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          isMeeting: true,
         });
       });
     }
-    
+
     // Add recent attendance from dailyRecords (new QR system)
-    dailyRecords.forEach(record => {
+    dailyRecords.forEach((record) => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
-      if (record.attendance && record.attendance !== 'absent') {
-        const attendanceTime = record.attendanceTime ? new Date(record.attendanceTime) : null;
+      if (record.attendance && record.attendance !== "absent") {
+        const attendanceTime = record.attendanceTime
+          ? new Date(record.attendanceTime)
+          : null;
         const meetingDerivedMethod = record.meetingAttendance
           ?.map((meeting) => {
             const projectName = meeting.projectName || meeting.meetingTitle;
-            return meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName));
+            return (
+              meeting.method ||
+              meetingMethodByKey.get(getMeetingKey(record.date, projectName))
+            );
           })
           .find(Boolean);
         dailyAttendance.push({
           date: record.date,
-          status: record.attendance === 'present' ? 'Present' : record.attendance === 'late' ? 'Late' : 'Absent',
-          type: 'Daily',
-          recordStatus: record.status, // working | leave | wfh — used for Study Leave / WFH colour coding
-          attendanceMethod: dailyMethodByDate.get(getDateKey(record.date))?.method ||
+          status:
+            record.attendance === "present"
+              ? "Present"
+              : record.attendance === "late"
+                ? "Late"
+                : "Absent",
+          type: "Daily",
+          recordStatus: record.status, // working | leave | wfh — used for Study Leave / WFH colour coding (from doc4)
+          attendanceMethod:
+            dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
-            'unknown',
-          time: attendanceTime ? attendanceTime.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }) : null,
-          attendanceTime: record.attendanceTime
+            "unknown",
+          time: attendanceTime
+            ? attendanceTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null,
+          attendanceTime: record.attendanceTime,
         });
       }
-      
+
       // Add meeting attendance if it exists (NEW QR scanned meeting attendance goes to Meeting section)
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
-        record.meetingAttendance.forEach(meeting => {
+        record.meetingAttendance.forEach((meeting) => {
           const attendanceTime = new Date(meeting.attendanceTime);
           const projectName = meeting.projectName || meeting.meetingTitle;
           meetingAttendance.push({
@@ -436,59 +583,83 @@ const getAttendanceByInternId = async (req, res) => {
             status: "Present",
             meetingName: projectName,
             projectName,
-            type: 'Meeting',
+            type: "Meeting",
             attendanceMethod: normalizeAttendanceMethod(
-              meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName))
+              meeting.method ||
+                meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
-            time: attendanceTime.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit'
+            time: attendanceTime.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
             }),
-            isMeeting: true
+            isMeeting: true,
           });
         });
       }
     });
 
-    // --- TALENTTRAIL EXTERNAL API INTEGRATION ---
+    // --- TALENTTRAIL EXTERNAL API INTEGRATION (from doc4) ---
     try {
-      const ttData = await TalentTrailService.getCertificateData(intern.internCode, intern.email);
-      if (ttData && ttData.attendanceRecords && ttData.attendanceRecords.length > 0) {
-        ttData.attendanceRecords.forEach(record => {
-          const attendanceTime = record.date ? new Date(record.date) : new Date();
-          const projectName = record.projectName || 'External Project';
+      const ttData = await TalentTrailService.getCertificateData(
+        intern.internCode,
+        intern.email,
+      );
+      if (
+        ttData &&
+        ttData.attendanceRecords &&
+        ttData.attendanceRecords.length > 0
+      ) {
+        ttData.attendanceRecords.forEach((record) => {
+          const attendanceTime = record.date
+            ? new Date(record.date)
+            : new Date();
+          const projectName = record.projectName || "External Project";
           // Avoid duplicating if we already have it from DailyRecord
-          if (!dailyRecordMeetingKeys.has(getMeetingKey(attendanceTime, projectName))) {
+          if (
+            !dailyRecordMeetingKeys.has(
+              getMeetingKey(attendanceTime, projectName),
+            )
+          ) {
             meetingAttendance.push({
               date: attendanceTime,
-              status: record.status === 'PRESENT' ? 'Present' : (record.status === 'LATE' ? 'Late' : 'Absent'),
+              status:
+                record.status === "PRESENT"
+                  ? "Present"
+                  : record.status === "LATE"
+                    ? "Late"
+                    : "Absent",
               meetingName: projectName,
               projectName: projectName,
-              type: 'Meeting',
-              attendanceMethod: 'talenttrail', // Mark source as external
-              time: attendanceTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit'
+              type: "Meeting",
+              attendanceMethod: "talenttrail", // Mark source as external
+              time: attendanceTime.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
               }),
-              isMeeting: true
+              isMeeting: true,
             });
-            dailyRecordMeetingKeys.add(getMeetingKey(attendanceTime, projectName));
+            dailyRecordMeetingKeys.add(
+              getMeetingKey(attendanceTime, projectName),
+            );
           }
         });
       }
     } catch (e) {
-      console.error("Failed to fetch external TalentTrail meeting attendance:", e.message);
+      console.error(
+        "Failed to fetch external TalentTrail meeting attendance:",
+        e.message,
+      );
     }
 
     // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {
       const datesWithDailyRecord = new Set(
-        dailyAttendance.map((d) => new Date(d.date).toDateString())
+        dailyAttendance.map((d) => new Date(d.date).toDateString()),
       );
 
       if (intern.attendance && intern.attendance.length > 0) {
         intern.attendance.forEach((entry) => {
-          const type = (entry.type || '').toLowerCase();
+          const type = (entry.type || "").toLowerCase();
           const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
           if (!isDaily) return; // only consider daily scans here
 
@@ -500,14 +671,17 @@ const getAttendanceByInternId = async (req, res) => {
 
           dailyAttendance.push({
             date: entryDate,
-            status: (entry.status || 'Present'),
-            type: 'Daily',
+            status: entry.status || "Present",
+            type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
-            time: (entry.timeMarked ? new Date(entry.timeMarked) : entryDate).toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit'
+            time: (entry.timeMarked
+              ? new Date(entry.timeMarked)
+              : entryDate
+            ).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
             }),
-            attendanceTime: entry.timeMarked || entry.date
+            attendanceTime: entry.timeMarked || entry.date,
           });
           datesWithDailyRecord.add(dayKey);
         });
@@ -526,7 +700,7 @@ const getAttendanceByInternId = async (req, res) => {
       seenDailyDates.add(dayKey);
       uniqueDailyAttendance.push(entry);
     });
-    
+
     // Sort meeting attendance by date (newest first)
     meetingAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -539,9 +713,11 @@ const getAttendanceByInternId = async (req, res) => {
       dailyAttendance: uniqueDailyAttendance,
       meetingAttendance: meetingAttendance,
       stats: {
-        present: meetingAttendance.filter(entry => entry.status === "Present").length,
-        absent: meetingAttendance.filter(entry => entry.status === "Absent").length
-      }
+        present: meetingAttendance.filter((entry) => entry.status === "Present")
+          .length,
+        absent: meetingAttendance.filter((entry) => entry.status === "Absent")
+          .length,
+      },
     };
 
     console.log("Backend Response:", {
@@ -549,15 +725,16 @@ const getAttendanceByInternId = async (req, res) => {
       meetingAttendanceCount: meetingAttendance.length,
       dailyAttendanceSample: uniqueDailyAttendance.slice(0, 2),
       meetingAttendanceSample: meetingAttendance.slice(0, 2),
-      combinedCount: combinedAttendance.length
+      combinedCount: combinedAttendance.length,
     });
-
-
 
     res.status(200).json(response); // Sending the structured response
   } catch (error) {
     console.error("Error fetching attendance data:", error);
-    res.status(500).json({ message: "Error fetching intern's attendance", error: error.message });
+    res.status(500).json({
+      message: "Error fetching intern's attendance",
+      error: error.message,
+    });
   }
 };
 
@@ -605,27 +782,30 @@ const uploadTXT = async (req, res) => {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    let fileContent = fs.readFileSync(req.file.path, 'utf8')
-      .replace(/\uFEFF/g, '')           // remove BOM
-      .replace(/\r\n/g, '\n');          // unify Windows ↔ Unix
+    let fileContent = fs
+      .readFileSync(req.file.path, "utf8")
+      .replace(/\uFEFF/g, "") // remove BOM
+      .replace(/\r\n/g, "\n"); // unify Windows ↔ Unix
 
-    const rows = fileContent.split('\n')
+    const rows = fileContent
+      .split("\n")
       .slice(1)
-      .filter(line => line.trim().length > 0);
+      .filter((line) => line.trim().length > 0);
 
-    const updates = rows.map(row => {
-      const [rawId, rawEmail] = row.split('\t');
-      const Trainee_ID    = rawId   .trim();
-      const Trainee_Email = rawEmail
-        .trim()                      
-        .replace(/^['"]+|['"]+$/g, '');  // strip surrounding quotes if any
+    const updates = rows.map((row) => {
+      const [rawId, rawEmail] = row.split("\t");
+      const Trainee_ID = rawId.trim();
+      const Trainee_Email = rawEmail.trim().replace(/^['"]+|['"]+$/g, ""); // strip surrounding quotes if any
 
       return { Trainee_ID, Trainee_Email };
     });
 
     for (const { Trainee_ID, Trainee_Email } of updates) {
       try {
-        const intern = await InternService.updateInternEmail(Trainee_ID, Trainee_Email);
+        const intern = await InternService.updateInternEmail(
+          Trainee_ID,
+          Trainee_Email,
+        );
         if (intern) {
           console.log(`✅ ${Trainee_ID} → ${Trainee_Email}`);
         } else {
@@ -639,7 +819,9 @@ const uploadTXT = async (req, res) => {
     res.status(200).json({ message: "Intern emails updated successfully!" });
   } catch (error) {
     console.error("❌ Error uploading file:", error);
-    res.status(500).json({ message: "Error processing file", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error processing file", error: error.message });
   }
 };
 
@@ -647,24 +829,24 @@ const uploadTXT = async (req, res) => {
 
 const syncWithSLTAPI = async (req, res) => {
   try {
-    console.log('🔄 SLT API sync requested via controller...');
+    console.log("🔄 SLT API sync requested via controller...");
     const result = await InternService.syncWithSLTAPI();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
         message: result.message,
-        stats: result.stats
+        stats: result.stats,
       });
     } else {
       res.status(500).json({
         success: false,
         message: result.message,
-        stats: result.stats
+        stats: result.stats,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error during SLT sync:', error);
+    console.error("❌ Controller error during SLT sync:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
@@ -673,8 +855,8 @@ const syncWithSLTAPI = async (req, res) => {
         updated: 0,
         skipped: 0,
         errors: 1,
-        totalProcessed: 0
-      }
+        totalProcessed: 0,
+      },
     });
   }
 };
@@ -682,14 +864,14 @@ const syncWithSLTAPI = async (req, res) => {
 const testSLTAPI = async (req, res) => {
   try {
     const result = await InternService.testSLTAPI();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
         message: result.message,
         count: result.count,
         sample: result.sample,
-        total: result.total
+        total: result.total,
       });
     } else {
       res.status(500).json({
@@ -697,17 +879,17 @@ const testSLTAPI = async (req, res) => {
         message: result.message,
         count: result.count,
         sample: result.sample,
-        total: result.total
+        total: result.total,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error during SLT API test:', error);
+    console.error("❌ Controller error during SLT API test:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
       count: 0,
       sample: [],
-      total: 0
+      total: 0,
     });
   }
 };
@@ -715,52 +897,52 @@ const testSLTAPI = async (req, res) => {
 const getActiveTraineesFromSLT = async (req, res) => {
   try {
     const result = await InternService.getActiveTraineesFromSLT();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
         data: result.data,
-        count: result.count
+        count: result.count,
       });
     } else {
       res.status(500).json({
         success: false,
         message: result.message,
         data: [],
-        count: 0
+        count: 0,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error fetching SLT trainees:', error);
+    console.error("❌ Controller error fetching SLT trainees:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
       data: [],
-      count: 0
+      count: 0,
     });
   }
 };
 
 const cleanupInactiveInterns = async (req, res) => {
   try {
-    console.log('🧹 Cleanup of inactive interns requested via controller...');
+    console.log("🧹 Cleanup of inactive interns requested via controller...");
     const result = await InternService.cleanupInactiveInterns();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
         message: result.message,
-        stats: result.stats
+        stats: result.stats,
       });
     } else {
       res.status(500).json({
         success: false,
         message: result.message,
-        stats: result.stats
+        stats: result.stats,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error during inactive intern cleanup:', error);
+    console.error("❌ Controller error during inactive intern cleanup:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
@@ -768,8 +950,8 @@ const cleanupInactiveInterns = async (req, res) => {
         totalInDb: 0,
         activeInApi: 0,
         removed: 0,
-        errors: 1
-      }
+        errors: 1,
+      },
     });
   }
 };
@@ -778,68 +960,68 @@ const cleanupInactiveInterns = async (req, res) => {
 
 const triggerManualSLTSync = async (req, res) => {
   try {
-    console.log('🔧 Manual SLT API sync requested via controller...');
+    console.log("🔧 Manual SLT API sync requested via controller...");
     const result = await SLTApiScheduler.triggerManualSync();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
-        message: 'Manual sync completed successfully',
+        message: "Manual sync completed successfully",
         timestamp: result.timestamp,
         type: result.type,
-        results: result.results
+        results: result.results,
       });
     } else {
       res.status(500).json({
         success: false,
-        message: 'Manual sync failed',
+        message: "Manual sync failed",
         timestamp: result.timestamp,
         type: result.type,
-        error: result.error
+        error: result.error,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error during manual SLT sync:', error);
+    console.error("❌ Controller error during manual SLT sync:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
       timestamp: new Date(),
-      type: 'manual_sync',
-      error: error.message
+      type: "manual_sync",
+      error: error.message,
     });
   }
 };
 
 const triggerComprehensiveUpdate = async (req, res) => {
   try {
-    console.log('🔧 Comprehensive update requested via controller...');
+    console.log("🔧 Comprehensive update requested via controller...");
     const result = await SLTApiScheduler.triggerManualUpdate();
-    
+
     if (result.success) {
       res.status(200).json({
         success: true,
-        message: 'Comprehensive update completed successfully',
+        message: "Comprehensive update completed successfully",
         timestamp: result.timestamp,
         type: result.type,
-        results: result.results
+        results: result.results,
       });
     } else {
       res.status(500).json({
         success: false,
-        message: 'Comprehensive update failed',
+        message: "Comprehensive update failed",
         timestamp: result.timestamp,
         type: result.type,
-        error: result.error
+        error: result.error,
       });
     }
   } catch (error) {
-    console.error('❌ Controller error during comprehensive update:', error);
+    console.error("❌ Controller error during comprehensive update:", error);
     res.status(500).json({
       success: false,
       message: `Internal server error: ${error.message}`,
       timestamp: new Date(),
-      type: 'comprehensive_update',
-      error: error.message
+      type: "comprehensive_update",
+      error: error.message,
     });
   }
 };
@@ -848,13 +1030,15 @@ const acceptAgreement = async (req, res) => {
   try {
     const internId = req.params.id;
     const updatedIntern = await InternService.acceptAgreement(internId);
-    res.status(200).json({ 
-      message: "Agreement accepted successfully", 
+    res.status(200).json({
+      message: "Agreement accepted successfully",
       agreementAccepted: updatedIntern.agreementAccepted,
-      agreementAcceptedDate: updatedIntern.agreementAcceptedDate
+      agreementAcceptedDate: updatedIntern.agreementAcceptedDate,
     });
   } catch (error) {
-    res.status(500).json({ message: "Error accepting agreement", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error accepting agreement", error: error.message });
   }
 };
 
@@ -879,7 +1063,9 @@ const checkInternProjects = async (req, res) => {
     }
 
     // Check the projects array directly
-    const projects = Array.isArray(syncRecord.projects) ? syncRecord.projects : [];
+    const projects = Array.isArray(syncRecord.projects)
+      ? syncRecord.projects
+      : [];
     return res.status(200).json({
       projects: projects.length > 0 ? projects : null,
       projectCount: projects.length,
