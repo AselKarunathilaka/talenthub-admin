@@ -328,15 +328,20 @@ exports.getSeatAvailability = async (req, res) => {
 exports.getPublicLockedSeats = async (req, res) => {
   try {
     const lockedSeats = await LockedSeat.find()
-      .select("seatNumber")
+      .select("seatNumber traineeId")
       .sort({ seatNumber: 1 })
       .lean();
 
     const lockedSeatNumbers = lockedSeats.map((s) => s.seatNumber);
+    const lockedSeatDetails = lockedSeats.map((s) => ({
+      seatNumber: s.seatNumber,
+      traineeId: s.traineeId || null,
+    }));
 
     res.status(200).json({
       success: true,
       lockedSeats: lockedSeatNumbers,
+      lockedSeatDetails,
       count: lockedSeatNumbers.length,
     });
   } catch (error) {

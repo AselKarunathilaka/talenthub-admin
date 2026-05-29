@@ -338,11 +338,19 @@ const getLockedSeats = async (req, res) => {
       .sort({ seatNumber: 1 })
       .lean();
 
+    // Return both the plain number array (for backward compat) and full objects with traineeId
     const lockedSeatNumbers = lockedSeats.map((s) => s.seatNumber);
+    const lockedSeatDetails = lockedSeats.map((s) => ({
+      seatNumber: s.seatNumber,
+      traineeId: s.traineeId || null,
+      lockedBy: s.lockedBy,
+      lockedAt: s.lockedAt,
+    }));
 
     res.status(200).json({
       success: true,
       lockedSeats: lockedSeatNumbers,
+      lockedSeatDetails,
       count: lockedSeatNumbers.length,
       details: lockedSeats,
     });
@@ -363,7 +371,7 @@ const getLockedSeats = async (req, res) => {
  */
 const lockSeat = async (req, res) => {
   try {
-    const { seatNumber } = req.body;
+    const { seatNumber, traineeId } = req.body;
 
     if (!seatNumber || seatNumber < 1 || seatNumber > 96) {
       return res.status(400).json({
@@ -392,6 +400,7 @@ const lockSeat = async (req, res) => {
       seatNumber,
       lockedBy: req.user?.email || req.user?.id || "admin",
       lockedAt: new Date(),
+      traineeId: traineeId ? String(traineeId).trim() : null,
     });
 
     res.status(201).json({
