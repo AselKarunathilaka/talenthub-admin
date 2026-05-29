@@ -61,6 +61,9 @@ const {
   bulkMarkAttendance,
 } = require("../controllers/manualAttendanceController");
 
+// Admin intern details — attendance (own controller, admin-only feature)
+const { getAdminInternAttendance } = require("../controllers/adminInternDetailsController");
+
 // ── Public routes (no auth) ───────────────────────────────────────────────────
 // Export on-leave interns as Excel
 router.get("/on-leave/export", exportOnLeaveExcel);
@@ -91,6 +94,9 @@ router.post("/notifications/overdue", sendOverdueNotifications);
 
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);
+
+// Get individual intern's separated attendance (daily + meeting)
+router.get("/intern/:internId/attendance", getAdminInternAttendance);
 
 // Get certificate data (enriched from TalentTrail)
 router.get("/intern/:internId/certificate-data", getCertificateData);

@@ -139,7 +139,7 @@ export const adminApi = {
   // Get individual intern's attendance (daily + meeting) separated
   getInternAttendance: async (internId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/interns/attendance/${internId}`, {
+      const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}/attendance`, {
         method: "GET",
         headers: getHeaders(),
       });

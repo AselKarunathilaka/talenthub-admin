@@ -1137,7 +1137,7 @@ const AdminInternDetails = () => {
                                   {Array.from({ length: Math.ceil(calDays.length / 7) }, (_, w) => (
                                     <tr key={w}>
                                       {calDays.slice(w * 7, w * 7 + 7).map((day, di) => {
-                                        const meta = getDayMeta(dailyMap, day);
+                                        const meta = getDayMeta(activeMap, day);
                                         const isToday = day && day.toDateString() === new Date().toDateString();
                                         return (
                                           <td key={di} className="py-1 text-center">
@@ -1204,8 +1204,68 @@ const AdminInternDetails = () => {
                               </div>
                             </div>
 
-                            {activeData.length === 0 && (
-                              <div className="mt-6 text-center py-10 text-gray-400 text-sm">No {attendanceSubTab} attendance records found.</div>
+                            {/* Attendance records list */}
+                            {activeData.length > 0 ? (
+                              <div className="mt-6">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                                  {attendanceSubTab === 'daily' ? 'Daily' : 'Meeting'} Attendance Records
+                                </h4>
+                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                  {activeData
+                                    .filter(e => {
+                                      const d = new Date(e.date);
+                                      return d.getFullYear() === year && d.getMonth() === month;
+                                    })
+                                    .map((entry, idx) => {
+                                      const d = new Date(entry.date);
+                                      const isPresent = (entry.status || '').toLowerCase() === 'present';
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                              isPresent ? 'bg-green-500' : 'bg-gray-300'
+                                            }`} />
+                                            <div>
+                                              <p className="font-medium text-gray-800 text-xs sm:text-sm">
+                                                {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                              </p>
+                                              {entry.meetingName && (
+                                                <p className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[160px]">{entry.meetingName}</p>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center gap-2 text-right">
+                                            {entry.time && (
+                                              <span className="text-[10px] text-gray-400 hidden sm:inline">{entry.time}</span>
+                                            )}
+                                            <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                              isPresent
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-gray-200 text-gray-500'
+                                            }`}>
+                                              {entry.status || 'No Record'}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                                {activeData.filter(e => {
+                                  const d = new Date(e.date);
+                                  return d.getFullYear() === year && d.getMonth() === month;
+                                }).length === 0 && (
+                                  <p className="text-center text-gray-400 text-xs py-6">
+                                    No records for {monthLabel}
+                                  </p>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="mt-6 text-center py-10 text-gray-400 text-sm">
+                                No {attendanceSubTab} attendance records found.
+                              </div>
                             )}
                           </div>
                         )}
