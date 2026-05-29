@@ -12,6 +12,16 @@ class LeaveRequestRepository {
       .populate("reviewedBy", "name email");
   }
 
+  async findOverlappingStudyLeave(internId, startDate, endDate) {
+    return await LeaveRequest.findOne({
+      intern: internId,
+      requestType: "study_leave",
+      status: { $in: ["Pending", "Approved"] },
+      leaveDate: { $lte: endDate },
+      studyEndDate: { $gte: startDate },
+    }).sort({ submittedAt: -1 });
+  }
+
   async findByInternId(internId, options = {}) {
     const { status, date, limit, skip, requestType } = options;
     const filter = { intern: internId };
@@ -63,7 +73,7 @@ class LeaveRequestRepository {
   }
 
   async findAll(options = {}) {
-    const { status, limit, skip, date, requestType } = options;
+    const { status, limit, skip, date, submittedDate, requestType } = options;
     const filter = {};
 
     if (status) {
@@ -95,6 +105,19 @@ class LeaveRequestRepository {
         startOfDay: startOfDay,
         endOfDay: endOfDay,
       });
+    }
+
+    if (submittedDate) {
+      const startOfDay = new Date(submittedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(submittedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      filter.submittedAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
     }
 
     let query = LeaveRequest.find(filter);
@@ -163,7 +186,7 @@ class LeaveRequestRepository {
 
   // Add date filtering to countAll method
   async countAll(status = null, options = {}) {
-    const { date, requestType } = options;
+    const { date, submittedDate, requestType } = options;
     const query = {};
 
     if (status) {
@@ -190,6 +213,19 @@ class LeaveRequestRepository {
           studyEndDate: { $gte: startOfDay },
         },
       ];
+    }
+
+    if (submittedDate) {
+      const startOfDay = new Date(submittedDate);
+      startOfDay.setHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(submittedDate);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      query.submittedAt = {
+        $gte: startOfDay,
+        $lte: endOfDay,
+      };
     }
 
     return await LeaveRequest.countDocuments(query);

@@ -163,11 +163,19 @@ class LeaveRequestController {
         });
       }
 
-      const { status, requestType, page = 1, limit = 10, date } = req.query;
+      const {
+        status,
+        requestType,
+        page = 1,
+        limit = 10,
+        date,
+        submittedDate,
+      } = req.query;
 
       const options = {
         status,
-        date: req.query.date,
+        date,
+        submittedDate,
         requestType,
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
@@ -270,29 +278,29 @@ class LeaveRequestController {
         });
       }
 
-      const { date, requestType } = req.query;
-
-      if (!date) {
-        return res.status(400).json({
-          success: false,
-          message: "date query parameter is required",
-        });
-      }
+      const { date, submittedDate, requestType } = req.query;
 
       const [total, pending, approved, denied] = await Promise.all([
-        leaveRequestService.getAllLeaveRequests({ date, requestType }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
+          requestType,
+        }),
+        leaveRequestService.getAllLeaveRequests({
+          date,
+          submittedDate,
           status: "Pending",
           requestType,
         }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
           status: "Approved",
           requestType,
         }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
           status: "Denied",
           requestType,
         }),

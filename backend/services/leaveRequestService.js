@@ -101,13 +101,34 @@ class LeaveRequestService {
           );
         }
 
-        if (leaveRequestData.studyEndDate) {
-          const studyEndDate = new Date(leaveRequestData.studyEndDate);
-          studyEndDate.setHours(0, 0, 0, 0);
+        const studyEndDate = new Date(
+          leaveRequestData.studyEndDate || leaveRequestData.leaveDate,
+        );
+        studyEndDate.setHours(0, 0, 0, 0);
 
-          if (studyEndDate < leaveDate) {
-            throw new Error("Study leave end date cannot be before start date");
-          }
+        leaveDate.setHours(0, 0, 0, 0);
+
+        if (studyEndDate < leaveDate) {
+          throw new Error("Study leave end date cannot be before start date");
+        }
+
+        if (leaveRequestData.studyEndDate) {
+          leaveRequestData.studyEndDate = studyEndDate;
+        } else {
+          leaveRequestData.studyEndDate = leaveDate;
+        }
+
+        const overlappingStudyLeave =
+          await leaveRequestRepository.findOverlappingStudyLeave(
+            internId,
+            leaveDate,
+            studyEndDate,
+          );
+
+        if (overlappingStudyLeave) {
+          throw new Error(
+            "You already have a pending or approved study leave request for this date range.",
+          );
         }
       } else {
         // Validate short leave request time (8:30 AM to 4:30 PM Sri Lanka Time)
@@ -458,6 +479,7 @@ class LeaveRequestService {
       // UPDATED: Pass date options to countAll method
       const total = await leaveRequestRepository.countAll(options.status, {
         date: options.date,
+        submittedDate: options.submittedDate,
         requestType: options.requestType,
       });
 

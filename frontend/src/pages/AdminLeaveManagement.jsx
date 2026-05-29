@@ -35,7 +35,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         description: "Review and manage intern exam-period study leave requests",
         empty: "No study leave requests found",
         details: "Study Leave Request Details",
-        noForDate: "No study leave requests found",
+        noForDate: "No study leave requests submitted",
       }
     : {
         title: "Short Leave Request Management",
@@ -69,7 +69,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().split("T")[0];
+    return isStudyLeave ? "" : new Date().toISOString().split("T")[0];
   });
 
   // Intern ID filter
@@ -121,7 +121,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         params.status = filter;
       }
 
-      if (selectedDate) {
+      if (selectedDate && isStudyLeave) {
+        params.submittedDate = selectedDate;
+      } else if (selectedDate) {
         params.date = selectedDate;
       }
       const response = await getAllLeaveRequests(params);
@@ -169,7 +171,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const fetchStats = async () => {
     try {
       const params = {};
-      params.date = selectedDate || new Date().toISOString().split("T")[0];
+      if (isStudyLeave && selectedDate) {
+        params.submittedDate = selectedDate;
+      } else if (!isStudyLeave) {
+        params.date = selectedDate || new Date().toISOString().split("T")[0];
+      }
       params.requestType = requestType;
       const response = await getLeaveRequestStats(params);
       setStats(response.data);
@@ -488,6 +494,33 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       )
     : leaveRequests;
 
+  const displayedStats = (() => {
+    if (!isStudyLeave || stats.total > 0 || pagination.total === 0) {
+      return stats;
+    }
+
+    const fallback = {
+      total: filter === "all" ? pagination.total : leaveRequests.length,
+      pending: leaveRequests.filter((request) => request.status === "Pending")
+        .length,
+      approved: leaveRequests.filter((request) => request.status === "Approved")
+        .length,
+      denied: leaveRequests.filter((request) => request.status === "Denied")
+        .length,
+    };
+
+    if (filter === "Pending") fallback.pending = pagination.total;
+    if (filter === "Approved") fallback.approved = pagination.total;
+    if (filter === "Denied") fallback.denied = pagination.total;
+
+    fallback.total = Math.max(
+      fallback.total,
+      fallback.pending + fallback.approved + fallback.denied,
+    );
+
+    return fallback;
+  })();
+
   // Helper to highlight matched text inside a string
   const highlightMatch = (text, query) => {
     if (!query || !text) return <span>{text ?? "N/A"}</span>;
@@ -540,23 +573,27 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="text-3xl font-bold text-gray-900">
-                {stats.total}
+                {displayedStats.total}
               </div>
               <div className="text-sm text-gray-600 mt-1">Total Requests</div>
-              {selectedDate && (
+              {selectedDate ? (
                 <div className="text-xs text-gray-500 mt-1">
                   for {formatSelectedDate().replace(" (Today)", "")}
                 </div>
-              )}
+              ) : isStudyLeave ? (
+                <div className="text-xs text-gray-500 mt-1">
+                  all submitted dates
+                </div>
+              ) : null}
             </div>
             <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
-              {stats.pending > 0 && (
+              {displayedStats.pending > 0 && (
                 <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
-                  {stats.pending}
+                  {displayedStats.pending}
                 </div>
               )}
               <div className="text-3xl font-bold text-yellow-800">
-                {stats.pending}
+                {displayedStats.pending}
               </div>
               <div className="text-sm text-yellow-600 mt-1 font-semibold">
                 ⏰ Pending Review
@@ -564,13 +601,13 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             </div>
             <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
               <div className="text-3xl font-bold text-green-800">
-                {stats.approved}
+                {displayedStats.approved}
               </div>
               <div className="text-sm text-green-600 mt-1">✓ Approved</div>
             </div>
             <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
               <div className="text-3xl font-bold text-red-800">
-                {stats.denied}
+                {displayedStats.denied}
               </div>
               <div className="text-sm text-red-600 mt-1">✗ Denied</div>
             </div>
@@ -585,7 +622,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 <div className="flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     <FiFilter className="inline mr-1" />
-                    Filter by Date
+                    {isStudyLeave ? "Filter by Submitted Date" : "Filter by Date"}
                   </label>
                   <input
                     type="date"
@@ -596,12 +633,28 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     }}
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                   />
+                  {isStudyLeave && selectedDate && (
+                    <button
+                      onClick={() => {
+                        setSelectedDate("");
+                        setPagination((prev) => ({ ...prev, page: 1 }));
+                      }}
+                      className="mt-2 text-left text-xs font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      Show all pending requests
+                    </button>
+                  )}
                   {selectedDate && (
                     <p className="text-sm text-gray-600 mt-2">
                       Showing:{" "}
                       <span className="font-semibold">
                         {formatSelectedDate()}
                       </span>
+                    </p>
+                  )}
+                  {isStudyLeave && !selectedDate && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      Showing: <span className="font-semibold">All submitted dates</span>
                     </p>
                   )}
                 </div>
@@ -693,10 +746,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             {/* Filter buttons */}
             <div className="flex flex-wrap gap-2">
               {[
-                { key: "Pending", count: stats.pending, icon: "⏰" },
-                { key: "Approved", count: stats.approved, icon: "✓" },
-                { key: "Denied", count: stats.denied, icon: "✗" },
-                { key: "all", count: stats.total, label: "All", icon: "📋" },
+                { key: "Pending", count: displayedStats.pending, icon: "⏰" },
+                { key: "Approved", count: displayedStats.approved, icon: "✓" },
+                { key: "Denied", count: displayedStats.denied, icon: "✗" },
+                {
+                  key: "all",
+                  count: displayedStats.total,
+                  label: "All",
+                  icon: "📋",
+                },
               ].map(({ key, count, label, icon }) => (
                 <button
                   key={key}
