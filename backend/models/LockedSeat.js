@@ -17,6 +17,10 @@ const lockedSeatSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    traineeId: {
+      type: String,
+      default: null, // Optional: ID of the intern this seat is reserved for
+    },
   },
   {
     timestamps: true,

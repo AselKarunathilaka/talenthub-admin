@@ -6,7 +6,7 @@ import { useSeatManagement } from "./useSeatManagement";
 const SeatContext = React.createContext();
 
 const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
-  const { getSeatStatus, allBookings, dailyBookings, handleSeatClick } = React.useContext(SeatContext);
+  const { getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails } = React.useContext(SeatContext);
   const status = getSeatStatus(number);
   const bookingInfo = allBookings[number];
   const isMyBooking = dailyBookings[number];
@@ -52,7 +52,9 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
       }}
       title={
         status === "locked"
-          ? `Seat ${number} (Locked)`
+          ? lockedSeatDetails?.[number]?.traineeId
+            ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}`
+            : `Seat ${number} (Locked)`
           : status === "booked" && bookingInfo?.traineeId
             ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
             : status === "booked" && bookingInfo?.email
@@ -150,10 +152,11 @@ const InternSeatManagement = () => {
     handleDateBookingConfirm,
     handleCancelBooking,
     getSeatStatus,
+    lockedSeatDetails,
   } = useSeatManagement();
 
   return (
-    <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick }}>
+    <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
       <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
       <Navigation />{" "}
       <div className="flex-1 w-full lg:mt-20 lg:px-10">

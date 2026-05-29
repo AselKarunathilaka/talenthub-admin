@@ -202,16 +202,17 @@ export const adminSeatApi = {
   /**
    * Lock a seat
    * @param {number} seatNumber - Seat number to lock
+   * @param {string} traineeId - Optional trainee ID to attach to the lock
    * @returns {Promise<Object>} - { success, message, seatNumber }
    */
-  lockSeat: async (seatNumber) => {
+  lockSeat: async (seatNumber, traineeId = null) => {
     try {
       const response = await fetch(
         `${API_BASE_URL}/admin/seat-bookings/lock`,
         {
           method: "POST",
           headers: getHeaders(),
-          body: JSON.stringify({ seatNumber }),
+          body: JSON.stringify({ seatNumber, traineeId: traineeId || null }),
         },
       );
 

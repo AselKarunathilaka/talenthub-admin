@@ -44,10 +44,12 @@ const AdminSeatManagement = () => {
 
   // Seat lock management state
   const [lockedSeats, setLockedSeats] = useState([]);
+  const [lockedSeatDetailsBySeat, setLockedSeatDetailsBySeat] = useState({}); // { seatNum: { traineeId } }
   const [lockedSeatsCount, setLockedSeatsCount] = useState(0);
   const [lockLoading, setLockLoading] = useState(false);
   const [showLockManager, setShowLockManager] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
+  const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
   const getTodayDate = () => {
     const today = new Date();
@@ -68,6 +70,12 @@ const AdminSeatManagement = () => {
       const data = await adminSeatApi.getLockedSeats();
       setLockedSeats(data.lockedSeats || []);
       setLockedSeatsCount(data.count || 0);
+      // Build a quick lookup map: { seatNumber -> { traineeId } }
+      const detailsMap = {};
+      (data.lockedSeatDetails || []).forEach((d) => {
+        detailsMap[d.seatNumber] = d;
+      });
+      setLockedSeatDetailsBySeat(detailsMap);
     } catch (err) {
       console.error("Failed to fetch locked seats:", err);
     }
@@ -78,7 +86,7 @@ const AdminSeatManagement = () => {
     setLockLoading(true);
     try {
       if (action === "lock") {
-        const result = await adminSeatApi.lockSeat(seatNumber);
+        const result = await adminSeatApi.lockSeat(seatNumber, lockTraineeId.trim() || null);
         seatNotificationUtils.showSuccess(result.message);
         if (result.warning) {
           setTimeout(() => seatNotificationUtils.showInfo(result.warning), 500);
@@ -94,6 +102,7 @@ const AdminSeatManagement = () => {
     } finally {
       setLockLoading(false);
       setLockConfirm(null);
+      setLockTraineeId(""); // Reset trainee ID input
     }
   };
 
@@ -127,6 +136,7 @@ const AdminSeatManagement = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate]);
 
+
   // Build a seat-number -> booking lookup for the floor plan
   const bookingsBySeat = {};
   bookings.forEach((b) => {
@@ -134,6 +144,7 @@ const AdminSeatManagement = () => {
       bookingsBySeat[b.seatNumber] = b;
     }
   });
+
 
   // Filter bookings based on search query
   useEffect(() => {
@@ -718,10 +729,13 @@ const AdminSeatManagement = () => {
                                 }
 
                                 // 3 states: locked (gray), booked (red), available (cyan)
+                                const lockDetail = lockedSeatDetailsBySeat[number];
                                 let bgClass, titleText;
                                 if (isLocked) {
                                   bgClass = "bg-gray-500 text-white";
-                                  titleText = `Seat ${number} (Locked) — Click to unlock`;
+                                  titleText = lockDetail?.traineeId
+                                    ? `Seat ${number} (Locked for: ${lockDetail.traineeId}) — Click to unlock`
+                                    : `Seat ${number} (Locked) — Click to unlock`;
                                 } else if (isBooked) {
                                   bgClass = "bg-red-400 text-white hover:bg-red-500";
                                   titleText = `Seat ${number} — Booked by: ${booking.traineeId || booking.internName || booking.email || "Unknown"}`;
@@ -746,7 +760,9 @@ const AdminSeatManagement = () => {
                                   >
                                     {isLocked ? <FaLock size={12} className="mb-[-2px]" /> : null}
                                     <Armchair size={16} />
-                                    {isBooked && !isLocked ? (
+                                    {isLocked && lockDetail?.traineeId ? (
+                                      <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5">{lockDetail.traineeId}</span>
+                                    ) : isBooked && !isLocked ? (
                                       <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5">{booking.traineeId || number}</span>
                                     ) : (
                                       <span className="text-[10px] mt-0.5">{number}</span>
@@ -818,9 +834,26 @@ const AdminSeatManagement = () => {
                               : "This seat will become available for interns to book."}
                           </p>
                         </div>
+                        {/* Trainee ID input — only shown when locking */}
+                        {lockConfirm.action === "lock" && (
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Trainee ID <span className="text-gray-400 font-normal">(optional)</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={lockTraineeId}
+                              onChange={(e) => setLockTraineeId(e.target.value)}
+                              placeholder="e.g. 3425"
+                              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
+                              autoFocus
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Tag this seat for a specific intern</p>
+                          </div>
+                        )}
                         <div className="flex gap-3">
                           <button
-                            onClick={() => setLockConfirm(null)}
+                            onClick={() => { setLockConfirm(null); setLockTraineeId(""); }}
                             disabled={lockLoading}
                             className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
                           >
