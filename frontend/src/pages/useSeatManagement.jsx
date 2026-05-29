@@ -148,6 +148,7 @@ export const useSeatManagement = () => {
   const [takenSeatsByAnyone, setTakenSeatsByAnyone] = useState([]);
   const [allBookings, setAllBookings] = useState({});
   const [lockedSeats, setLockedSeats] = useState([]);
+  const [lockedSeatDetails, setLockedSeatDetails] = useState({}); // { seatNumber -> { traineeId } }
 
   // Computed values
   const totalUnavailableCount = takenSeatsByAnyone.length;
@@ -194,10 +195,16 @@ export const useSeatManagement = () => {
       const data = await response.json();
       const fetched = data.lockedSeats || [];
 
+      // Build traineeId lookup map from lockedSeatDetails
+      const detailsMap = {};
+      (data.lockedSeatDetails || []).forEach((d) => {
+        detailsMap[d.seatNumber] = d;
+      });
+      setLockedSeatDetails(detailsMap);
+
       // Update locked seats, then re-merge with whatever booked seats we have
       setLockedSeats(fetched);
       setTakenSeatsByAnyone((prev) => {
-        // Keep only the non-locked portion of prev, then re-add fresh locked seats
         const bookedOnly = prev.filter((s) => !fetched.includes(s));
         return [...new Set([...bookedOnly, ...fetched])];
       });
@@ -576,5 +583,6 @@ export const useSeatManagement = () => {
     loadBookingsForDate,
     fetchBookingsByIntern,
     fetchSeatAvailability,
+    lockedSeatDetails,
   };
 };
