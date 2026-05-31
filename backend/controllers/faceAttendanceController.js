@@ -3,6 +3,7 @@ const Intern = require("../models/Intern");
 const mongoose = require("mongoose");
 const AttendanceSettingsService = require("../services/attendanceSettingsService");
 const FaceMeetingPinService = require("../services/faceMeetingPinService");
+const InternFaceProfile = require("../models/InternFaceProfile");
 
 const resolveInternId = (req) => {
   return req.user?.id || req.body.internId || req.params.internId || null;
@@ -180,6 +181,64 @@ const getFaceProfileByIdentifier = async (req, res) => {
   }
 };
 
+const getFaceProfileEnrollmentSummary = async (req, res) => {
+  try {
+    const [profiles, totalInterns] = await Promise.all([
+      InternFaceProfile.find({})
+        .populate(
+          "internId",
+          "Trainee_ID Trainee_Name Trainee_Email Institute field_of_spec_name team Training_StartDate Training_EndDate",
+        )
+        .sort({ updatedAt: -1 })
+        .lean(),
+      Intern.countDocuments({}),
+    ]);
+
+    const enrollmentProfiles = profiles.map((profile) => {
+      const intern = profile.internId || {};
+      const sampleCount = Number(profile.sampleCount || profile.embeddings?.length || 0);
+
+      return {
+        _id: profile._id,
+        internId: intern._id || null,
+        traineeId: intern.Trainee_ID || profile.traineeId,
+        traineeName: intern.Trainee_Name || profile.traineeName,
+        email: intern.Trainee_Email || "",
+        institute: intern.Institute || "",
+        fieldOfSpecialization: intern.field_of_spec_name || "",
+        team: intern.team || "",
+        isActive: profile.isActive !== false,
+        sampleCount,
+        isComplete: profile.isActive !== false && sampleCount > 0,
+        enrolledAt: profile.createdAt,
+        updatedAt: profile.updatedAt,
+        lastMatchedAt: profile.lastMatchedAt,
+      };
+    });
+
+    const activeProfiles = enrollmentProfiles.filter((profile) => profile.isActive);
+    const completedProfiles = enrollmentProfiles.filter((profile) => profile.isComplete);
+
+    return res.status(200).json({
+      stats: {
+        enrolled: enrollmentProfiles.length,
+        totalInterns,
+        notEnrolled: Math.max(totalInterns - enrollmentProfiles.length, 0),
+        active: activeProfiles.length,
+        completed: completedProfiles.length,
+        incomplete: activeProfiles.length - completedProfiles.length,
+        inactive: enrollmentProfiles.length - activeProfiles.length,
+      },
+      profiles: enrollmentProfiles,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to load face enrollment profiles.",
+      error: error.message,
+    });
+  }
+};
+
 const getAttendanceSettings = async (req, res) => {
   try {
     const settings = await AttendanceSettingsService.getAttendanceSettings();
@@ -252,6 +311,7 @@ module.exports = {
   getFaceProfile,
   getFaceLogs,
   getFaceProfileByIdentifier,
+  getFaceProfileEnrollmentSummary,
   getAttendanceSettings,
   getCurrentMeetingPin,
   validateCurrentMeetingPin,

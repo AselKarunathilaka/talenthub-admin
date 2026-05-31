@@ -1,4 +1,5 @@
 const Intern = require("../models/Intern");
+const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -6,6 +7,86 @@ const path = require("path");
 const WeeklyMeetingAttendanceService = require("../services/weeklymeetingattendanceservice");
 
 const TZ = "Asia/Colombo";
+const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
+
+const getInternDetails = (intern) => ({
+  _id: intern._id,
+  name: intern.Trainee_Name || "Unknown",
+  id: intern.Trainee_ID || "Unknown",
+  email: intern.Trainee_Email || "",
+  fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
+  institute: intern.Institute || "Not specified",
+  team: intern.team || "Not specified",
+  trainingStartDate: intern.Training_StartDate
+    ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
+    : "Not specified",
+  trainingEndDate: intern.Training_EndDate
+    ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
+    : "Not specified",
+});
+
+const sortByInternId = (interns) =>
+  interns.sort((a, b) =>
+    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
+  );
+
+// Daily QR and face records are stored on Intern. DailyRecord is also checked
+// so logbook-backed attendance remains visible for older records.
+async function getDailyPresentsOnDate(dateStr) {
+  const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
+  const nextDate = targetDate.clone().add(1, "day");
+  const interns = await Intern.find({});
+  const internById = new Map(interns.map((intern) => [String(intern._id), intern]));
+  const dailyByIntern = new Map();
+
+  for (const intern of interns) {
+    const records = (intern.attendance || []).filter((record) => {
+      const type = String(record.type || "").toLowerCase();
+      const recordDate = moment(record.date).tz(TZ);
+      return (
+        DAILY_ATTENDANCE_TYPES.has(type) &&
+        record.status === "Present" &&
+        recordDate.isSameOrAfter(targetDate) &&
+        recordDate.isBefore(nextDate)
+      );
+    });
+
+    if (records.length === 0) continue;
+    const latest = records.sort(
+      (a, b) =>
+        new Date(b.timeMarked || b.date).getTime() -
+        new Date(a.timeMarked || a.date).getTime(),
+    )[0];
+    dailyByIntern.set(String(intern._id), {
+      ...getInternDetails(intern),
+      timeMarked: moment(latest.timeMarked || latest.date).tz(TZ).format("HH:mm"),
+      type: latest.type || "daily",
+      status: "Present",
+    });
+  }
+
+  const dailyRecords = await DailyRecord.find({
+    date: dateStr,
+    attendance: { $in: ["present", "late"] },
+  });
+
+  for (const record of dailyRecords) {
+    const key = String(record.internId);
+    if (dailyByIntern.has(key)) continue;
+    const intern = internById.get(key);
+    if (!intern) continue;
+    dailyByIntern.set(key, {
+      ...getInternDetails(intern),
+      timeMarked: record.attendanceTime
+        ? moment(record.attendanceTime).tz(TZ).format("HH:mm")
+        : "—",
+      type: "daily",
+      status: record.attendance === "late" ? "Late" : "Present",
+    });
+  }
+
+  return sortByInternId([...dailyByIntern.values()]);
+}
 
 // ---------------------------------------------------------------------------
 // Helper: Get interns present on a specific date (LKT-aware)
@@ -47,19 +128,7 @@ async function getPresentsOnDate(dateStr) {
       const firstMeeting = meetings[0];
 
       presentInterns.push({
-        _id: intern._id,
-        name: intern.Trainee_Name || "Unknown",
-        id: intern.Trainee_ID || "Unknown",
-        email: intern.Trainee_Email || "",
-        fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
-        institute: intern.Institute || "Not specified",
-        team: intern.team || "Not specified",
-        trainingStartDate: intern.Training_StartDate
-          ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
-          : "Not specified",
-        trainingEndDate: intern.Training_EndDate
-          ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
-          : "Not specified",
+        ...getInternDetails(intern),
         meetingName: meetings.map((meeting) => meeting.meetingName).join(", "),
         meetingCount: meetings.length,
         meetings,
@@ -69,11 +138,7 @@ async function getPresentsOnDate(dateStr) {
     }
   }
 
-  presentInterns.sort((a, b) =>
-    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
-  );
-
-  return presentInterns;
+  return sortByInternId(presentInterns);
 }
 
 // ---------------------------------------------------------------------------
@@ -88,12 +153,19 @@ exports.getAttendanceByDate = async (req, res) => {
         .json({ error: "date query param required (YYYY-MM-DD)" });
     }
 
-    const presentInterns = await getPresentsOnDate(dateStr);
+    const [meetingInterns, dailyInterns] = await Promise.all([
+      getPresentsOnDate(dateStr),
+      getDailyPresentsOnDate(dateStr),
+    ]);
 
     return res.json({
       date: dateStr,
-      count: presentInterns.length,
-      interns: presentInterns,
+      count: meetingInterns.length,
+      interns: meetingInterns,
+      meetingCount: meetingInterns.length,
+      meetingInterns,
+      dailyCount: dailyInterns.length,
+      dailyInterns,
     });
   } catch (err) {
     console.error("getAttendanceByDate error:", err);

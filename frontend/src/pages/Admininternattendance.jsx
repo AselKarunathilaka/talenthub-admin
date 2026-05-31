@@ -159,6 +159,10 @@ const TypeBadge = ({ type }) => {
       label: "Face Meeting",
       cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
     },
+    face: {
+      label: "Face",
+      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    },
     manual: {
       label: "Manual",
       cls: "bg-amber-100 text-amber-700 border-amber-200",
@@ -192,6 +196,7 @@ const AdminInternAttendance = () => {
   const [exportingNonAttendance, setExportingNonAttendance] = useState(false);
   const [triggering, setTriggering] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [toast, setToast] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -337,6 +342,15 @@ const AdminInternAttendance = () => {
   };
 
   const filtered = (data?.interns || []).filter((intern) => {
+    const q = searchTerm.toLowerCase();
+    return (
+      intern.name.toLowerCase().includes(q) ||
+      intern.id.toLowerCase().includes(q) ||
+      intern.email.toLowerCase().includes(q) ||
+      intern.team.toLowerCase().includes(q)
+    );
+  });
+  const filteredDaily = (data?.dailyInterns || []).filter((intern) => {
     const q = searchTerm.toLowerCase();
     return (
       intern.name.toLowerCase().includes(q) ||
@@ -550,11 +564,11 @@ const AdminInternAttendance = () => {
               </div>
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Meeting Attendance
+                  Attendance Management
                 </span>
               </h2>
               <p className="text-gray-600 text-sm md:text-base">
-                View daily attendance records and send non-attendance reports
+                Review daily and meeting attendance records separately
               </p>
             </motion.div>
 
@@ -696,7 +710,7 @@ const AdminInternAttendance = () => {
               transition={{ delay: 0.2, duration: 0.3 }}
             >
               <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-                Daily Attendance
+                Attendance Records
               </span>
               <div className="flex-1 h-px bg-gray-200" />
             </motion.div>
@@ -716,10 +730,10 @@ const AdminInternAttendance = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-semibold text-gray-900">
-                    Daily Attendance Records
+                    Attendance Filters
                   </h3>
                   <p className="text-xs text-gray-500">
-                    Filter by date, search interns, and export the present list
+                    Filter daily and meeting attendance by date or intern
                   </p>
                 </div>
               </div>
@@ -779,6 +793,21 @@ const AdminInternAttendance = () => {
                         )}
                       </div>
                     </div>
+
+                    <div className="flex-1 sm:max-w-[13rem]">
+                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
+                        Attendance Type
+                      </label>
+                      <select
+                        value={attendanceFilter}
+                        onChange={(e) => setAttendanceFilter(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm shadow-sm"
+                      >
+                        <option value="all">All attendance</option>
+                        <option value="daily">Daily attendance</option>
+                        <option value="meeting">Meeting attendance</option>
+                      </select>
+                    </div>
                   </div>
 
                   {/* Export Excel button */}
@@ -798,7 +827,7 @@ const AdminInternAttendance = () => {
                       ) : (
                         <FaFileExcel className="h-4 w-4" />
                       )}
-                      <span>Export Attendance List</span>
+                      <span>Export Meeting List</span>
                       {data && data.count > 0 && (
                         <span className="bg-white/25 px-1.5 py-0.5 rounded-full text-xs">
                           {data.count}
@@ -811,8 +840,81 @@ const AdminInternAttendance = () => {
             </motion.div>
 
             {/* ══════════════════════════════════════════════════
-                ATTENDANCE TABLE
+                DAILY ATTENDANCE TABLE
             ══════════════════════════════════════════════════ */}
+            {attendanceFilter !== "meeting" && (
+              <motion.div
+                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.35, duration: 0.3 }}
+              >
+                <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+                  <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                    Daily Attendance — {formatDateLabel(selectedDate)}
+                  </h2>
+                  {!loading && data && (
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {searchTerm
+                        ? `${filteredDaily.length} of ${data.dailyCount || 0} shown`
+                        : `${data.dailyCount || 0} intern${data.dailyCount !== 1 ? "s" : ""} marked for the day`}
+                    </p>
+                  )}
+                </div>
+
+                {loading ? (
+                  <div className="flex items-center justify-center py-12 text-gray-400">
+                    <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
+                    <span className="text-sm">Fetching daily attendance…</span>
+                  </div>
+                ) : filteredDaily.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 px-4">
+                    <FaCalendarCheck className="mx-auto h-10 w-10 text-gray-300 mb-3" />
+                    <h3 className="text-sm font-medium text-gray-600">
+                      No daily attendance records
+                    </h3>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full divide-y divide-gray-100">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
+                          <th className="min-w-[16rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Intern</th>
+                          <th className="min-w-[16rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
+                          <th className="min-w-[12rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Team / Field</th>
+                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
+                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {filteredDaily.map((intern, idx) => (
+                          <tr key={intern._id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-4 text-sm text-gray-400 font-mono">{idx + 1}</td>
+                            <td className="px-4 py-4">
+                              <p className="text-sm font-semibold text-gray-900">{intern.name}</p>
+                              <p className="text-xs text-gray-500">{intern.id}</p>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-700">{intern.email}</td>
+                            <td className="px-4 py-4">
+                              <p className="text-sm font-medium text-gray-800">{intern.team}</p>
+                              <p className="text-xs text-gray-500">{intern.fieldOfSpecialization}</p>
+                            </td>
+                            <td className="px-4 py-4 text-sm text-gray-700">{intern.timeMarked}</td>
+                            <td className="px-4 py-4"><TypeBadge type={intern.type} /></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* ══════════════════════════════════════════════════
+                MEETING ATTENDANCE TABLE
+            ══════════════════════════════════════════════════ */}
+            {attendanceFilter !== "daily" && (
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
@@ -825,8 +927,8 @@ const AdminInternAttendance = () => {
                     {loading
                       ? "Loading…"
                       : data
-                        ? `Present Interns — ${formatDateLabel(selectedDate)}`
-                        : "Attendance Records"}
+                        ? `Meeting Attendance — ${formatDateLabel(selectedDate)}`
+                        : "Meeting Attendance Records"}
                   </h2>
                   {!loading && data && (
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -1097,6 +1199,7 @@ const AdminInternAttendance = () => {
                 </>
               )}
             </motion.div>
+            )}
           </div>
         </main>
       </div>

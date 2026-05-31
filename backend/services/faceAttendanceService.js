@@ -76,6 +76,11 @@ class FaceAttendanceService {
         isActive: true,
       });
     } else {
+      if (metadata.replaceExisting === true) {
+        profile.embeddings = [];
+        profile.sampleCount = 0;
+      }
+
       const isDuplicateSample = profile.embeddings.some(
         (existingEmbedding) => euclideanDistance(existingEmbedding, normalizedDescriptor) < 0.01,
       );
@@ -194,10 +199,12 @@ class FaceAttendanceService {
     const locationPayload = {
       lat: location.latitude ?? location.lat,
       lng: location.longitude ?? location.lng,
+      accuracy: location.accuracy,
+      capturedAt: location.capturedAt,
       label: normalizedAttendanceType === "meeting" ? "Face meeting attendance" : "Face attendance",
     };
 
-    await AttendanceSettingsService.validateSltLocationIfRequired(locationPayload);
+    const locationValidation = await AttendanceSettingsService.validateSltLocationIfRequired(locationPayload);
 
     let meetingPinData = null;
     if (normalizedAttendanceType === "meeting") {
@@ -227,6 +234,7 @@ class FaceAttendanceService {
           ...metadata,
           reason: expectedInternId ? "logged_in_face_not_recognized" : "face_not_recognized",
           attendanceType: normalizedAttendanceType,
+          locationValidation,
         },
       });
 
@@ -294,6 +302,7 @@ class FaceAttendanceService {
         meetingTitle: normalizedProjectName || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,
         dailyAttendanceMarked,
+        locationValidation,
       },
     });
 

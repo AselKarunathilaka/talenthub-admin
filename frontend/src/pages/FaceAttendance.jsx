@@ -17,7 +17,14 @@ import toast from "react-hot-toast";
 import { BrowserMultiFormatReader } from "@zxing/library";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
+import FaceScanGuide from "../components/FaceScanGuide";
 import { apiFetch } from "../utils/api";
+import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
+import {
+  getDeviceTimeEvidence,
+  requestFreshLocation,
+  toAttendanceEvidence,
+} from "../utils/attendanceEvidence";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -26,6 +33,20 @@ const SLT_OFFICE = {
 };
 
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+const REQUIRED_ENROLLMENT_SAMPLES = 5;
+const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
+const ENROLLMENT_PROMPTS = [
+  "Look straight at the camera and hold still.",
+  "Turn your head slightly to the left.",
+  "Return to the center and hold still.",
+  "Turn your head slightly to the right.",
+  "Return to the center for the final scan.",
+];
+const ENROLLMENT_DIRECTIONS = ["center", "left", "center", "right", "center"];
+const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 320,
+  scoreThreshold: 0.45,
+});
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -56,13 +77,13 @@ const validateQRCodeFormat = (qrCode, scanMode, projectName = "") => {
   }
 };
 
-const getDistanceKm = (fromLocation) => {
+const getDistanceKm = (fromLocation, officeLocation = SLT_OFFICE) => {
   if (!fromLocation) return null;
 
   const earthRadiusKm = 6371;
-  const dLat = ((fromLocation.latitude - SLT_OFFICE.latitude) * Math.PI) / 180;
-  const dLng = ((fromLocation.longitude - SLT_OFFICE.longitude) * Math.PI) / 180;
-  const officeLatRad = (SLT_OFFICE.latitude * Math.PI) / 180;
+  const dLat = ((fromLocation.latitude - officeLocation.latitude) * Math.PI) / 180;
+  const dLng = ((fromLocation.longitude - officeLocation.longitude) * Math.PI) / 180;
+  const officeLatRad = (officeLocation.latitude * Math.PI) / 180;
   const currentLatRad = (fromLocation.latitude * Math.PI) / 180;
 
   const a =
@@ -88,6 +109,7 @@ const FaceAttendance = () => {
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [officeLocation, setOfficeLocation] = useState(SLT_OFFICE);
   const [cooldown, setCooldown] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [qrMode, setQrMode] = useState("daily");
@@ -96,23 +118,34 @@ const FaceAttendance = () => {
   const [qrScanning, setQrScanning] = useState(false);
   const [qrProcessing, setQrProcessing] = useState(false);
   const [qrScanSuccess, setQrScanSuccess] = useState(false);
+  const [faceGuide, setFaceGuide] = useState({
+    ready: false,
+    message: "Center your face inside the oval",
+  });
+  const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const meshCanvasRef = useRef(null);
   const streamRef = useRef(null);
   const qrVideoRef = useRef(null);
   const qrScannerRef = useRef(null);
   const processedQrRef = useRef(false);
+  const liveDescriptorRef = useRef(null);
+  const enrollmentFramesRef = useRef([]);
+  const lastAutoCaptureRef = useRef(0);
+  const inspectBusyRef = useRef(false);
+  const enrollmentSubmitStartedRef = useRef(false);
 
-  const distanceKm = getDistanceKm(location);
-  const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
+  const distanceKm = getDistanceKm(location, officeLocation);
+  const actualLocationValid = distanceKm !== null && distanceKm <= officeLocation.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReady = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const attendanceLocationReady = locationValid;
   const canStartCamera =
     mode === "enroll" ||
     (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
-  const enrollmentProgress = Math.min(enrollmentFrames.length, 5);
+  const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
   const attachStreamToVideo = async () => {
     if (!videoRef.current || !streamRef.current) return;
@@ -154,6 +187,13 @@ const FaceAttendance = () => {
         const response = await apiFetch("/face-attendance/settings");
         const result = await response.json();
         setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+        if (result.settings?.locationPolicy) {
+          setOfficeLocation({
+            latitude: result.settings.locationPolicy.latitude,
+            longitude: result.settings.locationPolicy.longitude,
+            radiusKm: result.settings.locationPolicy.radiusMeters / 1000,
+          });
+        }
       } catch (error) {
         console.error("Failed to load attendance settings:", error);
       }
@@ -163,26 +203,25 @@ const FaceAttendance = () => {
   }, []);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by this browser.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
+    requestFreshLocation()
+      .then((freshLocation) => {
+        setLocation(freshLocation);
         setLocationError("");
-      },
-      (error) => {
+      })
+      .catch((error) => {
         console.warn("Geolocation error:", error);
-        setLocationError("Location permission is required for attendance.");
-      },
-      { enableHighAccuracy: true, timeout: 12000 },
-    );
+        setLocationError(error.message);
+      });
   }, []);
+
+  const getFreshAttendanceLocation = async () => {
+    if (!sltLocationRequired) return location;
+
+    const freshLocation = await requestFreshLocation();
+    setLocation(freshLocation);
+    setLocationError("");
+    return freshLocation;
+  };
 
   const stopCamera = () => {
     if (streamRef.current) {
@@ -195,6 +234,9 @@ const FaceAttendance = () => {
     }
 
     setCameraActive(false);
+    liveDescriptorRef.current = null;
+    clearFaceMesh(meshCanvasRef.current);
+    setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
 
   const stopQRScanner = () => {
@@ -300,14 +342,17 @@ const FaceAttendance = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 720 },
+          height: { ideal: 540 },
+          aspectRatio: { ideal: 4 / 3 },
           facingMode: "user",
         },
         audio: false,
       });
 
       streamRef.current = stream;
+      lastAutoCaptureRef.current = Date.now();
+      enrollmentSubmitStartedRef.current = false;
       setCameraActive(true);
       await attachStreamToVideo();
     } catch (error) {
@@ -325,11 +370,12 @@ const FaceAttendance = () => {
 
     try {
       const detections = await faceapi
-        .detectAllFaces(canvasRef.current, new faceapi.TinyFaceDetectorOptions())
+        .detectAllFaces(canvasRef.current, FACE_DETECTOR_OPTIONS)
         .withFaceLandmarks()
         .withFaceDescriptors();
 
       if (detections.length !== 1) {
+        clearFaceMesh(meshCanvasRef.current);
         return {
           error:
             detections.length === 0
@@ -338,66 +384,154 @@ const FaceAttendance = () => {
         };
       }
 
-      return {
-        descriptor: Array.from(detections[0].descriptor),
-      };
+      const detection = detections[0];
+      drawFaceMesh(meshCanvasRef.current, detection.landmarks);
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - 320) <= 105 &&
+        Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) {
+        return { error: "Move your face into the center oval." };
+      }
+
+      if (!largeEnough) {
+        return { error: "Move a little closer to the camera." };
+      }
+
+      return { descriptor: Array.from(detection.descriptor) };
     } catch (error) {
+      clearFaceMesh(meshCanvasRef.current);
       console.error("Error extracting face descriptor:", error);
       return { error: "Could not read face data from the camera frame." };
     }
   };
 
-  const handleEnrollmentCapture = async () => {
-    setLoading(true);
-    const frameData = await captureFrameForDescriptor();
+  useEffect(() => {
+    enrollmentFramesRef.current = enrollmentFrames;
+  }, [enrollmentFrames]);
 
-    if (!frameData || frameData.error) {
-      toast.error(frameData?.error || "No face detected.");
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    if (!cameraActive) return undefined;
 
-    setEnrollmentFrames((current) => [...current, frameData.descriptor]);
-    toast.success(`Enrollment frame ${enrollmentFrames.length + 1} captured.`);
-    setLoading(false);
-  };
+    let cancelled = false;
+    const inspectFace = async () => {
+      if (inspectBusyRef.current) return;
+      if (
+        mode === "enroll" &&
+        enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
+      ) {
+        setFaceGuide({
+          ready: true,
+          message: "Face samples are ready. Complete enrollment.",
+        });
+        return;
+      }
+      inspectBusyRef.current = true;
+
+      try {
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled) return;
+
+        if (!frameData || frameData.error) {
+          liveDescriptorRef.current = null;
+          setFaceGuide({ ready: false, message: frameData?.error || "Center your face inside the oval" });
+          return;
+        }
+
+        liveDescriptorRef.current = frameData.descriptor;
+        setFaceGuide({
+          ready: true,
+          message:
+            mode === "enroll"
+              ? enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
+                ? "Face samples are ready. Complete enrollment."
+                : ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length]
+              : "Face is ready. You can mark attendance.",
+        });
+
+        if (mode !== "enroll") return;
+        const currentFrames = enrollmentFramesRef.current;
+        if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
+        if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+
+        const previousFrame = currentFrames[currentFrames.length - 1];
+        const isDistinct =
+          !previousFrame ||
+          Math.sqrt(
+            previousFrame.reduce((sum, value, index) => {
+              const difference = value - frameData.descriptor[index];
+              return sum + difference * difference;
+            }, 0),
+          ) >= 0.035;
+
+        if (!isDistinct) {
+          setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
+          return;
+        }
+
+        lastAutoCaptureRef.current = Date.now();
+        setEnrollmentFrames((frames) => [...frames, frameData.descriptor]);
+        setFaceGuide({
+          ready: true,
+          message:
+            currentFrames.length + 1 >= REQUIRED_ENROLLMENT_SAMPLES
+              ? "Face samples are ready. Complete enrollment."
+              : ENROLLMENT_PROMPTS[currentFrames.length + 1],
+        });
+      } finally {
+        inspectBusyRef.current = false;
+      }
+    };
+
+    inspectFace();
+    const timer = window.setInterval(inspectFace, 700);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [cameraActive, mode]);
 
   const completeEnrollment = async () => {
-    if (enrollmentFrames.length < 5) {
-      toast.error("Capture at least 5 frames before completing enrollment.");
+    if (enrollmentFrames.length < REQUIRED_ENROLLMENT_SAMPLES) {
+      toast.error("Hold still until all clear face samples are captured.");
       return;
     }
+    if (enrollmentSubmitStartedRef.current) return;
 
+    enrollmentSubmitStartedRef.current = true;
+    stopCamera();
     setLoading(true);
     try {
-      const avgDescriptor = enrollmentFrames[0].map((_, index) => {
-        const sum = enrollmentFrames.reduce((acc, frame) => acc + frame[index], 0);
-        return sum / enrollmentFrames.length;
-      });
-
-      const response = await apiFetch("/face-attendance/enroll", {
-        method: "POST",
-        body: JSON.stringify({
-          descriptor: avgDescriptor,
-          metadata: {
-            location: location || null,
-            enrollmentMethod: "face-attendance-page",
-          },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        toast.error(result.message || "Face enrollment failed.");
-        return;
+      for (const [index, descriptor] of enrollmentFrames.entries()) {
+        const response = await apiFetch("/face-attendance/enroll", {
+          method: "POST",
+          body: JSON.stringify({
+            descriptor,
+            metadata: {
+              location: location || null,
+              enrollmentMethod: "face-attendance-page-guided",
+              replaceExisting: index === 0,
+              ...getDeviceTimeEvidence(),
+            },
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          toast.error(result.message || "Face enrollment failed.");
+          return;
+        }
       }
 
       toast.success("Face enrolled successfully.");
       showSuccess("Face profile is ready for attendance.");
+      setEnrollmentSuccess(true);
       setMode("recognize");
       setEnrollmentFrames([]);
-      stopCamera();
+      window.setTimeout(() => setEnrollmentSuccess(false), 1800);
     } catch (error) {
       console.error("Enrollment error:", error);
       toast.error("Enrollment failed. Please try again.");
@@ -405,6 +539,16 @@ const FaceAttendance = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (
+      mode === "enroll" &&
+      enrollmentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES &&
+      !enrollmentSubmitStartedRef.current
+    ) {
+      completeEnrollment();
+    }
+  }, [enrollmentFrames, mode]);
 
   const handleFaceRecognition = async () => {
     if (!requireValidLocation("You must be within SLT office radius to mark attendance.")) return;
@@ -420,7 +564,19 @@ const FaceAttendance = () => {
     }
 
     setLoading(true);
-    const frameData = await captureFrameForDescriptor();
+    let attendanceLocation;
+    try {
+      attendanceLocation = await getFreshAttendanceLocation();
+    } catch (error) {
+      setLocationError(error.message);
+      toast.error(error.message);
+      setLoading(false);
+      return;
+    }
+
+    const frameData = liveDescriptorRef.current
+      ? { descriptor: liveDescriptorRef.current }
+      : await captureFrameForDescriptor();
 
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -437,10 +593,11 @@ const FaceAttendance = () => {
           projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
           meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
-            location: location || null,
+            location: attendanceLocation || null,
             source: "browser-camera",
             projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
             meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
+            ...getDeviceTimeEvidence(),
           },
         }),
       });
@@ -512,11 +669,11 @@ const FaceAttendance = () => {
 
         try {
           const internId = localStorage.getItem("internId");
+          const attendanceLocation = await getFreshAttendanceLocation();
           const payload = {
             qrCode: qrData,
             internId,
-            lat: location?.latitude ?? null,
-            lng: location?.longitude ?? null,
+            ...toAttendanceEvidence(attendanceLocation),
           };
 
           const response = await apiFetch(
@@ -579,6 +736,17 @@ const FaceAttendance = () => {
       <Navigation />
 
       <main className="flex-1 w-full lg:mt-20 lg:px-10">
+        {enrollmentSuccess && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+            <div className="animate-[fadeIn_0.25s_ease-out] rounded-2xl border border-emerald-100 bg-white px-8 py-7 text-center shadow-2xl">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+                <CheckCircle className="h-9 w-9 text-emerald-600" />
+              </div>
+              <h2 className="mt-4 text-xl font-bold text-slate-900">Face Enrollment Complete</h2>
+              <p className="mt-2 text-sm text-slate-500">Your refreshed biometric profile is ready.</p>
+            </div>
+          </div>
+        )}
         <div className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-6xl">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
@@ -648,8 +816,8 @@ const FaceAttendance = () => {
                       </h2>
                       <p className="text-sm text-slate-500 mt-1">
                         {mode === "enroll"
-                          ? "Capture five clear frames to create or refresh your face profile."
-                          : "Choose daily or meeting attendance, then capture your face."}
+                          ? "Hold your face inside the oval while clear samples are captured automatically."
+                          : "Choose daily or meeting attendance, then center your face for a clear scan."}
                       </p>
                     </div>
                     <div className="inline-flex rounded-lg bg-slate-100 p-1">
@@ -782,8 +950,8 @@ const FaceAttendance = () => {
           )}
 
           {cameraActive && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6">
-              <div className="w-full max-w-3xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-2xl">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-2 sm:px-4 sm:py-6">
+              <div className="max-h-[calc(100dvh-1rem)] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-2xl sm:max-h-[calc(100dvh-3rem)]">
                 <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 md:px-5">
                   <div>
                     <h2 className="text-base font-semibold text-slate-900">
@@ -808,24 +976,52 @@ const FaceAttendance = () => {
                 </div>
 
                 <div className="space-y-4 p-4 md:p-5">
-                  <div className="relative aspect-video overflow-hidden rounded-lg border border-slate-200 bg-black">
-                    <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+                  <div className="relative mx-auto aspect-[4/3] max-h-[52dvh] w-full overflow-hidden rounded-lg border border-slate-200 bg-black sm:max-h-[56dvh]">
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover"
+                      style={{ transform: "scaleX(-1)" }}
+                    />
                     <canvas ref={canvasRef} className="hidden" width={640} height={480} />
-                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                      <div className="h-44 w-36 rounded-full border-2 border-emerald-300/80 shadow-[0_0_0_999px_rgba(15,23,42,0.18)]" />
-                    </div>
+                    <canvas
+                      ref={meshCanvasRef}
+                      className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+                      width={640}
+                      height={480}
+                      style={{ transform: "scaleX(-1)" }}
+                    />
+                    <FaceScanGuide
+                      ready={faceGuide.ready}
+                      enrollment={mode === "enroll"}
+                      sampleCount={enrollmentProgress}
+                      requiredSamples={REQUIRED_ENROLLMENT_SAMPLES}
+                      direction={ENROLLMENT_DIRECTIONS[enrollmentProgress] || "center"}
+                    />
+                  </div>
+
+                  <div
+                    className={`rounded-lg border px-4 py-3 text-center text-sm font-semibold ${
+                      faceGuide.ready
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                        : "border-amber-200 bg-amber-50 text-amber-800"
+                    }`}
+                  >
+                    {faceGuide.message}
                   </div>
 
                   {mode === "enroll" && (
                     <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
                       <div className="flex items-center justify-between text-sm font-semibold text-blue-900">
-                        <span>Enrollment frames</span>
-                        <span>{enrollmentProgress}/5</span>
+                        <span>Clear face samples</span>
+                        <span>{enrollmentProgress}/{REQUIRED_ENROLLMENT_SAMPLES}</span>
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-blue-100">
                         <div
                           className="h-full rounded-full bg-blue-600 transition-all"
-                          style={{ width: `${(enrollmentProgress / 5) * 100}%` }}
+                          style={{ width: `${(enrollmentProgress / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
                         />
                       </div>
                     </div>
@@ -839,31 +1035,15 @@ const FaceAttendance = () => {
 
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {mode === "enroll" ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={handleEnrollmentCapture}
-                          disabled={loading || enrollmentFrames.length >= 5}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
-                        >
-                          {loading ? <Loader className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-                          Capture Frame
-                        </button>
-                        <button
-                          type="button"
-                          onClick={completeEnrollment}
-                          disabled={loading || enrollmentFrames.length < 5}
-                          className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                          Complete Enrollment
-                        </button>
-                      </>
+                      <div className="inline-flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-4 py-3 font-semibold text-blue-700">
+                        {loading ? <Loader className="h-4 w-4 animate-spin" /> : <ScanLine className="h-4 w-4" />}
+                        {loading ? "Saving Face Profile..." : "Scanning Automatically"}
+                      </div>
                     ) : (
                       <button
                         type="button"
                         onClick={handleFaceRecognition}
-                        disabled={loading || cooldown}
+                        disabled={loading || cooldown || !faceGuide.ready}
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
                       >
                         {loading ? <Loader className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}

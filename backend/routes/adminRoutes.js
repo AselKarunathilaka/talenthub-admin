@@ -49,6 +49,7 @@ const {
   getCurrentMeetingPin,
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
+  getFaceProfileEnrollmentSummary,
 } = require("../controllers/faceAttendanceController");
 
 const { getCertificateData } = require("../controllers/certificateController");
@@ -142,6 +143,7 @@ router.put("/attendance/settings", updateAttendanceSettings);
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
+router.get("/face-attendance/profiles", getFaceProfileEnrollmentSummary);
 
 // Debug: test SMTP connection and send a test email
 router.get("/debug/smtp-test", async (req, res) => {
