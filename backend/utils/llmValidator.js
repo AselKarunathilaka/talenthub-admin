@@ -1,6 +1,7 @@
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
+const MODEL_NAME = "gemini-3.1-flash-lite";
 const BATCH_FIELD_KEYS = ["tasks", "challenges", "plans"];
 
 const LENIENT_BATCH_PROMPT = (tasks, challenges, plans) => `
@@ -69,7 +70,7 @@ async function validateWithGemini(text) {
     );
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
     const prompt = `
 You are a lenient evaluator for a software engineering and IT internship logbook.
@@ -102,7 +103,11 @@ Respond strictly in JSON format without Markdown formatting or markdown backtick
       reason: parsed.reason || "",
     };
   } catch (error) {
-    console.error("[LLM VALIDATOR] Error evaluating entry:", error);
+    console.error("[LLM VALIDATOR] ❌ Error evaluating entry:");
+    console.error(`[LLM VALIDATOR]   Type: ${error.constructor.name}`);
+    console.error(`[LLM VALIDATOR]   Message: ${error.message}`);
+    if (error.status) console.error(`[LLM VALIDATOR]   HTTP Status: ${error.status}`);
+    if (error.errorDetails) console.error(`[LLM VALIDATOR]   Details:`, JSON.stringify(error.errorDetails));
     return { isWorkRelated: true, reason: "" };
   }
 }
@@ -136,7 +141,7 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   console.log("\n[LLM VALIDATOR] Lenient batch validation with Gemini...");
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
   const prompt = LENIENT_BATCH_PROMPT(tasks, challenges, plans);
   const response = await model.generateContent(prompt);
@@ -159,7 +164,67 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   return result;
 }
 
+/**
+ * Diagnostic: tests whether the Gemini API is reachable and the model responds.
+ * Used by the /validate-health endpoint and the startup probe.
+ */
+async function testGeminiConnection() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return { ok: false, detail: "GEMINI_API_KEY is not set in environment" };
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+
+    // Race against a 15-second timeout
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Connection timed out after 15 seconds — the server may not be able to reach generativelanguage.googleapis.com")), 15000),
+    );
+
+    const resultPromise = model.generateContent("Reply with exactly one word: OK");
+    const result = await Promise.race([resultPromise, timeoutPromise]);
+    const text = result.response.text().trim();
+
+    return { ok: true, model: MODEL_NAME, detail: `Model responded: "${text}"` };
+  } catch (error) {
+    return {
+      ok: false,
+      model: MODEL_NAME,
+      detail: `${error.constructor.name}: ${error.message}`,
+      status: error.status || undefined,
+    };
+  }
+}
+
+// ── Startup probe (non-blocking) ─────────────────────────────────────────────
+(async () => {
+  const keyPresent = !!process.env.GEMINI_API_KEY;
+  console.log(`\n[LLM VALIDATOR] ── Startup Diagnostics ──`);
+  console.log(`[LLM VALIDATOR] GEMINI_API_KEY set: ${keyPresent}${keyPresent ? ` (${process.env.GEMINI_API_KEY.substring(0, 10)}...)` : ""}`);
+  console.log(`[LLM VALIDATOR] Model: ${MODEL_NAME}`);
+
+  if (!keyPresent) {
+    console.error("[LLM VALIDATOR] ❌ No API key — AI validation will be SKIPPED for all submissions.");
+    return;
+  }
+
+  console.log("[LLM VALIDATOR] Testing Gemini API connection...");
+  const probe = await testGeminiConnection();
+
+  if (probe.ok) {
+    console.log(`[LLM VALIDATOR] ✅ Gemini is reachable. ${probe.detail}`);
+  } else {
+    console.error(`[LLM VALIDATOR] ❌ Gemini connection FAILED: ${probe.detail}`);
+    if (probe.status) console.error(`[LLM VALIDATOR]   HTTP Status: ${probe.status}`);
+    console.error("[LLM VALIDATOR] ⚠️  AI validation will fail-open (submissions will still be allowed but not AI-checked).");
+  }
+  console.log(`[LLM VALIDATOR] ── End Diagnostics ──\n`);
+})();
+
 module.exports = {
   validateWithGemini,
   validateBatchWithGemini,
+  testGeminiConnection,
 };
