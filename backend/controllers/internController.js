@@ -64,6 +64,13 @@ const normalizeAttendanceMethod = (type) => {
   return normalizedType || "unknown";
 };
 
+const formatColomboTime = (date) =>
+  new Date(date).toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Colombo",
+  });
+
 const addIntern = async (req, res) => {
   try {
     const { Trainee_HomeAddress } = req.body;
@@ -522,13 +529,8 @@ const getAttendanceByInternId = async (req, res) => {
           meetingName: legacyMeetingName || "General Meeting",
           type: "Meeting",
           attendanceMethod: normalizeAttendanceMethod(type),
-          time: entry.date
-            ? new Date(entry.date).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          isMeeting: true,
+          time: entry.date ? formatColomboTime(entry.date) : null,
+          isMeeting: true
         });
       });
     }
@@ -563,12 +565,7 @@ const getAttendanceByInternId = async (req, res) => {
             dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
-          time: attendanceTime
-            ? attendanceTime.toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
+          time: attendanceTime ? formatColomboTime(attendanceTime) : null,
           attendanceTime: record.attendanceTime,
         });
       }
@@ -588,11 +585,8 @@ const getAttendanceByInternId = async (req, res) => {
               meeting.method ||
                 meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
-            time: attendanceTime.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            isMeeting: true,
+            time: formatColomboTime(attendanceTime),
+            isMeeting: true
           });
         });
       }
@@ -674,13 +668,7 @@ const getAttendanceByInternId = async (req, res) => {
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
-            time: (entry.timeMarked
-              ? new Date(entry.timeMarked)
-              : entryDate
-            ).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            time: formatColomboTime(entry.timeMarked || entryDate),
             attendanceTime: entry.timeMarked || entry.date,
           });
           datesWithDailyRecord.add(dayKey);

@@ -5,6 +5,7 @@ import { apiFetch } from '../utils/api';
 import { AlertCircle, Camera, Scan, XCircle, Info, CheckCircle, ChevronRight, MapPin } from 'lucide-react';
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
+import { requestFreshLocation, toAttendanceEvidence } from '../utils/attendanceEvidence';
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -15,13 +16,13 @@ const SLT_OFFICE = {
 const normalizeProjectName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const getProjectKey = (value) => normalizeProjectName(value);
 
-const getDistanceKm = (fromLocation) => {
+const getDistanceKm = (fromLocation, officeLocation = SLT_OFFICE) => {
   if (!Number.isFinite(fromLocation?.lat) || !Number.isFinite(fromLocation?.lng)) return null;
 
   const earthRadiusKm = 6371;
-  const dLat = ((fromLocation.lat - SLT_OFFICE.latitude) * Math.PI) / 180;
-  const dLng = ((fromLocation.lng - SLT_OFFICE.longitude) * Math.PI) / 180;
-  const officeLatRad = (SLT_OFFICE.latitude * Math.PI) / 180;
+  const dLat = ((fromLocation.lat - officeLocation.latitude) * Math.PI) / 180;
+  const dLng = ((fromLocation.lng - officeLocation.longitude) * Math.PI) / 180;
+  const officeLatRad = (officeLocation.latitude * Math.PI) / 180;
   const currentLatRad = (fromLocation.lat * Math.PI) / 180;
 
   const a =
@@ -90,6 +91,7 @@ const ScanQRCode = () => {
   const [location, setLocation] = useState({ lat: null, lng: null });
   const [locationError, setLocationError] = useState("");
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [officeLocation, setOfficeLocation] = useState(SLT_OFFICE);
   const [projectName, setProjectName] = useState('');
   const [showMeetingInput, setShowMeetingInput] = useState(false);
   const videoRef = useRef(null);
@@ -103,8 +105,8 @@ const ScanQRCode = () => {
   useEffect(() => { projectNameRef.current = projectName; }, [projectName]);
   useEffect(() => { sltLocationRequiredRef.current = sltLocationRequired; }, [sltLocationRequired]);
 
-  const distanceKm = getDistanceKm(location);
-  const actualLocationValid = distanceKm !== null && distanceKm <= SLT_OFFICE.radiusKm;
+  const distanceKm = getDistanceKm(location, officeLocation);
+  const actualLocationValid = distanceKm !== null && distanceKm <= officeLocation.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
   const canStartScanner = hasCameraAccess && locationValid;
 
@@ -194,11 +196,20 @@ const ScanQRCode = () => {
           return;
         }
 
-        const lat = location.lat;
-        const lng = location.lng;
         setScanSuccess(true);
         setTimeout(() => setScanSuccess(false), 1500);
         try {
+          const freshLocation = sltLocationRequiredRef.current
+            ? await requestFreshLocation()
+            : location;
+          setLocation({
+            lat: freshLocation?.latitude ?? freshLocation?.lat ?? null,
+            lng: freshLocation?.longitude ?? freshLocation?.lng ?? null,
+            accuracy: freshLocation?.accuracy ?? null,
+            capturedAt: freshLocation?.capturedAt ?? null,
+          });
+          const attendanceEvidence = toAttendanceEvidence(freshLocation);
+
           if (currentScanMode === 'daily') {
             const response = await apiFetch('/qrcode/scan', {
               method: 'POST',
@@ -206,8 +217,7 @@ const ScanQRCode = () => {
                 qrCode: qrData,
                 internId,
                 scanType: 'daily',
-                lat,
-                lng
+                ...attendanceEvidence
               })
             });
             const res = await response.json();
@@ -228,8 +238,7 @@ const ScanQRCode = () => {
                 qrCode: qrData,
                 internId,
                 projectName: currentProjectName.trim(),
-                lat,
-                lng
+                ...attendanceEvidence
               })
             });
             const res = await response.json();
@@ -285,6 +294,13 @@ const ScanQRCode = () => {
         const result = await response.json();
         const isLocationRequired = result.settings?.sltLocationRequired !== false;
         setSltLocationRequired(isLocationRequired);
+        if (result.settings?.locationPolicy) {
+          setOfficeLocation({
+            latitude: result.settings.locationPolicy.latitude,
+            longitude: result.settings.locationPolicy.longitude,
+            radiusKm: result.settings.locationPolicy.radiusMeters / 1000,
+          });
+        }
         if (!isLocationRequired) {
           setLocationError("");
           toast.dismiss();
@@ -308,24 +324,24 @@ const ScanQRCode = () => {
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
+    requestFreshLocation()
+      .then((freshLocation) => {
         setLocation({
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
+          lat: freshLocation.latitude,
+          lng: freshLocation.longitude,
+          accuracy: freshLocation.accuracy,
+          capturedAt: freshLocation.capturedAt,
         });
         setLocationError("");
-      },
-      (error) => {
+      })
+      .catch((error) => {
         console.warn("Geolocation error:", error);
-        setLocationError("Location permission is required for attendance.");
+        setLocationError(error.message);
         if (sltLocationRequiredRef.current && isScanning) {
           toast.error("Location access denied. Please enable location to mark attendance.");
           stopScanning();
         }
-      },
-      { enableHighAccuracy: true, timeout: 12000 },
-    );
+      });
   }, [isScanning, sltLocationRequired]);
 
   useEffect(() => {

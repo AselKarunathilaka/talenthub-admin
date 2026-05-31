@@ -416,6 +416,21 @@ export const adminApi = {
       throw error;
     }
   },
+
+  getFaceEnrollmentProfiles: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/face-attendance/profiles`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+
+    await checkAuth(response);
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || `Failed to load face enrollment profiles: ${response.status}`);
+    }
+
+    return response.json();
+  },
 };
 
 export { downloadApprovedLeaveReport };

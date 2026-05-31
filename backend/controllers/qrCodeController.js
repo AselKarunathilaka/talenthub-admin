@@ -4,13 +4,53 @@ const attendanceService = require("../services/attendanceService");
 const InternRepository = require("../repositories/internRepository");  
 const sendEmail = require("../utils/emailSender");  
 const AttendanceSettingsService = require("../services/attendanceSettingsService");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
+const Intern = require("../models/Intern");
 
-const moment = require("moment");
+const moment = require("moment-timezone");
 
 const QRCode = require("qrcode");
 
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
+
+const saveQrAttendanceAudit = async ({
+  internId,
+  attendanceType,
+  locationValidation,
+  deviceTime,
+  deviceTimeZone,
+  deviceUtcOffsetMinutes,
+  projectName,
+}) => {
+  try {
+    const intern = await Intern.findById(internId);
+    if (!intern) return;
+
+    const attendanceTime = new Date();
+    await FaceAttendanceLog.create({
+      internId: intern._id,
+      traineeId: intern.Trainee_ID,
+      traineeName: intern.Trainee_Name,
+      attendanceDate: moment.tz(attendanceTime, "Asia/Colombo").format("YYYY-MM-DD"),
+      attendanceTime,
+      status: "present",
+      method: "qr",
+      qrBackupUsed: false,
+      source: "browser-qr",
+      metadata: {
+        attendanceType,
+        projectName: projectName || undefined,
+        deviceTime,
+        deviceTimeZone,
+        deviceUtcOffsetMinutes,
+        locationValidation,
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to save QR attendance audit:", error.message);
+  }
+};
 
 
 const generateQRCode = async (req, res) => {
@@ -66,7 +106,18 @@ const markAttendance = async (req, res) => {
 
 
 const scanQRCode = async (req, res) => {
-  const { qrCode, internId: bodyInternId, scanType = 'daily', lat, lng } = req.body;
+  const {
+    qrCode,
+    internId: bodyInternId,
+    scanType = 'daily',
+    lat,
+    lng,
+    accuracy,
+    capturedAt,
+    deviceTime,
+    deviceTimeZone,
+    deviceUtcOffsetMinutes,
+  } = req.body;
 
   // Identity verification: use token identity, reject mismatches
   const tokenInternId = req.user?.id;
@@ -87,9 +138,11 @@ const scanQRCode = async (req, res) => {
       if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
         return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
       }
-      await AttendanceSettingsService.validateSltLocationIfRequired({
+      var locationValidation = await AttendanceSettingsService.validateSltLocationIfRequired({
         lat,
         lng,
+        accuracy,
+        capturedAt,
         label: "Attendance",
       });
     }
@@ -102,6 +155,14 @@ const scanQRCode = async (req, res) => {
     // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
       await qrCodeService.markInternDailyAttendance(internId, qrCode);
+      await saveQrAttendanceAudit({
+        internId,
+        attendanceType: "daily",
+        locationValidation,
+        deviceTime,
+        deviceTimeZone,
+        deviceUtcOffsetMinutes,
+      });
       // Get intern info for email notification
       const intern = await InternService.getInternById(internId);
       // Send email notification for daily attendance
@@ -178,7 +239,19 @@ const scanQRCode = async (req, res) => {
 
 // Intern scans QR code to mark meeting attendance
 const scanMeetingQRCode = async (req, res) => {
-  const { qrCode, internId: bodyInternId, projectName, meetingTitle, lat, lng } = req.body;
+  const {
+    qrCode,
+    internId: bodyInternId,
+    projectName,
+    meetingTitle,
+    lat,
+    lng,
+    accuracy,
+    capturedAt,
+    deviceTime,
+    deviceTimeZone,
+    deviceUtcOffsetMinutes,
+  } = req.body;
   const submittedProjectName = normalizeProjectName(projectName || meetingTitle || "");
 
   // Identity verification: use token identity, reject mismatches
@@ -193,9 +266,11 @@ const scanMeetingQRCode = async (req, res) => {
     return res.status(403).json({ message: "You can only mark your own attendance." });
   }
   try {
-    await AttendanceSettingsService.validateSltLocationIfRequired({
+    const locationValidation = await AttendanceSettingsService.validateSltLocationIfRequired({
       lat,
       lng,
+      accuracy,
+      capturedAt,
       label: "Meeting attendance",
     });
 
@@ -224,6 +299,15 @@ const scanMeetingQRCode = async (req, res) => {
     }
     // Mark meeting attendance in TalentHub system
     const result = await qrCodeService.markMeetingAttendance(internId, submittedProjectName, qrCode);
+    await saveQrAttendanceAudit({
+      internId,
+      attendanceType: "meeting",
+      locationValidation,
+      deviceTime,
+      deviceTimeZone,
+      deviceUtcOffsetMinutes,
+      projectName: submittedProjectName,
+    });
     const message = result.dailyAttendanceMarked
       ? "Meeting attendance marked successfully. Daily attendance also recorded."
       : "Meeting attendance marked successfully.";

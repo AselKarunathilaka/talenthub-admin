@@ -3,17 +3,44 @@ import { Camera, Check, Loader, ShieldCheck, X } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
+import FaceScanGuide from "./FaceScanGuide";
+import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
+
+const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 320,
+  scoreThreshold: 0.45,
+});
+const REQUIRED_ENROLLMENT_SAMPLES = 5;
+const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
+const ENROLLMENT_PROMPTS = [
+  "Look straight at the camera and hold still.",
+  "Turn your head slightly to the left.",
+  "Return to the center and hold still.",
+  "Turn your head slightly to the right.",
+  "Return to the center for the final scan.",
+];
+const ENROLLMENT_DIRECTIONS = ["center", "left", "center", "right", "center"];
 
 const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   const [step, setStep] = useState("intro"); // intro, capturing, review, uploading, success
   const [frames, setFrames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [faceGuide, setFaceGuide] = useState("Center your face inside the oval");
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const meshCanvasRef = useRef(null);
   const streamRef = useRef(null);
   const frameCountRef = useRef(0);
+  const captureBusyRef = useRef(false);
+  const lastCaptureRef = useRef(0);
+  const framesRef = useRef([]);
+  const submitStartedRef = useRef(false);
+
+  useEffect(() => {
+    framesRef.current = frames;
+  }, [frames]);
 
   const attachStreamToVideo = async () => {
     if (!videoRef.current || !streamRef.current) return;
@@ -48,7 +75,10 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   useEffect(() => {
     if (step === "capturing") {
       attachStreamToVideo();
+      const timer = window.setInterval(() => captureFrame(), 700);
+      return () => window.clearInterval(timer);
     }
+    return undefined;
   }, [step]);
 
   const startCamera = async () => {
@@ -60,13 +90,17 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
+          width: { ideal: 720 },
+          height: { ideal: 540 },
+          aspectRatio: { ideal: 4 / 3 },
           facingMode: "user",
         },
         audio: false,
       });
       streamRef.current = stream;
+      lastCaptureRef.current = Date.now();
+      submitStartedRef.current = false;
+      setFaceGuide(ENROLLMENT_PROMPTS[0]);
       setStep("capturing");
       await attachStreamToVideo();
     } catch (error) {
@@ -84,66 +118,117 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    clearFaceMesh(meshCanvasRef.current);
   };
 
   const captureFrame = async () => {
-    if (!videoRef.current || !canvasRef.current) return;
+    if (!videoRef.current || !canvasRef.current || captureBusyRef.current) return;
+    if (Date.now() - lastCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+    captureBusyRef.current = true;
 
     const ctx = canvasRef.current.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0, 640, 480);
 
     try {
       const detections = await faceapi
-        .detectAllFaces(canvasRef.current, new faceapi.TinyFaceDetectorOptions())
+        .detectAllFaces(canvasRef.current, FACE_DETECTOR_OPTIONS)
         .withFaceLandmarks()
         .withFaceDescriptors();
 
-      if (detections.length === 0) {
-        toast.error("No face detected. Please adjust your position.");
+      if (detections.length !== 1) {
+        clearFaceMesh(meshCanvasRef.current);
+        setFaceGuide(
+          detections.length === 0
+            ? "Center your face inside the oval"
+            : "Only one person should be visible",
+        );
         return;
       }
 
-      const descriptor = Array.from(detections[0].descriptor);
-      setFrames([...frames, descriptor]);
-      frameCountRef.current += 1;
-      toast.success(`Frame ${frameCountRef.current}/3 captured`);
+      const detection = detections[0];
+      drawFaceMesh(meshCanvasRef.current, detection.landmarks);
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      if (Math.abs(centerX - 320) > 105 || Math.abs(centerY - 240) > 95) {
+        setFaceGuide("Move your face into the center oval");
+        return;
+      }
+      if (box.width < 135 || box.height < 150) {
+        setFaceGuide("Move a little closer to the camera");
+        return;
+      }
 
-      if (frameCountRef.current >= 3) {
+      const descriptor = Array.from(detection.descriptor);
+      const previousFrame = framesRef.current[framesRef.current.length - 1];
+      const isDistinct =
+        !previousFrame ||
+        Math.sqrt(
+          previousFrame.reduce((sum, value, index) => {
+            const difference = value - descriptor[index];
+            return sum + difference * difference;
+          }, 0),
+        ) >= 0.035;
+
+      if (!isDistinct) {
+        setFaceGuide(ENROLLMENT_PROMPTS[frameCountRef.current]);
+        return;
+      }
+
+      lastCaptureRef.current = Date.now();
+      setFrames((current) => [...current, descriptor]);
+      frameCountRef.current += 1;
+      setFaceGuide(
+        frameCountRef.current >= REQUIRED_ENROLLMENT_SAMPLES
+          ? "Clear face samples captured"
+          : ENROLLMENT_PROMPTS[frameCountRef.current],
+      );
+
+      if (frameCountRef.current >= REQUIRED_ENROLLMENT_SAMPLES) {
         stopCamera();
         setStep("review");
       }
     } catch (error) {
+      clearFaceMesh(meshCanvasRef.current);
       console.error("Frame capture error:", error);
-      toast.error("Error capturing frame. Please try again.");
+      setFaceGuide("Hold still while the camera checks your face");
+    } finally {
+      captureBusyRef.current = false;
     }
   };
 
   const submitEnrollment = async () => {
-    if (frames.length < 3) {
-      toast.error("Please capture at least 3 frames");
+    if (frames.length < REQUIRED_ENROLLMENT_SAMPLES) {
+      toast.error("Please complete the guided face scan");
       return;
     }
+    if (submitStartedRef.current) return;
 
+    submitStartedRef.current = true;
+    stopCamera();
+    setStep("uploading");
     setLoading(true);
     try {
-      // Average descriptors
-      const avgDescriptor = frames[0].map((_, i) => {
-        const sum = frames.reduce((acc, frame) => acc + frame[i], 0);
-        return sum / frames.length;
-      });
+      for (const [index, descriptor] of frames.entries()) {
+        const response = await apiFetch("/face-attendance/enroll", {
+            method: "POST",
+            body: JSON.stringify({
+              descriptor,
+              metadata: {
+                enrollmentMethod: "login-popup-guided",
+                timestamp: new Date().toISOString(),
+                replaceExisting: index === 0,
+              },
+            }),
+          });
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(error.message || "Enrollment failed. Please try again.");
+          setStep("intro");
+          return;
+        }
+      }
 
-      const response = await apiFetch("/face-attendance/enroll", {
-        method: "POST",
-        body: JSON.stringify({
-          descriptor: avgDescriptor,
-          metadata: {
-            enrollmentMethod: "login-popup",
-            timestamp: new Date().toISOString(),
-          },
-        }),
-      });
-
-      if (response.ok) {
         setStep("success");
         toast.success("Face registered successfully!");
         setTimeout(() => {
@@ -152,11 +237,6 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
           }
           onClose();
         }, 2000);
-      } else {
-        const error = await response.json();
-        toast.error(error.message || "Enrollment failed. Please try again.");
-        setStep("intro");
-      }
     } catch (error) {
       console.error("Enrollment error:", error);
       toast.error("Error during enrollment. Please try again.");
@@ -166,9 +246,22 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     }
   };
 
+  useEffect(() => {
+    if (
+      step === "review" &&
+      frames.length >= REQUIRED_ENROLLMENT_SAMPLES &&
+      !submitStartedRef.current
+    ) {
+      submitEnrollment();
+    }
+  }, [step, frames]);
+
   const resetCapture = () => {
     setFrames([]);
     frameCountRef.current = 0;
+    lastCaptureRef.current = 0;
+    submitStartedRef.current = false;
+    setFaceGuide("Center your face inside the oval");
     setStep("intro");
   };
 
@@ -196,7 +289,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+      <div className="relative max-h-[calc(100dvh-1rem)] w-full max-w-xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="h-2 bg-gradient-to-r from-orange-400 via-orange-500 to-red-500" />
 
         <button
@@ -239,8 +332,8 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-gray-800">3 clear face photos</p>
-                      <p className="text-xs text-gray-500 mt-0.5">From different angles</p>
+                      <p className="text-sm font-medium text-gray-800">5 guided face scans</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Follow the prompts for clear angles</p>
                     </div>
                   </div>
                   
@@ -293,50 +386,54 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
               </div>
 
               <div className="relative rounded-2xl overflow-hidden border border-gray-200 shadow-lg bg-black" style={{ aspectRatio: "4/3" }}>
-                <video
+                    <video
                   ref={videoRef}
                   autoPlay
                   muted
                   playsInline
                   className="w-full h-full object-cover"
+                  style={{ transform: "scaleX(-1)" }}
                 />
                 <canvas ref={canvasRef} className="hidden" width={640} height={480} />
+                <canvas
+                  ref={meshCanvasRef}
+                  className="pointer-events-none absolute inset-0 z-10 h-full w-full"
+                  width={640}
+                  height={480}
+                  style={{ transform: "scaleX(-1)" }}
+                />
                 
-                {/* Crosshair overlay */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="w-32 h-32 border-2 border-green-400 rounded-full opacity-60"></div>
-                  <div className="absolute w-px h-12 bg-green-400 opacity-50"></div>
-                  <div className="absolute h-px w-12 bg-green-400 opacity-50"></div>
-                </div>
+                <FaceScanGuide
+                  ready={frameCountRef.current > 0}
+                  enrollment
+                  sampleCount={frameCountRef.current}
+                  requiredSamples={REQUIRED_ENROLLMENT_SAMPLES}
+                  direction={ENROLLMENT_DIRECTIONS[frameCountRef.current] || "center"}
+                />
+              </div>
+
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-800">
+                {faceGuide}
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-700">Progress</span>
-                  <span className="text-sm font-bold text-orange-600">{frameCountRef.current}/3 frames</span>
+                  <span className="text-sm font-bold text-orange-600">{frameCountRef.current}/{REQUIRED_ENROLLMENT_SAMPLES} scans</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div
                     className="bg-gradient-to-r from-orange-400 to-orange-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
-                    style={{ width: `${(frameCountRef.current / 3) * 100}%` }}
+                    style={{ width: `${(frameCountRef.current / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
                   >
-                    {(frameCountRef.current / 3) * 100 > 15 && (
-                      <span className="text-white text-xs font-bold">{Math.round((frameCountRef.current / 3) * 100)}%</span>
+                    {(frameCountRef.current / REQUIRED_ENROLLMENT_SAMPLES) * 100 > 15 && (
+                      <span className="text-white text-xs font-bold">{Math.round((frameCountRef.current / REQUIRED_ENROLLMENT_SAMPLES) * 100)}%</span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2.5">
-                <button
-                  onClick={captureFrame}
-                  disabled={frameCountRef.current >= 3}
-                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2"
-                >
-                  <Camera className="w-5 h-5" />
-                  Capture Frame ({frameCountRef.current}/3)
-                </button>
-
                 <button
                   onClick={() => {
                     stopCamera();
@@ -349,63 +446,16 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
               </div>
 
               <div className="text-xs text-amber-800 text-center p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                Move your head slightly for each frame to capture different angles.
+                Samples are captured automatically. Keep your face centered and move slightly when prompted.
               </div>
             </div>
           )}
 
-          {/* Review Step */}
-          {step === "review" && (
-            <div className="space-y-5">
-              <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-                <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-bold text-green-900">Perfect! Ready to register</p>
-                    <p className="text-sm text-green-700 mt-1">
-                      {frames.length} frames captured successfully. Your face signature is ready to be stored.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
-                <p className="leading-relaxed">
-                  Your face signature will be <strong>securely encrypted</strong> and stored on our servers. No photos are kept—only mathematical face data.
-                </p>
-              </div>
-
-              <div className="space-y-2.5">
-                <button
-                  onClick={submitEnrollment}
-                  disabled={loading}
-                  className="w-full bg-gradient-to-r from-orange-400 to-orange-600 hover:from-orange-500 hover:to-orange-700 disabled:from-gray-300 disabled:to-gray-400 text-white font-bold py-4 rounded-xl transition flex items-center justify-center gap-2"
-                >
-                  {loading ? (
-                    <>
-                      <Loader className="w-5 h-5 animate-spin" />
-                      Registering face...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-5 h-5" />
-                      Complete Registration
-                    </>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => {
-                    resetCapture();
-                    startCamera();
-                  }}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 rounded-xl transition"
-                >
-                  Retake Frames
-                </button>
-              </div>
+          {step === "uploading" && (
+            <div className="flex flex-col items-center py-12 text-center">
+              <Loader className="h-12 w-12 animate-spin text-orange-500" />
+              <h3 className="mt-5 text-xl font-bold text-gray-900">Saving Face Profile</h3>
+              <p className="mt-2 text-sm text-gray-500">Your secure biometric samples are being stored.</p>
             </div>
           )}
 
@@ -413,7 +463,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
           {step === "success" && (
             <div className="space-y-6 py-4">
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
+                <div className="animate-[fadeIn_0.3s_ease-out] w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-full flex items-center justify-center">
                   <Check className="w-8 h-8 text-green-600" />
                 </div>
               </div>
