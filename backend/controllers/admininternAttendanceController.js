@@ -6,96 +6,37 @@ const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
 const WeeklyMeetingAttendanceService = require("../services/weeklymeetingattendanceservice");
+const {
+  generateMeetingAttendancePdf,
+} = require("./meetingAttendancePdfTemplate");
+const { generateDailyAttendancePdf } = require("./dailyAttendancePdfTemplate");
 
 const TZ = "Asia/Colombo";
-const DAILY_ATTENDANCE_TYPES = new Set(["daily", "daily_qr", "face"]);
 
-const getInternDetails = (intern) => ({
-  _id: intern._id,
-  name: intern.Trainee_Name || "Unknown",
-  id: intern.Trainee_ID || "Unknown",
-  email: intern.Trainee_Email || "",
-  fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
-  institute: intern.Institute || "Not specified",
-  team: intern.team || "Not specified",
-  trainingStartDate: intern.Training_StartDate
-    ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
-    : "Not specified",
-  trainingEndDate: intern.Training_EndDate
-    ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
-    : "Not specified",
-});
-
-const sortByInternId = (interns) =>
-  interns.sort((a, b) =>
-    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
-  );
-
-// Daily QR and face records are stored on Intern. DailyRecord is also checked
-// so logbook-backed attendance remains visible for older records.
-async function getDailyPresentsOnDate(dateStr) {
-  const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
-  const nextDate = targetDate.clone().add(1, "day");
-  const interns = await Intern.find({});
-  const internById = new Map(interns.map((intern) => [String(intern._id), intern]));
-  const dailyByIntern = new Map();
-
-  for (const intern of interns) {
-    const records = (intern.attendance || []).filter((record) => {
-      const type = String(record.type || "").toLowerCase();
-      const recordDate = moment(record.date).tz(TZ);
-      return (
-        DAILY_ATTENDANCE_TYPES.has(type) &&
-        record.status === "Present" &&
-        recordDate.isSameOrAfter(targetDate) &&
-        recordDate.isBefore(nextDate)
-      );
-    });
-
-    if (records.length === 0) continue;
-    const latest = records.sort(
-      (a, b) =>
-        new Date(b.timeMarked || b.date).getTime() -
-        new Date(a.timeMarked || a.date).getTime(),
-    )[0];
-    dailyByIntern.set(String(intern._id), {
-      ...getInternDetails(intern),
-      timeMarked: moment(latest.timeMarked || latest.date).tz(TZ).format("HH:mm"),
-      type: latest.type || "daily",
-      status: "Present",
-    });
-  }
-
-  const dailyRecords = await DailyRecord.find({
-    date: dateStr,
-    attendance: { $in: ["present", "late"] },
-  });
-
-  for (const record of dailyRecords) {
-    const key = String(record.internId);
-    if (dailyByIntern.has(key)) continue;
-    const intern = internById.get(key);
-    if (!intern) continue;
-    dailyByIntern.set(key, {
-      ...getInternDetails(intern),
-      timeMarked: record.attendanceTime
-        ? moment(record.attendanceTime).tz(TZ).format("HH:mm")
-        : "—",
-      type: "daily",
-      status: record.attendance === "late" ? "Late" : "Present",
-    });
-  }
-
-  return sortByInternId([...dailyByIntern.values()]);
-}
-
-// Meeting attendance types (excludes daily/face recognition only)
+// ── Attendance type sets ──────────────────────────────────────────────────────
+/**
+ * MEETING types: attendance recorded via QR meeting PIN, face recognition
+ * at a meeting, a named meeting session, or admin manual meeting mark.
+ *
+ * "qr" here = the QR code presented at a specific meeting (meeting PIN QR),
+ * NOT the daily check-in QR (that is "daily_qr").
+ */
 const MEETING_ATTENDANCE_TYPES = new Set([
-  "qr",
-  "face_meeting",
-  "meeting",
-  "manual_meeting",
-  "manual",
+  "qr", // QR scan at a meeting session
+  "face_meeting", // Face recognition at a meeting
+  "meeting", // Generic meeting attendance
+  "manual_meeting", // Admin manually marks meeting attendance
+  "manual", // Legacy manual (treated as meeting)
+]);
+
+/**
+ * DAILY types: regular daily check-in attendance.
+ */
+const DAILY_ATTENDANCE_TYPES = new Set([
+  "daily", // Standard daily check-in
+  "daily_qr", // QR-based daily check-in
+  "face", // Face recognition daily check-in
+  "manual_daily", // Admin manually marks daily attendance
 ]);
 
 // ---------------------------------------------------------------------------
@@ -173,15 +114,12 @@ function getSriLankanHolidays(years) {
       ],
     };
 
-    if (lunarApprox[y]) {
-      lunarApprox[y].forEach((d) => holidays.add(d));
-    }
+    if (lunarApprox[y]) lunarApprox[y].forEach((d) => holidays.add(d));
   });
 
   return holidays;
 }
 
-// Helper: Get working days in two-week range
 function getWorkingDaysInTwoWeekRange(startDate, endDate) {
   const years = [];
   for (let y = startDate.year(); y <= endDate.year(); y++) years.push(y);
@@ -189,27 +127,45 @@ function getWorkingDaysInTwoWeekRange(startDate, endDate) {
 
   const workingDays = [];
   const cursor = startDate.clone();
-
   while (cursor.isSameOrBefore(endDate, "day")) {
     const dayOfWeek = cursor.day();
     const dateStr = cursor.format("YYYY-MM-DD");
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const isHoliday = holidays.has(dateStr);
-
-    if (!isWeekend && !isHoliday) {
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.has(dateStr)) {
       workingDays.push(cursor.clone());
     }
-
     cursor.add(1, "day");
   }
-
   return workingDays;
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Get interns present on a specific date (LKT-aware)
+// Shared intern detail extractor
 // ---------------------------------------------------------------------------
-async function getPresentsOnDate(dateStr) {
+const getInternDetails = (intern) => ({
+  _id: intern._id,
+  name: intern.Trainee_Name || "Unknown",
+  id: intern.Trainee_ID || "Unknown",
+  email: intern.Trainee_Email || "",
+  fieldOfSpecialization: intern.field_of_spec_name || "Not specified",
+  institute: intern.Institute || "Not specified",
+  team: intern.team || "Not specified",
+  trainingStartDate: intern.Training_StartDate
+    ? moment(intern.Training_StartDate).tz(TZ).format("MMM DD, YYYY")
+    : "Not specified",
+  trainingEndDate: intern.Training_EndDate
+    ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
+    : "Not specified",
+});
+
+const sortByInternId = (interns) =>
+  interns.sort((a, b) =>
+    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
+  );
+
+// ---------------------------------------------------------------------------
+// Core helper: Get interns present on a specific date filtered by a type set
+// ---------------------------------------------------------------------------
+async function getPresentsOnDate(dateStr, attendanceTypeSet) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
@@ -219,59 +175,148 @@ async function getPresentsOnDate(dateStr) {
   for (const intern of interns) {
     if (!intern.attendance || intern.attendance.length === 0) continue;
 
-    const meetingRecords = intern.attendance.filter((r) => {
+    const matchingRecords = intern.attendance.filter((r) => {
       const recDate = moment(r.date).tz(TZ);
       const type = String(r.type || "").toLowerCase();
       return (
         recDate.isSameOrAfter(targetDate) &&
         recDate.isBefore(nextDate) &&
         r.status === "Present" &&
-        MEETING_ATTENDANCE_TYPES.has(type)
+        attendanceTypeSet.has(type)
       );
     });
 
-    if (meetingRecords.length > 0) {
-      const meetings = meetingRecords
-        .map((record) => ({
-          meetingName: record.meetingName || "General Meeting",
-          timeMarked: record.timeMarked
-            ? moment(record.timeMarked).tz(TZ).format("HH:mm")
-            : record.date
-              ? moment(record.date).tz(TZ).format("HH:mm")
-              : "—",
-          type: record.type || "meeting",
-        }))
-        .sort((a, b) => a.timeMarked.localeCompare(b.timeMarked));
-      const firstMeeting = meetings[0];
+    if (matchingRecords.length === 0) continue;
+
+    // Sort by time ascending
+    const sorted = [...matchingRecords].sort(
+      (a, b) => new Date(a.date) - new Date(b.date),
+    );
+    const firstRecord = sorted[0];
+
+    const timeFor = (record) =>
+      record.timeMarked
+        ? moment(record.timeMarked).tz(TZ).format("HH:mm")
+        : record.date
+          ? moment(record.date).tz(TZ).format("HH:mm")
+          : "—";
+
+    if (attendanceTypeSet === MEETING_ATTENDANCE_TYPES) {
+      // Build per-meeting breakdown
+      const meetings = sorted.map((record) => ({
+        meetingName: record.meetingName || "General Meeting",
+        timeMarked: timeFor(record),
+        type: record.type || "meeting",
+      }));
 
       presentInterns.push({
         ...getInternDetails(intern),
-        meetingName: meetings.map((meeting) => meeting.meetingName).join(", "),
+        meetingName: meetings.map((m) => m.meetingName).join(", "),
         meetingCount: meetings.length,
         meetings,
-        timeMarked: firstMeeting?.timeMarked || "—",
-        type: firstMeeting?.type || "meeting",
+        timeMarked: meetings[0]?.timeMarked || "—",
+        type: meetings[0]?.type || "meeting",
+        attendanceType: "meeting",
+      });
+    } else {
+      // Daily — just the first (or only) check-in record matters
+      presentInterns.push({
+        ...getInternDetails(intern),
+        timeMarked: timeFor(firstRecord),
+        type: firstRecord.type || "daily",
+        attendanceType: "daily",
       });
     }
   }
 
-  return sortByInternId(presentInterns);
+  presentInterns.sort((a, b) =>
+    String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
+  );
+
+  return presentInterns;
+}
+
+// ---------------------------------------------------------------------------
+// Daily attendance helper — also checks DailyRecord for older logbook-backed
+// records in addition to Intern.attendance
+// ---------------------------------------------------------------------------
+async function getDailyPresentsOnDate(dateStr) {
+  const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
+  const nextDate = targetDate.clone().add(1, "day");
+  const interns = await Intern.find({});
+  const internById = new Map(
+    interns.map((intern) => [String(intern._id), intern]),
+  );
+  const dailyByIntern = new Map();
+
+  for (const intern of interns) {
+    const records = (intern.attendance || []).filter((record) => {
+      const type = String(record.type || "").toLowerCase();
+      const recordDate = moment(record.date).tz(TZ);
+      return (
+        DAILY_ATTENDANCE_TYPES.has(type) &&
+        record.status === "Present" &&
+        recordDate.isSameOrAfter(targetDate) &&
+        recordDate.isBefore(nextDate)
+      );
+    });
+
+    if (records.length === 0) continue;
+    const latest = records.sort(
+      (a, b) =>
+        new Date(b.timeMarked || b.date).getTime() -
+        new Date(a.timeMarked || a.date).getTime(),
+    )[0];
+    dailyByIntern.set(String(intern._id), {
+      ...getInternDetails(intern),
+      timeMarked: moment(latest.timeMarked || latest.date)
+        .tz(TZ)
+        .format("HH:mm"),
+      type: latest.type || "daily",
+      status: "Present",
+      attendanceType: "daily",
+    });
+  }
+
+  // Also check DailyRecord for logbook-backed attendance
+  const dailyRecords = await DailyRecord.find({
+    date: dateStr,
+    attendance: { $in: ["present", "late"] },
+  });
+
+  for (const record of dailyRecords) {
+    const key = String(record.internId);
+    if (dailyByIntern.has(key)) continue;
+    const intern = internById.get(key);
+    if (!intern) continue;
+    dailyByIntern.set(key, {
+      ...getInternDetails(intern),
+      timeMarked: record.attendanceTime
+        ? moment(record.attendanceTime).tz(TZ).format("HH:mm")
+        : "—",
+      type: "daily",
+      status: record.attendance === "late" ? "Late" : "Present",
+      attendanceType: "daily",
+    });
+  }
+
+  return sortByInternId([...dailyByIntern.values()]);
 }
 
 // ---------------------------------------------------------------------------
 // GET /admin/attendance/by-date?date=YYYY-MM-DD
+// Returns BOTH meeting and daily attendance for a date (combined response)
 // ---------------------------------------------------------------------------
 exports.getAttendanceByDate = async (req, res) => {
   try {
     const dateStr = req.query.date;
-    if (!dateStr) {
+    if (!dateStr)
       return res
         .status(400)
         .json({ error: "date query param required (YYYY-MM-DD)" });
-    }
 
     const [meetingInterns, dailyInterns] = await Promise.all([
-      getPresentsOnDate(dateStr),
+      getPresentsOnDate(dateStr, MEETING_ATTENDANCE_TYPES),
       getDailyPresentsOnDate(dateStr),
     ]);
 
@@ -291,20 +336,40 @@ exports.getAttendanceByDate = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
+// GET /admin/attendance/by-date-daily?date=YYYY-MM-DD
+// Returns DAILY attendance for a date
+// ---------------------------------------------------------------------------
+exports.getAttendanceByDateDaily = async (req, res) => {
+  try {
+    const dateStr = req.query.date;
+    if (!dateStr)
+      return res
+        .status(400)
+        .json({ error: "date query param required (YYYY-MM-DD)" });
+
+    const presentInterns = await getDailyPresentsOnDate(dateStr);
+    return res.json({
+      date: dateStr,
+      count: presentInterns.length,
+      interns: presentInterns,
+    });
+  } catch (err) {
+    console.error("getAttendanceByDateDaily error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
 // POST /admin/attendance/trigger-report
-// Manually triggers the same weekly non-attendance email + Excel that the
-// cron job sends. Accepts an optional { recipients: [...] } body.
 // ---------------------------------------------------------------------------
 exports.triggerAttendanceReport = async (req, res) => {
   try {
     const recipients = req.body?.recipients || ["dimalshacooray@gmail.com"];
-
     const result =
       await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
         recipients,
         "manual",
       );
-
     return res.json({
       success: true,
       message: "Attendance report triggered successfully",
@@ -317,133 +382,88 @@ exports.triggerAttendanceReport = async (req, res) => {
 };
 
 // ---------------------------------------------------------------------------
-// GET /admin/attendance/export-excel?date=YYYY-MM-DD
-// Downloads an Excel file of all interns present on the given date.
+// GET /admin/attendance/export-meeting-pdf?date=YYYY-MM-DD
+// Exports MEETING attendance as a PDF matching the SLTMobitel template
 // ---------------------------------------------------------------------------
-exports.exportAttendanceExcel = async (req, res) => {
+exports.exportMeetingAttendancePdf = async (req, res) => {
   try {
     const dateStr = req.query.date;
-    if (!dateStr) {
+    if (!dateStr)
       return res
         .status(400)
         .json({ error: "date query param required (YYYY-MM-DD)" });
-    }
 
-    const presentInterns = await getPresentsOnDate(dateStr);
+    const presentInterns = await getPresentsOnDate(
+      dateStr,
+      MEETING_ATTENDANCE_TYPES,
+    );
 
-    const excelData = [];
-    excelData.push(["MEETING ATTENDANCE REPORT"]);
-    excelData.push(["TalentHub Intern Management System"]);
-    excelData.push([]);
-    excelData.push([
-      "Report Generated:",
-      moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm"),
-    ]);
-    excelData.push([
-      "Date:",
-      moment.tz(dateStr, "YYYY-MM-DD", TZ).format("MMMM DD, YYYY"),
-    ]);
-    excelData.push(["Total Present:", presentInterns.length]);
-    excelData.push([]);
-    excelData.push([]);
-    excelData.push([
-      "No.",
-      "Intern Name",
-      "Trainee ID",
-      "Email Address",
-      "Field of Specialization",
-      "Institute",
-      "Team",
-      "Training Start Date",
-      "Training End Date",
-      "Meeting Count",
-      "Meeting Names",
-      "Meeting Times",
-    ]);
-
-    presentInterns.forEach((intern, index) => {
-      excelData.push([
-        index + 1,
-        intern.name,
-        intern.id,
-        intern.email,
-        intern.fieldOfSpecialization,
-        intern.institute,
-        intern.team,
-        intern.trainingStartDate,
-        intern.trainingEndDate,
-        intern.meetingCount,
-        intern.meetingName,
-        intern.meetings.map((meeting) => meeting.timeMarked).join(", "),
-      ]);
+    const pdfBuffer = await generateMeetingAttendancePdf({
+      date: dateStr,
+      interns: presentInterns,
     });
 
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-    worksheet["!cols"] = [
-      { wch: 5 },
-      { wch: 25 },
-      { wch: 15 },
-      { wch: 30 },
-      { wch: 25 },
-      { wch: 30 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 20 },
-      { wch: 25 },
-      { wch: 12 },
-      { wch: 12 },
-    ];
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Attendance Report");
-
-    const tempDir = path.join(__dirname, "..", "temp");
-    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-
-    const filename = `Attendance_Report_${dateStr}.xlsx`;
-    const filePath = path.join(tempDir, filename);
-    XLSX.writeFile(workbook, filePath);
-
-    res.download(filePath, filename, (err) => {
-      if (err) console.error("Excel download error:", err);
-      try {
-        fs.unlinkSync(filePath);
-      } catch (_) {}
-    });
+    const filename = `Meeting_Attendance_Report_${dateStr}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
   } catch (err) {
-    console.error("exportAttendanceExcel error:", err);
+    console.error("exportMeetingAttendancePdf error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// GET /admin/attendance/export-daily-pdf?date=YYYY-MM-DD
+// Exports DAILY attendance as a PDF matching the SLTMobitel template
+// ---------------------------------------------------------------------------
+exports.exportDailyAttendancePdf = async (req, res) => {
+  try {
+    const dateStr = req.query.date;
+    if (!dateStr)
+      return res
+        .status(400)
+        .json({ error: "date query param required (YYYY-MM-DD)" });
+
+    const presentInterns = await getDailyPresentsOnDate(dateStr);
+
+    const pdfBuffer = await generateDailyAttendancePdf({
+      date: dateStr,
+      interns: presentInterns,
+    });
+
+    const filename = `Daily_Attendance_Report_${dateStr}.pdf`;
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Length", pdfBuffer.length);
+    res.send(pdfBuffer);
+  } catch (err) {
+    console.error("exportDailyAttendancePdf error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };
 
 // ---------------------------------------------------------------------------
 // GET /admin/attendance/export-non-attendance-excel
-// Downloads an Excel file of interns who missed meetings in the past 14
-// working days. Only checks MEETING attendance types (qr, face_meeting, meeting,
-// manual_meeting, manual). Includes projects from InternTalentTrailSync.
 // ---------------------------------------------------------------------------
 exports.exportNonAttendanceExcel = async (req, res) => {
   try {
-    // ── 1. Reuse the service's date-range helper ──────────────────────────
     const { startDate, endDate } =
       WeeklyMeetingAttendanceService.getTwoWeekRange();
 
-    // ── 2. Fetch active interns ────────────────────────────────────────────
     const activeInterns =
       await WeeklyMeetingAttendanceService.getActiveInterns();
 
-    // ── 3. Helper function to check meeting attendance ────────────────────
     const hasAttendedMeeting = (intern) => {
       if (!intern.attendance || intern.attendance.length === 0) return false;
-
       const workingDays = getWorkingDaysInTwoWeekRange(startDate, endDate);
       const workingDayStrings = new Set(
         workingDays.map((d) => d.format("YYYY-MM-DD")),
       );
-
       return intern.attendance.some((record) => {
         const recordDate = moment(record.date).tz(TZ).format("YYYY-MM-DD");
         const recordType = String(record.type || "").toLowerCase();
-
         return (
           record.status === "Present" &&
           MEETING_ATTENDANCE_TYPES.has(recordType) &&
@@ -452,38 +472,26 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       });
     };
 
-    // ── 4. Build project lookup from InternTalentTrailSync ────────────────
     const talentTrailDocs = await InternTalentTrailSync.find({});
     const projectsByEmail = {};
-
     for (const doc of talentTrailDocs) {
       const email = String(doc.email || "").toLowerCase();
       const projectNames = (doc.projects || []).map((p) => p.projectName);
-
-      if (!projectsByEmail[email]) {
-        projectsByEmail[email] = [];
-      }
+      if (!projectsByEmail[email]) projectsByEmail[email] = [];
       projectsByEmail[email].push(...projectNames);
     }
 
-    // ── 5. Filter non-attendees ────────────────────────────────────────────
     const nonAttendees = [];
-
     for (const intern of activeInterns) {
-      // Skip new interns
       if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
-
-      // Skip interns who attended at least one meeting in the window
       if (hasAttendedMeeting(intern)) continue;
 
-      // Build the last-attended label (from any meeting type)
       const lastRecord =
         WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
       const lastMeetingDate = lastRecord
         ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
         : "No record found";
 
-      // Get projects from InternTalentTrailSync
       const internEmail = String(
         WeeklyMeetingAttendanceService.getInternEmail(intern),
       ).toLowerCase();
@@ -508,12 +516,10 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       });
     }
 
-    // Sort by Trainee ID ascending
     nonAttendees.sort((a, b) =>
       String(a.id).toUpperCase() < String(b.id).toUpperCase() ? -1 : 1,
     );
 
-    // ── 6. Build Excel ────────────────────────────────────────────────────
     const excelData = [];
     excelData.push([
       "NON-ATTENDANCE REPORT (MEETING ATTENDANCE - PAST 14 DAYS)",
@@ -531,7 +537,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     excelData.push(["Total Non-Attendees (Meetings):", nonAttendees.length]);
     excelData.push([]);
     excelData.push([
-      "Note: This report only considers MEETING attendance. Weekends, Sri Lankan public holidays, and new interns (training started within the period) are excluded.",
+      "Note: This report only considers MEETING attendance. Weekends, Sri Lankan public holidays, and new interns are excluded.",
     ]);
     excelData.push([]);
     excelData.push([

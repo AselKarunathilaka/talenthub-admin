@@ -37,9 +37,11 @@ const {
 
 const {
   getAttendanceByDate,
+  getAttendanceByDateDaily,
   triggerAttendanceReport,
-  exportAttendanceExcel,
   exportNonAttendanceExcel,
+  exportMeetingAttendancePdf,
+  exportDailyAttendancePdf,
 } = require("../controllers/admininternAttendanceController");
 const {
   getAttendanceSettings,
@@ -63,7 +65,9 @@ const {
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
-const { getAdminInternAttendance } = require("../controllers/adminInternDetailsController");
+const {
+  getAdminInternAttendance,
+} = require("../controllers/adminInternDetailsController");
 
 // ── Public routes (no auth) ───────────────────────────────────────────────────
 // Export on-leave interns as Excel
@@ -137,17 +141,26 @@ router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
 
-// GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns
+// GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns (meeting + daily combined)
 router.get("/attendance/by-date", getAttendanceByDate);
+
+// GET  /admin/attendance/by-date-daily?date=YYYY-MM-DD
+//      → JSON list of interns present at DAILY attendance on that date
+router.get("/attendance/by-date-daily", getAttendanceByDateDaily);
 
 // POST /admin/attendance/trigger-report            → fire the weekly non-attendance email
 router.post("/attendance/trigger-report", triggerAttendanceReport);
 
-// GET  /admin/attendance/export-excel?date=YYYY-MM-DD → download Excel for a day
-router.get("/attendance/export-excel", exportAttendanceExcel);
-
 // GET /admin/attendance/export-non-attendance-excel → download non-attendance Excel (past 14 days)
 router.get("/attendance/export-non-attendance-excel", exportNonAttendanceExcel);
+
+// GET  /admin/attendance/export-meeting-pdf?date=YYYY-MM-DD
+//      → Download Meeting Attendance PDF (SLTMobitel template)
+router.get("/attendance/export-meeting-pdf", exportMeetingAttendancePdf);
+
+// GET  /admin/attendance/export-daily-pdf?date=YYYY-MM-DD
+//      → Download Daily Attendance PDF (SLTMobitel template)
+router.get("/attendance/export-daily-pdf", exportDailyAttendancePdf);
 
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);

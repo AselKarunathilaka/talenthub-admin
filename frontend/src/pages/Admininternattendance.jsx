@@ -3,27 +3,29 @@ import { useNavigate } from "react-router-dom";
 import {
   FaArrowLeft,
   FaCalendarCheck,
-  FaUsers,
   FaSpinner,
   FaUser,
   FaSearch,
   FaRegPaperPlane,
-  FaCheckCircle,
   FaFileExcel,
   FaBell,
   FaFilter,
   FaTimes,
   FaClock,
   FaChartBar,
-  FaEnvelope,
   FaMapMarkerAlt,
   FaChevronDown,
   FaEdit,
+  FaFilePdf,
+  FaCalendarDay,
+  FaUsers,
+  FaChevronLeft,
+  FaChevronRight,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 
-// ── API helpers ──────────────────────────────────────────────────────────────
+// ── API helpers ───────────────────────────────────────────────────────────────
 const getAuthHeaders = () => {
   const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
   return {
@@ -32,8 +34,21 @@ const getAuthHeaders = () => {
   };
 };
 
+async function downloadBlob(res, filename) {
+  if (!res.ok) throw new Error("Download failed");
+  const blob = await res.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(url);
+}
+
 const attendanceApi = {
-  getByDate: async (date) => {
+  getMeetingByDate: async (date) => {
     const res = await fetch(
       `${API_BASE_URL}/admin/attendance/by-date?date=${date}`,
       { headers: getAuthHeaders() },
@@ -41,6 +56,32 @@ const attendanceApi = {
     if (!res.ok) throw new Error((await res.json()).error || "Request failed");
     return res.json();
   },
+
+  getDailyByDate: async (date) => {
+    const res = await fetch(
+      `${API_BASE_URL}/admin/attendance/by-date-daily?date=${date}`,
+      { headers: getAuthHeaders() },
+    );
+    if (!res.ok) throw new Error((await res.json()).error || "Request failed");
+    return res.json();
+  },
+
+  exportMeetingPdf: (date) =>
+    fetch(`${API_BASE_URL}/admin/attendance/export-meeting-pdf?date=${date}`, {
+      headers: getAuthHeaders(),
+    }).then((res) =>
+      downloadBlob(res, `Meeting_Attendance_Report_${date}.pdf`),
+    ),
+
+  exportDailyPdf: (date) =>
+    fetch(`${API_BASE_URL}/admin/attendance/export-daily-pdf?date=${date}`, {
+      headers: getAuthHeaders(),
+    }).then((res) => downloadBlob(res, `Daily_Attendance_Report_${date}.pdf`)),
+
+  exportMeetingExcel: (date) =>
+    fetch(`${API_BASE_URL}/admin/attendance/export-excel?date=${date}`, {
+      headers: getAuthHeaders(),
+    }).then((res) => downloadBlob(res, `Attendance_Report_${date}.xlsx`)),
 
   triggerReport: async (recipients) => {
     const res = await fetch(`${API_BASE_URL}/admin/attendance/trigger-report`, {
@@ -52,40 +93,15 @@ const attendanceApi = {
     return res.json();
   },
 
-  exportExcel: (date) => {
-    return fetch(`${API_BASE_URL}/admin/attendance/export-excel?date=${date}`, {
-      headers: getAuthHeaders(),
-    }).then(async (res) => {
-      if (!res.ok) throw new Error("Export failed");
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Attendance_Report_${date}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    });
-  },
-
   exportNonAttendanceExcel: async () => {
     const res = await fetch(
       `${API_BASE_URL}/admin/attendance/export-non-attendance-excel`,
       { headers: getAuthHeaders() },
     );
     if (!res.ok) throw new Error("Non-attendance export failed");
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
     const d = new Date();
     const localToday = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    a.download = `Non_Attendance_Report_${localToday}.xlsx`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    window.URL.revokeObjectURL(url);
+    await downloadBlob(res, `Non_Attendance_Report_${localToday}.xlsx`);
   },
 
   getSettings: async () => {
@@ -109,13 +125,9 @@ const attendanceApi = {
   },
 };
 
-// ── Timezone-safe "today" helper ─────────────────────────────────────────────
 const getLocalToday = () => {
   const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -150,35 +162,38 @@ const Toast = ({ toast, onClose }) => {
 const TypeBadge = ({ type }) => {
   const map = {
     qr: { label: "QR", cls: "bg-purple-100 text-purple-700 border-purple-200" },
-    daily_qr: {
-      label: "Daily QR",
-      cls: "bg-indigo-100 text-indigo-700 border-indigo-200",
-    },
     face_meeting: {
       label: "Face Meeting",
       cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
     },
-    face: {
-      label: "Face",
-      cls: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    meeting: {
+      label: "Meeting",
+      cls: "bg-blue-100 text-blue-700 border-blue-200",
     },
     manual: {
       label: "Manual",
       cls: "bg-amber-100 text-amber-700 border-amber-200",
     },
-    daily: { label: "Daily", cls: "bg-cyan-100 text-cyan-700 border-cyan-200" },
-    // ── NEW types ──────────────────────────────────────────────────────────────
-    manual_daily: {
-      label: "Manual Daily",
-      cls: "bg-teal-100 text-teal-700 border-teal-200",
-    },
     manual_meeting: {
       label: "Manual Meeting",
       cls: "bg-orange-100 text-orange-700 border-orange-200",
     },
+    daily: { label: "Daily", cls: "bg-cyan-100 text-cyan-700 border-cyan-200" },
+    daily_qr: {
+      label: "Daily QR",
+      cls: "bg-indigo-100 text-indigo-700 border-indigo-200",
+    },
+    face: {
+      label: "Face Recog.",
+      cls: "bg-teal-100 text-teal-700 border-teal-200",
+    },
+    manual_daily: {
+      label: "Manual Daily",
+      cls: "bg-lime-100 text-lime-700 border-lime-200",
+    },
   };
   const { label, cls } = map[type] || {
-    label: type,
+    label: type || "—",
     cls: "bg-gray-100 text-gray-600 border-gray-200",
   };
   return (
@@ -190,20 +205,356 @@ const TypeBadge = ({ type }) => {
   );
 };
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// ── Pagination ────────────────────────────────────────────────────────────────
+const PAGE_SIZE = 15;
+
+const Pagination = ({ current, total, onChange }) => {
+  if (total <= 1) return null;
+
+  const pages = [];
+  const delta = 1;
+  const left = current - delta;
+  const right = current + delta + 1;
+  let last = 0;
+
+  for (let i = 1; i <= total; i++) {
+    if (i === 1 || i === total || (i >= left && i < right)) {
+      if (last && i - last > 1) pages.push("...");
+      pages.push(i);
+      last = i;
+    }
+  }
+
+  return (
+    <div className="flex items-center justify-center gap-1 py-3 px-4 border-t border-gray-100 bg-gray-50">
+      <button
+        onClick={() => onChange(current - 1)}
+        disabled={current === 1}
+        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        <FaChevronLeft className="h-3 w-3" />
+      </button>
+
+      {pages.map((p, i) =>
+        p === "..." ? (
+          <span key={`ellipsis-${i}`} className="px-2 text-xs text-gray-400">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-colors ${
+              p === current
+                ? "bg-blue-500 text-white shadow-sm"
+                : "text-gray-600 hover:bg-gray-200"
+            }`}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      <button
+        onClick={() => onChange(current + 1)}
+        disabled={current === total}
+        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+      >
+        <FaChevronRight className="h-3 w-3" />
+      </button>
+    </div>
+  );
+};
+
+// ── Attendance Table ──────────────────────────────────────────────────────────
+const AttendanceTable = ({
+  filtered,
+  selectedDate,
+  isMeeting,
+  expandedInterns,
+  toggleInternMeetings,
+}) => {
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filtered.length, isMeeting]);
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const formatDateLabel = (dateStr) =>
+    new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+  if (filtered.length === 0) {
+    return (
+      <div className="text-center py-16 bg-gray-50 px-4">
+        <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+        <h3 className="text-base font-medium text-gray-600 mb-1">
+          No attendance records
+        </h3>
+        <p className="text-sm text-gray-400">
+          No interns were marked present on {formatDateLabel(selectedDate)}.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* ── Mobile cards ── */}
+      <div className="block lg:hidden divide-y divide-gray-100">
+        {paginated.map((intern) => (
+          <motion.div
+            key={intern._id}
+            className="p-4 hover:bg-gray-50 transition-colors"
+            whileHover={{ y: -1 }}
+            transition={{ duration: 0.1 }}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center space-x-3">
+                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                  <FaUser className="text-indigo-600 text-xs" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {intern.name}
+                  </p>
+                  <p className="text-xs text-gray-500">{intern.id}</p>
+                </div>
+              </div>
+              <TypeBadge type={intern.type} />
+            </div>
+            <div className="ml-12 space-y-0.5">
+              <p className="text-xs text-gray-500">
+                🎓 {intern.fieldOfSpecialization}
+              </p>
+              <p className="text-xs text-gray-500">🏛️ {intern.institute}</p>
+              {!isMeeting && intern.timeMarked !== "—" && (
+                <p className="text-xs text-gray-500">🕐 {intern.timeMarked}</p>
+              )}
+              {isMeeting && intern.meetings?.length > 0 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toggleInternMeetings(intern._id)}
+                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
+                  >
+                    <span>
+                      {intern.meetingCount || intern.meetings?.length || 0}{" "}
+                      meeting
+                      {(intern.meetingCount || intern.meetings?.length || 0) !==
+                      1
+                        ? "s"
+                        : ""}
+                    </span>
+                    <FaChevronDown
+                      className={`h-3 w-3 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {expandedInterns[intern._id] && (
+                    <div className="mt-2 space-y-1 rounded-xl border border-blue-100 bg-blue-50/50 p-2">
+                      {intern.meetings.map((meeting, index) => (
+                        <div
+                          key={`${intern._id}-${meeting.meetingName}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs"
+                        >
+                          <span className="font-medium text-gray-800">
+                            {meeting.meetingName}
+                          </span>
+                          <span className="text-gray-500">
+                            {meeting.timeMarked}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* ── Desktop table — 7 fixed columns ── */}
+      <div className="hidden lg:block w-full">
+        <table className="w-full table-fixed divide-y divide-gray-100">
+          <colgroup>
+            <col style={{ width: "4%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "20%" }} />
+            <col style={{ width: "24%" }} />
+            <col style={{ width: "10%" }} />
+            <col style={{ width: "8%" }} />
+          </colgroup>
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                #
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                ID
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Name
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Field
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Institute
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {isMeeting ? "Meetings" : "Check-in"}
+              </th>
+              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Type
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {paginated.map((intern, idx) => (
+              <React.Fragment key={intern._id}>
+                <motion.tr
+                  className="hover:bg-gray-50 transition-colors"
+                  whileHover={{ y: -1 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  <td className="px-3 py-3 text-xs text-gray-400 font-mono">
+                    {(page - 1) * PAGE_SIZE + idx + 1}
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="text-xs font-mono text-gray-600 truncate block">
+                      {intern.id}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="h-7 w-7 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <FaUser className="text-indigo-600 text-[10px]" />
+                      </div>
+                      <span className="text-sm font-semibold text-gray-900 truncate">
+                        {intern.name}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="text-xs text-gray-600 truncate block">
+                      {intern.fieldOfSpecialization || "—"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className="text-xs text-gray-700 truncate block"
+                      title={intern.institute}
+                    >
+                      {intern.institute || "—"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    {isMeeting ? (
+                      <button
+                        type="button"
+                        onClick={() => toggleInternMeetings(intern._id)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                      >
+                        <span>
+                          {intern.meetingCount || intern.meetings?.length || 0}
+                        </span>
+                        <FaChevronDown
+                          className={`h-2.5 w-2.5 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1 text-xs text-gray-700">
+                        <FaClock className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                        <span className="truncate">{intern.timeMarked}</span>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-3 py-3">
+                    <TypeBadge type={intern.type} />
+                  </td>
+                </motion.tr>
+
+                {/* Meeting expansion row */}
+                {isMeeting && expandedInterns[intern._id] && (
+                  <tr>
+                    <td colSpan={7} className="bg-blue-50/40 px-4 py-3">
+                      <div className="ml-10 rounded-xl border border-blue-100 bg-white p-3">
+                        <div className="grid grid-cols-[1fr_8rem_8rem] px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+                          <div>Meeting Name</div>
+                          <div className="text-center">Time</div>
+                          <div className="text-right">Type</div>
+                        </div>
+                        <div className="space-y-1.5">
+                          {(intern.meetings || []).map((meeting, index) => (
+                            <div
+                              key={`${intern._id}-${meeting.meetingName}-${index}`}
+                              className="grid grid-cols-[1fr_8rem_8rem] items-center rounded-lg bg-gray-50 px-2 py-2 text-xs"
+                            >
+                              <div className="font-medium text-gray-900 truncate">
+                                {meeting.meetingName}
+                              </div>
+                              <div className="flex items-center justify-center gap-1.5 text-gray-600">
+                                <FaClock className="h-3 w-3 text-gray-400" />
+                                {meeting.timeMarked}
+                              </div>
+                              <div className="text-right">
+                                <TypeBadge type={meeting.type} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Pagination ── */}
+      <Pagination current={page} total={totalPages} onChange={setPage} />
+
+      {/* ── Footer count ── */}
+      {filtered.length > 0 && (
+        <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
+          <p className="text-xs text-gray-400 text-center">
+            {filtered.length} intern{filtered.length !== 1 ? "s" : ""} • page{" "}
+            {page} of {totalPages || 1}
+          </p>
+        </div>
+      )}
+    </>
+  );
+};
+
+// ── Main Component ─────────────────────────────────────────────────────────────
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
-
   const today = getLocalToday();
 
+  const [activeTab, setActiveTab] = useState("meeting");
   const [selectedDate, setSelectedDate] = useState(today);
-  const [data, setData] = useState(null);
+  const [meetingData, setMeetingData] = useState(null);
+  const [dailyData, setDailyData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [exporting, setExporting] = useState(false);
+
+  const [exportingMeetingPdf, setExportingMeetingPdf] = useState(false);
+  const [exportingDailyPdf, setExportingDailyPdf] = useState(false);
   const [exportingNonAttendance, setExportingNonAttendance] = useState(false);
   const [triggering, setTriggering] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [attendanceFilter, setAttendanceFilter] = useState("all");
   const [toast, setToast] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -218,10 +569,15 @@ const AdminInternAttendance = () => {
 
   const fetchAttendance = async (date) => {
     setLoading(true);
-    setData(null);
+    setMeetingData(null);
+    setDailyData(null);
     try {
-      const result = await attendanceApi.getByDate(date);
-      setData(result);
+      const [meeting, daily] = await Promise.all([
+        attendanceApi.getMeetingByDate(date),
+        attendanceApi.getDailyByDate(date),
+      ]);
+      setMeetingData(meeting);
+      setDailyData(daily);
     } catch (err) {
       showToast(err.message || "Failed to load attendance", "error");
     } finally {
@@ -259,8 +615,8 @@ const AdminInternAttendance = () => {
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
       showToast(
         nextValue
-          ? "SLT location requirement enabled for intern attendance"
-          : "SLT location requirement disabled. Interns can mark attendance anywhere",
+          ? "SLT location requirement enabled"
+          : "SLT location requirement disabled",
         "success",
       );
     } catch (err) {
@@ -271,33 +627,8 @@ const AdminInternAttendance = () => {
     }
   };
 
-  const handleExport = async () => {
-    if (!data || data.count === 0) {
-      showToast("No records to export for this date", "info");
-      return;
-    }
-    setExporting(true);
-    try {
-      await attendanceApi.exportExcel(selectedDate);
-      showToast("Excel report downloaded successfully", "success");
-    } catch (err) {
-      showToast(err.message || "Export failed", "error");
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportNonAttendance = async () => {
-    setExportingNonAttendance(true);
-    try {
-      await attendanceApi.exportNonAttendanceExcel();
-      showToast("Non-attendance Excel downloaded successfully", "success");
-    } catch (err) {
-      showToast(err.message || "Export failed", "error");
-    } finally {
-      setExportingNonAttendance(false);
-    }
-  };
+  const toggleInternMeetings = (internId) =>
+    setExpandedInterns((cur) => ({ ...cur, [internId]: !cur[internId] }));
 
   const addRecipient = () => {
     const trimmed = recipientInput.trim();
@@ -313,13 +644,6 @@ const AdminInternAttendance = () => {
   const removeRecipient = (email) =>
     setRecipients((prev) => prev.filter((r) => r !== email));
 
-  const toggleInternMeetings = (internId) => {
-    setExpandedInterns((current) => ({
-      ...current,
-      [internId]: !current[internId],
-    }));
-  };
-
   const handleTriggerReport = async () => {
     if (recipients.length === 0) {
       showToast("Add at least one recipient", "error");
@@ -332,7 +656,7 @@ const AdminInternAttendance = () => {
         showToast(
           result.result?.emailSent
             ? `Report sent to ${recipients.length} recipient(s) ✓`
-            : "Check complete — all interns attended (no email sent)",
+            : "Check complete — all interns attended",
           "success",
         );
         setShowTriggerModal(false);
@@ -346,22 +670,14 @@ const AdminInternAttendance = () => {
     }
   };
 
-  const filtered = (data?.interns || []).filter((intern) => {
+  const activeData = activeTab === "meeting" ? meetingData : dailyData;
+  const filtered = (activeData?.interns || []).filter((intern) => {
     const q = searchTerm.toLowerCase();
     return (
       intern.name.toLowerCase().includes(q) ||
-      intern.id.toLowerCase().includes(q) ||
-      intern.email.toLowerCase().includes(q) ||
-      intern.team.toLowerCase().includes(q)
-    );
-  });
-  const filteredDaily = (data?.dailyInterns || []).filter((intern) => {
-    const q = searchTerm.toLowerCase();
-    return (
-      intern.name.toLowerCase().includes(q) ||
-      intern.id.toLowerCase().includes(q) ||
-      intern.email.toLowerCase().includes(q) ||
-      intern.team.toLowerCase().includes(q)
+      String(intern.id).toLowerCase().includes(q) ||
+      (intern.fieldOfSpecialization || "").toLowerCase().includes(q) ||
+      (intern.institute || "").toLowerCase().includes(q)
     );
   });
 
@@ -463,7 +779,7 @@ const AdminInternAttendance = () => {
               <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
                 This will check all active interns for meeting attendance over
                 the <strong>past 14 days</strong> and email a non-attendance
-                report (Excel attached) to the recipients below.
+                report to the recipients below.
               </div>
 
               <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
@@ -554,7 +870,6 @@ const AdminInternAttendance = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              {/* ── Nav row: Back + Manual Attendance button ── */}
               <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
                 <motion.button
                   onClick={() => navigate("/admin/dashboard")}
@@ -567,8 +882,6 @@ const AdminInternAttendance = () => {
                     Back to Dashboard
                   </span>
                 </motion.button>
-
-                {/* ── NEW: Manual Attendance shortcut ── */}
                 <motion.button
                   onClick={() => navigate("/admin/manual-attendance")}
                   className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-sm text-sm font-semibold transition-all"
@@ -579,14 +892,13 @@ const AdminInternAttendance = () => {
                   Manual Attendance
                 </motion.button>
               </div>
-
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Attendance Management
+                  Intern Attendance
                 </span>
               </h2>
               <p className="text-gray-600 text-sm md:text-base">
-                Review daily and meeting attendance records separately
+                View meeting &amp; daily attendance records and export reports
               </p>
             </motion.div>
 
@@ -622,26 +934,8 @@ const AdminInternAttendance = () => {
                   <span
                     className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-5" : "translate-x-0.5"}`}
                   />
-                  <span className="sr-only">
-                    {sltLocationRequired
-                      ? "Location required"
-                      : "Location not required"}
-                  </span>
                 </button>
               </div>
-            </motion.div>
-
-            {/* Non-Attendance Report section divider */}
-            <motion.div
-              className="flex items-center gap-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.05, duration: 0.3 }}
-            >
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-                Non-Attendance Report
-              </span>
-              <div className="flex-1 h-px bg-gray-200" />
             </motion.div>
 
             {/* Non-Attendance Report card */}
@@ -675,7 +969,17 @@ const AdminInternAttendance = () => {
                 </p>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <motion.button
-                    onClick={handleExportNonAttendance}
+                    onClick={async () => {
+                      setExportingNonAttendance(true);
+                      try {
+                        await attendanceApi.exportNonAttendanceExcel();
+                        showToast("Non-attendance Excel downloaded", "success");
+                      } catch (err) {
+                        showToast(err.message || "Export failed", "error");
+                      } finally {
+                        setExportingNonAttendance(false);
+                      }
+                    }}
                     disabled={exportingNonAttendance}
                     whileHover={{ scale: exportingNonAttendance ? 1 : 1.04 }}
                     whileTap={{ scale: 0.96 }}
@@ -703,7 +1007,7 @@ const AdminInternAttendance = () => {
               </div>
             </motion.div>
 
-            {/* Daily Attendance section divider */}
+            {/* Section divider */}
             <motion.div
               className="flex items-center gap-3"
               initial={{ opacity: 0 }}
@@ -711,7 +1015,7 @@ const AdminInternAttendance = () => {
               transition={{ delay: 0.2, duration: 0.3 }}
             >
               <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-                Attendance Records
+                Daily Attendance Records
               </span>
               <div className="flex-1 h-px bg-gray-200" />
             </motion.div>
@@ -723,19 +1027,49 @@ const AdminInternAttendance = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-3.5 border-b border-gray-100 bg-gradient-to-r from-blue-50/70 to-cyan-50/40 flex items-center space-x-3">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                  <FaCalendarCheck className="h-3 w-3 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    Attendance Filters
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Filter daily and meeting attendance by date or intern
-                  </p>
-                </div>
+              {/* Tabs */}
+              <div className="flex border-b border-gray-100">
+                {[
+                  {
+                    key: "meeting",
+                    label: "Meeting Attendance",
+                    icon: FaUsers,
+                    count: meetingData?.count,
+                  },
+                  {
+                    key: "daily",
+                    label: "Daily Attendance",
+                    icon: FaCalendarDay,
+                    count: dailyData?.count,
+                  },
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => {
+                      setActiveTab(tab.key);
+                      setSearchTerm("");
+                      setExpandedInterns({});
+                    }}
+                    className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all border-b-2 ${
+                      activeTab === tab.key
+                        ? "border-blue-500 text-blue-600 bg-blue-50/40"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <tab.icon className="h-3.5 w-3.5" />
+                    {tab.label}
+                    {tab.count != null && (
+                      <span
+                        className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === tab.key ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                ))}
               </div>
+
+              {/* Controls row */}
               <div className="p-4 md:p-5">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
@@ -775,7 +1109,7 @@ const AdminInternAttendance = () => {
                         <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5 pointer-events-none" />
                         <input
                           type="text"
-                          placeholder="Name, ID or email…"
+                          placeholder="Name, ID, field or institute…"
                           value={searchTerm}
                           onChange={(e) => setSearchTerm(e.target.value)}
                           className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm shadow-sm"
@@ -790,127 +1124,103 @@ const AdminInternAttendance = () => {
                         )}
                       </div>
                     </div>
-
-                    <div className="flex-1 sm:max-w-[13rem]">
-                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                        Attendance Type
-                      </label>
-                      <select
-                        value={attendanceFilter}
-                        onChange={(e) => setAttendanceFilter(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm shadow-sm"
-                      >
-                        <option value="all">All attendance</option>
-                        <option value="daily">Daily attendance</option>
-                        <option value="meeting">Meeting attendance</option>
-                      </select>
-                    </div>
                   </div>
-                  {/* Export */}
+
+                  {/* Export buttons */}
                   <div className="flex flex-wrap gap-2">
-                    <motion.button
-                      onClick={handleExport}
-                      disabled={exporting || !data || data.count === 0}
-                      whileHover={{
-                        scale:
-                          exporting || !data || data.count === 0 ? 1 : 1.04,
-                      }}
-                      whileTap={{ scale: 0.96 }}
-                      className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed"
-                    >
-                      {exporting ? (
-                        <FaSpinner className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <FaFileExcel className="h-4 w-4" />
-                      )}
-                      <span>Export Meeting List</span>
-                      {data && data.count > 0 && (
-                        <span className="bg-white/25 px-1.5 py-0.5 rounded-full text-xs">
-                          {data.count}
-                        </span>
-                      )}
-                    </motion.button>
+                    {activeTab === "meeting" && (
+                      <>
+                        <motion.button
+                          onClick={async () => {
+                            if (!meetingData || meetingData.count === 0) {
+                              showToast("No records to export", "info");
+                              return;
+                            }
+                            setExportingMeetingPdf(true);
+                            try {
+                              await attendanceApi.exportMeetingPdf(
+                                selectedDate,
+                              );
+                              showToast("Meeting PDF downloaded", "success");
+                            } catch (err) {
+                              showToast(
+                                err.message || "PDF export failed",
+                                "error",
+                              );
+                            } finally {
+                              setExportingMeetingPdf(false);
+                            }
+                          }}
+                          disabled={
+                            exportingMeetingPdf ||
+                            !meetingData ||
+                            meetingData.count === 0
+                          }
+                          whileHover={{ scale: 1.04 }}
+                          whileTap={{ scale: 0.96 }}
+                          className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm disabled:cursor-not-allowed"
+                        >
+                          {exportingMeetingPdf ? (
+                            <FaSpinner className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FaFilePdf className="h-4 w-4" />
+                          )}
+                          <span>PDF</span>
+                        </motion.button>
+                      </>
+                    )}
+
+                    {activeTab === "daily" && (
+                      <motion.button
+                        onClick={async () => {
+                          if (!dailyData || dailyData.count === 0) {
+                            showToast("No records to export", "info");
+                            return;
+                          }
+                          setExportingDailyPdf(true);
+                          try {
+                            await attendanceApi.exportDailyPdf(selectedDate);
+                            showToast(
+                              "Daily attendance PDF downloaded",
+                              "success",
+                            );
+                          } catch (err) {
+                            showToast(
+                              err.message || "PDF export failed",
+                              "error",
+                            );
+                          } finally {
+                            setExportingDailyPdf(false);
+                          }
+                        }}
+                        disabled={
+                          exportingDailyPdf ||
+                          !dailyData ||
+                          dailyData.count === 0
+                        }
+                        whileHover={{ scale: 1.04 }}
+                        whileTap={{ scale: 0.96 }}
+                        className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm disabled:cursor-not-allowed"
+                      >
+                        {exportingDailyPdf ? (
+                          <FaSpinner className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <FaFilePdf className="h-4 w-4" />
+                        )}
+                        <span>Export PDF</span>
+                        {dailyData && dailyData.count > 0 && (
+                          <span className="bg-white/25 px-1.5 py-0.5 rounded-full text-xs">
+                            {dailyData.count}
+                          </span>
+                        )}
+                      </motion.button>
+                    )}
                   </div>
                 </div>
               </div>
             </motion.div>
 
-            {/* ══════════════════════════════════════════════════
-                DAILY ATTENDANCE TABLE
-            ══════════════════════════════════════════════════ */}
-            {attendanceFilter !== "meeting" && (
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.35, duration: 0.3 }}
-              >
-                <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-                  <h2 className="text-base md:text-lg font-semibold text-gray-900">
-                    Daily Attendance — {formatDateLabel(selectedDate)}
-                  </h2>
-                  {!loading && data && (
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {searchTerm
-                        ? `${filteredDaily.length} of ${data.dailyCount || 0} shown`
-                        : `${data.dailyCount || 0} intern${data.dailyCount !== 1 ? "s" : ""} marked for the day`}
-                    </p>
-                  )}
-                </div>
-
-                {loading ? (
-                  <div className="flex items-center justify-center py-12 text-gray-400">
-                    <FaSpinner className="mr-2 h-4 w-4 animate-spin" />
-                    <span className="text-sm">Fetching daily attendance…</span>
-                  </div>
-                ) : filteredDaily.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 px-4">
-                    <FaCalendarCheck className="mx-auto h-10 w-10 text-gray-300 mb-3" />
-                    <h3 className="text-sm font-medium text-gray-600">
-                      No daily attendance records
-                    </h3>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full divide-y divide-gray-100">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">#</th>
-                          <th className="min-w-[16rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Intern</th>
-                          <th className="min-w-[16rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Contact</th>
-                          <th className="min-w-[12rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Team / Field</th>
-                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Time</th>
-                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Method</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filteredDaily.map((intern, idx) => (
-                          <tr key={intern._id} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-4 text-sm text-gray-400 font-mono">{idx + 1}</td>
-                            <td className="px-4 py-4">
-                              <p className="text-sm font-semibold text-gray-900">{intern.name}</p>
-                              <p className="text-xs text-gray-500">{intern.id}</p>
-                            </td>
-                            <td className="px-4 py-4 text-sm text-gray-700">{intern.email}</td>
-                            <td className="px-4 py-4">
-                              <p className="text-sm font-medium text-gray-800">{intern.team}</p>
-                              <p className="text-xs text-gray-500">{intern.fieldOfSpecialization}</p>
-                            </td>
-                            <td className="px-4 py-4 text-sm text-gray-700">{intern.timeMarked}</td>
-                            <td className="px-4 py-4"><TypeBadge type={intern.type} /></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </motion.div>
-            )}
-
-            {/* ══════════════════════════════════════════════════
-                MEETING ATTENDANCE TABLE
-            ══════════════════════════════════════════════════ */}
-            {attendanceFilter !== "daily" && (
+            {/* ── Attendance Table ── */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
@@ -922,15 +1232,15 @@ const AdminInternAttendance = () => {
                   <h2 className="text-base md:text-lg font-semibold text-gray-900">
                     {loading
                       ? "Loading…"
-                      : data
-                        ? `Meeting Attendance — ${formatDateLabel(selectedDate)}`
-                        : "Meeting Attendance Records"}
+                      : activeData
+                        ? `${activeTab === "meeting" ? "Meeting" : "Daily"} Attendance — ${formatDateLabel(selectedDate)}`
+                        : "Attendance Records"}
                   </h2>
-                  {!loading && data && (
+                  {!loading && activeData && (
                     <p className="text-xs text-gray-500 mt-0.5">
                       {searchTerm
-                        ? `${filtered.length} of ${data.count} shown`
-                        : `${data.count} intern${data.count !== 1 ? "s" : ""} marked present`}
+                        ? `${filtered.length} of ${activeData.count} shown`
+                        : `${activeData.count} intern${activeData.count !== 1 ? "s" : ""} marked present`}
                     </p>
                   )}
                 </div>
@@ -952,18 +1262,7 @@ const AdminInternAttendance = () => {
                   />
                   <p className="text-sm">Fetching attendance…</p>
                 </div>
-              ) : !data || data.count === 0 ? (
-                <div className="text-center py-16 bg-gray-50 px-4">
-                  <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                  <h3 className="text-base font-medium text-gray-600 mb-1">
-                    No attendance records
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    No interns were marked present on{" "}
-                    {formatDateLabel(selectedDate)}.
-                  </p>
-                </div>
-              ) : filtered.length === 0 ? (
+              ) : filtered.length === 0 && searchTerm ? (
                 <div className="text-center py-16 bg-gray-50 px-4">
                   <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-4" />
                   <h3 className="text-base font-medium text-gray-600 mb-1">
@@ -974,244 +1273,15 @@ const AdminInternAttendance = () => {
                   </p>
                 </div>
               ) : (
-                <>
-                  {/* Mobile cards */}
-                  <div className="block lg:hidden">
-                    <div className="divide-y divide-gray-100">
-                      {filtered.map((intern) => (
-                        <motion.div
-                          key={intern._id}
-                          className="p-4 hover:bg-gray-50 transition-colors"
-                          whileHover={{ y: -1 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center space-x-3">
-                              <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                <FaUser className="text-indigo-600 text-xs" />
-                              </div>
-                              <div>
-                                <p className="text-sm font-semibold text-gray-900">
-                                  {intern.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {intern.id}
-                                </p>
-                              </div>
-                            </div>
-                            <TypeBadge type={intern.type} />
-                          </div>
-                          <div className="ml-12 space-y-0.5">
-                            <p className="text-xs text-gray-600 truncate">
-                              📧 {intern.email}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              🎓 {intern.fieldOfSpecialization}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              👥 {intern.team}
-                            </p>
-                            {intern.timeMarked !== "—" && (
-                              <p className="text-xs text-gray-500">
-                                🕐 {intern.timeMarked}
-                              </p>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => toggleInternMeetings(intern._id)}
-                              className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
-                            >
-                              <span>
-                                {intern.meetingCount ||
-                                  intern.meetings?.length ||
-                                  0}{" "}
-                                meeting
-                                {(intern.meetingCount ||
-                                  intern.meetings?.length ||
-                                  0) !== 1
-                                  ? "s"
-                                  : ""}
-                              </span>
-                              <FaChevronDown
-                                className={`h-3 w-3 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
-                              />
-                            </button>
-                            {expandedInterns[intern._id] && (
-                              <div className="mt-2 space-y-1 rounded-xl border border-blue-100 bg-blue-50/50 p-2">
-                                {(intern.meetings || []).map(
-                                  (meeting, index) => (
-                                    <div
-                                      key={`${intern._id}-${meeting.meetingName}-${index}`}
-                                      className="flex items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-xs"
-                                    >
-                                      <span className="font-medium text-gray-800">
-                                        {meeting.meetingName}
-                                      </span>
-                                      <span className="text-gray-500">
-                                        {meeting.timeMarked}
-                                      </span>
-                                    </div>
-                                  ),
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Desktop table */}
-                  <div className="hidden lg:block w-full">
-                    <table className="w-full divide-y divide-gray-100">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="w-10 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            #
-                          </th>
-                          <th className="min-w-[18rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Intern
-                          </th>
-                          <th className="min-w-[18rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Contact
-                          </th>
-                          <th className="min-w-[14rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Team / Field
-                          </th>
-                          <th className="min-w-[14rem] px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Institute
-                          </th>
-                          <th className="w-28 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Meetings
-                          </th>
-                          <th className="w-36 px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                            Type
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {filtered.map((intern, idx) => (
-                          <React.Fragment key={intern._id}>
-                            <motion.tr
-                              className="hover:bg-gray-50 transition-colors"
-                              whileHover={{ y: -1 }}
-                              transition={{ duration: 0.1 }}
-                            >
-                              <td className="px-4 py-4 text-sm text-gray-400 font-mono">
-                                {idx + 1}
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="flex items-center space-x-3 min-w-0">
-                                  <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                    <FaUser className="text-indigo-600 text-xs" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">
-                                      {intern.name}
-                                    </p>
-                                    <p className="text-xs text-gray-500 truncate">
-                                      {intern.id}
-                                    </p>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <p
-                                  className="text-sm text-gray-800 truncate"
-                                  title={intern.email}
-                                >
-                                  {intern.email}
-                                </p>
-                              </td>
-                              <td className="px-4 py-4">
-                                <p className="text-sm font-medium text-gray-800 truncate">
-                                  {intern.team}
-                                </p>
-                                <p className="text-xs text-gray-500 truncate">
-                                  {intern.fieldOfSpecialization}
-                                </p>
-                              </td>
-                              <td className="px-4 py-4">
-                                <p className="text-sm text-gray-700 truncate">
-                                  {intern.institute}
-                                </p>
-                              </td>
-                              <td className="px-4 py-4">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    toggleInternMeetings(intern._id)
-                                  }
-                                  className="inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
-                                >
-                                  <span>
-                                    {intern.meetingCount ||
-                                      intern.meetings?.length ||
-                                      0}
-                                  </span>
-                                  <FaChevronDown
-                                    className={`h-3 w-3 transition-transform ${expandedInterns[intern._id] ? "rotate-180" : ""}`}
-                                  />
-                                </button>
-                              </td>
-                              <td className="px-4 py-4">
-                                <TypeBadge type={intern.type} />
-                              </td>
-                            </motion.tr>
-                            {expandedInterns[intern._id] && (
-                              <tr>
-                                <td
-                                  colSpan={7}
-                                  className="bg-blue-50/40 px-4 py-3"
-                                >
-                                  <div className="ml-14 rounded-xl border border-blue-100 bg-white p-3">
-                                    <div className="grid grid-cols-[1fr_8rem_8rem] px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
-                                      <div>Meeting Name</div>
-                                      <div className="text-center">Time</div>
-                                      <div className="text-right">Type</div>
-                                    </div>
-                                    <div className="space-y-2">
-                                      {(intern.meetings || []).map(
-                                        (meeting, index) => (
-                                          <div
-                                            key={`${intern._id}-${meeting.meetingName}-${index}`}
-                                            className="grid grid-cols-[1fr_8rem_8rem] items-center rounded-lg bg-gray-50 px-2 py-2 text-sm"
-                                          >
-                                            <div className="font-medium text-gray-900">
-                                              {meeting.meetingName}
-                                            </div>
-                                            <div className="flex items-center justify-center gap-1.5 text-gray-600">
-                                              <FaClock className="h-3 w-3 text-gray-400" />
-                                              {meeting.timeMarked}
-                                            </div>
-                                            <div className="text-right">
-                                              <TypeBadge type={meeting.type} />
-                                            </div>
-                                          </div>
-                                        ),
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-                              </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  <div className="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 text-center">
-                      Showing {filtered.length} present intern
-                      {filtered.length !== 1 ? "s" : ""} for{" "}
-                      {formatDateLabel(selectedDate)}
-                    </p>
-                  </div>
-                </>
+                <AttendanceTable
+                  filtered={filtered}
+                  selectedDate={selectedDate}
+                  isMeeting={activeTab === "meeting"}
+                  expandedInterns={expandedInterns}
+                  toggleInternMeetings={toggleInternMeetings}
+                />
               )}
             </motion.div>
-            )}
           </div>
         </main>
       </div>
