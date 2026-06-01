@@ -92,7 +92,7 @@ const markDailyAttendance = async ({
         );
       }
 
-      const duplicateCheck = await Intern.findOne({
+      const currentDailyAttendance = await Intern.findOne({
         _id: internId,
         attendance: {
           $elemMatch: {
@@ -101,9 +101,55 @@ const markDailyAttendance = async ({
             date: { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
           },
         },
-      }).session(session);
+      })
+        .session(session)
+        .select("attendance");
 
-      if (duplicateCheck) {
+      const currentDailyEntry = (currentDailyAttendance?.attendance || []).find((record) => {
+        const recordDate = moment(record.date).tz("Asia/Colombo");
+        return (
+          String(record.status || "") === "Present" &&
+          DAILY_ATTENDANCE_TYPES.includes(String(record.type || "")) &&
+          recordDate.isSameOrAfter(todayStart) &&
+          recordDate.isSameOrBefore(todayEnd)
+        );
+      });
+
+      if (currentDailyEntry) {
+        const currentType = String(currentDailyEntry.type || "");
+
+        if (method === "face" && currentType === "daily_qr") {
+          await Intern.updateOne(
+            {
+              _id: internId,
+              "attendance.type": "daily_qr",
+              "attendance.status": "Present",
+              "attendance.date": { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
+            },
+            {
+              $set: {
+                "attendance.$[record].type": "face",
+                "attendance.$[record].timeMarked": attendanceTime,
+              },
+              $unset: {
+                "attendance.$[record].qrCode": "",
+              },
+            },
+            {
+              session,
+              arrayFilters: [
+                {
+                  "record.type": "daily_qr",
+                  "record.status": "Present",
+                  "record.date": { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
+                },
+              ],
+            },
+          );
+
+          return;
+        }
+
         throwDailyAlreadyMarked();
       }
 
