@@ -6,6 +6,9 @@ const emailSender = require("../utils/emailSender");
 const internService = require("../services/internService");
 const WeeklyScheduler = require("../services/weeklyScheduler");
 const WeeklyNonSubmissionExcelService = require("../services/weeklyNonSubmissionExcelService");
+const axios = require("axios");
+const https = require("https");
+const talentTrailSyncSvc = require("../services/talentTrailSyncService");
 
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
@@ -289,25 +292,41 @@ const getInternDetails = async (req, res) => {
           )
         : null;
 
+    // ── Real Mon–Sun week boundaries ──────────────────────────────────────
+    const now = new Date();
+
+    const weekStart = new Date(now);
+    const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon … 6 = Sat
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    weekStart.setDate(now.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // ── Real calendar month boundaries ────────────────────────────────────
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
     const weeklyRecords = records.filter((record) => {
-      const recordDate = new Date(record.createdAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return recordDate >= weekAgo;
+      const d = new Date(record.createdAt);
+      return d >= weekStart && d <= weekEnd;
     });
 
     const monthlyRecords = records.filter((record) => {
-      const recordDate = new Date(record.createdAt);
-      const monthAgo = new Date();
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      return recordDate >= monthAgo;
+      const d = new Date(record.createdAt);
+      return d >= monthStart && d <= monthEnd;
     });
 
     // Fetch TalentTrail sync record for projects
     const syncRecord = await InternTalentTrailSync.findOne({
       email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
     }).lean();
-    const projects = syncRecord ? (syncRecord.projects || []) : [];
+    const projects = syncRecord ? syncRecord.projects || [] : [];
 
     const internDetails = {
       intern: {
@@ -1343,6 +1362,226 @@ const triggerApprovedShortLeaveEmail = async (req, res) => {
   }
 };
 
+// ─── GET /admin/intern/:internId/git-commits ─────────────────────────────────
+/**
+ * Fetches real GitHub commits for an intern across all their TalentTrail projects.
+ * Each project in TalentTrail stores repoName + repoAccessToken.
+ * The intern's githubUsername is stored in TalentTrail's /interns endpoint.
+ * We filter commits by author.login === githubUsername OR author.email matches intern email.
+ */
+const getInternGitCommits = async (req, res) => {
+  try {
+    const { internId } = req.params;
+
+    // Load intern
+    const intern = await Intern.findById(internId);
+    if (!intern) return res.status(404).json({ error: "Intern not found" });
+
+    // Load TalentTrail sync record to get projects + talentTrailInternId
+    const syncRecord = await InternTalentTrailSync.findOne({
+      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
+    }).lean();
+
+    if (
+      !syncRecord ||
+      !syncRecord.projects ||
+      syncRecord.projects.length === 0
+    ) {
+      return res
+        .status(200)
+        .json({
+          commits: [],
+          message: "No TalentTrail projects found for this intern",
+        });
+    }
+
+    // Authenticate with TalentTrail to get project repo details (including tokens)
+    const sslAgent = new https.Agent({ rejectUnauthorized: false });
+    const ttClient = axios.create({
+      baseURL: "https://talenttrail.slt.lk/api",
+      httpsAgent: sslAgent,
+      timeout: 20000,
+    });
+
+    let ttToken;
+    try {
+      const loginRes = await ttClient.post(
+        "/auth/federated-login",
+        {
+          email: "admin@slt.lk",
+          source: "talenthub",
+          timestamp: Date.now(),
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Service-Token": "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0",
+          },
+        },
+      );
+      ttToken = loginRes.data.token;
+    } catch (err) {
+      console.error("[GitCommits] TalentTrail auth failed:", err.message);
+      return res
+        .status(200)
+        .json({ commits: [], message: "TalentTrail authentication failed" });
+    }
+
+    const authHeader = { Authorization: `Bearer ${ttToken}` };
+
+    // Fetch intern's GitHub username from TalentTrail /interns
+    let githubUsername = null;
+    try {
+      const internsRes = await ttClient.get("/interns", {
+        headers: authHeader,
+      });
+      const ttIntern = Array.isArray(internsRes.data)
+        ? internsRes.data.find(
+            (i) =>
+              i.email?.toLowerCase() === intern.Trainee_Email?.toLowerCase(),
+          )
+        : null;
+      githubUsername = ttIntern?.githubUsername || null;
+    } catch (err) {
+      console.warn(
+        "[GitCommits] Could not fetch TalentTrail intern list:",
+        err.message,
+      );
+    }
+
+    // Fetch full project list from TalentTrail to get repoName + repoAccessToken
+    let ttProjects = [];
+    try {
+      const projRes = await ttClient.get("/projects", { headers: authHeader });
+      ttProjects = Array.isArray(projRes.data) ? projRes.data : [];
+    } catch (err) {
+      console.warn(
+        "[GitCommits] Could not fetch TalentTrail projects:",
+        err.message,
+      );
+    }
+
+    // Match sync record projects to full project data
+    const syncProjectIds = new Set(syncRecord.projects.map((p) => p.projectId));
+    const relevantProjects = ttProjects.filter(
+      (p) => syncProjectIds.has(p.projectId) && p.repoName && p.repoAccessToken,
+    );
+
+    if (relevantProjects.length === 0) {
+      return res.status(200).json({
+        commits: [],
+        githubUsername,
+        message: "No projects with GitHub repositories configured",
+      });
+    }
+
+    // Fetch commits from GitHub for each project, filtered by the intern's GitHub username/email
+    const ghClient = axios.create({
+      baseURL: "https://api.github.com",
+      timeout: 15000,
+      headers: {
+        Accept: "application/vnd.github.v3+json",
+        "User-Agent": "TalentHub-SLT",
+      },
+    });
+
+    const projectCommits = await Promise.all(
+      relevantProjects.map(async (proj) => {
+        try {
+          const params = { per_page: 50 };
+          if (githubUsername) params.author = githubUsername;
+
+          const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
+            headers: { Authorization: `token ${proj.repoAccessToken}` },
+            params,
+          });
+
+          const commits = (Array.isArray(ghRes.data) ? ghRes.data : []).map(
+            (c) => ({
+              sha: c.sha,
+              shortSha: c.sha.slice(0, 7),
+              message: c.commit.message.split("\n")[0], // first line only
+              authorName: c.commit.author.name,
+              authorEmail: c.commit.author.email,
+              authorLogin: c.author?.login || null,
+              authorAvatar: c.author?.avatar_url || null,
+              date: c.commit.author.date,
+              url: c.html_url,
+            }),
+          );
+
+          // If no github username, filter by email as fallback
+          const filtered = githubUsername
+            ? commits
+            : commits.filter(
+                (c) =>
+                  c.authorEmail?.toLowerCase() ===
+                  intern.Trainee_Email?.toLowerCase(),
+              );
+
+          const syncProj = syncRecord.projects.find(
+            (sp) => sp.projectId === proj.projectId,
+          );
+          return {
+            projectId: proj.projectId,
+            projectName: proj.projectName,
+            repoName: proj.repoName,
+            status: syncProj?.status || proj.status,
+            commits: filtered,
+            totalCommits: filtered.length,
+          };
+        } catch (err) {
+          console.warn(
+            `[GitCommits] Failed for project ${proj.projectName}:`,
+            err.message,
+          );
+          const syncProj = syncRecord.projects.find(
+            (sp) => sp.projectId === proj.projectId,
+          );
+          return {
+            projectId: proj.projectId,
+            projectName: proj.projectName,
+            repoName: proj.repoName,
+            status: syncProj?.status || proj.status,
+            commits: [],
+            totalCommits: 0,
+            error:
+              err.response?.status === 403
+                ? "repository_access_denied"
+                : "fetch_failed",
+          };
+        }
+      }),
+    );
+
+    // Also include projects without repos from sync record (show 0 commits)
+    const projectsWithoutRepo = syncRecord.projects.filter(
+      (sp) => !relevantProjects.some((rp) => rp.projectId === sp.projectId),
+    );
+    projectsWithoutRepo.forEach((sp) => {
+      projectCommits.push({
+        projectId: sp.projectId,
+        projectName: sp.projectName,
+        repoName: null,
+        status: sp.status,
+        commits: [],
+        totalCommits: 0,
+        error: "no_repo_configured",
+      });
+    });
+
+    return res.status(200).json({
+      githubUsername,
+      internEmail: intern.Trainee_Email,
+      projectCommits,
+      totalCommits: projectCommits.reduce((sum, p) => sum + p.totalCommits, 0),
+    });
+  } catch (error) {
+    console.error("[getInternGitCommits] Error:", error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getInternReport,
@@ -1359,4 +1598,5 @@ module.exports = {
   getDistrictCounts,
   getInternLocationById,
   triggerApprovedShortLeaveEmail,
+  getInternGitCommits,
 };

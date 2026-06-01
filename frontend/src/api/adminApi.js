@@ -156,6 +156,26 @@ export const adminApi = {
     }
   },
 
+  // Get individual intern's real GitHub commits per TalentTrail project
+  getInternGitCommits: async (internId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}/git-commits`, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      await checkAuth(response);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch intern git commits: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching intern git commits:", error);
+      throw error;
+    }
+  },
+
   // Search interns by trainee ID or name
   searchInterns: async (query) => {
     try {
