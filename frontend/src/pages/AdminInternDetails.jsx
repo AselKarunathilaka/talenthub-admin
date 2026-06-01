@@ -934,13 +934,6 @@ const AdminInternDetails = () => {
                             {gitCommitsData.totalCommits !== 1 ? "s" : ""}
                           </span>
                         </div>
-                        {!gitCommitsData.githubUsername && (
-                          <div className="mb-4 text-xs bg-amber-50 text-amber-700 p-2 rounded-lg border border-amber-200 flex items-center">
-                            <FaExclamationTriangle className="mr-2" />
-                            No GitHub username linked. Showing commits matching
-                            intern's email ({gitCommitsData.internEmail}).
-                          </div>
-                        )}
                         <div className="space-y-6">
                           {gitCommitsData.projectCommits.map((proj) => (
                             <div
