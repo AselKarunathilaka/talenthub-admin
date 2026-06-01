@@ -1483,118 +1483,309 @@ const AdminInternDetails = () => {
 
 
 
-                {activeTab === 'records' && (
-                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
-                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
-                        <FaFileAlt className="mr-2 text-blue-500" />
-                        All Record History
-                      </h3>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate(`/admin/intern/${internId}/records`)}
-                        className="flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-400 hover:to-cyan-400 transition-colors text-xs sm:text-sm shadow-sm hover:shadow-md"
-                      >
-                        <FaFileAlt className="mr-2" />
-                        View Full Records
-                      </motion.button>
-                    </div>
-                    {internDetails.records && internDetails.records.length > 0 ? (
-                      <>
-                        {/* Mobile Card View */}
-                        <div className="block sm:hidden space-y-3 max-h-[400px] overflow-y-auto">
-                          {internDetails.records.map((record, index) => (
+                {activeTab === 'records' && (() => {
+                  // Build record map: YYYY-MM-DD → record
+                  const recordMap = {};
+                  (internDetails.records || []).forEach(rec => {
+                    const d = new Date(rec.createdAt || rec.date);
+                    if (!isNaN(d.getTime())) {
+                      recordMap[toDateKey(d)] = rec;
+                    }
+                  });
+
+                  // Stats for logbook calendar
+                  const totalRecords = internDetails.records?.length || 0;
+                  const today = new Date(); today.setHours(0,0,0,0);
+                  // Count weekdays from first record date to today
+                  const firstRecordDate = totalRecords > 0
+                    ? new Date(internDetails.records[internDetails.records.length - 1].createdAt)
+                    : today;
+                  let totalWeekdays = 0;
+                  for (let d = new Date(firstRecordDate); d <= today; d.setDate(d.getDate() + 1)) {
+                    if (d.getDay() !== 0 && d.getDay() !== 6) totalWeekdays++;
+                  }
+                  const missedDays = Math.max(0, totalWeekdays - totalRecords);
+
+                  // Logbook calendar
+                  const lbYear  = logbookCalMonth.getFullYear();
+                  const lbMonth = logbookCalMonth.getMonth();
+                  const lbCalDays = getCalendarDays(lbYear, lbMonth);
+                  const lbMonthLabel = logbookCalMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                  return (
+                    <>
+                      {/* Logbook day modal */}
+                      <AnimatePresence>
+                        {logbookModal && (
+                          <motion.div
+                            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            onClick={() => setLogbookModal(null)}
+                          >
                             <motion.div
-                              key={index}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.02 * index }}
-                              className="bg-gray-50 rounded-xl p-3 border border-gray-200"
+                              className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto"
+                              initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 20 }}
+                              onClick={e => e.stopPropagation()}
                             >
-                              <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1">
-                                  <p className="text-sm font-medium text-gray-900">
-                                    {record.taskDescription || record.task || 'N/A'}
-                                  </p>
-                                  <p className="text-xs text-gray-500 mt-1">
-                                    {formatDate(record.createdAt)}
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <h3 className="text-lg font-bold text-gray-900">Logbook Entry</h3>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(logbookModal.createdAt || logbookModal.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                                   </p>
                                 </div>
+                                <button onClick={() => setLogbookModal(null)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+                                  <FaTimes />
+                                </button>
                               </div>
-                              <div className="flex items-center justify-between">
-                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                  {record.stack || 'N/A'}
-                                </span>
-                                <motion.button
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                  onClick={() => navigate(`/admin/intern/${internId}/records`)}
-                                  className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
-                                >
-                                  <FaEye className="mr-1 h-3 w-3" />
-                                  View
-                                </motion.button>
+
+                              {/* Stack + Status badges */}
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {logbookModal.stack && (
+                                  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">{logbookModal.stack}</span>
+                                )}
+                                {logbookModal.status && (
+                                  <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold capitalize">{logbookModal.status}</span>
+                                )}
+                              </div>
+
+                              <div className="space-y-4">
+                                {logbookModal.task && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">✅ Tasks Completed</p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">{logbookModal.task}</p>
+                                  </div>
+                                )}
+                                {logbookModal.progress && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">📈 Progress</p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">{logbookModal.progress}</p>
+                                  </div>
+                                )}
+                                {logbookModal.blockers && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">🚧 Challenges / Blockers</p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">{logbookModal.blockers}</p>
+                                  </div>
+                                )}
                               </div>
                             </motion.div>
-                          ))}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
+                        {/* Header + view toggle */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <FaFileAlt className="mr-2 text-blue-500" />
+                            Record History
+                          </h3>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* View toggle */}
+                            <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                              <button
+                                onClick={() => setLogbookView('calendar')}
+                                className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                                  logbookView === 'calendar' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                📅 Calendar View
+                              </button>
+                              <button
+                                onClick={() => setLogbookView('list')}
+                                className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                                  logbookView === 'list' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-50'
+                                }`}
+                              >
+                                📋 List View
+                              </button>
+                            </div>
+                            <motion.button
+                              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                              onClick={() => navigate(`/admin/intern/${internId}/records`)}
+                              className="flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-400 hover:to-cyan-400 transition-colors text-xs sm:text-sm shadow-sm hover:shadow-md"
+                            >
+                              <FaFileAlt className="mr-2" />
+                              View Full Records
+                            </motion.button>
+                          </div>
                         </div>
-                        
-                        {/* Desktop Table View */}
-                        <div className="hidden sm:block overflow-x-auto max-h-[500px]">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead>
-                              <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stack</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-200">
-                              {internDetails.records.map((record, index) => (
-                                <motion.tr
-                                  key={index}
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.02 * index }}
-                                  className="hover:bg-gray-50"
-                                >
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                    {formatDate(record.createdAt)}
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                    <div className="max-w-xs truncate">{record.taskDescription || record.task || 'N/A'}</div>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                      {record.stack || 'N/A'}
-                                    </span>
-                                  </td>
-                                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                    <motion.button
-                                      onClick={() => navigate(`/admin/intern/${internId}/records`)}
-                                      className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm"
-                                      whileHover={{ scale: 1.05 }}
-                                      whileTap={{ scale: 0.95 }}
-                                    >
-                                      <FaEye className="mr-2" />
-                                      View
-                                    </motion.button>
-                                  </td>
-                                </motion.tr>
+
+                        {/* ═══ CALENDAR VIEW ═══ */}
+                        {logbookView === 'calendar' && (
+                          <div>
+                            {/* Stats summary */}
+                            <div className="grid grid-cols-3 gap-3 mb-5">
+                              {[
+                                { value: totalWeekdays, label: 'Working Days', color: 'text-gray-700', bg: 'bg-gray-50', border: 'border-gray-200' },
+                                { value: totalRecords,  label: 'Logs Submitted', color: 'text-green-700', bg: 'bg-green-50', border: 'border-green-200' },
+                                { value: missedDays,   label: 'Logs Missed', color: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
+                              ].map(({ value, label, color, bg, border }) => (
+                                <div key={label} className={`${bg} border ${border} rounded-xl p-3 text-center`}>
+                                  <p className={`text-2xl font-bold ${color}`}>{value}</p>
+                                  <p className="text-[10px] text-gray-500 mt-0.5">{label}</p>
+                                </div>
                               ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      </>
-                    ) : (
-                      <div className="h-32 sm:h-48 flex items-center justify-center">
-                        <p className="text-gray-500 text-xs sm:text-sm text-center">No records found for this intern.</p>
+                            </div>
+
+                            {/* Month navigation */}
+                            <div className="flex items-center justify-between mb-4">
+                              <button
+                                onClick={() => setLogbookCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                              >
+                                <FaChevronLeft className="h-3 w-3" />
+                              </button>
+                              <span className="text-sm font-semibold text-gray-800">{lbMonthLabel}</span>
+                              <button
+                                onClick={() => setLogbookCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                              >
+                                <FaChevronRight className="h-3 w-3" />
+                              </button>
+                            </div>
+
+                            {/* Calendar grid */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr>
+                                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                                      <th key={d} className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]">{d}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Array.from({ length: Math.ceil(lbCalDays.length / 7) }, (_, w) => (
+                                    <tr key={w}>
+                                      {lbCalDays.slice(w * 7, w * 7 + 7).map((day, di) => {
+                                        const meta = getLogbookMeta(recordMap, day);
+                                        const isToday = day && day.toDateString() === new Date().toDateString();
+                                        const dayKey  = day ? toDateKey(day) : null;
+                                        const rec     = dayKey ? recordMap[dayKey] : null;
+                                        const isClickable = rec != null;
+                                        return (
+                                          <td key={di} className="py-1 text-center">
+                                            {day ? (
+                                              <div
+                                                className={`mx-auto w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all ${
+                                                  isClickable ? 'cursor-pointer hover:opacity-80 hover:shadow-md' : ''
+                                                } ${isToday ? 'ring-2 ring-blue-400 ring-offset-1' : ''}`}
+                                                style={{ backgroundColor: meta?.color ?? '#f3f4f6' }}
+                                                onClick={() => isClickable && setLogbookModal(rec)}
+                                              >
+                                                <span className="text-[10px] sm:text-xs font-bold" style={{ color: meta?.textColor ?? '#9ca3af' }}>
+                                                  {day.getDate()}
+                                                </span>
+                                              </div>
+                                            ) : <div className="h-11" />}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Legend — Click any colored day to inspect the logbook</p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#bbf7d0' }}></span>Working</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#ddd6fe' }}></span>WFH</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#fde68a' }}></span>On Leave</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#fecaca' }}></span>Missed</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded inline-block" style={{ backgroundColor: '#f3f4f6' }}></span>Weekend / Future</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ═══ LIST VIEW ═══ */}
+                        {logbookView === 'list' && (
+                          internDetails.records && internDetails.records.length > 0 ? (
+                            <>
+                              {/* Mobile Card View */}
+                              <div className="block sm:hidden space-y-3 max-h-[400px] overflow-y-auto">
+                                {internDetails.records.map((record, index) => (
+                                  <motion.div
+                                    key={index}
+                                    initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 * index }}
+                                    className="bg-gray-50 rounded-xl p-3 border border-gray-200"
+                                  >
+                                    <div className="flex items-start justify-between mb-2">
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium text-gray-900">{record.taskDescription || record.task || 'N/A'}</p>
+                                        <p className="text-xs text-gray-500 mt-1">{formatDate(record.createdAt)}</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{record.stack || 'N/A'}</span>
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                        onClick={() => setLogbookModal(record)}
+                                        className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
+                                      >
+                                        <FaEye className="mr-1 h-3 w-3" /> View
+                                      </motion.button>
+                                    </div>
+                                  </motion.div>
+                                ))}
+                              </div>
+
+                              {/* Desktop Table View */}
+                              <div className="hidden sm:block overflow-x-auto max-h-[500px]">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                  <thead>
+                                    <tr>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Task</th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stack</th>
+                                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-200">
+                                    {internDetails.records.map((record, index) => (
+                                      <motion.tr
+                                        key={index}
+                                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.02 * index }}
+                                        className="hover:bg-gray-50"
+                                      >
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{formatDate(record.createdAt)}</td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                          <div className="max-w-xs truncate">{record.taskDescription || record.task || 'N/A'}</div>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{record.stack || 'N/A'}</span>
+                                        </td>
+                                        <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                          <motion.button
+                                            onClick={() => setLogbookModal(record)}
+                                            className="flex items-center text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm"
+                                            whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                                          >
+                                            <FaEye className="mr-2" /> Inspect
+                                          </motion.button>
+                                        </td>
+                                      </motion.tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="h-32 sm:h-48 flex items-center justify-center">
+                              <p className="text-gray-500 text-xs sm:text-sm text-center">No records found for this intern.</p>
+                            </div>
+                          )
+                        )}
                       </div>
-                    )}
-                  </div>
-                )}
+                    </>
+                  );
+                })()}
+
 
               </motion.div>
             </AnimatePresence>
