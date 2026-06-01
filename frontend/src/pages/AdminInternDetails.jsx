@@ -73,7 +73,6 @@ const getDayMeta = (dailyMap, date) => {
   return { color: '#e5e7eb', label: 'No Record', bg: 'bg-gray-200' };
 };
 
-// ─── Helper: Git commit prefix from stack ────────────────────────────────────
 const getCommitPrefix = (stack) => {
   if (!stack) return 'chore';
   const s = stack.toLowerCase();
@@ -81,6 +80,16 @@ const getCommitPrefix = (stack) => {
   if (s.includes('doc')) return 'docs';
   if (s.includes('devops') || s.includes('infra') || s.includes('ops')) return 'chore';
   return 'feat';
+};
+
+const getGithubCommitPrefix = (message) => {
+  if (!message) return 'chore';
+  const m = message.toLowerCase();
+  if (m.startsWith('feat') || m.startsWith('feature')) return 'feat';
+  if (m.startsWith('fix') || m.startsWith('bug')) return 'feat'; // color as feat for visibility
+  if (m.startsWith('docs') || m.startsWith('doc')) return 'docs';
+  if (m.startsWith('test')) return 'test';
+  return 'chore';
 };
 
 const COMMIT_COLORS = {
@@ -122,10 +131,28 @@ const AdminInternDetails = () => {
   });
   const [logbookModal, setLogbookModal] = useState(null); // selected record for modal
 
+  // GitHub Commits state
+  const [gitCommitsData, setGitCommitsData] = useState(null);
+  const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
+
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
+    fetchGitCommits();
   }, [internId]);
+
+  const fetchGitCommits = useCallback(async () => {
+    if (gitCommitsData) return;
+    try {
+      setGitCommitsLoading(true);
+      const data = await adminApi.getInternGitCommits(internId);
+      setGitCommitsData(data);
+    } catch (err) {
+      console.error('Error fetching git commits:', err);
+    } finally {
+      setGitCommitsLoading(false);
+    }
+  }, [internId, gitCommitsData]);
 
   const fetchAttendance = useCallback(async () => {
     if (attendanceData) return; // already loaded
@@ -1018,7 +1045,11 @@ const AdminInternDetails = () => {
                     </motion.div>
 
                     {/* ══════ GIT COMMIT TIMELINE ══════ */}
-                    {internDetails.records && internDetails.records.length > 0 && (
+                    {gitCommitsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                      </div>
+                    ) : gitCommitsData && gitCommitsData.projectCommits && gitCommitsData.projectCommits.length > 0 ? (
                       <motion.div
                         className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm mt-4 sm:mt-6"
                         initial={{ opacity: 0 }}
@@ -1028,50 +1059,81 @@ const AdminInternDetails = () => {
                         <div className="flex items-center justify-between mb-4">
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
                             <FaCodeBranch className="mr-2 text-green-500" />
-                            Logbook Commits
+                            GitHub Commits
                           </h3>
-                          <span className="text-xs text-gray-400">{internDetails.records.length} commit{internDetails.records.length !== 1 ? 's' : ''}</span>
+                          <span className="text-xs text-gray-400">
+                            {gitCommitsData.totalCommits} total commit{gitCommitsData.totalCommits !== 1 ? 's' : ''}
+                          </span>
                         </div>
 
-                        {/* Git branch line */}
-                        <div className="relative font-mono text-xs">
-                          {/* Vertical branch line */}
-                          <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full" />
-
-                          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-                            {internDetails.records.slice(0, 20).map((record, idx) => {
-                              const prefix = getCommitPrefix(record.stack);
-                              const cc = COMMIT_COLORS[prefix];
-                              const hash = record._id ? record._id.toString().slice(-6) : String(idx).padStart(6, '0');
-                              const msg = (record.task || record.taskDescription || 'no message').slice(0, 72);
-                              const dateStr = new Date(record.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                              return (
-                                <div key={idx} className="flex items-start gap-3 pl-1">
-                                  {/* dot on the branch line */}
-                                  <div className={`relative z-10 w-[14px] h-[14px] rounded-full border-2 border-white flex-shrink-0 mt-0.5 shadow-sm ${cc.dot}`} />
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${cc.bg} ${cc.text}`}>{prefix}</span>
-                                      <span className="text-gray-800 truncate">{msg}</span>
-                                    </div>
-                                    <div className="flex gap-3 text-gray-400 mt-0.5">
-                                      <span className="text-green-600 font-bold">{hash}</span>
-                                      {record.stack && <span className="bg-gray-100 px-1 rounded">{record.stack}</span>}
-                                      <span>{dateStr}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                        {!gitCommitsData.githubUsername && (
+                          <div className="mb-4 text-xs bg-amber-50 text-amber-700 p-2 rounded-lg border border-amber-200 flex items-center">
+                            <FaExclamationTriangle className="mr-2" />
+                            No GitHub username linked. Showing commits matching intern's email ({gitCommitsData.internEmail}).
                           </div>
-                          {internDetails.records.length > 20 && (
-                            <p className="text-center text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
-                              + {internDetails.records.length - 20} more commits — view in Records tab
-                            </p>
-                          )}
+                        )}
+
+                        <div className="space-y-6">
+                          {gitCommitsData.projectCommits.map((proj) => (
+                            <div key={proj.projectId} className="relative font-mono text-xs bg-gray-50/50 p-3 rounded-xl border border-gray-100">
+                              <h4 className="font-semibold text-gray-800 mb-3 text-sm">{proj.projectName}</h4>
+                              
+                              {proj.error ? (
+                                <p className="text-gray-400 italic">Unable to fetch commits: {proj.error.replace(/_/g, ' ')}</p>
+                              ) : proj.commits.length === 0 ? (
+                                <p className="text-gray-400 italic">No commits found for this intern.</p>
+                              ) : (
+                                <div className="relative">
+                                  {/* Vertical branch line */}
+                                  <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full" />
+
+                                  <div className="space-y-4 max-h-60 overflow-y-auto pr-1">
+                                    {proj.commits.slice(0, 15).map((c, idx) => {
+                                      const prefix = getGithubCommitPrefix(c.message);
+                                      const cc = COMMIT_COLORS[prefix];
+                                      const msgParts = c.message.split(':');
+                                      const msgType = msgParts.length > 1 ? msgParts[0] + ':' : '';
+                                      const msgBody = msgParts.length > 1 ? msgParts.slice(1).join(':') : c.message;
+                                      const dateStr = new Date(c.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                                      
+                                      return (
+                                        <div key={c.sha} className="flex items-start gap-3 pl-1">
+                                          {/* dot on the branch line */}
+                                          <div className={`relative z-10 w-[14px] h-[14px] rounded-full border-2 border-white flex-shrink-0 mt-0.5 shadow-sm ${cc.dot}`} />
+                                          <div className="flex-1 min-w-0 bg-white p-2 rounded-lg border border-gray-100 shadow-sm transition hover:shadow-md">
+                                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                              {msgType && <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${cc.bg} ${cc.text}`}>{msgType.replace(':', '')}</span>}
+                                              <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-gray-800 font-medium hover:text-blue-600 truncate flex-1">
+                                                {msgBody.trim()}
+                                              </a>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-gray-400 mt-1.5">
+                                              <a href={c.url} target="_blank" rel="noopener noreferrer" className="text-green-600 font-bold hover:underline">
+                                                {c.shortSha}
+                                              </a>
+                                              <span className="flex items-center gap-1">
+                                                {c.authorAvatar && <img src={c.authorAvatar} alt="" className="w-3 h-3 rounded-full" />}
+                                                {c.authorName}
+                                              </span>
+                                              <span>{dateStr}</span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                  {proj.commits.length > 15 && (
+                                    <p className="text-center text-xs text-gray-400 mt-3 pt-3 border-t border-gray-200">
+                                      + {proj.commits.length - 15} more commits in this repository
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       </motion.div>
-                    )}
+                    ) : null}
 
                   </div>
                 )}

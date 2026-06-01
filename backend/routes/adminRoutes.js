@@ -20,6 +20,7 @@ const {
   getDistrictCounts,
   getInternLocationById,
   triggerApprovedShortLeaveEmail,
+  getInternGitCommits,
 } = require("../controllers/adminController");
 const {
   getPastInternLocations,
@@ -103,8 +104,12 @@ router.get("/intern/:internId", getInternDetails);
 // Get individual intern's separated attendance (daily + meeting)
 router.get("/intern/:internId/attendance", getAdminInternAttendance);
 
+// Get individual intern's real GitHub commits (per TalentTrail project repos)
+router.get("/intern/:internId/git-commits", getInternGitCommits);
+
 // Get certificate data (enriched from TalentTrail)
 router.get("/intern/:internId/certificate-data", getCertificateData);
+
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);
