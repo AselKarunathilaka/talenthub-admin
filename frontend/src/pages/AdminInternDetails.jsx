@@ -8,7 +8,9 @@ import {
   FaCalendarAlt, FaChartLine, FaArrowLeft, FaExclamationTriangle,
   FaCheckCircle, FaTimesCircle, FaShieldAlt, FaFileAlt, FaTasks,
   FaClock, FaChartPie, FaHistory, FaRegCalendarCheck, FaEye, FaCertificate,
-  FaCalendarCheck, FaChevronLeft, FaChevronRight, FaCircle, FaVideo, FaUserCheck
+  FaCalendarCheck, FaChevronLeft, FaChevronRight, FaCircle, FaVideo, FaUserCheck,
+  FaCodeBranch, FaProjectDiagram, FaCalendarDay, FaExclamationCircle, FaTimes,
+  FaLayerGroup, FaUsers as FaTeam, FaClipboardList
 } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { adminApi } from '../api/adminApi';
@@ -27,15 +29,72 @@ const getCalendarDays = (year, month) => {
   return days;
 };
 
-// ─── Helper: colour + label for a day dot ───────────────────────────────────
+// ─── Helper: toDateKey ────────────────────────────────────────────────────────
+const toDateKey = (date) =>
+  `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+
+// ─── Helper: daily attendance colour for unified calendar ────────────────────
+const getDailyMeta = (dailyMap, date) => {
+  if (!date) return null;
+  const key = toDateKey(date);
+  const entry = dailyMap[key];
+  if (!entry) return { color: '#e5e7eb', label: 'No Record' };
+  const st = (entry.status || '').toLowerCase();
+  if (st === 'present') return { color: '#22c55e', label: 'Present' };
+  if (st === 'absent')  return { color: '#f87171', label: 'Absent' };
+  return { color: '#e5e7eb', label: 'No Record' };
+};
+
+// ─── Helper: logbook record colour for logbook calendar ──────────────────────
+const getLogbookMeta = (recordMap, date) => {
+  if (!date) return null;
+  const key = toDateKey(date);
+  const rec = recordMap[key];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const isFuture  = date > today;
+  if (isWeekend || isFuture) return { color: '#f3f4f6', label: 'Weekend / Future', textColor: '#9ca3af' };
+  if (!rec) return { color: '#fecaca', label: 'Missed', textColor: '#dc2626' };
+  const st = (rec.status || '').toLowerCase();
+  if (st === 'working')  return { color: '#bbf7d0', label: 'Working', textColor: '#166534' };
+  if (st === 'wfh')      return { color: '#ddd6fe', label: 'WFH', textColor: '#5b21b6' };
+  if (st === 'leave')    return { color: '#fde68a', label: 'On Leave', textColor: '#92400e' };
+  return { color: '#bbf7d0', label: 'Submitted', textColor: '#166534' };
+};
+
+// ─── Helper: colour + label for a day dot (legacy) ───────────────────────────
 const getDayMeta = (dailyMap, date) => {
   if (!date) return null;
-  const key = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+  const key = toDateKey(date);
   const entry = dailyMap[key];
-  if (!entry) return { color: '#d1d5db', label: 'No Record', bg: 'bg-gray-200' };
+  if (!entry) return { color: '#e5e7eb', label: 'No Record', bg: 'bg-gray-200' };
   const st = (entry.status || '').toLowerCase();
   if (st === 'present') return { color: '#22c55e', label: 'Present', bg: 'bg-green-500' };
-  return { color: '#d1d5db', label: 'No Record', bg: 'bg-gray-200' };
+  return { color: '#e5e7eb', label: 'No Record', bg: 'bg-gray-200' };
+};
+
+// ─── Helper: Git commit prefix from stack ────────────────────────────────────
+const getCommitPrefix = (stack) => {
+  if (!stack) return 'chore';
+  const s = stack.toLowerCase();
+  if (s.includes('qa') || s.includes('test')) return 'test';
+  if (s.includes('doc')) return 'docs';
+  if (s.includes('devops') || s.includes('infra') || s.includes('ops')) return 'chore';
+  return 'feat';
+};
+
+const COMMIT_COLORS = {
+  feat:  { bg: 'bg-blue-100',   text: 'text-blue-700',   dot: 'bg-blue-500'   },
+  docs:  { bg: 'bg-amber-100',  text: 'text-amber-700',  dot: 'bg-amber-500'  },
+  test:  { bg: 'bg-green-100',  text: 'text-green-700',  dot: 'bg-green-500'  },
+  chore: { bg: 'bg-gray-100',   text: 'text-gray-600',   dot: 'bg-gray-400'   },
+};
+
+const PROJECT_STATUS_STYLE = {
+  IN_PROGRESS: { bg: 'bg-blue-100',   text: 'text-blue-700',   label: 'In Progress' },
+  PLANNING:    { bg: 'bg-amber-100',  text: 'text-amber-700',  label: 'Planning'    },
+  COMPLETED:   { bg: 'bg-green-100',  text: 'text-green-700',  label: 'Completed'   },
+  ON_HOLD:     { bg: 'bg-red-100',    text: 'text-red-700',    label: 'On Hold'     },
 };
 
 const AdminInternDetails = () => {
@@ -54,8 +113,14 @@ const AdminInternDetails = () => {
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1);
   });
-  const [attendanceSubTab, setAttendanceSubTab] = useState('daily'); // 'daily' | 'meeting'
   const [tooltip, setTooltip] = useState(null); // { x, y, label }
+
+  // Records / Logbook Calendar state
+  const [logbookView, setLogbookView] = useState('list'); // 'list' | 'calendar'
+  const [logbookCalMonth, setLogbookCalMonth] = useState(() => {
+    const now = new Date(); return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [logbookModal, setLogbookModal] = useState(null); // selected record for modal
 
   useEffect(() => {
     fetchInternDetails();
@@ -878,6 +943,136 @@ const AdminInternDetails = () => {
                         </div>
                       </motion.div>
                     )}
+
+                    {/* ══════ CURRENT PROJECTS ══════ */}
+                    <motion.div
+                      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm mt-4 sm:mt-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.9, duration: 0.3 }}
+                    >
+                      <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center mb-4">
+                        <FaLayerGroup className="mr-2 text-indigo-500" />
+                        Current Projects
+                        <span className="ml-auto text-xs font-normal text-gray-400">Synced from TalentTrail</span>
+                      </h3>
+
+                      {intern.projects && intern.projects.length > 0 ? (
+                        <div className="space-y-3">
+                          {intern.projects.map((proj, pi) => {
+                            const style = PROJECT_STATUS_STYLE[proj.status] || { bg: 'bg-gray-100', text: 'text-gray-600', label: proj.status || 'Unknown' };
+                            return (
+                              <motion.div
+                                key={pi}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: 0.05 * pi }}
+                                className="border border-gray-100 rounded-xl p-4 hover:border-indigo-200 hover:shadow-sm transition-all"
+                              >
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-semibold text-gray-900 text-sm">{proj.projectName}</span>
+                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${style.bg} ${style.text}`}>
+                                      {style.label}
+                                    </span>
+                                  </div>
+                                  <div className="flex gap-3 text-xs text-gray-500">
+                                    {proj.startDate && (
+                                      <span>Start: {new Date(proj.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    )}
+                                    {proj.targetDate && (
+                                      <span>Target: {new Date(proj.targetDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                    )}
+                                  </div>
+                                </div>
+                                {proj.description && (
+                                  <p className="text-xs text-gray-500 mb-2 leading-relaxed">{proj.description}</p>
+                                )}
+                                <div className="flex flex-wrap gap-4 text-xs text-gray-500 border-t border-gray-50 pt-2 mt-2">
+                                  {proj.projectManagerName && (
+                                    <span className="flex items-center gap-1">
+                                      <FaUserCheck className="text-gray-400" /> PM: <span className="font-medium text-gray-700">{proj.projectManagerName}</span>
+                                    </span>
+                                  )}
+                                  {proj.supervisorName && (
+                                    <span className="flex items-center gap-1">
+                                      <FaUser className="text-gray-400" /> Supervisor: <span className="font-medium text-gray-700">{proj.supervisorName}</span>
+                                    </span>
+                                  )}
+                                  {proj.teams && proj.teams.length > 0 && (
+                                    <span className="flex items-center gap-1">
+                                      <FaTeam className="text-gray-400" /> Teams: {proj.teams.map(t => t.teamName).join(', ')}
+                                    </span>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                          <FaLayerGroup className="text-4xl mb-2 opacity-30" />
+                          <p className="text-sm">No project assignments synced from TalentTrail</p>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* ══════ GIT COMMIT TIMELINE ══════ */}
+                    {internDetails.records && internDetails.records.length > 0 && (
+                      <motion.div
+                        className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm mt-4 sm:mt-6"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 1.0, duration: 0.3 }}
+                      >
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                            <FaCodeBranch className="mr-2 text-green-500" />
+                            Logbook Commits
+                          </h3>
+                          <span className="text-xs text-gray-400">{internDetails.records.length} commit{internDetails.records.length !== 1 ? 's' : ''}</span>
+                        </div>
+
+                        {/* Git branch line */}
+                        <div className="relative font-mono text-xs">
+                          {/* Vertical branch line */}
+                          <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gradient-to-b from-green-400 via-blue-400 to-purple-400 rounded-full" />
+
+                          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                            {internDetails.records.slice(0, 20).map((record, idx) => {
+                              const prefix = getCommitPrefix(record.stack);
+                              const cc = COMMIT_COLORS[prefix];
+                              const hash = record._id ? record._id.toString().slice(-6) : String(idx).padStart(6, '0');
+                              const msg = (record.task || record.taskDescription || 'no message').slice(0, 72);
+                              const dateStr = new Date(record.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                              return (
+                                <div key={idx} className="flex items-start gap-3 pl-1">
+                                  {/* dot on the branch line */}
+                                  <div className={`relative z-10 w-[14px] h-[14px] rounded-full border-2 border-white flex-shrink-0 mt-0.5 shadow-sm ${cc.dot}`} />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                      <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${cc.bg} ${cc.text}`}>{prefix}</span>
+                                      <span className="text-gray-800 truncate">{msg}</span>
+                                    </div>
+                                    <div className="flex gap-3 text-gray-400 mt-0.5">
+                                      <span className="text-green-600 font-bold">{hash}</span>
+                                      {record.stack && <span className="bg-gray-100 px-1 rounded">{record.stack}</span>}
+                                      <span>{dateStr}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {internDetails.records.length > 20 && (
+                            <p className="text-center text-xs text-gray-400 mt-3 pt-3 border-t border-gray-100">
+                              + {internDetails.records.length - 20} more commits — view in Records tab
+                            </p>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+
                   </div>
                 )}
 
