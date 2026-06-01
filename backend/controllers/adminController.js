@@ -292,25 +292,41 @@ const getInternDetails = async (req, res) => {
           )
         : null;
 
+    // ── Real Mon–Sun week boundaries ──────────────────────────────────────
+    const now = new Date();
+
+    const weekStart = new Date(now);
+    const dayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon … 6 = Sat
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    weekStart.setDate(now.getDate() - daysFromMonday);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    weekEnd.setHours(23, 59, 59, 999);
+
+    // ── Real calendar month boundaries ────────────────────────────────────
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    monthEnd.setHours(23, 59, 59, 999);
+
     const weeklyRecords = records.filter((record) => {
-      const recordDate = new Date(record.createdAt);
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      return recordDate >= weekAgo;
+      const d = new Date(record.createdAt);
+      return d >= weekStart && d <= weekEnd;
     });
 
     const monthlyRecords = records.filter((record) => {
-      const recordDate = new Date(record.createdAt);
-      const monthAgo = new Date();
-      monthAgo.setDate(monthAgo.getDate() - 30);
-      return recordDate >= monthAgo;
+      const d = new Date(record.createdAt);
+      return d >= monthStart && d <= monthEnd;
     });
 
     // Fetch TalentTrail sync record for projects
     const syncRecord = await InternTalentTrailSync.findOne({
       email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
     }).lean();
-    const projects = syncRecord ? (syncRecord.projects || []) : [];
+    const projects = syncRecord ? syncRecord.projects || [] : [];
 
     const internDetails = {
       intern: {
@@ -1366,8 +1382,17 @@ const getInternGitCommits = async (req, res) => {
       email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
     }).lean();
 
-    if (!syncRecord || !syncRecord.projects || syncRecord.projects.length === 0) {
-      return res.status(200).json({ commits: [], message: "No TalentTrail projects found for this intern" });
+    if (
+      !syncRecord ||
+      !syncRecord.projects ||
+      syncRecord.projects.length === 0
+    ) {
+      return res
+        .status(200)
+        .json({
+          commits: [],
+          message: "No TalentTrail projects found for this intern",
+        });
     }
 
     // Authenticate with TalentTrail to get project repo details (including tokens)
@@ -1380,20 +1405,26 @@ const getInternGitCommits = async (req, res) => {
 
     let ttToken;
     try {
-      const loginRes = await ttClient.post("/auth/federated-login", {
-        email: "admin@slt.lk",
-        source: "talenthub",
-        timestamp: Date.now(),
-      }, {
-        headers: {
-          "Content-Type": "application/json",
-          "X-Service-Token": "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0",
+      const loginRes = await ttClient.post(
+        "/auth/federated-login",
+        {
+          email: "admin@slt.lk",
+          source: "talenthub",
+          timestamp: Date.now(),
         },
-      });
+        {
+          headers: {
+            "Content-Type": "application/json",
+            "X-Service-Token": "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0",
+          },
+        },
+      );
       ttToken = loginRes.data.token;
     } catch (err) {
       console.error("[GitCommits] TalentTrail auth failed:", err.message);
-      return res.status(200).json({ commits: [], message: "TalentTrail authentication failed" });
+      return res
+        .status(200)
+        .json({ commits: [], message: "TalentTrail authentication failed" });
     }
 
     const authHeader = { Authorization: `Bearer ${ttToken}` };
@@ -1401,15 +1432,21 @@ const getInternGitCommits = async (req, res) => {
     // Fetch intern's GitHub username from TalentTrail /interns
     let githubUsername = null;
     try {
-      const internsRes = await ttClient.get("/interns", { headers: authHeader });
+      const internsRes = await ttClient.get("/interns", {
+        headers: authHeader,
+      });
       const ttIntern = Array.isArray(internsRes.data)
         ? internsRes.data.find(
-            (i) => i.email?.toLowerCase() === intern.Trainee_Email?.toLowerCase()
+            (i) =>
+              i.email?.toLowerCase() === intern.Trainee_Email?.toLowerCase(),
           )
         : null;
       githubUsername = ttIntern?.githubUsername || null;
     } catch (err) {
-      console.warn("[GitCommits] Could not fetch TalentTrail intern list:", err.message);
+      console.warn(
+        "[GitCommits] Could not fetch TalentTrail intern list:",
+        err.message,
+      );
     }
 
     // Fetch full project list from TalentTrail to get repoName + repoAccessToken
@@ -1418,7 +1455,10 @@ const getInternGitCommits = async (req, res) => {
       const projRes = await ttClient.get("/projects", { headers: authHeader });
       ttProjects = Array.isArray(projRes.data) ? projRes.data : [];
     } catch (err) {
-      console.warn("[GitCommits] Could not fetch TalentTrail projects:", err.message);
+      console.warn(
+        "[GitCommits] Could not fetch TalentTrail projects:",
+        err.message,
+      );
     }
 
     // Match sync record projects to full project data
@@ -1456,8 +1496,8 @@ const getInternGitCommits = async (req, res) => {
             params,
           });
 
-          const commits = (Array.isArray(ghRes.data) ? ghRes.data : [])
-            .map((c) => ({
+          const commits = (Array.isArray(ghRes.data) ? ghRes.data : []).map(
+            (c) => ({
               sha: c.sha,
               shortSha: c.sha.slice(0, 7),
               message: c.commit.message.split("\n")[0], // first line only
@@ -1467,17 +1507,21 @@ const getInternGitCommits = async (req, res) => {
               authorAvatar: c.author?.avatar_url || null,
               date: c.commit.author.date,
               url: c.html_url,
-            }));
+            }),
+          );
 
           // If no github username, filter by email as fallback
           const filtered = githubUsername
             ? commits
             : commits.filter(
                 (c) =>
-                  c.authorEmail?.toLowerCase() === intern.Trainee_Email?.toLowerCase(),
+                  c.authorEmail?.toLowerCase() ===
+                  intern.Trainee_Email?.toLowerCase(),
               );
 
-          const syncProj = syncRecord.projects.find((sp) => sp.projectId === proj.projectId);
+          const syncProj = syncRecord.projects.find(
+            (sp) => sp.projectId === proj.projectId,
+          );
           return {
             projectId: proj.projectId,
             projectName: proj.projectName,
@@ -1487,8 +1531,13 @@ const getInternGitCommits = async (req, res) => {
             totalCommits: filtered.length,
           };
         } catch (err) {
-          console.warn(`[GitCommits] Failed for project ${proj.projectName}:`, err.message);
-          const syncProj = syncRecord.projects.find((sp) => sp.projectId === proj.projectId);
+          console.warn(
+            `[GitCommits] Failed for project ${proj.projectName}:`,
+            err.message,
+          );
+          const syncProj = syncRecord.projects.find(
+            (sp) => sp.projectId === proj.projectId,
+          );
           return {
             projectId: proj.projectId,
             projectName: proj.projectName,
@@ -1496,7 +1545,10 @@ const getInternGitCommits = async (req, res) => {
             status: syncProj?.status || proj.status,
             commits: [],
             totalCommits: 0,
-            error: err.response?.status === 403 ? "repository_access_denied" : "fetch_failed",
+            error:
+              err.response?.status === 403
+                ? "repository_access_denied"
+                : "fetch_failed",
           };
         }
       }),

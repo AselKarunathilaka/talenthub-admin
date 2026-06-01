@@ -1288,6 +1288,7 @@ const AdminDashboard = () => {
             </motion.div>
 
             {/* Interns Table */}
+            {/* Interns Table */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
@@ -1344,7 +1345,10 @@ const AdminDashboard = () => {
                       {filteredInterns.map((intern) => (
                         <motion.div
                           key={intern._id}
-                          className="p-4 hover:bg-gray-50 transition-colors"
+                          className="p-4 hover:bg-blue-50/60 transition-colors cursor-pointer"
+                          onClick={() =>
+                            navigate(`/admin/intern/${intern._id}`)
+                          }
                           whileHover={{ y: -2 }}
                           transition={{ duration: 0.1 }}
                         >
@@ -1380,14 +1384,15 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
-                          {/* Stats and last submission */}
+                          {/* Stats */}
                           <div className="flex justify-between items-center mb-3">
                             <div className="text-xs text-gray-700">
                               📊 {intern.totalRecords || 0} records
                             </div>
                           </div>
 
-                          <div className="mb-3">
+                          {/* Last submission */}
+                          <div className="mb-1">
                             <div className="text-xs text-gray-700">
                               📅 Last:{" "}
                               {intern.lastSubmission
@@ -1401,30 +1406,6 @@ const AdminDashboard = () => {
                                 ? `${intern.daysSinceLastSubmission} days ago`
                                 : "No submissions"}
                             </div>
-                          </div>
-
-                          {/* Actions */}
-                          <div className="flex space-x-2">
-                            <motion.button
-                              onClick={() =>
-                                navigate(`/admin/intern/${intern._id}`)
-                              }
-                              className="flex-1 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              View Details
-                            </motion.button>
-                            <motion.button
-                              onClick={() =>
-                                navigate(`/admin/intern/${intern._id}/records`)
-                              }
-                              className="flex-1 text-green-600 hover:text-green-700 hover:bg-green-50 px-2 py-1 rounded-xl transition-colors text-xs shadow-sm"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              View Records
-                            </motion.button>
                           </div>
                         </motion.div>
                       ))}
@@ -1451,16 +1432,16 @@ const AdminDashboard = () => {
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
                             Status
                           </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[150px]">
-                            Actions
-                          </th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
                         {filteredInterns.map((intern) => (
                           <motion.tr
                             key={intern._id}
-                            className="hover:bg-gray-50 transition-colors"
+                            className="hover:bg-blue-50/60 transition-colors cursor-pointer"
+                            onClick={() =>
+                              navigate(`/admin/intern/${intern._id}`)
+                            }
                             whileHover={{ y: -2 }}
                             transition={{ duration: 0.1 }}
                           >
@@ -1515,32 +1496,6 @@ const AdminDashboard = () => {
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[100px]">
                               {getStatusBadge(intern)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium min-w-[150px]">
-                              <div className="flex flex-col space-y-1">
-                                <motion.button
-                                  onClick={() =>
-                                    navigate(`/admin/intern/${intern._id}`)
-                                  }
-                                  className="text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  View Details
-                                </motion.button>
-                                <motion.button
-                                  onClick={() =>
-                                    navigate(
-                                      `/admin/intern/${intern._id}/records`,
-                                    )
-                                  }
-                                  className="text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-1 rounded-xl transition-colors shadow-sm text-left"
-                                  whileHover={{ scale: 1.05 }}
-                                  whileTap={{ scale: 0.95 }}
-                                >
-                                  View Records
-                                </motion.button>
-                              </div>
                             </td>
                           </motion.tr>
                         ))}
