@@ -1,6 +1,7 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const User = require("../models/User");
+const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const emailSender = require("../utils/emailSender");
 const internService = require("../services/internService");
 const WeeklyScheduler = require("../services/weeklyScheduler");
@@ -302,6 +303,12 @@ const getInternDetails = async (req, res) => {
       return recordDate >= monthAgo;
     });
 
+    // Fetch TalentTrail sync record for projects
+    const syncRecord = await InternTalentTrailSync.findOne({
+      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
+    }).lean();
+    const projects = syncRecord ? (syncRecord.projects || []) : [];
+
     const internDetails = {
       intern: {
         _id: intern._id,
@@ -317,6 +324,7 @@ const getInternDetails = async (req, res) => {
         availableDays: intern.availableDays,
         agreementAccepted: intern.agreementAccepted,
         agreementAcceptedDate: intern.agreementAcceptedDate,
+        projects,
       },
       records,
       statistics: {
