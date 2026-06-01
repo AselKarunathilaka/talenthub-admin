@@ -536,9 +536,6 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     ]);
     excelData.push(["Total Non-Attendees (Meetings):", nonAttendees.length]);
     excelData.push([]);
-    excelData.push([
-      "Note: This report only considers MEETING attendance. Weekends, Sri Lankan public holidays, and new interns are excluded.",
-    ]);
     excelData.push([]);
     excelData.push([
       "No.",

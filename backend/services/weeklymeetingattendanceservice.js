@@ -1,10 +1,21 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const nodemailer = require("nodemailer");
-const moment = require("moment");
+const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
+
+const TZ = "Asia/Colombo";
+
+// ── Attendance type sets ──────────────────────────────────────────────────────
+const MEETING_ATTENDANCE_TYPES = new Set([
+  "qr",
+  "face_meeting",
+  "meeting",
+  "manual_meeting",
+  "manual",
+]);
 
 // ---------------------------------------------------------------------------
 // Sri Lankan Public Holidays
@@ -81,9 +92,7 @@ function getSriLankanHolidays(years) {
       ],
     };
 
-    if (lunarApprox[y]) {
-      lunarApprox[y].forEach((d) => holidays.add(d));
-    }
+    if (lunarApprox[y]) lunarApprox[y].forEach((d) => holidays.add(d));
   });
 
   return holidays;
@@ -100,13 +109,9 @@ function getWorkingDaysInRange(startDate, endDate) {
   while (cursor.isSameOrBefore(endDate, "day")) {
     const dayOfWeek = cursor.day();
     const dateStr = cursor.format("YYYY-MM-DD");
-    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-    const isHoliday = holidays.has(dateStr);
-
-    if (!isWeekend && !isHoliday) {
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.has(dateStr)) {
       workingDays.push(cursor.clone());
     }
-
     cursor.add(1, "day");
   }
 
@@ -114,34 +119,36 @@ function getWorkingDaysInRange(startDate, endDate) {
 }
 
 class WeeklyMeetingAttendanceService {
+  // ── Date range (timezone-aware) ───────────────────────────────────────────
+
   static getTwoWeekRange() {
-    const endDate = moment().startOf("day");
-    const startDate = moment().subtract(14, "days").startOf("day");
+    const endDate = moment().tz(TZ).startOf("day");
+    const startDate = moment().tz(TZ).subtract(14, "days").startOf("day");
     return { startDate, endDate };
   }
 
   // ── New-intern guard ──────────────────────────────────────────────────────
 
-  /**
-   * An intern is "new" if their Training_StartDate falls on or after the
-   * start of the two-week review window. They are excluded from the report.
-   */
   static isNewIntern(intern) {
     if (!intern.Training_StartDate) return false;
-
     const { startDate } = this.getTwoWeekRange();
-    const trainingStart = moment(intern.Training_StartDate).startOf("day");
-
+    const trainingStart = moment(intern.Training_StartDate)
+      .tz(TZ)
+      .startOf("day");
     return trainingStart.isSameOrAfter(startDate);
   }
 
   // ── Attendance check ──────────────────────────────────────────────────────
 
+  /**
+   * Returns true if the intern has at least one MEETING-type "Present" record
+   * on a working day within the past two-week window.
+   * Uses MEETING_ATTENDANCE_TYPES and timezone-aware date comparisons,
+   * identical to the controller's hasAttendedMeeting helper.
+   */
   static hasAttendedMeetingInPastTwoWeeks(intern) {
     try {
-      if (!intern.attendance || intern.attendance.length === 0) {
-        return false;
-      }
+      if (!intern.attendance || intern.attendance.length === 0) return false;
 
       const { startDate, endDate } = this.getTwoWeekRange();
 
@@ -151,27 +158,16 @@ class WeeklyMeetingAttendanceService {
         ),
       );
 
-      // Meeting types only: qr, face_meeting, meeting, manual_meeting, manual
-      const meetingOnlyTypes = new Set([
-        "qr",
-        "meeting",
-        "face_meeting",
-        "manual_meeting",
-        "manual",
-      ]);
-
       return intern.attendance.some((record) => {
-        const recordDate = moment(record.date);
+        const recordDate = moment(record.date).tz(TZ);
         const dateStr = recordDate.format("YYYY-MM-DD");
         const recordType = String(record.type || "").toLowerCase();
-        const isInRange =
-          recordDate.isSameOrAfter(startDate) &&
-          recordDate.isSameOrBefore(endDate);
 
         return (
-          isInRange &&
+          recordDate.isSameOrAfter(startDate) &&
+          recordDate.isSameOrBefore(endDate) &&
           record.status === "Present" &&
-          meetingOnlyTypes.has(recordType) &&
+          MEETING_ATTENDANCE_TYPES.has(recordType) &&
           workingDayStrings.has(dateStr)
         );
       });
@@ -187,19 +183,12 @@ class WeeklyMeetingAttendanceService {
   static getLastAttendedMeeting(intern) {
     if (!intern.attendance || intern.attendance.length === 0) return null;
 
-    // Meeting types only: qr, face_meeting, meeting, manual_meeting, manual
-    const meetingOnlyTypes = new Set([
-      "qr",
-      "meeting",
-      "face_meeting",
-      "manual_meeting",
-      "manual",
-    ]);
-
     const presentRecords = intern.attendance
       .filter((r) => {
         const recordType = String(r.type || "").toLowerCase();
-        return r.status === "Present" && meetingOnlyTypes.has(recordType);
+        return (
+          r.status === "Present" && MEETING_ATTENDANCE_TYPES.has(recordType)
+        );
       })
       .sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -225,8 +214,7 @@ class WeeklyMeetingAttendanceService {
   static async getActiveInterns() {
     try {
       const currentDate = new Date();
-
-      const activeInterns = await Intern.find({
+      return await Intern.find({
         $and: [
           {
             $or: [
@@ -242,8 +230,6 @@ class WeeklyMeetingAttendanceService {
           },
         ],
       });
-
-      return activeInterns;
     } catch (error) {
       console.error("Error fetching active interns:", error);
       return [];
@@ -257,28 +243,22 @@ class WeeklyMeetingAttendanceService {
       const { startDate, endDate } = this.getTwoWeekRange();
       const periodLabel = `${startDate.format("MMM DD, YYYY")} - ${endDate.format("MMM DD, YYYY")}`;
 
-      // ── Build project lookup from InternTalentTrailSync ────────────────
       const talentTrailDocs = await InternTalentTrailSync.find({});
       const projectsByEmail = {};
-
       for (const doc of talentTrailDocs) {
         const email = String(doc.email || "").toLowerCase();
         const projectNames = (doc.projects || []).map((p) => p.projectName);
-
-        if (!projectsByEmail[email]) {
-          projectsByEmail[email] = [];
-        }
+        if (!projectsByEmail[email]) projectsByEmail[email] = [];
         projectsByEmail[email].push(...projectNames);
       }
 
       const excelData = [];
-
       excelData.push(["WEEKLY MEETING NON-ATTENDANCE REPORT"]);
       excelData.push(["TalentHub Intern Management System"]);
       excelData.push([]);
       excelData.push([
         "Report Generated:",
-        moment().format("MMMM DD, YYYY [at] h:mm A"),
+        moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm"),
       ]);
       excelData.push(["Review Period:", periodLabel]);
       excelData.push([
@@ -287,7 +267,6 @@ class WeeklyMeetingAttendanceService {
       ]);
       excelData.push([]);
       excelData.push([]);
-
       excelData.push([
         "No.",
         "Intern Name",
@@ -301,7 +280,6 @@ class WeeklyMeetingAttendanceService {
         "Last Meeting Attended",
       ]);
 
-      // Already sorted by Trainee ID before this method is called
       nonAttendingInterns.forEach((intern, index) => {
         const internEmail = String(intern.email || "").toLowerCase();
         const projectList = projectsByEmail[internEmail] || [];
@@ -336,7 +314,6 @@ class WeeklyMeetingAttendanceService {
 
       const workbook = XLSX.utils.book_new();
       const worksheet = XLSX.utils.aoa_to_sheet(excelData);
-
       worksheet["!cols"] = [
         { wch: 5 },
         { wch: 25 },
@@ -349,7 +326,6 @@ class WeeklyMeetingAttendanceService {
         { wch: 20 },
         { wch: 25 },
       ];
-
       XLSX.utils.book_append_sheet(
         workbook,
         worksheet,
@@ -359,7 +335,7 @@ class WeeklyMeetingAttendanceService {
       const tempDir = path.join(__dirname, "..", "temp");
       if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
-      const timestamp = moment().format("YYYY-MM-DD_HH-mm-ss");
+      const timestamp = moment().tz(TZ).format("YYYY-MM-DD_HH-mm-ss");
       const filename = `Weekly_Meeting_Non_Attendance_Report_${timestamp}.xlsx`;
       const filePath = path.join(tempDir, filename);
 
@@ -379,7 +355,7 @@ class WeeklyMeetingAttendanceService {
 
   static async sendNonAttendanceEmailWithExcel(
     nonAttendingInterns,
-    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
+    recipients = "dimalshacooray@gmail.com",
   ) {
     let excelFilePath = null;
 
@@ -395,12 +371,10 @@ class WeeklyMeetingAttendanceService {
         };
       }
 
-      const recipientEmail = Array.isArray(recipients)
-        ? recipients.join(", ")
-        : recipients;
       const recipientList = Array.isArray(recipients)
         ? recipients
         : [recipients];
+      const recipientEmail = recipientList.join(", ");
       console.log(`📧 Recipients: ${recipientList.join(", ")}`);
 
       console.log("📊 Generating meeting attendance Excel report...");
@@ -408,8 +382,7 @@ class WeeklyMeetingAttendanceService {
 
       const { startDate, endDate } = this.getTwoWeekRange();
       const periodLabel = `${startDate.format("MMM DD, YYYY")} - ${endDate.format("MMM DD, YYYY")}`;
-
-      const subject = `Meeting Non-Attendance Alert - ${nonAttendingInterns.length} Intern(s) - ${moment().format("MMM DD, YYYY")}`;
+      const subject = `Meeting Non-Attendance Alert - ${nonAttendingInterns.length} Intern(s) - ${moment().tz(TZ).format("MMM DD, YYYY")}`;
 
       const emailBody = `
 <!DOCTYPE html>
@@ -433,40 +406,32 @@ class WeeklyMeetingAttendanceService {
       <h1 style="margin: 0;">⚠️ WEEKLY MEETING NON-ATTENDANCE ALERT</h1>
       <p style="margin: 10px 0 0 0; font-size: 16px;">TalentHub Intern Management System</p>
     </div>
-
     <div class="content">
       <p>Dear Sir,</p>
-
       <p>This is an automated weekly report for the meeting attendance compliance check.</p>
-
       <div class="info">
         <p style="margin: 0;"><strong>📅 Review Period:</strong> ${periodLabel}</p>
         <p style="margin: 8px 0 0 0;"><strong>📊 Non-Attending Interns:</strong> <span class="badge">${nonAttendingInterns.length}</span></p>
-        <p style="margin: 8px 0 0 0;"><strong>⏰ Generated On:</strong> ${moment().format("MMMM DD, YYYY [at] h:mm A")}</p>
+        <p style="margin: 8px 0 0 0;"><strong>⏰ Generated On:</strong> ${moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm")}</p>
       </div>
-
       <p>
         The attached Excel file contains the complete list of interns who have <strong>NOT</strong> attended
         any meetings during the above two-week review period. Interns whose training commenced within this period are excluded from the report.
       </p>
-
       <div class="attachment-notice">
         <p style="margin: 0;"><strong>📎 Attachment:</strong> ${path.basename(excelFilePath)}</p>
       </div>
-
       <p>Please review the attached file and follow up with the listed interns at the earliest.</p>
-
       <p style="margin-top: 30px;">
         Best regards,<br>
         <strong>SLT Mobitel – TalentHub System</strong><br>
         Digital Platforms Development Section
       </p>
     </div>
-
     <div class="footer">
       <p style="margin: 5px 0;">📧 Recipients: ${recipientList.join(", ")}</p>
-      <p style="margin: 5px 0;">🕐 Generated: ${moment().format("MMMM DD, YYYY [at] h:mm A")}</p>
-      <p style="margin: 5px 0;">© ${moment().format("YYYY")} SLT Mobitel - All Rights Reserved</p>
+      <p style="margin: 5px 0;">🕐 Generated: ${moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm")}</p>
+      <p style="margin: 5px 0;">© ${moment().tz(TZ).format("YYYY")} SLT Mobitel - All Rights Reserved</p>
     </div>
   </div>
 </body>
@@ -517,7 +482,6 @@ class WeeklyMeetingAttendanceService {
         "❌ Failed to send meeting non-attendance alert email:",
         error,
       );
-
       if (excelFilePath && fs.existsSync(excelFilePath)) {
         try {
           fs.unlinkSync(excelFilePath);
@@ -528,7 +492,6 @@ class WeeklyMeetingAttendanceService {
           );
         }
       }
-
       return { success: false, error: error.message };
     }
   }
@@ -536,7 +499,7 @@ class WeeklyMeetingAttendanceService {
   // ── Main entry point ──────────────────────────────────────────────────────
 
   static async performWeeklyMeetingAttendanceCheck(
-    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
+    recipients = "dimalshacooray@gmail.com",
     triggerType = "scheduled",
   ) {
     const startTime = new Date();
@@ -595,7 +558,7 @@ class WeeklyMeetingAttendanceService {
 
             const lastRecord = this.getLastAttendedMeeting(intern);
             const lastAttendedLabel = lastRecord
-              ? `${moment(lastRecord.date).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+              ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
               : "No record found";
 
             results.nonAttendingList.push({
@@ -607,10 +570,12 @@ class WeeklyMeetingAttendanceService {
                 intern.field_of_spec_name || "Not specified",
               institute: intern.Institute || "Not specified",
               trainingStartDate: intern.Training_StartDate
-                ? moment(intern.Training_StartDate).format("MMM DD, YYYY")
+                ? moment(intern.Training_StartDate)
+                    .tz(TZ)
+                    .format("MMM DD, YYYY")
                 : "Not specified",
               trainingEndDate: intern.Training_EndDate
-                ? moment(intern.Training_EndDate).format("MMM DD, YYYY")
+                ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
                 : "Not specified",
               lastAttendedMeeting: lastAttendedLabel,
             });
@@ -694,7 +659,6 @@ class WeeklyMeetingAttendanceService {
           console.log(`     📧 Email:         ${intern.email}`);
           console.log(`     🎓 Field:         ${intern.fieldOfSpecialization}`);
           console.log(`     🏫 Institute:     ${intern.institute}`);
-          console.log(`     👥 Team:          ${intern.team}`);
           console.log(
             `     📅 Training:      ${intern.trainingStartDate} - ${intern.trainingEndDate}`,
           );
