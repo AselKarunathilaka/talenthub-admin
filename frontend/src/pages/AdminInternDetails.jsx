@@ -1202,36 +1202,271 @@ const AdminInternDetails = () => {
                 )}
 
                 {activeTab === 'attendance' && (() => {
-                  // ── Build lookup maps from attendance data ──────────────────
+                  // ── Build unified lookup maps ──────────────────────────────
                   const dailyMap = {};
                   if (attendanceData?.dailyAttendance) {
                     attendanceData.dailyAttendance.forEach(entry => {
                       const d = new Date(entry.date);
                       if (!isNaN(d.getTime())) {
-                        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                        dailyMap[key] = entry;
+                        dailyMap[toDateKey(d)] = entry;
                       }
                     });
                   }
 
-                  // Group meeting attendance by date for the calendar
+                  // meetingMap: key → array of meeting records on that day
                   const meetingMap = {};
                   if (attendanceData?.meetingAttendance) {
                     attendanceData.meetingAttendance.forEach(entry => {
                       const d = new Date(entry.date);
                       if (!isNaN(d.getTime())) {
-                        const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-                        // If there are multiple meetings in a day, present takes priority
-                        if (!meetingMap[key] || (entry.status || '').toLowerCase() === 'present') {
-                          meetingMap[key] = entry;
-                        }
+                        const key = toDateKey(d);
+                        if (!meetingMap[key]) meetingMap[key] = [];
+                        meetingMap[key].push(entry);
                       }
                     });
                   }
 
-                  // Determine active map based on selected sub-tab
-                  const activeMap = attendanceSubTab === 'daily' ? dailyMap : meetingMap;
-                  const activeData = attendanceSubTab === 'daily' ? (attendanceData?.dailyAttendance || []) : (attendanceData?.meetingAttendance || []);
+                  // Calendar helpers
+                  const year  = calendarMonth.getFullYear();
+                  const month = calendarMonth.getMonth();
+                  const calDays = getCalendarDays(year, month);
+                  const monthLabel = calendarMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+                  // Monthly stats
+                  const monthDailyKeys = Object.keys(dailyMap).filter(k => {
+                    const [y, m] = k.split('-').map(Number);
+                    return y === year && m === month + 1;
+                  });
+                  const mDailyPresent = monthDailyKeys.filter(k => (dailyMap[k]?.status||'').toLowerCase() === 'present').length;
+                  const mMeetingPresent = Object.values(meetingMap).flat().filter(e => {
+                    const d = new Date(e.date);
+                    return d.getFullYear() === year && d.getMonth() === month && (e.status||'').toLowerCase() === 'present';
+                  }).length;
+
+                  // Combined sorted activity list for current month
+                  const allActivities = [
+                    ...(attendanceData?.dailyAttendance || []).map(e => ({ ...e, type: 'daily' })),
+                    ...(attendanceData?.meetingAttendance || []).map(e => ({ ...e, type: 'meeting' })),
+                  ]
+                    .filter(e => {
+                      const d = new Date(e.date);
+                      return d.getFullYear() === year && d.getMonth() === month;
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                  return (
+                    <div className="space-y-5">
+                      {/* ── Header ────────────────────────────────────────── */}
+                      <motion.div
+                        className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm"
+                        initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}
+                      >
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center mb-4">
+                          <FaCalendarCheck className="mr-2 text-blue-500" />
+                          Unified Attendance Calendar
+                        </h3>
+
+                        {/* Loading / Error states */}
+                        {attendanceLoading && (
+                          <div className="flex justify-center items-center py-16">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                              className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full"
+                            />
+                          </div>
+                        )}
+                        {attendanceError && !attendanceLoading && (
+                          <div className="text-center py-12 text-red-500 text-sm">{attendanceError}</div>
+                        )}
+
+                        {/* ════════ UNIFIED CALENDAR ════════ */}
+                        {!attendanceLoading && !attendanceError && (
+                          <div>
+                            {/* Month navigation + stats strip */}
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                              <div className="flex items-center space-x-3">
+                                <button
+                                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronLeft className="h-3 w-3" />
+                                </button>
+                                <span className="text-sm font-semibold text-gray-800 min-w-[130px] text-center">{monthLabel}</span>
+                                <button
+                                  onClick={() => setCalendarMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronRight className="h-3 w-3" />
+                                </button>
+                              </div>
+                              {/* Stats pills */}
+                              <div className="flex flex-wrap gap-2 text-xs">
+                                <span className="flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 rounded-full border border-green-200">
+                                  <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span> Daily Present: {mDailyPresent}
+                                </span>
+                                <span className="flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full border border-blue-200">
+                                  <span className="w-2 h-2 rounded-full bg-blue-500 inline-block"></span> Meetings Attended: {mMeetingPresent}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Calendar grid */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr>
+                                    {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => (
+                                      <th key={d} className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]">{d}</th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {Array.from({ length: Math.ceil(calDays.length / 7) }, (_, w) => (
+                                    <tr key={w}>
+                                      {calDays.slice(w * 7, w * 7 + 7).map((day, di) => {
+                                        const dailyMeta = getDailyMeta(dailyMap, day);
+                                        const isToday = day && day.toDateString() === new Date().toDateString();
+                                        const dayKey  = day ? toDateKey(day) : null;
+                                        const meetingsOnDay = dayKey ? (meetingMap[dayKey] || []) : [];
+                                        const hasMeetingPresent = meetingsOnDay.some(e => (e.status||'').toLowerCase() === 'present');
+                                        const hasMeetingMissed  = meetingsOnDay.some(e => (e.status||'').toLowerCase() !== 'present');
+                                        const hasMeeting = meetingsOnDay.length > 0;
+
+                                        const tooltipContent = day ? (() => {
+                                          let lines = [day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })];
+                                          lines.push(`Daily: ${dailyMeta?.label ?? 'No Record'}`);
+                                          if (dailyMap[dayKey]?.time) lines.push(`Time: ${dailyMap[dayKey].time}`);
+                                          if (hasMeeting) {
+                                            meetingsOnDay.forEach(m => {
+                                              lines.push(`Meeting: ${m.meetingName || 'Meeting'} — ${m.status || 'Unknown'}`);
+                                            });
+                                          }
+                                          return lines.join('\n');
+                                        })() : null;
+
+                                        return (
+                                          <td key={di} className="py-1 text-center">
+                                            {day ? (
+                                              <div className="flex flex-col items-center group relative py-0.5">
+                                                <div
+                                                  className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm ${
+                                                    isToday ? 'ring-2 ring-blue-400 ring-offset-1' : ''
+                                                  }`}
+                                                  style={{ backgroundColor: dailyMeta?.color ?? '#e5e7eb' }}
+                                                  onMouseEnter={e => {
+                                                    const r = e.currentTarget.getBoundingClientRect();
+                                                    setTooltip({ x: r.left, y: r.top, label: tooltipContent, date: '' });
+                                                  }}
+                                                  onMouseLeave={() => setTooltip(null)}
+                                                >
+                                                  <span className={`text-[10px] sm:text-xs font-semibold ${
+                                                    (dailyMeta?.label === 'Present') ? 'text-white' : (isToday ? 'text-blue-700' : 'text-gray-600')
+                                                  }`}>
+                                                    {day.getDate()}
+                                                  </span>
+                                                </div>
+                                                {/* Meeting dot indicator */}
+                                                {hasMeeting && (
+                                                  <div className="flex gap-0.5 mt-0.5">
+                                                    {hasMeetingPresent && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" />}
+                                                    {hasMeetingMissed  && <span className="w-1.5 h-1.5 rounded-full bg-orange-400 inline-block" />}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : <div className="h-10" />}
+                                          </td>
+                                        );
+                                      })}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="mt-4 pt-4 border-t border-gray-100">
+                              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Legend</p>
+                              <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#22c55e' }}></span>Daily Present</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#f87171' }}></span>Daily Absent</span>
+                                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-full inline-block" style={{ backgroundColor: '#e5e7eb' }}></span>No Daily Record</span>
+                                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block bg-blue-500"></span>Meeting Attended</span>
+                                <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full inline-block bg-orange-400"></span>Meeting Missed</span>
+                              </div>
+                            </div>
+
+                            {/* All-time summary circles */}
+                            <div className="mt-8 flex justify-center flex-wrap gap-8 sm:gap-12">
+                              {[
+                                { count: (attendanceData?.dailyAttendance || []).filter(e => (e.status||'').toLowerCase() === 'present').length, label: 'Daily Present', color: 'border-green-100', textColor: 'text-green-500' },
+                                { count: (attendanceData?.dailyAttendance || []).filter(e => (e.status||'').toLowerCase() !== 'present').length, label: 'Daily Absent', color: 'border-red-100', textColor: 'text-red-400' },
+                                { count: (attendanceData?.meetingAttendance || []).filter(e => (e.status||'').toLowerCase() === 'present').length, label: 'Meetings Attended', color: 'border-blue-100', textColor: 'text-blue-500' },
+                                { count: (attendanceData?.meetingAttendance || []).filter(e => (e.status||'').toLowerCase() !== 'present').length, label: 'Meetings Missed', color: 'border-orange-100', textColor: 'text-orange-400' },
+                              ].map(({ count, label, color, textColor }) => (
+                                <div key={label} className="flex flex-col items-center">
+                                  <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 ${color} flex items-center justify-center bg-white shadow-sm mb-2`}>
+                                    <span className={`text-xl sm:text-2xl font-bold ${textColor}`}>{count}</span>
+                                  </div>
+                                  <span className="text-[10px] sm:text-xs font-medium text-gray-600 text-center max-w-[60px]">{label}</span>
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Combined activity list */}
+                            <div className="mt-6">
+                              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                                All Activity — {monthLabel}
+                              </h4>
+                              {allActivities.length > 0 ? (
+                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                  {allActivities.map((entry, idx) => {
+                                    const d = new Date(entry.date);
+                                    const isPresent = (entry.status || '').toLowerCase() === 'present';
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm"
+                                      >
+                                        <div className="flex items-center gap-3">
+                                          <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                            entry.type === 'daily'
+                                              ? (isPresent ? 'bg-green-500' : 'bg-red-400')
+                                              : (isPresent ? 'bg-blue-500' : 'bg-orange-400')
+                                          }`} />
+                                          <div>
+                                            <p className="font-medium text-gray-800 text-xs sm:text-sm">
+                                              {d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                            </p>
+                                            {entry.meetingName && (
+                                              <p className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[160px]">{entry.meetingName}</p>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-right">
+                                          <span className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            entry.type === 'daily'
+                                              ? (isPresent ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-500')
+                                              : (isPresent ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-600')
+                                          }`}>
+                                            {entry.type === 'daily' ? '📅' : '📹'} {entry.status || 'No Record'}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p className="text-center text-gray-400 text-xs py-6">No attendance records for {monthLabel}</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </motion.div>
+                    </div>
+                  );
+                })()}
+
 
                   // Calendar helpers
                   const year  = calendarMonth.getFullYear();
