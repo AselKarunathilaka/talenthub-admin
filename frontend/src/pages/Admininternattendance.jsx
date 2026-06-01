@@ -1165,7 +1165,7 @@ const AdminInternAttendance = () => {
                           ) : (
                             <FaFilePdf className="h-4 w-4" />
                           )}
-                          <span>PDF</span>
+                          <span>Export PDF</span>
                         </motion.button>
                       </>
                     )}

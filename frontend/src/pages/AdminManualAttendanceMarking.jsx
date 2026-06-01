@@ -13,6 +13,7 @@ import {
   FaVideo,
   FaUser,
   FaChevronRight,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -135,127 +136,207 @@ const InternCard = ({ intern, onSelect, selected }) => (
 );
 
 // ── Mode Selector ─────────────────────────────────────────────────────────────
-const ModeSelector = ({ mode, onChange }) => (
-  <div className="grid grid-cols-2 gap-3">
-    {[
-      {
-        key: "daily",
-        label: "Daily Attendance",
-        sub: "Mark intern's daily check-in",
-        icon: FaClipboardList,
-        color: "from-cyan-500 to-blue-500",
-        lightBg: "bg-cyan-50 border-cyan-200",
-        activeBg: "bg-gradient-to-br from-cyan-500 to-blue-500",
-      },
-      {
-        key: "meeting",
-        label: "Meeting Attendance",
-        sub: "Mark intern's meeting presence",
-        icon: FaVideo,
-        color: "from-indigo-500 to-purple-500",
-        lightBg: "bg-indigo-50 border-indigo-200",
-        activeBg: "bg-gradient-to-br from-indigo-500 to-purple-500",
-      },
-    ].map(({ key, label, sub, icon: Icon, lightBg, activeBg }) => {
-      const isActive = mode === key;
-      return (
-        <motion.button
-          key={key}
-          onClick={() => onChange(key)}
-          whileHover={{ y: -2 }}
-          whileTap={{ scale: 0.97 }}
-          className={`relative flex flex-col items-center gap-2 p-5 rounded-2xl border-2 transition-all text-center ${
-            isActive
-              ? "border-transparent text-white shadow-lg"
-              : `${lightBg} border hover:shadow-sm text-gray-700`
-          }`}
-          style={
-            isActive
-              ? {
-                  background: `linear-gradient(135deg, var(--tw-gradient-from), var(--tw-gradient-to))`,
-                }
-              : {}
-          }
-        >
-          {/* gradient background for active */}
-          {isActive && (
+const ModeSelector = ({ mode, onChange }) => {
+  const options = [
+    {
+      key: "daily",
+      label: "Daily Attendance",
+      sub: "Mark intern's daily check-in",
+      icon: FaClipboardList,
+      // Inline gradient styles for active state
+      activeGradient: "linear-gradient(135deg, #06b6d4, #3b82f6)",
+      activeShadow: "0 8px 24px rgba(6,182,212,0.35)",
+      // Inactive colours
+      inactiveBorder: "#a5f3fc",
+      inactiveBg: "#ecfeff",
+      inactiveIcon: "#0891b2",
+      inactiveText: "#0e7490",
+    },
+    {
+      key: "meeting",
+      label: "Meeting Attendance",
+      sub: "Mark intern's meeting presence",
+      icon: FaVideo,
+      activeGradient: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+      activeShadow: "0 8px 24px rgba(99,102,241,0.35)",
+      inactiveBorder: "#c7d2fe",
+      inactiveBg: "#eef2ff",
+      inactiveIcon: "#6366f1",
+      inactiveText: "#4338ca",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      {options.map((opt) => {
+        const isActive = mode === opt.key;
+        const Icon = opt.icon;
+        return (
+          <motion.button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            style={
+              isActive
+                ? {
+                    background: opt.activeGradient,
+                    boxShadow: opt.activeShadow,
+                    border: "2px solid transparent",
+                  }
+                : {
+                    background: opt.inactiveBg,
+                    border: `2px solid ${opt.inactiveBorder}`,
+                    boxShadow: "none",
+                  }
+            }
+            className="relative flex flex-col items-center gap-2 p-5 rounded-2xl transition-all text-center"
+          >
+            {/* Icon container */}
             <div
-              className={`absolute inset-0 rounded-2xl ${activeBg}`}
-              style={{ zIndex: 0 }}
-            />
-          )}
-          <div className="relative z-10 flex flex-col items-center gap-2">
-            <div
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                isActive ? "bg-white/20" : "bg-white shadow-sm"
-              }`}
+              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+              style={{
+                background: isActive ? "rgba(255,255,255,0.2)" : "#ffffff",
+                boxShadow: isActive ? "none" : "0 1px 4px rgba(0,0,0,0.08)",
+              }}
             >
               <Icon
-                className={`h-5 w-5 ${isActive ? "text-white" : "text-gray-600"}`}
+                className="h-5 w-5"
+                style={{ color: isActive ? "#ffffff" : opt.inactiveIcon }}
               />
             </div>
+
+            {/* Text */}
             <div>
               <p
-                className={`text-sm font-bold ${isActive ? "text-white" : "text-gray-800"}`}
+                className="text-sm font-bold"
+                style={{ color: isActive ? "#ffffff" : opt.inactiveText }}
               >
-                {label}
+                {opt.label}
               </p>
               <p
-                className={`text-xs mt-0.5 ${isActive ? "text-white/80" : "text-gray-500"}`}
+                className="text-xs mt-0.5"
+                style={{
+                  color: isActive
+                    ? "rgba(255,255,255,0.8)"
+                    : opt.inactiveText + "99",
+                }}
               >
-                {sub}
+                {opt.sub}
               </p>
             </div>
-          </div>
-        </motion.button>
-      );
-    })}
-  </div>
-);
+
+            {/* Active checkmark badge */}
+            {isActive && (
+              <motion.div
+                className="absolute top-2.5 right-2.5 h-5 w-5 rounded-full bg-white/30 flex items-center justify-center"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              >
+                <FaCheckCircle className="h-3 w-3 text-white" />
+              </motion.div>
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+};
 
 // ── Input Mode Selector (Single vs Bulk) ──────────────────────────────────────
-const InputModeSelector = ({ inputMode, onChange }) => (
-  <div className="grid grid-cols-2 gap-2">
-    {[
-      {
-        key: "single",
-        label: "Single",
-        sub: "Mark one at a time",
-      },
-      {
-        key: "bulk",
-        label: "Bulk",
-        sub: "Mark multiple at once",
-      },
-    ].map(({ key, label, sub }) => {
-      const isActive = inputMode === key;
-      return (
-        <motion.button
-          key={key}
-          onClick={() => onChange(key)}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className={`flex flex-col items-center gap-1 py-2.5 px-3 rounded-xl border transition-all text-center ${
-            isActive
-              ? "border-blue-400 bg-blue-50 shadow-sm"
-              : "border-gray-200 bg-white hover:border-gray-300"
-          }`}
-        >
-          <p
-            className={`text-xs font-bold ${isActive ? "text-blue-700" : "text-gray-700"}`}
+const InputModeSelector = ({ inputMode, onChange }) => {
+  const options = [
+    {
+      key: "single",
+      label: "Single",
+      sub: "Mark one at a time",
+      icon: FaUser,
+      activeGradient: "linear-gradient(135deg, #3b82f6, #6366f1)",
+      activeShadow: "0 6px 18px rgba(59,130,246,0.35)",
+      inactiveBorder: "#e2e8f0",
+      inactiveBg: "#ffffff",
+      inactiveIcon: "#94a3b8",
+      inactiveText: "#475569",
+    },
+    {
+      key: "bulk",
+      label: "Bulk",
+      sub: "Mark multiple at once",
+      icon: FaLayerGroup,
+      activeGradient: "linear-gradient(135deg, #3b82f6, #6366f1)",
+      activeShadow: "0 6px 18px rgba(59,130,246,0.35)",
+      inactiveBorder: "#e2e8f0",
+      inactiveBg: "#ffffff",
+      inactiveIcon: "#94a3b8",
+      inactiveText: "#475569",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {options.map((opt) => {
+        const isActive = inputMode === opt.key;
+        const Icon = opt.icon;
+        return (
+          <motion.button
+            key={opt.key}
+            onClick={() => onChange(opt.key)}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            style={
+              isActive
+                ? {
+                    background: opt.activeGradient,
+                    boxShadow: opt.activeShadow,
+                    border: "2px solid transparent",
+                  }
+                : {
+                    background: opt.inactiveBg,
+                    border: `2px solid ${opt.inactiveBorder}`,
+                    boxShadow: "none",
+                  }
+            }
+            className="flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl transition-all"
           >
-            {label}
-          </p>
-          <p
-            className={`text-[10px] ${isActive ? "text-blue-600" : "text-gray-500"}`}
-          >
-            {sub}
-          </p>
-        </motion.button>
-      );
-    })}
-  </div>
-);
+            <Icon
+              className="h-3.5 w-3.5 flex-shrink-0"
+              style={{ color: isActive ? "#ffffff" : opt.inactiveIcon }}
+            />
+            <div className="text-left">
+              <p
+                className="text-xs font-bold leading-tight"
+                style={{ color: isActive ? "#ffffff" : opt.inactiveText }}
+              >
+                {opt.label}
+              </p>
+              <p
+                className="text-[10px] leading-tight mt-0.5"
+                style={{
+                  color: isActive
+                    ? "rgba(255,255,255,0.75)"
+                    : opt.inactiveText + "88",
+                }}
+              >
+                {opt.sub}
+              </p>
+            </div>
+            {isActive && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                className="ml-auto"
+              >
+                <FaCheckCircle className="h-3.5 w-3.5 text-white/80" />
+              </motion.div>
+            )}
+          </motion.button>
+        );
+      })}
+    </div>
+  );
+};
 
 // ── Main Component ────────────────────────────────────────────────────────────
 const AdminManualAttendance = () => {
@@ -263,20 +344,20 @@ const AdminManualAttendance = () => {
   const today = getLocalToday();
   const searchDebounce = useRef(null);
 
-  const [inputMode, setInputMode] = useState("single"); // "single" | "bulk"
-  const [mode, setMode] = useState("daily"); // "daily" | "meeting"
+  const [inputMode, setInputMode] = useState("single");
+  const [mode, setMode] = useState("daily");
   const [selectedDate, setSelectedDate] = useState(today);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState(null);
-  const [status, setStatus] = useState("Present"); // "Present" | "Absent"
+  const [status, setStatus] = useState("Present");
   const [meetingName, setMeetingName] = useState("");
   const [marking, setMarking] = useState(false);
   const [toast, setToast] = useState(null);
   const [recentMarks, setRecentMarks] = useState([]);
-  const [bulkInternIds, setBulkInternIds] = useState(""); // Comma/newline separated IDs
-  const [bulkResults, setBulkResults] = useState(null); // { succeeded: [...], failed: [...] }
+  const [bulkInternIds, setBulkInternIds] = useState("");
+  const [bulkResults, setBulkResults] = useState(null);
 
   const showToast = (text, type = "info") => setToast({ text, type });
 
@@ -325,18 +406,17 @@ const AdminManualAttendance = () => {
         internId: selectedIntern._id,
         date: selectedDate,
         status,
-        mode, // "daily" | "meeting"
+        mode,
         ...(mode === "meeting" && { meetingName: meetingName.trim() }),
       };
 
-      const result = await manualAttendanceApi.markAttendance(payload);
+      await manualAttendanceApi.markAttendance(payload);
 
       showToast(
         `${status} marked for ${selectedIntern.Trainee_Name} (${mode === "daily" ? "daily" : "meeting"})`,
         "success",
       );
 
-      // Add to recent marks log
       setRecentMarks((prev) => [
         {
           id: Date.now(),
@@ -354,7 +434,6 @@ const AdminManualAttendance = () => {
         ...prev.slice(0, 9),
       ]);
 
-      // Reset intern selection
       setSelectedIntern(null);
       setSearchQuery("");
       setMeetingName("");
@@ -404,7 +483,6 @@ const AdminManualAttendance = () => {
         failureCount === 0 ? "success" : "info",
       );
 
-      // Add successful marks to recent marks log
       const successfulMarks = result.results
         .filter((r) => r.success)
         .map((r) => ({
@@ -426,7 +504,6 @@ const AdminManualAttendance = () => {
         ...prev.slice(0, 10 - successfulMarks.length),
       ]);
 
-      // Reset bulk input
       setBulkInternIds("");
     } catch (err) {
       showToast(err.message || "Failed to mark bulk attendance", "error");
@@ -445,6 +522,14 @@ const AdminManualAttendance = () => {
     bulkInternIds.trim().length > 0 &&
     selectedDate &&
     (mode === "daily" || (mode === "meeting" && meetingName.trim()));
+
+  const canSubmit = inputMode === "single" ? canSubmitSingle : canSubmitBulk;
+
+  // Submit button gradient matches the selected attendance mode
+  const submitGradient =
+    mode === "daily"
+      ? "linear-gradient(135deg, #06b6d4, #3b82f6)"
+      : "linear-gradient(135deg, #6366f1, #8b5cf6)";
 
   const bgBlobs = [
     {
@@ -523,7 +608,7 @@ const AdminManualAttendance = () => {
         <div className="grid lg:grid-cols-[1fr_360px] gap-5">
           {/* ── Left: Form ── */}
           <div className="space-y-5">
-            {/* Input mode selector (Single vs Bulk) */}
+            {/* Input mode selector */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-5"
               initial={{ opacity: 0, y: 10 }}
@@ -533,10 +618,13 @@ const AdminManualAttendance = () => {
               <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
                 Input Mode
               </label>
-              <InputModeSelector mode={inputMode} onChange={setInputMode} />
+              <InputModeSelector
+                inputMode={inputMode}
+                onChange={setInputMode}
+              />
             </motion.div>
 
-            {/* Mode selector */}
+            {/* Attendance type selector */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-5"
               initial={{ opacity: 0, y: 10 }}
@@ -700,7 +788,7 @@ const AdminManualAttendance = () => {
                 <textarea
                   value={bulkInternIds}
                   onChange={(e) => setBulkInternIds(e.target.value)}
-                  placeholder="ID001, ID002, ID003&#10;or&#10;ID001&#10;ID002&#10;ID003"
+                  placeholder={`ID001, ID002, ID003\nor\nID001\nID002\nID003`}
                   className="w-full h-32 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all resize-none font-mono"
                 />
                 {bulkInternIds.trim().length > 0 && (
@@ -786,39 +874,12 @@ const AdminManualAttendance = () => {
             {/* Submit */}
             <motion.button
               onClick={inputMode === "single" ? handleMark : handleBulkMark}
-              disabled={
-                inputMode === "single"
-                  ? !canSubmitSingle || marking
-                  : !canSubmitBulk || marking
-              }
-              whileHover={{
-                scale:
-                  (inputMode === "single" ? canSubmitSingle : canSubmitBulk) &&
-                  !marking
-                    ? 1.02
-                    : 1,
-              }}
-              whileTap={{
-                scale:
-                  (inputMode === "single" ? canSubmitSingle : canSubmitBulk) &&
-                  !marking
-                    ? 0.98
-                    : 1,
-              }}
+              disabled={!canSubmit || marking}
+              whileHover={{ scale: canSubmit && !marking ? 1.02 : 1 }}
+              whileTap={{ scale: canSubmit && !marking ? 0.98 : 1 }}
               className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl text-white text-sm font-bold transition-all shadow-md disabled:cursor-not-allowed disabled:opacity-50"
               style={{
-                background:
-                  (inputMode === "single" ? canSubmitSingle : canSubmitBulk) &&
-                  !marking
-                    ? mode === "daily"
-                      ? "linear-gradient(135deg, #06b6d4, #3b82f6)"
-                      : "linear-gradient(135deg, #6366f1, #8b5cf6)"
-                    : undefined,
-                backgroundColor:
-                  (inputMode === "single" ? canSubmitSingle : canSubmitBulk) &&
-                  !marking
-                    ? undefined
-                    : "#d1d5db",
+                background: canSubmit && !marking ? submitGradient : "#d1d5db",
               }}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
