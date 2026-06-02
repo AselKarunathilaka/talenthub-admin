@@ -1,3 +1,4 @@
+// Navigation.jsx - Redesigned & Overhauled
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -17,13 +18,13 @@ import {
   Armchair,
   Megaphone,
 } from "lucide-react";
-import logo from "../assets/sltlogo.jpg";
+import logo from "../assets/talenthub.png";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 
-// Read-state helpers (mirrors InternAnnouncements.jsx)
+// Read-state helpers
 const READ_KEY = "readAnnouncementIds";
 
 const getReadIds = () => {
@@ -34,7 +35,7 @@ const getReadIds = () => {
   }
 };
 
-// Component
+// Navigation Component
 const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNavbarHidden, setIsNavbarHidden] = useState(false);
@@ -45,11 +46,21 @@ const Navigation = ({ children }) => {
 
   const [internEmail, setInternEmail] = useState("");
   const [internName, setInternName] = useState("");
-
-  // Unread announcement count
   const [unreadCount, setUnreadCount] = useState(0);
 
   const traineeId = localStorage.getItem("internId");
+
+  // Hover colors for each nav item (different light colors per component)
+  const navLinks = [
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#50b748" },
+    { to: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />, hoverColor: "#f43f5e", badge: unreadCount },
+    { to: "/face-attendance", label: "Face Attendance", icon: <Camera className="h-5 w-5" />, hoverColor: "#f97316" },
+    { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" />, hoverColor: "#dfdf66ff" },
+    { to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#a78bfa" },
+    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#00b4eb" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
+  ];
 
   // Fetch trainee profile
   useEffect(() => {
@@ -70,7 +81,6 @@ const Navigation = ({ children }) => {
     fetchTraineeData();
   }, [traineeId]);
 
-  // Token helper — tries every key the intern login might use
   const getInternToken = () => {
     const authToken = localStorage.getItem("authToken");
     if (authToken) return authToken;
@@ -113,19 +123,17 @@ const Navigation = ({ children }) => {
   useEffect(() => {
     if (!traineeId) return;
     refreshUnreadCount();
-    // Re-check every 2 minutes in case admin sends a new announcement
     const interval = setInterval(refreshUnreadCount, 2 * 60 * 1000);
     return () => clearInterval(interval);
   }, [traineeId]);
 
-  // When the user navigates to /announcements, reset the badge immediately
   useEffect(() => {
     if (location.pathname === "/announcements") {
       setUnreadCount(0);
     }
   }, [location.pathname]);
 
-  // Menu / scroll helpers (unchanged from original)
+  // Responsive & scroll handlers
   useEffect(() => {
     if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
   }, [location]);
@@ -155,51 +163,6 @@ const Navigation = ({ children }) => {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
-
-  // Nav links
-  const navLinks = [
-    {
-      to: "/dashboard",
-      label: "Dashboard",
-      icon: <Home className="h-5 w-5" />,
-    },
-    {
-      to: "/announcements",
-      label: "Announcements",
-      icon: <Megaphone className="h-5 w-5" />,
-      badge: unreadCount,
-    },
-    {
-      to: "/face-attendance",
-      label: "Face Attendance",
-      icon: <Camera className="h-5 w-5" />,
-    },
-    {
-      to: "/scan-qr",
-      label: "QR Attendance",
-      icon: <QrCode className="h-5 w-5" />,
-    },
-    {
-      to: "/availability",
-      label: "Availability",
-      icon: <Calendar className="h-5 w-5" />,
-    },
-    {
-      to: "/log-book",
-      label: "Log Book",
-      icon: <BookOpen className="h-5 w-5" />,
-    },
-    {
-      to: "/leave-requests",
-      label: "Short Leave Requests",
-      icon: <FileText className="h-5 w-5" />,
-    },
-    {
-      to: "/seat-reservation",
-      label: "Seat Reservation",
-      icon: <Armchair className="h-5 w-5" />,
-    },
-  ];
 
   const isActive = (path) => location.pathname === path;
 
@@ -234,37 +197,31 @@ const Navigation = ({ children }) => {
     );
   };
 
-  //  Render
   return (
     <>
-      {/*  Mobile Top Bar  */}
-      <header className="lg:hidden bg-[#00102F] text-white fixed top-0 w-full z-50 shadow-lg">
+      {/* Mobile Top Bar */}
+      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-b from-[#006600] to-[#000066]">
         <div className="flex items-center justify-between h-16 px-4">
-          <div className="flex-shrink-0">
-            <Link
-              to="/"
-              onClick={() => localStorage.clear()}
-              className="flex items-center"
-            >
-              <img
-                src={logo}
-                alt="SLT Logo"
-                className="h-8 w-auto rounded-md border border-blue-300/20"
-              />
+          <div className="flex items-center gap-3">
+            <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2">
+              <span className="text-xl font-extrabold">
+                <span className="text-[#00b4eb]">Talent</span>
+                <span className="text-[#50b748]">Hub</span>
+              </span>
+              <img src={logo} alt="SLT Logo" className="h-8 w-auto rounded-md border border-white/10" />
             </Link>
           </div>
 
-          {/* Avatar + unread dot on mobile */}
           <div className="flex items-center gap-3">
             {unreadCount > 0 && (
               <Link to="/announcements" className="relative">
-                <Megaphone className="h-5 w-5 text-white/70" />
-                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                <Megaphone className="h-5 w-5 text-white/80" />
+                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
                   {unreadCount > 9 ? "9+" : unreadCount}
                 </span>
               </Link>
             )}
-            <div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
+            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium text-sm shadow-md">
               {internName
                 ? internName
                     .split(" ")
@@ -276,178 +233,161 @@ const Navigation = ({ children }) => {
 
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-md text-white hover:bg-[#001a4d] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-[#00102F] transition-all"
+            className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
+              text-white hover:text-[#00b4eb] hover:bg-white/10 transition-all duration-200"
             aria-expanded={isMobileMenuOpen}
-            aria-label="Toggle navigation menu"
           >
-            {isMobileMenuOpen ? (
-              <X className="h-6 w-6" />
-            ) : (
-              <Menu className="h-6 w-6" />
-            )}
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
       </header>
 
-      {/* ── Desktop Top Bar ─────────────────────────────────────────────── */}
+      {/* Desktop Top Bar */}
       <header
-        className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#00102F] to-[#001a4d] shadow-lg fixed top-0 right-0 z-30 h-[5.5rem] px-8
+        className={`hidden lg:flex items-center justify-between bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
           transition-all duration-500 ease-out
-          ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}
-          ${isScrollingUp ? "shadow-xl" : ""}`}
+          ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
         style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
-          <h2 className="text-xl font-semibold text-white/90">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#00b4eb] to-[#50b748] bg-clip-text text-transparent">
             {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
           </h2>
 
           <div className="flex items-center space-x-6">
-            <div className="flex items-center space-x-3 mr-4">
-              <div className="h-9 w-9 rounded-full bg-blue-100/10 flex items-center justify-center border border-blue-200/20">
-                <User className="h-5 w-5 text-blue-300" />
+            <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
+              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center shadow-md">
+                <User className="h-5 w-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xs text-blue-100/70">Welcome back,</span>
-                <span className="text-sm font-medium text-white">
-                  {internName}
-                </span>
+                <span className="text-xs text-white/60">Welcome back,</span>
+                <span className="text-sm font-semibold text-white">{internName}</span>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Overlay */}
+      {/* Mobile Menu Overlay */}
       <div
         className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 backdrop-blur-sm
           ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"} lg:hidden`}
         onClick={() => setIsMobileMenuOpen(false)}
-        aria-hidden={!isMobileMenuOpen}
       />
 
       {/* Sidebar */}
       <aside
         className={`fixed lg:sticky inset-y-0 left-0 z-40
-          bg-gradient-to-b from-[#00102F] to-[#00193d] transition-all duration-300 ease-out
-          ${isMobileMenuOpen ? "translate-x-0 shadow-xl" : "-translate-x-full"}
+          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-out
+          ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 w-[270px] h-screen lg:top-0`}
-        aria-label="Sidebar"
       >
         <div className="flex flex-col h-full">
-          {/* Sidebar header */}
-          <div className="px-4 py-6 border-b border-gray-700/50 flex justify-between items-center">
-            <Link
-              to="/"
-              className="flex items-center group"
-              onClick={() => {
-                localStorage.clear();
-                setIsMobileMenuOpen(false);
-              }}
-            >
-              <img
-                src={logo}
-                alt="SLT Logo"
-                className="ml-4 h-10 w-auto rounded-md border border-blue-300/20 group-hover:border-blue-300/40 transition-all"
-              />
+          {/* Sidebar Header with TalentHub + Logo */}
+          <div className="px-4 py-6 border-b border-white/10 flex items-center gap-3">
+            <Link to="/" onClick={() => localStorage.clear()} className="flex-shrink-0">
+              <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
             </Link>
+            <span className="text-2xl font-extrabold tracking-tight">
+              <span className="text-[#00b4eb]">Talent</span>
+              <span className="text-[#50b748]">Hub</span>
+            </span>
           </div>
 
-          {/* Mobile user profile */}
-          <div className="lg:hidden px-4 py-5 border-b border-gray-700/50">
+          {/* Mobile User Profile */}
+          <div className="lg:hidden px-4 py-5 border-b border-white/10 bg-white/5 backdrop-blur-sm">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium">
+              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium shadow-md">
                 {internName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")}
               </div>
               <div className="flex flex-col">
-                <span className="text-xs text-blue-100/70">Welcome,</span>
-                <span className="text-sm font-medium text-white">
-                  {internName || "User"}
-                </span>
+                <span className="text-xs text-white/60">Welcome,</span>
+                <span className="text-sm font-semibold text-white">{internName || "User"}</span>
                 {internEmail && (
-                  <span className="text-xs text-gray-400/80 truncate max-w-[180px]">
-                    {internEmail}
-                  </span>
+                  <span className="text-xs text-white/40 truncate max-w-[180px]">{internEmail}</span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Nav links */}
-          <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
+          {/* Navigation Links */}
+          <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3 rounded-lg mx-2 transition-all duration-200 group
-                  ${
-                    isActive(link.to)
-                      ? "bg-blue-900/30 text-blue-300 border-l-4 border-blue-400"
-                      : "text-gray-300 hover:bg-gray-700/30 hover:text-white"
+                className={`flex items-center px-4 py-3 rounded-xl mx-2 transition-all duration-200 group
+                  ${isActive(link.to)
+                    ? "bg-white/10 shadow-lg backdrop-blur-sm border border-white/10"
+                    : "text-white/70 hover:bg-white/5"
                   }`}
-                aria-current={isActive(link.to) ? "page" : undefined}
+                style={{ '--hover-color': link.hoverColor }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                {/* Icon with badge */}
                 <span
-                  className={`mr-3 relative ${isActive(link.to) ? "text-blue-300" : "text-gray-400 group-hover:text-white"}`}
+                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[#00b4eb]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                 >
                   {link.icon}
                   {link.badge > 0 && (
-                    <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-sm">
+                    <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-md animate-pulse">
                       {link.badge > 9 ? "9+" : link.badge}
                     </span>
                   )}
                 </span>
-
-                <span className="font-medium flex-1">{link.label}</span>
-
+                <span
+                  className={`font-medium flex-1 transition-colors duration-200 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
+                >
+                  {link.label}
+                </span>
                 {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-blue-400 animate-pulse" />
+                  <span className="ml-auto h-2 w-2 rounded-full bg-[#00b4eb] shadow-glow" />
                 )}
               </Link>
             ))}
           </nav>
 
-          {/* Footer */}
-          <div className="p-4 border-t border-gray-700/50 space-y-2">
+          {/* Footer Actions */}
+          <div className="p-4 border-t border-white/10 space-y-2">
             <button
               onClick={handleYouTubeClick}
-              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-red-900/30 hover:text-red-400 transition-all duration-200 group cursor-pointer"
-              aria-label="Watch Training Videos in Digital Serendib"
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
             >
-              <Youtube className="h-5 w-5 text-gray-400 group-hover:text-red-400" />
-              <span className="ml-3 text-sm">Digital Serendib</span>
+              <Youtube className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
+              <span className="text-sm font-medium">Digital Serendib</span>
             </button>
 
             <button
               onClick={handleDownloadAgreement}
-              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-blue-900/30 hover:text-blue-300 transition-all duration-200 group cursor-pointer"
-              aria-label="Download Agreement"
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#00b4eb] transition-all duration-200 group"
             >
-              <FileText className="h-5 w-5 text-gray-400 group-hover:text-blue-300" />
-              <span className="ml-3 text-sm">Guidelines Agreement</span>
+              <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
+              <span className="text-sm font-medium">Guidelines Agreement</span>
+            </button>
+
+            <button
+              onClick={handleDownloadLeaveForm}
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#50b748] transition-all duration-200 group"
+            >
+              <Download className="h-5 w-5 mr-3 group-hover:text-[#50b748]" />
+              <span className="text-sm font-medium">Leave Form</span>
             </button>
 
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2 text-gray-300 rounded-lg hover:bg-gray-700/40 hover:text-white transition-all duration-200 group cursor-pointer"
-              aria-label="Logout"
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
             >
-              <LogOut className="h-5 w-5 text-gray-400 group-hover:text-white" />
-              <span className="ml-3">Logout</span>
-              <span className="ml-auto text-xs text-gray-500 group-hover:text-gray-400">
-                v1.0.0
-              </span>
+              <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
+              <span className="font-medium">Logout</span>
+              <span className="ml-auto text-xs text-white/30">v1.0.0</span>
             </button>
           </div>
         </div>
       </aside>
 
-      {/* Spacers */}
+      {/* Spacers for fixed headers */}
       <div className="lg:hidden h-16" />
       <div className="hidden lg:block h-[5.5rem]" />
 
