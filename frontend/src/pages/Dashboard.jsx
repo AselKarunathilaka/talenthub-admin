@@ -477,7 +477,10 @@ const Dashboard = () => {
           <div
             className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
             style={{
-              background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+              background:
+                activeTab === "meeting"
+                  ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)" // blue
+                  : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)", // green
               left: activeTab === "meeting" ? "6px" : "calc(50%)",
             }}
           />
@@ -505,11 +508,11 @@ const Dashboard = () => {
                 className="hidden sm:flex text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-md items-center transition-transform active:scale-95"
                 style={{
                   background:
-                    "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                    "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
                 }}
                 whileHover={{
                   y: -2,
-                  boxShadow: "0 10px 15px -3px rgba(0, 86, 162, 0.2)",
+                  boxShadow: "0 10px 15px -3px rgba(46, 125, 50, 0.2)",
                 }}
               >
                 <Clock className="h-4 w-4 mr-2" />
@@ -795,9 +798,17 @@ const Dashboard = () => {
                 onClick={() => handleFilterByStatus("Present")}
                 className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
                   filterStatus === "Present"
-                    ? "bg-[#50b748] text-white shadow-md"
+                    ? "text-white shadow-md"
                     : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                 }`}
+                style={
+                  filterStatus === "Present"
+                    ? {
+                        background:
+                          "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                      }
+                    : {}
+                }
               >
                 Present
               </button>
