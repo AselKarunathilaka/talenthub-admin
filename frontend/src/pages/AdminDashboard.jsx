@@ -1384,6 +1384,11 @@ const AdminDashboard = () => {
                             </div>
                           </div>
 
+                          {/* Period */}
+                          <div className="mb-3 text-xs text-gray-600">
+                            🗓️ Period: {intern.trainingStartDate ? formatDateDisplay(intern.trainingStartDate) : "N/A"} - {intern.trainingEndDate ? formatDateDisplay(intern.trainingEndDate) : "N/A"}
+                          </div>
+
                           {/* Stats */}
                           <div className="flex justify-between items-center mb-3">
                             <div className="text-xs text-gray-700">
@@ -1422,6 +1427,9 @@ const AdminDashboard = () => {
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
                             Contact
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
+                            Training Period
                           </th>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
                             Records
@@ -1474,6 +1482,14 @@ const AdminDashboard = () => {
                                 title={intern.fieldOfSpecialization}
                               >
                                 {intern.fieldOfSpecialization || "N/A"}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap min-w-[180px]">
+                              <div className="text-sm text-gray-900">
+                                {intern.trainingStartDate ? formatDateDisplay(intern.trainingStartDate) : "N/A"}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                to {intern.trainingEndDate ? formatDateDisplay(intern.trainingEndDate) : "N/A"}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap min-w-[120px]">

@@ -534,7 +534,7 @@ const AdminInternDetails = () => {
                               </motion.button>
                             </div>
                           </div>
-                          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                             <div className="flex items-center bg-gray-50 p-3 rounded-xl">
                               <FaEnvelope className="text-gray-500 mr-3 flex-shrink-0" />
                               <div className="min-w-0">
@@ -555,6 +555,28 @@ const AdminInternDetails = () => {
                                 <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
                                   {intern.fieldOfSpecialization ||
                                     "Not specified"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
+                              <FaCalendarAlt className="text-gray-500 mr-3 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm text-gray-500">
+                                  Start Date
+                                </p>
+                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
+                                  {intern.startDate ? formatDate(intern.startDate) : "N/A"}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
+                              <FaCalendarCheck className="text-gray-500 mr-3 flex-shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs sm:text-sm text-gray-500">
+                                  End Date
+                                </p>
+                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
+                                  {intern.endDate ? formatDate(intern.endDate) : "N/A"}
                                 </p>
                               </div>
                             </div>
