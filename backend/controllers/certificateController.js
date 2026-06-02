@@ -1,5 +1,6 @@
 const talentTrailService = require("../services/talentTrailService");
 const InternRepository = require("../repositories/internRepository");
+const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 
 /**
  * GET /api/admin/intern/:internId/certificate-data
@@ -27,7 +28,32 @@ const getCertificateData = async (req, res) => {
     }
 
     // 3. Merge data — prefer TalentTrail data where available
-    const ttIntern = ttData.talentTrailIntern;
+    let ttIntern = ttData.talentTrailIntern;
+    let fallbackProjects = ttData.projects;
+
+    // Fallback to local sync data if live TalentTrail fetch failed or returned no projects
+    if (!ttIntern || fallbackProjects.length === 0) {
+      try {
+        const syncData = await InternTalentTrailSync.findOne({
+          $or: [{ email: email }, { internRef: localIntern._id }],
+        });
+        
+        if (syncData) {
+          if (!ttIntern) {
+            ttIntern = {
+              name: syncData.name,
+              email: syncData.email,
+              internCode: syncData.internCode,
+            };
+          }
+          if (fallbackProjects.length === 0 && syncData.projects && syncData.projects.length > 0) {
+            fallbackProjects = syncData.projects;
+          }
+        }
+      } catch (err) {
+        console.warn("Failed to fetch local sync fallback data:", err.message);
+      }
+    }
 
     // Count meeting attendance from local DB (attendance array with status "Present")
     const localAttendanceCount = Array.isArray(localIntern.attendance)
@@ -54,7 +80,7 @@ const getCertificateData = async (req, res) => {
           null,
         status: ttIntern?.status || localIntern.status || "N/A",
       },
-      projects: ttData.projects.map((p) => ({
+      projects: fallbackProjects.map((p) => ({
         projectName: p.projectName,
         supervisorName: p.supervisorName || "N/A",
         status: p.status || "N/A",
@@ -63,7 +89,7 @@ const getCertificateData = async (req, res) => {
       attendanceCount: ttData.attendanceCount || localAttendanceCount,
       source: {
         talentTrailConnected: !!ttIntern,
-        projectsFromTalentTrail: ttData.projects.length > 0,
+        projectsFromTalentTrail: fallbackProjects.length > 0,
       },
     };
 

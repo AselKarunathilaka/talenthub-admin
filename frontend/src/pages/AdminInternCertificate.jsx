@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaUser, FaDownload, FaSpinner, FaExclamationTriangle, FaShieldAlt, FaBuilding, FaCalendarAlt, FaProjectDiagram, FaCheckCircle, FaCertificate, FaTimes } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
-import { API_BASE_URL } from '../api/apiConfig';
 import { generateCertificatePDF } from '../utils/generateCertificatePDF';
+import { adminApi } from '../api/adminApi';
+import { API_BASE_URL } from '../api/apiConfig';
 import logo from '../assets/sltlogo.jpg';
 
 const getAuthHeaders = () => {
@@ -44,6 +45,37 @@ const AdminInternCertificate = () => {
   const [toast, setToast] = useState(null);
   const [certData, setCertData] = useState(null);
   const [logoBase64, setLogoBase64] = useState(null);
+  
+  // Custom manual project state
+  const [showAddProject, setShowAddProject] = useState(false);
+  const [newProject, setNewProject] = useState({ projectName: '', supervisorName: '', status: 'COMPLETED', commits: '' });
+
+  const handleAddCustomProject = () => {
+    if (!newProject.projectName) return;
+    
+    const updatedCertData = { ...certData };
+    if (!updatedCertData.projects) updatedCertData.projects = [];
+    
+    if (newProject.commits) {
+      if (!updatedCertData.gitCommitsData) {
+        updatedCertData.gitCommitsData = { projectCommits: [] };
+      }
+      updatedCertData.gitCommitsData.projectCommits.push({
+        projectName: newProject.projectName,
+        totalCommits: parseInt(newProject.commits) || 0
+      });
+    }
+    
+    updatedCertData.projects.push({
+      projectName: newProject.projectName,
+      supervisorName: newProject.supervisorName || 'N/A',
+      status: newProject.status
+    });
+    
+    setCertData(updatedCertData);
+    setNewProject({ projectName: '', supervisorName: '', status: 'COMPLETED', commits: '' });
+    setShowAddProject(false);
+  };
 
   // Convert logo to base64 for PDF
   useEffect(() => {
@@ -68,7 +100,16 @@ const AdminInternCertificate = () => {
 
         const res = await fetch(`${API_BASE_URL}/admin/intern/${internId}/certificate-data`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
-        setCertData(await res.json());
+        const data = await res.json();
+        
+        let gitCommitsData = null;
+        try {
+          gitCommitsData = await adminApi.getInternGitCommits(internId);
+        } catch (err) {
+          console.warn("Failed to fetch git commits for certificate:", err);
+        }
+        
+        setCertData({ ...data, gitCommitsData });
       } catch (err) {
         console.error(err);
         setError('Failed to load certificate data');
@@ -84,7 +125,7 @@ const AdminInternCertificate = () => {
     if (!certData?.intern) return;
     setGenerating(true);
     try {
-      const { intern, projects, attendanceCount } = certData;
+      const { intern, projects, attendanceCount, gitCommitsData } = certData;
       generateCertificatePDF({
         intern,
         startDate: intern.trainingStartDate,
@@ -93,6 +134,7 @@ const AdminInternCertificate = () => {
         projects: projects || [],
         specialization: intern.fieldOfSpecialization,
         logoBase64,
+        gitCommitsData,
       });
       setToast({ text: 'Certificate PDF downloaded!', type: 'success' });
     } catch (err) {
@@ -127,7 +169,7 @@ const AdminInternCertificate = () => {
     );
   }
 
-  const { intern, projects, attendanceCount, source } = certData;
+  const { intern, projects, attendanceCount, source, gitCommitsData } = certData;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
@@ -255,40 +297,86 @@ const AdminInternCertificate = () => {
                 </div>
 
                 {/* Projects */}
-                {projects.length > 0 && (
-                  <motion.div className="mb-6" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}>
-                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                      <FaProjectDiagram className="mr-2 text-cyan-500" />Projects ({projects.length})
+                <motion.div className="mb-6" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-semibold text-gray-700 flex items-center">
+                      <FaProjectDiagram className="mr-2 text-cyan-500" />Projects ({projects?.length || 0})
                     </h4>
+                    <button 
+                      onClick={() => setShowAddProject(!showAddProject)}
+                      className="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                    >
+                      + Add Custom Project
+                    </button>
+                  </div>
+                  
+                  {showAddProject && (
+                    <div className="mb-4 p-4 bg-gray-50 border border-blue-100 rounded-xl">
+                      <h5 className="text-xs font-semibold text-gray-700 mb-3">Add Custom Project Record</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <input type="text" placeholder="Project Name" value={newProject.projectName} onChange={e => setNewProject({...newProject, projectName: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input type="text" placeholder="Supervisor Name" value={newProject.supervisorName} onChange={e => setNewProject({...newProject, supervisorName: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <input type="number" placeholder="Total Commits (Optional)" value={newProject.commits} onChange={e => setNewProject({...newProject, commits: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <select value={newProject.status} onChange={e => setNewProject({...newProject, status: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                          <option value="COMPLETED">COMPLETED</option>
+                          <option value="IN_PROGRESS">IN_PROGRESS</option>
+                          <option value="PLANNING">PLANNING</option>
+                        </select>
+                      </div>
+                      <div className="flex justify-end space-x-2">
+                        <button onClick={() => setShowAddProject(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-lg">Cancel</button>
+                        <button onClick={handleAddCustomProject} disabled={!newProject.projectName} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg disabled:opacity-50">Add Project</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {projects?.length > 0 ? (
                     <div className="space-y-2 max-h-48 overflow-y-auto">
-                      {projects.map((p, i) => (
-                        <div key={i} className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                          <div className="flex items-center min-w-0">
-                            <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 text-xs font-bold flex items-center justify-center mr-3 flex-shrink-0">{i+1}</span>
-                            <div className="min-w-0">
-                              <span className="text-sm text-gray-800 font-medium block truncate">{p.projectName}</span>
-                              <span className="text-xs text-gray-500">{p.supervisorName}</span>
+                      {projects.map((p, i) => {
+                        let commitsCount = null;
+                        if (gitCommitsData && gitCommitsData.projectCommits) {
+                          const match = gitCommitsData.projectCommits.find(
+                            (gc) => gc.projectName === (p.projectName || p.name)
+                          );
+                          if (match && match.totalCommits !== undefined) {
+                            commitsCount = match.totalCommits;
+                          }
+                        }
+
+                        return (
+                          <div key={i} className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center min-w-0 flex-1">
+                              <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 text-xs font-bold flex items-center justify-center mr-3 flex-shrink-0">{i+1}</span>
+                              <div className="min-w-0 pr-2">
+                                <span className="text-sm text-gray-800 font-medium block truncate">{p.projectName}</span>
+                                <span className="text-xs text-gray-500">{p.supervisorName}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 flex-shrink-0">
+                              {commitsCount !== null && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-gray-200 text-gray-700">
+                                  {commitsCount} Commits
+                                </span>
+                              )}
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                p.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                                p.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
+                              }`}>{p.status}</span>
                             </div>
                           </div>
-                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ml-2 ${
-                            p.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                            p.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600'
-                          }`}>{p.status}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  </motion.div>
-                )}
-
-                {projects.length === 0 && (
-                  <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <p className="text-sm text-gray-500">
-                      {source?.talentTrailConnected
-                        ? 'No project assignments found'
-                        : 'No project assignments found in local records'}
-                    </p>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
+                      <p className="text-sm text-gray-500">
+                        {source?.talentTrailConnected
+                          ? 'No project assignments found'
+                          : 'No project assignments found in local records'}
+                      </p>
+                    </div>
+                  )}
+                </motion.div>
 
                 {/* Subtle offline note — shown only when TalentTrail is unreachable */}
                 {source && !source.talentTrailConnected && (

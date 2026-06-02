@@ -47,6 +47,7 @@ export const generateCertificatePDF = (data) => {
     projects = [],
     specialization,
     logoBase64,
+    gitCommitsData,
   } = data;
 
   const doc = new jsPDF("p", "mm", "a4");
@@ -109,31 +110,31 @@ export const generateCertificatePDF = (data) => {
   doc.line(M, y, W - M, y);
 
   // ── Title ──────────────────────────────────────────────────────────
-  y += 14;
+  y += 10;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(24);
   doc.setTextColor(...COLORS.navy);
   doc.text("INTERNSHIP COMPLETION", W / 2, y, { align: "center" });
 
-  y += 11;
+  y += 8;
   doc.setFontSize(18);
   doc.setTextColor(...COLORS.blue);
   doc.text("CERTIFICATE", W / 2, y, { align: "center" });
 
-  y += 6;
+  y += 4;
   const dw = 40;
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.6);
   doc.line(W / 2 - dw / 2, y, W / 2 + dw / 2, y);
 
   // ── Body text ──────────────────────────────────────────────────────
-  y += 12;
+  y += 10;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.black);
   doc.text("This is to certify that", W / 2, y, { align: "center" });
 
-  y += 12;
+  y += 10;
   const name = intern.traineeName || intern.name || "N/A";
   doc.setFont("helvetica", "bold");
   doc.setFontSize(22);
@@ -158,11 +159,11 @@ export const generateCertificatePDF = (data) => {
   ];
   bodyLines.forEach((l) => {
     doc.text(l, W / 2, y, { align: "center" });
-    y += 7;
+    y += 6;
   });
 
   // ── Details table ──────────────────────────────────────────────────
-  y += 6;
+  y += 4;
   const details = [
     ["Trainee ID", intern.traineeId || "N/A"],
     ["Email", intern.email || "N/A"],
@@ -190,9 +191,9 @@ export const generateCertificatePDF = (data) => {
       textColor: COLORS.white,
       fontStyle: "bold",
       fontSize: 9,
-      cellPadding: 3,
+      cellPadding: 2,
     },
-    bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 3 },
+    bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 2 },
     columnStyles: {
       0: {
         fontStyle: "bold",
@@ -212,18 +213,33 @@ export const generateCertificatePDF = (data) => {
     doc.setFontSize(11);
     doc.setTextColor(...COLORS.navy);
     doc.text("Projects Contributed To", M + 8, y);
-    y += 4;
+    y += 3;
 
-    const projBody = projects.map((p, i) => [
-      i + 1,
-      p.projectName || p.name || "N/A",
-      p.supervisorName || p.supervisor || "N/A",
-      p.status || "N/A",
-    ]);
+    const projBody = projects.map((p, i) => {
+      let commitsCount = "N/A";
+      if (gitCommitsData && gitCommitsData.projectCommits) {
+        const match = gitCommitsData.projectCommits.find(
+          (gc) => gc.projectName === (p.projectName || p.name)
+        );
+        if (match) {
+          commitsCount = match.totalCommits !== undefined ? match.totalCommits.toString() : "0";
+        } else {
+          commitsCount = "0";
+        }
+      }
+
+      return [
+        i + 1,
+        p.projectName || p.name || "N/A",
+        p.supervisorName || p.supervisor || "N/A",
+        p.status || "N/A",
+        commitsCount,
+      ];
+    });
 
     autoTable(doc, {
       startY: y,
-      head: [["#", "Project Name", "Supervisor", "Status"]],
+      head: [["#", "Project Name", "Supervisor", "Status", "Commits"]],
       body: projBody,
       margin: { left: M + 8, right: M + 8 },
       theme: "grid",
@@ -232,13 +248,14 @@ export const generateCertificatePDF = (data) => {
         textColor: COLORS.white,
         fontStyle: "bold",
         fontSize: 9,
-        cellPadding: 3,
+        cellPadding: 2,
       },
-      bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 3 },
+      bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 2 },
       columnStyles: {
         0: { cellWidth: 10, halign: "center" },
         2: { cellWidth: 38 },
-        3: { cellWidth: 28, halign: "center" },
+        3: { cellWidth: 26, halign: "center" },
+        4: { cellWidth: 20, halign: "center" },
       },
       alternateRowStyles: { fillColor: [245, 250, 255] },
       styles: { lineColor: [200, 210, 225], lineWidth: 0.2 },
@@ -247,7 +264,16 @@ export const generateCertificatePDF = (data) => {
   }
 
   // ── Signature area ─────────────────────────────────────────────────
-  const sigY = Math.max(y + 12, H - 52);
+  // Ensure the signature Y does not overlap the footer (H - 35)
+  // If y is pushing too far down, cap it so it stays above the footer, 
+  // or use the max of (y + 10) and (H - 45).
+  let sigY = Math.max(y + 10, H - 45);
+  if (sigY > H - 38) {
+    // If it's still too low and overlapping the footer lines at H - 28,
+    // force it to exactly above the footer text.
+    sigY = H - 38;
+  }
+  
   const sw = 55;
   const lx = M + 15;
   const rx = W - M - 15 - sw;
