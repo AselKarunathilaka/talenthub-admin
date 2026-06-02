@@ -19,8 +19,7 @@ import {
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
 import { calculateInternshipEndNotification } from "../utils/internshipNotification";
-import { motion } from "framer-motion"; // Import framer-motion
-
+import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
 const Dashboard = () => {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
@@ -37,6 +36,7 @@ const Dashboard = () => {
     present: 0,
     absent: 0,
   });
+  const [activeTab, setActiveTab] = useState("meeting");
   const [showCricketPopup, setShowCricketPopup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
@@ -398,562 +398,559 @@ const Dashboard = () => {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="w-full flex flex-col items-center justify-center mt-8">
-          <Loader2 className="h-10 w-10 text-blue-600 animate-spin mb-3" />
-          <p className="text-gray-600 font-medium">Loading your data...</p>
+        <div className="w-full flex flex-col items-center justify-center mt-12">
+          <Loader2
+            className="h-10 w-10 animate-spin mb-4"
+            style={{ color: "#00b4eb" }}
+          />
+          <p className="text-gray-500 font-medium">Loading your dashboard...</p>
         </div>
       );
     }
 
     if (error) {
       return (
-        <div className="w-full flex flex-col items-center justify-center mt-8">
+        <div className="w-full flex flex-col items-center justify-center mt-12 bg-white p-8 rounded-3xl shadow-sm border border-red-100 max-w-lg mx-auto">
           {isNetworkError ? (
             <>
-              <XCircle className="h-12 w-12 text-red-500 mb-3" />
-              <h3 className="text-lg font-semibold text-red-600 mb-2">
+              <XCircle className="h-14 w-14 text-red-500 mb-4 opacity-90" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
                 Connection Error
               </h3>
-              <p className="text-gray-600 mb-4 text-center max-w-md">
-                Unable to connect to the server. Please check your connection.
+              <p className="text-gray-500 mb-6 text-center">
+                Unable to connect to the server. Please check your internet
+                connection and try again.
               </p>
             </>
           ) : (
-            <div className="text-red-500 text-base font-medium mb-3">
+            <div className="text-red-500 text-lg font-medium mb-4">
               Error: {error}
             </div>
           )}
           <button
             onClick={() => window.location.reload()}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition duration-300"
+            className="px-6 py-2.5 text-white rounded-xl font-medium shadow-md transition-transform active:scale-95"
+            style={{
+              background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+            }}
           >
-            Retry
+            Retry Connection
           </button>
         </div>
       );
     }
 
     return (
-      <>
-        {/* Internship End Date Notification */}
+      <div className="max-w-6xl mx-auto">
         <InternshipEndNotification
           notification={endDateNotification}
           onDismiss={() => setEndDateNotification(null)}
         />
 
-        {/* Daily Attendance Section */}
+        {/* Modern Tab Switcher */}
         <motion.div
-          className="mb-8"
+          className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-md w-full relative"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
         >
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <button
+            onClick={() => setActiveTab("meeting")}
+            className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
+              activeTab === "meeting"
+                ? "text-white"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Meeting Attendance
+          </button>
+          <button
+            onClick={() => setActiveTab("daily")}
+            className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
+              activeTab === "daily"
+                ? "text-white"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
             Daily Attendance
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Your daily internship attendance with timestamps
-          </p>
+          </button>
 
-          {/* Daily Attendance Stats */}
+          <div
+            className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
+            style={{
+              background:
+                activeTab === "meeting"
+                  ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)" // blue
+                  : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)", // green
+              left: activeTab === "meeting" ? "6px" : "calc(50%)",
+            }}
+          />
+        </motion.div>
+
+        {activeTab === "daily" && (
           <motion.div
-            className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.3 }}
+            key="daily"
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            transition={{ duration: 0.3 }}
           >
-            <motion.div
-              className="bg-white p-4 rounded-lg shadow-sm flex flex-col"
-              whileHover={{ scale: 1.03 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="text-sm text-gray-500 mb-1">Present Days</span>
-              <div className="flex items-center">
-                <span className="text-xl font-bold text-green-600">
-                  {dailyAttendanceStats.present}
-                </span>
-                <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
+            <div className="flex justify-between items-end mb-6">
+              <div>
+                <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+                  Daily Attendance
+                </h2>
+                <p className="text-gray-500 mt-1 text-sm">
+                  Your daily internship attendance overview
+                </p>
               </div>
-            </motion.div>
-
-            <motion.div
-              className="bg-white p-4 rounded-lg shadow-sm flex flex-col"
-              whileHover={{ scale: 1.03 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="text-sm text-gray-500 mb-1">Absent Days</span>
-              <div className="flex items-center">
-                <span className="text-xl font-bold text-red-600">
-                  {dailyAttendanceStats.absent}
-                </span>
-                <XCircle className="h-5 w-5 text-red-500 ml-auto" />
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="bg-white p-4 rounded-lg shadow-sm flex flex-col col-span-2 sm:col-span-1"
-              whileHover={{ scale: 1.03 }}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="text-sm text-gray-500 mb-1">Daily Rate</span>
-              <div className="flex items-center">
-                <span className="text-xl font-bold text-gray-800">
-                  {dailyAttendanceStats.present + dailyAttendanceStats.absent >
-                  0
-                    ? Math.round(
-                        (dailyAttendanceStats.present /
-                          (dailyAttendanceStats.present +
-                            dailyAttendanceStats.absent)) *
-                          100,
-                      )
-                    : 0}
-                  %
-                </span>
-                <span
-                  className={`ml-auto px-2 py-1 text-xs rounded-full ${
-                    dailyAttendanceStats.present + dailyAttendanceStats.absent >
-                      0 &&
-                    Math.round(
-                      (dailyAttendanceStats.present /
-                        (dailyAttendanceStats.present +
-                          dailyAttendanceStats.absent)) *
-                        100,
-                    ) >= 80
-                      ? "bg-green-100 text-green-800"
-                      : dailyAttendanceStats.present +
-                            dailyAttendanceStats.absent >
-                            0 &&
-                          Math.round(
-                            (dailyAttendanceStats.present /
-                              (dailyAttendanceStats.present +
-                                dailyAttendanceStats.absent)) *
-                              100,
-                          ) >= 60
-                        ? "bg-yellow-100 text-yellow-800"
-                        : "bg-red-100 text-red-800"
-                  }`}
-                >
-                  {dailyAttendanceStats.present + dailyAttendanceStats.absent >
-                    0 &&
-                  Math.round(
-                    (dailyAttendanceStats.present /
-                      (dailyAttendanceStats.present +
-                        dailyAttendanceStats.absent)) *
-                      100,
-                  ) >= 80
-                    ? "Excellent"
-                    : dailyAttendanceStats.present +
-                          dailyAttendanceStats.absent >
-                          0 &&
-                        Math.round(
-                          (dailyAttendanceStats.present /
-                            (dailyAttendanceStats.present +
-                              dailyAttendanceStats.absent)) *
-                            100,
-                        ) >= 60
-                      ? "Good"
-                      : "Needs Improvement"}
-                </span>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          {/* Daily Attendance Records */}
-          <motion.div
-            className="mt-4"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-gray-700 flex items-center">
-                <Calendar className="h-4 w-4 mr-1" />
-                Recent Daily Attendance
-              </h3>
               <motion.button
                 onClick={() => navigate("/face-attendance")}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                className="hidden sm:flex text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-md items-center transition-transform active:scale-95"
+                style={{
+                  background:
+                    "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                }}
+                whileHover={{
+                  y: -2,
+                  boxShadow: "0 10px 15px -3px rgba(46, 125, 50, 0.2)",
+                }}
               >
-                <Clock className="h-3 w-3 mr-1" />
+                <Clock className="h-4 w-4 mr-2" />
                 Mark Attendance
               </motion.button>
             </div>
 
-            {attendanceHistory.length > 0 ? (
-              <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-                <div className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
-                  <div>Date</div>
-                  <div className="text-center">Status</div>
-                  <div className="text-center">Type</div>
-                  <div className="text-center">Time</div>
-                  <div className="text-right">Day</div>
+            {/* Daily Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#50b748]"></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Present
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {dailyAttendanceStats.present}
+                  </span>
+                  <div className="ml-auto p-2 bg-[#50b748]/10 rounded-xl text-[#50b748]">
+                    <CheckCircle className="h-5 w-5" />
+                  </div>
                 </div>
+              </motion.div>
 
-                <div className="divide-y divide-gray-100">
-                  {attendanceHistory
-                    .slice(0, 5) // Show only recent 5 records - show all statuses
-                    .map((entry, index) => {
-                      console.log("Processing entry:", entry); // Debug log
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Absent
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {dailyAttendanceStats.absent}
+                  </span>
+                  <div className="ml-auto p-2 bg-red-50 rounded-xl text-red-400">
+                    <XCircle className="h-5 w-5" />
+                  </div>
+                </div>
+              </motion.div>
 
-                      // Handle date parsing more robustly
-                      let date, dayName, formattedDate;
-                      try {
-                        date = entry.date ? new Date(entry.date) : new Date();
-                        if (isNaN(date.getTime())) {
-                          throw new Error("Invalid date");
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1"
+                whileHover={{ y: -2 }}
+              >
+                <div
+                  className="absolute top-0 left-0 w-1.5 h-full"
+                  style={{
+                    background: "linear-gradient(to bottom, #00b4eb, #0056a2)",
+                  }}
+                ></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Daily Rate
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {dailyAttendanceStats.present +
+                      dailyAttendanceStats.absent >
+                    0
+                      ? Math.round(
+                          (dailyAttendanceStats.present /
+                            (dailyAttendanceStats.present +
+                              dailyAttendanceStats.absent)) *
+                            100,
+                        )
+                      : 0}
+                    %
+                  </span>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Daily History */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="p-5 border-b border-gray-50 flex justify-between items-center sm:hidden">
+                <h3 className="font-bold text-gray-800">Recent Logs</h3>
+                <button
+                  onClick={() => navigate("/face-attendance")}
+                  className="text-sm font-semibold p-2 rounded-lg"
+                  style={{
+                    color: "#0056a2",
+                    backgroundColor: "rgba(0,180,235,0.1)",
+                  }}
+                >
+                  <Clock className="h-4 w-4" />
+                </button>
+              </div>
+
+              {attendanceHistory.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="text-xs text-gray-400 uppercase bg-gray-50/50">
+                      <tr>
+                        <th className="px-6 py-4 font-semibold tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Method
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Time
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-right">
+                          Day
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {attendanceHistory.slice(0, 10).map((entry, index) => {
+                        let date, dayName, formattedDate;
+                        try {
+                          date = entry.date ? new Date(entry.date) : new Date();
+                          dayName = date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                          });
+                          formattedDate = date.toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          });
+                        } catch (error) {
+                          dayName = "N/A";
+                          formattedDate = entry.date || "N/A";
                         }
-                        dayName = date.toLocaleDateString("en-US", {
-                          weekday: "short",
-                        });
-                        formattedDate = date.toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        });
-                      } catch (error) {
-                        console.error(
-                          "Date parsing error:",
-                          error,
-                          "Entry:",
-                          entry,
+                        const methodMeta = getMeetingMethodMeta(
+                          entry.attendanceMethod ||
+                            entry.method ||
+                            entry.markedBy ||
+                            entry.type,
                         );
-                        dayName = "N/A";
-                        formattedDate = entry.date || "N/A";
-                      }
+                        const MethodIcon = methodMeta.Icon;
 
-                      const methodMeta = getMeetingMethodMeta(
-                        entry.attendanceMethod ||
-                          entry.method ||
-                          entry.markedBy ||
-                          entry.type,
-                      );
-                      const MethodIcon = methodMeta.Icon;
-
-                      return (
-                        <motion.div
-                          key={`${entry.date}-${index}`}
-                          className="grid grid-cols-[1fr_8rem_7rem_8rem_5rem] gap-3 items-center p-3 hover:bg-gray-50"
-                          whileHover={{ backgroundColor: "#f9f9f9" }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          <div className="text-sm font-medium text-gray-800">
-                            {formattedDate}
-                          </div>
-                          <div className="text-center">
-                            <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                entry.status === "Present"
-                                  ? "bg-green-100 text-green-800"
-                                  : "bg-red-100 text-red-800"
-                              }`}
-                            >
-                              {entry.status === "Present" ? (
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                              ) : (
-                                <XCircle className="h-3 w-3 mr-1" />
-                              )}
-                              {entry.status}
-                            </span>
-                          </div>
-                          <div className="text-center">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}
-                            >
-                              <MethodIcon className="h-3 w-3" />
-                              {methodMeta.label}
-                            </span>
-                          </div>
-                          <div className="text-center text-xs text-gray-600">
-                            {entry.time || "-"}
-                          </div>
-                          <div className="text-right text-xs text-gray-500">
-                            {dayName}
-                          </div>
-                        </motion.div>
-                      );
-                    })}
+                        return (
+                          <motion.tr
+                            key={`${entry.date}-${index}`}
+                            className="hover:bg-gray-50/80 transition-colors"
+                            whileHover={{ backgroundColor: "#fcfcfc" }}
+                          >
+                            <td className="px-6 py-4 font-medium text-gray-800">
+                              {formattedDate}
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                                  entry.status === "Present"
+                                    ? "bg-[#50b748]/10 text-[#50b748]"
+                                    : "bg-red-50 text-red-500"
+                                }`}
+                              >
+                                {entry.status}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${methodMeta.className}`}
+                              >
+                                <MethodIcon className="h-3 w-3" />
+                                {methodMeta.label}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4 text-center text-gray-500 font-medium">
+                              {entry.time || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-right text-gray-400 font-medium">
+                              {dayName}
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-6 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">
-                  No daily attendance records found
-                </p>
-                <p className="text-xs text-gray-400 mt-1">
-                  Attendance will appear here after QR scanning
-                </p>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-
-        {/* My Attendance Section (Meeting Attendance) */}
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
-        >
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Meeting Attendance
-          </h2>
-          <p className="text-gray-600 mt-1">
-            Track your meeting attendance records
-          </p>
-        </motion.div>
-
-        {/* Quick Stats */}
-        <motion.div
-          className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4, duration: 0.3 }}
-        >
-          <motion.div
-            className="bg-white p-4 rounded-lg shadow-sm flex flex-col"
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.2 }}
-          >
-            <span className="text-sm text-gray-500 mb-1">Present Days</span>
-            <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">
-                {attendanceStats.present}
-              </span>
-              <CheckCircle className="h-5 w-5 text-green-500 ml-auto" />
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                    <Calendar className="h-6 w-6 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 font-medium">
+                    No daily attendance records found
+                  </p>
+                </div>
+              )}
             </div>
           </motion.div>
+        )}
 
+        {activeTab === "meeting" && (
           <motion.div
-            className="bg-white p-4 rounded-lg shadow-sm flex flex-col"
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.2 }}
+            key="meeting"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.3 }}
           >
-            <span className="text-sm text-gray-500 mb-1">Absent Days</span>
-            <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">
-                {attendanceStats.absent}
-              </span>
-              <XCircle className="h-5 w-5 text-red-500 ml-auto" />
+            <div className="mb-6">
+              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+                Meeting Attendance
+              </h2>
+              <p className="text-gray-500 mt-1 text-sm">
+                Track your special session and meeting attendances
+              </p>
             </div>
-          </motion.div>
 
-          <motion.div
-            className="bg-white p-4 rounded-lg shadow-sm flex flex-col col-span-2 sm:col-span-1"
-            whileHover={{ scale: 1.03 }}
-            transition={{ duration: 0.2 }}
-          >
-            <span className="text-sm text-gray-500 mb-1">Attendance Rate</span>
-            <div className="flex items-center">
-              <span className="text-xl font-bold text-gray-800">
-                {presentPercentage}%
-              </span>
-              <span
-                className={`ml-auto px-2 py-1 text-xs rounded-full ${
-                  presentPercentage >= 80
-                    ? "bg-green-100 text-green-800"
-                    : presentPercentage >= 60
-                      ? "bg-yellow-100 text-yellow-800"
-                      : "bg-red-100 text-red-800"
+            {/* Meeting Stats */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-[#50b748]"></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Present
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {attendanceStats.present}
+                  </span>
+                  <div className="ml-auto p-2 bg-[#50b748]/10 rounded-xl text-[#50b748]">
+                    <CheckCircle className="h-5 w-5" />
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
+                <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Absent
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {attendanceStats.absent}
+                  </span>
+                  <div className="ml-auto p-2 bg-red-50 rounded-xl text-red-400">
+                    <XCircle className="h-5 w-5" />
+                  </div>
+                </div>
+              </motion.div>
+
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1"
+                whileHover={{ y: -2 }}
+              >
+                <div
+                  className="absolute top-0 left-0 w-1.5 h-full"
+                  style={{
+                    background: "linear-gradient(to bottom, #00b4eb, #0056a2)",
+                  }}
+                ></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Meeting Rate
+                </span>
+                <div className="flex items-center mt-2">
+                  <span className="text-3xl font-black text-gray-800">
+                    {presentPercentage}%
+                  </span>
+                </div>
+              </motion.div>
+            </div>
+
+            {/* Filters */}
+            <div className="flex gap-2 mb-6">
+              <button
+                onClick={() => handleFilterByStatus("All")}
+                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                  filterStatus === "All"
+                    ? "bg-gray-800 text-white shadow-md"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                 }`}
               >
-                {presentPercentage >= 80
-                  ? "Excellent"
-                  : presentPercentage >= 60
-                    ? "Good"
-                    : "Needs Improvement"}
-              </span>
+                All
+              </button>
+              <button
+                onClick={() => handleFilterByStatus("Present")}
+                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
+                  filterStatus === "Present"
+                    ? "text-white shadow-md"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                }`}
+                style={
+                  filterStatus === "Present"
+                    ? {
+                        background:
+                          "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                      }
+                    : {}
+                }
+              >
+                Present
+              </button>
             </div>
-          </motion.div>
-        </motion.div>
 
-        {/* Filter Controls - Simple mobile first design */}
-        <motion.div
-          className="mt-6 flex flex-wrap gap-2"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.3 }}
-        >
-          <motion.button
-            onClick={() => handleFilterByStatus("All")}
-            className={`px-3 py-1.5 text-sm rounded-full ${
-              filterStatus === "All"
-                ? "bg-blue-100 text-blue-800 font-medium"
-                : "bg-gray-100 text-gray-600"
-            }`}
-            whileTap={{ scale: 0.95 }}
-          >
-            All
-          </motion.button>
-          <motion.button
-            onClick={() => handleFilterByStatus("Present")}
-            className={`px-3 py-1.5 text-sm rounded-full ${
-              filterStatus === "Present"
-                ? "bg-green-100 text-green-800 font-medium"
-                : "bg-gray-100 text-gray-600"
-            }`}
-            whileTap={{ scale: 0.95 }}
-          >
-            Present
-          </motion.button>
-          <motion.button
-            onClick={() => handleFilterByStatus("Absent")}
-            className={`px-3 py-1.5 text-sm rounded-full ${
-              filterStatus === "Absent"
-                ? "bg-red-100 text-red-800 font-medium"
-                : "bg-gray-100 text-gray-600"
-            }`}
-            whileTap={{ scale: 0.95 }}
-          >
-            Absent
-          </motion.button>
-        </motion.div>
-
-        {/* Improved Attendance Records */}
-        <motion.div
-          className="mt-6"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.3 }}
-        >
-          <h3 className="font-medium text-gray-700 mb-3 flex items-center">
-            <Calendar className="h-4 w-4 mr-1" />
-            Attendance History
-          </h3>
-
-          {filteredMeetingAttendance.length > 0 ? (
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="grid grid-cols-[1.2fr_0.9fr_0.9fr_5rem_10rem] gap-3 text-sm font-medium text-gray-500 bg-gray-50 p-3">
-                <div>Date</div>
-                <div className="text-center">Meetings</div>
-                <div className="text-center">Present</div>
-                <div className="text-center">Day</div>
-                <div className="text-center">Details</div>
-              </div>
-
-              <div className="divide-y divide-gray-100">
+            {/* Meeting History Accordion */}
+            {filteredMeetingAttendance.length > 0 ? (
+              <div className="space-y-3">
                 {getMeetingDateGroups().map((group) => {
                   const isExpanded =
                     expandedMeetingDates[group.dateKey] ?? false;
                   const presentCount = group.meetings.filter(
-                    (entry) => entry.status === "Present",
+                    (e) => e.status === "Present",
                   ).length;
                   return (
-                    <div key={group.dateKey}>
-                      <motion.button
-                        type="button"
+                    <motion.div
+                      key={group.dateKey}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                      initial={false}
+                    >
+                      <button
                         onClick={() => toggleMeetingDate(group.dateKey)}
-                        className="grid w-full grid-cols-[1.2fr_0.9fr_0.9fr_5rem_10rem] gap-3 items-center p-3 text-left hover:bg-gray-50"
-                        whileHover={{ backgroundColor: "#f9f9f9" }}
-                        transition={{ duration: 0.1 }}
+                        className="w-full flex items-center justify-between p-5 hover:bg-gray-50/50 transition-colors"
                       >
-                        <div className="text-sm font-medium text-gray-800">
-                          {group.formattedDate}
+                        <div className="flex items-center gap-4">
+                          <div
+                            className="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shadow-inner"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                            }}
+                          >
+                            <span className="text-xs font-bold uppercase opacity-90">
+                              {group.dayName}
+                            </span>
+                            <span className="text-lg font-black leading-none">
+                              {new Date(group.dateKey).getDate() || "-"}
+                            </span>
+                          </div>
+                          <div className="text-left">
+                            <h4 className="font-bold text-gray-900">
+                              {group.formattedDate}
+                            </h4>
+                            <p className="text-sm text-gray-500 font-medium mt-0.5">
+                              {group.meetings.length} meeting
+                              {group.meetings.length !== 1 ? "s" : ""}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-center text-sm text-gray-700">
-                          {group.meetings.length} meeting
-                          {group.meetings.length !== 1 ? "s" : ""}
-                        </div>
-                        <div className="text-center">
-                          <span className="inline-flex items-center px-2 py-1 rounded-full bg-green-100 text-xs font-medium text-green-800">
-                            <CheckCircle className="h-3 w-3 mr-1" />
+
+                        <div className="flex items-center gap-4">
+                          <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-[#50b748]/10 text-[#50b748]">
+                            <CheckCircle className="h-3 w-3 mr-1.5" />
                             {presentCount} Present
                           </span>
-                        </div>
-                        <div className="text-center text-xs text-gray-500">
-                          {group.dayName}
-                        </div>
-                        <div className="flex justify-center">
-                          <span className="inline-flex items-center gap-2 rounded-md bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                            {isExpanded ? "Hide meetings" : "View meetings"}
+                          <div
+                            className={`p-2 rounded-lg transition-colors ${isExpanded ? "bg-gray-100" : "bg-gray-50"}`}
+                          >
                             <ChevronDown
-                              className={`h-3 w-3 transition-transform ${
-                                isExpanded ? "rotate-180" : ""
-                              }`}
+                              className={`h-5 w-5 text-gray-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
                             />
-                          </span>
-                        </div>
-                      </motion.button>
-
-                      {isExpanded && (
-                        <div className="border-t border-gray-100 bg-gray-50/60 px-3 py-2">
-                          <div className="grid grid-cols-[1fr_7rem_8rem_7rem] px-3 pb-2 text-xs font-medium uppercase tracking-wide text-gray-400">
-                            <div>Meeting name</div>
-                            <div className="text-center">Type</div>
-                            <div className="text-center">Time</div>
-                            <div className="text-right">Status</div>
-                          </div>
-                          <div className="space-y-2">
-                            {group.meetings.map((entry, index) => {
-                              const methodMeta = getMeetingMethodMeta(
-                                entry.attendanceMethod ||
-                                  entry.method ||
-                                  entry.markedBy ||
-                                  entry.type,
-                              );
-                              const MethodIcon = methodMeta.Icon;
-
-                              return (
-                                <div
-                                  key={`${group.dateKey}-${entry.meetingName || entry.type}-${index}`}
-                                  className="grid grid-cols-[1fr_7rem_8rem_7rem] items-center rounded-md bg-white px-3 py-2 text-sm"
-                                >
-                                  <div className="font-medium text-gray-900">
-                                    {entry.meetingName ||
-                                      entry.type ||
-                                      "Meeting"}
-                                  </div>
-                                  <div className="text-center">
-                                    <span
-                                      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-semibold ${methodMeta.className}`}
-                                    >
-                                      <MethodIcon className="h-3 w-3" />
-                                      {methodMeta.label}
-                                    </span>
-                                  </div>
-                                  <div className="text-center text-gray-600">
-                                    {entry.time || "N/A"}
-                                  </div>
-                                  <div className="text-right">
-                                    <span
-                                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                        entry.status === "Present"
-                                          ? "bg-green-100 text-green-800"
-                                          : "bg-red-100 text-red-800"
-                                      }`}
-                                    >
-                                      {entry.status === "Present" ? (
-                                        <CheckCircle className="h-3 w-3 mr-1" />
-                                      ) : (
-                                        <XCircle className="h-3 w-3 mr-1" />
-                                      )}
-                                      {entry.status}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
                           </div>
                         </div>
-                      )}
-                    </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="px-5 pb-5 pt-2 border-t border-gray-50 bg-gray-50/30">
+                              <div className="space-y-2.5">
+                                {group.meetings.map((entry, index) => {
+                                  const methodMeta = getMeetingMethodMeta(
+                                    entry.attendanceMethod ||
+                                      entry.method ||
+                                      entry.markedBy ||
+                                      entry.type,
+                                  );
+                                  const MethodIcon = methodMeta.Icon;
+
+                                  return (
+                                    <div
+                                      key={`${group.dateKey}-${index}`}
+                                      className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-100 shadow-sm"
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-bold text-gray-800">
+                                          {entry.meetingName ||
+                                            entry.type ||
+                                            "Meeting"}
+                                        </span>
+                                        <div className="flex items-center gap-3 mt-1.5 text-xs">
+                                          <span className="flex items-center text-gray-500 font-medium">
+                                            <Clock className="h-3 w-3 mr-1" />{" "}
+                                            {entry.time || "N/A"}
+                                          </span>
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
+                                          >
+                                            <MethodIcon className="h-3 w-3" />
+                                            {methodMeta.label}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <span
+                                        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                                          entry.status === "Present"
+                                            ? "bg-[#50b748]/10 text-[#50b748]"
+                                            : "bg-red-50 text-red-500"
+                                        }`}
+                                      >
+                                        {entry.status}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
                   );
                 })}
               </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 bg-gray-50 rounded-lg">
-              <p className="text-gray-500">
-                No meeting attendance records found
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                Meeting attendance will appear here after QR scanning
-              </p>
-            </div>
-          )}
-        </motion.div>
-      </>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-3xl border border-gray-100">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 font-medium">
+                  No meeting attendance records found
+                </p>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </div>
     );
   };
 
@@ -1025,7 +1022,7 @@ const Dashboard = () => {
       )}
       <div className="flex-1 flex flex-col lg:mt-7 lg:px-10">
         <div className="h-16" />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           {renderContent()}
         </main>
       </div>
