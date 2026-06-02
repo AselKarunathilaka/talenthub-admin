@@ -19,8 +19,7 @@ import {
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
 import { calculateInternshipEndNotification } from "../utils/internshipNotification";
-import { motion } from "framer-motion"; // Import framer-motion
-
+import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
 const Dashboard = () => {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
@@ -37,7 +36,7 @@ const Dashboard = () => {
     present: 0,
     absent: 0,
   });
-  const [activeTab, setActiveTab] = useState("daily");
+  const [activeTab, setActiveTab] = useState("meeting");
   const [showCricketPopup, setShowCricketPopup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
@@ -400,7 +399,10 @@ const Dashboard = () => {
     if (loading) {
       return (
         <div className="w-full flex flex-col items-center justify-center mt-12">
-          <Loader2 className="h-10 w-10 animate-spin mb-4" style={{ color: '#00b4eb' }} />
+          <Loader2
+            className="h-10 w-10 animate-spin mb-4"
+            style={{ color: "#00b4eb" }}
+          />
           <p className="text-gray-500 font-medium">Loading your dashboard...</p>
         </div>
       );
@@ -412,18 +414,25 @@ const Dashboard = () => {
           {isNetworkError ? (
             <>
               <XCircle className="h-14 w-14 text-red-500 mb-4 opacity-90" />
-              <h3 className="text-xl font-bold text-gray-800 mb-2">Connection Error</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">
+                Connection Error
+              </h3>
               <p className="text-gray-500 mb-6 text-center">
-                Unable to connect to the server. Please check your internet connection and try again.
+                Unable to connect to the server. Please check your internet
+                connection and try again.
               </p>
             </>
           ) : (
-            <div className="text-red-500 text-lg font-medium mb-4">Error: {error}</div>
+            <div className="text-red-500 text-lg font-medium mb-4">
+              Error: {error}
+            </div>
           )}
           <button
             onClick={() => window.location.reload()}
             className="px-6 py-2.5 text-white rounded-xl font-medium shadow-md transition-transform active:scale-95"
-            style={{ background: 'linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)' }}
+            style={{
+              background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+            }}
           >
             Retry Connection
           </button>
@@ -439,33 +448,37 @@ const Dashboard = () => {
         />
 
         {/* Modern Tab Switcher */}
-        <motion.div 
+        <motion.div
           className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-md w-full relative"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <button
-            onClick={() => setActiveTab("daily")}
-            className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-              activeTab === "daily" ? "text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Daily Attendance
-          </button>
-          <button
             onClick={() => setActiveTab("meeting")}
             className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-              activeTab === "meeting" ? "text-white" : "text-gray-500 hover:text-gray-700"
+              activeTab === "meeting"
+                ? "text-white"
+                : "text-gray-500 hover:text-gray-700"
             }`}
           >
             Meeting Attendance
           </button>
-          
-          <div 
+          <button
+            onClick={() => setActiveTab("daily")}
+            className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
+              activeTab === "daily"
+                ? "text-white"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Daily Attendance
+          </button>
+
+          <div
             className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
-            style={{ 
+            style={{
               background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-              left: activeTab === "daily" ? "6px" : "calc(50%)" 
+              left: activeTab === "meeting" ? "6px" : "calc(50%)",
             }}
           />
         </motion.div>
@@ -480,14 +493,24 @@ const Dashboard = () => {
           >
             <div className="flex justify-between items-end mb-6">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Daily Attendance</h2>
-                <p className="text-gray-500 mt-1 text-sm">Your daily internship attendance overview</p>
+                <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+                  Daily Attendance
+                </h2>
+                <p className="text-gray-500 mt-1 text-sm">
+                  Your daily internship attendance overview
+                </p>
               </div>
               <motion.button
                 onClick={() => navigate("/face-attendance")}
                 className="hidden sm:flex text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-md items-center transition-transform active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)' }}
-                whileHover={{ y: -2, boxShadow: "0 10px 15px -3px rgba(0, 86, 162, 0.2)" }}
+                style={{
+                  background:
+                    "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                }}
+                whileHover={{
+                  y: -2,
+                  boxShadow: "0 10px 15px -3px rgba(0, 86, 162, 0.2)",
+                }}
               >
                 <Clock className="h-4 w-4 mr-2" />
                 Mark Attendance
@@ -496,36 +519,68 @@ const Dashboard = () => {
 
             {/* Daily Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300" whileHover={{ y: -2 }}>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#50b748]"></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Present</span>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Present
+                </span>
                 <div className="flex items-center mt-2">
-                  <span className="text-3xl font-black text-gray-800">{dailyAttendanceStats.present}</span>
+                  <span className="text-3xl font-black text-gray-800">
+                    {dailyAttendanceStats.present}
+                  </span>
                   <div className="ml-auto p-2 bg-[#50b748]/10 rounded-xl text-[#50b748]">
                     <CheckCircle className="h-5 w-5" />
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300" whileHover={{ y: -2 }}>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Absent</span>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Absent
+                </span>
                 <div className="flex items-center mt-2">
-                  <span className="text-3xl font-black text-gray-800">{dailyAttendanceStats.absent}</span>
+                  <span className="text-3xl font-black text-gray-800">
+                    {dailyAttendanceStats.absent}
+                  </span>
                   <div className="ml-auto p-2 bg-red-50 rounded-xl text-red-400">
                     <XCircle className="h-5 w-5" />
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1" whileHover={{ y: -2 }}>
-                <div className="absolute top-0 left-0 w-1.5 h-full" style={{ background: 'linear-gradient(to bottom, #00b4eb, #0056a2)' }}></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Daily Rate</span>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1"
+                whileHover={{ y: -2 }}
+              >
+                <div
+                  className="absolute top-0 left-0 w-1.5 h-full"
+                  style={{
+                    background: "linear-gradient(to bottom, #00b4eb, #0056a2)",
+                  }}
+                ></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Daily Rate
+                </span>
                 <div className="flex items-center mt-2">
                   <span className="text-3xl font-black text-gray-800">
-                    {dailyAttendanceStats.present + dailyAttendanceStats.absent > 0
-                      ? Math.round((dailyAttendanceStats.present / (dailyAttendanceStats.present + dailyAttendanceStats.absent)) * 100)
-                      : 0}%
+                    {dailyAttendanceStats.present +
+                      dailyAttendanceStats.absent >
+                    0
+                      ? Math.round(
+                          (dailyAttendanceStats.present /
+                            (dailyAttendanceStats.present +
+                              dailyAttendanceStats.absent)) *
+                            100,
+                        )
+                      : 0}
+                    %
                   </span>
                 </div>
               </motion.div>
@@ -538,22 +593,35 @@ const Dashboard = () => {
                 <button
                   onClick={() => navigate("/face-attendance")}
                   className="text-sm font-semibold p-2 rounded-lg"
-                  style={{ color: '#0056a2', backgroundColor: 'rgba(0,180,235,0.1)' }}
+                  style={{
+                    color: "#0056a2",
+                    backgroundColor: "rgba(0,180,235,0.1)",
+                  }}
                 >
                   <Clock className="h-4 w-4" />
                 </button>
               </div>
-              
+
               {attendanceHistory.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="text-xs text-gray-400 uppercase bg-gray-50/50">
                       <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">Date</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">Status</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">Method</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">Time</th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-right">Day</th>
+                        <th className="px-6 py-4 font-semibold tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Method
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
+                          Time
+                        </th>
+                        <th className="px-6 py-4 font-semibold tracking-wider text-right">
+                          Day
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -561,33 +629,60 @@ const Dashboard = () => {
                         let date, dayName, formattedDate;
                         try {
                           date = entry.date ? new Date(entry.date) : new Date();
-                          dayName = date.toLocaleDateString("en-US", { weekday: "short" });
-                          formattedDate = date.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+                          dayName = date.toLocaleDateString("en-US", {
+                            weekday: "short",
+                          });
+                          formattedDate = date.toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          });
                         } catch (error) {
                           dayName = "N/A";
                           formattedDate = entry.date || "N/A";
                         }
-                        const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
+                        const methodMeta = getMeetingMethodMeta(
+                          entry.attendanceMethod ||
+                            entry.method ||
+                            entry.markedBy ||
+                            entry.type,
+                        );
                         const MethodIcon = methodMeta.Icon;
 
                         return (
-                          <motion.tr key={`${entry.date}-${index}`} className="hover:bg-gray-50/80 transition-colors" whileHover={{ backgroundColor: '#fcfcfc' }}>
-                            <td className="px-6 py-4 font-medium text-gray-800">{formattedDate}</td>
+                          <motion.tr
+                            key={`${entry.date}-${index}`}
+                            className="hover:bg-gray-50/80 transition-colors"
+                            whileHover={{ backgroundColor: "#fcfcfc" }}
+                          >
+                            <td className="px-6 py-4 font-medium text-gray-800">
+                              {formattedDate}
+                            </td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
-                                entry.status === "Present" ? "bg-[#50b748]/10 text-[#50b748]" : "bg-red-50 text-red-500"
-                              }`}>
+                              <span
+                                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                                  entry.status === "Present"
+                                    ? "bg-[#50b748]/10 text-[#50b748]"
+                                    : "bg-red-50 text-red-500"
+                                }`}
+                              >
                                 {entry.status}
                               </span>
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${methodMeta.className}`}>
+                              <span
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${methodMeta.className}`}
+                              >
                                 <MethodIcon className="h-3 w-3" />
                                 {methodMeta.label}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-center text-gray-500 font-medium">{entry.time || "-"}</td>
-                            <td className="px-6 py-4 text-right text-gray-400 font-medium">{dayName}</td>
+                            <td className="px-6 py-4 text-center text-gray-500 font-medium">
+                              {entry.time || "-"}
+                            </td>
+                            <td className="px-6 py-4 text-right text-gray-400 font-medium">
+                              {dayName}
+                            </td>
                           </motion.tr>
                         );
                       })}
@@ -599,7 +694,9 @@ const Dashboard = () => {
                   <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
                     <Calendar className="h-6 w-6 text-gray-400" />
                   </div>
-                  <p className="text-gray-500 font-medium">No daily attendance records found</p>
+                  <p className="text-gray-500 font-medium">
+                    No daily attendance records found
+                  </p>
                 </div>
               )}
             </div>
@@ -615,39 +712,69 @@ const Dashboard = () => {
             transition={{ duration: 0.3 }}
           >
             <div className="mb-6">
-              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">Meeting Attendance</h2>
-              <p className="text-gray-500 mt-1 text-sm">Track your special session and meeting attendances</p>
+              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
+                Meeting Attendance
+              </h2>
+              <p className="text-gray-500 mt-1 text-sm">
+                Track your special session and meeting attendances
+              </p>
             </div>
 
             {/* Meeting Stats */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300" whileHover={{ y: -2 }}>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#50b748]"></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Present</span>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Present
+                </span>
                 <div className="flex items-center mt-2">
-                  <span className="text-3xl font-black text-gray-800">{attendanceStats.present}</span>
+                  <span className="text-3xl font-black text-gray-800">
+                    {attendanceStats.present}
+                  </span>
                   <div className="ml-auto p-2 bg-[#50b748]/10 rounded-xl text-[#50b748]">
                     <CheckCircle className="h-5 w-5" />
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300" whileHover={{ y: -2 }}>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300"
+                whileHover={{ y: -2 }}
+              >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Absent</span>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Absent
+                </span>
                 <div className="flex items-center mt-2">
-                  <span className="text-3xl font-black text-gray-800">{attendanceStats.absent}</span>
+                  <span className="text-3xl font-black text-gray-800">
+                    {attendanceStats.absent}
+                  </span>
                   <div className="ml-auto p-2 bg-red-50 rounded-xl text-red-400">
                     <XCircle className="h-5 w-5" />
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1" whileHover={{ y: -2 }}>
-                <div className="absolute top-0 left-0 w-1.5 h-full" style={{ background: 'linear-gradient(to bottom, #00b4eb, #0056a2)' }}></div>
-                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">Meeting Rate</span>
+              <motion.div
+                className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-all duration-300 col-span-2 sm:col-span-1"
+                whileHover={{ y: -2 }}
+              >
+                <div
+                  className="absolute top-0 left-0 w-1.5 h-full"
+                  style={{
+                    background: "linear-gradient(to bottom, #00b4eb, #0056a2)",
+                  }}
+                ></div>
+                <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
+                  Meeting Rate
+                </span>
                 <div className="flex items-center mt-2">
-                  <span className="text-3xl font-black text-gray-800">{presentPercentage}%</span>
+                  <span className="text-3xl font-black text-gray-800">
+                    {presentPercentage}%
+                  </span>
                 </div>
               </motion.div>
             </div>
@@ -657,7 +784,9 @@ const Dashboard = () => {
               <button
                 onClick={() => handleFilterByStatus("All")}
                 className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "All" ? "bg-gray-800 text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  filterStatus === "All"
+                    ? "bg-gray-800 text-white shadow-md"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                 }`}
               >
                 All
@@ -665,7 +794,9 @@ const Dashboard = () => {
               <button
                 onClick={() => handleFilterByStatus("Present")}
                 className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "Present" ? "bg-[#50b748] text-white shadow-md" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                  filterStatus === "Present"
+                    ? "bg-[#50b748] text-white shadow-md"
+                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
                 }`}
               >
                 Present
@@ -676,11 +807,14 @@ const Dashboard = () => {
             {filteredMeetingAttendance.length > 0 ? (
               <div className="space-y-3">
                 {getMeetingDateGroups().map((group) => {
-                  const isExpanded = expandedMeetingDates[group.dateKey] ?? false;
-                  const presentCount = group.meetings.filter(e => e.status === "Present").length;
+                  const isExpanded =
+                    expandedMeetingDates[group.dateKey] ?? false;
+                  const presentCount = group.meetings.filter(
+                    (e) => e.status === "Present",
+                  ).length;
                   return (
-                    <motion.div 
-                      key={group.dateKey} 
+                    <motion.div
+                      key={group.dateKey}
                       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
                       initial={false}
                     >
@@ -689,23 +823,42 @@ const Dashboard = () => {
                         className="w-full flex items-center justify-between p-5 hover:bg-gray-50/50 transition-colors"
                       >
                         <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shadow-inner" style={{ background: 'linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)' }}>
-                            <span className="text-xs font-bold uppercase opacity-90">{group.dayName}</span>
-                            <span className="text-lg font-black leading-none">{new Date(group.dateKey).getDate() || '-'}</span>
+                          <div
+                            className="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shadow-inner"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                            }}
+                          >
+                            <span className="text-xs font-bold uppercase opacity-90">
+                              {group.dayName}
+                            </span>
+                            <span className="text-lg font-black leading-none">
+                              {new Date(group.dateKey).getDate() || "-"}
+                            </span>
                           </div>
                           <div className="text-left">
-                            <h4 className="font-bold text-gray-900">{group.formattedDate}</h4>
-                            <p className="text-sm text-gray-500 font-medium mt-0.5">{group.meetings.length} meeting{group.meetings.length !== 1 ? 's' : ''}</p>
+                            <h4 className="font-bold text-gray-900">
+                              {group.formattedDate}
+                            </h4>
+                            <p className="text-sm text-gray-500 font-medium mt-0.5">
+                              {group.meetings.length} meeting
+                              {group.meetings.length !== 1 ? "s" : ""}
+                            </p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-4">
                           <span className="hidden sm:inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-[#50b748]/10 text-[#50b748]">
                             <CheckCircle className="h-3 w-3 mr-1.5" />
                             {presentCount} Present
                           </span>
-                          <div className={`p-2 rounded-lg transition-colors ${isExpanded ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                            <ChevronDown className={`h-5 w-5 text-gray-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
+                          <div
+                            className={`p-2 rounded-lg transition-colors ${isExpanded ? "bg-gray-100" : "bg-gray-50"}`}
+                          >
+                            <ChevronDown
+                              className={`h-5 w-5 text-gray-500 transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`}
+                            />
                           </div>
                         </div>
                       </button>
@@ -721,26 +874,45 @@ const Dashboard = () => {
                             <div className="px-5 pb-5 pt-2 border-t border-gray-50 bg-gray-50/30">
                               <div className="space-y-2.5">
                                 {group.meetings.map((entry, index) => {
-                                  const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
+                                  const methodMeta = getMeetingMethodMeta(
+                                    entry.attendanceMethod ||
+                                      entry.method ||
+                                      entry.markedBy ||
+                                      entry.type,
+                                  );
                                   const MethodIcon = methodMeta.Icon;
-                                  
+
                                   return (
-                                    <div key={`${group.dateKey}-${index}`} className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-100 shadow-sm">
+                                    <div
+                                      key={`${group.dateKey}-${index}`}
+                                      className="flex items-center justify-between p-3.5 bg-white rounded-xl border border-gray-100 shadow-sm"
+                                    >
                                       <div className="flex flex-col">
-                                        <span className="font-bold text-gray-800">{entry.meetingName || entry.type || "Meeting"}</span>
+                                        <span className="font-bold text-gray-800">
+                                          {entry.meetingName ||
+                                            entry.type ||
+                                            "Meeting"}
+                                        </span>
                                         <div className="flex items-center gap-3 mt-1.5 text-xs">
                                           <span className="flex items-center text-gray-500 font-medium">
-                                            <Clock className="h-3 w-3 mr-1" /> {entry.time || "N/A"}
+                                            <Clock className="h-3 w-3 mr-1" />{" "}
+                                            {entry.time || "N/A"}
                                           </span>
-                                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}>
+                                          <span
+                                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
+                                          >
                                             <MethodIcon className="h-3 w-3" />
                                             {methodMeta.label}
                                           </span>
                                         </div>
                                       </div>
-                                      <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
-                                        entry.status === "Present" ? "bg-[#50b748]/10 text-[#50b748]" : "bg-red-50 text-red-500"
-                                      }`}>
+                                      <span
+                                        className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                                          entry.status === "Present"
+                                            ? "bg-[#50b748]/10 text-[#50b748]"
+                                            : "bg-red-50 text-red-500"
+                                        }`}
+                                      >
                                         {entry.status}
                                       </span>
                                     </div>
@@ -760,14 +932,15 @@ const Dashboard = () => {
                 <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
                   <Users className="h-6 w-6 text-gray-400" />
                 </div>
-                <p className="text-gray-500 font-medium">No meeting attendance records found</p>
+                <p className="text-gray-500 font-medium">
+                  No meeting attendance records found
+                </p>
               </div>
             )}
           </motion.div>
         )}
       </div>
     );
-
   };
 
   return (
@@ -838,7 +1011,7 @@ const Dashboard = () => {
       )}
       <div className="flex-1 flex flex-col lg:mt-7 lg:px-10">
         <div className="h-16" />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           {renderContent()}
         </main>
       </div>
