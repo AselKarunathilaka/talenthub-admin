@@ -1,5 +1,6 @@
-import React from "react";
-import { X, Armchair, Calendar, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2 } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { useSeatManagement } from "./useSeatManagement";
 
@@ -25,31 +26,30 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
   }
 
   const baseClasses =
-    "absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md";
+    "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden";
 
   let statusClasses = "";
 
   if (status === "locked") {
-    statusClasses = "bg-gray-500 text-white cursor-not-allowed opacity-80";
+    statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75";
   } else if (status === "booked") {
-    if (isMyBooking) {
-      statusClasses = "bg-red-300 text-white cursor-not-allowed";
-    } else {
-      statusClasses = "bg-red-300 text-white cursor-not-allowed";
-    }
+    statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50";
   } else {
+    // Available: Company Green
     statusClasses =
-      "bg-cyan-400 text-white hover:bg-cyan-500 hover:scale-105 cursor-pointer";
+      "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30 cursor-pointer";
   }
 
   return (
-    <div
+    <motion.div
       onClick={() => handleSeatClick(number)}
       className={`${baseClasses} ${statusClasses}`}
       style={{
         left: `${posX - 24}px`,
         top: `${posY - 24}px`,
       }}
+      whileHover={status === "available" ? { scale: 1.15, zIndex: 10 } : {}}
+      whileTap={status === "available" ? { scale: 0.95 } : {}}
       title={
         status === "locked"
           ? lockedSeatDetails?.[number]?.traineeId
@@ -64,10 +64,17 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
                 : `Seat ${number} (Available)`
       }
     >
-      {status === "booked" && <X size={12} className="mb-[-2px]" />}
-      <Armchair size={16} />
-      <span className="text-[10px] mt-0.5">{number}</span>
-    </div>
+      <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+        {status === "booked" ? (
+          <X size={18} strokeWidth={3} className="text-white/90" />
+        ) : status === "locked" ? (
+          <Armchair size={18} strokeWidth={2.5} className="mb-0.5 opacity-60" />
+        ) : (
+          <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
+        )}
+        <span className="text-[10px] mt-0.5 leading-none">{number}</span>
+      </div>
+    </motion.div>
   );
 };
 
@@ -80,54 +87,85 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
   };
 
   return (
-    <div className="fixed inset-0 backdrop-blur-sm bg-white/30 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl p-4 sm:p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
-            Book Seat {currentSeat}
-          </h2>
-          <button
-            onClick={handleModalClose}
-            className="text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <X size={24} />
-          </button>
-        </div>
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
+      >
+        <motion.div
+          initial={{ scale: 0.9, y: 20, opacity: 0 }}
+          animate={{ scale: 1, y: 0, opacity: 1 }}
+          exit={{ scale: 0.9, y: 20, opacity: 0 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100 overflow-hidden relative"
+        >
+          {/* Decorative top bar */}
+          <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
 
-        <div className="space-y-4">
-          <div className="p-3 bg-blue-50 rounded-md">
-            <p className="text-sm text-blue-700">
-              You are booking seat <strong>{currentSeat}</strong> for
-            </p>
-            <p className="text-sm text-blue-700 mt-1">
-              <strong>{formatDisplayDate(selectedDate)}</strong>
-            </p>
-            <p className="text-xs text-blue-600 mt-1">
-              Your intern account will be used automatically
-            </p>
-          </div>
-
-          <div className="p-3 bg-yellow-50 rounded-md text-sm text-yellow-700">
-            ⚠ One seat per intern per day is allowed
-          </div>
-
-          <div className="flex gap-3 pt-4">
+          <div className="flex justify-between items-center mb-6 mt-2">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-[#0056a2] shadow-sm">
+                <Armchair size={24} />
+              </div>
+              <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">
+                Seat {currentSeat}
+              </h2>
+            </div>
             <button
               onClick={handleModalClose}
-              className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+              className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors"
             >
-              Cancel
-            </button>
-            <button
-              onClick={handleSubmit}
-              className="flex-1 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-md transition-colors"
-            >
-              Confirm Booking
+              <X size={20} />
             </button>
           </div>
-        </div>
-      </div>
-    </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 rounded-2xl border border-blue-100/60">
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm">
+                   <Calendar className="text-[#00b4eb]" size={18} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Booking Date</p>
+                  <p className="text-lg text-gray-900 font-bold mt-0.5">
+                    {formatDisplayDate(selectedDate)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 pt-3 border-t border-blue-100/50 flex items-start gap-3">
+                <Info className="text-[#0056a2] mt-0.5 shrink-0" size={16} />
+                <p className="text-xs text-gray-600 font-medium leading-relaxed">
+                  Your intern account will be used automatically for this reservation.
+                </p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-100/50 flex items-start gap-3">
+              <span className="text-lg leading-none shrink-0 mt-0.5">⚠</span>
+              <span className="text-sm text-amber-800 font-medium leading-tight">One seat per intern per day is allowed. Make sure this is the seat you want!</span>
+            </div>
+
+            <div className="flex gap-3 pt-5">
+              <button
+                onClick={handleModalClose}
+                className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="flex-1 px-4 py-3 bg-[#0056a2] hover:bg-[#00488a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#0056a2]/30 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95 flex items-center justify-center gap-2"
+              >
+                <CheckCircle2 size={18} />
+                Confirm
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
@@ -155,599 +193,426 @@ const InternSeatManagement = () => {
     lockedSeatDetails,
   } = useSeatManagement();
 
+  const [activeTab, setActiveTab] = useState("map"); // "map" | "bookings"
+
   return (
     <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
-      <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
-      <Navigation />{" "}
-      <div className="flex-1 w-full lg:mt-20 lg:px-10">
-        <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
+        <Navigation />
+        
+        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            
+            {/* Header Section */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-                  <Armchair className="text-blue-600 h-6 w-6 sm:h-7 sm:w-7" />
-                  Intern Seat Reservation
-                </h1>
-                <p className="text-gray-600 mt-1 text-sm sm:text-base">
-                  Streamlined and efficient seat assignment for interns
-                </p>
+                <motion.h1 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                     <Armchair className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Seat Reservation
+                </motion.h1>
+                <motion.p 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  Streamlined and fluid workspace assignment. Select a date and reserve your preferred spot seamlessly.
+                </motion.p>
               </div>
-            </div>
 
-            <div className="mb-4 sm:mb-6 bg-white rounded-lg shadow-lg p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg sm:text-xl font-bold text-gray-800 flex items-center gap-2">
-                    <Calendar className="text-blue-600 h-5 w-5" />
-                    Select Booking Date
-                  </h2>
-                  <p className="text-gray-600 text-sm mt-1">
-                    Choose a date to view and book available seats
-                  </p>
+              {/* Date Selector & Stats */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2 }}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3"
+              >
+                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+                    <Calendar className="text-[#00b4eb] h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                      Select Date
+                    </label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => handleDateChange(e.target.value)}
+                      min={minBookingDate}
+                      max={maxBookingDate}
+                      className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                  <div className="text-center p-3 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-700">
+
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100">
+                    <div className="text-2xl font-black text-rose-600 leading-none mb-1">
                       {totalUnavailableCount}
                     </div>
-                    <div className="text-sm text-red-600">
-                      Seats Booked / Locked
+                    <div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">
+                      Unavailable
                     </div>
                   </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-700">
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100">
+                    <div className="text-2xl font-black text-[#50b748] leading-none mb-1">
                       {totalAvailableCount}
                     </div>
-                    <div className="text-sm text-green-600">
-                      Seats Available
-                    </div>
-                  </div>
-                  <div className="flex justify-center sm:justify-end">
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                        Select Date
-                      </label>
-                      <input
-                        type="date"
-                        value={selectedDate}
-                        onChange={(e) => handleDateChange(e.target.value)}
-                        min={minBookingDate}
-                        max={maxBookingDate}
-                        className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
-                      />
+                    <div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">
+                      Available
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            <div className="flex justify-center gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 flex-wrap">
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-cyan-400 rounded-lg"></div>
-                <span className="text-xs sm:text-sm font-medium">
-                  Available
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-red-300 rounded-lg"></div>
-                <span className="text-xs sm:text-sm font-medium">Booked</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 bg-gray-500 rounded-lg"></div>
-                <span className="text-xs sm:text-sm font-medium">Locked</span>
-              </div>
-            </div>
-            {/* Joined Seats Info Banner */}
-            {/* <div className="mb-6 text-center">
-              <div className="inline-flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-lg px-6 py-4 shadow-sm">
-                <div className="text-amber-700">
-                  <svg
-                    className="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                </div>
-                <div className="text-left">
-                  <p className="font-semibold text-amber-900">
-                    Joined Seats Information
-                  </p>
-                  <p className="text-sm text-amber-800 mt-1">
-                    Some seats are designed as{" "}
-                    <strong>2 seats for 1 table</strong> (joined units).
-                  </p>
-                </div>
-              </div>
-            </div> */}
-            <div className="relative">
-              <div className="hidden sm:block bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
-                <div
-                  className="relative mx-auto"
-                  style={{
-                    width: "100%",
-                    maxWidth: "1450px",
-                    height: "0",
-                    paddingBottom: "60%",
-                    minHeight: "400px",
-                  }}
+            {/* Main Content Area */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[700px] flex flex-col">
+              
+              {/* Tabs */}
+              <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
+                <button
+                  onClick={() => setActiveTab("map")}
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                    activeTab === "map"
+                      ? "bg-white text-[#0056a2] shadow-sm ring-1 ring-gray-200/50"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
+                  }`}
                 >
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      transform: "scale(0.8)",
-                      transformOrigin: "center center",
-                    }}
-                  >
-                    <div
-                      className="absolute top-0 h-12 bg-gray-700  flex items-center"
-                      style={{
-                        left: "-124px",
-                        width: "742px",
-                      }}
-                    >
-                      <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
-                        Entrance
-                      </div>
-                    </div>
-                    <div
-                      className="absolute h-12 bg-gray-700 flex items-center"
-                      style={{
-                        left: "485px",
-                        top: "-45px",
-                        width: "785px",
-                        zIndex: 20,
-                      }}
-                    ></div>
-
-                    <div
-                      className="absolute top-11 w-33 bg-gray-700"
-                      style={{
-                        left: "486px",
-                        bottom: "-110px",
-                      }}
-                    ></div>
-
-                    <div
-                      className="absolute bg-gray-400 rounded-lg"
-                      style={{
-                        left: "-125px",
-                        top: "50px",
-                        width: "610px",
-                        height: "720px",
-                      }}
-                    >
-                      <div
-                        className="absolute bg-gray-600 rounded-full"
-                        style={{
-                          left: "235px",
-                          top: "250px",
-                          width: "140px",
-                          height: "140px",
-                        }}
-                      ></div>
-                    </div>
-
-                    <div
-                      className="absolute bg-gray-400 rounded-lg"
-                      style={{
-                        left: "620px",
-                        top: "0px",
-                        width: "650px",
-                        height: "770px",
-                      }}
-                    >
-                      <div
-                        className="absolute bg-gray-600 rounded-full"
-                        style={{
-                          left: "230px",
-                          top: "300px",
-                          width: "140px",
-                          height: "140px",
-                        }}
-                      ></div>
-                    </div>
-
-                    {leftSection.topRow.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        x={seat.x}
-                        y={seat.y}
-                      />
-                    ))}
-
-                    {leftSection.pillarSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing1.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing2.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing3.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.straightSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        x={seat.x}
-                        y={seat.y}
-                      />
-                    ))}
-
-                    {rightSection.pillarSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing1.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing2.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing3.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className="sm:hidden bg-gray-100 rounded-xl p-2 overflow-auto">
-                <div
-                  className="relative"
-                  style={{
-                    width: "calc(100vw - 2rem)",
-                    maxWidth: "1200px",
-                    height: "600px",
-                    overflow: "auto",
-                  }}
+                  <MapIcon size={18} />
+                  Seat Map
+                </button>
+                <button
+                  onClick={() => setActiveTab("bookings")}
+                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all ${
+                    activeTab === "bookings"
+                      ? "bg-white text-[#0056a2] shadow-sm ring-1 ring-gray-200/50"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
+                  }`}
                 >
-                  <div
-                    style={{
-                      position: "absolute",
-                      width: "700px",
-                      height: "800px",
-                      transform: "scale(0.6)",
-                      transformOrigin: "top left",
-                      left: "100px",
-                    }}
-                  >
-                    <div
-                      className="absolute top-0 h-12 bg-gray-700 rounded-t-2xl flex items-center"
-                      style={{
-                        left: "-125px",
-                        width: "1395px",
-                      }}
+                  <List size={18} />
+                  My Bookings
+                  {Object.keys(dailyBookings).length > 0 && (
+                    <span className="ml-1.5 bg-[#00b4eb] text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                      {Object.keys(dailyBookings).length}
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 relative bg-white">
+                <AnimatePresence mode="wait">
+                  
+                  {/* MAP TAB */}
+                  {activeTab === "map" && (
+                    <motion.div
+                      key="map-tab"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute inset-0 flex flex-col"
                     >
-                      <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
-                        Entrance
+                      {/* Legend */}
+                      <div className="flex justify-center items-center gap-6 py-4 px-6 bg-white border-b border-gray-50 flex-wrap shrink-0">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center">
+                             <Armchair size={12} className="text-[#50b748]" />
+                          </div>
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Available</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center">
+                            <X size={14} strokeWidth={3} className="text-white" />
+                          </div>
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Booked</span>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-6 h-6 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75">
+                             <Armchair size={12} className="text-slate-400" />
+                          </div>
+                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Locked</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div
-                      className="absolute top-12 w-33 bg-gray-700"
-                      style={{
-                        left: "486px",
-                        bottom: "0px",
-                      }}
-                    ></div>
-
-                    <div
-                      className="absolute bg-gray-400 rounded-lg"
-                      style={{
-                        left: "-125px",
-                        top: "50px",
-                        width: "610px",
-                        height: "720px",
-                      }}
-                    >
-                      <div
-                        className="absolute bg-gray-600 rounded-full"
-                        style={{
-                          left: "235px",
-                          top: "250px",
-                          width: "140px",
-                          height: "140px",
-                        }}
-                      ></div>
-                    </div>
-
-                    <div
-                      className="absolute bg-gray-400 rounded-lg"
-                      style={{
-                        left: "620px",
-                        top: "50px",
-                        width: "650px",
-                        height: "720px",
-                      }}
-                    >
-                      <div
-                        className="absolute bg-gray-600 rounded-full"
-                        style={{
-                          left: "230px",
-                          top: "250px",
-                          width: "140px",
-                          height: "140px",
-                        }}
-                      ></div>
-                    </div>
-
-                    {leftSection.topRow.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        x={seat.x}
-                        y={seat.y}
-                      />
-                    ))}
-
-                    {leftSection.pillarSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing1.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing2.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {leftSection.outerRing3.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={180}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.straightSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        x={seat.x}
-                        y={seat.y}
-                      />
-                    ))}
-
-                    {rightSection.pillarSeats.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing1.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing2.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-
-                    {rightSection.outerRing3.map((seat) => (
-                      <Seat
-                        key={seat.number}
-                        number={seat.number}
-                        angle={seat.angle}
-                        radius={seat.radius}
-                        centerX={920}
-                        centerY={377}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Booked Seats Table */}
-            <div className="mt-4 sm:mt-6 bg-white rounded-lg shadow-lg p-3 sm:p-4 lg:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4">
-                <h3 className="text-lg sm:text-xl font-bold text-gray-800">
-                  Seats Booked for {formatDisplayDate(selectedDate)}
-                </h3>
-                <span className="text-sm text-gray-500 mt-1 sm:mt-0">
-                  {totalUnavailableCount} of {TOTAL_SEATS} seats unavailable
-                  (includes locked)
-                </span>
-              </div>
-              {Object.keys(dailyBookings).length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-100 border-b">
-                      <tr>
-                        <th className="px-4 py-3 font-semibold text-gray-700">
-                          Seat Number
-                        </th>
-                        <th className="px-4 py-3 font-semibold text-gray-700">
-                          Booking Date
-                        </th>
-                        <th className="px-4 py-3 font-semibold text-gray-700 text-center">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {Object.entries(dailyBookings)
-                        .sort(([a], [b]) => Number(a) - Number(b))
-                        .map(([seatNum]) => (
-                          <tr
-                            key={seatNum}
-                            className="border-b hover:bg-gray-50 transition-colors"
+                      {/* Map Container */}
+                      <div className="flex-1 overflow-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative p-4 sm:p-8">
+                        
+                        {/* Desktop Map Wrapper */}
+                        <div className="hidden sm:flex items-center justify-center min-w-max min-h-max w-full h-full">
+                          <div
+                            className="relative mx-auto"
+                            style={{
+                              width: "1450px",
+                              height: "850px",
+                              transform: "scale(0.85)",
+                              transformOrigin: "center center",
+                            }}
                           >
-                            {/* Seat Number */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <Armchair size={16} className="text-cyan-600" />
-                                <span className="font-bold text-gray-800">
-                                  {seatNum}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* Booking Date */}
-                            <td className="px-4 py-3 text-gray-600">
-                              {formatDisplayDate(selectedDate)}
-                            </td>
-
-                            {/* Action */}
-                            <td className="px-4 py-3 text-center">
-                              <button
-                                onClick={() => handleCancelBooking(seatNum)}
-                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-xs font-medium"
-                                title="Cancel booking"
+                            <div className="absolute inset-0">
+                              {/* Structure Graphics */}
+                              <div
+                                className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg"
+                                style={{ left: "-124px", width: "742px" }}
                               >
-                                <Trash2 size={14} />
-                                Cancel
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-6">
-                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 text-sm">
-                    No seats booked for {formatDisplayDate(selectedDate)}
-                  </p>
-                  <p className="text-gray-400 text-xs mt-1">
-                    Select seats above to make bookings
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+                                <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">
+                                  Entrance
+                                </div>
+                              </div>
+                              <div
+                                className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg"
+                                style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
+                              ></div>
+                              <div
+                                className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg"
+                                style={{ left: "486px", bottom: "-110px" }}
+                              ></div>
+                              
+                              {/* Main Room Blocks */}
+                              <div
+                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
+                                style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}
+                              >
+                                <div
+                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
+                                  style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
+                                ></div>
+                              </div>
 
-          {showModal && (
-            <BookingModal
-              currentSeat={currentSeat}
-              formatDisplayDate={formatDisplayDate}
-              selectedDate={selectedDate}
-              handleModalClose={handleModalClose}
-              handleDateBookingConfirm={handleDateBookingConfirm}
-            />
-          )}
-        </main>
+                              <div
+                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
+                                style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}
+                              >
+                                <div
+                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
+                                  style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
+                                ></div>
+                              </div>
+
+                              {/* Render Seats */}
+                              {leftSection.topRow.map((seat) => (
+                                <Seat key={seat.number} {...seat} />
+                              ))}
+                              {leftSection.pillarSeats.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
+                              ))}
+                              {leftSection.outerRing1.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
+                              ))}
+                              {leftSection.outerRing2.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
+                              ))}
+                              {leftSection.outerRing3.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
+                              ))}
+
+                              {rightSection.straightSeats.map((seat) => (
+                                <Seat key={seat.number} {...seat} />
+                              ))}
+                              {rightSection.pillarSeats.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
+                              ))}
+                              {rightSection.outerRing1.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
+                              ))}
+                              {rightSection.outerRing2.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
+                              ))}
+                              {rightSection.outerRing3.map((seat) => (
+                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Mobile Map Wrapper */}
+                        <div className="sm:hidden min-w-[700px] min-h-[850px] relative">
+                           <div
+                            style={{
+                              position: "absolute",
+                              width: "700px",
+                              height: "800px",
+                              transform: "scale(0.65)",
+                              transformOrigin: "top left",
+                              left: "50px",
+                              top: "20px"
+                            }}
+                          >
+                             <div
+                              className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-2xl flex items-center shadow-lg"
+                              style={{ left: "-125px", width: "1395px" }}
+                            >
+                              <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">
+                                Entrance
+                              </div>
+                            </div>
+                            <div
+                              className="absolute top-14 w-33 bg-slate-800 rounded-b-2xl shadow-lg"
+                              style={{ left: "486px", bottom: "0px" }}
+                            ></div>
+
+                            <div
+                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
+                              style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}
+                            >
+                               <div
+                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
+                                style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
+                              ></div>
+                            </div>
+
+                            <div
+                               className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
+                              style={{ left: "620px", top: "70px", width: "650px", height: "720px" }}
+                            >
+                              <div
+                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
+                                style={{ left: "230px", top: "250px", width: "140px", height: "140px" }}
+                              ></div>
+                            </div>
+
+                            {leftSection.topRow.map((seat) => <Seat key={seat.number} {...seat} />)}
+                            {leftSection.pillarSeats.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                            {leftSection.outerRing1.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                            {leftSection.outerRing2.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                            {leftSection.outerRing3.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                            {rightSection.straightSeats.map((seat) => <Seat key={seat.number} {...seat} />)}
+                            {rightSection.pillarSeats.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                            {rightSection.outerRing1.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                            {rightSection.outerRing2.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                            {rightSection.outerRing3.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                          </div>
+                        </div>
+
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* BOOKINGS TAB */}
+                  {activeTab === "bookings" && (
+                    <motion.div
+                      key="bookings-tab"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute inset-0 p-6 overflow-auto bg-slate-50/30"
+                    >
+                      <div className="max-w-4xl mx-auto">
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+                          <div>
+                            <h3 className="text-xl font-extrabold text-gray-800 tracking-tight">
+                              Your Bookings for {formatDisplayDate(selectedDate)}
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1 font-medium">
+                              Manage your seat reservations for this date.
+                            </p>
+                          </div>
+                        </div>
+
+                        {Object.keys(dailyBookings).length > 0 ? (
+                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                            <table className="w-full text-left text-sm">
+                              <thead className="bg-slate-50/80 border-b border-gray-100">
+                                <tr>
+                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                                    Seat Number
+                                  </th>
+                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
+                                    Booking Date
+                                  </th>
+                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
+                                    Actions
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-50">
+                                {Object.entries(dailyBookings)
+                                  .sort(([a], [b]) => Number(a) - Number(b))
+                                  .map(([seatNum]) => (
+                                    <tr
+                                      key={seatNum}
+                                      className="hover:bg-slate-50/50 transition-colors group"
+                                    >
+                                      <td className="px-6 py-5">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center">
+                                            <Armchair size={18} className="text-[#0056a2]" />
+                                          </div>
+                                          <div>
+                                            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span>
+                                            <span className="font-extrabold text-gray-900 text-base leading-none">
+                                              {seatNum}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-5">
+                                        <div className="font-medium text-gray-700">
+                                          {formatDisplayDate(selectedDate)}
+                                        </div>
+                                      </td>
+                                      <td className="px-6 py-5 text-right">
+                                        <button
+                                          onClick={() => handleCancelBooking(seatNum)}
+                                          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all text-sm font-bold shadow-sm"
+                                          title="Cancel booking"
+                                        >
+                                          <Trash2 size={16} />
+                                          Cancel
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
+                          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                               <Calendar className="h-8 w-8 text-slate-300" />
+                            </div>
+                            <h4 className="text-lg font-bold text-gray-700">No seats booked yet</h4>
+                            <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
+                              You haven't booked any seats for {formatDisplayDate(selectedDate)}. Switch to the Seat Map to make a reservation.
+                            </p>
+                            <button
+                               onClick={() => setActiveTab("map")}
+                               className="mt-6 px-6 py-2.5 bg-[#0056a2] text-white font-bold rounded-xl shadow-md shadow-[#0056a2]/20 hover:bg-[#00488a] transition-all"
+                            >
+                              Browse Seat Map
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+          </main>
+        </div>
+
+        {/* Modal Overlay */}
+        {showModal && (
+          <BookingModal
+            currentSeat={currentSeat}
+            formatDisplayDate={formatDisplayDate}
+            selectedDate={selectedDate}
+            handleModalClose={handleModalClose}
+            handleDateBookingConfirm={handleDateBookingConfirm}
+          />
+        )}
       </div>
-    </div>
     </SeatContext.Provider>
   );
 };
