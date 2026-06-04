@@ -15,11 +15,16 @@ import {
   ChevronDown,
   QrCode,
   Camera,
+  Folder,
+  Bell,
+  Mail,
+  Building,
+  GraduationCap
 } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
 import { calculateInternshipEndNotification } from "../utils/internshipNotification";
-import { motion, AnimatePresence } from "framer-motion"; // Import framer-motion
+import { motion, AnimatePresence } from "framer-motion";
 const Dashboard = () => {
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
@@ -46,6 +51,7 @@ const Dashboard = () => {
   const [isNetworkError, setIsNetworkError] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [internData, setInternData] = useState(null);
+  const [internProjects, setInternProjects] = useState([]);
   const [endDateNotification, setEndDateNotification] = useState(null);
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [projectPopupPending, setProjectPopupPending] = useState(false);
@@ -199,6 +205,9 @@ const Dashboard = () => {
         const projectCheck = await api.get(
           `/interns/${internId}/projects/check`,
         );
+        if (projectCheck?.projects) {
+          setInternProjects(projectCheck.projects);
+        }
         const hasProject =
           projectCheck?.hasProject === true ||
           (Array.isArray(projectCheck?.projects) &&
@@ -447,7 +456,7 @@ const Dashboard = () => {
           onDismiss={() => setEndDateNotification(null)}
         />
 
-        {/* ── Intern Profile Card ── */}
+        {/* ── Intern Profile Card (Refactored) ── */}
         {internData && (
           <motion.div
             className="mb-8 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
@@ -456,107 +465,135 @@ const Dashboard = () => {
             transition={{ duration: 0.4 }}
           >
             {/* Header gradient bar */}
-            <div
-              className="h-2"
-              style={{
-                background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 50%, #50b748 100%)",
-              }}
-            />
-            <div className="p-5 sm:p-6">
-              {/* Top row: Name + badge */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-md flex-shrink-0"
-                    style={{
-                      background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                    }}
-                  >
-                    {(internData.Trainee_Name || "?").charAt(0).toUpperCase()}
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 p-6 sm:p-8 border-b border-gray-100 relative">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
+                    {internData.Trainee_Name || "—"}
+                  </h2>
+                  <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-2">
+                    {internData.Trainee_ID || "—"}
+                  </p>
+                  
+                  {internData.Training_EndDate && (() => {
+                    const daysLeft = Math.ceil(
+                      (new Date(internData.Training_EndDate) - new Date()) / (1000 * 60 * 60 * 24)
+                    );
+                    return daysLeft > 0 ? (
+                      <div className="mt-4 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-sm" style={{ background: daysLeft <= 14 ? "linear-gradient(135deg, #ef4444, #dc2626)" : daysLeft <= 30 ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #50b748, #2e7d32)" }}>
+                        {daysLeft} DAYS REMAINING
+                      </div>
+                    ) : (
+                      <div className="mt-4 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                        TRAINING ENDED
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                {internData.lastSeen && (
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100/50 text-blue-700 rounded-full text-xs font-semibold shadow-sm border border-blue-200/50">
+                    <Clock className="w-3.5 h-3.5" />
+                    Last seen: {new Date(internData.lastSeen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(internData.lastSeen).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Grid Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 sm:p-8 bg-gray-50/30">
+              
+              {/* Personal Information */}
+              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
+                  <User className="w-5 h-5 text-indigo-500" />
+                  Personal Information
+                </h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Email</p>
+                    <p className="text-sm font-medium text-gray-800 break-all">{internData.Trainee_Email || "Not specified"}</p>
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-gray-900 tracking-tight">
-                      {internData.Trainee_Name || "—"}
-                    </h3>
-                    <p className="text-sm text-gray-500 font-medium mt-0.5">
-                      ID: {internData.Trainee_ID || "—"}
-                    </p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Institute</p>
+                    <p className="text-sm font-medium text-gray-800">{internData.Institute || "Not specified"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Specialization</p>
+                    <p className="text-sm font-medium text-gray-800">{internData.field_of_spec_name || "Not specified"}</p>
                   </div>
                 </div>
-                {internData.Training_EndDate && (() => {
-                  const daysLeft = Math.ceil(
-                    (new Date(internData.Training_EndDate) - new Date()) / (1000 * 60 * 60 * 24)
-                  );
-                  return daysLeft > 0 ? (
-                    <span
-                      className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm"
-                      style={{
-                        background: daysLeft <= 14
-                          ? "linear-gradient(135deg, #ef4444, #dc2626)"
-                          : daysLeft <= 30
-                            ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                            : "linear-gradient(135deg, #50b748, #2e7d32)",
-                      }}
-                    >
-                      {daysLeft} DAYS REMAINING
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-red-100 text-red-700">
-                      TRAINING ENDED
-                    </span>
-                  );
-                })()}
               </div>
 
-              {/* Details grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                {/* Email */}
-                <div className="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100/60">
-                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Email</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.Trainee_Email}>{internData.Trainee_Email || "Not specified"}</p>
-                  </div>
-                </div>
-                {/* Institute */}
-                <div className="flex items-center gap-3 p-3 bg-purple-50/60 rounded-xl border border-purple-100/60">
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Institute</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.Institute}>{internData.Institute || "Not specified"}</p>
-                  </div>
-                </div>
-                {/* Specialization */}
-                <div className="flex items-center gap-3 p-3 bg-amber-50/60 rounded-xl border border-amber-100/60">
-                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Specialization</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.field_of_spec_name}>{internData.field_of_spec_name || "Not specified"}</p>
-                  </div>
-                </div>
+              <div className="space-y-6">
                 {/* Training Period */}
-                <div className="flex items-center gap-3 p-3 bg-emerald-50/60 rounded-xl border border-emerald-100/60">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
+                    <Calendar className="w-5 h-5 text-emerald-500" />
+                    Training Period
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Start Date</p>
+                      <p className="text-sm font-medium text-gray-800">{internData.Training_StartDate ? formatDate(internData.Training_StartDate) : "N/A"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">End Date</p>
+                      <p className="text-sm font-medium text-gray-800">{internData.Training_EndDate ? formatDate(internData.Training_EndDate) : "N/A"}</p>
+                    </div>
+                    {internData.Training_StartDate && internData.Training_EndDate && (() => {
+                      const start = new Date(internData.Training_StartDate);
+                      const end = new Date(internData.Training_EndDate);
+                      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                      const weeks = Math.floor(totalDays / 7);
+                      const remainingDays = totalDays % 7;
+                      const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
+                      return (
+                        <>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Duration</p>
+                            <p className="text-sm font-medium text-gray-800">{weeks} weeks, {remainingDays} days</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Status</p>
+                            <p className={`text-sm font-bold ${daysLeft > 0 ? "text-emerald-600" : "text-red-600"}`}>
+                              {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Training Period</p>
-                    <p className="text-sm font-semibold text-gray-800 truncate">
-                      {internData.Training_StartDate
-                        ? new Date(internData.Training_StartDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                        : "—"}{" "}
-                      →{" "}
-                      {internData.Training_EndDate
-                        ? new Date(internData.Training_EndDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                        : "—"}
-                    </p>
+                </div>
+
+                {/* Project Assignments */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                      <Folder className="w-5 h-5 text-blue-500" />
+                      Project Assignments
+                    </h3>
                   </div>
+                  {internProjects && internProjects.length > 0 ? (
+                    <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                      {internProjects.map((proj, pi) => (
+                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                          <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                            <Folder className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold text-gray-800 truncate">{proj.projectName}</p>
+                            <p className="text-xs font-medium text-gray-500 mt-0.5">Status: {proj.status || "N/A"}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                      <Folder className="w-8 h-8 text-gray-300 mb-2" />
+                      <p className="text-sm font-medium text-gray-500 text-center">No projects assigned</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

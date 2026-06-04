@@ -1817,8 +1817,8 @@ const AdminInternDetails = () => {
                                 <div className="space-y-4">
                                   {logbookModal.task && (
                                     <div>
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                        ✅ Tasks Completed
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaCheckCircle className="text-blue-500 mr-1.5" /> Tasks Completed
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
                                         {logbookModal.task}
@@ -1827,8 +1827,8 @@ const AdminInternDetails = () => {
                                   )}
                                   {logbookModal.progress && (
                                     <div>
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                        📈 Progress
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaChartLine className="text-emerald-500 mr-1.5" /> Progress
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
                                         {logbookModal.progress}
@@ -1837,8 +1837,8 @@ const AdminInternDetails = () => {
                                   )}
                                   {logbookModal.blockers && (
                                     <div>
-                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
-                                        🚧 Challenges / Blockers
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaExclamationTriangle className="text-amber-500 mr-1.5" /> Challenges / Blockers
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">
                                         {logbookModal.blockers}
@@ -1858,35 +1858,35 @@ const AdminInternDetails = () => {
                               Record History
                             </h3>
                             <div className="flex items-center gap-2 flex-wrap">
-                              <div className="flex rounded-xl overflow-hidden border border-gray-200">
+                              <div className="flex rounded-xl overflow-hidden bg-gray-100 p-1 border border-gray-200/60">
                                 <button
                                   onClick={() => setLogbookView("calendar")}
-                                  className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors ${
+                                  className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-lg ${
                                     logbookView === "calendar"
-                                      ? "bg-blue-500 text-white"
-                                      : "text-gray-600 hover:bg-gray-50"
+                                      ? "bg-white text-blue-600 shadow-sm"
+                                      : "text-gray-500 hover:text-gray-700"
                                   }`}
                                 >
-                                  📅 Calendar View
+                                  <FaCalendarAlt /> Calendar View
                                 </button>
                                 <button
                                   onClick={() => setLogbookView("list")}
-                                  className={`px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors border-l border-gray-200 ${
+                                  className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-lg ${
                                     logbookView === "list"
-                                      ? "bg-blue-500 text-white"
-                                      : "text-gray-600 hover:bg-gray-50"
+                                      ? "bg-white text-blue-600 shadow-sm"
+                                      : "text-gray-500 hover:text-gray-700"
                                   }`}
                                 >
-                                  📋 List View
+                                  <FaClipboardList /> List View
                                 </button>
                               </div>
                               <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
                                 onClick={() =>
                                   navigate(`/admin/intern/${internId}/records`)
                                 }
-                                className="flex items-center px-3 sm:px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl text-xs sm:text-sm shadow-sm hover:shadow-md"
+                                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-medium shadow-sm hover:bg-blue-700 hover:shadow transition-all"
                               >
                                 <FaFileAlt className="mr-2" /> View Full Records
                               </motion.button>
