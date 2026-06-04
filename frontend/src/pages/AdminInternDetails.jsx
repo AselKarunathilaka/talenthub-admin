@@ -1275,28 +1275,28 @@ const AdminInternDetails = () => {
                                     count: allDailyPresent,
                                     total: allDailyTotal,
                                     label: "Daily Present",
-                                    icon: "📅",
+                                    icon: FaCalendarCheck,
                                     accentColor: "text-emerald-600",
                                   },
                                   {
                                     count: allDailyTotal - allDailyPresent,
                                     total: allDailyTotal,
                                     label: "Daily Absent",
-                                    icon: "🚫",
+                                    icon: FaTimesCircle,
                                     accentColor: "text-rose-600",
                                   },
                                   {
                                     count: allMeetingPresent,
                                     total: allMeetingTotal,
                                     label: "Meetings Attended",
-                                    icon: "📹",
+                                    icon: FaVideo,
                                     accentColor: "text-blue-600",
                                   },
                                   {
                                     count: allMeetingTotal - allMeetingPresent,
                                     total: allMeetingTotal,
                                     label: "Meetings Missed",
-                                    icon: "❌",
+                                    icon: FaTimes,
                                     accentColor: "text-amber-600",
                                   },
                                 ].map(
@@ -1305,7 +1305,7 @@ const AdminInternDetails = () => {
                                     total,
                                     label,
                                     sublabel,
-                                    icon,
+                                    icon: Icon,
                                     accentColor,
                                   }) => (
                                     <div
@@ -1314,7 +1314,7 @@ const AdminInternDetails = () => {
                                     >
                                       <div className="flex justify-between items-start mb-2">
                                         <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-                                          <span className="text-lg">{icon}</span>
+                                          <Icon className={`text-lg ${accentColor}`} />
                                         </div>
                                       </div>
                                       <div className="mt-2">

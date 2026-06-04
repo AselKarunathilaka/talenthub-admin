@@ -219,7 +219,7 @@ const AdminInternCertificate = () => {
               </motion.button>
               <div>
                 <h2 className="text-2xl lg:text-3xl font-bold">
-                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-yellow-500">
+                  <span className="text-slate-900">
                     Completion Certificate
                   </span>
                 </h2>
