@@ -7,6 +7,7 @@ import NoProjectNotification from "../components/NoProjectNotification";
 import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import {
   Users,
+  User,
   CheckCircle,
   XCircle,
   Loader2,

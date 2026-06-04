@@ -1190,10 +1190,10 @@ const AdminInternDetails = () => {
                             </div>
                           </div>
 
-                          {/* Content sections - 2x2 grid */}
+                          {/* Content sections */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
                             {/* Personal Information */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm h-full">
                               <h4 className="text-sm font-bold text-gray-900 mb-3">Personal Information</h4>
                               <div className="space-y-3">
                                 <div>
@@ -1211,65 +1211,65 @@ const AdminInternDetails = () => {
                               </div>
                             </div>
 
-
-
-                            {/* Training Period */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                              <h4 className="text-sm font-bold text-gray-900 mb-3">Training Period</h4>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <p className="text-xs text-gray-400">Start Date:</p>
-                                  <p className="text-sm font-semibold text-gray-800">{intern.startDate ? formatDate(intern.startDate) : "N/A"}</p>
+                            <div className="space-y-4">
+                              {/* Training Period */}
+                              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                <h4 className="text-sm font-bold text-gray-900 mb-3">Training Period</h4>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <p className="text-xs text-gray-400">Start Date:</p>
+                                    <p className="text-sm font-semibold text-gray-800">{intern.startDate ? formatDate(intern.startDate) : "N/A"}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs text-gray-400">End Date:</p>
+                                    <p className="text-sm font-semibold text-gray-800">{intern.endDate ? formatDate(intern.endDate) : "N/A"}</p>
+                                  </div>
+                                  {intern.startDate && intern.endDate && (() => {
+                                    const start = new Date(intern.startDate);
+                                    const end = new Date(intern.endDate);
+                                    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                                    const weeks = Math.floor(totalDays / 7);
+                                    const remainingDays = totalDays % 7;
+                                    const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
+                                    return (
+                                      <>
+                                        <div>
+                                          <p className="text-xs text-gray-400">Duration:</p>
+                                          <p className="text-sm font-semibold text-gray-800">{weeks} weeks, {remainingDays} days</p>
+                                        </div>
+                                        <div>
+                                          <p className="text-xs text-gray-400">Status:</p>
+                                          <p className={`text-sm font-semibold ${daysLeft > 0 ? "text-green-600" : "text-red-600"}`}>
+                                            {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
+                                          </p>
+                                        </div>
+                                      </>
+                                    );
+                                  })()}
                                 </div>
-                                <div>
-                                  <p className="text-xs text-gray-400">End Date:</p>
-                                  <p className="text-sm font-semibold text-gray-800">{intern.endDate ? formatDate(intern.endDate) : "N/A"}</p>
-                                </div>
-                                {intern.startDate && intern.endDate && (() => {
-                                  const start = new Date(intern.startDate);
-                                  const end = new Date(intern.endDate);
-                                  const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                                  const weeks = Math.floor(totalDays / 7);
-                                  const remainingDays = totalDays % 7;
-                                  const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
-                                  return (
-                                    <>
-                                      <div>
-                                        <p className="text-xs text-gray-400">Duration:</p>
-                                        <p className="text-sm font-semibold text-gray-800">{weeks} weeks, {remainingDays} days</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-gray-400">Status:</p>
-                                        <p className={`text-sm font-semibold ${daysLeft > 0 ? "text-green-600" : "text-red-600"}`}>
-                                          {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
-                                        </p>
-                                      </div>
-                                    </>
-                                  );
-                                })()}
                               </div>
-                            </div>
 
-                            {/* Project Assignments */}
-                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                              <h4 className="text-sm font-bold text-gray-900 mb-3">Project Assignments</h4>
-                              {intern.projects && intern.projects.length > 0 ? (
-                                <div className="space-y-2 max-h-40 overflow-y-auto">
-                                  {intern.projects.map((proj, pi) => (
-                                    <div key={pi} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-sm">
-                                        <FaProjectDiagram className="text-white text-xs" />
+                              {/* Project Assignments */}
+                              <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                                <h4 className="text-sm font-bold text-gray-900 mb-3">Project Assignments</h4>
+                                {intern.projects && intern.projects.length > 0 ? (
+                                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                                    {intern.projects.map((proj, pi) => (
+                                      <div key={pi} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                          <FaProjectDiagram className="text-white text-xs" />
+                                        </div>
+                                        <div className="min-w-0">
+                                          <p className="text-sm font-semibold text-gray-800 truncate">{proj.projectName}</p>
+                                          <p className="text-xs text-gray-400">Status: {proj.status || "N/A"}</p>
+                                        </div>
                                       </div>
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-gray-800 truncate">{proj.projectName}</p>
-                                        <p className="text-xs text-gray-400">Status: {proj.status || "N/A"}</p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-gray-400 italic">No projects assigned</p>
-                              )}
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-gray-400 italic">No projects assigned</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </motion.div>
