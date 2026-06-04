@@ -586,30 +586,18 @@ const AdminInternDetails = () => {
                           label: "Total Records",
                           value: statistics.totalRecords,
                           icon: FaFileAlt,
-                          iconColor: "text-blue-600",
-                          bgColor: "bg-blue-100",
-                          barColor: "bg-blue-500",
-                          barBg: "bg-blue-100",
                           width: Math.min(100, statistics.totalRecords),
                         },
                         {
                           label: "This Week",
                           value: statistics.weeklyRecords,
                           icon: FaTasks,
-                          iconColor: "text-green-600",
-                          bgColor: "bg-green-100",
-                          barColor: "bg-green-500",
-                          barBg: "bg-green-100",
                           width: Math.min(100, statistics.weeklyRecords * 20),
                         },
                         {
                           label: "This Month",
                           value: statistics.monthlyRecords,
                           icon: FaRegCalendarCheck,
-                          iconColor: "text-purple-600",
-                          bgColor: "bg-purple-100",
-                          barColor: "bg-purple-500",
-                          barBg: "bg-purple-100",
                           width: Math.min(100, statistics.monthlyRecords * 10),
                         },
                         {
@@ -619,15 +607,8 @@ const AdminInternDetails = () => {
                               ? statistics.daysSinceLastSubmission
                               : "Never",
                           icon: FaClock,
-                          iconColor: "text-amber-600",
-                          bgColor: "bg-amber-100",
-                          barColor: "bg-amber-500",
-                          barBg: "bg-amber-100",
                           width: statistics.daysSinceLastSubmission
-                            ? Math.max(
-                                5,
-                                100 - statistics.daysSinceLastSubmission * 5,
-                              )
+                            ? Math.max(5, 100 - statistics.daysSinceLastSubmission * 5)
                             : 0,
                         },
                       ].map(
@@ -635,38 +616,32 @@ const AdminInternDetails = () => {
                           label,
                           value,
                           icon: Icon,
-                          iconColor,
-                          bgColor,
-                          barColor,
-                          barBg,
                           width,
                         }) => (
                           <div
                             key={label}
-                            className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
+                            className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden"
                           >
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-4">
                               <div>
-                                <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                                <p className="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">
                                   {label}
                                 </p>
-                                <p className="text-2xl sm:text-3xl font-bold text-gray-800">
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
                                   {value}
                                 </p>
                               </div>
                               <div
-                                className={`p-2 sm:p-3 rounded-full ${bgColor}`}
+                                className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center"
                               >
                                 <Icon
-                                  className={`text-xl sm:text-2xl ${iconColor}`}
+                                  className="h-5 w-5 text-slate-600"
                                 />
                               </div>
                             </div>
-                            <div
-                              className={`mt-2 h-1 ${barBg} rounded-full overflow-hidden`}
-                            >
+                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                               <div
-                                className={`h-full ${barColor} rounded-full`}
+                                className="bg-slate-800 h-1.5 rounded-full transition-all duration-1000 ease-out"
                                 style={{ width: `${width}%` }}
                               />
                             </div>
@@ -1264,31 +1239,29 @@ const AdminInternDetails = () => {
                         </motion.div>
 
                         <motion.div
-                          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm"
+                          className="bg-white rounded-2xl border border-gray-200 p-5 sm:p-7 shadow-sm"
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: 0.3, delay: 0.1 }}
                         >
-                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center mb-4">
-                            <FaCalendarCheck className="mr-2 text-blue-500" />{" "}
-                            Attendance Calendar
-                          </h3>
+                          <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                            <h3 className="text-lg font-bold text-slate-900 tracking-tight flex items-center">
+                              <FaCalendarCheck className="mr-3 text-slate-400" />{" "}
+                              Attendance Calendar
+                            </h3>
+                          </div>
 
                           {attendanceLoading && (
                             <div className="flex justify-center items-center py-16">
                               <motion.div
                                 animate={{ rotate: 360 }}
-                                transition={{
-                                  duration: 1,
-                                  repeat: Infinity,
-                                  ease: "linear",
-                                }}
-                                className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full"
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="w-8 h-8 border-t-2 border-b-2 border-slate-800 rounded-full"
                               />
                             </div>
                           )}
                           {attendanceError && !attendanceLoading && (
-                            <div className="text-center py-12 text-red-500 text-sm">
+                            <div className="text-center py-12 text-red-500 text-sm font-medium">
                               {attendanceError}
                             </div>
                           )}
@@ -1296,47 +1269,35 @@ const AdminInternDetails = () => {
                           {!attendanceLoading && !attendanceError && (
                             <div>
                               {/* ── All-time stat cards ── */}
-                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
                                 {[
                                   {
                                     count: allDailyPresent,
                                     total: allDailyTotal,
                                     label: "Daily Present",
                                     icon: "📅",
-                                    ringColor: "ring-green-200",
-                                    textColor: "text-green-600",
-                                    bgColor: "bg-green-50",
-                                    borderColor: "border-green-100",
+                                    accentColor: "text-emerald-600",
                                   },
                                   {
                                     count: allDailyTotal - allDailyPresent,
                                     total: allDailyTotal,
                                     label: "Daily Absent",
                                     icon: "🚫",
-                                    ringColor: "ring-red-200",
-                                    textColor: "text-red-500",
-                                    bgColor: "bg-red-50",
-                                    borderColor: "border-red-100",
+                                    accentColor: "text-rose-600",
                                   },
                                   {
                                     count: allMeetingPresent,
                                     total: allMeetingTotal,
                                     label: "Meetings Attended",
                                     icon: "📹",
-                                    ringColor: "ring-blue-200",
-                                    textColor: "text-blue-600",
-                                    bgColor: "bg-blue-50",
-                                    borderColor: "border-blue-100",
+                                    accentColor: "text-blue-600",
                                   },
                                   {
                                     count: allMeetingTotal - allMeetingPresent,
                                     total: allMeetingTotal,
                                     label: "Meetings Missed",
                                     icon: "❌",
-                                    ringColor: "ring-orange-200",
-                                    textColor: "text-orange-500",
-                                    bgColor: "bg-orange-50",
-                                    borderColor: "border-orange-100",
+                                    accentColor: "text-amber-600",
                                   },
                                 ].map(
                                   ({
@@ -1345,30 +1306,30 @@ const AdminInternDetails = () => {
                                     label,
                                     sublabel,
                                     icon,
-                                    ringColor,
-                                    textColor,
-                                    bgColor,
-                                    borderColor,
+                                    accentColor,
                                   }) => (
                                     <div
                                       key={label}
-                                      className={`${bgColor} border ${borderColor} rounded-2xl p-4 flex flex-col items-center text-center shadow-sm`}
+                                      className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col shadow-sm relative overflow-hidden"
                                     >
-                                      <div
-                                        className={`w-14 h-14 rounded-full ring-4 ${ringColor} bg-white flex items-center justify-center mb-2 shadow-sm`}
-                                      >
-                                        <span
-                                          className={`text-2xl font-bold ${textColor}`}
-                                        >
-                                          {count}
-                                        </span>
+                                      <div className="flex justify-between items-start mb-2">
+                                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+                                          <span className="text-lg">{icon}</span>
+                                        </div>
                                       </div>
-                                      <p className="text-xs font-semibold text-gray-700">
-                                        {label}
-                                      </p>
-                                      <p className="text-[10px] text-gray-400 mt-0.5">
-                                        {sublabel}
-                                      </p>
+                                      <div className="mt-2">
+                                        <p className={`text-2xl font-bold tracking-tight ${accentColor}`}>
+                                          {count}
+                                        </p>
+                                        <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500 mt-1">
+                                          {label}
+                                        </p>
+                                        {sublabel && (
+                                          <p className="text-[10px] text-slate-400 mt-0.5">
+                                            {sublabel}
+                                          </p>
+                                        )}
+                                      </div>
                                     </div>
                                   ),
                                 )}
@@ -1889,35 +1850,27 @@ const AdminInternDetails = () => {
                                   {
                                     value: totalWeekdays,
                                     label: "Working Days",
-                                    color: "text-gray-700",
-                                    bg: "bg-gray-50",
-                                    border: "border-gray-200",
+                                    color: "text-slate-900",
                                   },
                                   {
                                     value: totalRecords,
                                     label: "Logs Submitted",
-                                    color: "text-green-700",
-                                    bg: "bg-green-50",
-                                    border: "border-green-200",
+                                    color: "text-emerald-600",
                                   },
                                   {
                                     value: missedDays,
                                     label: "Logs Missed",
-                                    color: "text-red-700",
-                                    bg: "bg-red-50",
-                                    border: "border-red-200",
+                                    color: "text-rose-600",
                                   },
-                                ].map(({ value, label, color, bg, border }) => (
+                                ].map(({ value, label, color }) => (
                                   <div
                                     key={label}
-                                    className={`${bg} border ${border} rounded-xl p-3 text-center`}
+                                    className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm"
                                   >
-                                    <p
-                                      className={`text-2xl font-bold ${color}`}
-                                    >
+                                    <p className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 ${color}`}>
                                       {value}
                                     </p>
-                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                    <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
                                       {label}
                                     </p>
                                   </div>
