@@ -482,103 +482,92 @@ const AdminInternDetails = () => {
                   <div className="space-y-4 sm:space-y-6">
                     {/* Profile card */}
                     <motion.div
-                      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm"
+                      className="bg-white rounded-2xl border border-gray-200 shadow-sm relative mb-6 overflow-hidden"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.2, duration: 0.3 }}
                     >
-                      <div className="flex flex-col md:flex-row items-start md:items-center mb-4 sm:mb-6 gap-4 sm:gap-6">
-                        <div className="relative mx-auto md:mx-0">
-                          <div className="h-20 w-20 sm:h-24 sm:w-24 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg">
-                            <FaUser className="text-white text-3xl sm:text-4xl" />
+                      {/* Cover Banner */}
+                      <div className="h-24 sm:h-32 bg-slate-900 w-full relative overflow-hidden">
+                        <div className="absolute inset-0 bg-[linear-gradient(40deg,transparent_20%,rgba(255,255,255,0.05)_50%,transparent_80%)]"></div>
+                      </div>
+                      
+                      <div className="px-5 sm:px-8 pb-6 sm:pb-8 relative">
+                        {/* Avatar & Buttons Row */}
+                        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-10 sm:-mt-12 mb-4">
+                          {/* Overlapping Avatar */}
+                          <div className="relative inline-block z-10">
+                            <div className="h-20 w-20 sm:h-24 sm:w-24 bg-white p-1 rounded-2xl shadow-md border border-gray-100">
+                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200">
+                                <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+                              </div>
+                            </div>
+                            <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-0.5 shadow-sm border border-gray-100">
+                              <div className="bg-emerald-500 rounded-full h-5 w-5 flex items-center justify-center">
+                                <FaCheckCircle className="text-white text-[10px]" />
+                              </div>
+                            </div>
                           </div>
-                          <div className="absolute -bottom-2 -right-2 bg-green-500 rounded-full p-1 border-2 border-white">
-                            <FaCheckCircle className="text-white text-sm" />
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2 sm:gap-3 sm:mb-2">
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => window.open(`mailto:${intern.email}`, "_blank")}
+                              className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white text-slate-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
+                            >
+                              <FaEnvelope className="mr-2 text-slate-400" /> Contact
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => navigate(`/admin/intern/${internId}/certificate`)}
+                              className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-sm border border-slate-900"
+                            >
+                              <FaCertificate className="mr-2 text-amber-400" /> Certificate
+                            </motion.button>
                           </div>
                         </div>
-                        <div className="flex-1 w-full md:w-auto">
-                          <div className="flex flex-col gap-4">
-                            <div className="text-center md:text-left">
-                              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
-                                {intern.traineeName}
-                              </h3>
-                              <p className="text-sm sm:text-base text-gray-600">
-                                Trainee ID: {intern.traineeId}
-                              </p>
-                            </div>
-                            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() =>
-                                  window.open(
-                                    `mailto:${intern.email}`,
-                                    "_blank",
-                                  )
-                                }
-                                className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl text-sm shadow-sm hover:shadow-md"
-                              >
-                                <FaEnvelope className="mr-2" /> Contact
-                              </motion.button>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() =>
-                                  navigate(
-                                    `/admin/intern/${internId}/certificate`,
-                                  )
-                                }
-                                className="flex items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-white rounded-xl text-sm shadow-sm hover:shadow-md"
-                              >
-                                <FaCertificate className="mr-2" /> Certificate
-                              </motion.button>
+
+                        {/* Profile Info */}
+                        <div className="mb-6">
+                          <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                            {intern.traineeName}
+                          </h3>
+                          <p className="text-sm font-medium text-slate-500 mt-0.5">
+                            Trainee ID: <span className="text-slate-700">{intern.traineeId}</span>
+                          </p>
+                        </div>
+
+                        {/* Metadata Strip */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-5 border-t border-gray-100">
+                          <div>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Email</p>
+                            <div className="flex items-center text-sm font-medium text-slate-800">
+                              <FaEnvelope className="mr-2 text-slate-400" />
+                              <span className="truncate">{intern.email}</span>
                             </div>
                           </div>
-                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
-                              <FaEnvelope className="text-gray-500 mr-3 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs sm:text-sm text-gray-500">
-                                  Email
-                                </p>
-                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
-                                  {intern.email}
-                                </p>
-                              </div>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Specialization</p>
+                            <div className="flex items-center text-sm font-medium text-slate-800">
+                              <FaBuilding className="mr-2 text-slate-400" />
+                              <span className="truncate">{intern.fieldOfSpecialization || "Not specified"}</span>
                             </div>
-                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
-                              <FaBuilding className="text-gray-500 mr-3 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs sm:text-sm text-gray-500">
-                                  Specialization
-                                </p>
-                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
-                                  {intern.fieldOfSpecialization ||
-                                    "Not specified"}
-                                </p>
-                              </div>
+                          </div>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Start Date</p>
+                            <div className="flex items-center text-sm font-medium text-slate-800">
+                              <FaCalendarAlt className="mr-2 text-slate-400" />
+                              {intern.startDate ? formatDate(intern.startDate) : "N/A"}
                             </div>
-                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
-                              <FaCalendarAlt className="text-gray-500 mr-3 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs sm:text-sm text-gray-500">
-                                  Start Date
-                                </p>
-                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
-                                  {intern.startDate ? formatDate(intern.startDate) : "N/A"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center bg-gray-50 p-3 rounded-xl">
-                              <FaCalendarCheck className="text-gray-500 mr-3 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <p className="text-xs sm:text-sm text-gray-500">
-                                  End Date
-                                </p>
-                                <p className="text-sm sm:text-base text-gray-900 font-medium truncate">
-                                  {intern.endDate ? formatDate(intern.endDate) : "N/A"}
-                                </p>
-                              </div>
+                          </div>
+                          <div>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">End Date</p>
+                            <div className="flex items-center text-sm font-medium text-slate-800">
+                              <FaCalendarCheck className="mr-2 text-slate-400" />
+                              {intern.endDate ? formatDate(intern.endDate) : "N/A"}
                             </div>
                           </div>
                         </div>

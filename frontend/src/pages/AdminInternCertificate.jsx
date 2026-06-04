@@ -242,96 +242,90 @@ const AdminInternCertificate = () => {
             )}
 
             {/* Certificate Preview */}
-            <motion.div className="bg-white rounded-2xl border-2 border-amber-200/60 shadow-xl overflow-hidden"
+            <motion.div className="bg-white border border-gray-200 shadow-2xl relative mb-12"
               initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}>
 
-              {/* Gold top bar */}
-              <div className="h-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
-
-              <div className="p-6 sm:p-8">
+              {/* Minimalist Top Accent */}
+              <div className="h-1.5 bg-slate-900 w-full" />
+              
+              <div className="p-8 sm:p-12">
                 {/* Certificate header */}
-                <div className="text-center mb-8">
-                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-100 to-yellow-100 border-2 border-amber-200 mb-4">
-                    <FaCertificate className="text-3xl text-amber-500" />
+                <div className="text-center mb-10">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-slate-50 border border-slate-200 mb-5 shadow-sm">
+                    <FaCertificate className="text-2xl text-slate-700" />
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900">Internship Completion Certificate</h3>
-                  <p className="text-gray-500 text-sm mt-1">Sri Lanka Telecom PLC — TalentHub</p>
+                  <h3 className="text-3xl font-bold text-slate-900 tracking-tight uppercase">Internship Completion Certificate</h3>
+                  <div className="h-px w-24 bg-slate-200 mx-auto my-4" />
+                  <p className="text-slate-500 font-medium tracking-wide uppercase text-sm">Sri Lanka Telecom PLC — TalentHub</p>
                 </div>
 
-                {/* Intern details grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-                  {[
-                    { icon: FaUser, label: 'Intern Name', value: intern.name, color: 'blue' },
-                    { icon: FaBuilding, label: 'University / Institute', value: intern.institute || 'Not specified', color: 'purple' },
-                    { icon: FaCalendarAlt, label: 'Training Period', value: `${fmt(intern.trainingStartDate)} – ${fmt(intern.trainingEndDate)}`, sub: dur(intern.trainingStartDate, intern.trainingEndDate), color: 'green' },
-                    { icon: FaCheckCircle, label: 'Meeting Attendance', value: `${attendanceCount} day${attendanceCount !== 1 ? 's' : ''}`, color: 'amber' },
-                  ].map((item, i) => (
-                    <motion.div key={i} className={`flex items-center p-4 bg-${item.color}-50/50 rounded-xl border border-${item.color}-100`}
-                      initial={{ opacity:0, x:-10 }} animate={{ opacity:1, x:0 }} transition={{ delay: 0.3 + i*0.1 }}>
-                      <div className={`w-10 h-10 rounded-full bg-${item.color}-100 flex items-center justify-center mr-3 flex-shrink-0`}>
-                        <item.icon className={`text-${item.color}-600`} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-xs text-gray-500">{item.label}</p>
-                        <p className="text-sm font-semibold text-gray-900 truncate">{item.value}</p>
-                        {item.sub && <p className="text-xs text-gray-400">{item.sub}</p>}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-
-                {/* Extra info row */}
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <p className="text-xs text-gray-500">Trainee ID</p>
-                    <p className="text-sm font-bold text-gray-800">{intern.traineeId || 'N/A'}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                    <p className="text-xs text-gray-500">Specialization</p>
-                    <p className="text-sm font-bold text-gray-800 truncate">{intern.fieldOfSpecialization || 'N/A'}</p>
-                  </div>
-                  <div className="p-3 bg-gray-50 rounded-xl border border-gray-100 text-center col-span-2 md:col-span-1">
-                    <p className="text-xs text-gray-500">Status</p>
-                    <p className="text-sm font-bold text-gray-800">{intern.status || 'N/A'}</p>
+                {/* Formal Intern Details */}
+                <div className="mb-10 max-w-2xl mx-auto">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Intern Name</p>
+                      <p className="text-base font-semibold text-slate-900">{intern.name}</p>
+                    </div>
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Trainee ID</p>
+                      <p className="text-base font-semibold text-slate-900">{intern.traineeId || 'N/A'}</p>
+                    </div>
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">University / Institute</p>
+                      <p className="text-base font-semibold text-slate-900">{intern.institute || 'Not specified'}</p>
+                    </div>
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Specialization</p>
+                      <p className="text-base font-semibold text-slate-900">{intern.fieldOfSpecialization || 'N/A'}</p>
+                    </div>
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Training Period</p>
+                      <p className="text-base font-semibold text-slate-900">{fmt(intern.trainingStartDate)} – {fmt(intern.trainingEndDate)}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{dur(intern.trainingStartDate, intern.trainingEndDate)}</p>
+                    </div>
+                    <div className="border-b border-gray-100 pb-3">
+                      <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Meeting Attendance</p>
+                      <p className="text-base font-semibold text-slate-900">{attendanceCount} day{attendanceCount !== 1 ? 's' : ''}</p>
+                    </div>
                   </div>
                 </div>
 
-                {/* Projects */}
-                <motion.div className="mb-6" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-sm font-semibold text-gray-700 flex items-center">
-                      <FaProjectDiagram className="mr-2 text-cyan-500" />Projects ({projects?.length || 0})
+                {/* Projects Section */}
+                <motion.div className="mb-10 max-w-2xl mx-auto" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}>
+                  <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-slate-900">
+                    <h4 className="text-sm font-bold uppercase tracking-widest text-slate-900">
+                      Project Assignments ({projects?.length || 0})
                     </h4>
                     <button 
                       onClick={() => setShowAddProject(!showAddProject)}
-                      className="text-xs px-3 py-1 bg-blue-50 text-blue-600 rounded-lg font-medium hover:bg-blue-100 transition-colors"
+                      className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded font-medium hover:bg-slate-200 transition-colors"
                     >
-                      + Add Custom Project
+                      + Add Custom
                     </button>
                   </div>
                   
                   {showAddProject && (
-                    <div className="mb-4 p-4 bg-gray-50 border border-blue-100 rounded-xl">
-                      <h5 className="text-xs font-semibold text-gray-700 mb-3">Add Custom Project Record</h5>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-                        <input type="text" placeholder="Project Name" value={newProject.projectName} onChange={e => setNewProject({...newProject, projectName: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        <input type="text" placeholder="Supervisor Name" value={newProject.supervisorName} onChange={e => setNewProject({...newProject, supervisorName: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        <input type="number" placeholder="Total Commits (Optional)" value={newProject.commits} onChange={e => setNewProject({...newProject, commits: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        <select value={newProject.status} onChange={e => setNewProject({...newProject, status: e.target.value})} className="text-sm px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    <div className="mb-4 p-5 bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
+                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-4">Add Custom Project Record</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                        <input type="text" placeholder="Project Name" value={newProject.projectName} onChange={e => setNewProject({...newProject, projectName: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <input type="text" placeholder="Supervisor Name" value={newProject.supervisorName} onChange={e => setNewProject({...newProject, supervisorName: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <input type="number" placeholder="Total Commits (Optional)" value={newProject.commits} onChange={e => setNewProject({...newProject, commits: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <select value={newProject.status} onChange={e => setNewProject({...newProject, status: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 bg-white">
                           <option value="COMPLETED">COMPLETED</option>
                           <option value="IN_PROGRESS">IN_PROGRESS</option>
                           <option value="PLANNING">PLANNING</option>
                         </select>
                       </div>
-                      <div className="flex justify-end space-x-2">
-                        <button onClick={() => setShowAddProject(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-200 rounded-lg">Cancel</button>
-                        <button onClick={handleAddCustomProject} disabled={!newProject.projectName} className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white hover:bg-blue-700 rounded-lg disabled:opacity-50">Add Project</button>
+                      <div className="flex justify-end space-x-3">
+                        <button onClick={() => setShowAddProject(false)} className="px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 hover:text-slate-700 transition-colors">Cancel</button>
+                        <button onClick={handleAddCustomProject} disabled={!newProject.projectName} className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-slate-900 text-white hover:bg-slate-800 rounded-md disabled:opacity-50 transition-colors">Add Project</button>
                       </div>
                     </div>
                   )}
 
                   {projects?.length > 0 ? (
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-3">
                       {projects.map((p, i) => {
                         let commitsCount = null;
                         if (gitCommitsData && gitCommitsData.projectCommits) {
@@ -344,23 +338,20 @@ const AdminInternCertificate = () => {
                         }
 
                         return (
-                          <div key={i} className="flex items-center justify-between px-4 py-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
-                            <div className="flex items-center min-w-0 flex-1">
-                              <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 text-xs font-bold flex items-center justify-center mr-3 flex-shrink-0">{i+1}</span>
-                              <div className="min-w-0 pr-2">
-                                <span className="text-sm text-gray-800 font-medium block truncate">{p.projectName}</span>
-                                <span className="text-xs text-gray-500">{p.supervisorName}</span>
-                              </div>
+                          <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-white border border-slate-200 rounded-lg shadow-sm">
+                            <div className="min-w-0 flex-1 mb-2 sm:mb-0 pr-4">
+                              <span className="text-sm font-semibold text-slate-900 block truncate">{p.projectName}</span>
+                              <span className="text-xs text-slate-500 block">Supervisor: {p.supervisorName}</span>
                             </div>
-                            <div className="flex items-center space-x-2 flex-shrink-0">
+                            <div className="flex items-center space-x-3 flex-shrink-0">
                               {commitsCount !== null && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-md font-semibold bg-gray-200 text-gray-700">
+                                <span className="text-[10px] uppercase tracking-wider px-2.5 py-1 rounded bg-slate-100 text-slate-600 font-semibold border border-slate-200">
                                   {commitsCount} Commits
                                 </span>
                               )}
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                                p.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
-                                p.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-700'
+                              <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded font-semibold border ${
+                                p.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                p.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200'
                               }`}>{p.status}</span>
                             </div>
                           </div>
@@ -368,42 +359,39 @@ const AdminInternCertificate = () => {
                       })}
                     </div>
                   ) : (
-                    <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                      <p className="text-sm text-gray-500">
+                    <div className="py-8 text-center border border-dashed border-slate-300 rounded-lg">
+                      <p className="text-sm text-slate-500">
                         {source?.talentTrailConnected
-                          ? 'No project assignments found'
-                          : 'No project assignments found in local records'}
+                          ? 'No project assignments found in TalentTrail.'
+                          : 'No project assignments found in local records.'}
                       </p>
                     </div>
                   )}
                 </motion.div>
 
-                {/* Subtle offline note — shown only when TalentTrail is unreachable */}
+                {/* Subtle offline note */}
                 {source && !source.talentTrailConnected && (
                   <motion.p
-                    className="text-xs text-gray-400 text-center mt-2 mb-2"
+                    className="text-xs text-slate-400 text-center mb-6"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
                   >
-                    ℹ Data sourced from local TalentHub records
+                    Data sourced from local TalentHub records
                   </motion.p>
                 )}
 
                 {/* Download button */}
-                <div className="flex justify-center pt-4">
+                <div className="flex justify-center mt-12">
                   <motion.button onClick={handleGeneratePDF} disabled={generating}
-                    whileHover={{ scale: generating ? 1 : 1.05, y: generating ? 0 : -2 }}
-                    whileTap={{ scale: generating ? 1 : 0.95 }}
-                    className="flex items-center space-x-3 px-8 py-4 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-2xl text-base font-semibold transition-all shadow-lg hover:shadow-xl disabled:cursor-not-allowed cursor-pointer">
+                    whileHover={{ scale: generating ? 1 : 1.02, y: generating ? 0 : -2 }}
+                    whileTap={{ scale: generating ? 1 : 0.98 }}
+                    className="flex items-center space-x-3 px-10 py-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 text-white rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-md hover:shadow-lg disabled:cursor-not-allowed cursor-pointer">
                     {generating
                       ? <><FaSpinner className="h-5 w-5 animate-spin" /><span>Generating PDF...</span></>
-                      : <><FaDownload className="h-5 w-5" /><span>Download Certificate PDF</span></>
+                      : <><FaDownload className="h-5 w-5" /><span>Download Official PDF</span></>
                     }
                   </motion.button>
                 </div>
               </div>
-
-              {/* Gold bottom bar */}
-              <div className="h-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400" />
             </motion.div>
           </div>
         </main>
