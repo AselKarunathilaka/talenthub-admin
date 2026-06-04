@@ -1154,11 +1154,131 @@ const AdminInternDetails = () => {
 
                     return (
                       <div className="space-y-5">
+                        {/* ── Intern Details Card (Profile-style) ── */}
+                        <motion.div
+                          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {/* Header with gradient */}
+                          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 p-5 sm:p-6 border-b border-gray-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div>
+                                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{intern.traineeName}</h3>
+                                <p className="text-sm text-gray-500 mt-0.5">{intern.traineeId}</p>
+                                {intern.startDate && intern.endDate && (() => {
+                                  const daysLeft = Math.ceil(
+                                    (new Date(intern.endDate) - new Date()) / (1000 * 60 * 60 * 24)
+                                  );
+                                  return daysLeft > 0 ? (
+                                    <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-sm">
+                                      {daysLeft} DAYS REMAINING
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-red-500 to-red-600 shadow-sm">
+                                      TRAINING ENDED
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                              {intern.lastSeen && (
+                                <span className="text-xs text-gray-400 bg-white/70 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                                  Last seen: {new Date(intern.lastSeen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(intern.lastSeen).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Content sections - 2x2 grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
+                            {/* Personal Information */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                              <h4 className="text-sm font-bold text-gray-900 mb-3">Personal Information</h4>
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="text-xs text-gray-400">Email:</p>
+                                  <p className="text-sm font-medium text-gray-800 break-all">{intern.email || "Not specified"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-400">Institute:</p>
+                                  <p className="text-sm font-medium text-gray-800">{intern.institute || "Not specified"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-400">Specialization:</p>
+                                  <p className="text-sm font-medium text-gray-800">{intern.fieldOfSpecialization || "Not specified"}</p>
+                                </div>
+                              </div>
+                            </div>
+
+
+
+                            {/* Training Period */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                              <h4 className="text-sm font-bold text-gray-900 mb-3">Training Period</h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <p className="text-xs text-gray-400">Start Date:</p>
+                                  <p className="text-sm font-semibold text-gray-800">{intern.startDate ? formatDate(intern.startDate) : "N/A"}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-400">End Date:</p>
+                                  <p className="text-sm font-semibold text-gray-800">{intern.endDate ? formatDate(intern.endDate) : "N/A"}</p>
+                                </div>
+                                {intern.startDate && intern.endDate && (() => {
+                                  const start = new Date(intern.startDate);
+                                  const end = new Date(intern.endDate);
+                                  const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+                                  const weeks = Math.floor(totalDays / 7);
+                                  const remainingDays = totalDays % 7;
+                                  const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
+                                  return (
+                                    <>
+                                      <div>
+                                        <p className="text-xs text-gray-400">Duration:</p>
+                                        <p className="text-sm font-semibold text-gray-800">{weeks} weeks, {remainingDays} days</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs text-gray-400">Status:</p>
+                                        <p className={`text-sm font-semibold ${daysLeft > 0 ? "text-green-600" : "text-red-600"}`}>
+                                          {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
+                                        </p>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+
+                            {/* Project Assignments */}
+                            <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                              <h4 className="text-sm font-bold text-gray-900 mb-3">Project Assignments</h4>
+                              {intern.projects && intern.projects.length > 0 ? (
+                                <div className="space-y-2 max-h-40 overflow-y-auto">
+                                  {intern.projects.map((proj, pi) => (
+                                    <div key={pi} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-sm">
+                                        <FaProjectDiagram className="text-white text-xs" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-gray-800 truncate">{proj.projectName}</p>
+                                        <p className="text-xs text-gray-400">Status: {proj.status || "N/A"}</p>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic">No projects assigned</p>
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+
                         <motion.div
                           className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm"
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.3 }}
+                          transition={{ duration: 0.3, delay: 0.1 }}
                         >
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center mb-4">
                             <FaCalendarCheck className="mr-2 text-blue-500" />{" "}

@@ -447,7 +447,121 @@ const Dashboard = () => {
           onDismiss={() => setEndDateNotification(null)}
         />
 
-        {/* Modern Tab Switcher */}
+        {/* ── Intern Profile Card ── */}
+        {internData && (
+          <motion.div
+            className="mb-8 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            {/* Header gradient bar */}
+            <div
+              className="h-2"
+              style={{
+                background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 50%, #50b748 100%)",
+              }}
+            />
+            <div className="p-5 sm:p-6">
+              {/* Top row: Name + badge */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-xl font-black shadow-md flex-shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                    }}
+                  >
+                    {(internData.Trainee_Name || "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 tracking-tight">
+                      {internData.Trainee_Name || "—"}
+                    </h3>
+                    <p className="text-sm text-gray-500 font-medium mt-0.5">
+                      ID: {internData.Trainee_ID || "—"}
+                    </p>
+                  </div>
+                </div>
+                {internData.Training_EndDate && (() => {
+                  const daysLeft = Math.ceil(
+                    (new Date(internData.Training_EndDate) - new Date()) / (1000 * 60 * 60 * 24)
+                  );
+                  return daysLeft > 0 ? (
+                    <span
+                      className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold text-white shadow-sm"
+                      style={{
+                        background: daysLeft <= 14
+                          ? "linear-gradient(135deg, #ef4444, #dc2626)"
+                          : daysLeft <= 30
+                            ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                            : "linear-gradient(135deg, #50b748, #2e7d32)",
+                      }}
+                    >
+                      {daysLeft} DAYS REMAINING
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-bold bg-red-100 text-red-700">
+                      TRAINING ENDED
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Details grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Email */}
+                <div className="flex items-center gap-3 p-3 bg-blue-50/60 rounded-xl border border-blue-100/60">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Email</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.Trainee_Email}>{internData.Trainee_Email || "Not specified"}</p>
+                  </div>
+                </div>
+                {/* Institute */}
+                <div className="flex items-center gap-3 p-3 bg-purple-50/60 rounded-xl border border-purple-100/60">
+                  <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Institute</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.Institute}>{internData.Institute || "Not specified"}</p>
+                  </div>
+                </div>
+                {/* Specialization */}
+                <div className="flex items-center gap-3 p-3 bg-amber-50/60 rounded-xl border border-amber-100/60">
+                  <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Specialization</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate" title={internData.field_of_spec_name}>{internData.field_of_spec_name || "Not specified"}</p>
+                  </div>
+                </div>
+                {/* Training Period */}
+                <div className="flex items-center gap-3 p-3 bg-emerald-50/60 rounded-xl border border-emerald-100/60">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Training Period</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">
+                      {internData.Training_StartDate
+                        ? new Date(internData.Training_StartDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : "—"}{" "}
+                      →{" "}
+                      {internData.Training_EndDate
+                        ? new Date(internData.Training_EndDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                        : "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
         <motion.div
           className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-md w-full relative"
           initial={{ opacity: 0, y: -10 }}
