@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2 } from "lucide-react";
+import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { useSeatManagement } from "./useSeatManagement";
 
@@ -10,58 +10,39 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
   const { getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails } = React.useContext(SeatContext);
   const status = getSeatStatus(number);
   const bookingInfo = allBookings[number];
-  const isMyBooking = dailyBookings[number];
 
   let posX = x;
   let posY = y;
 
-  if (
-    angle !== undefined &&
-    radius !== undefined &&
-    centerX !== undefined &&
-    centerY !== undefined
-  ) {
+  if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
     posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
     posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
   }
 
-  const baseClasses =
-    "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden";
+  const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden";
 
   let statusClasses = "";
-
   if (status === "locked") {
     statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75";
   } else if (status === "booked") {
     statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50";
   } else {
-    // Available: Company Green
-    statusClasses =
-      "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30 cursor-pointer";
+    statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30 cursor-pointer";
   }
 
   return (
     <motion.div
       onClick={() => handleSeatClick(number)}
       className={`${baseClasses} ${statusClasses}`}
-      style={{
-        left: `${posX - 24}px`,
-        top: `${posY - 24}px`,
-      }}
+      style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
       whileHover={status === "available" ? { scale: 1.15, zIndex: 10 } : {}}
       whileTap={status === "available" ? { scale: 0.95 } : {}}
       title={
-        status === "locked"
-          ? lockedSeatDetails?.[number]?.traineeId
-            ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}`
-            : `Seat ${number} (Locked)`
-          : status === "booked" && bookingInfo?.traineeId
-            ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
-            : status === "booked" && bookingInfo?.email
-              ? `Seat ${number} - Booked by: ${bookingInfo.email}`
-              : status === "booked"
-                ? `Seat ${number} (Already Booked)`
-                : `Seat ${number} (Available)`
+        status === "locked" ? (lockedSeatDetails?.[number]?.traineeId ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}` : `Seat ${number} (Locked)`)
+        : status === "booked" && bookingInfo?.traineeId ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
+        : status === "booked" && bookingInfo?.email ? `Seat ${number} - Booked by: ${bookingInfo.email}`
+        : status === "booked" ? `Seat ${number} (Already Booked)`
+        : `Seat ${number} (Available)`
       }
     >
       <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
@@ -81,9 +62,7 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
 const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModalClose, handleDateBookingConfirm }) => {
   const handleSubmit = async () => {
     const success = await handleDateBookingConfirm();
-    if (success) {
-      handleModalClose();
-    }
+    if (success) handleModalClose();
   };
 
   return (
@@ -92,6 +71,7 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
       >
         <motion.div
@@ -101,65 +81,40 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
           className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100 overflow-hidden relative"
         >
-          {/* Decorative top bar */}
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
-
           <div className="flex justify-between items-center mb-6 mt-2">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-[#0056a2] shadow-sm">
                 <Armchair size={24} />
               </div>
-              <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">
-                Seat {currentSeat}
-              </h2>
+              <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">Seat {currentSeat}</h2>
             </div>
-            <button
-              onClick={handleModalClose}
-              className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors"
-            >
+            <button onClick={handleModalClose} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
               <X size={20} />
             </button>
           </div>
-
           <div className="space-y-4">
             <div className="p-4 bg-gradient-to-br from-blue-50/50 to-cyan-50/50 rounded-2xl border border-blue-100/60">
               <div className="flex items-start gap-3">
-                <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm">
-                   <Calendar className="text-[#00b4eb]" size={18} />
-                </div>
+                <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm"><Calendar className="text-[#00b4eb]" size={18} /></div>
                 <div>
                   <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Booking Date</p>
-                  <p className="text-lg text-gray-900 font-bold mt-0.5">
-                    {formatDisplayDate(selectedDate)}
-                  </p>
+                  <p className="text-lg text-gray-900 font-bold mt-0.5">{formatDisplayDate(selectedDate)}</p>
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t border-blue-100/50 flex items-start gap-3">
                 <Info className="text-[#0056a2] mt-0.5 shrink-0" size={16} />
-                <p className="text-xs text-gray-600 font-medium leading-relaxed">
-                  Your intern account will be used automatically for this reservation.
-                </p>
+                <p className="text-xs text-gray-600 font-medium leading-relaxed">Your intern account will be used automatically for this reservation.</p>
               </div>
             </div>
-
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100/50 flex items-start gap-3">
               <span className="text-lg leading-none shrink-0 mt-0.5">⚠</span>
               <span className="text-sm text-amber-800 font-medium leading-tight">One seat per intern per day is allowed. Make sure this is the seat you want!</span>
             </div>
-
             <div className="flex gap-3 pt-5">
-              <button
-                onClick={handleModalClose}
-                className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSubmit}
-                className="flex-1 px-4 py-3 bg-[#0056a2] hover:bg-[#00488a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#0056a2]/30 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95 flex items-center justify-center gap-2"
-              >
-                <CheckCircle2 size={18} />
-                Confirm
+              <button onClick={handleModalClose} className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95">Cancel</button>
+              <button onClick={handleSubmit} className="flex-1 px-4 py-3 bg-[#0056a2] hover:bg-[#00488a] text-white font-bold rounded-xl transition-all shadow-lg shadow-[#0056a2]/30 focus:outline-none focus:ring-4 focus:ring-blue-100 active:scale-95 flex items-center justify-center gap-2">
+                <CheckCircle2 size={18} /> Confirm
               </button>
             </div>
           </div>
@@ -167,6 +122,144 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
       </motion.div>
     </AnimatePresence>
   );
+};
+
+// Custom hook for pan & zoom with safety checks
+const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
+  const [transform, setTransform] = useState({ scale: initialScale, translateX: 0, translateY: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, translateX: 0, translateY: 0 });
+  const [ready, setReady] = useState(false);
+
+  const clampTransform = useCallback((newTransform) => {
+    if (!viewportRef.current) return newTransform;
+    const viewRect = viewportRef.current.getBoundingClientRect();
+    if (viewRect.width === 0 || viewRect.height === 0) return newTransform;
+    const scaledWidth = mapWidth * newTransform.scale;
+    const scaledHeight = mapHeight * newTransform.scale;
+    const minX = Math.min(0, viewRect.width - scaledWidth);
+    const maxX = Math.max(0, viewRect.width - scaledWidth);
+    const minY = Math.min(0, viewRect.height - scaledHeight);
+    const maxY = Math.max(0, viewRect.height - scaledHeight);
+    const clampedX = Math.min(maxX, Math.max(minX, newTransform.translateX));
+    const clampedY = Math.min(maxY, Math.max(minY, newTransform.translateY));
+    return { ...newTransform, translateX: clampedX, translateY: clampedY };
+  }, [mapWidth, mapHeight, viewportRef]);
+
+  const resetView = useCallback(() => {
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const scaleX = rect.width / mapWidth;
+    const scaleY = rect.height / mapHeight;
+    const fitScale = Math.min(scaleX, scaleY, 1) * 0.85; // 85% of max fit to leave some margin
+    const centerX = (rect.width - mapWidth * fitScale) / 2;
+    const centerY = (rect.height - mapHeight * fitScale) / 2;
+    setTransform({
+      scale: fitScale,
+      translateX: centerX,
+      translateY: centerY,
+    });
+    setReady(true);
+  }, [mapWidth, mapHeight, viewportRef]);
+
+  // Initial reset after ref is ready and after window resize
+  useEffect(() => {
+    if (!viewportRef.current) return;
+    const observer = new ResizeObserver(() => resetView());
+    observer.observe(viewportRef.current);
+    resetView();
+    return () => observer.disconnect();
+  }, [resetView, viewportRef]);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX - transform.translateX,
+      y: e.clientY - transform.translateY,
+      translateX: transform.translateX,
+      translateY: transform.translateY,
+    };
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDragging) return;
+    const newTranslateX = e.clientX - dragStart.current.x;
+    const newTranslateY = e.clientY - dragStart.current.y;
+    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [isDragging, transform, clampTransform]);
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      setIsDragging(true);
+      dragStart.current = {
+        x: e.touches[0].clientX - transform.translateX,
+        y: e.touches[0].clientY - transform.translateY,
+        translateX: transform.translateX,
+        translateY: transform.translateY,
+      };
+    }
+  };
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    const newTranslateX = e.touches[0].clientX - dragStart.current.x;
+    const newTranslateY = e.touches[0].clientY - dragStart.current.y;
+    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [isDragging, transform, clampTransform]);
+
+  const handleTouchEnd = () => setIsDragging(false);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(3, Math.max(0.5, transform.scale * delta));
+    if (newScale === transform.scale) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const scaleRatio = newScale / transform.scale;
+    const newTranslateX = mouseX - (mouseX - transform.translateX) * scaleRatio;
+    const newTranslateY = mouseY - (mouseY - transform.translateY) * scaleRatio;
+    const newTransform = clampTransform({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [transform, viewportRef, clampTransform]);
+
+  const zoomIn = () => {
+    const newScale = Math.min(3, transform.scale * 1.2);
+    const newTransform = clampTransform({ ...transform, scale: newScale });
+    setTransform(newTransform);
+  };
+  const zoomOut = () => {
+    const newScale = Math.max(0.5, transform.scale / 1.2);
+    const newTransform = clampTransform({ ...transform, scale: newScale });
+    setTransform(newTransform);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, handleMouseMove, handleTouchMove]);
+
+  return { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready };
 };
 
 const InternSeatManagement = () => {
@@ -181,7 +274,6 @@ const InternSeatManagement = () => {
     rightSection,
     totalUnavailableCount,
     totalAvailableCount,
-    TOTAL_SEATS,
     allBookings,
     formatDisplayDate,
     handleDateChange,
@@ -193,425 +285,170 @@ const InternSeatManagement = () => {
     lockedSeatDetails,
   } = useSeatManagement();
 
-  const [activeTab, setActiveTab] = useState("map"); // "map" | "bookings"
+  const [activeTab, setActiveTab] = useState("map");
+  const mapViewportRef = useRef(null);
+  const MAP_WIDTH = 1450;
+  const MAP_HEIGHT = 850;
+
+  const { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready } = usePanZoom(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, 0.7);
+
+  const renderTabContent = () => {
+    if (activeTab === "map") {
+      return (
+        <div className="flex flex-col w-full h-full">
+          {/* Legend + Controls */}
+          <div className="flex justify-between items-center py-3 px-4 bg-white border-b border-gray-100 flex-wrap gap-2 shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center"><Armchair size={10} className="text-[#50b748]" /></div><span className="text-xs font-bold text-gray-600">Available</span></div>
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center"><X size={11} strokeWidth={3} className="text-white" /></div><span className="text-xs font-bold text-gray-600">Booked</span></div>
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75"><Armchair size={10} className="text-slate-400" /></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+              <button onClick={zoomOut} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom Out"><ZoomOut size={16} /></button>
+              <button onClick={resetView} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Reset View"><Maximize size={16} /></button>
+              <button onClick={zoomIn} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom In"><ZoomIn size={16} /></button>
+              <div className="w-px h-5 bg-gray-300 mx-1"></div>
+              <div className="flex items-center gap-1 px-2 text-xs text-gray-500"><Move size={12} /><span>Drag to pan</span></div>
+            </div>
+          </div>
+
+          {/* Map Viewport - ensure it takes all available space */}
+          <div
+            ref={mapViewportRef}
+            className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
+            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0 }}
+            onMouseDown={handleMouseDown}
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
+          >
+            {/* Map content - only show after initial transform is ready to avoid flicker */}
+            {ready && (
+              <div
+                className="absolute"
+                style={{
+                  width: `${MAP_WIDTH}px`,
+                  height: `${MAP_HEIGHT}px`,
+                  transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
+                  transformOrigin: '0 0',
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
+                }}
+              >
+                {/* Floor plan and seats */}
+                <div className="absolute inset-0">
+                  {/* Entrance and structure graphics */}
+                  <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
+                    <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
+                  </div>
+                  <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
+                  <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", bottom: "-110px" }}></div>
+
+                  {/* Main room blocks */}
+                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
+                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}></div>
+                  </div>
+                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
+                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}></div>
+                  </div>
+
+                  {/* Left section seats */}
+                  {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
+                  {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+
+                  {/* Right section seats */}
+                  {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
+                  {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    } else {
+      return (
+        <div className="p-6 overflow-auto bg-slate-50/30 h-full">
+          <div className="max-w-4xl mx-auto">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
+              <div>
+                <h3 className="text-xl font-extrabold text-gray-800 tracking-tight">Your Bookings for {formatDisplayDate(selectedDate)}</h3>
+                <p className="text-sm text-gray-500 mt-1 font-medium">Manage your seat reservations for this date.</p>
+              </div>
+            </div>
+            {Object.keys(dailyBookings).length > 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-slate-50/80 border-b border-gray-100">
+                    <tr><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat Number</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booking Date</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {Object.entries(dailyBookings).sort(([a],[b]) => Number(a)-Number(b)).map(([seatNum]) => (
+                      <tr key={seatNum} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center"><Armchair size={18} className="text-[#0056a2]" /></div><div><span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span><span className="font-extrabold text-gray-900 text-base leading-none">{seatNum}</span></div></div></td>
+                        <td className="px-6 py-5"><div className="font-medium text-gray-700">{formatDisplayDate(selectedDate)}</div></td>
+                        <td className="px-6 py-5 text-right"><button onClick={() => handleCancelBooking(seatNum)} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all text-sm font-bold shadow-sm"><Trash2 size={16} /> Cancel</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
+                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4"><Calendar className="h-8 w-8 text-slate-300" /></div>
+                <h4 className="text-lg font-bold text-gray-700">No seats booked yet</h4>
+                <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">You haven't booked any seats for {formatDisplayDate(selectedDate)}. Switch to the Seat Map to make a reservation.</p>
+                <button onClick={() => setActiveTab("map")} className="mt-6 px-6 py-2.5 bg-[#0056a2] text-white font-bold rounded-xl shadow-md shadow-[#0056a2]/20 hover:bg-[#00488a] transition-all">Browse Seat Map</button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+  };
 
   return (
     <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
       <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
         <Navigation />
-        
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            
-            {/* Header Section */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <motion.h1 
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                     <Armchair className="text-[#0056a2] h-8 w-8" />
-                  </div>
-                  Seat Reservation
+                <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl"><Armchair className="text-[#0056a2] h-8 w-8" /></div> Seat Reservation
                 </motion.h1>
-                <motion.p 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05, duration: 0.2 }} className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
                   Streamlined and fluid workspace assignment. Select a date and reserve your preferred spot seamlessly.
                 </motion.p>
               </div>
-
-              {/* Date Selector & Stats */}
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2 }}
-                className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3"
-              >
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
                 <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                    <Calendar className="text-[#00b4eb] h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
-                      Select Date
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => handleDateChange(e.target.value)}
-                      min={minBookingDate}
-                      max={maxBookingDate}
-                      className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
-                    />
-                  </div>
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><Calendar className="text-[#00b4eb] h-5 w-5" /></div>
+                  <div className="flex-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label><input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" /></div>
                 </div>
-
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100">
-                    <div className="text-2xl font-black text-rose-600 leading-none mb-1">
-                      {totalUnavailableCount}
-                    </div>
-                    <div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">
-                      Unavailable
-                    </div>
-                  </div>
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100">
-                    <div className="text-2xl font-black text-[#50b748] leading-none mb-1">
-                      {totalAvailableCount}
-                    </div>
-                    <div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">
-                      Available
-                    </div>
-                  </div>
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100"><div className="text-2xl font-black text-rose-600 leading-none mb-1">{totalUnavailableCount}</div><div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</div></div>
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100"><div className="text-2xl font-black text-[#50b748] leading-none mb-1">{totalAvailableCount}</div><div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div></div>
                 </div>
               </motion.div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden min-h-[700px] flex flex-col">
-              
-              {/* Tabs */}
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: "700px", height: "calc(100vh - 280px)" }}>
               <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
-                <button
-                  onClick={() => setActiveTab("map")}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-                    activeTab === "map"
-                      ? "bg-white text-[#0056a2] shadow-sm ring-1 ring-gray-200/50"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
-                  }`}
-                >
-                  <MapIcon size={18} />
-                  Seat Map
-                </button>
-                <button
-                  onClick={() => setActiveTab("bookings")}
-                  className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all ${
-                    activeTab === "bookings"
-                      ? "bg-white text-[#0056a2] shadow-sm ring-1 ring-gray-200/50"
-                      : "text-gray-500 hover:text-gray-700 hover:bg-white/60"
-                  }`}
-                >
-                  <List size={18} />
-                  My Bookings
-                  {Object.keys(dailyBookings).length > 0 && (
-                    <span className="ml-1.5 bg-[#00b4eb] text-white text-[10px] px-2 py-0.5 rounded-full font-black">
-                      {Object.keys(dailyBookings).length}
-                    </span>
-                  )}
-                </button>
+                <button onClick={() => setActiveTab("map")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={18} /> Seat Map</button>
+                <button onClick={() => setActiveTab("bookings")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={18} /> My Bookings{Object.keys(dailyBookings).length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
               </div>
-
-              {/* Tab Content */}
-              <div className="flex-1 relative bg-white">
-                <AnimatePresence mode="wait">
-                  
-                  {/* MAP TAB */}
-                  {activeTab === "map" && (
-                    <motion.div
-                      key="map-tab"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute inset-0 flex flex-col"
-                    >
-                      {/* Legend */}
-                      <div className="flex justify-center items-center gap-6 py-4 px-6 bg-white border-b border-gray-50 flex-wrap shrink-0">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center">
-                             <Armchair size={12} className="text-[#50b748]" />
-                          </div>
-                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Available</span>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center">
-                            <X size={14} strokeWidth={3} className="text-white" />
-                          </div>
-                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Booked</span>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-6 h-6 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75">
-                             <Armchair size={12} className="text-slate-400" />
-                          </div>
-                          <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Locked</span>
-                        </div>
-                      </div>
-
-                      {/* Map Container */}
-                      <div className="flex-1 overflow-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative p-4 sm:p-8">
-                        
-                        {/* Desktop Map Wrapper */}
-                        <div className="hidden sm:flex items-center justify-center min-w-max min-h-max w-full h-full">
-                          <div
-                            className="relative mx-auto"
-                            style={{
-                              width: "1450px",
-                              height: "850px",
-                              transform: "scale(0.85)",
-                              transformOrigin: "center center",
-                            }}
-                          >
-                            <div className="absolute inset-0">
-                              {/* Structure Graphics */}
-                              <div
-                                className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg"
-                                style={{ left: "-124px", width: "742px" }}
-                              >
-                                <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">
-                                  Entrance
-                                </div>
-                              </div>
-                              <div
-                                className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg"
-                                style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
-                              ></div>
-                              <div
-                                className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg"
-                                style={{ left: "486px", bottom: "-110px" }}
-                              ></div>
-                              
-                              {/* Main Room Blocks */}
-                              <div
-                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
-                                style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}
-                              >
-                                <div
-                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
-                                  style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
-                                ></div>
-                              </div>
-
-                              <div
-                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
-                                style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}
-                              >
-                                <div
-                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
-                                  style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
-                                ></div>
-                              </div>
-
-                              {/* Render Seats */}
-                              {leftSection.topRow.map((seat) => (
-                                <Seat key={seat.number} {...seat} />
-                              ))}
-                              {leftSection.pillarSeats.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
-                              ))}
-                              {leftSection.outerRing1.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
-                              ))}
-                              {leftSection.outerRing2.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
-                              ))}
-                              {leftSection.outerRing3.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={180} centerY={377} />
-                              ))}
-
-                              {rightSection.straightSeats.map((seat) => (
-                                <Seat key={seat.number} {...seat} />
-                              ))}
-                              {rightSection.pillarSeats.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
-                              ))}
-                              {rightSection.outerRing1.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
-                              ))}
-                              {rightSection.outerRing2.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
-                              ))}
-                              {rightSection.outerRing3.map((seat) => (
-                                <Seat key={seat.number} {...seat} centerX={920} centerY={377} />
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Mobile Map Wrapper */}
-                        <div className="sm:hidden min-w-[700px] min-h-[850px] relative">
-                           <div
-                            style={{
-                              position: "absolute",
-                              width: "700px",
-                              height: "800px",
-                              transform: "scale(0.65)",
-                              transformOrigin: "top left",
-                              left: "50px",
-                              top: "20px"
-                            }}
-                          >
-                             <div
-                              className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-t-2xl flex items-center shadow-lg"
-                              style={{ left: "-125px", width: "1395px" }}
-                            >
-                              <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">
-                                Entrance
-                              </div>
-                            </div>
-                            <div
-                              className="absolute top-14 w-33 bg-slate-800 rounded-b-2xl shadow-lg"
-                              style={{ left: "486px", bottom: "0px" }}
-                            ></div>
-
-                            <div
-                                className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
-                              style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}
-                            >
-                               <div
-                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
-                                style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
-                              ></div>
-                            </div>
-
-                            <div
-                               className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner"
-                              style={{ left: "620px", top: "70px", width: "650px", height: "720px" }}
-                            >
-                              <div
-                                  className="absolute bg-white rounded-full shadow-md border-8 border-slate-50"
-                                style={{ left: "230px", top: "250px", width: "140px", height: "140px" }}
-                              ></div>
-                            </div>
-
-                            {leftSection.topRow.map((seat) => <Seat key={seat.number} {...seat} />)}
-                            {leftSection.pillarSeats.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                            {leftSection.outerRing1.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                            {leftSection.outerRing2.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                            {leftSection.outerRing3.map((seat) => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                            {rightSection.straightSeats.map((seat) => <Seat key={seat.number} {...seat} />)}
-                            {rightSection.pillarSeats.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                            {rightSection.outerRing1.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                            {rightSection.outerRing2.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                            {rightSection.outerRing3.map((seat) => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                          </div>
-                        </div>
-
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* BOOKINGS TAB */}
-                  {activeTab === "bookings" && (
-                    <motion.div
-                      key="bookings-tab"
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                      className="absolute inset-0 p-6 overflow-auto bg-slate-50/30"
-                    >
-                      <div className="max-w-4xl mx-auto">
-                        <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-4">
-                          <div>
-                            <h3 className="text-xl font-extrabold text-gray-800 tracking-tight">
-                              Your Bookings for {formatDisplayDate(selectedDate)}
-                            </h3>
-                            <p className="text-sm text-gray-500 mt-1 font-medium">
-                              Manage your seat reservations for this date.
-                            </p>
-                          </div>
-                        </div>
-
-                        {Object.keys(dailyBookings).length > 0 ? (
-                          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                            <table className="w-full text-left text-sm">
-                              <thead className="bg-slate-50/80 border-b border-gray-100">
-                                <tr>
-                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
-                                    Seat Number
-                                  </th>
-                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">
-                                    Booking Date
-                                  </th>
-                                  <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">
-                                    Actions
-                                  </th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-gray-50">
-                                {Object.entries(dailyBookings)
-                                  .sort(([a], [b]) => Number(a) - Number(b))
-                                  .map(([seatNum]) => (
-                                    <tr
-                                      key={seatNum}
-                                      className="hover:bg-slate-50/50 transition-colors group"
-                                    >
-                                      <td className="px-6 py-5">
-                                        <div className="flex items-center gap-3">
-                                          <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center">
-                                            <Armchair size={18} className="text-[#0056a2]" />
-                                          </div>
-                                          <div>
-                                            <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span>
-                                            <span className="font-extrabold text-gray-900 text-base leading-none">
-                                              {seatNum}
-                                            </span>
-                                          </div>
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5">
-                                        <div className="font-medium text-gray-700">
-                                          {formatDisplayDate(selectedDate)}
-                                        </div>
-                                      </td>
-                                      <td className="px-6 py-5 text-right">
-                                        <button
-                                          onClick={() => handleCancelBooking(seatNum)}
-                                          className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all text-sm font-bold shadow-sm"
-                                          title="Cancel booking"
-                                        >
-                                          <Trash2 size={16} />
-                                          Cancel
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        ) : (
-                          <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
-                            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                               <Calendar className="h-8 w-8 text-slate-300" />
-                            </div>
-                            <h4 className="text-lg font-bold text-gray-700">No seats booked yet</h4>
-                            <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
-                              You haven't booked any seats for {formatDisplayDate(selectedDate)}. Switch to the Seat Map to make a reservation.
-                            </p>
-                            <button
-                               onClick={() => setActiveTab("map")}
-                               className="mt-6 px-6 py-2.5 bg-[#0056a2] text-white font-bold rounded-xl shadow-md shadow-[#0056a2]/20 hover:bg-[#00488a] transition-all"
-                            >
-                              Browse Seat Map
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+              <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
+                {renderTabContent()}
               </div>
             </div>
-
           </main>
         </div>
-
-        {/* Modal Overlay */}
-        {showModal && (
-          <BookingModal
-            currentSeat={currentSeat}
-            formatDisplayDate={formatDisplayDate}
-            selectedDate={selectedDate}
-            handleModalClose={handleModalClose}
-            handleDateBookingConfirm={handleDateBookingConfirm}
-          />
-        )}
+        {showModal && <BookingModal currentSeat={currentSeat} formatDisplayDate={formatDisplayDate} selectedDate={selectedDate} handleModalClose={handleModalClose} handleDateBookingConfirm={handleDateBookingConfirm} />}
       </div>
     </SeatContext.Provider>
   );
