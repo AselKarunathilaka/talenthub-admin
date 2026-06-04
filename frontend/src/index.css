@@ -34,3 +34,113 @@
 .animate-draw-check {
   animation: drawCheck 0.4s ease-out 0.4s forwards;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/*  LogBook Page — Animations & Styles                                       */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Fade-in entrance */
+@keyframes logbookFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.logbook-fade-in {
+  animation: logbookFadeIn 0.5s ease-out;
+}
+
+/* Stepper step pulse */
+@keyframes logbookStepPulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(0, 180, 235, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(0, 180, 235, 0);
+  }
+}
+
+.logbook-step-pulse {
+  animation: logbookStepPulse 2s ease-in-out infinite;
+}
+
+/* Spin animation for loaders */
+@keyframes logbookSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.logbook-spin {
+  animation: logbookSpin 1s linear infinite;
+}
+
+/* Progress bar shimmer when 100% */
+@keyframes logbookShimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.logbook-shimmer {
+  animation: logbookShimmer 1.5s ease-in-out infinite;
+}
+
+/* Step content transition */
+.logbook-step-content {
+  animation: logbookFadeIn 0.35s ease-out;
+}
+
+/* Textarea focus glow */
+.logbook-textarea:focus {
+  border-color: rgba(0, 180, 235, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(0, 180, 235, 0.1) !important;
+  background: white !important;
+}
+
+.logbook-textarea::placeholder {
+  color: #b0b8c4;
+}
+
+/* Status card hover */
+.logbook-status-card:hover:not(:has(input:disabled)) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Stack card hover */
+.logbook-stack-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Button hover effects */
+.logbook-next-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  filter: brightness(1.08);
+}
+
+.logbook-back-btn:hover {
+  border-color: #c0c0c0 !important;
+  background: #f9fafb !important;
+}
+
+.logbook-submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  filter: brightness(1.05);
+}
+
+.logbook-view-records-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Card entrance */
+.logbook-card {
+  animation: logbookFadeIn 0.6s ease-out;
+}
