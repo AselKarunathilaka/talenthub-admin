@@ -67,6 +67,7 @@ const {
 
 // Admin intern details — attendance (own controller, admin-only feature)
 const {
+  resolveInternId,
   getAdminInternAttendance,
 } = require("../controllers/adminInternDetailsController");
 
@@ -103,13 +104,18 @@ router.get("/intern/:internId", getInternDetails);
 
 // Get individual intern's separated attendance (daily + meeting)
 router.get("/intern/:internId/attendance", getAdminInternAttendance);
+// New route for external system using Trainee_ID (4-digit number)
+router.get(
+  "/intern/by-trainee-id/:internId/attendance",
+  resolveInternId,
+  getAdminInternAttendance,
+);
 
 // Get individual intern's real GitHub commits (per TalentTrail project repos)
 router.get("/intern/:internId/git-commits", getInternGitCommits);
 
 // Get certificate data (enriched from TalentTrail)
 router.get("/intern/:internId/certificate-data", getCertificateData);
-
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);

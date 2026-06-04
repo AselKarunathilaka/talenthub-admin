@@ -1,23 +1,21 @@
-/**
- * adminInternDetailsController.js
- *
- * Admin-side controller for fetching a single intern's separated
- * daily and meeting attendance.
- *
- * Attendance type classification (matches Intern.js schema enum):
- *   Daily   : daily, daily_qr, face, manual_daily
- *   Meeting : qr, face_meeting, meeting, manual_meeting, manual
- *
- * Data sources (merged in priority order):
- *   1. DailyRecord collection (new QR / face system)
- *   2. Legacy intern.attendance[] subdocuments
- *   3. TalentTrail external API (project-attendance)
- */
+// At the top of adminInternDetailsController.js, add this helper:
+const Intern = require("../models/Intern");
 
-"use strict";
+const resolveInternId = async (req, res, next) => {
+  const { internId } = req.params;
 
-const InternService    = require("../services/internService");
-const DailyRecord      = require("../models/DailyRecord");
+  // If it looks like a 4-digit Trainee_ID (not a MongoDB ObjectId)
+  if (!/^[a-f\d]{24}$/i.test(internId)) {
+    const intern = await Intern.findOne({ Trainee_ID: internId }).select("_id");
+    if (!intern) return res.status(404).json({ message: "Intern not found" });
+    req.params.internId = intern._id.toString(); // swap it in-place
+  }
+
+  next();
+};
+
+const InternService = require("../services/internService");
+const DailyRecord = require("../models/DailyRecord");
 const TalentTrailService = require("../services/talentTrailService");
 
 // ─── Attendance type classification ─────────────────────────────────────────
@@ -47,13 +45,16 @@ const getDateKey = (date) => {
 };
 
 const getMeetingKey = (date, meetingName) =>
-  `${getDateKey(date)}::${String(meetingName || "General Meeting").trim().toLowerCase()}`;
+  `${getDateKey(date)}::${String(meetingName || "General Meeting")
+    .trim()
+    .toLowerCase()}`;
 
 const normalizeAttendanceMethod = (type) => {
   const t = String(type || "").toLowerCase();
-  if (t === "face" || t === "face_meeting")               return "face recognition";
-  if (t === "qr"   || t === "daily_qr")                   return "qr";
-  if (["meeting", "manual_meeting", "manual", "manual_daily"].includes(t)) return "manual";
+  if (t === "face" || t === "face_meeting") return "face recognition";
+  if (t === "qr" || t === "daily_qr") return "qr";
+  if (["meeting", "manual_meeting", "manual", "manual_daily"].includes(t))
+    return "manual";
   return t || "unknown";
 };
 
@@ -75,13 +76,15 @@ const getAdminInternAttendance = async (req, res) => {
     }
 
     // 2. Load DailyRecord entries (new QR / face system)
-    const dailyRecords = await DailyRecord.find({ internId }).sort({ date: -1 });
+    const dailyRecords = await DailyRecord.find({ internId }).sort({
+      date: -1,
+    });
 
-    const dailyAttendance   = [];
-    const meetingAttendance  = [];
+    const dailyAttendance = [];
+    const meetingAttendance = [];
 
-    const meetingMethodByKey     = new Map();
-    const dailyMethodByDate      = new Map();
+    const meetingMethodByKey = new Map();
+    const dailyMethodByDate = new Map();
     const dailyRecordMeetingKeys = new Set();
 
     // ── Step 1: Build method-lookup maps from intern.attendance[] ─────────────
@@ -91,8 +94,8 @@ const getAdminInternAttendance = async (req, res) => {
 
         if (DAILY_ATTENDANCE_TYPES.has(type)) {
           const markedAt = entry.timeMarked || entry.date;
-          const dateKey  = getDateKey(entry.date);
-          const current  = dailyMethodByDate.get(dateKey);
+          const dateKey = getDateKey(entry.date);
+          const current = dailyMethodByDate.get(dateKey);
           if (!current || new Date(markedAt) > new Date(current.markedAt)) {
             dailyMethodByDate.set(dateKey, {
               method: normalizeAttendanceMethod(type),
@@ -103,9 +106,13 @@ const getAdminInternAttendance = async (req, res) => {
 
         if (MEETING_ATTENDANCE_TYPES.has(type)) {
           const meetingName =
-            entry.projectName || entry.meetingName ||
-            entry.meeting     || entry.title       ||
-            entry.subject     || entry.topic       || "General Meeting";
+            entry.projectName ||
+            entry.meetingName ||
+            entry.meeting ||
+            entry.title ||
+            entry.subject ||
+            entry.topic ||
+            "General Meeting";
           meetingMethodByKey.set(
             getMeetingKey(entry.date, meetingName),
             normalizeAttendanceMethod(type),
@@ -127,19 +134,23 @@ const getAdminInternAttendance = async (req, res) => {
     // ── Step 3: Legacy meeting entries from intern.attendance[] ──────────────
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach((entry) => {
-        const type           = (entry.type || "").toLowerCase();
-        const isDailyEntry   = DAILY_ATTENDANCE_TYPES.has(type);
+        const type = (entry.type || "").toLowerCase();
+        const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         const isMeetingEntry = MEETING_ATTENDANCE_TYPES.has(type);
 
-        if (isDailyEntry)   return; // handled in Step 6 fallback
+        if (isDailyEntry) return; // handled in Step 6 fallback
         if (!isMeetingEntry) return; // unknown type — skip
 
         const legacyName =
-          entry.projectName || entry.meetingName ||
-          entry.meeting     || entry.title       ||
-          entry.subject     || entry.topic;
+          entry.projectName ||
+          entry.meetingName ||
+          entry.meeting ||
+          entry.title ||
+          entry.subject ||
+          entry.topic;
 
-        if (dailyRecordMeetingKeys.has(getMeetingKey(entry.date, legacyName))) return;
+        if (dailyRecordMeetingKeys.has(getMeetingKey(entry.date, legacyName)))
+          return;
 
         meetingAttendance.push({
           date: entry.date,
@@ -149,7 +160,8 @@ const getAdminInternAttendance = async (req, res) => {
           attendanceMethod: normalizeAttendanceMethod(type),
           time: entry.date
             ? new Date(entry.date).toLocaleTimeString("en-US", {
-                hour: "2-digit", minute: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
               })
             : null,
           isMeeting: true,
@@ -167,16 +179,19 @@ const getAdminInternAttendance = async (req, res) => {
         dailyAttendance.push({
           date: record.date,
           status:
-            record.attendance === "present" ? "Present"
-            : record.attendance === "late"  ? "Late"
-            : "Absent",
+            record.attendance === "present"
+              ? "Present"
+              : record.attendance === "late"
+                ? "Late"
+                : "Absent",
           type: "Daily",
           recordStatus: record.status,
           attendanceMethod:
             dailyMethodByDate.get(getDateKey(record.date))?.method || "unknown",
           time: attendanceTime
             ? attendanceTime.toLocaleTimeString("en-US", {
-                hour: "2-digit", minute: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
               })
             : null,
           attendanceTime: record.attendanceTime,
@@ -187,7 +202,7 @@ const getAdminInternAttendance = async (req, res) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
         record.meetingAttendance.forEach((meeting) => {
           const attendanceTime = new Date(meeting.attendanceTime);
-          const projectName    = meeting.projectName || meeting.meetingTitle;
+          const projectName = meeting.projectName || meeting.meetingTitle;
           meetingAttendance.push({
             date: record.date,
             status: "Present",
@@ -196,10 +211,11 @@ const getAdminInternAttendance = async (req, res) => {
             type: "Meeting",
             attendanceMethod: normalizeAttendanceMethod(
               meeting.method ||
-              meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
+                meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
             time: attendanceTime.toLocaleTimeString("en-US", {
-              hour: "2-digit", minute: "2-digit",
+              hour: "2-digit",
+              minute: "2-digit",
             }),
             isMeeting: true,
           });
@@ -216,28 +232,37 @@ const getAdminInternAttendance = async (req, res) => {
       );
       if (ttData?.attendanceRecords?.length > 0) {
         ttData.attendanceRecords.forEach((record) => {
-          const at          = record.date ? new Date(record.date) : new Date();
+          const at = record.date ? new Date(record.date) : new Date();
           const projectName = record.projectName || "External Project";
-          if (dailyRecordMeetingKeys.has(getMeetingKey(at, projectName))) return;
+          if (dailyRecordMeetingKeys.has(getMeetingKey(at, projectName)))
+            return;
 
           meetingAttendance.push({
             date: at,
             status:
-              record.status === "PRESENT" ? "Present"
-              : record.status === "LATE"  ? "Late"
-              : "Absent",
+              record.status === "PRESENT"
+                ? "Present"
+                : record.status === "LATE"
+                  ? "Late"
+                  : "Absent",
             meetingName: projectName,
             projectName,
             type: "Meeting",
             attendanceMethod: "talenttrail",
-            time: at.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            time: at.toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             isMeeting: true,
           });
           dailyRecordMeetingKeys.add(getMeetingKey(at, projectName));
         });
       }
     } catch (e) {
-      console.error("[AdminInternDetails] TalentTrail fetch failed:", e.message);
+      console.error(
+        "[AdminInternDetails] TalentTrail fetch failed:",
+        e.message,
+      );
     }
 
     // ── Step 6: Fallback — daily scans in intern.attendance[] not in DailyRecord
@@ -248,7 +273,7 @@ const getAdminInternAttendance = async (req, res) => {
 
       if (intern.attendance && intern.attendance.length > 0) {
         intern.attendance.forEach((entry) => {
-          const type    = (entry.type || "").toLowerCase();
+          const type = (entry.type || "").toLowerCase();
           if (!DAILY_ATTENDANCE_TYPES.has(type)) return;
 
           const entryDate = entry.date ? new Date(entry.date) : null;
@@ -262,8 +287,13 @@ const getAdminInternAttendance = async (req, res) => {
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
-            time: (entry.timeMarked ? new Date(entry.timeMarked) : entryDate)
-              .toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+            time: (entry.timeMarked
+              ? new Date(entry.timeMarked)
+              : entryDate
+            ).toLocaleTimeString("en-US", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
             attendanceTime: entry.timeMarked || entry.date,
           });
           coveredDates.add(dayKey);
@@ -287,21 +317,23 @@ const getAdminInternAttendance = async (req, res) => {
 
     meetingAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    const combinedAttendance = [...uniqueDailyAttendance, ...meetingAttendance]
-      .sort((a, b) => new Date(b.date) - new Date(a.date));
+    const combinedAttendance = [
+      ...uniqueDailyAttendance,
+      ...meetingAttendance,
+    ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     console.log(
       `[AdminInternDetails] internId=${internId}  ` +
-      `daily=${uniqueDailyAttendance.length}  meeting=${meetingAttendance.length}`,
+        `daily=${uniqueDailyAttendance.length}  meeting=${meetingAttendance.length}`,
     );
 
     return res.status(200).json({
-      attendance:      combinedAttendance,
+      attendance: combinedAttendance,
       dailyAttendance: uniqueDailyAttendance,
       meetingAttendance,
       stats: {
         present: meetingAttendance.filter((e) => e.status === "Present").length,
-        absent:  meetingAttendance.filter((e) => e.status === "Absent").length,
+        absent: meetingAttendance.filter((e) => e.status === "Absent").length,
       },
     });
   } catch (error) {
@@ -313,4 +345,4 @@ const getAdminInternAttendance = async (req, res) => {
   }
 };
 
-module.exports = { getAdminInternAttendance };
+module.exports = { getAdminInternAttendance, resolveInternId };
