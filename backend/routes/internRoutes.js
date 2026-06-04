@@ -54,6 +54,10 @@ const {
 
   // Project check
   checkInternProjects,
+
+  // Profile Picture
+  uploadProfilePicture,
+  getProfilePicture,
 } = require("../controllers/internController");
 
 const router = express.Router();
@@ -110,6 +114,10 @@ router.put("/:id/accept-agreement", acceptAgreement);
 
 // =========================== PROJECT CHECK ===========================
 router.get("/:id/projects/check", checkInternProjects);
+
+// =========================== PROFILE PICTURE ===========================
+router.post("/:id/profile-picture", authenticateUser, upload.single("image"), uploadProfilePicture);
+router.get("/:id/profile-picture", getProfilePicture);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);

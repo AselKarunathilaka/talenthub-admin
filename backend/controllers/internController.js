@@ -8,6 +8,7 @@ const moment = require("moment");
 const fs = require("fs");
 const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
+const ProfilePicture = require("../models/ProfilePicture");
 
 // Doc 3 sets (more complete — includes manual_daily and manual_meeting)
 const DAILY_ATTENDANCE_TYPES = new Set([
@@ -1068,6 +1069,78 @@ const checkInternProjects = async (req, res) => {
 };
 
 
+// =========================== PROFILE PICTURE MANAGEMENT ===========================
+
+// Upload or update profile picture
+const uploadProfilePicture = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let imageBase64 = null;
+    let contentType = "image/jpeg";
+
+    if (req.file) {
+      imageBase64 = req.file.buffer.toString("base64");
+      contentType = req.file.mimetype;
+    } else if (req.body.imageBase64) {
+      imageBase64 = req.body.imageBase64;
+      if (imageBase64.includes("base64,")) {
+        const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          contentType = matches[1];
+          imageBase64 = matches[2];
+        }
+      }
+    } else {
+      return res.status(400).json({ error: "No image file or base64 data provided" });
+    }
+
+    await ProfilePicture.findOneAndUpdate(
+      { internId: id },
+      { internId: id, imageBase64, contentType },
+      { upsert: true, new: true }
+    );
+
+    res.status(200).json({ message: "Profile picture uploaded successfully" });
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({ error: "Failed to upload profile picture" });
+  }
+};
+
+// Retrieve profile picture (streams directly to browser)
+const getProfilePicture = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let internId = id;
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      const mongoose = require("mongoose");
+      const Intern = mongoose.model("Intern");
+      const intern = await Intern.findOne({ Trainee_ID: id });
+      if (!intern) {
+        return res.status(404).json({ error: "Intern not found" });
+      }
+      internId = intern._id;
+    }
+
+    const profilePic = await ProfilePicture.findOne({ internId });
+    if (!profilePic || !profilePic.imageBase64) {
+      return res.status(404).json({ error: "Profile picture not found" });
+    }
+
+    const imgBuffer = Buffer.from(profilePic.imageBase64, "base64");
+    res.writeHead(200, {
+      "Content-Type": profilePic.contentType,
+      "Content-Length": imgBuffer.length,
+      "Cache-Control": "public, max-age=86400",
+    });
+    res.end(imgBuffer);
+  } catch (error) {
+    console.error("Error fetching profile picture:", error);
+    res.status(500).json({ error: "Failed to fetch profile picture" });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -1103,4 +1176,6 @@ module.exports = {
   triggerComprehensiveUpdate,
   acceptAgreement,
   checkInternProjects,
+  uploadProfilePicture,
+  getProfilePicture,
 };
