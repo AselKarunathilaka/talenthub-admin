@@ -161,8 +161,8 @@
   --ad-success-light: #eaf7e9;
   --ad-danger-light: #fef2f2;
   --ad-warning-light: #fefce8;
-  --ad-glass: rgba(255, 255, 255, 0.72);
-  --ad-glass-border: rgba(255, 255, 255, 0.45);
+  --ad-glass: rgba(248, 250, 252, 0.85);
+  --ad-glass-border: rgba(226, 232, 240, 0.6);
   --ad-radius: 16px;
   --ad-radius-sm: 10px;
   --ad-radius-pill: 100px;
@@ -181,7 +181,7 @@
 /* ── Root ── */
 .admin-dash-root {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f7ff 0%, #f8fafb 40%, #eef9f0 100%);
+  background: linear-gradient(135deg, #a1c5f5 0%, #b1ebfa 40%, #befbb6 100%);
   font-family: var(--ad-font);
   color: #1e293b;
   overflow-x: hidden;
@@ -290,8 +290,11 @@
   right: 0;
   z-index: 40;
   height: var(--ad-header-h);
-  background: linear-gradient(135deg, var(--ad-primary) 0%, var(--ad-accent) 100%);
-  box-shadow: 0 2px 20px rgba(0, 86, 162, 0.18);
+  background: var(--ad-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--ad-glass-border);
+  box-shadow: var(--ad-shadow-lg);
 }
 
 .admin-dash-header__inner {
@@ -345,14 +348,14 @@
 .admin-dash-header__title {
   font-size: 17px;
   font-weight: 700;
-  color: #fff;
+  color: #000;
   letter-spacing: -0.2px;
   line-height: 1.2;
 }
 
 .admin-dash-header__subtitle {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(0, 0, 0, 0.75);
   font-weight: 500;
 }
 
@@ -368,7 +371,7 @@
   gap: 8px;
   padding: 6px 14px 6px 8px;
   border-radius: var(--ad-radius-pill);
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(0, 128, 255, 0.40);
   backdrop-filter: blur(8px);
 }
 
@@ -382,18 +385,19 @@
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #000;
   font-size: 13px;
 }
 
 .admin-dash-header__username {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: #000; /* white for readability on glass */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
 .admin-dash-header__logout {
@@ -402,23 +406,27 @@
   gap: 6px;
   padding: 8px 14px;
   border-radius: var(--ad-radius-pill);
-  border: 1.5px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  background: rgba(220, 38, 38, 0.7); /* vibrant red with glass transparency */
+  color: #fff; /* white text for high contrast */
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: var(--ad-font);
+  backdrop-filter: blur(4px); /* subtle blur to match glass navbar */
 }
 
 .admin-dash-header__logout:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(220, 38, 38, 0.9);
+  border-color: rgba(255, 255, 255, 0.8);
+  color: #fff;
 }
 
+/* keep icon/text color consistent */
+.admin-dash-header__logout svg,
 .admin-dash-header__logout span {
-  display: none;
+  color: #fff;
 }
 
 @media (min-width: 480px) {
@@ -686,7 +694,7 @@
   padding: 16px 8px;
   border-radius: var(--ad-radius-sm);
   border: 1px solid #f1f5f9;
-  background: #fff;
+  background: #f8fafc;
   cursor: pointer;
   transition: all 0.2s ease;
   font-family: var(--ad-font);
@@ -752,7 +760,7 @@
   padding: 14px 16px;
   border-radius: var(--ad-radius-sm);
   border: 1px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -854,7 +862,7 @@
   padding: 10px 12px;
   border-radius: var(--ad-radius-sm);
   border: 1px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   font-size: 13px;
   color: #1e293b;
   font-family: var(--ad-font);
@@ -1060,7 +1068,7 @@
   padding: 12px 40px 12px 40px;
   border-radius: var(--ad-radius-pill);
   border: 1.5px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   font-size: 14px;
   color: #1e293b;
   font-family: var(--ad-font);
@@ -1122,7 +1130,7 @@
   padding: 7px 14px;
   border-radius: var(--ad-radius-pill);
   border: 1.5px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   color: #64748b;
   font-size: 12px;
   font-weight: 600;
@@ -1155,7 +1163,7 @@
   padding: 6px 12px;
   border-radius: var(--ad-radius-pill);
   border: 1.5px solid #e2e8f0;
-  background: #fff;
+  background: #f8fafc;
   flex-shrink: 0;
 }
 
