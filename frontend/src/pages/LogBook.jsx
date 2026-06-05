@@ -427,21 +427,21 @@ const Logbook = () => {
         setValidationResults({
           tasks: trimmed.tasks
             ? formatValidationResult(
-                results.tasks?.valid !== false,
-                results.tasks?.reason,
-              )
+              results.tasks?.valid !== false,
+              results.tasks?.reason,
+            )
             : null,
           challenges: trimmed.challenges
             ? formatValidationResult(
-                results.challenges?.valid !== false,
-                results.challenges?.reason,
-              )
+              results.challenges?.valid !== false,
+              results.challenges?.reason,
+            )
             : null,
           plans: trimmed.plans
             ? formatValidationResult(
-                results.plans?.valid !== false,
-                results.plans?.reason,
-              )
+              results.plans?.valid !== false,
+              results.plans?.reason,
+            )
             : null,
         });
 
@@ -630,15 +630,13 @@ const Logbook = () => {
                 <div>
                   <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{
-                      background: palette.gradient,
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
+                      color: "#1a1a2e",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 10,
                       transition: "all 0.4s ease",
                     }}>
-                      <FiBook style={{ WebkitTextFillColor: "initial", color: palette.light }} />
+                      <FiBook style={{ color: palette.light }} />
                       Daily Logbook
                     </span>
                   </h1>
@@ -1309,13 +1307,12 @@ const Logbook = () => {
                           gap: 12,
                           padding: "14px 16px",
                           borderRadius: 14,
-                          borderLeft: `4px solid ${
-                            statusMessage.type === "success"
+                          borderLeft: `4px solid ${statusMessage.type === "success"
                               ? "#50b748"
                               : statusMessage.type === "project_error"
                                 ? "#f59e0b"
                                 : "#ef4444"
-                          }`,
+                            }`,
                           background:
                             statusMessage.type === "success"
                               ? "#f0fdf4"
