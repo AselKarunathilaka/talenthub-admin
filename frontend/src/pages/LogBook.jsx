@@ -1709,12 +1709,10 @@ const Logbook = () => {
                 >
                   <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
                     {[
-                      "Be specific about tasks completed",
-                      "Include time spent on each major task",
-                      "Document any challenges for future reference",
-                      "Plan ahead for tomorrow's priorities",
-                      "Mark \"On Leave\" when taking time off",
-                      "Use \"Work From Home\" when working remotely",
+                      "Always keep a backup of your weekly logs",
+                      "Be specific about the tasks you completed",
+                      "Only submit descriptive and work-related entries",
+                      "Update daily to help you track your progress"
                     ].map((tip, i) => (
                       <li key={i} style={{
                         display: "flex",
@@ -1737,7 +1735,7 @@ const Logbook = () => {
                   title="Today's Summary"
                   palette={palette}
                 >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     <SummaryRow
                       label="Date"
                       value={new Date().toLocaleDateString("en-US", {
@@ -1759,31 +1757,6 @@ const Logbook = () => {
                         </span>
                       }
                     />
-                    <SummaryRow
-                      label="Form Completion"
-                      value={
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1 }}>
-                          <div style={{
-                            flex: 1,
-                            height: 6,
-                            borderRadius: 3,
-                            background: "#e5e7eb",
-                            overflow: "hidden",
-                          }}>
-                            <div style={{
-                              height: "100%",
-                              width: `${completionProgress}%`,
-                              background: palette.gradient,
-                              borderRadius: 3,
-                              transition: "width 0.6s ease",
-                            }} />
-                          </div>
-                          {completionProgress === 100 && (
-                            <FiCheckCircle size={14} style={{ color: palette.light }} />
-                          )}
-                        </div>
-                      }
-                    />
                   </div>
                 </InfoCard>
               </div>
@@ -1801,35 +1774,24 @@ const Logbook = () => {
 /*  Sub-Components                                                            */
 /* ════════════════════════════════════════════════════════════════════════════ */
 
-/** Collapsible info card for sidebar info */
+/** Static info card for sidebar info */
 const InfoCard = ({ icon, title, palette, children }) => {
-  const [isOpen, setIsOpen] = useState(true);
-
   return (
     <div style={{
       background: "white",
       borderRadius: 16,
       border: "1px solid #f0f0f0",
       overflow: "hidden",
-      transition: "all 0.3s ease",
       boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
     }}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        style={{
-          width: "100%",
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "14px 16px",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          borderBottom: isOpen ? "1px solid #f0f0f0" : "none",
-          transition: "all 0.3s ease",
-        }}
-      >
+      <div style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "14px 16px",
+        borderBottom: "1px solid #f0f0f0",
+      }}>
         <div style={{
           width: 32,
           height: 32,
@@ -1846,23 +1808,9 @@ const InfoCard = ({ icon, title, palette, children }) => {
         <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", flex: 1, textAlign: "left" }}>
           {title}
         </span>
-        <FiArrowRight
-          size={14}
-          style={{
-            color: "#9ca3af",
-            transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
-            transition: "transform 0.3s ease",
-          }}
-        />
-      </button>
-      <div style={{
-        maxHeight: isOpen ? 400 : 0,
-        overflow: "hidden",
-        transition: "max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-      }}>
-        <div style={{ padding: "14px 16px" }}>
-          {children}
-        </div>
+      </div>
+      <div style={{ padding: "14px 16px" }}>
+        {children}
       </div>
     </div>
   );
