@@ -39,10 +39,10 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
       whileTap={status === "available" ? { scale: 0.95 } : {}}
       title={
         status === "locked" ? (lockedSeatDetails?.[number]?.traineeId ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}` : `Seat ${number} (Locked)`)
-        : status === "booked" && bookingInfo?.traineeId ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
-        : status === "booked" && bookingInfo?.email ? `Seat ${number} - Booked by: ${bookingInfo.email}`
-        : status === "booked" ? `Seat ${number} (Already Booked)`
-        : `Seat ${number} (Available)`
+          : status === "booked" && bookingInfo?.traineeId ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
+            : status === "booked" && bookingInfo?.email ? `Seat ${number} - Booked by: ${bookingInfo.email}`
+              : status === "booked" ? `Seat ${number} (Already Booked)`
+                : `Seat ${number} (Available)`
       }
     >
       <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
@@ -130,19 +130,31 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef({ x: 0, y: 0, translateX: 0, translateY: 0 });
   const [ready, setReady] = useState(false);
+  const [baseScale, setBaseScale] = useState(initialScale);
 
   const clampTransform = useCallback((newTransform) => {
     if (!viewportRef.current) return newTransform;
     const viewRect = viewportRef.current.getBoundingClientRect();
     if (viewRect.width === 0 || viewRect.height === 0) return newTransform;
+
     const scaledWidth = mapWidth * newTransform.scale;
     const scaledHeight = mapHeight * newTransform.scale;
-    const minX = Math.min(0, viewRect.width - scaledWidth);
-    const maxX = Math.max(0, viewRect.width - scaledWidth);
-    const minY = Math.min(0, viewRect.height - scaledHeight);
-    const maxY = Math.max(0, viewRect.height - scaledHeight);
+
+    // Define margins (in pixels) - adjust these values as needed
+    const leftMargin = 80;
+    const rightMargin = 80;
+    const topMargin = 60;
+    const bottomMargin = 60;
+
+    // Allowed pan range
+    const minX = viewRect.width - scaledWidth - rightMargin;
+    const maxX = leftMargin;
+    const minY = viewRect.height - scaledHeight - bottomMargin;
+    const maxY = topMargin;
+
     const clampedX = Math.min(maxX, Math.max(minX, newTransform.translateX));
     const clampedY = Math.min(maxY, Math.max(minY, newTransform.translateY));
+
     return { ...newTransform, translateX: clampedX, translateY: clampedY };
   }, [mapWidth, mapHeight, viewportRef]);
 
@@ -150,16 +162,50 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
     if (!viewportRef.current) return;
     const rect = viewportRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
-    const scaleX = rect.width / mapWidth;
-    const scaleY = rect.height / mapHeight;
-    const fitScale = Math.min(scaleX, scaleY, 1) * 0.85; // 85% of max fit to leave some margin
-    const centerX = (rect.width - mapWidth * fitScale) / 2;
-    const centerY = (rect.height - mapHeight * fitScale) / 2;
-    setTransform({
-      scale: fitScale,
-      translateX: centerX,
-      translateY: centerY,
-    });
+
+    const isMobile = window.innerWidth < 768; // or use a more robust check
+
+    let fitScale;
+    if (isMobile) {
+      // On mobile: zoom to show left room fully
+      // Left room width ~610px (from your layout), add some margin
+      const targetWidth = 720; // left room width + margins
+      fitScale = rect.width / targetWidth;
+      // Ensure scale is not too big or too small
+      fitScale = Math.min(fitScale, 1.2);
+      fitScale = Math.max(fitScale, 0.5);
+
+      // Center on left room (which is centered around x=300px in map coordinates)
+      const leftRoomCenterX = 300;
+      let translateX = (rect.width / 2) - (leftRoomCenterX * fitScale);
+      let translateY = (rect.height / 2) - ((MAP_HEIGHT / 2) * fitScale);
+
+      // Shift 10% right, 5% down relative to viewport
+      translateX += rect.width * 0.10;
+      translateY += rect.height * 0.06;
+      setTransform({
+        scale: fitScale,
+        translateX: translateX,
+        translateY: translateY,
+      });
+    } else {
+      // Desktop: fit whole map with minimal margin, zoomed in as much as possible
+      const scaleX = rect.width / mapWidth;
+      const scaleY = rect.height / mapHeight;
+      fitScale = Math.min(scaleX, scaleY, 1); // remove the 0.85 factor to maximise zoom
+      // Center the map
+      let translateX = (rect.width - mapWidth * fitScale) / 2;
+      let translateY = (rect.height - mapHeight * fitScale) / 2;
+
+      // Shift 10% right, 5% down relative to viewport
+      translateX += rect.width * 0.10;
+      translateY += rect.height * 0.05;
+      setTransform({
+        scale: fitScale,
+        translateX: translateX,
+        translateY: translateY,
+      });
+    }
     setReady(true);
   }, [mapWidth, mapHeight, viewportRef]);
 
@@ -239,7 +285,7 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
     setTransform(newTransform);
   };
   const zoomOut = () => {
-    const newScale = Math.max(0.5, transform.scale / 1.2);
+    const newScale = Math.max(0.6, transform.scale / 1.2); // min scale 0.6 (was 0.5)
     const newTransform = clampTransform({ ...transform, scale: newScale });
     setTransform(newTransform);
   };
@@ -314,7 +360,7 @@ const InternSeatManagement = () => {
           <div
             ref={mapViewportRef}
             className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
-            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0 }}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0, touchAction: 'none' }}
             onMouseDown={handleMouseDown}
             onWheel={handleWheel}
             onTouchStart={handleTouchStart}
@@ -338,7 +384,7 @@ const InternSeatManagement = () => {
                     <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
                   </div>
                   <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
-                  <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px"  }}></div>
+                  <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
 
                   {/* Main room blocks */}
                   <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
@@ -384,7 +430,7 @@ const InternSeatManagement = () => {
                     <tr><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat Number</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booking Date</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th></tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {Object.entries(dailyBookings).sort(([a],[b]) => Number(a)-Number(b)).map(([seatNum]) => (
+                    {Object.entries(dailyBookings).sort(([a], [b]) => Number(a) - Number(b)).map(([seatNum]) => (
                       <tr key={seatNum} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-6 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center"><Armchair size={18} className="text-[#0056a2]" /></div><div><span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span><span className="font-extrabold text-gray-900 text-base leading-none">{seatNum}</span></div></div></td>
                         <td className="px-6 py-5"><div className="font-medium text-gray-700">{formatDisplayDate(selectedDate)}</div></td>
