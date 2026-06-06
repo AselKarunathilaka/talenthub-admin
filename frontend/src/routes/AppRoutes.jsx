@@ -28,6 +28,7 @@ import AdminQRManagement from "../pages/AdminQRManagement";
 import AdminPinManagement from "../pages/AdminPinManagement";
 import AdminInternCertificate from "../pages/AdminInternCertificate";
 import AdminManualAttendance from "../pages/AdminManualAttendanceMarking";
+import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 
 const AppRoutes = () => {
   return (
@@ -149,6 +150,10 @@ const AppRoutes = () => {
       <Route
         path="/admin/manual-attendance"
         element={<AdminManualAttendance />}
+      />
+      <Route
+        path="/admin/inactive-interns"
+        element={<AdminInactiveInterns />}
       />
     </Routes>
   );
