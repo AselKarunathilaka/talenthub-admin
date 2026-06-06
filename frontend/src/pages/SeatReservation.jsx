@@ -296,13 +296,8 @@ const InternSeatManagement = () => {
     if (activeTab === "map") {
       return (
         <div className="flex flex-col w-full h-full">
-          {/* Legend + Controls */}
-          <div className="flex justify-between items-center py-3 px-4 bg-white border-b border-gray-100 flex-wrap gap-2 shrink-0">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center"><Armchair size={10} className="text-[#50b748]" /></div><span className="text-xs font-bold text-gray-600">Available</span></div>
-              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center"><X size={11} strokeWidth={3} className="text-white" /></div><span className="text-xs font-bold text-gray-600">Booked</span></div>
-              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75"><Armchair size={10} className="text-slate-400" /></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
-            </div>
+          {/* Zoom Controls */}
+          <div className="flex justify-end items-center py-2 px-4 bg-white border-b border-gray-100 shrink-0">
             <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
               <button onClick={zoomOut} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom Out"><ZoomOut size={16} /></button>
               <button onClick={resetView} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Reset View"><Maximize size={16} /></button>
@@ -416,31 +411,38 @@ const InternSeatManagement = () => {
         <Navigation />
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl"><Armchair className="text-[#0056a2] h-8 w-8" /></div> Seat Reservation
-                </motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05, duration: 0.2 }} className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
-                  Streamlined and fluid workspace assignment. Select a date and reserve your preferred spot seamlessly.
-                </motion.p>
-              </div>
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><Calendar className="text-[#00b4eb] h-5 w-5" /></div>
-                  <div className="flex-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label><input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" /></div>
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100"><div className="text-2xl font-black text-rose-600 leading-none mb-1">{totalUnavailableCount}</div><div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</div></div>
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100"><div className="text-2xl font-black text-[#50b748] leading-none mb-1">{totalAvailableCount}</div><div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div></div>
-                </div>
-              </motion.div>
-            </div>
 
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: "700px", height: "calc(100vh - 280px)" }}>
-              <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
-                <button onClick={() => setActiveTab("map")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={18} /> Seat Map</button>
-                <button onClick={() => setActiveTab("bookings")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={18} /> My Bookings{Object.keys(dailyBookings).length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
+
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: "850px", height: "calc(100vh - 160px)" }}>
+              <div className="flex items-center border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
+                {/* Left: Date selector + counts */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 bg-white rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm">
+                    <Calendar className="text-[#00b4eb] h-4 w-4 shrink-0" />
+                    <input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer w-[110px]" />
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-red-50/80 rounded-xl px-2.5 py-1.5 border border-red-100">
+                    <span className="text-sm font-black text-rose-600 leading-none">{totalUnavailableCount}</span>
+                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider">Unavail</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-green-50/80 rounded-xl px-2.5 py-1.5 border border-green-100">
+                    <span className="text-sm font-black text-[#50b748] leading-none">{totalAvailableCount}</span>
+                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider">Avail</span>
+                  </div>
+                </div>
+
+                {/* Center: Legend */}
+                <div className="flex-1 flex items-center justify-center gap-4">
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-white border-2 border-[#50b748] rounded-md flex items-center justify-center"><Armchair size={8} className="text-[#50b748]" /></div><span className="text-[10px] font-bold text-gray-500">Available</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-rose-500 border-2 border-rose-600 rounded-md flex items-center justify-center"><X size={9} strokeWidth={3} className="text-white" /></div><span className="text-[10px] font-bold text-gray-500">Booked</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-slate-200 border-2 border-slate-300 rounded-md flex items-center justify-center opacity-75"><Armchair size={8} className="text-slate-400" /></div><span className="text-[10px] font-bold text-gray-500">Locked</span></div>
+                </div>
+
+                {/* Right: Tab switcher */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={16} /> Seat Map</button>
+                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={16} /> My Bookings{Object.keys(dailyBookings).length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
+                </div>
               </div>
               <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
                 {renderTabContent()}
