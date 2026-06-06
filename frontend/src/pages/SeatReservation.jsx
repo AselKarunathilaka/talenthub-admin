@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
+import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2 } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { useSeatManagement } from "./useSeatManagement";
 
@@ -124,143 +124,7 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
   );
 };
 
-// Custom hook for pan & zoom with safety checks
-const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
-  const [transform, setTransform] = useState({ scale: initialScale, translateX: 0, translateY: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0, translateX: 0, translateY: 0 });
-  const [ready, setReady] = useState(false);
 
-  const clampTransform = useCallback((newTransform) => {
-    if (!viewportRef.current) return newTransform;
-    const viewRect = viewportRef.current.getBoundingClientRect();
-    if (viewRect.width === 0 || viewRect.height === 0) return newTransform;
-    const scaledWidth = mapWidth * newTransform.scale;
-    const scaledHeight = mapHeight * newTransform.scale;
-    const minX = Math.min(0, viewRect.width - scaledWidth);
-    const maxX = Math.max(0, viewRect.width - scaledWidth);
-    const minY = Math.min(0, viewRect.height - scaledHeight);
-    const maxY = Math.max(0, viewRect.height - scaledHeight);
-    const clampedX = Math.min(maxX, Math.max(minX, newTransform.translateX));
-    const clampedY = Math.min(maxY, Math.max(minY, newTransform.translateY));
-    return { ...newTransform, translateX: clampedX, translateY: clampedY };
-  }, [mapWidth, mapHeight, viewportRef]);
-
-  const resetView = useCallback(() => {
-    if (!viewportRef.current) return;
-    const rect = viewportRef.current.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-    const scaleX = rect.width / mapWidth;
-    const scaleY = rect.height / mapHeight;
-    const fitScale = Math.min(scaleX, scaleY, 1) * 0.85; // 85% of max fit to leave some margin
-    const centerX = (rect.width - mapWidth * fitScale) / 2;
-    const centerY = (rect.height - mapHeight * fitScale) / 2;
-    setTransform({
-      scale: fitScale,
-      translateX: centerX,
-      translateY: centerY,
-    });
-    setReady(true);
-  }, [mapWidth, mapHeight, viewportRef]);
-
-  // Initial reset after ref is ready and after window resize
-  useEffect(() => {
-    if (!viewportRef.current) return;
-    const observer = new ResizeObserver(() => resetView());
-    observer.observe(viewportRef.current);
-    resetView();
-    return () => observer.disconnect();
-  }, [resetView, viewportRef]);
-
-  const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    setIsDragging(true);
-    dragStart.current = {
-      x: e.clientX - transform.translateX,
-      y: e.clientY - transform.translateY,
-      translateX: transform.translateX,
-      translateY: transform.translateY,
-    };
-  };
-
-  const handleMouseMove = useCallback((e) => {
-    if (!isDragging) return;
-    const newTranslateX = e.clientX - dragStart.current.x;
-    const newTranslateY = e.clientY - dragStart.current.y;
-    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [isDragging, transform, clampTransform]);
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  const handleTouchStart = (e) => {
-    if (e.touches.length === 1) {
-      e.preventDefault();
-      setIsDragging(true);
-      dragStart.current = {
-        x: e.touches[0].clientX - transform.translateX,
-        y: e.touches[0].clientY - transform.translateY,
-        translateX: transform.translateX,
-        translateY: transform.translateY,
-      };
-    }
-  };
-
-  const handleTouchMove = useCallback((e) => {
-    if (!isDragging || e.touches.length !== 1) return;
-    e.preventDefault();
-    const newTranslateX = e.touches[0].clientX - dragStart.current.x;
-    const newTranslateY = e.touches[0].clientY - dragStart.current.y;
-    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [isDragging, transform, clampTransform]);
-
-  const handleTouchEnd = () => setIsDragging(false);
-
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(3, Math.max(0.5, transform.scale * delta));
-    if (newScale === transform.scale) return;
-    const rect = viewportRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const scaleRatio = newScale / transform.scale;
-    const newTranslateX = mouseX - (mouseX - transform.translateX) * scaleRatio;
-    const newTranslateY = mouseY - (mouseY - transform.translateY) * scaleRatio;
-    const newTransform = clampTransform({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [transform, viewportRef, clampTransform]);
-
-  const zoomIn = () => {
-    const newScale = Math.min(3, transform.scale * 1.2);
-    const newTransform = clampTransform({ ...transform, scale: newScale });
-    setTransform(newTransform);
-  };
-  const zoomOut = () => {
-    const newScale = Math.max(0.5, transform.scale / 1.2);
-    const newTransform = clampTransform({ ...transform, scale: newScale });
-    setTransform(newTransform);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      window.addEventListener('touchmove', handleTouchMove, { passive: false });
-      window.addEventListener('touchend', handleTouchEnd);
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('touchmove', handleTouchMove);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [isDragging, handleMouseMove, handleTouchMove]);
-
-  return { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready };
-};
 
 const InternSeatManagement = () => {
   const {
@@ -287,80 +151,74 @@ const InternSeatManagement = () => {
 
   const [activeTab, setActiveTab] = useState("map");
   const mapViewportRef = useRef(null);
+  const [mapScale, setMapScale] = useState(1);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 850;
 
-  const { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready } = usePanZoom(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, 0.7);
+  // Auto-fit map to viewport on mount and resize
+  useEffect(() => {
+    const el = mapViewportRef.current;
+    if (!el) return;
+    const fit = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const scale = Math.min(rect.width / MAP_WIDTH, rect.height / MAP_HEIGHT) * 0.95;
+      setMapScale(scale);
+    };
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    fit();
+    return () => observer.disconnect();
+  }, []);
 
   const renderTabContent = () => {
     if (activeTab === "map") {
       return (
-        <div className="flex flex-col w-full h-full">
-          {/* Zoom Controls */}
-          <div className="flex justify-end items-center py-2 px-4 bg-white border-b border-gray-100 shrink-0">
-            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
-              <button onClick={zoomOut} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom Out"><ZoomOut size={16} /></button>
-              <button onClick={resetView} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Reset View"><Maximize size={16} /></button>
-              <button onClick={zoomIn} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom In"><ZoomIn size={16} /></button>
-              <div className="w-px h-5 bg-gray-300 mx-1"></div>
-              <div className="flex items-center gap-1 px-2 text-xs text-gray-500"><Move size={12} /><span>Drag to pan</span></div>
-            </div>
-          </div>
-
-          {/* Map Viewport - ensure it takes all available space */}
+        <div
+          ref={mapViewportRef}
+          className="w-full h-full flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"
+          style={{ minHeight: 0, paddingLeft: '10%', paddingTop: '5%' }}
+        >
           <div
-            ref={mapViewportRef}
-            className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
-            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0 }}
-            onMouseDown={handleMouseDown}
-            onWheel={handleWheel}
-            onTouchStart={handleTouchStart}
+            style={{
+              width: `${MAP_WIDTH}px`,
+              height: `${MAP_HEIGHT}px`,
+              transform: `scale(${mapScale})`,
+              transformOrigin: 'center center',
+              position: 'relative',
+            }}
           >
-            {/* Map content - only show after initial transform is ready to avoid flicker */}
-            {ready && (
-              <div
-                className="absolute"
-                style={{
-                  width: `${MAP_WIDTH}px`,
-                  height: `${MAP_HEIGHT}px`,
-                  transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
-                  transformOrigin: '0 0',
-                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
-                }}
-              >
-                {/* Floor plan and seats */}
-                <div className="absolute inset-0">
-                  {/* Entrance and structure graphics */}
-                  <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
-                    <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
-                  </div>
-                  <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
-                  <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px"  }}></div>
-
-                  {/* Main room blocks */}
-                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
-                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
-                  </div>
-                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
-                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
-                  </div>
-
-                  {/* Left section seats */}
-                  {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
-                  {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                  {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                  {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-                  {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-
-                  {/* Right section seats */}
-                  {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
-                  {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                  {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                  {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                  {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-                </div>
+            {/* Floor plan and seats */}
+            <div className="absolute inset-0">
+              {/* Entrance and structure graphics */}
+              <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
+                <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
               </div>
-            )}
+              <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
+              <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
+
+              {/* Main room blocks */}
+              <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
+                <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
+              </div>
+              <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
+                <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
+              </div>
+
+              {/* Left section seats */}
+              {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
+              {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+              {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+              {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+              {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+
+              {/* Right section seats */}
+              {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
+              {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+              {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+              {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+              {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+            </div>
           </div>
         </div>
       );
@@ -423,11 +281,11 @@ const InternSeatManagement = () => {
                   </div>
                   <div className="flex items-center gap-1.5 bg-red-50/80 rounded-xl px-2.5 py-1.5 border border-red-100">
                     <span className="text-sm font-black text-rose-600 leading-none">{totalUnavailableCount}</span>
-                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider">Unavail</span>
+                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-green-50/80 rounded-xl px-2.5 py-1.5 border border-green-100">
                     <span className="text-sm font-black text-[#50b748] leading-none">{totalAvailableCount}</span>
-                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider">Avail</span>
+                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</span>
                   </div>
                 </div>
 
