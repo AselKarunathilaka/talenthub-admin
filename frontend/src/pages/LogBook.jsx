@@ -931,45 +931,39 @@ const Logbook = () => {
                               {opt.description}
                             </span>
                             {opt.disabled && (
-                              <span style={{
-                                fontSize: 10,
-                                color: "#ef4444",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 4,
-                                marginTop: 6,
+                              <div style={{
+                                marginTop: 8,
+                                padding: "4px 10px",
+                                borderRadius: 8,
+                                background: "rgba(239, 68, 68, 0.08)",
+                                border: "1px solid rgba(239, 68, 68, 0.15)",
                               }}>
-                                <FiClock size={10} /> Not available after 10 AM
-                              </span>
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#dc2626",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}>
+                                  <FiClock size={12} /> Closed after 10:00 AM
+                                </span>
+                                <span style={{
+                                  fontSize: 10,
+                                  color: "#b91c1c",
+                                  display: "block",
+                                  marginTop: 2,
+                                }}>
+                                  Now: {timeRestriction.currentTime}
+                                </span>
+                              </div>
                             )}
                           </label>
                         );
                       })}
                     </div>
 
-                    {/* Time restriction notification */}
-                    {timeRestriction.isAfter10AM && (
-                      <div style={{
-                        background: "#fef2f2",
-                        border: "1px solid #fecaca",
-                        borderRadius: 12,
-                        padding: "12px 16px",
-                        marginBottom: 16,
-                      }}>
-                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                          <FiClock style={{ color: "#ef4444", marginTop: 2, flexShrink: 0 }} />
-                          <div>
-                            <p style={{ color: "#991b1b", fontWeight: 600, fontSize: 13, marginBottom: 2 }}>
-                              Leave Applications Closed
-                            </p>
-                            <p style={{ color: "#b91c1c", fontSize: 12 }}>
-                              Leave applications are not available after 10:00
-                              AM. Current time: {timeRestriction.currentTime}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
+
 
                     {/* Next button */}
                     <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 12 }}>
