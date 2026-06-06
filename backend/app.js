@@ -18,6 +18,7 @@ const seatBookingRoutes = require("./routes/seatBookingRoutes");
 const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
+const holidayRoutes = require("./routes/holidayRoutes");
 
 require("./scheduler");
 
@@ -66,5 +67,8 @@ app.use("/api/seat-reservation", seatBookingRoutes);
 app.use("/api/gate-staff", gateStaffRoutes);
 app.use("/api/admin", adminSeatRoutes);
 app.use("/api/announcements", internAnnouncementRoutes);
+
+//Sri Lanka Holidays
+app.use("/api/holidays", holidayRoutes);
 
 module.exports = app;
