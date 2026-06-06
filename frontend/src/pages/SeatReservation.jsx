@@ -336,12 +336,21 @@ const InternSeatManagement = () => {
 
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: isMobile ? 'auto' : '850px', height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 160px)' }}>
               <div className="flex flex-wrap md:flex-nowrap items-center border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
+                {/* Right: Tab switcher */}
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={14} /> <span className="hidden sm:inline">Seat Map</span><span className="sm:hidden">Map</span></button>
+                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={14} /> <span className="hidden sm:inline">My Bookings</span><span className="sm:hidden">Bookings</span>{Object.keys(dailyBookings).length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
+                </div>
+
+                {/* Center: Legend - hidden on mobile, shown on md+ */}
+                <div className="hidden md:flex flex-1 items-center justify-center gap-4">
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-white border-2 border-[#50b748] rounded-md flex items-center justify-center"><Armchair size={8} className="text-[#50b748]" /></div><span className="text-[10px] font-bold text-gray-500">Available</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-rose-500 border-2 border-rose-600 rounded-md flex items-center justify-center"><X size={9} strokeWidth={3} className="text-white" /></div><span className="text-[10px] font-bold text-gray-500">Booked</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-slate-200 border-2 border-slate-300 rounded-md flex items-center justify-center opacity-75"><Armchair size={8} className="text-slate-400" /></div><span className="text-[10px] font-bold text-gray-500">Locked</span></div>
+                </div>
+
                 {/* Left: Date selector + counts */}
                 <div className="flex items-center gap-2 shrink-0">
-                  <div className="flex items-center gap-2 bg-white rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm">
-                    <Calendar className="text-[#00b4eb] h-4 w-4 shrink-0" />
-                    <input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer w-[110px]" />
-                  </div>
                   <div className="flex items-center gap-1.5 bg-red-50/80 rounded-xl px-2.5 py-1.5 border border-red-100">
                     <span className="text-sm font-black text-rose-600 leading-none">{totalUnavailableCount}</span>
                     <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider hidden sm:inline">Unavailable</span>
@@ -352,20 +361,12 @@ const InternSeatManagement = () => {
                     <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider hidden sm:inline">Available</span>
                     <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider sm:hidden">Available</span>
                   </div>
+                  <div className="flex items-center gap-2 bg-white rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm">
+                    <Calendar className="text-[#00b4eb] h-4 w-4 shrink-0" />
+                    <input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer w-[110px]" />
+                  </div>
                 </div>
 
-                {/* Center: Legend - hidden on mobile, shown on md+ */}
-                <div className="hidden md:flex flex-1 items-center justify-center gap-4">
-                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-white border-2 border-[#50b748] rounded-md flex items-center justify-center"><Armchair size={8} className="text-[#50b748]" /></div><span className="text-[10px] font-bold text-gray-500">Available</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-rose-500 border-2 border-rose-600 rounded-md flex items-center justify-center"><X size={9} strokeWidth={3} className="text-white" /></div><span className="text-[10px] font-bold text-gray-500">Booked</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-slate-200 border-2 border-slate-300 rounded-md flex items-center justify-center opacity-75"><Armchair size={8} className="text-slate-400" /></div><span className="text-[10px] font-bold text-gray-500">Locked</span></div>
-                </div>
-
-                {/* Right: Tab switcher */}
-                <div className="flex items-center gap-2 shrink-0 ml-auto">
-                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={14} /> <span className="hidden sm:inline">Seat Map</span><span className="sm:hidden">Map</span></button>
-                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={14} /> <span className="hidden sm:inline">My Bookings</span><span className="sm:hidden">Bookings</span>{Object.keys(dailyBookings).length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
-                </div>
               </div>
               <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
                 {renderTabContent()}
