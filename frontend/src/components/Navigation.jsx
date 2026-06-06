@@ -364,14 +364,6 @@ const Navigation = ({ children }) => {
             </button>
 
             <button
-              onClick={handleDownloadLeaveForm}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#50b748] transition-all duration-200 group"
-            >
-              <Download className="h-5 w-5 mr-3 group-hover:text-[#50b748]" />
-              <span className="text-sm font-medium">Leave Form</span>
-            </button>
-
-            <button
               onClick={handleLogout}
               className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
             >
