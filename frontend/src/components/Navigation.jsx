@@ -18,7 +18,7 @@ import {
   Armchair,
   Megaphone,
 } from "lucide-react";
-import logo from "../assets/talenthub.png";
+import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
@@ -200,14 +200,11 @@ const Navigation = ({ children }) => {
   return (
     <>
       {/* Mobile Top Bar */}
-      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-b from-[#006600] to-[#000066]">
+      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-r from-[#006600] to-[#000066]">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
             <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2">
-              <span className="text-xl font-extrabold">
-                <span className="text-[#00b4eb]">Talent</span>
-                <span className="text-[#50b748]">Hub</span>
-              </span>
+              <span className="text-xl font-extrabold text-white">TalentHub</span>
               <img src={logo} alt="SLT Logo" className="h-8 w-auto rounded-md border border-white/10" />
             </Link>
           </div>
@@ -244,13 +241,13 @@ const Navigation = ({ children }) => {
 
       {/* Desktop Top Bar */}
       <header
-        className={`hidden lg:flex items-center justify-between bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
+        className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
           transition-all duration-500 ease-out
           ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
         style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#00b4eb] to-[#50b748] bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold text-white">
             {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
           </h2>
 
@@ -289,8 +286,7 @@ const Navigation = ({ children }) => {
               <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
             </Link>
             <span className="text-2xl font-extrabold tracking-tight">
-              <span className="text-[#00b4eb]">Talent</span>
-              <span className="text-[#50b748]">Hub</span>
+              <span className="text-[#ffffff]">TalentHub</span>
             </span>
           </div>
 
@@ -365,14 +361,6 @@ const Navigation = ({ children }) => {
             >
               <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
               <span className="text-sm font-medium">Guidelines Agreement</span>
-            </button>
-
-            <button
-              onClick={handleDownloadLeaveForm}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#50b748] transition-all duration-200 group"
-            >
-              <Download className="h-5 w-5 mr-3 group-hover:text-[#50b748]" />
-              <span className="text-sm font-medium">Leave Form</span>
             </button>
 
             <button
