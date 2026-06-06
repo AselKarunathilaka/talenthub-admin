@@ -124,51 +124,26 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
   );
 };
 
-// Custom hook for pan & zoom with safety checks
+// Custom hook for pan with safety checks
 const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
   const [transform, setTransform] = useState({ scale: initialScale, translateX: 0, translateY: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0, translateX: 0, translateY: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
   const [ready, setReady] = useState(false);
-  const [baseScale, setBaseScale] = useState(initialScale);
-
-  const clampTransform = useCallback((newTransform) => {
-    if (!viewportRef.current) return newTransform;
-    const viewRect = viewportRef.current.getBoundingClientRect();
-    if (viewRect.width === 0 || viewRect.height === 0) return newTransform;
-
-    const scaledWidth = mapWidth * newTransform.scale;
-    const scaledHeight = mapHeight * newTransform.scale;
-
-    // Define margins (in pixels) - adjust these values as needed
-    const leftMargin = 80;
-    const rightMargin = 80;
-    const topMargin = 60;
-    const bottomMargin = 60;
-
-    // Allowed pan range
-    const minX = viewRect.width - scaledWidth - rightMargin;
-    const maxX = leftMargin;
-    const minY = viewRect.height - scaledHeight - bottomMargin;
-    const maxY = topMargin;
-
-    const clampedX = Math.min(maxX, Math.max(minX, newTransform.translateX));
-    const clampedY = Math.min(maxY, Math.max(minY, newTransform.translateY));
-
-    return { ...newTransform, translateX: clampedX, translateY: clampedY };
-  }, [mapWidth, mapHeight, viewportRef]);
 
   const resetView = useCallback(() => {
     if (!viewportRef.current) return;
     const rect = viewportRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
-    const isMobile = window.innerWidth < 768; // or use a more robust check
+    const isMobile = window.innerWidth < 768;
 
     let fitScale;
+    let translateX;
+    let translateY;
+
     if (isMobile) {
       // On mobile: zoom to show left room fully
-      // Left room width ~610px (from your layout), add some margin
       const targetWidth = 720; // left room width + margins
       fitScale = rect.width / targetWidth;
       // Ensure scale is not too big or too small
@@ -177,35 +152,31 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
 
       // Center on left room (which is centered around x=300px in map coordinates)
       const leftRoomCenterX = 300;
-      let translateX = (rect.width / 2) - (leftRoomCenterX * fitScale);
-      let translateY = (rect.height / 2) - ((MAP_HEIGHT / 2) * fitScale);
+      translateX = (rect.width / 2) - (leftRoomCenterX * fitScale);
+      translateY = (rect.height / 2) - ((mapHeight / 2) * fitScale);
 
-      // Shift 10% right, 5% down relative to viewport
-      translateX += rect.width * 0.10;
+      // Shift 10% right, 5% down relative to viewport, plus an extra 10% right for mobile
+      translateX += rect.width * 0.20; 
       translateY += rect.height * 0.06;
-      setTransform({
-        scale: fitScale,
-        translateX: translateX,
-        translateY: translateY,
-      });
     } else {
       // Desktop: fit whole map with minimal margin, zoomed in as much as possible
       const scaleX = rect.width / mapWidth;
       const scaleY = rect.height / mapHeight;
-      fitScale = Math.min(scaleX, scaleY, 1); // remove the 0.85 factor to maximise zoom
+      fitScale = Math.min(scaleX, scaleY, 1);
       // Center the map
-      let translateX = (rect.width - mapWidth * fitScale) / 2;
-      let translateY = (rect.height - mapHeight * fitScale) / 2;
+      translateX = (rect.width - mapWidth * fitScale) / 2;
+      translateY = (rect.height - mapHeight * fitScale) / 2;
 
       // Shift 10% right, 5% down relative to viewport
       translateX += rect.width * 0.10;
       translateY += rect.height * 0.05;
-      setTransform({
-        scale: fitScale,
-        translateX: translateX,
-        translateY: translateY,
-      });
     }
+    
+    setTransform({
+      scale: fitScale,
+      translateX: translateX,
+      translateY: translateY,
+    });
     setReady(true);
   }, [mapWidth, mapHeight, viewportRef]);
 
@@ -225,18 +196,31 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
     dragStart.current = {
       x: e.clientX - transform.translateX,
       y: e.clientY - transform.translateY,
-      translateX: transform.translateX,
-      translateY: transform.translateY,
     };
   };
 
   const handleMouseMove = useCallback((e) => {
     if (!isDragging) return;
-    const newTranslateX = e.clientX - dragStart.current.x;
-    const newTranslateY = e.clientY - dragStart.current.y;
-    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [isDragging, transform, clampTransform]);
+    const isMobile = window.innerWidth < 768;
+    const viewRect = viewportRef.current?.getBoundingClientRect();
+    if (!viewRect) return;
+
+    const scaledWidth = mapWidth * transform.scale;
+    const canPanX = isMobile || scaledWidth > viewRect.width;
+
+    if (canPanX) {
+      let newTranslateX = e.clientX - dragStart.current.x;
+      
+      const leftMargin = isMobile ? viewRect.width * 0.4 : 80;
+      const rightMargin = 80;
+      const minX = viewRect.width - scaledWidth - rightMargin;
+      const maxX = leftMargin;
+      
+      newTranslateX = Math.min(maxX, Math.max(minX, newTranslateX));
+
+      setTransform(prev => ({ ...prev, translateX: newTranslateX }));
+    }
+  }, [isDragging, mapWidth, transform.scale, viewportRef]);
 
   const handleMouseUp = () => setIsDragging(false);
 
@@ -247,8 +231,6 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
       dragStart.current = {
         x: e.touches[0].clientX - transform.translateX,
         y: e.touches[0].clientY - transform.translateY,
-        translateX: transform.translateX,
-        translateY: transform.translateY,
       };
     }
   };
@@ -256,39 +238,28 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
   const handleTouchMove = useCallback((e) => {
     if (!isDragging || e.touches.length !== 1) return;
     e.preventDefault();
-    const newTranslateX = e.touches[0].clientX - dragStart.current.x;
-    const newTranslateY = e.touches[0].clientY - dragStart.current.y;
-    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [isDragging, transform, clampTransform]);
+    const isMobile = window.innerWidth < 768;
+    const viewRect = viewportRef.current?.getBoundingClientRect();
+    if (!viewRect) return;
+
+    const scaledWidth = mapWidth * transform.scale;
+    const canPanX = isMobile || scaledWidth > viewRect.width;
+
+    if (canPanX) {
+      let newTranslateX = e.touches[0].clientX - dragStart.current.x;
+      
+      const leftMargin = isMobile ? viewRect.width * 0.4 : 80;
+      const rightMargin = 80;
+      const minX = viewRect.width - scaledWidth - rightMargin;
+      const maxX = leftMargin;
+      
+      newTranslateX = Math.min(maxX, Math.max(minX, newTranslateX));
+
+      setTransform(prev => ({ ...prev, translateX: newTranslateX }));
+    }
+  }, [isDragging, mapWidth, transform.scale, viewportRef]);
 
   const handleTouchEnd = () => setIsDragging(false);
-
-  const handleWheel = useCallback((e) => {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.min(3, Math.max(0.5, transform.scale * delta));
-    if (newScale === transform.scale) return;
-    const rect = viewportRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const scaleRatio = newScale / transform.scale;
-    const newTranslateX = mouseX - (mouseX - transform.translateX) * scaleRatio;
-    const newTranslateY = mouseY - (mouseY - transform.translateY) * scaleRatio;
-    const newTransform = clampTransform({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
-    setTransform(newTransform);
-  }, [transform, viewportRef, clampTransform]);
-
-  const zoomIn = () => {
-    const newScale = Math.min(3, transform.scale * 1.2);
-    const newTransform = clampTransform({ ...transform, scale: newScale });
-    setTransform(newTransform);
-  };
-  const zoomOut = () => {
-    const newScale = Math.max(0.6, transform.scale / 1.2); // min scale 0.6 (was 0.5)
-    const newTransform = clampTransform({ ...transform, scale: newScale });
-    setTransform(newTransform);
-  };
 
   useEffect(() => {
     if (isDragging) {
@@ -305,7 +276,7 @@ const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
     };
   }, [isDragging, handleMouseMove, handleTouchMove]);
 
-  return { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready };
+  return { transform, handleMouseDown, handleTouchStart, resetView, isDragging, ready };
 };
 
 const InternSeatManagement = () => {
@@ -336,7 +307,7 @@ const InternSeatManagement = () => {
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 850;
 
-  const { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready } = usePanZoom(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, 0.7);
+  const { transform, handleMouseDown, handleTouchStart, resetView, isDragging, ready } = usePanZoom(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, 0.7);
 
   const renderTabContent = () => {
     if (activeTab === "map") {
@@ -350,9 +321,7 @@ const InternSeatManagement = () => {
               <div className="flex items-center gap-2"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75"><Armchair size={10} className="text-slate-400" /></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
-              <button onClick={zoomOut} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom Out"><ZoomOut size={16} /></button>
               <button onClick={resetView} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Reset View"><Maximize size={16} /></button>
-              <button onClick={zoomIn} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom In"><ZoomIn size={16} /></button>
             </div>
           </div>
 
@@ -362,7 +331,6 @@ const InternSeatManagement = () => {
             className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
             style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0, touchAction: 'none' }}
             onMouseDown={handleMouseDown}
-            onWheel={handleWheel}
             onTouchStart={handleTouchStart}
           >
             {/* Map content - only show after initial transform is ready to avoid flicker */}
