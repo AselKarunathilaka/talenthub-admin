@@ -56,7 +56,7 @@ const Navigation = ({ children }) => {
     { to: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />, hoverColor: "#f43f5e", badge: unreadCount },
     { to: "/face-attendance", label: "Face Attendance", icon: <Camera className="h-5 w-5" />, hoverColor: "#f97316" },
     { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" />, hoverColor: "#dfdf66ff" },
-    { to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
+    //{ to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
     { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#a78bfa" },
     { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#00b4eb" },
     { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
