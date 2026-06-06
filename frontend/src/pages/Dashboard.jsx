@@ -130,7 +130,7 @@ const Dashboard = () => {
         const meetingDateKey = (entry) => {
           const date = entry.date ? new Date(entry.date) : null;
           return date && !Number.isNaN(date.getTime())
-            ? date.toISOString().slice(0, 10)
+            ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
             : String(entry.date || "");
         };
         const meetingPresentDays = new Set(
@@ -322,7 +322,7 @@ const Dashboard = () => {
       }
 
       const dateKey = date
-        ? date.toISOString().slice(0, 10)
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
         : String(entry.date || "unknown");
       const fallbackLabel = entry.date || "N/A";
       const group = groups.get(dateKey) || {
@@ -337,6 +337,7 @@ const Dashboard = () => {
         dayName: date
           ? date.toLocaleDateString("en-US", { weekday: "short" })
           : "N/A",
+        dateNumber: date ? date.getDate() : "-",
         meetings: [],
       };
 
@@ -997,7 +998,7 @@ const Dashboard = () => {
                               {group.dayName}
                             </span>
                             <span className="text-lg font-black leading-none">
-                              {new Date(group.dateKey).getDate() || "-"}
+                              {group.dateNumber}
                             </span>
                           </div>
                           <div className="text-left">
