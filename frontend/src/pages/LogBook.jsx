@@ -669,7 +669,225 @@ const Logbook = () => {
               </div>
             </div>
 
-            {/* ───── Main Form Card ───── */}
+            {/* ───── Project Access Blocked — Standalone Instruction Card ───── */}
+            {projectAccessBlocked === true && (
+              <div
+                className="logbook-card logbook-fade-in"
+                style={{
+                  background: "white",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  border: "2px solid #fde68a",
+                  boxShadow: "0 4px 24px rgba(245, 158, 11, 0.08)",
+                  maxWidth: 640,
+                  margin: "0 auto",
+                }}
+              >
+                {/* Amber header bar */}
+                <div style={{
+                  background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                  padding: "20px 24px",
+                  borderBottom: "1px solid #fde68a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <FiAlertTriangle size={24} color="white" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#92400e", margin: 0 }}>
+                      Team Assignment Required
+                    </h2>
+                    <p style={{ fontSize: 13, color: "#a16207", marginTop: 4 }}>
+                      You need to join a project before using the logbook
+                    </p>
+                  </div>
+                </div>
+
+                {/* Body content */}
+                <div style={{ padding: "24px" }}>
+                  {statusMessage?.type === "project_error" && (
+                    <div style={{
+                      background: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      marginBottom: 20,
+                    }}>
+                      <p style={{ fontSize: 13, color: "#92400e", fontWeight: 500, margin: 0 }}>
+                        {statusMessage.text}
+                      </p>
+                    </div>
+                  )}
+
+                  <p style={{ fontSize: 14, color: "#a16207", marginBottom: 16, lineHeight: 1.6 }}>
+                    To submit logbook entries, you must first join
+                    a project team on{" "}
+                    <a
+                      href="https://talenttrail.slt.lk"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontWeight: 600, textDecoration: "underline", color: "#92400e" }}
+                    >
+                      TalentTrail
+                    </a>
+                    . Follow these steps:
+                  </p>
+
+                  <ol style={{
+                    listStyleType: "none",
+                    padding: 0,
+                    margin: "0 0 20px 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}>
+                    {[
+                      {
+                        step: "1",
+                        text: (
+                          <>Go to{" "}
+                            <a
+                              href="https://talenttrail.slt.lk"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontWeight: 500, textDecoration: "underline", color: "#92400e" }}
+                            >
+                              TalentTrail
+                            </a>{" "}
+                            and log in with your credentials
+                          </>
+                        ),
+                      },
+                      {
+                        step: "2",
+                        text: "Browse the available projects and find the project that you are assigned to.",
+                      },
+                      {
+                        step: "3",
+                        text: "Select the project and send a request to join the team",
+                      },
+                      {
+                        step: "4",
+                        text: "Wait for the admin to approve your request",
+                      },
+                      {
+                        step: "5",
+                        text: "Once approved, return here and try submitting your logbook again",
+                      },
+                    ].map((item) => (
+                      <li
+                        key={item.step}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                        }}
+                      >
+                        <span style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                          color: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          {item.step}
+                        </span>
+                        <span style={{
+                          fontSize: 14,
+                          color: "#78350f",
+                          lineHeight: 1.5,
+                          paddingTop: 3,
+                        }}>
+                          {item.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div style={{
+                    borderTop: "1px solid #fde68a",
+                    paddingTop: 16,
+                    marginTop: 8,
+                  }}>
+                    <p style={{ fontSize: 12, color: "#b45309", margin: 0, lineHeight: 1.5 }}>
+                      Already joined a team? Team data is synced
+                      every 5 minutes — please wait a moment and
+                      refresh, or contact your administrator if the
+                      issue persists.
+                    </p>
+                  </div>
+
+                  {/* Action button */}
+                  <a
+                    href="https://talenttrail.slt.lk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      width: "100%",
+                      padding: "12px 24px",
+                      marginTop: 20,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                      color: "white",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      textDecoration: "none",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 4px 14px rgba(245, 158, 11, 0.25)",
+                    }}
+                  >
+                    Go to TalentTrail
+                    <FiArrowRight size={16} />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* ───── Loading state while checking access ───── */}
+            {projectAccessBlocked === null && (
+              <div
+                className="logbook-fade-in"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "60px 24px",
+                  background: "white",
+                  borderRadius: 20,
+                  border: "1px solid #f0f0f0",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                }}
+              >
+                <FiLoader className="logbook-spin" size={28} style={{ color: palette.light, marginBottom: 16 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Checking access...</p>
+                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>Verifying your project assignment</p>
+              </div>
+            )}
+
+            {/* ───── Main Form Card (only when access is granted) ───── */}
+            {projectAccessBlocked === false && (
             <div
               className="logbook-card logbook-fade-in"
               style={{
@@ -1477,8 +1695,10 @@ const Logbook = () => {
                 </form>
               </div>
             </div>
+            )}
 
-            {/* ───── Info Cards (collapsible on mobile) ───── */}
+            {/* ───── Info Cards (only when access is granted) ───── */}
+            {projectAccessBlocked === false && (
             <div style={{ marginTop: 24 }} className="logbook-fade-in">
               <div className="grid gap-4 md:grid-cols-2">
                 {/* Tips Card */}
@@ -1568,6 +1788,7 @@ const Logbook = () => {
                 </InfoCard>
               </div>
             </div>
+            )}
 
           </main>
         </div>
