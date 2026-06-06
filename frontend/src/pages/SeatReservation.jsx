@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2 } from "lucide-react";
+import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
 import Navigation from "../components/Navigation";
 import { useSeatManagement } from "./useSeatManagement";
 
@@ -124,7 +124,143 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
   );
 };
 
+// Custom hook for pan & zoom with safety checks
+const usePanZoom = (mapWidth, mapHeight, viewportRef, initialScale = 0.7) => {
+  const [transform, setTransform] = useState({ scale: initialScale, translateX: 0, translateY: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStart = useRef({ x: 0, y: 0, translateX: 0, translateY: 0 });
+  const [ready, setReady] = useState(false);
 
+  const clampTransform = useCallback((newTransform) => {
+    if (!viewportRef.current) return newTransform;
+    const viewRect = viewportRef.current.getBoundingClientRect();
+    if (viewRect.width === 0 || viewRect.height === 0) return newTransform;
+    const scaledWidth = mapWidth * newTransform.scale;
+    const scaledHeight = mapHeight * newTransform.scale;
+    const minX = Math.min(0, viewRect.width - scaledWidth);
+    const maxX = Math.max(0, viewRect.width - scaledWidth);
+    const minY = Math.min(0, viewRect.height - scaledHeight);
+    const maxY = Math.max(0, viewRect.height - scaledHeight);
+    const clampedX = Math.min(maxX, Math.max(minX, newTransform.translateX));
+    const clampedY = Math.min(maxY, Math.max(minY, newTransform.translateY));
+    return { ...newTransform, translateX: clampedX, translateY: clampedY };
+  }, [mapWidth, mapHeight, viewportRef]);
+
+  const resetView = useCallback(() => {
+    if (!viewportRef.current) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+    const scaleX = rect.width / mapWidth;
+    const scaleY = rect.height / mapHeight;
+    const fitScale = Math.min(scaleX, scaleY, 1) * 0.85; // 85% of max fit to leave some margin
+    const centerX = (rect.width - mapWidth * fitScale) / 2;
+    const centerY = (rect.height - mapHeight * fitScale) / 2;
+    setTransform({
+      scale: fitScale,
+      translateX: centerX,
+      translateY: centerY,
+    });
+    setReady(true);
+  }, [mapWidth, mapHeight, viewportRef]);
+
+  // Initial reset after ref is ready and after window resize
+  useEffect(() => {
+    if (!viewportRef.current) return;
+    const observer = new ResizeObserver(() => resetView());
+    observer.observe(viewportRef.current);
+    resetView();
+    return () => observer.disconnect();
+  }, [resetView, viewportRef]);
+
+  const handleMouseDown = (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStart.current = {
+      x: e.clientX - transform.translateX,
+      y: e.clientY - transform.translateY,
+      translateX: transform.translateX,
+      translateY: transform.translateY,
+    };
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!isDragging) return;
+    const newTranslateX = e.clientX - dragStart.current.x;
+    const newTranslateY = e.clientY - dragStart.current.y;
+    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [isDragging, transform, clampTransform]);
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 1) {
+      e.preventDefault();
+      setIsDragging(true);
+      dragStart.current = {
+        x: e.touches[0].clientX - transform.translateX,
+        y: e.touches[0].clientY - transform.translateY,
+        translateX: transform.translateX,
+        translateY: transform.translateY,
+      };
+    }
+  };
+
+  const handleTouchMove = useCallback((e) => {
+    if (!isDragging || e.touches.length !== 1) return;
+    e.preventDefault();
+    const newTranslateX = e.touches[0].clientX - dragStart.current.x;
+    const newTranslateY = e.touches[0].clientY - dragStart.current.y;
+    const newTransform = clampTransform({ ...transform, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [isDragging, transform, clampTransform]);
+
+  const handleTouchEnd = () => setIsDragging(false);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(3, Math.max(0.5, transform.scale * delta));
+    if (newScale === transform.scale) return;
+    const rect = viewportRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const scaleRatio = newScale / transform.scale;
+    const newTranslateX = mouseX - (mouseX - transform.translateX) * scaleRatio;
+    const newTranslateY = mouseY - (mouseY - transform.translateY) * scaleRatio;
+    const newTransform = clampTransform({ scale: newScale, translateX: newTranslateX, translateY: newTranslateY });
+    setTransform(newTransform);
+  }, [transform, viewportRef, clampTransform]);
+
+  const zoomIn = () => {
+    const newScale = Math.min(3, transform.scale * 1.2);
+    const newTransform = clampTransform({ ...transform, scale: newScale });
+    setTransform(newTransform);
+  };
+  const zoomOut = () => {
+    const newScale = Math.max(0.5, transform.scale / 1.2);
+    const newTransform = clampTransform({ ...transform, scale: newScale });
+    setTransform(newTransform);
+  };
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      window.addEventListener('touchmove', handleTouchMove, { passive: false });
+      window.addEventListener('touchend', handleTouchEnd);
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, handleMouseMove, handleTouchMove]);
+
+  return { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready };
+};
 
 const InternSeatManagement = () => {
   const {
@@ -151,144 +287,83 @@ const InternSeatManagement = () => {
 
   const [activeTab, setActiveTab] = useState("map");
   const mapViewportRef = useRef(null);
-  const mobileScrollRef = useRef(null);
-  const [mapScale, setMapScale] = useState(1);
-  const [isMobile, setIsMobile] = useState(false);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 850;
 
-  // Detect mobile viewport
-  useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 768);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
-
-  // Auto-fit map to viewport on mount and resize (desktop only)
-  useEffect(() => {
-    if (isMobile) return;
-    const el = mapViewportRef.current;
-    if (!el) return;
-    const fit = () => {
-      const rect = el.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      const scale = Math.min(rect.width / MAP_WIDTH, rect.height / MAP_HEIGHT) * 0.95;
-      setMapScale(scale);
-    };
-    const observer = new ResizeObserver(fit);
-    observer.observe(el);
-    fit();
-    return () => observer.disconnect();
-  }, [isMobile]);
-
-  // Map content shared between desktop and mobile
-  const renderMapContent = () => (
-    <div className="absolute inset-0">
-      {/* Legend inside map */}
-      <div className="absolute flex items-center gap-4 bg-white/90 backdrop-blur-sm px-4 py-2.5 rounded-xl shadow-sm border border-slate-200" style={{ left: "-124px", top: "-55px", zIndex: 30 }}>
-        <div className="flex items-center gap-1.5"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-md flex items-center justify-center"><Armchair size={10} className="text-[#50b748]" /></div><span className="text-xs font-bold text-gray-600">Available</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-md flex items-center justify-center"><X size={11} strokeWidth={3} className="text-white" /></div><span className="text-xs font-bold text-gray-600">Booked</span></div>
-        <div className="flex items-center gap-1.5"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-md flex items-center justify-center opacity-75"><Armchair size={10} className="text-slate-400" /></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
-      </div>
-
-      {/* Entrance and structure graphics */}
-      <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
-        <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
-      </div>
-      <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
-      <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
-
-      {/* Main room blocks */}
-      <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
-        <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
-      </div>
-      <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
-        <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
-      </div>
-
-      {/* Left section seats */}
-      {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
-      {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-      {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-      {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-      {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-
-      {/* Right section seats */}
-      {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
-      {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-      {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-      {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-      {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-    </div>
-  );
+  const { transform, handleMouseDown, handleWheel, handleTouchStart, zoomIn, zoomOut, resetView, isDragging, ready } = usePanZoom(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, 0.7);
 
   const renderTabContent = () => {
     if (activeTab === "map") {
-      // Mobile: horizontally scrollable map with snap
-      if (isMobile) {
-        const mobileScale = 0.65;
-        const scaledWidth = MAP_WIDTH * mobileScale;
-        const scaledHeight = MAP_HEIGHT * mobileScale;
-        return (
+      return (
+        <div className="flex flex-col w-full h-full">
+          {/* Legend + Controls */}
+          <div className="flex justify-between items-center py-3 px-4 bg-white border-b border-gray-100 flex-wrap gap-2 shrink-0">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center"><Armchair size={10} className="text-[#50b748]" /></div><span className="text-xs font-bold text-gray-600">Available</span></div>
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center"><X size={11} strokeWidth={3} className="text-white" /></div><span className="text-xs font-bold text-gray-600">Booked</span></div>
+              <div className="flex items-center gap-2"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm flex items-center justify-center opacity-75"><Armchair size={10} className="text-slate-400" /></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
+              <button onClick={zoomOut} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom Out"><ZoomOut size={16} /></button>
+              <button onClick={resetView} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Reset View"><Maximize size={16} /></button>
+              <button onClick={zoomIn} className="p-2 rounded-lg hover:bg-white transition-colors text-gray-600" title="Zoom In"><ZoomIn size={16} /></button>
+            </div>
+          </div>
+
+          {/* Map Viewport - ensure it takes all available space */}
           <div
-            ref={mobileScrollRef}
-            className="w-full h-full overflow-x-auto overflow-y-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"
-            style={{
-              WebkitOverflowScrolling: 'touch',
-              scrollSnapType: 'x mandatory',
-              minHeight: 0,
-            }}
+            ref={mapViewportRef}
+            className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
+            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0 }}
+            onMouseDown={handleMouseDown}
+            onWheel={handleWheel}
+            onTouchStart={handleTouchStart}
           >
-            <div
-              style={{
-                width: `${scaledWidth + 80}px`,
-                height: `${scaledHeight + 40}px`,
-                minHeight: '100%',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              {/* Left room snap point */}
-              <div style={{ scrollSnapAlign: 'start', width: '1px', height: '1px', position: 'absolute', left: '0px' }} />
-              {/* Right room snap point */}
-              <div style={{ scrollSnapAlign: 'start', width: '1px', height: '1px', position: 'absolute', left: `${scaledWidth * 0.4}px` }} />
+            {/* Map content - only show after initial transform is ready to avoid flicker */}
+            {ready && (
               <div
+                className="absolute"
                 style={{
                   width: `${MAP_WIDTH}px`,
                   height: `${MAP_HEIGHT}px`,
-                  transform: `scale(${mobileScale})`,
+                  transform: `translate(${transform.translateX}px, ${transform.translateY}px) scale(${transform.scale})`,
                   transformOrigin: '0 0',
-                  position: 'relative',
-                  marginLeft: '20px',
-                  marginTop: '20px',
-                  flexShrink: 0,
+                  transition: isDragging ? 'none' : 'transform 0.1s ease-out',
                 }}
               >
-                {renderMapContent()}
-              </div>
-            </div>
-          </div>
-        );
-      }
+                {/* Floor plan and seats */}
+                <div className="absolute inset-0">
+                  {/* Entrance and structure graphics */}
+                  <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
+                    <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
+                  </div>
+                  <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
+                  <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px"  }}></div>
 
-      // Desktop: centered and scaled
-      return (
-        <div
-          ref={mapViewportRef}
-          className="w-full h-full flex items-center justify-center overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"
-          style={{ minHeight: 0, paddingLeft: '10%', paddingTop: '5%' }}
-        >
-          <div
-            style={{
-              width: `${MAP_WIDTH}px`,
-              height: `${MAP_HEIGHT}px`,
-              transform: `scale(${mapScale})`,
-              transformOrigin: 'center center',
-              position: 'relative',
-            }}
-          >
-            {renderMapContent()}
+                  {/* Main room blocks */}
+                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
+                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
+                  </div>
+                  <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
+                    <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
+                  </div>
+
+                  {/* Left section seats */}
+                  {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
+                  {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+                  {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+
+                  {/* Right section seats */}
+                  {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
+                  {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                  {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
@@ -339,33 +414,31 @@ const InternSeatManagement = () => {
         <Navigation />
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-
-
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: isMobile ? 'auto' : '850px', height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 160px)' }}>
-              <div className="flex flex-wrap md:flex-nowrap items-center justify-between border-b border-gray-100 bg-slate-50/50 p-2 gap-2 w-full">
-                {/* Left: Tab switcher */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={14} /> <span className="hidden sm:inline">Seat Map</span><span className="sm:hidden">Map</span></button>
-                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={14} /> <span className="hidden sm:inline">My Bookings</span><span className="sm:hidden">Bookings</span>{Object.keys(dailyBookings).length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl"><Armchair className="text-[#0056a2] h-8 w-8" /></div> Seat Reservation
+                </motion.h1>
+                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05, duration: 0.2 }} className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
+                  Select a date and reserve your preferred spot.
+                </motion.p>
+              </div>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
+                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><Calendar className="text-[#00b4eb] h-5 w-5" /></div>
+                  <div className="flex-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label><input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" /></div>
                 </div>
-
-                {/* Right: Date selector + counts */}
-                <div className="flex items-center gap-2 shrink-0 ml-auto">
-                  <div className="flex items-center gap-1.5 bg-red-50/80 rounded-xl px-2.5 py-1.5 border border-red-100">
-                    <span className="text-sm font-black text-rose-600 leading-none">{totalUnavailableCount}</span>
-                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider hidden sm:inline">Booked</span>
-                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider sm:hidden">Booked</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-green-50/80 rounded-xl px-2.5 py-1.5 border border-green-100">
-                    <span className="text-sm font-black text-[#50b748] leading-none">{totalAvailableCount}</span>
-                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider hidden sm:inline">Available</span>
-                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider sm:hidden">Available</span>
-                  </div>
-                  <div className="flex items-center gap-2 bg-white rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm">
-                    <Calendar className="text-[#00b4eb] h-4 w-4 shrink-0" />
-                    <input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-xs font-bold text-gray-800 focus:outline-none cursor-pointer w-[110px]" />
-                  </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100"><div className="text-2xl font-black text-rose-600 leading-none mb-1">{totalUnavailableCount}</div><div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</div></div>
+                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100"><div className="text-2xl font-black text-[#50b748] leading-none mb-1">{totalAvailableCount}</div><div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div></div>
                 </div>
+              </motion.div>
+            </div>
+
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: "850px", height: "calc(100vh - 160px)" }}>
+              <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
+                <button onClick={() => setActiveTab("map")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={18} /> Seat Map</button>
+                <button onClick={() => setActiveTab("bookings")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={18} /> My Bookings{Object.keys(dailyBookings).length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
               </div>
               <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
                 {renderTabContent()}
