@@ -151,12 +151,23 @@ const InternSeatManagement = () => {
 
   const [activeTab, setActiveTab] = useState("map");
   const mapViewportRef = useRef(null);
+  const mobileScrollRef = useRef(null);
   const [mapScale, setMapScale] = useState(1);
+  const [isMobile, setIsMobile] = useState(false);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 850;
 
-  // Auto-fit map to viewport on mount and resize
+  // Detect mobile viewport
   useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  // Auto-fit map to viewport on mount and resize (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
     const el = mapViewportRef.current;
     if (!el) return;
     const fit = () => {
@@ -169,10 +180,92 @@ const InternSeatManagement = () => {
     observer.observe(el);
     fit();
     return () => observer.disconnect();
-  }, []);
+  }, [isMobile]);
+
+  // Map content shared between desktop and mobile
+  const renderMapContent = () => (
+    <div className="absolute inset-0">
+      {/* Entrance and structure graphics */}
+      <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
+        <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
+      </div>
+      <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
+      <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
+
+      {/* Main room blocks */}
+      <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
+        <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
+      </div>
+      <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
+        <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
+      </div>
+
+      {/* Left section seats */}
+      {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
+      {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+      {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+      {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+      {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
+
+      {/* Right section seats */}
+      {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
+      {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+      {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+      {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+      {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
+    </div>
+  );
 
   const renderTabContent = () => {
     if (activeTab === "map") {
+      // Mobile: horizontally scrollable map with snap
+      if (isMobile) {
+        const mobileScale = 0.65;
+        const scaledWidth = MAP_WIDTH * mobileScale;
+        const scaledHeight = MAP_HEIGHT * mobileScale;
+        return (
+          <div
+            ref={mobileScrollRef}
+            className="w-full h-full overflow-x-auto overflow-y-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"
+            style={{
+              WebkitOverflowScrolling: 'touch',
+              scrollSnapType: 'x mandatory',
+              minHeight: 0,
+            }}
+          >
+            <div
+              style={{
+                width: `${scaledWidth + 80}px`,
+                height: `${scaledHeight + 40}px`,
+                minHeight: '100%',
+                display: 'flex',
+                alignItems: 'center',
+              }}
+            >
+              {/* Left room snap point */}
+              <div style={{ scrollSnapAlign: 'start', width: '1px', height: '1px', position: 'absolute', left: '0px' }} />
+              {/* Right room snap point */}
+              <div style={{ scrollSnapAlign: 'start', width: '1px', height: '1px', position: 'absolute', left: `${scaledWidth * 0.4}px` }} />
+              <div
+                style={{
+                  width: `${MAP_WIDTH}px`,
+                  height: `${MAP_HEIGHT}px`,
+                  transform: `scale(${mobileScale})`,
+                  transformOrigin: '0 0',
+                  position: 'relative',
+                  marginLeft: '20px',
+                  marginTop: '20px',
+                  flexShrink: 0,
+                }}
+              >
+                {renderMapContent()}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Desktop: centered and scaled
       return (
         <div
           ref={mapViewportRef}
@@ -188,37 +281,7 @@ const InternSeatManagement = () => {
               position: 'relative',
             }}
           >
-            {/* Floor plan and seats */}
-            <div className="absolute inset-0">
-              {/* Entrance and structure graphics */}
-              <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
-                <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
-              </div>
-              <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
-              <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
-
-              {/* Main room blocks */}
-              <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
-                <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
-              </div>
-              <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
-                <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
-              </div>
-
-              {/* Left section seats */}
-              {leftSection.topRow.map(seat => <Seat key={seat.number} {...seat} />)}
-              {leftSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-              {leftSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-              {leftSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-              {leftSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={180} centerY={377} />)}
-
-              {/* Right section seats */}
-              {rightSection.straightSeats.map(seat => <Seat key={seat.number} {...seat} />)}
-              {rightSection.pillarSeats.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-              {rightSection.outerRing1.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-              {rightSection.outerRing2.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-              {rightSection.outerRing3.map(seat => <Seat key={seat.number} {...seat} centerX={920} centerY={377} />)}
-            </div>
+            {renderMapContent()}
           </div>
         </div>
       );
@@ -271,8 +334,8 @@ const InternSeatManagement = () => {
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
 
 
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: "850px", height: "calc(100vh - 160px)" }}>
-              <div className="flex items-center border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col" style={{ minHeight: isMobile ? 'auto' : '850px', height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 160px)' }}>
+              <div className="flex flex-wrap md:flex-nowrap items-center border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
                 {/* Left: Date selector + counts */}
                 <div className="flex items-center gap-2 shrink-0">
                   <div className="flex items-center gap-2 bg-white rounded-xl px-2.5 py-1.5 border border-slate-200 shadow-sm">
@@ -281,25 +344,27 @@ const InternSeatManagement = () => {
                   </div>
                   <div className="flex items-center gap-1.5 bg-red-50/80 rounded-xl px-2.5 py-1.5 border border-red-100">
                     <span className="text-sm font-black text-rose-600 leading-none">{totalUnavailableCount}</span>
-                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</span>
+                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider hidden sm:inline">Unavailable</span>
+                    <span className="text-[9px] font-bold text-rose-500/80 uppercase tracking-wider sm:hidden">Unavailable</span>
                   </div>
                   <div className="flex items-center gap-1.5 bg-green-50/80 rounded-xl px-2.5 py-1.5 border border-green-100">
                     <span className="text-sm font-black text-[#50b748] leading-none">{totalAvailableCount}</span>
-                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</span>
+                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider hidden sm:inline">Available</span>
+                    <span className="text-[9px] font-bold text-[#50b748]/80 uppercase tracking-wider sm:hidden">Available</span>
                   </div>
                 </div>
 
-                {/* Center: Legend */}
-                <div className="flex-1 flex items-center justify-center gap-4">
+                {/* Center: Legend - hidden on mobile, shown on md+ */}
+                <div className="hidden md:flex flex-1 items-center justify-center gap-4">
                   <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-white border-2 border-[#50b748] rounded-md flex items-center justify-center"><Armchair size={8} className="text-[#50b748]" /></div><span className="text-[10px] font-bold text-gray-500">Available</span></div>
                   <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-rose-500 border-2 border-rose-600 rounded-md flex items-center justify-center"><X size={9} strokeWidth={3} className="text-white" /></div><span className="text-[10px] font-bold text-gray-500">Booked</span></div>
                   <div className="flex items-center gap-1.5"><div className="w-4 h-4 bg-slate-200 border-2 border-slate-300 rounded-md flex items-center justify-center opacity-75"><Armchair size={8} className="text-slate-400" /></div><span className="text-[10px] font-bold text-gray-500">Locked</span></div>
                 </div>
 
                 {/* Right: Tab switcher */}
-                <div className="flex items-center gap-2 shrink-0">
-                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={16} /> Seat Map</button>
-                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={16} /> My Bookings{Object.keys(dailyBookings).length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
+                <div className="flex items-center gap-2 shrink-0 ml-auto">
+                  <button onClick={() => setActiveTab("map")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={14} /> <span className="hidden sm:inline">Seat Map</span><span className="sm:hidden">Map</span></button>
+                  <button onClick={() => setActiveTab("bookings")} className={`flex items-center justify-center gap-1.5 px-3 py-2 md:px-5 md:py-2.5 rounded-2xl font-bold text-xs md:text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={14} /> <span className="hidden sm:inline">My Bookings</span><span className="sm:hidden">Bookings</span>{Object.keys(dailyBookings).length > 0 && <span className={`ml-1 px-1.5 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{Object.keys(dailyBookings).length}</span>}</button>
                 </div>
               </div>
               <div className="flex-1 relative bg-white" style={{ minHeight: 0 }}>
