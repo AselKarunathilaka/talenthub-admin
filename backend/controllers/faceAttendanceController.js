@@ -39,26 +39,43 @@ const registerFaceProfile = async (req, res) => {
 
 const verifyFaceAttendance = async (req, res) => {
   try {
-    const {
-      descriptor,
-      metadata = {},
-      qrBackupUsed = false,
-      attendanceType = "daily",
-      projectName,
-      meetingTitle,
-      meetingPin,
-    } = req.body;
-    const result = await FaceAttendanceService.markAttendanceWithFace({
-      descriptor,
-      source: metadata.source || "browser-camera",
-      metadata,
-      qrBackupUsed,
-      attendanceType,
-      projectName,
-      meetingTitle,
-      meetingPin,
-      expectedInternId: req.user?.id,
-    });
+      const {
+        descriptor,
+        metadata = {},
+        qrBackupUsed = false,
+        attendanceType = "daily",
+        projectName,
+        meetingTitle,
+        meetingPin,
+      } = req.body;
+
+      // Allow `internId` to be provided from body/params when the mobile client
+      // doesn't have a login flow. Resolve string trainee IDs to ObjectId when possible.
+      const expectedInternIdRaw = resolveInternId(req);
+      let expectedInternId = null;
+      if (expectedInternIdRaw) {
+        if (mongoose.Types.ObjectId.isValid(expectedInternIdRaw)) {
+          expectedInternId = expectedInternIdRaw;
+        } else {
+          const internRecord = await Intern.findOne({ Trainee_ID: expectedInternIdRaw });
+          if (internRecord) expectedInternId = internRecord._id;
+        }
+      }
+
+      // Ensure metadata carries the submitted intern identifier for logging/debugging
+      metadata.internId = metadata.internId || req.body.internId || expectedInternIdRaw || metadata.internId;
+
+      const result = await FaceAttendanceService.markAttendanceWithFace({
+        descriptor,
+        source: metadata.source || "browser-camera",
+        metadata,
+        qrBackupUsed,
+        attendanceType,
+        projectName,
+        meetingTitle,
+        meetingPin,
+        expectedInternId,
+      });
 
     if (!result.matched) {
       const messageByReason = {
