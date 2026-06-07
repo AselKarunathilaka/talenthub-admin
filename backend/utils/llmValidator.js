@@ -139,19 +139,31 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   }
 
   console.log("\n[LLM VALIDATOR] Lenient batch validation with Gemini...");
+  console.log(`[LLM VALIDATOR] Fields to check: ${fieldsNeedingLlm.join(", ")}`);
 
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: MODEL_NAME });
 
   const prompt = LENIENT_BATCH_PROMPT(tasks, challenges, plans);
-  const response = await model.generateContent(prompt);
+
+  // Race against a 20-second timeout so we fail fast when API is unreachable
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Gemini batch validation timed out after 20 seconds")), 20000),
+  );
+
+  const responsePromise = model.generateContent(prompt);
+  const response = await Promise.race([responsePromise, timeoutPromise]);
+
   const responseText = response.response.text().trim();
+  console.log(`[LLM VALIDATOR] Raw response: ${responseText.substring(0, 200)}`);
+
   const cleanJson = responseText
     .replace(/^```json\s*/i, "")
     .replace(/^```\s*/i, "")
     .replace(/```$/i, "");
 
   const parsed = JSON.parse(cleanJson);
+  console.log(`[LLM VALIDATOR] Parsed result:`, JSON.stringify(parsed));
 
   for (const key of BATCH_FIELD_KEYS) {
     if (!values[key] || !values[key].trim()) {
@@ -161,6 +173,7 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
     }
   }
 
+  console.log(`[LLM VALIDATOR] Final batch result:`, JSON.stringify(result));
   return result;
 }
 
