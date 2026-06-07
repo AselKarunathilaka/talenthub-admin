@@ -1,7 +1,7 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
-const { validateEntry, passesStrictQualityFallback } = require("../utils/heuristics");
+const { validateEntry } = require("../utils/heuristics");
 const { validateWithGemini, validateBatchWithGemini } = require("../utils/llmValidator");
 
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
@@ -342,26 +342,11 @@ const validateBatchEntries = async (req, res) => {
     console.log("[BATCH VALIDATE] Gemini result:", JSON.stringify(result));
     return res.status(200).json(result);
   } catch (error) {
-    console.warn("[BATCH VALIDATE] Gemini unavailable — using heuristic fallback:", error.message);
-
-    // Instead of failing open, use strict heuristic fallback to catch
-    // clearly non-work-related entries even when Gemini is down.
-    const fallbackResult = {};
-    for (const field of BATCH_FIELDS) {
-      const text = req.body[field];
-      if (!text || !text.trim()) {
-        fallbackResult[field] = { valid: true, reason: "" };
-      } else if (passesStrictQualityFallback(text)) {
-        fallbackResult[field] = { valid: true, reason: "" };
-      } else {
-        fallbackResult[field] = {
-          valid: false,
-          reason: "This entry doesn't appear to be work-related. Please describe your internship tasks.",
-        };
-      }
-    }
-    console.log("[BATCH VALIDATE] Heuristic fallback result:", JSON.stringify(fallbackResult));
-    return res.status(200).json(fallbackResult);
+    console.error("[BATCH VALIDATE] ❌ Gemini validation failed:", error.message);
+    // Do NOT fail-open. Return 503 so the frontend blocks submission.
+    return res.status(503).json({
+      error: "AI validation is temporarily unavailable. Please try again in a moment.",
+    });
   }
 };
 

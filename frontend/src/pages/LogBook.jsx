@@ -394,9 +394,15 @@ const Logbook = () => {
         });
 
         if (!validationResponse.ok) {
+          let errorText = "Validation service unavailable. Please try again shortly.";
+          try {
+            const errBody = await validationResponse.json();
+            if (errBody.error) errorText = errBody.error;
+          } catch { /* use default */ }
+          console.error(`[LogBook] Validation endpoint returned ${validationResponse.status}: ${errorText}`);
           setStatusMessage({
             type: "error",
-            text: "Validation service unavailable. Please try again shortly.",
+            text: errorText,
           });
           setIsSubmitting(false);
           return;
