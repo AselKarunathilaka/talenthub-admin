@@ -53,6 +53,7 @@ const {
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
   getFaceProfileEnrollmentSummary,
+  scanInternFaceByAdmin,
 } = require("../controllers/faceAttendanceController");
 
 const { getCertificateData, issueCertificate } = require("../controllers/certificateController");
@@ -185,6 +186,7 @@ router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 router.get("/face-attendance/profiles", getFaceProfileEnrollmentSummary);
+router.post("/face-attendance/scan-intern", scanInternFaceByAdmin);
 
 // Manual attendance ────────────────────────────────────────────────────
 router.get("/manual-attendance/search", searchInternForAttendance);
