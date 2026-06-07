@@ -178,10 +178,13 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   const responseText = response.response.text().trim();
   console.log(`[LLM VALIDATOR] Raw response: ${responseText.substring(0, 300)}`);
 
-  const cleanJson = responseText
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "");
+  let cleanJson = responseText;
+  const startIndex = cleanJson.indexOf('{');
+  const endIndex = cleanJson.lastIndexOf('}');
+  
+  if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+    cleanJson = cleanJson.substring(startIndex, endIndex + 1);
+  }
 
   let parsed;
   try {

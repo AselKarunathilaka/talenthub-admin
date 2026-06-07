@@ -346,6 +346,8 @@ const validateBatchEntries = async (req, res) => {
     // Do NOT fail-open. Return 503 so the frontend blocks submission.
     return res.status(503).json({
       error: "AI validation is temporarily unavailable. Please try again in a moment.",
+      details: error.message,
+      stack: error.stack
     });
   }
 };
