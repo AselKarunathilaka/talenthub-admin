@@ -329,7 +329,7 @@ const InternSeatManagement = () => {
           <div
             ref={mapViewportRef}
             className="flex-1 overflow-hidden bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative"
-            style={{ cursor: isDragging ? 'grabbing' : 'grab', minHeight: 0, touchAction: 'none' }}
+            style={{ cursor: 'default', minHeight: 0, touchAction: 'none' }}
             onMouseDown={handleMouseDown}
             onTouchStart={handleTouchStart}
           >
