@@ -335,7 +335,7 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+          <nav className="flex-1 px-3 py-16 flex flex-col justify-between gap-3 overflow-y-auto min-h-0">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
