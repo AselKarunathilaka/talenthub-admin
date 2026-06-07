@@ -24,6 +24,7 @@ import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
+import { FaRunning } from "react-icons/fa";
 
 // Read-state helpers
 const READ_KEY = "readAnnouncementIds";
@@ -53,12 +54,12 @@ const Navigation = ({ children }) => {
 
   // Hover colors for each nav item (different light colors per component)
   const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#50b748" },
-    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f97316" },
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
+    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
     //{ to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
-    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#a78bfa" },
-    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#00b4eb" },
-    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
+    { to: "/leave-requests", label: "Short Leave", icon: <FaRunning className="h-5 w-5" />, hoverColor: "#a486fcff" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
   ];
 
   // Fetch trainee profile
@@ -349,7 +350,7 @@ const Navigation = ({ children }) => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span
-                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[#00b4eb]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                 >
                   {link.icon}
                   {link.badge > 0 && (
@@ -364,7 +365,7 @@ const Navigation = ({ children }) => {
                   {link.label}
                 </span>
                 {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[#00b4eb] shadow-glow" />
+                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow" />
                 )}
               </Link>
             ))}
