@@ -1063,8 +1063,8 @@ const Logbook = () => {
                     </label>
 
                     <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                      display: "flex",
+                      flexWrap: "wrap",
                       gap: 12,
                       marginBottom: 16,
                     }}>
@@ -1078,6 +1078,7 @@ const Logbook = () => {
                             key={opt.value}
                             className="logbook-status-card"
                             style={{
+                              flex: "1 1 160px",
                               display: "flex",
                               flexDirection: "column",
                               alignItems: "center",
