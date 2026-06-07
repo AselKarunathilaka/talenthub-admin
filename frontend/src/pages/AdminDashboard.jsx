@@ -34,6 +34,7 @@ import {
   FaQrcode,
   FaKey,
   FaChevronRight,
+  FaTimes,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -498,22 +499,16 @@ const AdminDashboard = () => {
       color: BRAND.success,
     },
     {
+      label: "Attendance",
+      icon: FaCalendarCheck,
+      route: "/admin/intern-attendance",
+      color: "#6366f1",
+    },
+    {
       label: "Leave Requests",
       icon: FaRunning,
       route: "/admin/leave-requests",
       color: "#8b5cf6",
-    },
-    {
-      label: "Seat Layout",
-      icon: FaChair,
-      route: "/admin/seat-management",
-      color: "#ec4899",
-    },
-    {
-      label: "Announce",
-      icon: FaBullhorn,
-      route: "/admin/announcements",
-      color: BRAND.accent,
     },
     {
       label: "Locations",
@@ -522,26 +517,32 @@ const AdminDashboard = () => {
       color: BRAND.primary,
     },
     {
-      label: "Attendance",
-      icon: FaCalendarCheck,
-      route: "/admin/intern-attendance",
-      color: "#6366f1",
+      label: "Announce",
+      icon: FaBullhorn,
+      route: "/admin/announcements",
+      color: BRAND.accent,
     },
     {
-      label: "QR Code",
+      label: "Seat Layout",
+      icon: FaChair,
+      route: "/admin/seat-management",
+      color: "#ec4899",
+    },
+    {
+      label: "QR",
       icon: FaQrcode,
       route: "/admin/qr-management",
       color: "#14b8a6",
     },
     {
-      label: "PIN Gen",
+      label: "PIN",
       icon: FaKey,
       route: "/admin/pin-management",
       color: BRAND.success,
     },
     {
       label: "Terminated Interns",
-      icon: FaSignOutAlt,
+      icon: FaTimes,
       route: "/admin/inactive-interns",
       color: BRAND.danger,
     },
@@ -1001,7 +1002,6 @@ const AdminDashboard = () => {
                             <motion.div
                               key={intern._id}
                               className="admin-dash-overdue-item"
-                              whileHover={{ scale: 1.005 }}
                               transition={{ duration: 0.15 }}
                             >
                               <div className="admin-dash-overdue-item__info">
