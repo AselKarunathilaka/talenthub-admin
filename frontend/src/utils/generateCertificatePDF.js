@@ -2,6 +2,7 @@
 // Generates a professional Internship Completion Certificate as a PDF
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import QRCode from "qrcode";
 
 const COLORS = {
   navy: [0, 16, 47],
@@ -38,7 +39,7 @@ const dur = (s, e) => {
   return `${months} month${months !== 1 ? "s" : ""}`;
 };
 
-export const generateCertificatePDF = (data) => {
+export const generateCertificatePDF = async (data) => {
   const {
     intern,
     startDate,
@@ -48,6 +49,7 @@ export const generateCertificatePDF = (data) => {
     specialization,
     logoBase64,
     gitCommitsData,
+    verificationUrl,
   } = data;
 
   const doc = new jsPDF("p", "mm", "a4");
@@ -327,6 +329,28 @@ export const generateCertificatePDF = (data) => {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.text(`Ref: ${ref}`, W / 2, H - 16, { align: "center" });
+
+  // ── QR Code (verification) ────────────────────────────────────────
+  if (verificationUrl) {
+    try {
+      const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
+        width: 80,
+        margin: 1,
+        color: { dark: "#00102f", light: "#ffffff" },
+      });
+      const qrSize = 22;
+      const qrX = M + 8;
+      const qrY = H - 28 - qrSize - 4;
+      doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(5.5);
+      doc.setTextColor(...COLORS.gray);
+      doc.text("Scan to verify", qrX + qrSize / 2, qrY + qrSize + 3.5, { align: "center" });
+      doc.text("authenticity", qrX + qrSize / 2, qrY + qrSize + 7, { align: "center" });
+    } catch (e) {
+      console.warn("QR Code generation failed:", e);
+    }
+  }
 
   // ── Save ───────────────────────────────────────────────────────────
   const filename = `Internship_Certificate_${name.replace(/\s+/g, "_")}.pdf`;

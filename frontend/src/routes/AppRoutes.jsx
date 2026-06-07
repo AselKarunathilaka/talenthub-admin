@@ -28,6 +28,7 @@ import AdminPinManagement from "../pages/AdminPinManagement";
 import AdminInternCertificate from "../pages/AdminInternCertificate";
 import AdminManualAttendance from "../pages/AdminManualAttendanceMarking";
 import AdminInactiveInterns from "../pages/AdminInactiveInterns";
+import CertificateVerify from "../pages/CertificateVerify";
 
 const AppRoutes = () => {
   return (
@@ -145,6 +146,12 @@ const AppRoutes = () => {
       <Route
         path="/admin/inactive-interns"
         element={<AdminInactiveInterns />}
+      />
+
+      {/* Public Certificate Verification — no auth required */}
+      <Route
+        path="/verify/certificate/:token"
+        element={<CertificateVerify />}
       />
     </Routes>
   );

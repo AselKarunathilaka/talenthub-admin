@@ -19,6 +19,7 @@ const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
+const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 
 require("./scheduler");
 
@@ -68,5 +69,6 @@ app.use("/api/gate-staff", gateStaffRoutes);
 app.use("/api/admin", adminSeatRoutes);
 app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
+app.use("/api/verify", certificateVerifyRoutes);
 
 module.exports = app;

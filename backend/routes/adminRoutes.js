@@ -55,7 +55,7 @@ const {
   getFaceProfileEnrollmentSummary,
 } = require("../controllers/faceAttendanceController");
 
-const { getCertificateData } = require("../controllers/certificateController");
+const { getCertificateData, issueCertificate } = require("../controllers/certificateController");
 
 const { syncTalentTrailData } = require("../services/talentTrailSyncService");
 
@@ -116,6 +116,9 @@ router.get("/intern/:internId/git-commits", getInternGitCommits);
 
 // Get certificate data (enriched from TalentTrail)
 router.get("/intern/:internId/certificate-data", getCertificateData);
+
+// Issue a certificate — generates a unique verification token and saves a record
+router.post("/intern/:internId/issue-certificate", issueCertificate);
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);

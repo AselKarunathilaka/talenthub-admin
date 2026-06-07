@@ -121,12 +121,22 @@ const AdminInternCertificate = () => {
     })();
   }, [internId, navigate]);
 
-  const handleGeneratePDF = () => {
+  const handleGeneratePDF = async () => {
     if (!certData?.intern) return;
     setGenerating(true);
     try {
       const { intern, projects, attendanceCount, gitCommitsData } = certData;
-      generateCertificatePDF({
+
+      // Issue a certificate record to get a unique verification URL
+      let verificationUrl = null;
+      try {
+        const issued = await adminApi.issueCertificate(internId);
+        verificationUrl = issued.verificationUrl;
+      } catch (err) {
+        console.warn("Could not issue certificate token, QR will be omitted:", err);
+      }
+
+      await generateCertificatePDF({
         intern,
         startDate: intern.trainingStartDate,
         endDate: intern.trainingEndDate,
@@ -135,6 +145,7 @@ const AdminInternCertificate = () => {
         specialization: intern.fieldOfSpecialization,
         logoBase64,
         gitCommitsData,
+        verificationUrl,
       });
       setToast({ text: 'Certificate PDF downloaded!', type: 'success' });
     } catch (err) {
@@ -142,6 +153,7 @@ const AdminInternCertificate = () => {
       setToast({ text: `Failed to generate PDF: ${err.message}`, type: 'error' });
     } finally { setGenerating(false); }
   };
+
 
   if (loading) {
     return (

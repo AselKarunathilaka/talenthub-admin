@@ -176,6 +176,31 @@ export const adminApi = {
     }
   },
 
+  // Issue a certificate — generates/reuses a unique verification token
+  issueCertificate: async (internId) => {
+    try {
+      // Normalize: force http:// for localhost (Safari upgrades to https which breaks local dev)
+      let origin = window.location.origin;
+      origin = origin.replace(/^https:\/\/(localhost|127\.0\.0\.1)/, "http://$1");
+
+      const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}/issue-certificate`, {
+        method: "POST",
+        headers: getHeaders(),
+        body: JSON.stringify({ frontendOrigin: origin }),
+      });
+
+      await checkAuth(response);
+      if (!response.ok) {
+        throw new Error(`Failed to issue certificate: ${response.status}`);
+      }
+
+      return await response.json(); // { token, verificationUrl }
+    } catch (error) {
+      console.error("Error issuing certificate:", error);
+      throw error;
+    }
+  },
+
   // Search interns by trainee ID or name
   searchInterns: async (query) => {
     try {
