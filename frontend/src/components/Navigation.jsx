@@ -18,6 +18,7 @@ import {
   Armchair,
   Megaphone,
   ScanLine,
+  GraduationCap,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -52,15 +53,7 @@ const Navigation = ({ children }) => {
 
   const traineeId = localStorage.getItem("internId");
 
-  // Hover colors for each nav item (different light colors per component)
-  const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
-    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
-    //{ to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
-    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
-    { to: "/leave-requests", label: "Short Leave", icon: <FaRunning className="h-5 w-5" />, hoverColor: "#a486fcff" },
-    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
-  ];
+
 
   // Fetch trainee profile
   useEffect(() => {

@@ -35,6 +35,7 @@ import {
   FaKey,
   FaChevronRight,
   FaTimes,
+  FaGraduationCap,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -510,6 +511,12 @@ const AdminDashboard = () => {
       icon: FaRunning,
       route: "/admin/leave-requests",
       color: "#8b5cf6",
+    },
+    {
+      label: "Extended Leave",
+      icon: FaGraduationCap,
+      route: "/admin/study-leave-requests",
+      color: "#6366f1",
     },
     {
       label: "Locations",

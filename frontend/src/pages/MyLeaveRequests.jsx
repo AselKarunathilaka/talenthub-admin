@@ -244,7 +244,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                 <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                   <FiFileText className="text-[#0056a2] h-8 w-8" />
                 </div> 
-                Short Leave Permission
+                {pageCopy.title}
               </motion.h1>
               <motion.p 
                 initial={{ opacity: 0 }} 
@@ -252,7 +252,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                 transition={{ delay: 0.05, duration: 0.2 }} 
                 className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
               >
-                Manage your short leave requests to exit SLT premises early.
+                {pageCopy.description}
               </motion.p>
             </div>
 
@@ -291,7 +291,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
               <button 
                 onClick={() => {
                   if (hasRequestForToday() && activeTab === "list") {
-                     toast.error("You already have a short leave request for today.");
+                     toast.error(pageCopy.duplicate);
                      return;
                   }
                   setSelectedDate(todayStr);
@@ -328,7 +328,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <LeaveRequestForm onSuccess={handleFormSuccess} />
+                    <LeaveRequestForm onSuccess={handleFormSuccess} requestType={requestType} />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -348,10 +348,10 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                           <FiFileText className="h-8 w-8 text-slate-300" />
                         </div>
-                        <h4 className="text-lg font-bold text-gray-700">No requests found</h4>
+                        <h4 className="text-lg font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
                         <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
                           {isToday 
-                            ? "You haven't submitted any short leave requests today." 
+                            ? pageCopy.emptyToday 
                             : `No requests found for ${formatDisplayDate(selectedDate)}.`}
                         </p>
                         {isToday && (
