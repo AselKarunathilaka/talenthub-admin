@@ -166,7 +166,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
 
       <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <motion.div whileTap={{ scale: 0.995 }}>
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
             <label className={labelClasses}>
               <FiCalendar className="text-[#00b4eb]" /> Leave Date *
             </label>
@@ -175,12 +175,12 @@ const LeaveRequestForm = ({ onSuccess }) => {
               name="leaveDate"
               value={today}
               readOnly
-              className={`${inputClasses} opacity-70 cursor-not-allowed pointer-events-none`}
+              className={`${inputClasses} appearance-none opacity-70 cursor-not-allowed pointer-events-none`}
             />
             <p className="text-[10px] text-gray-400 font-bold mt-1.5 uppercase">Date is automatically set to today</p>
           </motion.div>
 
-          <motion.div whileTap={{ scale: 0.995 }}>
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
             <label className={labelClasses}>
               <FiClock className="text-[#00b4eb]" /> Leave Time *
             </label>
@@ -190,11 +190,11 @@ const LeaveRequestForm = ({ onSuccess }) => {
               value={formData.leaveTime}
               onChange={handleChange}
               required
-              className={inputClasses}
+              className={`${inputClasses} appearance-none`}
             />
           </motion.div>
 
-          <motion.div whileTap={{ scale: 0.995 }}>
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
             <label className={labelClasses}>
               <span className="w-3 h-3 rounded-full border-2 border-[#00b4eb] flex items-center justify-center text-[#00b4eb] text-[6px]">ID</span>
               National ID Number *
@@ -219,7 +219,7 @@ const LeaveRequestForm = ({ onSuccess }) => {
             )}
           </motion.div>
 
-          <motion.div whileTap={{ scale: 0.995 }}>
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
             <label className={labelClasses}>
               <span className="w-3 h-3 rounded-full border-2 border-[#00b4eb] flex items-center justify-center text-[#00b4eb] text-[6px]">?</span>
               Purpose *
