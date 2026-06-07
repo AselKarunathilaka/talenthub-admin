@@ -656,21 +656,6 @@ const Dashboard = () => {
                   Your daily internship attendance overview
                 </p>
               </div>
-              <motion.button
-                onClick={() => navigate("/face-attendance")}
-                className="hidden sm:flex text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-md items-center transition-transform active:scale-95"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
-                }}
-                whileHover={{
-                  y: -2,
-                  boxShadow: "0 10px 15px -3px rgba(46, 125, 50, 0.2)",
-                }}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Mark Attendance
-              </motion.button>
             </div>
 
             {/* Daily Stats */}
@@ -746,16 +731,6 @@ const Dashboard = () => {
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
               <div className="p-5 border-b border-gray-50 flex justify-between items-center sm:hidden">
                 <h3 className="font-bold text-gray-800">Recent Logs</h3>
-                <button
-                  onClick={() => navigate("/face-attendance")}
-                  className="text-sm font-semibold p-2 rounded-lg"
-                  style={{
-                    color: "#0056a2",
-                    backgroundColor: "rgba(0,180,235,0.1)",
-                  }}
-                >
-                  <Clock className="h-4 w-4" />
-                </button>
               </div>
 
               {attendanceHistory.length > 0 ? (
