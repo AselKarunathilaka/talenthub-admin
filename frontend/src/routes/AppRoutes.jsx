@@ -1,8 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
-import ScanQRCode from "../pages/ScanQRCode";
-import FaceAttendance from "../pages/FaceAttendance";
+import Attendance from "../pages/Attendance";
 import Dashboard from "../pages/Dashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
@@ -37,18 +36,10 @@ const AppRoutes = () => {
 
       {/* Protected Intern Routes - Wrapped with AgreementGuard */}
       <Route
-        path="/scan-qr"
+        path="/attendance"
         element={
           <AgreementGuard>
-            <ScanQRCode />
-          </AgreementGuard>
-        }
-      />
-      <Route
-        path="/face-attendance"
-        element={
-          <AgreementGuard>
-            <FaceAttendance />
+            <Attendance />
           </AgreementGuard>
         }
       />
