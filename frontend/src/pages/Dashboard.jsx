@@ -728,109 +728,104 @@ const Dashboard = () => {
             </div>
 
             {/* Daily History */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-5 border-b border-gray-50 flex justify-between items-center sm:hidden">
-                <h3 className="font-bold text-gray-800">Recent Logs</h3>
-              </div>
+            {attendanceHistory.length > 0 ? (
+              <div className="space-y-3">
+                {attendanceHistory.slice(0, 10).map((entry, index) => {
+                  let date, dayName, formattedDate, dateNumber;
+                  try {
+                    date = entry.date ? new Date(entry.date) : new Date();
+                    dayName = date.toLocaleDateString("en-US", {
+                      weekday: "short",
+                    });
+                    formattedDate = date.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    });
+                    dateNumber = date.getDate();
+                  } catch (error) {
+                    dayName = "N/A";
+                    formattedDate = entry.date || "N/A";
+                    dateNumber = "-";
+                  }
+                  const methodMeta = getMeetingMethodMeta(
+                    entry.attendanceMethod ||
+                      entry.method ||
+                      entry.markedBy ||
+                      entry.type,
+                  );
+                  const MethodIcon = methodMeta.Icon;
 
-              {attendanceHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-400 uppercase bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Method
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Time
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-right">
-                          Day
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {attendanceHistory.slice(0, 10).map((entry, index) => {
-                        let date, dayName, formattedDate;
-                        try {
-                          date = entry.date ? new Date(entry.date) : new Date();
-                          dayName = date.toLocaleDateString("en-US", {
-                            weekday: "short",
-                          });
-                          formattedDate = date.toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          });
-                        } catch (error) {
-                          dayName = "N/A";
-                          formattedDate = entry.date || "N/A";
-                        }
-                        const methodMeta = getMeetingMethodMeta(
-                          entry.attendanceMethod ||
-                            entry.method ||
-                            entry.markedBy ||
-                            entry.type,
-                        );
-                        const MethodIcon = methodMeta.Icon;
-
-                        return (
-                          <motion.tr
-                            key={`${entry.date}-${index}`}
-                            className="hover:bg-gray-50/80 transition-colors"
-                            whileHover={{ backgroundColor: "#fcfcfc" }}
-                          >
-                            <td className="px-6 py-4 font-medium text-gray-800">
-                              {formattedDate}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
-                                  entry.status === "Present"
-                                    ? "bg-[#50b748]/10 text-[#50b748]"
-                                    : "bg-red-50 text-red-500"
-                                }`}
-                              >
-                                {entry.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${methodMeta.className}`}
-                              >
-                                <MethodIcon className="h-3 w-3" />
-                                {methodMeta.label}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-center text-gray-500 font-medium">
+                  return (
+                    <motion.div
+                      key={`${entry.date}-${index}`}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors"
+                      initial={false}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shadow-inner shrink-0"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                          }}
+                        >
+                          <span className="text-xs font-bold uppercase opacity-90">
+                            {dayName}
+                          </span>
+                          <span className="text-lg font-black leading-none">
+                            {dateNumber}
+                          </span>
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-bold text-gray-900">
+                            {formattedDate}
+                          </h4>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs">
+                            <span className="flex items-center text-gray-500 font-medium">
+                              <Clock className="h-3 w-3 mr-1" />{" "}
                               {entry.time || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-right text-gray-400 font-medium">
-                              {dayName}
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
+                            >
+                              <MethodIcon className="h-3 w-3" />
+                              {methodMeta.label}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                            entry.status === "Present"
+                              ? "bg-[#50b748]/10 text-[#50b748]"
+                              : "bg-red-50 text-red-500"
+                          }`}
+                        >
+                          {entry.status === "Present" ? (
+                            <CheckCircle className="h-3 w-3 mr-1.5" />
+                          ) : (
+                            <XCircle className="h-3 w-3 mr-1.5" />
+                          )}
+                          {entry.status}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-3xl border border-gray-100">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="h-6 w-6 text-gray-400" />
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 font-medium">
-                    No daily attendance records found
-                  </p>
-                </div>
-              )}
-            </div>
+                <p className="text-gray-500 font-medium">
+                  No daily attendance records found
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
 
