@@ -73,7 +73,11 @@ async function validateWithGemini(text) {
     );
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const requestOptions = {};
+  if (process.env.GEMINI_BASE_URL) {
+    requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+  }
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
     const prompt = `
 You are a lenient evaluator for a software engineering and IT internship logbook.
@@ -147,7 +151,12 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
   console.log(`[LLM VALIDATOR] Model: ${MODEL_NAME}`);
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  
+  const requestOptions = {};
+  if (process.env.GEMINI_BASE_URL) {
+    requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+  }
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
   const prompt = LENIENT_BATCH_PROMPT(tasks, challenges, plans);
 
@@ -222,7 +231,11 @@ async function testGeminiConnection() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const requestOptions = {};
+    if (process.env.GEMINI_BASE_URL) {
+      requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+    }
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
     // Race against a 15-second timeout
     const timeoutPromise = new Promise((_, reject) =>
