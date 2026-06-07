@@ -322,6 +322,109 @@ const stopCurrentMeetingPin = async (req, res) => {
   }
 };
 
+const scanInternFaceByAdmin = async (req, res) => {
+  try {
+    const {
+      internId, // the intern's ID
+      descriptor,
+      metadata = {},
+      attendanceType = "daily",
+      projectName,
+      meetingTitle,
+      meetingPin,
+    } = req.body;
+
+    if (!internId) {
+      return res.status(400).json({ message: "internId is required." });
+    }
+
+    let expectedInternId = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      expectedInternId = internId;
+    } else {
+      const internRecord = await Intern.findOne({ Trainee_ID: internId });
+      if (internRecord) expectedInternId = internRecord._id;
+      else return res.status(404).json({ message: "Intern not found." });
+    }
+
+    metadata.internId = expectedInternId;
+    metadata.adminId = req.user?.id;
+    metadata.markedByAdmin = true;
+
+    const result = await FaceAttendanceService.markAttendanceWithFace({
+      descriptor,
+      source: metadata.source || "admin-mobile-app",
+      metadata,
+      qrBackupUsed: false,
+      attendanceType,
+      projectName,
+      meetingTitle,
+      meetingPin,
+      expectedInternId,
+    });
+
+    if (!result.matched) {
+      const messageByReason = {
+        profile_missing_for_intern: "No face profile is registered for this intern. Please have them enroll their face first.",
+        profile_missing: "No active face profile found.",
+        profile_has_no_embeddings: "The intern's face profile is incomplete. Please have them re-enroll.",
+        face_not_recognized: "Face did not match the registered profile for this intern. Try again with better lighting.",
+      };
+
+      return res.status(404).json({
+        message: messageByReason[result.reason] || "No matching face profile found.",
+        matched: false,
+        reason: result.reason,
+        threshold: result.threshold,
+        bestDistance: result.bestDistance,
+      });
+    }
+
+    if (result.alreadyMarked) {
+      return res.status(400).json({
+        message: "Already marked today attendance",
+        matched: true,
+        alreadyMarked: true,
+        confidence: result.confidence,
+        distance: result.distance,
+        intern: result.intern,
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        attendanceType === "meeting"
+          ? result.dailyAttendanceMarked
+            ? "Face meeting attendance marked successfully. Daily attendance also recorded."
+            : "Face meeting attendance marked successfully."
+          : "Face attendance marked successfully.",
+      matched: true,
+      alreadyMarked: false,
+      confidence: result.confidence,
+      distance: result.distance,
+      intern: result.intern,
+      profile: result.profile,
+      log: result.log,
+      attendanceDate: result.attendanceDateKey,
+      dailyAttendanceMarked: result.dailyAttendanceMarked,
+    });
+  } catch (error) {
+    const rawMessage = error.message || "";
+    const isUserActionError =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
+    return res.status(error.statusCode || (isUserActionError ? 400 : 500)).json({
+      message: isUserActionError ? error.message : "Failed to verify face attendance.",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
+    });
+  }
+};
+
 module.exports = {
   registerFaceProfile,
   verifyFaceAttendance,
@@ -333,4 +436,5 @@ module.exports = {
   getCurrentMeetingPin,
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
+  scanInternFaceByAdmin,
 };
