@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { createLeaveRequest } from "../api/leaveRequestApi";
 import toast from "react-hot-toast";
-import { FiFileText, FiCalendar, FiClock, FiUpload, FiX } from "react-icons/fi";
+import { FiFileText, FiCalendar, FiClock, FiUpload, FiX, FiCheckCircle } from "react-icons/fi";
+import { motion, AnimatePresence } from "framer-motion";
 
 const isValidSriLankanNIC = (nic) => {
   const nicRegex = /^(\d{9}[VXvx]|\d{12})$/;
@@ -11,9 +12,7 @@ const isValidSriLankanNIC = (nic) => {
 const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const [formData, setFormData] = useState({
-    leaveDate: "",
-    studyEndDate: "",
-    leaveTime: isStudyLeave ? "Full Day" : "",
+    leaveTime: "",
     nationalId: "",
     purpose: isStudyLeave ? "Study" : "Personal",
     reason: "",
@@ -21,10 +20,11 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
 
   const [proofDocument, setProofDocument] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: name === "nationalId" ? value.toUpperCase().trim() : value,
@@ -36,23 +36,40 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
   ================================ */
   const handleFileChange = (e) => {
     const file = e.target.files[0];
+    validateAndSetFile(file);
+  };
 
+  const validateAndSetFile = (file) => {
     if (file) {
-      // 5MB limit
       if (file.size > 5 * 1024 * 1024) {
         toast.error("File size must be less than 5MB");
-        e.target.value = "";
+        if (fileInputRef.current) fileInputRef.current.value = "";
         return;
       }
       setProofDocument(file);
     }
   };
 
-  const handleRemoveProofDocument = () => {
-    setProofDocument(null);
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
 
-    const fileInput = document.getElementById("proofDocument");
-    if (fileInput) fileInput.value = "";
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    validateAndSetFile(file);
+  };
+
+  const removeFile = () => {
+    setProofDocument(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   /* ===============================
@@ -61,10 +78,8 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Required field validation
     if (
-      !formData.leaveDate ||
-      (!isStudyLeave && !formData.leaveTime) ||
+      !formData.leaveTime ||
       !formData.nationalId ||
       !formData.purpose ||
       !formData.reason
@@ -73,30 +88,17 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       return;
     }
 
-    // NIC validation
     if (!isValidSriLankanNIC(formData.nationalId)) {
-      toast.error(
-        "Invalid NIC number. Use 9 digits + V/X or 12-digit new NIC format",
-      );
+      toast.error("Invalid NIC number. Use 9 digits + V/X or 12-digit new NIC format");
       return;
     }
 
-    // Reason length validation
     if (formData.reason.length < 10) {
       toast.error("Reason must be at least 10 characters long");
       return;
     }
 
     const today = new Date().toISOString().split("T")[0];
-    if (!isStudyLeave && formData.leaveDate !== today) {
-      toast.error(
-        "Leave date must be today. Past or future dates are not allowed.",
-        {
-          duration: 4000,
-        },
-      );
-      return;
-    }
 
     if (isStudyLeave) {
       if (!formData.studyEndDate) {
@@ -119,15 +121,8 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
 
     try {
       const submitData = new FormData();
-      submitData.append("leaveDate", formData.leaveDate);
-      submitData.append(
-        "studyEndDate",
-        formData.studyEndDate || formData.leaveDate,
-      );
-      submitData.append(
-        "leaveTime",
-        isStudyLeave ? "Full Day" : formData.leaveTime,
-      );
+      submitData.append("leaveDate", today);
+      submitData.append("leaveTime", formData.leaveTime);
       submitData.append("nationalId", formData.nationalId);
       submitData.append("purpose", formData.purpose);
       submitData.append("reason", formData.reason);
@@ -143,36 +138,23 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           : "Leave request submitted successfully",
       );
 
-      // Reset form
       setFormData({
-        leaveDate: "",
-        studyEndDate: "",
-        leaveTime: isStudyLeave ? "Full Day" : "",
+        leaveTime: "",
         nationalId: "",
         purpose: isStudyLeave ? "Study" : "Personal",
         reason: "",
       });
 
       setProofDocument(null);
-
-      const fileInput = document.getElementById("proofDocument");
-      if (fileInput) fileInput.value = "";
+      if (fileInputRef.current) fileInputRef.current.value = "";
 
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error("Error submitting leave request:", error);
-
-      // Handle specific error cases
       if (error.message && error.message.includes("past")) {
-        toast.error(
-          "Leave date cannot be in the past. Please ensure your system date/time is correct and try again.",
-          { duration: 5000 },
-        );
+        toast.error("Leave date cannot be in the past. Please ensure your system date/time is correct and try again.", { duration: 5000 });
       } else if (error.message && error.message.includes("already exists")) {
-        toast.error(
-          "You already have a leave request for this date. Only one request per day is allowed.",
-          { duration: 4000 },
-        );
+        toast.error("You already have a leave request for this date. Only one request per day is allowed.", { duration: 4000 });
       } else {
         const errorMessage =
           error.message ||
@@ -188,95 +170,47 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
 
   const today = new Date().toISOString().split("T")[0];
 
+  const inputClasses = "w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:bg-white focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all text-sm font-medium text-gray-800 outline-none";
+  const labelClasses = "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2";
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      {/* Header */}
-      <div className="mb-6 pb-6 border-b border-gray-200">
-        <h2 className="text-2xl font-bold text-gray-800">
-          {isStudyLeave
-            ? "Formal Extended Leave Request"
-            : "Short Leave Permission Request"}
-        </h2>
-        <p className="text-gray-600 text-sm mt-1">
-          {isStudyLeave
-            ? "Submit extended leave with required proof document"
-            : "Submit your request to exit SLT premises early"}
-        </p>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+    >
+      <div className="bg-gradient-to-r from-slate-50 to-white p-6 md:p-8 border-b border-gray-100 relative">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center border border-blue-100 shadow-inner">
+            <FiFileText className="text-[#0056a2] text-2xl" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">New Leave Request</h2>
+            <p className="text-gray-500 text-sm font-medium mt-1">Submit your request to exit SLT premises early</p>
+          </div>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Date, NIC, Time */}
+      <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <FiCalendar className="inline mr-2 text-blue-600" />
-              {isStudyLeave ? "Extended Leave Start Date *" : "Leave Date *"}
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
+            <label className={labelClasses}>
+              <FiCalendar className="text-[#00b4eb]" /> Leave Date *
             </label>
             <input
               type="date"
               name="leaveDate"
-              value={formData.leaveDate}
-              onChange={handleChange}
-              min={today}
-              max={isStudyLeave ? undefined : today}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={today}
+              readOnly
+              className={`${inputClasses} appearance-none opacity-70 cursor-not-allowed pointer-events-none`}
             />
-            <p className="text-xs text-gray-500 mt-1">
-              {isStudyLeave
-                ? "Select the first extended leave date"
-                : "Only today's date is allowed"}
-            </p>
-          </div>
+            <p className="text-[10px] text-gray-400 font-bold mt-1.5 uppercase">Date is automatically set to today</p>
+          </motion.div>
 
-          {isStudyLeave && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <FiCalendar className="inline mr-2 text-blue-600" />
-                Extended Leave End Date *
-              </label>
-              <input
-                type="date"
-                name="studyEndDate"
-                value={formData.studyEndDate}
-                onChange={handleChange}
-                min={formData.leaveDate || today}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              National ID Number *
-            </label>
-            <input
-              type="text"
-              name="nationalId"
-              value={formData.nationalId}
-              onChange={handleChange}
-              placeholder="123456789V or 200012345678"
-              required
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                formData.nationalId && !isValidSriLankanNIC(formData.nationalId)
-                  ? "border-red-500"
-                  : "border-gray-300"
-              }`}
-            />
-            {formData.nationalId &&
-              !isValidSriLankanNIC(formData.nationalId) && (
-                <p className="text-xs text-red-600 mt-1">
-                  Enter a valid Sri Lankan NIC (9 digits + V/X or 12 digits)
-                </p>
-              )}
-          </div>
-
-          {!isStudyLeave && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              <FiClock className="inline mr-2 text-blue-600" />
-              Leave Time *
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
+            <label className={labelClasses}>
+              <FiClock className="text-[#00b4eb]" /> Leave Time *
             </label>
             <input
               type="time"
@@ -284,105 +218,165 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               value={formData.leaveTime}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className={`${inputClasses} appearance-none`}
             />
-          </div>
-          )}
-        </div>
+          </motion.div>
 
-        {/* Purpose */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Purpose *
-          </label>
-          <select
-            name="purpose"
-            value={formData.purpose}
-            onChange={handleChange}
-            required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white"
-          >
-            {isStudyLeave ? (
-              <option value="Study">Study</option>
-            ) : (
-              <>
-                <option value="Personal">Personal</option>
-                <option value="Official">Official</option>
-              </>
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
+            <label className={labelClasses}>
+              <span className="w-3 h-3 rounded-full border-2 border-[#00b4eb] flex items-center justify-center text-[#00b4eb] text-[6px]">ID</span>
+              National ID Number *
+            </label>
+            <input
+              type="text"
+              name="nationalId"
+              value={formData.nationalId}
+              onChange={handleChange}
+              placeholder="e.g. 123456789V or 200012345678"
+              required
+              className={`${inputClasses} ${
+                formData.nationalId && !isValidSriLankanNIC(formData.nationalId)
+                  ? "border-red-300 bg-red-50 focus:ring-red-500"
+                  : ""
+              }`}
+            />
+            {formData.nationalId && !isValidSriLankanNIC(formData.nationalId) && (
+              <p className="text-xs text-rose-500 font-medium mt-1.5 flex items-center gap-1">
+                <FiX /> Invalid NIC format
+              </p>
             )}
-          </select>
+          </motion.div>
+
+          <motion.div whileTap={{ scale: 0.995 }} className="min-w-0">
+            <label className={labelClasses}>
+              <span className="w-3 h-3 rounded-full border-2 border-[#00b4eb] flex items-center justify-center text-[#00b4eb] text-[6px]">?</span>
+              Purpose *
+            </label>
+            <select
+              name="purpose"
+              value={formData.purpose}
+              onChange={handleChange}
+              required
+              className={`${inputClasses} appearance-none cursor-pointer`}
+              style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em" }}
+            >
+              <option value="Personal">Personal</option>
+              <option value="Official">Official</option>
+            </select>
+          </motion.div>
         </div>
 
-        {/* Reason */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Reason *
-          </label>
+        <motion.div whileTap={{ scale: 0.995 }}>
+          <label className={labelClasses}>Reason *</label>
           <textarea
             name="reason"
             value={formData.reason}
             onChange={handleChange}
-            rows="4"
+            rows="3"
             minLength="10"
             required
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
+            placeholder="Please provide a detailed reason..."
+            className={`${inputClasses} resize-none`}
           />
-          <p className="text-xs text-gray-500 mt-1">
-            {formData.reason.length} / 10 characters minimum
-          </p>
-        </div>
+          <div className="flex justify-between items-center mt-1.5">
+            <p className="text-[10px] text-gray-400 font-bold uppercase">10 characters minimum</p>
+            <p className={`text-[10px] font-bold ${formData.reason.length < 10 ? 'text-rose-400' : 'text-[#50b748]'}`}>
+              {formData.reason.length} chars
+            </p>
+          </div>
+        </motion.div>
 
-        {/* Proof Document */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            <FiUpload className="inline mr-2 text-blue-600" />
-            Proof Document {isStudyLeave ? "*" : "(optional)"}
+          <label className={labelClasses}>
+            <FiUpload className="text-[#00b4eb]" /> Proof Document (Optional)
           </label>
-
-          <input
-            type="file"
-            id="proofDocument"
-            onChange={handleFileChange}
-            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-            aria-required={isStudyLeave}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-          />
-          {proofDocument && (
-            <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-              <span className="flex items-center gap-2 text-green-600 min-w-0">
-                <FiFileText className="flex-shrink-0" />
-                <span className="truncate max-w-full">{proofDocument.name}</span>
-              </span>
-              <button
-                type="button"
-                onClick={handleRemoveProofDocument}
-                className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <FiX />
-                Remove
-              </button>
-            </div>
-          )}
+          <div 
+            className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-200 ${
+              isDragging ? "border-[#00b4eb] bg-blue-50/50" : proofDocument ? "border-[#50b748] bg-green-50/30" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+            }`}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+          >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+              className="hidden"
+              id="file-upload"
+            />
+            
+            <AnimatePresence mode="wait">
+              {!proofDocument ? (
+                <motion.div 
+                  key="upload-prompt"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center justify-center text-center cursor-pointer"
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center mb-3">
+                    <FiUpload className="text-gray-400 text-xl" />
+                  </div>
+                  <p className="text-sm font-bold text-gray-700">Click to upload or drag and drop</p>
+                  <p className="text-xs font-medium text-gray-400 mt-1">PDF, JPG, PNG or DOC (max. 5MB)</p>
+                </motion.div>
+              ) : (
+                <motion.div 
+                  key="file-info"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center justify-between bg-white p-3 rounded-xl border border-[#50b748]/30 shadow-sm"
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center shrink-0">
+                      <FiFileText className="text-[#50b748] text-lg" />
+                    </div>
+                    <div className="truncate">
+                      <p className="text-sm font-bold text-gray-800 truncate">{proofDocument.name}</p>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase">{(proofDocument.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={(e) => { e.stopPropagation(); removeFile(); }}
+                    className="p-2 hover:bg-red-50 text-gray-400 hover:text-rose-500 rounded-lg transition-colors shrink-0"
+                  >
+                    <FiX />
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-3 rounded-lg text-white font-semibold ${
-            loading
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {loading
-            ? "Submitting..."
-            : isStudyLeave
-              ? "Submit Extended Leave Request"
-              : "Submit Short Leave Request"}
-        </button>
+        <div className="pt-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full py-4 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition-all duration-300 ${
+              loading
+                ? "bg-slate-300 cursor-not-allowed"
+                : "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.01] active:scale-[0.99]"
+            }`}
+          >
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                <span>Submitting...</span>
+              </div>
+            ) : (
+              <>
+                <FiCheckCircle className="text-lg" />
+                Submit Request
+              </>
+            )}
+          </button>
+        </div>
       </form>
-    </div>
+    </motion.div>
   );
 };
 

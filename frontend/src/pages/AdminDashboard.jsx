@@ -34,6 +34,7 @@ import {
   FaQrcode,
   FaKey,
   FaChevronRight,
+  FaTimes,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -492,14 +493,60 @@ const AdminDashboard = () => {
 
   /* ── Quick-action items config ── */
   const quickActions = [
-    { label: "Daily Records", icon: FaCalendarAlt, route: "/admin/daily-records", color: BRAND.success },
-    { label: "Leave Requests", icon: FaRunning, route: "/admin/leave-requests", color: "#8b5cf6" },
-    { label: "Seat Layout", icon: FaChair, route: "/admin/seat-management", color: "#ec4899" },
-    { label: "Announce", icon: FaBullhorn, route: "/admin/announcements", color: BRAND.accent },
-    { label: "Locations", icon: FaMapMarkedAlt, route: "/admin/intern-locations", color: BRAND.primary },
-    { label: "Attendance", icon: FaCalendarCheck, route: "/admin/intern-attendance", color: "#6366f1" },
-    { label: "QR Code", icon: FaQrcode, route: "/admin/qr-management", color: "#14b8a6" },
-    { label: "PIN Gen", icon: FaKey, route: "/admin/pin-management", color: BRAND.success },
+    {
+      label: "Daily Records",
+      icon: FaCalendarAlt,
+      route: "/admin/daily-records",
+      color: BRAND.success,
+    },
+    {
+      label: "Attendance",
+      icon: FaCalendarCheck,
+      route: "/admin/intern-attendance",
+      color: "#6366f1",
+    },
+    {
+      label: "Leave Requests",
+      icon: FaRunning,
+      route: "/admin/leave-requests",
+      color: "#8b5cf6",
+    },
+    {
+      label: "Locations",
+      icon: FaMapMarkedAlt,
+      route: "/admin/intern-locations",
+      color: BRAND.primary,
+    },
+    {
+      label: "Announce",
+      icon: FaBullhorn,
+      route: "/admin/announcements",
+      color: BRAND.accent,
+    },
+    {
+      label: "Seat Layout",
+      icon: FaChair,
+      route: "/admin/seat-management",
+      color: "#ec4899",
+    },
+    {
+      label: "QR",
+      icon: FaQrcode,
+      route: "/admin/qr-management",
+      color: "#14b8a6",
+    },
+    {
+      label: "PIN",
+      icon: FaKey,
+      route: "/admin/pin-management",
+      color: BRAND.success,
+    },
+    {
+      label: "Terminated Interns",
+      icon: FaTimes,
+      route: "/admin/inactive-interns",
+      color: BRAND.danger,
+    },
   ];
 
   /* ── Tab definitions ── */
@@ -545,9 +592,14 @@ const AdminDashboard = () => {
     return (
       <div className="admin-dash-loader">
         <div className="admin-dash-error-card">
-          <FaExclamationTriangle style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }} />
+          <FaExclamationTriangle
+            style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }}
+          />
           <p style={{ color: BRAND.danger, marginBottom: 20 }}>{error}</p>
-          <button onClick={fetchData} className="admin-dash-btn admin-dash-btn--primary">
+          <button
+            onClick={fetchData}
+            className="admin-dash-btn admin-dash-btn--primary"
+          >
             Retry
           </button>
         </div>
@@ -585,7 +637,11 @@ const AdminDashboard = () => {
               navigate("/admin-login");
             }}
           >
-            <img src={logo} alt="SLT Logo" className="admin-dash-header__logo" />
+            <img
+              src={logo}
+              alt="SLT Logo"
+              className="admin-dash-header__logo"
+            />
             <div className="admin-dash-header__titles">
               <span className="admin-dash-header__title">TalentHub</span>
               <span className="admin-dash-header__subtitle">Admin Portal</span>
@@ -620,7 +676,6 @@ const AdminDashboard = () => {
       <div className="admin-dash-content">
         <main className="admin-dash-main">
           <div className="admin-dash-container">
-
             {/* ── Page title ── */}
             <motion.div
               className="admin-dash-page-title"
@@ -628,9 +683,7 @@ const AdminDashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
             >
-              <h1>
-                Intern Management
-              </h1>
+              <h1>Intern Management</h1>
               <p>Monitor and manage intern logbook submissions</p>
             </motion.div>
 
@@ -678,16 +731,27 @@ const AdminDashboard = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 + idx * 0.08, duration: 0.35 }}
-                  whileHover={{ y: -3, boxShadow: "0 8px 30px rgba(0,0,0,0.08)" }}
+                  whileHover={{
+                    y: -3,
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+                  }}
                 >
-                  <div className="admin-dash-stat-card__icon" style={{ background: stat.bg }}>
+                  <div
+                    className="admin-dash-stat-card__icon"
+                    style={{ background: stat.bg }}
+                  >
                     <stat.icon style={{ color: stat.accent, fontSize: 18 }} />
                   </div>
                   <div className="admin-dash-stat-card__text">
-                    <span className="admin-dash-stat-card__value" style={{ color: stat.accent }}>
+                    <span
+                      className="admin-dash-stat-card__value"
+                      style={{ color: stat.accent }}
+                    >
                       {stat.value}
                     </span>
-                    <span className="admin-dash-stat-card__label">{stat.label}</span>
+                    <span className="admin-dash-stat-card__label">
+                      {stat.label}
+                    </span>
                   </div>
                 </motion.div>
               ))}
@@ -741,11 +805,16 @@ const AdminDashboard = () => {
                           >
                             <div
                               className="admin-dash-action-btn__icon"
-                              style={{ background: `${action.color}14`, color: action.color }}
+                              style={{
+                                background: `${action.color}14`,
+                                color: action.color,
+                              }}
                             >
                               <action.icon />
                             </div>
-                            <span className="admin-dash-action-btn__label">{action.label}</span>
+                            <span className="admin-dash-action-btn__label">
+                              {action.label}
+                            </span>
                           </motion.button>
                         ))}
                       </div>
@@ -798,7 +867,9 @@ const AdminDashboard = () => {
 
                         {/* Non-submissions section */}
                         <div className="admin-dash-exports__nonsub">
-                          <p className="admin-dash-exports__section-title">Non-Submissions Report</p>
+                          <p className="admin-dash-exports__section-title">
+                            Non-Submissions Report
+                          </p>
 
                           <motion.button
                             onClick={handleExportWeeklyNonSubmissionsWithinWeek}
@@ -822,7 +893,9 @@ const AdminDashboard = () => {
                                 <input
                                   type="date"
                                   value={customStartDate}
-                                  onChange={(e) => setCustomStartDate(e.target.value)}
+                                  onChange={(e) =>
+                                    setCustomStartDate(e.target.value)
+                                  }
                                 />
                               </div>
                               <div className="admin-dash-date-field">
@@ -830,7 +903,9 @@ const AdminDashboard = () => {
                                 <input
                                   type="date"
                                   value={customEndDate}
-                                  onChange={(e) => setCustomEndDate(e.target.value)}
+                                  onChange={(e) =>
+                                    setCustomEndDate(e.target.value)
+                                  }
                                 />
                               </div>
                             </div>
@@ -871,8 +946,16 @@ const AdminDashboard = () => {
                           <motion.button
                             onClick={handleExportOverdueCSV}
                             disabled={!dashboardStats?.overdueList?.length}
-                            whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.03 }}
-                            whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.97 }}
+                            whileHover={{
+                              scale: !dashboardStats?.overdueList?.length
+                                ? 1
+                                : 1.03,
+                            }}
+                            whileTap={{
+                              scale: !dashboardStats?.overdueList?.length
+                                ? 1
+                                : 0.97,
+                            }}
                             className="admin-dash-btn admin-dash-btn--warning"
                           >
                             <FaFileExport style={{ marginRight: 6 }} />
@@ -880,23 +963,31 @@ const AdminDashboard = () => {
                           </motion.button>
                           <motion.button
                             onClick={handleSendNotifications}
-                            disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
+                            disabled={
+                              sendingNotifications ||
+                              !dashboardStats?.overdueList?.length
+                            }
                             whileHover={{
                               scale:
-                                sendingNotifications || !dashboardStats?.overdueList?.length
+                                sendingNotifications ||
+                                !dashboardStats?.overdueList?.length
                                   ? 1
                                   : 1.03,
                             }}
                             whileTap={{
                               scale:
-                                sendingNotifications || !dashboardStats?.overdueList?.length
+                                sendingNotifications ||
+                                !dashboardStats?.overdueList?.length
                                   ? 1
                                   : 0.97,
                             }}
                             className="admin-dash-btn admin-dash-btn--danger"
                           >
                             {sendingNotifications ? (
-                              <FaSpinner className="animate-spin" style={{ marginRight: 6 }} />
+                              <FaSpinner
+                                className="animate-spin"
+                                style={{ marginRight: 6 }}
+                              />
                             ) : (
                               <FaRegPaperPlane style={{ marginRight: 6 }} />
                             )}
@@ -912,17 +1003,24 @@ const AdminDashboard = () => {
                             <motion.div
                               key={intern._id}
                               className="admin-dash-overdue-item"
-                              whileHover={{ scale: 1.005 }}
                               transition={{ duration: 0.15 }}
                             >
                               <div className="admin-dash-overdue-item__info">
-                                <p className="admin-dash-overdue-item__name">{intern.traineeName}</p>
+                                <p className="admin-dash-overdue-item__name">
+                                  {intern.traineeName}
+                                </p>
                                 <p className="admin-dash-overdue-item__meta">
                                   {intern.traineeId} · {intern.email}
                                 </p>
                               </div>
                               <div className="admin-dash-overdue-item__date">
-                                <FaClock style={{ fontSize: 11, marginRight: 4, opacity: 0.6 }} />
+                                <FaClock
+                                  style={{
+                                    fontSize: 11,
+                                    marginRight: 4,
+                                    opacity: 0.6,
+                                  }}
+                                />
                                 {intern.lastSubmission
                                   ? formatDateDisplay(intern.lastSubmission)
                                   : "Never submitted"}
@@ -932,7 +1030,13 @@ const AdminDashboard = () => {
                         </div>
                       ) : (
                         <div className="admin-dash-empty admin-dash-empty--sm">
-                          <FaCheckCircle style={{ fontSize: 28, color: BRAND.success, marginBottom: 8 }} />
+                          <FaCheckCircle
+                            style={{
+                              fontSize: 28,
+                              color: BRAND.success,
+                              marginBottom: 8,
+                            }}
+                          />
                           <p>No overdue interns — all caught up!</p>
                         </div>
                       )}
@@ -964,7 +1068,9 @@ const AdminDashboard = () => {
                 )}
               </div>
               {searchTerm.length > 0 && searchTerm.length < 2 && (
-                <p className="admin-dash-search-hint">Type at least 2 characters to search</p>
+                <p className="admin-dash-search-hint">
+                  Type at least 2 characters to search
+                </p>
               )}
 
               {/* Filter pills + sort */}
@@ -1023,17 +1129,19 @@ const AdminDashboard = () => {
                   </div>
                   <h3>Find Interns Instantly</h3>
                   <p>
-                    Type a name, trainee ID, or email above to search — or pick a
-                    filter to browse by status.
+                    Type a name, trainee ID, or email above to search — or pick
+                    a filter to browse by status.
                   </p>
                   <div className="admin-dash-empty__tip">
-                    💡 <strong>Tip:</strong> Select "Overdue" filter to quickly see
-                    who needs attention.
+                    💡 <strong>Tip:</strong> Select "Overdue" filter to quickly
+                    see who needs attention.
                   </div>
                 </div>
               ) : filteredInterns.length === 0 ? (
                 <div className="admin-dash-empty">
-                  <FaUser style={{ fontSize: 32, color: "#d1d5db", marginBottom: 8 }} />
+                  <FaUser
+                    style={{ fontSize: 32, color: "#d1d5db", marginBottom: 8 }}
+                  />
                   <h3>No interns found</h3>
                   <p>Try adjusting your search or filters.</p>
                 </div>
@@ -1048,8 +1156,8 @@ const AdminDashboard = () => {
                           intern.isOverdue
                             ? "admin-dash-intern-card--danger"
                             : intern.totalRecords > 0
-                            ? "admin-dash-intern-card--success"
-                            : "admin-dash-intern-card--neutral"
+                              ? "admin-dash-intern-card--success"
+                              : "admin-dash-intern-card--neutral"
                         }`}
                         onClick={() => navigate(`/admin/intern/${intern._id}`)}
                         initial={{ opacity: 0, y: 10 }}
@@ -1134,8 +1242,12 @@ const AdminDashboard = () => {
                           <motion.tr
                             key={intern._id}
                             className="admin-dash-table__row"
-                            onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                            whileHover={{ backgroundColor: `${BRAND.accent}08` }}
+                            onClick={() =>
+                              navigate(`/admin/intern/${intern._id}`)
+                            }
+                            whileHover={{
+                              backgroundColor: `${BRAND.accent}08`,
+                            }}
                             transition={{ duration: 0.15 }}
                           >
                             <td>
@@ -1154,10 +1266,16 @@ const AdminDashboard = () => {
                               </div>
                             </td>
                             <td>
-                              <div className="admin-dash-table__name" title={intern.email}>
+                              <div
+                                className="admin-dash-table__name"
+                                title={intern.email}
+                              >
                                 {intern.email || "N/A"}
                               </div>
-                              <div className="admin-dash-table__sub" title={intern.fieldOfSpecialization}>
+                              <div
+                                className="admin-dash-table__sub"
+                                title={intern.fieldOfSpecialization}
+                              >
                                 {intern.fieldOfSpecialization || "N/A"}
                               </div>
                             </td>

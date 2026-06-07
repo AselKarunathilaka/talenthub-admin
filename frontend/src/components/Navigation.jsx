@@ -17,13 +17,14 @@ import {
   Youtube,
   Armchair,
   Megaphone,
-  GraduationCap,
+  ScanLine,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
+import { FaRunning } from "react-icons/fa";
 
 // Read-state helpers
 const READ_KEY = "readAnnouncementIds";
@@ -50,6 +51,16 @@ const Navigation = ({ children }) => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   const traineeId = localStorage.getItem("internId");
+
+  // Hover colors for each nav item (different light colors per component)
+  const navLinks = [
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
+    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
+    //{ to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
+    { to: "/leave-requests", label: "Short Leave", icon: <FaRunning className="h-5 w-5" />, hoverColor: "#a486fcff" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
+  ];
 
   // Fetch trainee profile
   useEffect(() => {
@@ -171,6 +182,14 @@ const Navigation = ({ children }) => {
     navigate("/");
   };
 
+  const handleAnnouncementsToggle = () => {
+    if (location.pathname === "/announcements") {
+      navigate("/dashboard");
+    } else {
+      navigate("/announcements");
+    }
+  };
+
   const handleDownloadLeaveForm = () => {
     const link = document.createElement("a");
     link.href = leaveFormPdf;
@@ -209,33 +228,39 @@ const Navigation = ({ children }) => {
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            {unreadCount > 0 && (
-              <Link to="/announcements" className="relative">
-                <Megaphone className="h-5 w-5 text-white/80" />
-                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              </Link>
-            )}
-            <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium text-sm shadow-md">
-              {internName
-                ? internName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                : "U"}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleAnnouncementsToggle} 
+                className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
+                aria-label="Toggle Announcements"
+              >
+                <Megaphone className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium text-sm shadow-md">
+                {internName
+                  ? internName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                  : "U"}
+              </div>
             </div>
-          </div>
 
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
-              text-white hover:text-[#00b4eb] hover:bg-white/10 transition-all duration-200"
-            aria-expanded={isMobileMenuOpen}
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
+                text-white hover:text-[#00b4eb] hover:bg-white/10 transition-all duration-200"
+              aria-expanded={isMobileMenuOpen}
+            >
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -248,10 +273,22 @@ const Navigation = ({ children }) => {
       >
         <div className="flex items-center justify-between w-full">
           <h2 className="text-2xl font-bold text-white">
-            {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
+            {isActive("/announcements") ? "Announcements" : (navLinks.find((link) => isActive(link.to))?.label || "Dashboard")}
           </h2>
 
           <div className="flex items-center space-x-6">
+            <button 
+              onClick={handleAnnouncementsToggle} 
+              className={`relative p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white hover:text-[#00b4eb] hover:bg-white/10"}`}
+              aria-label="Toggle Announcements"
+            >
+              <Megaphone className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
             <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
               <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center shadow-md">
                 <User className="h-5 w-5 text-white" />
@@ -310,12 +347,12 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+          <nav className="px-3 py-6 flex-1 flex flex-col justify-evenly overflow-y-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3 rounded-xl mx-2 transition-all duration-200 group
+                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group
                   ${isActive(link.to)
                     ? "bg-white/10 shadow-lg backdrop-blur-sm border border-white/10"
                     : "text-white/70 hover:bg-white/5"
@@ -324,7 +361,7 @@ const Navigation = ({ children }) => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span
-                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[#00b4eb]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                 >
                   {link.icon}
                   {link.badge > 0 && (
@@ -339,7 +376,7 @@ const Navigation = ({ children }) => {
                   {link.label}
                 </span>
                 {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[#00b4eb] shadow-glow" />
+                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow" />
                 )}
               </Link>
             ))}

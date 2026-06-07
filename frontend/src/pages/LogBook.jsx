@@ -441,9 +441,15 @@ const Logbook = () => {
         });
 
         if (!validationResponse.ok) {
+          let errorText = "Validation service unavailable. Please try again shortly.";
+          try {
+            const errBody = await validationResponse.json();
+            if (errBody.error) errorText = errBody.error;
+          } catch { /* use default */ }
+          console.error(`[LogBook] Validation endpoint returned ${validationResponse.status}: ${errorText}`);
           setStatusMessage({
             type: "error",
-            text: "Validation service unavailable. Please try again shortly.",
+            text: errorText,
           });
           setIsSubmitting(false);
           return;
@@ -1180,8 +1186,8 @@ const Logbook = () => {
                     </label>
 
                     <div style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+                      display: "flex",
+                      flexWrap: "wrap",
                       gap: 12,
                       marginBottom: 16,
                     }}>
@@ -1195,6 +1201,7 @@ const Logbook = () => {
                             key={opt.value}
                             className="logbook-status-card"
                             style={{
+                              flex: "1 1 160px",
                               display: "flex",
                               flexDirection: "column",
                               alignItems: "center",

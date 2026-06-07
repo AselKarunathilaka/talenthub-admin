@@ -130,7 +130,7 @@ const Dashboard = () => {
         const meetingDateKey = (entry) => {
           const date = entry.date ? new Date(entry.date) : null;
           return date && !Number.isNaN(date.getTime())
-            ? date.toISOString().slice(0, 10)
+            ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
             : String(entry.date || "");
         };
         const meetingPresentDays = new Set(
@@ -322,7 +322,7 @@ const Dashboard = () => {
       }
 
       const dateKey = date
-        ? date.toISOString().slice(0, 10)
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
         : String(entry.date || "unknown");
       const fallbackLabel = entry.date || "N/A";
       const group = groups.get(dateKey) || {
@@ -337,6 +337,7 @@ const Dashboard = () => {
         dayName: date
           ? date.toLocaleDateString("en-US", { weekday: "short" })
           : "N/A",
+        dateNumber: date ? date.getDate() : "-",
         meetings: [],
       };
 
@@ -460,7 +461,7 @@ const Dashboard = () => {
         {/* ── Intern Profile Card (Refactored) ── */}
         {internData && (
           <motion.div
-            className="mb-8 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+            className="mb-8 bg-white rounded-3xl overflow-hidden group shadow-[0_0_15px_rgba(0,180,235,0.15)] border border-[#00b4eb]/20 hover:shadow-[0_0_30px_rgba(0,180,235,0.35)] hover:border-[#00b4eb]/50 transition-all duration-500"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -505,7 +506,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 sm:p-8 bg-gray-50/30">
               
               {/* Personal Information */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.15)] border border-indigo-400/20 hover:shadow-[0_0_25px_rgba(99,102,241,0.35)] hover:border-indigo-400/60 transition-all duration-300">
                 <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
                   <User className="w-5 h-5 text-indigo-500" />
                   Personal Information
@@ -528,7 +529,7 @@ const Dashboard = () => {
 
               <div className="space-y-6">
                 {/* Training Period */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(16,185,129,0.15)] border border-emerald-400/20 hover:shadow-[0_0_25px_rgba(16,185,129,0.35)] hover:border-emerald-400/60 transition-all duration-300">
                   <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-emerald-500" />
                     Training Period
@@ -568,7 +569,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Project Assignments */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.15)] border border-blue-400/20 hover:shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:border-blue-400/60 transition-all duration-300">
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                       <Folder className="w-5 h-5 text-blue-500" />
@@ -578,7 +579,7 @@ const Dashboard = () => {
                   {internProjects && internProjects.length > 0 ? (
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                       {internProjects.map((proj, pi) => (
-                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-white rounded-xl shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-300/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:border-blue-300/60 transition-all duration-300">
                           <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center flex-shrink-0 text-blue-600">
                             <Folder className="w-5 h-5" />
                           </div>
@@ -655,21 +656,6 @@ const Dashboard = () => {
                   Your daily internship attendance overview
                 </p>
               </div>
-              <motion.button
-                onClick={() => navigate("/face-attendance")}
-                className="hidden sm:flex text-sm font-semibold text-white px-5 py-2.5 rounded-xl shadow-md items-center transition-transform active:scale-95"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
-                }}
-                whileHover={{
-                  y: -2,
-                  boxShadow: "0 10px 15px -3px rgba(46, 125, 50, 0.2)",
-                }}
-              >
-                <Clock className="h-4 w-4 mr-2" />
-                Mark Attendance
-              </motion.button>
             </div>
 
             {/* Daily Stats */}
@@ -742,119 +728,104 @@ const Dashboard = () => {
             </div>
 
             {/* Daily History */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="p-5 border-b border-gray-50 flex justify-between items-center sm:hidden">
-                <h3 className="font-bold text-gray-800">Recent Logs</h3>
-                <button
-                  onClick={() => navigate("/face-attendance")}
-                  className="text-sm font-semibold p-2 rounded-lg"
-                  style={{
-                    color: "#0056a2",
-                    backgroundColor: "rgba(0,180,235,0.1)",
-                  }}
-                >
-                  <Clock className="h-4 w-4" />
-                </button>
-              </div>
+            {attendanceHistory.length > 0 ? (
+              <div className="space-y-3">
+                {attendanceHistory.slice(0, 10).map((entry, index) => {
+                  let date, dayName, formattedDate, dateNumber;
+                  try {
+                    date = entry.date ? new Date(entry.date) : new Date();
+                    dayName = date.toLocaleDateString("en-US", {
+                      weekday: "short",
+                    });
+                    formattedDate = date.toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    });
+                    dateNumber = date.getDate();
+                  } catch (error) {
+                    dayName = "N/A";
+                    formattedDate = entry.date || "N/A";
+                    dateNumber = "-";
+                  }
+                  const methodMeta = getMeetingMethodMeta(
+                    entry.attendanceMethod ||
+                      entry.method ||
+                      entry.markedBy ||
+                      entry.type,
+                  );
+                  const MethodIcon = methodMeta.Icon;
 
-              {attendanceHistory.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-400 uppercase bg-gray-50/50">
-                      <tr>
-                        <th className="px-6 py-4 font-semibold tracking-wider">
-                          Date
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Status
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Method
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-center">
-                          Time
-                        </th>
-                        <th className="px-6 py-4 font-semibold tracking-wider text-right">
-                          Day
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                      {attendanceHistory.slice(0, 10).map((entry, index) => {
-                        let date, dayName, formattedDate;
-                        try {
-                          date = entry.date ? new Date(entry.date) : new Date();
-                          dayName = date.toLocaleDateString("en-US", {
-                            weekday: "short",
-                          });
-                          formattedDate = date.toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          });
-                        } catch (error) {
-                          dayName = "N/A";
-                          formattedDate = entry.date || "N/A";
-                        }
-                        const methodMeta = getMeetingMethodMeta(
-                          entry.attendanceMethod ||
-                            entry.method ||
-                            entry.markedBy ||
-                            entry.type,
-                        );
-                        const MethodIcon = methodMeta.Icon;
-
-                        return (
-                          <motion.tr
-                            key={`${entry.date}-${index}`}
-                            className="hover:bg-gray-50/80 transition-colors"
-                            whileHover={{ backgroundColor: "#fcfcfc" }}
-                          >
-                            <td className="px-6 py-4 font-medium text-gray-800">
-                              {formattedDate}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
-                                  entry.status === "Present"
-                                    ? "bg-[#50b748]/10 text-[#50b748]"
-                                    : "bg-red-50 text-red-500"
-                                }`}
-                              >
-                                {entry.status}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold ${methodMeta.className}`}
-                              >
-                                <MethodIcon className="h-3 w-3" />
-                                {methodMeta.label}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 text-center text-gray-500 font-medium">
+                  return (
+                    <motion.div
+                      key={`${entry.date}-${index}`}
+                      className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-gray-50/50 transition-colors"
+                      initial={false}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-xl flex flex-col items-center justify-center text-white shadow-inner shrink-0"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                          }}
+                        >
+                          <span className="text-xs font-bold uppercase opacity-90">
+                            {dayName}
+                          </span>
+                          <span className="text-lg font-black leading-none">
+                            {dateNumber}
+                          </span>
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-bold text-gray-900">
+                            {formattedDate}
+                          </h4>
+                          <div className="flex items-center gap-3 mt-1.5 text-xs">
+                            <span className="flex items-center text-gray-500 font-medium">
+                              <Clock className="h-3 w-3 mr-1" />{" "}
                               {entry.time || "-"}
-                            </td>
-                            <td className="px-6 py-4 text-right text-gray-400 font-medium">
-                              {dayName}
-                            </td>
-                          </motion.tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
+                            >
+                              <MethodIcon className="h-3 w-3" />
+                              {methodMeta.label}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold ${
+                            entry.status === "Present"
+                              ? "bg-[#50b748]/10 text-[#50b748]"
+                              : "bg-red-50 text-red-500"
+                          }`}
+                        >
+                          {entry.status === "Present" ? (
+                            <CheckCircle className="h-3 w-3 mr-1.5" />
+                          ) : (
+                            <XCircle className="h-3 w-3 mr-1.5" />
+                          )}
+                          {entry.status}
+                        </span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-white rounded-3xl border border-gray-100">
+                <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
+                  <Calendar className="h-6 w-6 text-gray-400" />
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-gray-50 flex items-center justify-center mx-auto mb-4">
-                    <Calendar className="h-6 w-6 text-gray-400" />
-                  </div>
-                  <p className="text-gray-500 font-medium">
-                    No daily attendance records found
-                  </p>
-                </div>
-              )}
-            </div>
+                <p className="text-gray-500 font-medium">
+                  No daily attendance records found
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -997,7 +968,7 @@ const Dashboard = () => {
                               {group.dayName}
                             </span>
                             <span className="text-lg font-black leading-none">
-                              {new Date(group.dateKey).getDate() || "-"}
+                              {group.dateNumber}
                             </span>
                           </div>
                           <div className="text-left">

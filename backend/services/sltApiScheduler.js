@@ -423,12 +423,15 @@ class SLTApiScheduler {
 
   /**
    * Remove interns from MongoDB that are no longer present in the SLT API.
+   *
+   * LOGIC:
+   * - All interns not found in API are moved to InactiveInterns collection
+   *
    * Safety guard prevents deletion when API response looks abnormally small.
-   * Archives to InactiveIntern collection before deleting.
    */
   static async performDataCleanup() {
     console.log(
-      "🧹 Starting data cleanup - removing inactive interns from database...",
+      "🧹 Starting data cleanup - processing interns no longer in SLT API...",
     );
 
     try {
@@ -446,8 +449,8 @@ class SLTApiScheduler {
           stats: {
             totalInDb: 0,
             activeInApi: activeTrainees?.length ?? 0,
-            removed: 0,
-            archived: 0,
+            inactivated: 0,
+            terminated: 0,
             errors: 0,
           },
         };
@@ -462,73 +465,85 @@ class SLTApiScheduler {
           .filter((id) => id && id.trim() !== ""),
       );
 
-      const internsToRemove = dbInterns.filter((intern) => {
+      const internsToProcess = dbInterns.filter((intern) => {
         if (intern.isTestAccount) return false;
         const traineeId = intern.Trainee_ID?.toString();
         return traineeId && !activeTraineeIds.has(traineeId);
       });
 
       console.log(
-        `📊 Analysis: ${dbInterns.length} total in DB, ${activeTrainees.length} active in API, ${internsToRemove.length} to archive & remove`,
+        `📊 Analysis: ${dbInterns.length} total in DB, ${activeTrainees.length} active in API, ${internsToProcess.length} to process`,
       );
 
-      if (internsToRemove.length === 0) {
+      if (internsToProcess.length === 0) {
         console.log("✅ No inactive interns found - database is clean");
         return {
           success: true,
-          message: "No inactive interns found to remove",
+          message: "No inactive interns found to process",
           stats: {
             totalInDb: dbInterns.length,
             activeInApi: activeTrainees.length,
-            removed: 0,
-            archived: 0,
+            inactivated: 0,
+            terminated: 0,
             errors: 0,
           },
         };
       }
 
-      console.log("🗑️  Interns to be archived & removed (not found in API):");
-      internsToRemove.forEach((intern) => {
+      console.log("🔄 Interns to be processed (not found in API):");
+      internsToProcess.forEach((intern) => {
+        const endDate = intern.Training_EndDate
+          ? new Date(intern.Training_EndDate).toLocaleDateString()
+          : "No date";
         console.log(
-          `   - ${intern.Trainee_ID}: ${intern.Trainee_Name} (${intern.Trainee_Email || "No email"})`,
+          `   - ${intern.Trainee_ID}: ${intern.Trainee_Name} (End: ${endDate})`,
         );
       });
 
-      let removedCount = 0;
-      let archivedCount = 0;
+      let inactivatedCount = 0;
       let errorCount = 0;
 
+      // Move all interns not in API to InactiveInterns collection
+      console.log(
+        `📦 Processing ${internsToProcess.length} interns no longer in API...`,
+      );
+
       try {
-        //  removeMultipleInterns now archives before deleting
-        const idsToRemove = internsToRemove.map((intern) => intern._id);
+        const idsToInactivate = internsToProcess.map((intern) => intern._id);
         const result = await InternRepository.removeMultipleInterns(
-          idsToRemove,
+          idsToInactivate,
           "not_in_api",
         );
 
-        removedCount = result.deletedCount;
-        archivedCount = result.archivedCount ?? removedCount;
+        inactivatedCount = result.deletedCount;
         console.log(
-          `✅ Archived ${archivedCount} and removed ${removedCount} inactive interns`,
+          `✅ Moved ${inactivatedCount} interns to InactiveInterns collection`,
         );
+
+        internsToProcess.forEach((intern) => {
+          const endDate = intern.Training_EndDate
+            ? new Date(intern.Training_EndDate).toLocaleDateString()
+            : "No date";
+          console.log(
+            `   ✓ Inactivated: ${intern.Trainee_Name} (${intern.Trainee_ID}) - End: ${endDate}`,
+          );
+        });
       } catch (batchError) {
         console.error(
-          "❌ Batch removal failed, trying individual removals:",
+          "❌ Batch inactivation failed, trying individual inactivations:",
           batchError.message,
         );
 
-        // Fallback to individual removals
-        for (const intern of internsToRemove) {
+        for (const intern of internsToProcess) {
           try {
             await InternRepository.removeIntern(intern._id, "not_in_api");
-            removedCount++;
-            archivedCount++;
+            inactivatedCount++;
             console.log(
-              `✅ Archived & removed: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
+              `✅ Inactivated: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
             );
           } catch (error) {
             console.error(
-              `❌ Failed to remove ${intern.Trainee_Name} (${intern.Trainee_ID}):`,
+              `❌ Failed to inactivate ${intern.Trainee_Name} (${intern.Trainee_ID}):`,
               error.message,
             );
             errorCount++;
@@ -538,12 +553,11 @@ class SLTApiScheduler {
 
       const result = {
         success: true,
-        message: `Data cleanup completed: ${removedCount} removed, ${archivedCount} archived to InactiveInterns, ${errorCount} errors`,
+        message: `Data cleanup completed: ${inactivatedCount} moved to InactiveInterns, ${errorCount} errors`,
         stats: {
           totalInDb: dbInterns.length,
           activeInApi: activeTrainees.length,
-          removed: removedCount,
-          archived: archivedCount,
+          inactivated: inactivatedCount,
           errors: errorCount,
         },
       };
@@ -558,8 +572,8 @@ class SLTApiScheduler {
         stats: {
           totalInDb: 0,
           activeInApi: 0,
-          removed: 0,
-          archived: 0,
+          inactivated: 0,
+          terminated: 0,
           errors: 1,
         },
       };
