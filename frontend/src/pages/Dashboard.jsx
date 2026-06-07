@@ -461,7 +461,7 @@ const Dashboard = () => {
         {/* ── Intern Profile Card (Refactored) ── */}
         {internData && (
           <motion.div
-            className="mb-8 bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
+            className="mb-8 bg-white rounded-3xl overflow-hidden group shadow-[0_0_15px_rgba(0,180,235,0.15)] border border-[#00b4eb]/20 hover:shadow-[0_0_30px_rgba(0,180,235,0.35)] hover:border-[#00b4eb]/50 transition-all duration-500"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -506,7 +506,7 @@ const Dashboard = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 sm:p-8 bg-gray-50/30">
               
               {/* Personal Information */}
-              <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.15)] border border-indigo-400/20 hover:shadow-[0_0_25px_rgba(99,102,241,0.35)] hover:border-indigo-400/60 transition-all duration-300">
                 <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
                   <User className="w-5 h-5 text-indigo-500" />
                   Personal Information
@@ -529,7 +529,7 @@ const Dashboard = () => {
 
               <div className="space-y-6">
                 {/* Training Period */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(16,185,129,0.15)] border border-emerald-400/20 hover:shadow-[0_0_25px_rgba(16,185,129,0.35)] hover:border-emerald-400/60 transition-all duration-300">
                   <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-emerald-500" />
                     Training Period
@@ -569,7 +569,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Project Assignments */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(59,130,246,0.15)] border border-blue-400/20 hover:shadow-[0_0_25px_rgba(59,130,246,0.35)] hover:border-blue-400/60 transition-all duration-300">
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                       <Folder className="w-5 h-5 text-blue-500" />
@@ -579,7 +579,7 @@ const Dashboard = () => {
                   {internProjects && internProjects.length > 0 ? (
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                       {internProjects.map((proj, pi) => (
-                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-gray-50/80 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors">
+                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-white rounded-xl shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-300/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:border-blue-300/60 transition-all duration-300">
                           <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center flex-shrink-0 text-blue-600">
                             <Folder className="w-5 h-5" />
                           </div>
