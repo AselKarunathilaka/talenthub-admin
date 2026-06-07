@@ -11,7 +11,6 @@ const isValidSriLankanNIC = (nic) => {
 
 const LeaveRequestForm = ({ onSuccess }) => {
   const [formData, setFormData] = useState({
-    leaveDate: "",
     leaveTime: "",
     nationalId: "",
     purpose: "Personal",
@@ -79,7 +78,6 @@ const LeaveRequestForm = ({ onSuccess }) => {
     e.preventDefault();
 
     if (
-      !formData.leaveDate ||
       !formData.leaveTime ||
       !formData.nationalId ||
       !formData.purpose ||
@@ -100,16 +98,12 @@ const LeaveRequestForm = ({ onSuccess }) => {
     }
 
     const today = new Date().toISOString().split("T")[0];
-    if (formData.leaveDate !== today) {
-      toast.error("Leave date must be today. Past or future dates are not allowed.", { duration: 4000 });
-      return;
-    }
 
     setLoading(true);
 
     try {
       const submitData = new FormData();
-      submitData.append("leaveDate", formData.leaveDate);
+      submitData.append("leaveDate", today);
       submitData.append("leaveTime", formData.leaveTime);
       submitData.append("nationalId", formData.nationalId);
       submitData.append("purpose", formData.purpose);
@@ -122,7 +116,6 @@ const LeaveRequestForm = ({ onSuccess }) => {
       toast.success("Leave request submitted successfully");
 
       setFormData({
-        leaveDate: "",
         leaveTime: "",
         nationalId: "",
         purpose: "Personal",
@@ -180,14 +173,11 @@ const LeaveRequestForm = ({ onSuccess }) => {
             <input
               type="date"
               name="leaveDate"
-              value={formData.leaveDate}
-              onChange={handleChange}
-              min={today}
-              max={today}
-              required
-              className={inputClasses}
+              value={today}
+              readOnly
+              className={`${inputClasses} opacity-70 cursor-not-allowed pointer-events-none`}
             />
-            <p className="text-[10px] text-gray-400 font-bold mt-1.5 uppercase">Only today's date is allowed</p>
+            <p className="text-[10px] text-gray-400 font-bold mt-1.5 uppercase">Date is automatically set to today</p>
           </motion.div>
 
           <motion.div whileTap={{ scale: 0.995 }}>
