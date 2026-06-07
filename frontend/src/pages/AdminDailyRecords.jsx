@@ -229,7 +229,7 @@ const AdminDailyRecords = () => {
     s === "wfh"
       ? "WFH"
       : s === "study_leave"
-        ? "Study Leave"
+        ? "Extended Leave"
       : s
         ? s.charAt(0).toUpperCase() + s.slice(1)
         : "Working";

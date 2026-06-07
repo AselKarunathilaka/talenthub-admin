@@ -560,7 +560,7 @@ const getAttendanceByInternId = async (req, res) => {
                 ? "Late"
                 : "Absent",
           type: "Daily",
-          recordStatus: record.status, // working | leave | wfh — used for Study Leave / WFH colour coding (from doc4)
+          recordStatus: record.status, // working | leave | wfh — used for Extended Leave / WFH colour coding (from doc4)
           attendanceMethod:
             dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||

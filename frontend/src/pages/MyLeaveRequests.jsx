@@ -23,13 +23,13 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
-        title: "My Study Leave Requests",
-        description: "View and manage your exam-period study leave requests",
-        newButton: "New Study Leave Request",
+        title: "My Extended Leave Requests",
+        description: "View and manage your extended leave requests",
+        newButton: "New Extended Leave Request",
         duplicate:
-          "You already have a study leave request for today. Only one request per day is allowed.",
-        emptyTitle: "No study leave requests found",
-        emptyToday: "You haven't submitted any study leave requests today.",
+          "You already have an extended leave request for today. Only one request per day is allowed.",
+        emptyTitle: "No extended leave requests found",
+        emptyToday: "You haven't submitted any extended leave requests today.",
       }
     : {
         title: "My Short Leave Requests",

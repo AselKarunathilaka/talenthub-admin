@@ -341,7 +341,7 @@ function buildWeekBlock(week, isFirst) {
     if (rec) {
       if (rec.task) detailParts.push(rec.task);
       if (rec.status === "leave") detailParts.push("[On Leave]");
-      if (rec.status === "study_leave") detailParts.push("[Study Leave]");
+      if (rec.status === "study_leave") detailParts.push("[Extended Leave]");
       if (rec.status === "wfh") detailParts.push("[Work From Home]");
       if (rec.stack && rec.stack !== "On Leave")
         detailParts.push(`Stack: ${rec.stack}`);

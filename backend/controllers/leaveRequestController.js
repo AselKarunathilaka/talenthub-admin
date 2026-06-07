@@ -31,7 +31,7 @@ class LeaveRequestController {
       if (requestType === "study_leave" && !req.file) {
         return res.status(400).json({
           success: false,
-          message: "Proof document is required for formal study leave requests",
+          message: "Proof document is required for formal extended leave requests",
         });
       }
 

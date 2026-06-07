@@ -31,11 +31,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
-        title: "Study Leave Requests Management",
-        description: "Review and manage intern exam-period study leave requests",
-        empty: "No study leave requests found",
-        details: "Study Leave Request Details",
-        noForDate: "No study leave requests submitted",
+        title: "Extended Leave Requests Management",
+        description: "Review and manage intern extended leave requests",
+        empty: "No extended leave requests found",
+        details: "Extended Leave Request Details",
+        noForDate: "No extended leave requests submitted",
       }
     : {
         title: "Short Leave Request Management",
@@ -915,7 +915,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                         Intern Details
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {isStudyLeave ? "Study Leave Period" : "Leave Date & Time"}
+                        {isStudyLeave ? "Extended Leave Period" : "Leave Date & Time"}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Purpose
@@ -1184,7 +1184,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 {isStudyLeave && selectedRequest.studyEndDate && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Study Leave End Date
+                      Extended Leave End Date
                     </label>
                     <p className="text-sm text-gray-900 flex items-center gap-2">
                       <FiCalendar className="text-gray-400" />

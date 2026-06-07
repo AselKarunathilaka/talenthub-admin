@@ -1276,10 +1276,10 @@ const AdminDashboard = () => {
                   </span>
                   <span>
                     <span className="block text-sm font-bold text-gray-900">
-                      Study Leave Requests Management
+                      Extended Leave Requests Management
                     </span>
                     <span className="block text-xs text-gray-500 mt-0.5">
-                      Review exam-period study leave requests
+                      Review extended leave requests
                     </span>
                   </span>
                 </button>

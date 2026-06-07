@@ -47,7 +47,7 @@ const collectBuffer = (doc) =>
 const STATUS_LABELS = {
   wfh: "WFH",
   leave: "On Leave",
-  study_leave: "Study Leave",
+  study_leave: "Extended Leave",
   working: "Working",
 };
 

@@ -100,7 +100,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
 
     if (isStudyLeave) {
       if (!formData.studyEndDate) {
-        toast.error("Please select the final study leave date");
+        toast.error("Please select the final extended leave date");
         return;
       }
 
@@ -110,7 +110,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       }
 
       if (!proofDocument) {
-        toast.error("Proof document is required for formal study leave");
+        toast.error("Proof document is required for formal extended leave");
         return;
       }
     }
@@ -139,7 +139,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       await createLeaveRequest(submitData);
       toast.success(
         isStudyLeave
-          ? "Study leave request submitted successfully"
+          ? "Extended leave request submitted successfully"
           : "Leave request submitted successfully",
       );
 
@@ -194,12 +194,12 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       <div className="mb-6 pb-6 border-b border-gray-200">
         <h2 className="text-2xl font-bold text-gray-800">
           {isStudyLeave
-            ? "Formal Study Leave Request"
+            ? "Formal Extended Leave Request"
             : "Short Leave Permission Request"}
         </h2>
         <p className="text-gray-600 text-sm mt-1">
           {isStudyLeave
-            ? "Submit exam-period study leave with required proof document"
+            ? "Submit extended leave with required proof document"
             : "Submit your request to exit SLT premises early"}
         </p>
       </div>
@@ -210,7 +210,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               <FiCalendar className="inline mr-2 text-blue-600" />
-              {isStudyLeave ? "Study Leave Start Date *" : "Leave Date *"}
+              {isStudyLeave ? "Extended Leave Start Date *" : "Leave Date *"}
             </label>
             <input
               type="date"
@@ -224,7 +224,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
             />
             <p className="text-xs text-gray-500 mt-1">
               {isStudyLeave
-                ? "Select the first exam or study leave date"
+                ? "Select the first extended leave date"
                 : "Only today's date is allowed"}
             </p>
           </div>
@@ -233,7 +233,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <FiCalendar className="inline mr-2 text-blue-600" />
-                Study Leave End Date *
+                Extended Leave End Date *
               </label>
               <input
                 type="date"
@@ -378,7 +378,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           {loading
             ? "Submitting..."
             : isStudyLeave
-              ? "Submit Study Leave Request"
+              ? "Submit Extended Leave Request"
               : "Submit Short Leave Request"}
         </button>
       </form>

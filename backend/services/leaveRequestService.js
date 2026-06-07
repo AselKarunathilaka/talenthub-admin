@@ -55,7 +55,7 @@ const toDateKey = (value) => {
 };
 
 const getRequestLabel = (requestType) =>
-  requestType === "study_leave" ? "Formal Study Leave" : "Short Leave";
+  requestType === "study_leave" ? "Formal Extended Leave" : "Short Leave";
 
 const getStudyLeaveDates = (leaveRequest) => {
   const start = new Date(leaveRequest.leaveDate);
@@ -97,7 +97,7 @@ class LeaveRequestService {
       if (requestType === "study_leave") {
         if (!leaveRequestData.proofDocument?.data) {
           throw new Error(
-            "Proof document is required for formal study leave requests",
+            "Proof document is required for formal extended leave requests",
           );
         }
 
@@ -109,7 +109,7 @@ class LeaveRequestService {
         leaveDate.setHours(0, 0, 0, 0);
 
         if (studyEndDate < leaveDate) {
-          throw new Error("Study leave end date cannot be before start date");
+          throw new Error("Extended leave end date cannot be before start date");
         }
 
         if (leaveRequestData.studyEndDate) {
@@ -127,7 +127,7 @@ class LeaveRequestService {
 
         if (overlappingStudyLeave) {
           throw new Error(
-            "You already have a pending or approved study leave request for this date range.",
+            "You already have a pending or approved extended leave request for this date range.",
           );
         }
       } else {
@@ -704,10 +704,10 @@ class LeaveRequestService {
         },
         {
           $set: {
-            stack: "Formal Study Leave",
-            task: `Formal study leave approved for exam period. Reason: ${leaveRequest.reason}`,
-            progress: "Approved study leave with proof document submitted.",
-            blockers: "No work progress recorded due to formal study leave.",
+            stack: "Formal Extended Leave",
+            task: `Formal extended leave approved. Reason: ${leaveRequest.reason}`,
+            progress: "Approved extended leave with proof document submitted.",
+            blockers: "No work progress recorded due to formal extended leave.",
             status: "study_leave",
             attendance: "absent",
           },
