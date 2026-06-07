@@ -335,12 +335,12 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-16 flex flex-col justify-between gap-3 overflow-y-auto min-h-0">
+          <nav className="px-3 py-6 flex-1 flex flex-col justify-evenly overflow-y-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3 rounded-xl mx-2 transition-all duration-200 group
+                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group
                   ${isActive(link.to)
                     ? "bg-white/10 shadow-lg backdrop-blur-sm border border-white/10"
                     : "text-white/70 hover:bg-white/5"
