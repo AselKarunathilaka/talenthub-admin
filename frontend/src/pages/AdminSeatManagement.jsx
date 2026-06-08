@@ -35,7 +35,8 @@ const AdminSeatManagement = () => {
   const mapViewportRef = React.useRef(null);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 910;
-  const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef);
+  const [showLockManager, setShowLockManager] = useState(false);
+  const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, showLockManager);
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +52,6 @@ const AdminSeatManagement = () => {
   const [lockedSeatDetailsBySeat, setLockedSeatDetailsBySeat] = useState({}); // { seatNum: { traineeId } }
   const [lockedSeatsCount, setLockedSeatsCount] = useState(0);
   const [lockLoading, setLockLoading] = useState(false);
-  const [showLockManager, setShowLockManager] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
   const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
