@@ -20,6 +20,7 @@ const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
+const logBookRestrictionRoutes = require("./routes/LogBookRestrictionroutes");
 
 require("./scheduler");
 
@@ -70,5 +71,6 @@ app.use("/api/admin", adminSeatRoutes);
 app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
+app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 
 module.exports = app;

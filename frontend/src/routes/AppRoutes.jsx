@@ -29,6 +29,7 @@ import AdminInternCertificate from "../pages/AdminInternCertificate";
 import AdminManualAttendance from "../pages/AdminManualAttendanceMarking";
 import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 import CertificateVerify from "../pages/CertificateVerify";
+import LogbookRestrictions from "../pages/LogbookRestrictions";
 
 const AppRoutes = () => {
   return (
@@ -152,6 +153,11 @@ const AppRoutes = () => {
       <Route
         path="/verify/certificate/:token"
         element={<CertificateVerify />}
+      />
+
+      <Route
+        path="/admin/logbook-restrictions"
+        element={<LogbookRestrictions />}
       />
     </Routes>
   );

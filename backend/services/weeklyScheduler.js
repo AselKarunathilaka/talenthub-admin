@@ -1,156 +1,138 @@
 const cron = require("node-cron");
 const WeeklyNonSubmissionExcelService = require("./weeklyNonSubmissionExcelService");
 const WeeklyMeetingAttendanceService = require("./weeklymeetingattendanceservice");
+const LogbookRestrictionService = require("./logbookRestrictionService");
+
+// ── Single source of truth for recipients ────────────────────────────────
+const DEFAULT_RECIPIENTS = [
+  "dimalshacooray@gmail.com", // Developer
+  //"mgiri@slt.com.lk", // Supervisor
+];
 
 class WeeklyScheduler {
   static init() {
     console.log("🕐 Initializing weekly work log compliance scheduler...");
 
-    // Schedule non-submission check to run every Sunday at 9:30 AM
-    // Send to both developer and supervisor
-    const nonSubmissionCronExpression = "30 9 * * 0";
-    const recipients = [
-      "dimalshacooray@gmail.com", // Developer
-      "mgiri@slt.com.lk", // Supervisor
-    ];
-
+    // ── 9:30 AM — Non-submission report email with Excel ─────────────────
     cron.schedule(
-      nonSubmissionCronExpression,
+      "30 9 * * 0",
       async () => {
         console.log(
-          "\n⏰ Weekly logbook non-submission check with Excel attachment triggered by scheduler",
+          "\n⏰ Weekly logbook non-submission check triggered by scheduler",
         );
         console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
-        console.log(`📧 Recipients: ${recipients.join(", ")}`);
-
+        console.log(`📧 Recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
         try {
           await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(
-            recipients,
+            DEFAULT_RECIPIENTS,
           );
         } catch (error) {
           console.error("❌ Non-submission scheduler error:", error);
         }
       },
-      {
-        scheduled: true,
-        timezone: "Asia/Colombo", // Sri Lanka timezone
-      },
+      { scheduled: true, timezone: "Asia/Colombo" },
     );
 
-    // Schedule meeting attendance check — every Sunday at 9:45 AM
-    const meetingAttendanceCronExpression = "45 9 * * 0";
-    const meetingAttendanceRecipients = [
-      "dimalshacooray@gmail.com", // Developer
-      "mgiri@slt.com.lk", // Supervisor
-    ];
-
+    // ── 9:45 AM — Meeting attendance report ──────────────────────────────
     cron.schedule(
-      meetingAttendanceCronExpression,
+      "45 9 * * 0",
       async () => {
         console.log(
           "\n⏰ Weekly meeting attendance check triggered by scheduler",
         );
         console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
-        console.log(`📧 Recipients: ${meetingAttendanceRecipients.join(", ")}`);
-
+        console.log(`📧 Recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
         try {
           await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
-            meetingAttendanceRecipients,
+            DEFAULT_RECIPIENTS,
           );
         } catch (error) {
           console.error("❌ Meeting attendance scheduler error:", error);
         }
       },
-      {
-        scheduled: true,
-        timezone: "Asia/Colombo", // Sri Lanka timezone
+      { scheduled: true, timezone: "Asia/Colombo" },
+    );
+
+    // ── 10:00 AM — Logbook restriction enforcement ────────────────────────
+    // Runs after the report email so the email and restriction jobs don't race.
+    // Restrictions are ONLY lifted manually by an admin — never auto-lifted here.
+    cron.schedule(
+      "0 10 * * 0",
+      async () => {
+        console.log(
+          "\n⏰ Weekly logbook restriction enforcement triggered by scheduler",
+        );
+        console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
+        try {
+          await LogbookRestrictionService.applyWeeklyLogbookRestrictions();
+        } catch (error) {
+          console.error("❌ Logbook restriction scheduler error:", error);
+        }
       },
+      { scheduled: true, timezone: "Asia/Colombo" },
     );
 
     console.log("✅ Weekly scheduler initialized successfully!");
     console.log(
-      `📅 Non-submission alert with Excel: Every Sunday at 9:30 AM (Asia/Colombo time)`,
+      "📅 Non-submission report:          Every Sunday at 9:30 AM (Asia/Colombo)",
     );
     console.log(
-      `📅 Meeting attendance alert: Every Sunday at 9:45 AM (Asia/Colombo time) [⚠️ TESTING: 12:32 AM daily]`,
+      "📅 Meeting attendance report:      Every Sunday at 9:45 AM (Asia/Colombo)",
     );
-    console.log(`📧 Email recipients: ${recipients.join(", ")}`);
+    console.log(
+      "📅 Logbook restriction enforcement: Every Sunday at 10:00 AM (Asia/Colombo)",
+    );
+    console.log(`📧 Email recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
   }
 
-  /**
-   * Manual trigger for non-submission check with Excel (can be called via API endpoint)
-   * Can accept custom recipients or use defaults (dev + supervisor)
-   */
+  // ── Manual triggers ───────────────────────────────────────────────────────
+
   static async triggerManualNonSubmissionCheck(recipients = null) {
-    console.log("\n🔧 Manual non-submission check with Excel triggered");
+    console.log("\n🔧 Manual non-submission check triggered");
     console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
-
-    // Use provided recipients or default to both dev and supervisor
-    const emailRecipients = recipients || [
-      "dimalshacooray@gmail.com", // Developer
-      "mgiri@slt.com.lk", // Supervisor
-    ];
-
-    console.log(
-      `📧 Recipients: ${Array.isArray(emailRecipients) ? emailRecipients.join(", ") : emailRecipients}`,
-    );
-
+    const emailRecipients = recipients || DEFAULT_RECIPIENTS;
+    console.log(`📧 Recipients: ${emailRecipients.join(", ")}`);
     try {
       const results =
         await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(
           emailRecipients,
           "manual",
         );
-      return {
-        success: true,
-        timestamp: new Date(),
-        results: results,
-      };
+      return { success: true, timestamp: new Date(), results };
     } catch (error) {
       console.error("❌ Manual non-submission trigger error:", error);
-      return {
-        success: false,
-        timestamp: new Date(),
-        error: error.message,
-      };
+      return { success: false, timestamp: new Date(), error: error.message };
     }
   }
 
-  /**
-   * Manual trigger for meeting attendance check with Excel (can be called via API endpoint)
-   * Can accept custom recipients or use defaults (dev + supervisor)
-   */
   static async triggerManualMeetingAttendanceCheck(recipients = null) {
     console.log("\n🔧 Manual meeting attendance check triggered");
     console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
-
-    const emailRecipients = recipients || [
-      "dimalshacooray@gmail.com", // Developer
-      "mgiri@slt.com.lk", // Supervisor
-    ];
-
-    console.log(
-      `📧 Recipients: ${Array.isArray(emailRecipients) ? emailRecipients.join(", ") : emailRecipients}`,
-    );
-
+    const emailRecipients = recipients || DEFAULT_RECIPIENTS;
+    console.log(`📧 Recipients: ${emailRecipients.join(", ")}`);
     try {
       const results =
         await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
           emailRecipients,
           "manual",
         );
-      return {
-        success: true,
-        timestamp: new Date(),
-        results: results,
-      };
+      return { success: true, timestamp: new Date(), results };
     } catch (error) {
       console.error("❌ Manual meeting attendance trigger error:", error);
-      return {
-        success: false,
-        timestamp: new Date(),
-        error: error.message,
-      };
+      return { success: false, timestamp: new Date(), error: error.message };
+    }
+  }
+
+  static async triggerManualLogbookRestriction() {
+    console.log("\n🔧 Manual logbook restriction enforcement triggered");
+    console.log(`⏰ Triggered at: ${new Date().toLocaleString()}`);
+    try {
+      const results =
+        await LogbookRestrictionService.applyWeeklyLogbookRestrictions();
+      return { success: true, timestamp: new Date(), results };
+    } catch (error) {
+      console.error("❌ Manual logbook restriction error:", error);
+      return { success: false, timestamp: new Date(), error: error.message };
     }
   }
 }
