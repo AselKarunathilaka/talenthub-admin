@@ -393,20 +393,35 @@ const InternSeatManagement = () => {
             </div>
             {Object.keys(dailyBookings).length > 0 ? (
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-slate-50/80 border-b border-gray-100">
-                    <tr><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat Number</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booking Date</th><th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th></tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {Object.entries(dailyBookings).sort(([a], [b]) => Number(a) - Number(b)).map(([seatNum]) => (
-                      <tr key={seatNum} className="hover:bg-slate-50/50 transition-colors group">
-                        <td className="px-6 py-5"><div className="flex items-center gap-3"><div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center"><Armchair size={18} className="text-[#0056a2]" /></div><div><span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span><span className="font-extrabold text-gray-900 text-base leading-none">{seatNum}</span></div></div></td>
-                        <td className="px-6 py-5"><div className="font-medium text-gray-700">{formatDisplayDate(selectedDate)}</div></td>
-                        <td className="px-6 py-5 text-right"><button onClick={() => handleCancelBooking(seatNum)} className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all text-sm font-bold shadow-sm"><Trash2 size={16} /> Cancel</button></td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50/80 border-b border-gray-100">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat Number</th>
+                        <th className="px-4 sm:px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs hidden sm:table-cell">Booking Date</th>
+                        <th className="px-4 sm:px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs text-right">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {Object.entries(dailyBookings).sort(([a], [b]) => Number(a) - Number(b)).map(([seatNum]) => (
+                        <tr key={seatNum} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-4 sm:px-6 py-4 sm:py-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shrink-0"><Armchair size={18} className="text-[#0056a2]" /></div>
+                              <div><span className="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider mb-0.5">Seat</span><span className="font-extrabold text-gray-900 text-sm sm:text-base leading-none">{seatNum}</span></div>
+                            </div>
+                          </td>
+                          <td className="px-4 sm:px-6 py-4 sm:py-5 hidden sm:table-cell"><div className="font-medium text-gray-700 whitespace-nowrap">{formatDisplayDate(selectedDate)}</div></td>
+                          <td className="px-4 sm:px-6 py-4 sm:py-5 text-right">
+                            <button onClick={() => handleCancelBooking(seatNum)} className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 bg-white border border-rose-200 text-rose-600 rounded-xl hover:bg-rose-50 hover:border-rose-300 transition-all text-xs sm:text-sm font-bold shadow-sm whitespace-nowrap">
+                              <Trash2 size={16} /> Cancel
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
               <div className="text-center py-16 bg-white rounded-3xl border border-dashed border-gray-200">
