@@ -529,7 +529,7 @@ const getAttendanceByInternId = async (req, res) => {
           meetingName: legacyMeetingName || "General Meeting",
           type: "Meeting",
           attendanceMethod: normalizeAttendanceMethod(type),
-          time: entry.date ? formatColomboTime(entry.date) : null,
+          checkInTime: entry.date ? formatColomboTime(entry.date) : null,
           isMeeting: true
         });
       });
@@ -565,7 +565,8 @@ const getAttendanceByInternId = async (req, res) => {
             dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
-          time: attendanceTime ? formatColomboTime(attendanceTime) : null,
+          checkInTime: attendanceTime ? formatColomboTime(attendanceTime) : null,
+          checkOutTime: record.checkOutTime ? formatColomboTime(record.checkOutTime) : null,
           attendanceTime: record.attendanceTime,
         });
       }
@@ -585,7 +586,7 @@ const getAttendanceByInternId = async (req, res) => {
               meeting.method ||
                 meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
-            time: formatColomboTime(attendanceTime),
+            checkInTime: formatColomboTime(attendanceTime),
             isMeeting: true
           });
         });
@@ -626,7 +627,7 @@ const getAttendanceByInternId = async (req, res) => {
               projectName: projectName,
               type: "Meeting",
               attendanceMethod: "talenttrail", // Mark source as external
-              time: attendanceTime.toLocaleTimeString("en-US", {
+              checkInTime: attendanceTime.toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
@@ -668,7 +669,8 @@ const getAttendanceByInternId = async (req, res) => {
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
-            time: formatColomboTime(entry.timeMarked || entryDate),
+            checkInTime: formatColomboTime(entry.timeMarked || entryDate),
+            checkOutTime: entry.checkOutTime ? formatColomboTime(entry.checkOutTime) : null,
             attendanceTime: entry.timeMarked || entry.date,
           });
           datesWithDailyRecord.add(dayKey);

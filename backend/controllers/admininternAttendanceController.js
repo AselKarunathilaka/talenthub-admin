@@ -196,9 +196,9 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
 
     const timeFor = (record) =>
       record.timeMarked
-        ? moment(record.timeMarked).tz(TZ).format("HH:mm")
+        ? moment(record.timeMarked).tz(TZ).format("hh:mm A")
         : record.date
-          ? moment(record.date).tz(TZ).format("HH:mm")
+          ? moment(record.date).tz(TZ).format("hh:mm A")
           : "—";
 
     if (attendanceTypeSet === MEETING_ATTENDANCE_TYPES) {
@@ -271,7 +271,10 @@ async function getDailyPresentsOnDate(dateStr) {
       ...getInternDetails(intern),
       timeMarked: moment(latest.timeMarked || latest.date)
         .tz(TZ)
-        .format("HH:mm"),
+        .format("hh:mm A"),
+      checkOutTime: latest.checkOutTime
+        ? moment(latest.checkOutTime).tz(TZ).format("hh:mm A")
+        : null,
       type: latest.type || "daily",
       status: "Present",
       attendanceType: "daily",
@@ -292,8 +295,11 @@ async function getDailyPresentsOnDate(dateStr) {
     dailyByIntern.set(key, {
       ...getInternDetails(intern),
       timeMarked: record.attendanceTime
-        ? moment(record.attendanceTime).tz(TZ).format("HH:mm")
+        ? moment(record.attendanceTime).tz(TZ).format("hh:mm A")
         : "—",
+      checkOutTime: record.checkOutTime
+        ? moment(record.checkOutTime).tz(TZ).format("hh:mm A")
+        : null,
       type: "daily",
       status: record.attendance === "late" ? "Late" : "Present",
       attendanceType: "daily",
