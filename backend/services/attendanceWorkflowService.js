@@ -70,6 +70,7 @@ const markDailyAttendance = async ({
   const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
 
   const session = await mongoose.startSession();
+  let checkedOut = false;
   try {
     await session.withTransaction(async () => {
       if (existingDailyRecord) {
@@ -150,7 +151,37 @@ const markDailyAttendance = async ({
           return;
         }
 
-        throwDailyAlreadyMarked();
+        if (currentDailyEntry.checkOutTime) {
+          const err = new Error("You are already out of office, please come tomorrow. Thank you!");
+          err.statusCode = 400;
+          err.alreadyMarked = true;
+          throw err;
+        }
+
+        // Treat subsequent scans as check-out
+        await DailyRecord.updateOne(
+          { internId, date: today },
+          { $set: { checkOutTime: attendanceTime } },
+          { session }
+        );
+
+        await Intern.updateOne(
+          { _id: internId },
+          { $set: { "attendance.$[record].checkOutTime": attendanceTime } },
+          {
+            session,
+            arrayFilters: [
+              {
+                "record.type": { $in: DAILY_ATTENDANCE_TYPES },
+                "record.status": "Present",
+                "record.date": { $gte: todayStart.toDate(), $lte: todayEnd.toDate() },
+              },
+            ],
+          }
+        );
+
+        checkedOut = true;
+        return;
       }
 
       await Intern.updateOne(
@@ -185,6 +216,7 @@ const markDailyAttendance = async ({
     intern,
     timeMarked: attendanceTime,
     type: method,
+    checkedOut,
   };
 };
 

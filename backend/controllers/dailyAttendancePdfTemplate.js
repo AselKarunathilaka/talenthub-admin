@@ -27,11 +27,12 @@ const COL_HEADER_H = 32;
 
 // ── Columns ───────────────────────────────────────────────────────────────────
 const COLS = [
-  { label: "Trainee\nID", w: 0.12 },
-  { label: "Name", w: 0.28 },
-  { label: "Field of\nSpecialization", w: 0.18 },
-  { label: "Institute", w: 0.28 },
-  { label: "Attendance", w: 0.14 },
+  { label: "Trainee\nID", w: 0.10 },
+  { label: "Name", w: 0.23 },
+  { label: "Field of\nSpecialization", w: 0.15 },
+  { label: "Institute", w: 0.25 },
+  { label: "Time\n(In / Out)", w: 0.15 },
+  { label: "Status", w: 0.12 },
 ];
 
 function colWidths() {
@@ -231,13 +232,20 @@ async function generateDailyAttendancePdf({ date, interns, sortedBy }) {
 
       const widths = colWidths();
 
-      const rows = interns.map((intern) => [
-        String(intern.id),
-        intern.name || "—",
-        intern.fieldOfSpecialization || "—",
-        intern.institute || "—",
-        "Present",
-      ]);
+      const rows = interns.map((intern) => {
+        let timeStr = intern.timeMarked || "—";
+        if (intern.checkOutTime) {
+          timeStr += `\nOut: ${intern.checkOutTime}`;
+        }
+        return [
+          String(intern.id),
+          intern.name || "—",
+          intern.fieldOfSpecialization || "—",
+          intern.institute || "—",
+          timeStr,
+          "Present",
+        ];
+      });
 
       // ── Step 1: pre-calculate total pages ──
       const totalPages = calcTotalPages(doc, rows, widths);
