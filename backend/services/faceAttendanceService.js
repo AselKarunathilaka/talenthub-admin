@@ -211,6 +211,7 @@ class FaceAttendanceService {
       meetingPinData = FaceMeetingPinService.validatePin({
         projectName: normalizedProjectName,
         pin: meetingPin || metadata.meetingPin,
+        bypassValidation: metadata.markedByAdmin === true,
       });
     }
 

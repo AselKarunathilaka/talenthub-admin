@@ -105,7 +105,19 @@ function getCurrentPin(projectName, now = Date.now(), options = {}) {
   };
 }
 
-function validatePin({ projectName, meetingTitle, pin, now = Date.now() }) {
+function validatePin({ projectName, meetingTitle, pin, now = Date.now(), bypassValidation = false }) {
+  const normalizedName = assertProjectName(projectName || meetingTitle);
+  
+  if (bypassValidation) {
+    const state = meetingPinStates.get(getProjectKey(normalizedName));
+    return {
+      meetingSessionId: state?.sessionId || crypto.randomUUID(),
+      projectName: normalizedName,
+      meetingTitle: normalizedName,
+      expiresAt: state ? new Date(state.expiresAt) : new Date(now + PIN_WINDOW_MS),
+    };
+  }
+
   const submittedPin = String(pin || "").trim();
 
   if (!submittedPin) {
@@ -120,7 +132,6 @@ function validatePin({ projectName, meetingTitle, pin, now = Date.now() }) {
     throw error;
   }
 
-  const normalizedName = assertProjectName(projectName || meetingTitle);
   const state = meetingPinStates.get(getProjectKey(normalizedName));
   const expectedPin =
     state?.issuedAt && state.expiresAt > now

@@ -425,6 +425,46 @@ const scanInternFaceByAdmin = async (req, res) => {
   }
 };
 
+const registerFaceProfileByAdmin = async (req, res) => {
+  try {
+    const { internId, descriptor, metadata = {} } = req.body;
+
+    if (!internId) {
+      return res.status(400).json({ message: "internId is required." });
+    }
+
+    let expectedInternId = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      expectedInternId = internId;
+    } else {
+      const internRecord = await Intern.findOne({ Trainee_ID: internId });
+      if (internRecord) expectedInternId = internRecord._id;
+      else return res.status(404).json({ message: "Intern not found." });
+    }
+
+    metadata.internId = expectedInternId;
+    metadata.adminId = req.user?.id;
+    metadata.enrolledByAdmin = true;
+
+    const result = await FaceAttendanceService.registerFaceProfile({
+      internId: expectedInternId,
+      descriptor,
+      source: metadata.source || "admin-browser-camera",
+      metadata,
+    });
+
+    return res.status(201).json({
+      message: "Face profile saved successfully by admin.",
+      profile: result.profile,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Failed to save face profile.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   registerFaceProfile,
   verifyFaceAttendance,
@@ -437,4 +477,5 @@ module.exports = {
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
   scanInternFaceByAdmin,
+  registerFaceProfileByAdmin,
 };
