@@ -913,37 +913,7 @@ const Dashboard = () => {
               </motion.div>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => handleFilterByStatus("All")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "All"
-                    ? "bg-gray-800 text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleFilterByStatus("Present")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "Present"
-                    ? "text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-                style={
-                  filterStatus === "Present"
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                      }
-                    : {}
-                }
-              >
-                Present
-              </button>
-            </div>
+
 
             {/* Meeting History Accordion */}
             {filteredMeetingAttendance.length > 0 ? (
