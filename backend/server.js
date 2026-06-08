@@ -11,6 +11,7 @@ const WeeklyScheduler = require("./services/weeklyScheduler");
 const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
 const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
+const { initSeatBookingScheduler } = require("./services/seatBookingSchedulerService");
 
 connectDB();
 
@@ -45,6 +46,9 @@ const server = app.listen(PORT, () => {
 
   // Initialize daily 4 PM approved leave report scheduler
   initScheduler();
+
+  // Initialize daily 4:30 PM seat booking expiration scheduler
+  initSeatBookingScheduler();
 
   // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
   console.log("⏳ Starting TalentTrail sync job...");
