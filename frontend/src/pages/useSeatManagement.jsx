@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { API_BASE_URL } from "../api/apiConfig";
 
 // Custom hook for scale to fit height or width
-export const useMapScale = (mapWidth, mapHeight, viewportRef) => {
+export const useMapScale = (mapWidth, mapHeight, viewportRef, trigger) => {
   const [scale, setScale] = useState(1);
   const [ready, setReady] = useState(false);
 
@@ -44,7 +44,7 @@ export const useMapScale = (mapWidth, mapHeight, viewportRef) => {
       }
       window.removeEventListener('resize', updateScale);
     };
-  }, [mapWidth, mapHeight, viewportRef]);
+  }, [mapWidth, mapHeight, viewportRef, trigger]);
 
   return { scale, ready };
 };
