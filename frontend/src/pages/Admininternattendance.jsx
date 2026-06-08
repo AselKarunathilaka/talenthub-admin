@@ -336,7 +336,12 @@ const AttendanceTable = ({
               </p>
               <p className="text-xs text-gray-500">🏛️ {intern.institute}</p>
               {!isMeeting && intern.timeMarked !== "—" && (
-                <p className="text-xs text-gray-500">🕐 {intern.timeMarked}</p>
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-xs text-gray-500">🕐 {intern.timeMarked} (In)</p>
+                  {intern.checkOutTime && (
+                    <p className="text-xs text-gray-500">🕐 {intern.checkOutTime} (Out)</p>
+                  )}
+                </div>
               )}
               {isMeeting && intern.meetings?.length > 0 && (
                 <>
@@ -411,7 +416,7 @@ const AttendanceTable = ({
                 Institute
               </th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                {isMeeting ? "Meetings" : "Check-in"}
+                {isMeeting ? "Meetings" : "Check-in / Out"}
               </th>
               <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
                 Type
@@ -472,9 +477,17 @@ const AttendanceTable = ({
                         />
                       </button>
                     ) : (
-                      <div className="flex items-center gap-1 text-xs text-gray-700">
-                        <FaClock className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                        <span className="truncate">{intern.timeMarked}</span>
+                      <div className="flex flex-col gap-1 text-xs text-gray-700">
+                        <div className="flex items-center gap-1">
+                          <FaClock className="h-3 w-3 text-emerald-500 flex-shrink-0" />
+                          <span className="truncate">{intern.timeMarked}</span>
+                        </div>
+                        {intern.checkOutTime && (
+                          <div className="flex items-center gap-1">
+                            <FaClock className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                            <span className="truncate text-gray-500">{intern.checkOutTime}</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>

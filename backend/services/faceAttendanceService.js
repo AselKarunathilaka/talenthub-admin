@@ -255,6 +255,7 @@ class FaceAttendanceService {
         ? meetingPinData?.meetingSessionId
         : `face_daily_${intern._id}_${attendanceDate.getTime()}`;
     let dailyAttendanceMarked = false;
+    let checkedOut = false;
 
     if (normalizedAttendanceType === "meeting") {
       const result = await AttendanceWorkflowService.markMeetingAttendance({
@@ -272,7 +273,7 @@ class FaceAttendanceService {
       });
       dailyAttendanceMarked = result.dailyAttendanceMarked;
     } else {
-      await AttendanceWorkflowService.markDailyAttendance({
+      const result = await AttendanceWorkflowService.markDailyAttendance({
         internId: intern._id,
         sessionId: faceSessionId,
         method: "face",
@@ -281,6 +282,7 @@ class FaceAttendanceService {
         syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
       });
       dailyAttendanceMarked = true;
+      checkedOut = result.checkedOut || false;
     }
 
     const log = await FaceAttendanceLog.create({
@@ -317,6 +319,7 @@ class FaceAttendanceService {
       attendanceDate,
       attendanceDateKey,
       dailyAttendanceMarked,
+      checkedOut,
       intern: {
         _id: intern._id,
         traineeId: intern.Trainee_ID,

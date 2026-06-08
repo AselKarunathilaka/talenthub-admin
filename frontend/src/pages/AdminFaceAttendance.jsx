@@ -447,10 +447,19 @@ const AdminFaceAttendance = () => {
         meetingTitle: mode === "meeting" ? meetingTitle.trim() : undefined,
       });
       
-      toast.success(response.message || "Attendance marked.");
+      const successMessage = response.checkedOut
+        ? `Check-out recorded for ${selectedIntern.Trainee_Name}`
+        : mode === "daily"
+          ? `Check-in recorded for ${selectedIntern.Trainee_Name}`
+          : response.message || "Attendance marked.";
+
+      toast.success(successMessage);
       stopCamera();
     } catch (err) {
       toast.error(err.message || "Failed to verify face.");
+      if (err.message && err.message.includes("already out of office")) {
+        stopCamera();
+      }
     } finally {
       setLoading(false);
     }

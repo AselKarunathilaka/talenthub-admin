@@ -20,6 +20,7 @@ const attendanceSchema = new mongoose.Schema({
     default: "manual",
   },
   timeMarked: { type: Date },
+  checkOutTime: { type: Date },
   qrCode: { type: String },
   projectName: { type: String },
   projectKey: { type: String },

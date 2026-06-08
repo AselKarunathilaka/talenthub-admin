@@ -121,8 +121,10 @@ const verifyFaceAttendance = async (req, res) => {
       log: result.log,
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
+      checkedOut: result.checkedOut,
     });
   } catch (error) {
+    console.error("DEBUG CATCH ERROR:", error);
     const rawMessage = error.message || "";
     const isUserActionError =
       Boolean(error.locationRequired) ||
@@ -138,6 +140,7 @@ const verifyFaceAttendance = async (req, res) => {
           : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
+      alreadyMarked: Boolean(error.alreadyMarked),
     });
   }
 };
@@ -407,6 +410,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       log: result.log,
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
+      checkedOut: result.checkedOut,
     });
   } catch (error) {
     const rawMessage = error.message || "";
@@ -421,6 +425,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       message: isUserActionError ? error.message : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
+      alreadyMarked: Boolean(error.alreadyMarked),
     });
   }
 };
