@@ -602,7 +602,7 @@ useEffect(() => {
                         })}
                       </span>
                     </h3>
-                    
+                    {/* Holidays Data GET*/}
                     {getHolidayForDate(selectedDate) && (
                       <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                         <div className="font-semibold text-red-700">
