@@ -195,6 +195,7 @@ const Navigation = ({ children }) => {
 
   const navLinks = [
     { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#50b748" },
+    { to: "/attendance", label: "Attendance", icon: <CalendarCheck className="h-5 w-5" />, hoverColor: "#f9f116ff" },
     { to: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />, hoverColor: "#f43f5e", badge: unreadCount },
     { to: "/face-attendance", label: "Face Attendance", icon: <Camera className="h-5 w-5" />, hoverColor: "#f97316" },
     { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" />, hoverColor: "#dfdf66ff" },
