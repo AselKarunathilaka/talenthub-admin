@@ -942,13 +942,14 @@ const Attendance = () => {
                       <div className="relative aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner ring-1 ring-slate-200">
                         {cameraActive ? (
                           <>
-                            <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" muted playsInline />
+                            <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} muted playsInline />
                             <canvas ref={canvasRef} width="640" height="480" className="hidden" />
                             <canvas
                               ref={meshCanvasRef}
                               width="640"
                               height="480"
                               className="absolute inset-0 h-full w-full object-cover z-10 pointer-events-none"
+                              style={{ transform: "scaleX(-1)" }}
                             />
                             <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4">
                               <FaceScanGuide
