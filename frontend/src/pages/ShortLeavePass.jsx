@@ -13,8 +13,10 @@ import {
   FiHash,
   FiInfo,
   FiTag,
+  FiArrowLeft
 } from "react-icons/fi";
-import { validateLeavePass } from "../api/leaveRequestApi"; // ← import shared API fn
+import { validateLeavePass } from "../api/leaveRequestApi";
+import { motion, AnimatePresence } from "framer-motion";
 
 const ShortLeavePass = () => {
   const { token } = useParams();
@@ -46,11 +48,11 @@ const ShortLeavePass = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Validate pass every 5 seconds — now uses shared validateLeavePass()
+  // Validate pass every 5 seconds
   useEffect(() => {
     const validatePass = async () => {
       try {
-        const result = await validateLeavePass(token); // ← uses API_BASE_URL internally
+        const result = await validateLeavePass(token);
 
         if (!result.success || !result.data.valid) {
           setPassData(null);
@@ -60,7 +62,8 @@ const ShortLeavePass = () => {
         }
       } catch (error) {
         console.error("Error validating pass:", error);
-        toast.error("Failed to validate pass");
+        // Only toast on initial load error to prevent spamming
+        if (loading) toast.error("Failed to validate pass");
       } finally {
         setLoading(false);
       }
@@ -70,7 +73,7 @@ const ShortLeavePass = () => {
     const interval = setInterval(validatePass, 5000);
 
     return () => clearInterval(interval);
-  }, [token]);
+  }, [token, loading]);
 
   // Animation loop for watermark
   useEffect(() => {
@@ -102,10 +105,10 @@ const ShortLeavePass = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-blue-600 mb-4"></div>
-          <p className="text-gray-600 text-lg">Validating leave pass...</p>
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-slate-200 border-t-[#0056a2] mb-4"></div>
+          <p className="text-gray-500 font-bold uppercase tracking-widest text-sm">Validating pass...</p>
         </div>
       </div>
     );
@@ -114,298 +117,238 @@ const ShortLeavePass = () => {
   const isValid = passData && !isExpired && !isUsed;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 py-8">
-      <div className="max-w-md mx-auto">
-        {/* Live Status Banner */}
-        <div
-          className={`mb-5 p-4 rounded-2xl shadow-lg transform transition-all duration-500 ${
-            isValid
-              ? "bg-gradient-to-r from-green-500 to-emerald-600 animate-pulse"
-              : "bg-gradient-to-r from-red-500 to-rose-600"
-          }`}
+    <div className="min-h-screen bg-[#f8fafc] p-4 py-8 relative overflow-hidden font-sans">
+      {/* Background decoration */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-[#00b4eb] opacity-[0.03] blur-[100px] pointer-events-none"></div>
+      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#0056a2] opacity-[0.03] blur-[120px] pointer-events-none"></div>
+
+      <div className="max-w-[420px] mx-auto relative z-10">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => navigate("/leave-requests")}
+          className="mb-6 flex items-center gap-2 text-gray-500 hover:text-gray-900 font-bold text-sm bg-white/50 px-4 py-2 rounded-full backdrop-blur-md border border-white/50 shadow-sm"
         >
-          <div className="flex items-center justify-between text-white">
-            <div className="flex items-center gap-4">
-              {isValid ? <FiCheckCircle size={28} /> : <FiXCircle size={28} />}
-              <div>
-                <h3 className="font-bold text-lg">
-                  {isValid ? "VALID PASS" : isUsed ? "PASS USED" : "EXPIRED"}
-                </h3>
-                <p className="text-sm opacity-90">
-                  {isValid
-                    ? "Active Leave Permission"
-                    : isUsed
-                      ? "Already marked as used"
-                      : "No longer valid"}
-                </p>
+          <FiArrowLeft /> Back to Requests
+        </motion.button>
+
+        <AnimatePresence>
+          {/* Live Status Banner */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`mb-6 p-5 rounded-3xl shadow-xl border relative overflow-hidden ${
+              isValid
+                ? "bg-gradient-to-r from-[#15803d] to-[#50b748] border-green-400/50"
+                : "bg-gradient-to-r from-rose-600 to-red-500 border-rose-400/50"
+            }`}
+          >
+            {/* Shimmer effect for valid pass */}
+            {isValid && (
+              <motion.div 
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"
+                animate={{ x: ['-200%', '200%'] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut", repeatDelay: 1 }}
+              />
+            )}
+            
+            <div className="relative z-10 flex items-center justify-between text-white">
+              <div className="flex items-center gap-4">
+                <div className="bg-white/20 p-2.5 rounded-2xl backdrop-blur-sm">
+                  {isValid ? <FiCheckCircle size={28} /> : <FiXCircle size={28} />}
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-xl tracking-tight leading-none mb-1">
+                    {isValid ? "VALID PASS" : isUsed ? "PASS USED" : "EXPIRED"}
+                  </h3>
+                  <p className="text-xs font-medium text-white/80 uppercase tracking-widest">
+                    {isValid ? "Active Permission" : isUsed ? "Already scanned" : "No longer valid"}
+                  </p>
+                </div>
               </div>
             </div>
-            {isValid && (
-              <div className="w-3 h-3 bg-white rounded-full animate-ping"></div>
-            )}
-          </div>
-        </div>
+          </motion.div>
+        </AnimatePresence>
 
-        {/* Live Clock — compact */}
-        <div className="bg-white rounded-2xl shadow-md p-4 mb-5 border border-blue-100 relative overflow-hidden">
-          <div className="relative z-10 flex items-center justify-between gap-2">
-            <div className="flex flex-col gap-5">
-              <div className="flex items-center gap-2 text-gray-500">
-                <FiClock
-                  className="animate-spin flex-shrink-0"
-                  style={{ animationDuration: "4s" }}
-                  size={15}
-                />
-                <span className="text-xs font-medium whitespace-nowrap">
-                  Current Time (Sri Lanka)
+        {/* Live Clock Card */}
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-sm p-5 mb-6 border border-white"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="bg-blue-50 p-1.5 rounded-lg">
+                  <FiClock className="text-[#0056a2] animate-pulse" size={16} />
+                </div>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  Live Status
                 </span>
               </div>
-              {/* Live dot indicators */}
-              <div className="flex flex-row gap-1 pl-0.5">
+              <div className="flex gap-1.5 pl-1">
                 {[...Array(3)].map((_, i) => (
-                  <div
+                  <motion.div
                     key={i}
-                    className={`w-1.5 h-1.5 rounded-full ${isValid ? "bg-green-500" : "bg-red-400"}`}
-                    style={{ animation: `bounce 1s infinite ${i * 0.15}s` }}
-                  ></div>
+                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                    transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.2 }}
+                    className={`w-2 h-2 rounded-full ${isValid ? "bg-[#50b748]" : "bg-rose-400"}`}
+                  />
                 ))}
               </div>
             </div>
 
-            <div className="text-right flex-shrink-0">
-              <div
-                className="font-bold text-gray-900 font-mono tracking-wider whitespace-nowrap"
-                style={{ fontSize: "clamp(0.85rem, 3.5vw, 1.25rem)" }}
-              >
+            <div className="text-right bg-slate-50/80 p-3 rounded-2xl border border-slate-100">
+              <div className="font-black text-gray-900 font-mono tracking-tight text-2xl mb-0.5">
                 {formatTime(currentTime)}
               </div>
-              <div className="text-xs text-gray-400 whitespace-nowrap">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                 {currentTime.toLocaleDateString("en-US", {
                   weekday: "short",
                   month: "short",
-                  day: "numeric",
-                  year: "numeric",
+                  day: "numeric"
                 })}
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
 
-        {/* Pass Details */}
+        {/* The Pass Card */}
         {passData && (
-          <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-blue-100 mb-5">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white/90 backdrop-blur-2xl rounded-[2rem] shadow-2xl border border-white overflow-hidden mb-6 relative group"
+          >
             {/* Header */}
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-5 text-white relative overflow-hidden">
+            <div className="bg-gradient-to-br from-[#0056a2] via-[#006bd6] to-[#00b4eb] p-6 text-white relative overflow-hidden">
               <div
-                className="absolute inset-0 opacity-10"
+                className="absolute inset-0 opacity-[0.07]"
                 style={{
-                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,.15) 10px, rgba(255,255,255,.15) 20px)`,
-                  animation: "slide 20s linear infinite",
+                  backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 10px, #ffffff 10px, #ffffff 20px)`,
                 }}
               ></div>
               <div className="relative z-10 flex items-start justify-between">
                 <div>
-                  <p className="text-blue-200 text-xs font-medium uppercase tracking-widest mb-0.5">
+                  <p className="text-blue-200 text-[10px] font-black uppercase tracking-[0.25em] mb-1 opacity-90">
                     Sri Lanka Telecom PLC
                   </p>
-                  <h2 className="text-xl font-bold">Short Leave Pass</h2>
+                  <h2 className="text-2xl font-black tracking-tight leading-none shadow-sm">Short Leave Pass</h2>
                 </div>
-                <div className="bg-white/20 rounded-xl px-3 py-1.5 text-center">
-                  <p className="text-xs text-blue-100">Expires</p>
-                  <p className="text-sm font-bold">4:30 PM</p>
+                <div className="bg-white/20 backdrop-blur-md border border-white/30 rounded-2xl px-3 py-2 text-center shadow-inner">
+                  <p className="text-[9px] font-black text-blue-100 uppercase tracking-widest mb-0.5">Expires</p>
+                  <p className="text-sm font-black text-white">4:30 PM</p>
                 </div>
               </div>
             </div>
 
-            {/* Primary Info — full-width highlight cards */}
-            <div className="p-5 space-y-3">
-              {/* Intern Identity Block */}
-              <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                <p className="text-xs font-semibold text-blue-500 uppercase tracking-wider mb-2">
-                  Intern Identity
-                </p>
-                <div className="space-y-2.5">
+            {/* Cutout details mimicking a ticket */}
+            <div className="absolute top-[88px] -left-4 w-8 h-8 bg-[#f8fafc] rounded-full border-r border-white shadow-inner z-20"></div>
+            <div className="absolute top-[88px] -right-4 w-8 h-8 bg-[#f8fafc] rounded-full border-l border-white shadow-inner z-20"></div>
+            <div className="w-full border-b-[2px] border-dashed border-gray-200/60 relative z-10"></div>
+
+            {/* Body */}
+            <div className="p-6 space-y-5">
+              
+              {/* Intern Identity */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Intern Identity</p>
+                <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50 space-y-3">
                   <div className="flex items-center gap-3">
-                    <FiUser className="text-blue-500 flex-shrink-0" size={16} />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Full Name</span>
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {passData.internName}
-                      </span>
+                    <div className="bg-white p-2 rounded-xl shadow-sm"><FiUser className="text-[#0056a2]" size={16} /></div>
+                    <div className="flex-1 flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Name</span>
+                      <span className="font-extrabold text-gray-900 text-sm">{passData.internName}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <FiHash className="text-blue-500 flex-shrink-0" size={16} />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Trainee ID</span>
-                      <span className="font-semibold text-gray-900 text-sm font-mono">
-                        {passData.traineeId || "N/A"}
-                      </span>
+                    <div className="bg-white p-2 rounded-xl shadow-sm"><FiHash className="text-[#0056a2]" size={16} /></div>
+                    <div className="flex-1 flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">Trainee ID</span>
+                      <span className="font-bold font-mono text-gray-800 text-sm bg-slate-200/50 px-2 py-0.5 rounded-md">{passData.traineeId || "N/A"}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <FiFileText
-                      className="text-blue-500 flex-shrink-0"
-                      size={16}
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">National ID</span>
-                      <span className="font-semibold text-gray-900 text-sm font-mono">
-                        {passData.nationalId}
-                      </span>
+                    <div className="bg-white p-2 rounded-xl shadow-sm"><FiFileText className="text-[#0056a2]" size={16} /></div>
+                    <div className="flex-1 flex justify-between items-center">
+                      <span className="text-xs font-bold text-gray-500">NIC</span>
+                      <span className="font-bold font-mono text-gray-800 text-sm bg-slate-200/50 px-2 py-0.5 rounded-md">{passData.nationalId}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Leave Details Block */}
-              <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
-                <p className="text-xs font-semibold text-indigo-500 uppercase tracking-wider mb-2">
-                  Leave Details
-                </p>
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-3">
-                    <FiCalendar
-                      className="text-indigo-500 flex-shrink-0"
-                      size={16}
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Leave Date</span>
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {formatDate(passData.leaveDate)}
-                      </span>
-                    </div>
+              {/* Leave Details */}
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Leave Details</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-[#00b4eb]/5 rounded-2xl p-4 border border-[#00b4eb]/10">
+                    <FiCalendar className="text-[#00b4eb] mb-2" size={18} />
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Date</p>
+                    <p className="font-extrabold text-gray-900 text-sm leading-tight">{formatDate(passData.leaveDate)}</p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <FiClock
-                      className="text-indigo-500 flex-shrink-0"
-                      size={16}
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Time Slot</span>
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {passData.leaveTime}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <FiTag
-                      className="text-indigo-500 flex-shrink-0"
-                      size={16}
-                    />
-                    <div className="flex-1 flex items-center justify-between">
-                      <span className="text-xs text-gray-500">Purpose</span>
-                      <span className="font-semibold text-gray-900 text-sm">
-                        {passData.purpose}
-                      </span>
-                    </div>
+                  <div className="bg-[#0056a2]/5 rounded-2xl p-4 border border-[#0056a2]/10">
+                    <FiClock className="text-[#0056a2] mb-2" size={18} />
+                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Time Slot</p>
+                    <p className="font-extrabold text-gray-900 text-sm leading-tight">{passData.leaveTime}</p>
                   </div>
                 </div>
               </div>
 
-              {/* Reason Block */}
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                <div className="flex items-start gap-3">
-                  <FiInfo
-                    className="text-gray-500 flex-shrink-0 mt-0.5"
-                    size={16}
-                  />
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                      Stated Reason
-                    </p>
-                    <p className="text-sm text-gray-800 font-medium leading-relaxed">
-                      {passData.reason}
-                    </p>
-                  </div>
+              <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-100/50 flex gap-3">
+                <FiTag className="text-gray-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-0.5">Purpose & Reason</p>
+                  <p className="text-sm font-bold text-gray-900 mb-1">{passData.purpose}</p>
+                  <p className="text-xs font-medium text-gray-600 leading-relaxed">{passData.reason}</p>
                 </div>
               </div>
 
-              {/* Approval Block */}
+              {/* Approval Info */}
               {passData.reviewedBy && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <FiShield
-                      className="text-green-600 flex-shrink-0 mt-0.5"
-                      size={16}
-                    />
-                    <div className="flex-1">
-                      <p className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-1">
-                        Approved By
-                      </p>
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {passData.reviewedBy.name || passData.reviewedBy.email}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        {new Date(passData.reviewedAt).toLocaleString("en-US", {
-                          weekday: "short",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
-                    </div>
+                <div className="bg-[#50b748]/5 rounded-2xl p-4 border border-[#50b748]/20 flex items-start gap-3">
+                  <div className="bg-white p-2 rounded-xl shadow-sm shrink-0">
+                    <FiShield className="text-[#50b748]" size={16} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[#50b748] uppercase tracking-widest mb-0.5">Authorized By</p>
+                    <p className="font-extrabold text-gray-900 text-sm">{passData.reviewedBy.name || passData.reviewedBy.email}</p>
+                    <p className="text-[10px] font-bold text-gray-500 uppercase mt-1 tracking-wider">
+                      {new Date(passData.reviewedAt).toLocaleString("en-US", {
+                        month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                      })}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
-
-            {/* Expiry Notice */}
-            <div className="bg-amber-50 px-5 py-3 border-t border-amber-100">
-              <div className="flex items-center gap-2 text-sm">
-                <FiAlertCircle
-                  className="text-amber-600 flex-shrink-0"
-                  size={15}
-                />
-                <span className="text-amber-800 text-xs">
-                  This pass is valid only for today and expires at{" "}
-                  <strong>4:30 PM</strong>
-                </span>
-              </div>
+            
+            {/* Expiry Footer */}
+            <div className="bg-amber-50/80 px-6 py-4 border-t border-amber-100/50 flex items-center gap-3">
+              <FiAlertCircle className="text-amber-600 shrink-0" size={18} />
+              <p className="text-[11px] font-bold text-amber-800 leading-tight">
+                This pass is valid ONLY for today and expires exactly at <span className="font-black text-amber-900 bg-amber-200/50 px-1 rounded">4:30 PM</span>.
+              </p>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Security Notice */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-4">
-          <div className="flex gap-3">
-            <FiAlertCircle
-              className="text-blue-600 flex-shrink-0 mt-0.5"
-              size={18}
-            />
-            <div className="text-sm text-blue-900">
-              <p className="font-semibold mb-1">Security Notice</p>
-              <p className="text-blue-800 text-xs leading-relaxed">
-                This pass cannot be edited, reused, or shared. Screenshots are
-                strictly invalid. Please present this pass to the gate staff for
-                verification before leaving the premises.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Back Button */}
-        <button
-          onClick={() => navigate("/leave-requests")}
-          className="w-full bg-white hover:bg-gray-50 text-gray-700 font-medium py-3 px-6 rounded-xl shadow-md border-2 border-gray-200 transition-all"
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white/40 backdrop-blur-md rounded-2xl p-4 border border-white/50 shadow-sm flex gap-3 text-gray-500"
         >
-          Back to Leave Requests
-        </button>
-      </div>
+          <FiInfo className="shrink-0 mt-0.5" size={16} />
+          <p className="text-[10px] font-bold leading-relaxed tracking-wide">
+            DO NOT take screenshots. Show this live pass to the gate staff. The animated indicators verify authenticity.
+          </p>
+        </motion.div>
 
-      {/* CSS for animations */}
-      <style>{`
-        @keyframes bounce {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        @keyframes slide {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(50px); }
-        }
-      `}</style>
+      </div>
     </div>
   );
 };

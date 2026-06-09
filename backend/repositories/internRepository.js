@@ -351,26 +351,93 @@ class InternRepository {
     return await InactiveIntern.find().sort({ archivedAt: -1 });
   }
 
+  /**
+   * Get inactive interns with server-side pagination and optional text search.
+   * Searched fields: Trainee_Name, Trainee_ID, Trainee_Email
+   *
+   * @param {{ skip: number, limit: number, search: string }} options
+   * @returns {{ interns: Document[], total: number }}
+   */
+  static async getAllInactiveInternsPaginated({
+    skip = 0,
+    limit = 15,
+    search = "",
+  } = {}) {
+    // Build the filter — if there's a search term, apply a case-insensitive
+    // regex across the three most useful identifier fields.
+    const filter = search
+      ? {
+          $or: [
+            { Trainee_Name: { $regex: search, $options: "i" } },
+            { Trainee_ID: { $regex: search, $options: "i" } },
+            { Trainee_Email: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+
+    // Run count and page fetch in parallel to keep latency low
+    const [total, interns] = await Promise.all([
+      InactiveIntern.countDocuments(filter),
+      InactiveIntern.find(filter)
+        .sort({ archivedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        // Only project the fields needed for the list card — avoids pulling
+        // the full attendance array (potentially huge) for every list item.
+        .select(
+          "_id Trainee_ID Trainee_Name Trainee_Email Institute field_of_spec_name " +
+            "Training_StartDate Training_EndDate archiveReason archivedAt originalCreatedAt",
+        ),
+    ]);
+
+    return { interns, total };
+  }
+
+  static async getInactiveInternById(internId) {
+    return await InactiveIntern.findById(internId);
+  }
+
   static async restoreInactiveIntern(internId) {
     const archived = await InactiveIntern.findById(internId);
     if (!archived) throw new Error("Archived intern not found");
 
     const doc = archived.toObject();
 
+    // Strip archive-specific metadata
     delete doc.archivedAt;
     delete doc.archiveReason;
     delete doc.originalCreatedAt;
     delete doc.originalUpdatedAt;
 
-    const restored = await Intern.findByIdAndUpdate(
-      doc._id,
-      { $set: doc },
-      { upsert: true, new: true, setDefaultsOnInsert: true },
-    );
+    // ✅ FIX 1: Strip location if coordinates are empty/invalid
+    // This is the most common cause of "Can't extract geo keys" on restore
+    if (
+      !doc.location?.coordinates ||
+      doc.location.coordinates.length === 0 ||
+      doc.location.coordinates.some((c) => c == null || isNaN(c))
+    ) {
+      delete doc.location;
+    }
+
+    // ✅ FIX 2: Strip __v added by Mongoose to avoid conflicts
+    delete doc.__v;
+
+    // Delete any shell doc with same Trainee_ID but different _id
+    await Intern.deleteMany({
+      Trainee_ID: doc.Trainee_ID,
+      _id: { $ne: doc._id },
+    });
+
+    // ✅ FIX 3: Use native collection driver (same approach as archiving)
+    // This bypasses Mongoose schema validation and 2dsphere index checks entirely
+    await Intern.collection.findOneAndReplace({ _id: doc._id }, doc, {
+      upsert: true,
+    });
 
     await InactiveIntern.findByIdAndDelete(internId);
 
-    return restored;
+    // Return the restored document
+    return await Intern.findById(doc._id);
   }
 }
 

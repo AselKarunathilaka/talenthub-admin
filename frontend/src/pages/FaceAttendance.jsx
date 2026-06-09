@@ -606,11 +606,17 @@ const FaceAttendance = () => {
 
       if (response.ok) {
         const traineeName = result.intern?.traineeName || "you";
-        toast.success(`Attendance marked for ${traineeName}.`);
+        toast.success(
+          result.checkedOut
+            ? `Check-out recorded for ${traineeName}.`
+            : `Check-in recorded for ${traineeName}.`
+        );
         showSuccess(
           attendanceType === "meeting"
             ? "Daily and meeting attendance marked."
-            : "Daily attendance marked.",
+            : result.checkedOut
+              ? "Check-out recorded successfully."
+              : "Check-in recorded successfully."
         );
         stopCamera();
         setCooldown(true);
@@ -619,8 +625,8 @@ const FaceAttendance = () => {
       }
 
       if (response.status === 400 && result.alreadyMarked) {
-        toast.error("Attendance is already marked today.");
-        showSuccess("Attendance already marked today.");
+        toast.error(result.message || "Attendance is already marked today.");
+        showSuccess(result.message || "Attendance already marked today.");
         stopCamera();
         setCooldown(true);
         window.setTimeout(() => setCooldown(false), 60000);
@@ -983,7 +989,6 @@ const FaceAttendance = () => {
                       muted
                       playsInline
                       className="h-full w-full object-cover"
-                      style={{ transform: "scaleX(-1)" }}
                     />
                     <canvas ref={canvasRef} className="hidden" width={640} height={480} />
                     <canvas
@@ -991,7 +996,6 @@ const FaceAttendance = () => {
                       className="pointer-events-none absolute inset-0 z-10 h-full w-full"
                       width={640}
                       height={480}
-                      style={{ transform: "scaleX(-1)" }}
                     />
                     <FaceScanGuide
                       ready={faceGuide.ready}

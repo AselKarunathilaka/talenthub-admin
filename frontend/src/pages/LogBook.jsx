@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FiBook,
@@ -10,6 +10,7 @@ import {
   FiAlertCircle,
   FiLoader,
   FiArrowRight,
+  FiArrowLeft,
   FiMonitor,
   FiServer,
   FiClipboard,
@@ -19,6 +20,8 @@ import {
   FiSmartphone,
   FiUmbrella,
   FiClock,
+  FiCheck,
+  FiSend,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
@@ -29,7 +32,9 @@ import {
 } from "../utils/entryHeuristics";
 import { rateLimitedBatchValidate } from "../utils/batchValidation";
 
-// Utility function to check if current time is after 10 AM (Sri Lankan time)
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Utility – check if current time is after 10 AM (Sri Lankan time)         */
+/* ────────────────────────────────────────────────────────────────────────── */
 const checkLeaveTimeRestriction = () => {
   try {
     const now = new Date();
@@ -63,6 +68,74 @@ const checkLeaveTimeRestriction = () => {
   }
 };
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Color palettes keyed by status                                           */
+/* ────────────────────────────────────────────────────────────────────────── */
+const STATUS_PALETTES = {
+  working: {
+    primary: "#0056a2",
+    light: "#00b4eb",
+    bg: "rgba(0, 86, 162, 0.06)",
+    border: "rgba(0, 180, 235, 0.35)",
+    glow: "0 0 20px rgba(0, 180, 235, 0.15)",
+    gradient: "linear-gradient(135deg, #0056a2, #00b4eb)",
+    barBg: "#00b4eb",
+    text: "#0056a2",
+    softBg: "#e8f4fd",
+    label: "Working",
+  },
+  wfh: {
+    primary: "#2d8a3e",
+    light: "#50b748",
+    bg: "rgba(80, 183, 72, 0.06)",
+    border: "rgba(80, 183, 72, 0.35)",
+    glow: "0 0 20px rgba(80, 183, 72, 0.15)",
+    gradient: "linear-gradient(135deg, #2d8a3e, #50b748)",
+    barBg: "#50b748",
+    text: "#2d8a3e",
+    softBg: "#edf7ec",
+    label: "Work From Home",
+  },
+  leave: {
+    primary: "#c0392b",
+    light: "#e74c3c",
+    bg: "rgba(231, 76, 60, 0.06)",
+    border: "rgba(231, 76, 60, 0.35)",
+    glow: "0 0 20px rgba(231, 76, 60, 0.15)",
+    gradient: "linear-gradient(135deg, #c0392b, #e74c3c)",
+    barBg: "#e74c3c",
+    text: "#c0392b",
+    softBg: "#fdecea",
+    label: "On Leave",
+  },
+};
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Motivational quotes                                                      */
+/* ────────────────────────────────────────────────────────────────────────── */
+const MOTIVATIONAL_QUOTES = [
+  "Small daily improvements lead to staggering results.",
+  "Your logbook tells the story of your growth.",
+  "Every task logged is a step towards mastery.",
+  "Consistency beats intensity. Keep logging!",
+  "Great developers document their journey.",
+  "Today's challenges are tomorrow's expertise.",
+  "Your future self will thank you for this entry.",
+  "Progress, not perfection. Log what matters.",
+];
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Stepper Steps                                                            */
+/* ────────────────────────────────────────────────────────────────────────── */
+const STEPS = [
+  { id: 0, label: "Status", icon: FiUmbrella },
+  { id: 1, label: "Stack", icon: FiMonitor },
+  { id: 2, label: "Details", icon: FiBook },
+];
+
+/* ────────────────────────────────────────────────────────────────────────── */
+/*  Main Component                                                           */
+/* ────────────────────────────────────────────────────────────────────────── */
 const Logbook = () => {
   const navigate = useNavigate();
 
@@ -85,18 +158,41 @@ const Logbook = () => {
     plans: null,
   });
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
-
-  // ── NEW: tracks whether the intern lacks a project assignment ──────────────
-  // null  = check in progress (show spinner on button)
-  // true  = blocked (no project assigned)
-  // false = allowed
   const [projectAccessBlocked, setProjectAccessBlocked] = useState(null);
+  const [activeStep, setActiveStep] = useState(0);
 
   const pendingSubmitRef = useRef(null);
 
   const HIGHLIGHT_MSG = "Please fix the highlighted fields above.";
 
-  // ── Check project access on mount ─────────────────────────────────────────
+  // Random motivational quote
+  const [quote] = useState(
+    () => MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)],
+  );
+
+  // Current palette
+  const palette = STATUS_PALETTES[formData.status] || STATUS_PALETTES.working;
+
+  /* ── Progress bar calculation ─────────────────────────────────────────── */
+  const completionProgress = useMemo(() => {
+    if (formData.status === "leave") return 100;
+
+    let filled = 0;
+    // 1) Status selected (always true since default is "working")
+    if (formData.status) filled++;
+    // 2) Stack selected
+    if (formData.stack) filled++;
+    // 3) Tasks filled
+    if (formData.tasks.trim()) filled++;
+    // 4) Challenges filled
+    if (formData.challenges.trim()) filled++;
+    // 5) Plans filled
+    if (formData.plans.trim()) filled++;
+
+    return filled * 20;
+  }, [formData]);
+
+  /* ── Check project access on mount ────────────────────────────────────── */
   useEffect(() => {
     const checkAccess = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -115,7 +211,6 @@ const Logbook = () => {
 
         if (!res.ok) {
           const data = await res.json();
-          // Block the form and show the amber banner immediately
           setProjectAccessBlocked(true);
           setStatusMessage({
             type: "project_error",
@@ -125,7 +220,6 @@ const Logbook = () => {
           setProjectAccessBlocked(false);
         }
       } catch (err) {
-        // Network error — don't block; the submit will catch it too
         console.error("Project access check failed:", err);
         setProjectAccessBlocked(false);
       }
@@ -161,6 +255,7 @@ const Logbook = () => {
           plans: "",
           status: "working",
         });
+        setActiveStep(0);
       } else if (data.timeRestriction) {
         setStatusMessage({
           type: "error",
@@ -260,6 +355,20 @@ const Logbook = () => {
       return;
     }
 
+    // ── Mandatory field check for all three fields ──
+    if (formData.status !== "leave") {
+      if (!formData.tasks.trim() || !formData.challenges.trim() || !formData.plans.trim()) {
+        setStatusMessage({
+          type: "error",
+          text: "All three fields (Tasks, Challenges, Plans) are required.",
+        });
+        setIsSubmitting(false);
+        // Jump to the fields step so users can see what's missing
+        setActiveStep(2);
+        return;
+      }
+    }
+
     if (formData.status !== "leave") {
       const fieldChecks = [
         { key: "tasks", value: formData.tasks },
@@ -285,9 +394,15 @@ const Logbook = () => {
         });
 
         if (!validationResponse.ok) {
+          let errorText = "Validation service unavailable. Please try again shortly.";
+          try {
+            const errBody = await validationResponse.json();
+            if (errBody.error) errorText = errBody.error;
+          } catch { /* use default */ }
+          console.error(`[LogBook] Validation endpoint returned ${validationResponse.status}: ${errorText}`);
           setStatusMessage({
             type: "error",
-            text: "Validation service unavailable. Please try again shortly.",
+            text: errorText,
           });
           setIsSubmitting(false);
           return;
@@ -318,21 +433,21 @@ const Logbook = () => {
         setValidationResults({
           tasks: trimmed.tasks
             ? formatValidationResult(
-                results.tasks?.valid !== false,
-                results.tasks?.reason,
-              )
+              results.tasks?.valid !== false,
+              results.tasks?.reason,
+            )
             : null,
           challenges: trimmed.challenges
             ? formatValidationResult(
-                results.challenges?.valid !== false,
-                results.challenges?.reason,
-              )
+              results.challenges?.valid !== false,
+              results.challenges?.reason,
+            )
             : null,
           plans: trimmed.plans
             ? formatValidationResult(
-                results.plans?.valid !== false,
-                results.plans?.reason,
-              )
+              results.plans?.valid !== false,
+              results.plans?.reason,
+            )
             : null,
         });
 
@@ -390,21 +505,45 @@ const Logbook = () => {
     }
   };
 
-  // ── Derived: is the submit button disabled? ────────────────────────────────
-  // Disabled while: access check is in progress (null), blocked by project
-  // restriction (true), currently submitting, or the success animation is playing.
+  /* ── Stepper navigation ───────────────────────────────────────────────── */
+  const isOnLeave = formData.status === "leave";
+
+  // Determine which steps are reachable
+  const canGoToStep = (stepId) => {
+    if (stepId === 0) return true;
+    if (stepId === 1) return !!formData.status;
+    if (stepId === 2) return isOnLeave || !!formData.stack;
+    return false;
+  };
+
+  const goNext = () => {
+    if (isOnLeave && activeStep === 0) {
+      // Skip stack entirely, go straight to submit (leave mode)
+      setActiveStep(2);
+      return;
+    }
+    if (activeStep < 2) setActiveStep((s) => s + 1);
+  };
+
+  const goPrev = () => {
+    if (isOnLeave && activeStep === 2) {
+      setActiveStep(0);
+      return;
+    }
+    if (activeStep > 0) setActiveStep((s) => s - 1);
+  };
+
+  /* ── Derived states ───────────────────────────────────────────────────── */
   const isSubmitDisabled =
     projectAccessBlocked !== false || isSubmitting || showSuccessAnimation;
 
-  // All form fields are disabled when project access is blocked or still checking
   const areFieldsDisabled = !!projectAccessBlocked;
 
-  // Label shown inside the button
   const submitButtonContent = () => {
     if (projectAccessBlocked === null) {
       return (
         <>
-          <FiLoader className="animate-spin h-5 w-5 mr-2" />
+          <FiLoader className="logbook-spin" style={{ width: 20, height: 20, marginRight: 8 }} />
           Checking access...
         </>
       );
@@ -412,7 +551,7 @@ const Logbook = () => {
     if (projectAccessBlocked) {
       return (
         <>
-          <FiAlertTriangle className="h-5 w-5 mr-2" />
+          <FiAlertTriangle style={{ width: 20, height: 20, marginRight: 8 }} />
           Project Assignment Required
         </>
       );
@@ -420,533 +559,1280 @@ const Logbook = () => {
     if (isSubmitting || showSuccessAnimation) {
       return (
         <>
-          <FiLoader className="animate-spin h-5 w-5 mr-2" />
+          <FiLoader className="logbook-spin" style={{ width: 20, height: 20, marginRight: 8 }} />
           Submitting...
         </>
       );
     }
     return (
       <>
-        <FiCalendar className="h-5 w-5 mr-2" />
+        <FiSend style={{ width: 20, height: 20, marginRight: 8 }} />
         Submit Logbook
       </>
     );
   };
 
   const stackOptions = [
+    { value: "Front-end Development", label: "Front-end Development", icon: <FiMonitor /> },
+    { value: "Back-end Development", label: "Back-end Development", icon: <FiServer /> },
+    { value: "Full-stack Development", label: "Full-stack Development", icon: <FiServer /> },
+    { value: "Project Management", label: "Project Management", icon: <FiClipboard /> },
+    { value: "QA", label: "Quality Assurance", icon: <FiCheckCircle /> },
+    { value: "Documentation", label: "Documentation", icon: <FiBook /> },
+    { value: "UI-UX", label: "UI/UX Design", icon: <FiLayers /> },
+    { value: "Cloud", label: "Cloud Services", icon: <FiCloud /> },
+    { value: "IOT", label: "Internet of Things (IoT)", icon: <FiWifi /> },
+    { value: "Mobile", label: "Mobile Application Development", icon: <FiSmartphone /> },
+    { value: "AI/ML", label: "Artificial Intelligence and Machine Learning", icon: <FiMonitor /> },
+    { value: "DataScience", label: "Data Science", icon: <FiServer /> },
+  ];
+
+  /* ──────────────────────────────────────────────────────────────────────── */
+  /*  STATUS OPTIONS (styled cards)                                          */
+  /* ──────────────────────────────────────────────────────────────────────── */
+  const statusOptions = [
     {
-      value: "Front-end Development",
-      label: "Front-end Development",
-      icon: <FiMonitor className="mr-2" />,
+      value: "working",
+      label: "Working",
+      description: "I'm at the office today",
+      icon: FiMonitor,
+      palette: STATUS_PALETTES.working,
     },
     {
-      value: "Back-end Development",
-      label: "Back-end Development",
-      icon: <FiServer className="mr-2" />,
+      value: "wfh",
+      label: "Work From Home",
+      description: "Working remotely today",
+      icon: FiCloud,
+      palette: STATUS_PALETTES.wfh,
     },
     {
-      value: "Full-stack Development",
-      label: "Full-stack Development",
-      icon: <FiServer className="mr-2" />,
-    },
-    {
-      value: "Project Management",
-      label: "Project Management",
-      icon: <FiClipboard className="mr-2" />,
-    },
-    {
-      value: "QA",
-      label: "Quality Assurance",
-      icon: <FiCheckCircle className="mr-2" />,
-    },
-    {
-      value: "Documentation",
-      label: "Documentation",
-      icon: <FiBook className="mr-2" />,
-    },
-    {
-      value: "UI-UX",
-      label: "UI/UX Design",
-      icon: <FiLayers className="mr-2" />,
-    },
-    {
-      value: "Cloud",
-      label: "Cloud Services",
-      icon: <FiCloud className="mr-2" />,
-    },
-    {
-      value: "IOT",
-      label: "Internet of Things (IoT)",
-      icon: <FiWifi className="mr-2" />,
-    },
-    {
-      value: "Mobile",
-      label: "Mobile Application Development",
-      icon: <FiSmartphone className="mr-2" />,
-    },
-    {
-      value: "AI/ML",
-      label: "Artificial Intelligence and Machine Learning",
-      icon: <FiMonitor className="mr-2" />,
-    },
-    {
-      value: "DataScience",
-      label: "Data Science",
-      icon: <FiServer className="mr-2" />,
+      value: "leave",
+      label: "On Leave",
+      description: "Taking time off today",
+      icon: FiUmbrella,
+      palette: STATUS_PALETTES.leave,
+      disabled: timeRestriction.isAfter10AM,
     },
   ];
 
+  /* ════════════════════════════════════════════════════════════════════════ */
+  /*  RENDER                                                                 */
+  /* ════════════════════════════════════════════════════════════════════════ */
   return (
     <>
       {showSuccessAnimation && (
         <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
       )}
-      <div className="flex flex-col lg:flex-row min-h-screen bg-gray-50">
+
+      <div className="flex flex-col lg:flex-row min-h-screen" style={{ background: "#f0f4f8" }}>
         <Navigation />
 
         <div className="flex-1 w-full lg:mt-20 lg:px-10">
-          <main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-7xl">
-            {/* Page Header */}
-            <div className="mb-8">
+          <main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-4xl">
+
+            {/* ───── Page Header ───── */}
+            <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                    <FiBook className="mr-3 text-blue-600" />
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  <h1 style={{ fontSize: 28, fontWeight: 800, color: "#1a1a2e", display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{
+                      color: "#1a1a2e",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 10,
+                      transition: "all 0.4s ease",
+                    }}>
+                      <FiBook style={{ color: palette.light }} />
                       Daily Logbook
                     </span>
                   </h1>
-                  <p className="text-gray-500 mt-2 text-base">
-                    Track your daily progress and achievements
+                  <p style={{ color: "#6b7280", marginTop: 6, fontSize: 15, fontStyle: "italic" }}>
+                    "{quote}"
                   </p>
                 </div>
                 <button
                   onClick={() => navigate("/DailyRecords")}
-                  className="inline-flex items-center px-5 py-2.5 bg-white border border-gray-200 rounded-xl shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 group"
+                  className="logbook-view-records-btn"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    padding: "10px 20px",
+                    background: "white",
+                    border: `1.5px solid ${palette.border}`,
+                    borderRadius: 14,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: palette.primary,
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}
                 >
-                  <FiBook className="mr-2 text-blue-600 group-hover:text-blue-700" />
+                  <FiBook style={{ marginRight: 8, color: palette.light }} />
                   View Records
-                  <FiArrowRight className="ml-2 text-gray-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-1" />
+                  <FiArrowRight style={{ marginLeft: 8, opacity: 0.5 }} />
                 </button>
               </div>
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-              {/* Form Section */}
-              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 border-b border-blue-200">
-                    <div className="flex items-center">
-                      <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                        <FiBook className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-gray-800">
-                          Daily Activity Log
-                        </h2>
-                        <p className="text-blue-600 text-sm mt-1">
-                          Complete your daily work summary
-                        </p>
-                      </div>
-                    </div>
+            {/* ───── Project Access Blocked — Standalone Instruction Card ───── */}
+            {projectAccessBlocked === true && (
+              <div
+                className="logbook-card logbook-fade-in"
+                style={{
+                  background: "white",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  border: "2px solid #fde68a",
+                  boxShadow: "0 4px 24px rgba(245, 158, 11, 0.08)",
+                  maxWidth: 640,
+                  margin: "0 auto",
+                }}
+              >
+                {/* Amber header bar */}
+                <div style={{
+                  background: "linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)",
+                  padding: "20px 24px",
+                  borderBottom: "1px solid #fde68a",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <FiAlertTriangle size={24} color="white" />
                   </div>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#92400e", margin: 0 }}>
+                      Team Assignment Required
+                    </h2>
+                    <p style={{ fontSize: 13, color: "#a16207", marginTop: 4 }}>
+                      You need to join a project before using the logbook
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="p-6">
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                      {/* Status Selection */}
-                      <div className="space-y-4">
-                        <label className="flex items-center text-sm font-medium text-gray-700">
-                          <FiUmbrella className="mr-2 text-blue-500" />
-                          Status <span className="text-red-500 ml-1">*</span>
-                        </label>
-                        <div className="flex flex-wrap gap-6">
-                          <label
-                            className={`flex items-center ${areFieldsDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="status"
-                              value="working"
-                              checked={formData.status === "working"}
-                              onChange={handleChange}
-                              disabled={areFieldsDisabled}
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${areFieldsDisabled ? "cursor-not-allowed" : ""}`}
-                            />
-                            <span className="ml-2 text-gray-700">Working</span>
-                          </label>
-                          <label
-                            className={`flex items-center ${areFieldsDisabled ? "opacity-50 cursor-not-allowed" : ""}`}
-                          >
-                            <input
-                              type="radio"
-                              name="status"
-                              value="wfh"
-                              checked={formData.status === "wfh"}
-                              onChange={handleChange}
-                              disabled={areFieldsDisabled}
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${areFieldsDisabled ? "cursor-not-allowed" : ""}`}
-                            />
-                            <span className="ml-2 text-gray-700">
-                              Work From Home
-                            </span>
-                          </label>
-                          <label
-                            className={`flex items-center ${areFieldsDisabled || timeRestriction.isAfter10AM ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-                          >
-                            <input
-                              type="radio"
-                              name="status"
-                              value="leave"
-                              checked={formData.status === "leave"}
-                              onChange={handleChange}
-                              disabled={
-                                areFieldsDisabled || timeRestriction.isAfter10AM
-                              }
-                              className={`h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 ${areFieldsDisabled || timeRestriction.isAfter10AM ? "cursor-not-allowed" : ""}`}
-                            />
-                            <span className="ml-2 text-gray-700 flex items-center">
-                              On Leave
-                              {timeRestriction.isAfter10AM && (
-                                <FiClock
-                                  className="ml-1 text-red-500"
-                                  title="Not available after 10:00 AM"
-                                />
-                              )}
-                            </span>
-                          </label>
-                        </div>
-                      </div>
+                {/* Body content */}
+                <div style={{ padding: "24px" }}>
+                  {statusMessage?.type === "project_error" && (
+                    <div style={{
+                      background: "#fffbeb",
+                      border: "1px solid #fde68a",
+                      borderRadius: 12,
+                      padding: "12px 16px",
+                      marginBottom: 20,
+                    }}>
+                      <p style={{ fontSize: 13, color: "#92400e", fontWeight: 500, margin: 0 }}>
+                        {statusMessage.text}
+                      </p>
+                    </div>
+                  )}
 
-                      {/* Time restriction notification */}
-                      {timeRestriction.isAfter10AM && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                          <div className="flex items-start">
-                            <FiClock className="text-red-500 mt-0.5 mr-3 flex-shrink-0" />
-                            <div className="text-sm">
-                              <p className="text-red-800 font-medium mb-1">
-                                Leave Applications Closed
-                              </p>
-                              <p className="text-red-700">
-                                Leave applications are not available after 10:00
-                                AM. Current time: {timeRestriction.currentTime}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                  <p style={{ fontSize: 14, color: "#a16207", marginBottom: 16, lineHeight: 1.6 }}>
+                    To submit logbook entries, you must first join
+                    a project team on{" "}
+                    <a
+                      href="https://talenttrail.slt.lk"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontWeight: 600, textDecoration: "underline", color: "#92400e" }}
+                    >
+                      TalentTrail
+                    </a>
+                    . Follow these steps:
+                  </p>
 
-                      {/* Conditional fields based on status */}
-                      {formData.status === "working" ||
-                      formData.status === "wfh" ? (
-                        <>
-                          {/* Task Stack */}
-                          <div className="space-y-2">
-                            <label className="flex items-center text-sm font-medium text-gray-700">
-                              <FiMonitor className="mr-2 text-blue-500" />
-                              Task Stack{" "}
-                              <span className="text-red-500 ml-1">*</span>
-                            </label>
-                            <select
-                              name="stack"
-                              value={formData.stack}
-                              onChange={handleChange}
-                              required={formData.status === "working"}
-                              disabled={areFieldsDisabled}
-                              className={`w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-700 ${areFieldsDisabled ? "bg-gray-100 cursor-not-allowed opacity-60" : "bg-white"}`}
-                            >
-                              <option value="" disabled>
-                                Select your stack...
-                              </option>
-                              {stackOptions.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </option>
-                              ))}
-                            </select>
-                          </div>
-
-                          {/* Tasks Completed */}
-                          <div className="space-y-2">
-                            <label className="flex items-center text-sm font-medium text-gray-700">
-                              <FiCheckCircle className="mr-2 text-blue-500" />
-                              Tasks Completed{" "}
-                              <span className="text-red-500 ml-1">*</span>
-                            </label>
-                            <textarea
-                              name="tasks"
-                              value={formData.tasks}
-                              onChange={handleChange}
-                              required={formData.status === "working"}
-                              disabled={areFieldsDisabled}
-                              rows={4}
-                              placeholder="What did you accomplish today? Be specific..."
-                              className={`w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${areFieldsDisabled ? "bg-gray-100 cursor-not-allowed opacity-60" : ""}`}
-                            />
-                            <EntryFeedbackIndicator
-                              text={formData.tasks}
-                              forcedResult={validationResults.tasks}
-                            />
-                          </div>
-
-                          {/* Challenges Faced */}
-                          <div className="space-y-2">
-                            <label className="flex items-center text-sm font-medium text-gray-700">
-                              <FiAlertTriangle className="mr-2 text-blue-500" />
-                              Challenges Faced
-                            </label>
-                            <textarea
-                              name="challenges"
-                              value={formData.challenges}
-                              onChange={handleChange}
-                              disabled={areFieldsDisabled}
-                              rows={3}
-                              placeholder="Any obstacles or difficulties you encountered..."
-                              className={`w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${areFieldsDisabled ? "bg-gray-100 cursor-not-allowed opacity-60" : ""}`}
-                            />
-                            <EntryFeedbackIndicator
-                              text={formData.challenges}
-                              forcedResult={validationResults.challenges}
-                            />
-                          </div>
-
-                          {/* Plans for Tomorrow */}
-                          <div className="space-y-2">
-                            <label className="flex items-center text-sm font-medium text-gray-700">
-                              <FiTarget className="mr-2 text-blue-500" />
-                              Plans for Tomorrow
-                            </label>
-                            <textarea
-                              name="plans"
-                              value={formData.plans}
-                              onChange={handleChange}
-                              disabled={areFieldsDisabled}
-                              rows={3}
-                              placeholder="What will you focus on tomorrow?"
-                              className={`w-full px-4 py-3 border border-gray-200 rounded-xl shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 hover:border-gray-300 ${areFieldsDisabled ? "bg-gray-100 cursor-not-allowed opacity-60" : ""}`}
-                            />
-                            <EntryFeedbackIndicator
-                              text={formData.plans}
-                              forcedResult={validationResults.plans}
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
-                          <p className="text-blue-700 flex items-center">
-                            <FiInfo className="mr-2" />
-                            No further details needed for leave days.
-                          </p>
-                        </div>
-                      )}
-
-                      {/* ── Status / error messages ──────────────────────────────── */}
-                      {statusMessage && (
-                        <div
-                          className={`flex items-start gap-3 p-4 rounded-xl border-l-4 ${
-                            statusMessage.type === "success"
-                              ? "bg-green-50 border-green-500 text-green-800"
-                              : statusMessage.type === "project_error"
-                                ? "bg-amber-50 border-amber-500 text-amber-900"
-                                : "bg-red-50 border-red-500 text-red-800"
-                          }`}
-                        >
-                          {statusMessage.type === "success" ? (
-                            <FiCheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
-                          ) : statusMessage.type === "project_error" ? (
-                            <FiAlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
-                          ) : (
-                            <FiAlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                          )}
-
-                          <div className="flex-1">
-                            {statusMessage.type === "project_error" ? (
-                              <>
-                                <p className="font-semibold text-amber-900 mb-1">
-                                  Team Assignment Required
-                                </p>
-                                <p className="text-sm text-amber-800 mb-3">
-                                  {statusMessage.text}
-                                </p>
-                                <p className="text-sm text-amber-800 mb-2">
-                                  To submit logbook entries, you must first join
-                                  a project team on{" "}
-                                  <a
-                                    href="https://talenttrail.slt.lk"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="font-semibold underline decoration-amber-600 hover:text-amber-900"
-                                  >
-                                    talenttrail.slt.lk
-                                  </a>
-                                  . Follow these steps:
-                                </p>
-                                <ol className="text-sm text-amber-800 space-y-1.5 list-decimal list-inside mb-3">
-                                  <li>
-                                    Go to{" "}
-                                    <a
-                                      href="https://talenttrail.slt.lk"
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="font-medium underline hover:text-amber-900"
-                                    >
-                                      talenttrail.slt.lk
-                                    </a>{" "}
-                                    and log in with your credentials
-                                  </li>
-                                  <li>
-                                    Browse the available projects and find the
-                                    project that you are assigned to.
-                                  </li>
-                                  <li>
-                                    Select the project and send a request to
-                                    join the team
-                                  </li>
-                                  <li>
-                                    Wait for the admin to approve your request
-                                  </li>
-                                  <li>
-                                    Once approved, return here and try
-                                    submitting your logbook again
-                                  </li>
-                                </ol>
-                                <p className="text-xs text-amber-700 border-t border-amber-200 pt-2 mt-2">
-                                  Already joined a team? Team data is synced
-                                  every 5 minutes — please wait a moment and
-                                  refresh, or contact your administrator if the
-                                  issue persists.
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <span className="font-medium">
-                                  {statusMessage.text}
-                                </span>
-                                {statusMessage.type === "success" && (
-                                  <div className="text-green-700 text-xs mt-1">
-                                    Redirecting to records...
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Submit Button */}
-                      <div className="pt-4">
-                        <button
-                          type="submit"
-                          disabled={isSubmitDisabled}
-                          className={`w-full flex justify-center items-center px-6 py-3.5 rounded-xl text-base font-medium text-white transition-all duration-300 ${
-                            isSubmitDisabled
-                              ? projectAccessBlocked
-                                ? "bg-amber-400 text-amber-700 cursor-not-allowed"
-                                : "bg-gray-400 cursor-not-allowed"
-                              : "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 shadow-md hover:shadow-lg"
-                          }`}
-                        >
-                          {submitButtonContent()}
-                        </button>
-
-                        {/* Hint text under button when blocked */}
-                        {projectAccessBlocked && (
-                          <p className="text-center text-xs text-amber-700 mt-2">
-                            You must be assigned to a project on{" "}
+                  <ol style={{
+                    listStyleType: "none",
+                    padding: 0,
+                    margin: "0 0 20px 0",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}>
+                    {[
+                      {
+                        step: "1",
+                        text: (
+                          <>Go to{" "}
                             <a
                               href="https://talenttrail.slt.lk"
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="font-medium underline"
+                              style={{ fontWeight: 500, textDecoration: "underline", color: "#92400e" }}
                             >
-                              talenttrail.slt.lk
+                              TalentTrail
                             </a>{" "}
-                            before submitting.
-                          </p>
-                        )}
-                      </div>
-                    </form>
+                            and log in with your credentials
+                          </>
+                        ),
+                      },
+                      {
+                        step: "2",
+                        text: "Browse the available projects and find the project that you are assigned to.",
+                      },
+                      {
+                        step: "3",
+                        text: "Select the project and send a request to join the team",
+                      },
+                      {
+                        step: "4",
+                        text: "Wait for the admin to approve your request",
+                      },
+                      {
+                        step: "5",
+                        text: "Once approved, return here and try submitting your logbook again",
+                      },
+                    ].map((item) => (
+                      <li
+                        key={item.step}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                        }}
+                      >
+                        <span style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: "50%",
+                          background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                          color: "white",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 13,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          {item.step}
+                        </span>
+                        <span style={{
+                          fontSize: 14,
+                          color: "#78350f",
+                          lineHeight: 1.5,
+                          paddingTop: 3,
+                        }}>
+                          {item.text}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+
+                  <div style={{
+                    borderTop: "1px solid #fde68a",
+                    paddingTop: 16,
+                    marginTop: 8,
+                  }}>
+                    <p style={{ fontSize: 12, color: "#b45309", margin: 0, lineHeight: 1.5 }}>
+                      Already joined a team? Team data is synced
+                      every 5 minutes — please wait a moment and
+                      refresh, or contact your administrator if the
+                      issue persists.
+                    </p>
                   </div>
+
+                  {/* Action button */}
+                  <a
+                    href="https://talenttrail.slt.lk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      width: "100%",
+                      padding: "12px 24px",
+                      marginTop: 20,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                      color: "white",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      textDecoration: "none",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 4px 14px rgba(245, 158, 11, 0.25)",
+                    }}
+                  >
+                    Go to TalentTrail
+                    <FiArrowRight size={16} />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* ───── Loading state while checking access ───── */}
+            {projectAccessBlocked === null && (
+              <div
+                className="logbook-fade-in"
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "60px 24px",
+                  background: "white",
+                  borderRadius: 20,
+                  border: "1px solid #f0f0f0",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                }}
+              >
+                <FiLoader className="logbook-spin" size={28} style={{ color: palette.light, marginBottom: 16 }} />
+                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Checking access...</p>
+                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>Verifying your project assignment</p>
+              </div>
+            )}
+
+            {/* ───── Main Form Card (only when access is granted) ───── */}
+            {projectAccessBlocked === false && (
+            <div
+              className="logbook-card logbook-fade-in"
+              style={{
+                background: "white",
+                borderRadius: 20,
+                overflow: "hidden",
+                border: `2px solid transparent`,
+                borderColor: palette.border,
+                boxShadow: `0 4px 24px rgba(0,0,0,0.06), ${palette.glow}`,
+                transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+                position: "relative",
+              }}
+            >
+              {/* ── Progress bar (top border) ── */}
+              <div style={{
+                height: 4,
+                background: "#e5e7eb",
+                position: "relative",
+                overflow: "hidden",
+              }}>
+                <div
+                  className="logbook-progress-fill"
+                  style={{
+                    height: "100%",
+                    width: `${completionProgress}%`,
+                    background: palette.gradient,
+                    transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                    borderRadius: completionProgress === 100 ? 0 : "0 4px 4px 0",
+                  }}
+                />
+                {completionProgress === 100 && (
+                  <div className="logbook-shimmer" style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
+                  }} />
+                )}
+              </div>
+
+              {/* ── Stepper Header ── */}
+              <div style={{
+                padding: "20px 24px 16px",
+                borderBottom: "1px solid #f0f0f0",
+                background: palette.bg,
+                transition: "background 0.4s ease",
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 0,
+                }}>
+                  {STEPS.map((step, idx) => {
+                    // Determine if step should be skipped visually for leave
+                    if (isOnLeave && step.id === 1) return null;
+
+                    const isActive = activeStep === step.id;
+                    const isCompleted =
+                      step.id === 0
+                        ? activeStep > 0
+                        : step.id === 1
+                          ? isOnLeave || (activeStep > 1 && !!formData.stack)
+                          : false;
+
+                    const StepIcon = step.icon;
+
+                    return (
+                      <React.Fragment key={step.id}>
+                        {idx > 0 && !(isOnLeave && step.id === 2 && idx === 2) && (
+                          <div style={{
+                            flex: 1,
+                            maxWidth: 80,
+                            height: 2,
+                            background: isCompleted || isActive ? palette.light : "#e0e0e0",
+                            transition: "background 0.4s ease",
+                            margin: "0 4px",
+                          }} />
+                        )}
+                        {/* Connector before step 2 (Details) when on leave - since Stack is hidden */}
+                        {isOnLeave && step.id === 2 && (
+                          <div style={{
+                            flex: 1,
+                            maxWidth: 80,
+                            height: 2,
+                            background: activeStep >= 2 ? palette.light : "#e0e0e0",
+                            transition: "background 0.4s ease",
+                            margin: "0 4px",
+                          }} />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => canGoToStep(step.id) && setActiveStep(step.id)}
+                          disabled={!canGoToStep(step.id)}
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            alignItems: "center",
+                            gap: 6,
+                            cursor: canGoToStep(step.id) ? "pointer" : "default",
+                            background: "none",
+                            border: "none",
+                            padding: "4px 12px",
+                            opacity: canGoToStep(step.id) ? 1 : 0.4,
+                            transition: "all 0.3s ease",
+                          }}
+                        >
+                          <div
+                            className={isActive ? "logbook-step-pulse" : ""}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: isCompleted
+                                ? palette.gradient
+                                : isActive
+                                  ? palette.gradient
+                                  : "#f3f4f6",
+                              color: isCompleted || isActive ? "white" : "#9ca3af",
+                              transition: "all 0.4s ease",
+                              boxShadow: isActive ? `0 0 0 4px ${palette.bg}` : "none",
+                            }}
+                          >
+                            {isCompleted ? <FiCheck size={18} /> : <StepIcon size={18} />}
+                          </div>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: isActive ? 700 : 500,
+                            color: isActive ? palette.primary : "#9ca3af",
+                            transition: "all 0.3s ease",
+                            letterSpacing: 0.3,
+                            textTransform: "uppercase",
+                          }}>
+                            {step.label}
+                          </span>
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Info Sidebar */}
-              <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-md border border-gray-100 p-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                      <FiInfo className="h-5 w-5 text-blue-600" />
-                    </div>
-                    Tips for Better Logging
-                  </h3>
-                  <ul className="space-y-3 text-sm text-gray-600">
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Be specific about tasks completed
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Include time spent on each major task
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Document any challenges for future reference
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Plan ahead for tomorrow's priorities
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Mark "On Leave" when taking time off
-                    </li>
-                    <li className="flex items-start">
-                      <span className="text-blue-500 mr-2">•</span>
-                      Use "Work From Home" when working remotely
-                    </li>
-                  </ul>
-                </div>
+              {/* ── Form Body ── */}
+              <div style={{ padding: "24px" }}>
+                <form onSubmit={handleSubmit}>
 
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100 p-6">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-2 flex items-center">
-                    <div className="p-2 bg-blue-100 rounded-lg mr-3">
-                      <FiCalendar className="h-5 w-5 text-blue-600" />
+                  {/* ╔══════════════════════════════════════════════╗ */}
+                  {/* ║  STEP 0 — Status Selection                   ║ */}
+                  {/* ╚══════════════════════════════════════════════╝ */}
+                  <div
+                    className="logbook-step-content"
+                    style={{
+                      display: activeStep === 0 ? "block" : "none",
+                    }}
+                  >
+                    <div style={{ textAlign: "center", marginBottom: 24 }}>
+                      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>
+                        How are you working today?
+                      </h2>
+                      <p style={{ color: "#6b7280", fontSize: 14 }}>
+                        Select your work status for today
+                      </p>
                     </div>
-                    Today's Summary
-                  </h3>
-                  <div className="space-y-2 text-blue-700">
-                    <p className="flex items-center">
-                      <span className="font-medium mr-2">Date:</span>
-                      {new Date().toLocaleDateString("en-US", {
+
+                    <label style={{ display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
+                      <FiUmbrella style={{ marginRight: 8, color: palette.light }} />
+                      Status <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                    </label>
+
+                    <div style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      marginBottom: 16,
+                    }}>
+                      {statusOptions.map((opt) => {
+                        const isSelected = formData.status === opt.value;
+                        const isDisabled = areFieldsDisabled || opt.disabled;
+                        const Icon = opt.icon;
+
+                        return (
+                          <label
+                            key={opt.value}
+                            className="logbook-status-card"
+                            style={{
+                              flex: "1 1 160px",
+                              display: "flex",
+                              flexDirection: "column",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "20px 16px",
+                              borderRadius: 16,
+                              border: isSelected
+                                ? `2px solid ${opt.palette.light}`
+                                : "2px solid #e5e7eb",
+                              background: isSelected ? opt.palette.softBg : "#fafafa",
+                              cursor: isDisabled ? "not-allowed" : "pointer",
+                              opacity: isDisabled ? 0.45 : 1,
+                              transition: "all 0.3s ease",
+                              textAlign: "center",
+                              position: "relative",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="status"
+                              value={opt.value}
+                              checked={isSelected}
+                              onChange={handleChange}
+                              disabled={isDisabled}
+                              style={{ position: "absolute", opacity: 0 }}
+                            />
+                            {isSelected && (
+                              <div style={{
+                                position: "absolute",
+                                top: 8,
+                                right: 8,
+                                width: 20,
+                                height: 20,
+                                borderRadius: "50%",
+                                background: opt.palette.gradient,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}>
+                                <FiCheck size={12} color="white" />
+                              </div>
+                            )}
+                            <div style={{
+                              width: 48,
+                              height: 48,
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: isSelected ? opt.palette.gradient : "#e5e7eb",
+                              marginBottom: 10,
+                              transition: "all 0.3s ease",
+                            }}>
+                              <Icon size={22} color={isSelected ? "white" : "#9ca3af"} />
+                            </div>
+                            <span style={{
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: isSelected ? opt.palette.primary : "#374151",
+                              marginBottom: 4,
+                            }}>
+                              {opt.label}
+                            </span>
+                            <span style={{
+                              fontSize: 11,
+                              color: isSelected ? opt.palette.text : "#9ca3af",
+                            }}>
+                              {opt.description}
+                            </span>
+                            {opt.disabled && (
+                              <div style={{
+                                marginTop: 8,
+                                padding: "4px 10px",
+                                borderRadius: 8,
+                                background: "rgba(239, 68, 68, 0.08)",
+                                border: "1px solid rgba(239, 68, 68, 0.15)",
+                              }}>
+                                <span style={{
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  color: "#dc2626",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}>
+                                  <FiClock size={12} /> Closed after 10:00 AM
+                                </span>
+                                <span style={{
+                                  fontSize: 10,
+                                  color: "#b91c1c",
+                                  display: "block",
+                                  marginTop: 2,
+                                }}>
+                                  Now: {timeRestriction.currentTime}
+                                </span>
+                              </div>
+                            )}
+                          </label>
+                        );
+                      })}
+                    </div>
+
+
+
+                    {/* Next button */}
+                    <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={areFieldsDisabled}
+                        className="logbook-next-btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "10px 28px",
+                          borderRadius: 12,
+                          border: "none",
+                          background: palette.gradient,
+                          color: "white",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: areFieldsDisabled ? "not-allowed" : "pointer",
+                          transition: "all 0.3s ease",
+                          boxShadow: `0 4px 14px ${palette.bg}`,
+                        }}
+                      >
+                        {isOnLeave ? "Review & Submit" : "Next"}
+                        <FiArrowRight style={{ marginLeft: 8 }} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ╔══════════════════════════════════════════════╗ */}
+                  {/* ║  STEP 1 — Task Stack                         ║ */}
+                  {/* ╚══════════════════════════════════════════════╝ */}
+                  <div
+                    className="logbook-step-content"
+                    style={{
+                      display: activeStep === 1 && !isOnLeave ? "block" : "none",
+                    }}
+                  >
+                    <div style={{ textAlign: "center", marginBottom: 24 }}>
+                      <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>
+                        What's your focus area?
+                      </h2>
+                      <p style={{ color: "#6b7280", fontSize: 14 }}>
+                        Select the technology stack you worked on
+                      </p>
+                    </div>
+
+                    <label style={{ display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 12 }}>
+                      <FiMonitor style={{ marginRight: 8, color: palette.light }} />
+                      Task Stack <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                    </label>
+
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                      gap: 10,
+                      marginBottom: 20,
+                    }}>
+                      {stackOptions.map((opt) => {
+                        const isSelected = formData.stack === opt.value;
+                        return (
+                          <label
+                            key={opt.value}
+                            className="logbook-stack-card"
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 10,
+                              padding: "12px 14px",
+                              borderRadius: 12,
+                              border: isSelected
+                                ? `2px solid ${palette.light}`
+                                : "2px solid #e5e7eb",
+                              background: isSelected ? palette.softBg : "#fafafa",
+                              cursor: areFieldsDisabled ? "not-allowed" : "pointer",
+                              transition: "all 0.25s ease",
+                              opacity: areFieldsDisabled ? 0.5 : 1,
+                            }}
+                          >
+                            <input
+                              type="radio"
+                              name="stack"
+                              value={opt.value}
+                              checked={isSelected}
+                              onChange={handleChange}
+                              disabled={areFieldsDisabled}
+                              style={{ position: "absolute", opacity: 0 }}
+                            />
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: 8,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              background: isSelected ? palette.gradient : "#e5e7eb",
+                              color: isSelected ? "white" : "#9ca3af",
+                              transition: "all 0.25s ease",
+                              flexShrink: 0,
+                            }}>
+                              {React.cloneElement(opt.icon, { size: 16 })}
+                            </div>
+                            <span style={{
+                              fontSize: 13,
+                              fontWeight: isSelected ? 600 : 500,
+                              color: isSelected ? palette.primary : "#4b5563",
+                              transition: "color 0.2s ease",
+                            }}>
+                              {opt.label}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+
+                    {/* Nav buttons */}
+                    <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={goPrev}
+                        className="logbook-back-btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "10px 24px",
+                          borderRadius: 12,
+                          border: `1.5px solid #e0e0e0`,
+                          background: "white",
+                          color: "#6b7280",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                      >
+                        <FiArrowLeft style={{ marginRight: 8 }} />
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={goNext}
+                        disabled={!formData.stack}
+                        className="logbook-next-btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "10px 28px",
+                          borderRadius: 12,
+                          border: "none",
+                          background: formData.stack ? palette.gradient : "#d1d5db",
+                          color: "white",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: formData.stack ? "pointer" : "not-allowed",
+                          transition: "all 0.3s ease",
+                          boxShadow: formData.stack ? `0 4px 14px ${palette.bg}` : "none",
+                        }}
+                      >
+                        Next
+                        <FiArrowRight style={{ marginLeft: 8 }} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ╔══════════════════════════════════════════════╗ */}
+                  {/* ║  STEP 2 — The Three Fields (or Leave msg)    ║ */}
+                  {/* ╚══════════════════════════════════════════════╝ */}
+                  <div
+                    className="logbook-step-content"
+                    style={{
+                      display: activeStep === 2 ? "block" : "none",
+                    }}
+                  >
+                    {isOnLeave ? (
+                      /* Leave mode */
+                      <div style={{ textAlign: "center", padding: "24px 0" }}>
+                        <div style={{
+                          width: 64,
+                          height: 64,
+                          borderRadius: "50%",
+                          background: palette.gradient,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto 16px",
+                        }}>
+                          <FiUmbrella size={28} color="white" />
+                        </div>
+                        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>
+                          Taking a Day Off
+                        </h2>
+                        <div style={{
+                          background: palette.softBg,
+                          padding: "14px 20px",
+                          borderRadius: 12,
+                          border: `1px solid ${palette.border}`,
+                          maxWidth: 400,
+                          margin: "16px auto",
+                        }}>
+                          <p style={{ color: palette.text, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                            <FiInfo />
+                            No further details needed for leave days.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      /* ── Working / WFH mode — all three fields ── */
+                      <>
+                        <div style={{ textAlign: "center", marginBottom: 20 }}>
+                          <h2 style={{ fontSize: 22, fontWeight: 700, color: "#1a1a2e", marginBottom: 6 }}>
+                            Log your daily impact
+                          </h2>
+                          <p style={{ color: "#6b7280", fontSize: 14 }}>
+                            Complete your daily work summary
+                          </p>
+                        </div>
+
+                        {/* ── Tasks Completed ── */}
+                        <div style={{ marginBottom: 20 }}>
+                          <label style={{ display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+                            <FiCheckCircle style={{ marginRight: 8, color: palette.light }} />
+                            Tasks Completed <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                          </label>
+                          <textarea
+                            name="tasks"
+                            value={formData.tasks}
+                            onChange={handleChange}
+                            required
+                            disabled={areFieldsDisabled}
+                            rows={4}
+                            placeholder="What did you accomplish today? Be specific..."
+                            className="logbook-textarea"
+                            style={{
+                              width: "100%",
+                              padding: "12px 16px",
+                              border: `1.5px solid ${formData.tasks.trim() ? palette.border : "#e0e0e0"}`,
+                              borderRadius: 14,
+                              fontSize: 14,
+                              resize: "vertical",
+                              outline: "none",
+                              transition: "all 0.3s ease",
+                              background: areFieldsDisabled ? "#f5f5f5" : "#fafafa",
+                              color: "#1a1a2e",
+                              fontFamily: "inherit",
+                              lineHeight: 1.6,
+                            }}
+                          />
+                          <EntryFeedbackIndicator
+                            text={formData.tasks}
+                            forcedResult={validationResults.tasks}
+                          />
+                        </div>
+
+                        {/* ── Challenges Faced ── */}
+                        <div style={{ marginBottom: 20 }}>
+                          <label style={{ display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+                            <FiAlertTriangle style={{ marginRight: 8, color: palette.light }} />
+                            Challenges Faced <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                          </label>
+                          <textarea
+                            name="challenges"
+                            value={formData.challenges}
+                            onChange={handleChange}
+                            required
+                            disabled={areFieldsDisabled}
+                            rows={3}
+                            placeholder="Any obstacles or difficulties you encountered..."
+                            className="logbook-textarea"
+                            style={{
+                              width: "100%",
+                              padding: "12px 16px",
+                              border: `1.5px solid ${formData.challenges.trim() ? palette.border : "#e0e0e0"}`,
+                              borderRadius: 14,
+                              fontSize: 14,
+                              resize: "vertical",
+                              outline: "none",
+                              transition: "all 0.3s ease",
+                              background: areFieldsDisabled ? "#f5f5f5" : "#fafafa",
+                              color: "#1a1a2e",
+                              fontFamily: "inherit",
+                              lineHeight: 1.6,
+                            }}
+                          />
+                          <EntryFeedbackIndicator
+                            text={formData.challenges}
+                            forcedResult={validationResults.challenges}
+                          />
+                        </div>
+
+                        {/* ── Plans for Tomorrow ── */}
+                        <div style={{ marginBottom: 20 }}>
+                          <label style={{ display: "flex", alignItems: "center", fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 8 }}>
+                            <FiTarget style={{ marginRight: 8, color: palette.light }} />
+                            Plans for Tomorrow <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>
+                          </label>
+                          <textarea
+                            name="plans"
+                            value={formData.plans}
+                            onChange={handleChange}
+                            required
+                            disabled={areFieldsDisabled}
+                            rows={3}
+                            placeholder="What will you focus on tomorrow?"
+                            className="logbook-textarea"
+                            style={{
+                              width: "100%",
+                              padding: "12px 16px",
+                              border: `1.5px solid ${formData.plans.trim() ? palette.border : "#e0e0e0"}`,
+                              borderRadius: 14,
+                              fontSize: 14,
+                              resize: "vertical",
+                              outline: "none",
+                              transition: "all 0.3s ease",
+                              background: areFieldsDisabled ? "#f5f5f5" : "#fafafa",
+                              color: "#1a1a2e",
+                              fontFamily: "inherit",
+                              lineHeight: 1.6,
+                            }}
+                          />
+                          <EntryFeedbackIndicator
+                            text={formData.plans}
+                            forcedResult={validationResults.plans}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* ── Status / error messages ── */}
+                    {statusMessage && (
+                      <div
+                        className="logbook-fade-in"
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: 12,
+                          padding: "14px 16px",
+                          borderRadius: 14,
+                          borderLeft: `4px solid ${statusMessage.type === "success"
+                              ? "#50b748"
+                              : statusMessage.type === "project_error"
+                                ? "#f59e0b"
+                                : "#ef4444"
+                            }`,
+                          background:
+                            statusMessage.type === "success"
+                              ? "#f0fdf4"
+                              : statusMessage.type === "project_error"
+                                ? "#fffbeb"
+                                : "#fef2f2",
+                          marginBottom: 16,
+                        }}
+                      >
+                        {statusMessage.type === "success" ? (
+                          <FiCheckCircle style={{ color: "#50b748", marginTop: 2, flexShrink: 0 }} />
+                        ) : statusMessage.type === "project_error" ? (
+                          <FiAlertTriangle style={{ color: "#f59e0b", marginTop: 2, flexShrink: 0 }} />
+                        ) : (
+                          <FiAlertCircle style={{ color: "#ef4444", marginTop: 2, flexShrink: 0 }} />
+                        )}
+
+                        <div style={{ flex: 1 }}>
+                          {statusMessage.type === "project_error" ? (
+                            <>
+                              <p style={{ fontWeight: 600, color: "#92400e", marginBottom: 4, fontSize: 14 }}>
+                                Team Assignment Required
+                              </p>
+                              <p style={{ fontSize: 13, color: "#a16207", marginBottom: 12 }}>
+                                {statusMessage.text}
+                              </p>
+                              <p style={{ fontSize: 13, color: "#a16207", marginBottom: 8 }}>
+                                To submit logbook entries, you must first join
+                                a project team on{" "}
+                                <a
+                                  href="https://talenttrail.slt.lk"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ fontWeight: 600, textDecoration: "underline" }}
+                                >
+                                  talenttrail.slt.lk
+                                </a>
+                                . Follow these steps:
+                              </p>
+                              <ol style={{ fontSize: 13, color: "#a16207", listStyleType: "decimal", paddingLeft: 20, marginBottom: 12 }}>
+                                <li style={{ marginBottom: 6 }}>
+                                  Go to{" "}
+                                  <a
+                                    href="https://talenttrail.slt.lk"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{ fontWeight: 500, textDecoration: "underline" }}
+                                  >
+                                    talenttrail.slt.lk
+                                  </a>{" "}
+                                  and log in with your credentials
+                                </li>
+                                <li style={{ marginBottom: 6 }}>
+                                  Browse the available projects and find the
+                                  project that you are assigned to.
+                                </li>
+                                <li style={{ marginBottom: 6 }}>
+                                  Select the project and send a request to
+                                  join the team
+                                </li>
+                                <li style={{ marginBottom: 6 }}>
+                                  Wait for the admin to approve your request
+                                </li>
+                                <li>
+                                  Once approved, return here and try
+                                  submitting your logbook again
+                                </li>
+                              </ol>
+                              <p style={{
+                                fontSize: 11,
+                                color: "#b45309",
+                                borderTop: "1px solid #fde68a",
+                                paddingTop: 8,
+                                marginTop: 8,
+                              }}>
+                                Already joined a team? Team data is synced
+                                every 5 minutes — please wait a moment and
+                                refresh, or contact your administrator if the
+                                issue persists.
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <span style={{ fontWeight: 600, fontSize: 14, color: statusMessage.type === "success" ? "#166534" : "#991b1b" }}>
+                                {statusMessage.text}
+                              </span>
+                              {statusMessage.type === "success" && (
+                                <div style={{ color: "#15803d", fontSize: 11, marginTop: 4 }}>
+                                  Redirecting to records...
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── Nav & Submit buttons ── */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8 }}>
+                      <button
+                        type="button"
+                        onClick={goPrev}
+                        className="logbook-back-btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          padding: "10px 24px",
+                          borderRadius: 12,
+                          border: "1.5px solid #e0e0e0",
+                          background: "white",
+                          color: "#6b7280",
+                          fontWeight: 600,
+                          fontSize: 14,
+                          cursor: "pointer",
+                          transition: "all 0.3s ease",
+                        }}
+                      >
+                        <FiArrowLeft style={{ marginRight: 8 }} />
+                        Back
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitDisabled}
+                        className="logbook-submit-btn"
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "12px 32px",
+                          borderRadius: 14,
+                          border: "none",
+                          background: isSubmitDisabled
+                            ? projectAccessBlocked
+                              ? "#fbbf24"
+                              : "#d1d5db"
+                            : completionProgress === 100
+                              ? palette.gradient
+                              : palette.gradient,
+                          color: isSubmitDisabled && projectAccessBlocked ? "#92400e" : "white",
+                          fontWeight: 700,
+                          fontSize: 15,
+                          cursor: isSubmitDisabled ? "not-allowed" : "pointer",
+                          transition: "all 0.4s ease",
+                          boxShadow: isSubmitDisabled ? "none" : `0 6px 20px ${palette.bg}`,
+                          minWidth: 180,
+                        }}
+                      >
+                        {submitButtonContent()}
+                      </button>
+                    </div>
+
+                    {/* Hint text under button when blocked */}
+                    {projectAccessBlocked && (
+                      <p style={{ textAlign: "center", fontSize: 12, color: "#b45309", marginTop: 8 }}>
+                        You must be assigned to a project on{" "}
+                        <a
+                          href="https://talenttrail.slt.lk"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontWeight: 500, textDecoration: "underline" }}
+                        >
+                          talenttrail.slt.lk
+                        </a>{" "}
+                        before submitting.
+                      </p>
+                    )}
+                  </div>
+                </form>
+              </div>
+            </div>
+            )}
+
+            {/* ───── Info Cards (only when access is granted) ───── */}
+            {projectAccessBlocked === false && (
+            <div style={{ marginTop: 24 }} className="logbook-fade-in">
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Tips Card */}
+                <InfoCard
+                  icon={<FiInfo />}
+                  title="Tips for Better Logging"
+                  palette={palette}
+                >
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {[
+                      "Always keep a backup of your weekly logs",
+                      "Be specific about the tasks you completed",
+                      "Only submit descriptive and work-related entries",
+                      "Update daily to help you track your progress"
+                    ].map((tip, i) => (
+                      <li key={i} style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        padding: "6px 0",
+                        fontSize: 13,
+                        color: "#4b5563",
+                      }}>
+                        <span style={{ color: palette.light, flexShrink: 0, marginTop: 2 }}>•</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </InfoCard>
+
+                {/* Today's Summary Card */}
+                <InfoCard
+                  icon={<FiCalendar />}
+                  title="Today's Summary"
+                  palette={palette}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                    <SummaryRow
+                      label="Date"
+                      value={new Date().toLocaleDateString("en-US", {
                         weekday: "long",
                         year: "numeric",
                         month: "long",
                         day: "numeric",
                       })}
-                    </p>
-                    <p className="flex items-center">
-                      <span className="font-medium mr-2">Week:</span>
-                      Week {Math.ceil(new Date().getDate() / 7)} of{" "}
-                      {new Date().toLocaleString("default", { month: "long" })}
-                    </p>
-                    <p className="flex items-center">
-                      <span className="font-medium mr-2">Status:</span>
-                      {formData.status === "working" ? (
-                        <span className="text-green-600">Working</span>
-                      ) : formData.status === "wfh" ? (
-                        <span className="text-purple-600">Work From Home</span>
-                      ) : (
-                        <span className="text-blue-600">On Leave</span>
-                      )}
-                    </p>
+                    />
+                    <SummaryRow
+                      label="Week"
+                      value={`Week ${Math.ceil(new Date().getDate() / 7)} of ${new Date().toLocaleString("default", { month: "long" })}`}
+                    />
+                    <SummaryRow
+                      label="Status"
+                      value={
+                        <span style={{ color: palette.primary, fontWeight: 600 }}>
+                          {palette.label}
+                        </span>
+                      }
+                    />
                   </div>
-                </div>
+                </InfoCard>
               </div>
             </div>
+            )}
+
           </main>
         </div>
       </div>
     </>
   );
 };
+
+/* ════════════════════════════════════════════════════════════════════════════ */
+/*  Sub-Components                                                            */
+/* ════════════════════════════════════════════════════════════════════════════ */
+
+/** Static info card for sidebar info */
+const InfoCard = ({ icon, title, palette, children }) => {
+  return (
+    <div style={{
+      background: "white",
+      borderRadius: 16,
+      border: "1px solid #f0f0f0",
+      overflow: "hidden",
+      boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+    }}>
+      <div style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "14px 16px",
+        borderBottom: "1px solid #f0f0f0",
+      }}>
+        <div style={{
+          width: 32,
+          height: 32,
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: palette.softBg,
+          color: palette.light,
+          flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "#1a1a2e", flex: 1, textAlign: "left" }}>
+          {title}
+        </span>
+      </div>
+      <div style={{ padding: "14px 16px" }}>
+        {children}
+      </div>
+    </div>
+  );
+};
+
+/** Summary row */
+const SummaryRow = ({ label, value }) => (
+  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+    <span style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", minWidth: 60 }}>
+      {label}:
+    </span>
+    <span style={{ fontSize: 13, color: "#374151", flex: 1 }}>
+      {value}
+    </span>
+  </div>
+);
 
 export default Logbook;

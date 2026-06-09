@@ -34,7 +34,10 @@ Return ONLY valid JSON, no markdown.
 
 function normalizeFieldResult(raw) {
   if (!raw || typeof raw !== "object") {
-    return { valid: true, reason: "" };
+    // If Gemini didn't return a proper result for this field,
+    // default to INVALID (fail-closed) rather than silently passing.
+    console.warn("[LLM VALIDATOR] ⚠️  Malformed field result, defaulting to invalid:", raw);
+    return { valid: false, reason: "Could not verify this entry. Please try again." };
   }
   return {
     valid: raw.valid !== false,
@@ -70,7 +73,11 @@ async function validateWithGemini(text) {
     );
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  const requestOptions = {};
+  if (process.env.GEMINI_BASE_URL) {
+    requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+  }
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
     const prompt = `
 You are a lenient evaluator for a software engineering and IT internship logbook.
@@ -138,20 +145,66 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
     throw new Error("GEMINI_API_KEY is not set");
   }
 
-  console.log("\n[LLM VALIDATOR] Lenient batch validation with Gemini...");
+  console.log("\n[LLM VALIDATOR] ── Batch Validation Start ──");
+  console.log(`[LLM VALIDATOR] Fields to check: ${fieldsNeedingLlm.join(", ")}`);
+  console.log(`[LLM VALIDATOR] API key: ${apiKey.substring(0, 10)}...`);
+  console.log(`[LLM VALIDATOR] Model: ${MODEL_NAME}`);
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+  
+  const requestOptions = {};
+  if (process.env.GEMINI_BASE_URL) {
+    requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+  }
+  const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
   const prompt = LENIENT_BATCH_PROMPT(tasks, challenges, plans);
-  const response = await model.generateContent(prompt);
-  const responseText = response.response.text().trim();
-  const cleanJson = responseText
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```$/i, "");
 
-  const parsed = JSON.parse(cleanJson);
+  console.log(`[LLM VALIDATOR] Sending request to Gemini...`);
+  const startTime = Date.now();
+
+  // Race against a 20-second timeout so we fail fast when API is unreachable
+  const timeoutPromise = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error("Gemini batch validation timed out after 20 seconds")), 20000),
+  );
+
+  let response;
+  try {
+    const responsePromise = model.generateContent(prompt);
+    response = await Promise.race([responsePromise, timeoutPromise]);
+  } catch (apiError) {
+    const elapsed = Date.now() - startTime;
+    console.error(`[LLM VALIDATOR] ❌ Gemini API call failed after ${elapsed}ms`);
+    console.error(`[LLM VALIDATOR]   Error type: ${apiError.constructor.name}`);
+    console.error(`[LLM VALIDATOR]   Message: ${apiError.message}`);
+    if (apiError.status) console.error(`[LLM VALIDATOR]   HTTP Status: ${apiError.status}`);
+    throw apiError; // Re-throw so the controller returns 503
+  }
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[LLM VALIDATOR] ✅ Gemini responded in ${elapsed}ms`);
+
+  const responseText = response.response.text().trim();
+  console.log(`[LLM VALIDATOR] Raw response: ${responseText.substring(0, 300)}`);
+
+  let cleanJson = responseText;
+  const startIndex = cleanJson.indexOf('{');
+  const endIndex = cleanJson.lastIndexOf('}');
+  
+  if (startIndex !== -1 && endIndex !== -1 && endIndex >= startIndex) {
+    cleanJson = cleanJson.substring(startIndex, endIndex + 1);
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(cleanJson);
+  } catch (parseError) {
+    console.error(`[LLM VALIDATOR] ❌ Failed to parse Gemini response as JSON`);
+    console.error(`[LLM VALIDATOR]   Clean text: ${cleanJson}`);
+    throw new Error(`Gemini returned unparseable response: ${cleanJson.substring(0, 100)}`);
+  }
+
+  console.log(`[LLM VALIDATOR] Parsed result:`, JSON.stringify(parsed));
 
   for (const key of BATCH_FIELD_KEYS) {
     if (!values[key] || !values[key].trim()) {
@@ -161,6 +214,8 @@ async function validateBatchWithGemini(tasks, challenges, plans) {
     }
   }
 
+  console.log(`[LLM VALIDATOR] Final batch result:`, JSON.stringify(result));
+  console.log(`[LLM VALIDATOR] ── Batch Validation End ──\n`);
   return result;
 }
 
@@ -176,7 +231,11 @@ async function testGeminiConnection() {
 
   try {
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: MODEL_NAME });
+    const requestOptions = {};
+    if (process.env.GEMINI_BASE_URL) {
+      requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+    }
+    const model = genAI.getGenerativeModel({ model: MODEL_NAME }, requestOptions);
 
     // Race against a 15-second timeout
     const timeoutPromise = new Promise((_, reject) =>

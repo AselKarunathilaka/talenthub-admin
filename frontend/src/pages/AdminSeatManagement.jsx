@@ -26,12 +26,17 @@ import {
   seatBookingCsvUtils,
   seatNotificationUtils,
 } from "../api/adminSeatApi";
-import { leftSection, rightSection } from "./useSeatManagement";
+import { leftSection, rightSection, useMapScale } from "./useSeatManagement";
 
 const TOTAL_SEATS = 88;
 
 const AdminSeatManagement = () => {
   const navigate = useNavigate();
+  const mapViewportRef = React.useRef(null);
+  const MAP_WIDTH = 1450;
+  const MAP_HEIGHT = 910;
+  const [showLockManager, setShowLockManager] = useState(false);
+  const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, showLockManager);
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -47,13 +52,15 @@ const AdminSeatManagement = () => {
   const [lockedSeatDetailsBySeat, setLockedSeatDetailsBySeat] = useState({}); // { seatNum: { traineeId } }
   const [lockedSeatsCount, setLockedSeatsCount] = useState(0);
   const [lockLoading, setLockLoading] = useState(false);
-  const [showLockManager, setShowLockManager] = useState(false);
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
   const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
   const getTodayDate = () => {
     const today = new Date();
-    return today.toISOString().split("T")[0];
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
   const [selectedDate, setSelectedDate] = useState(getTodayDate());
@@ -657,29 +664,34 @@ const AdminSeatManagement = () => {
                       </div>
 
                       {/* Floor Plan Layout - Same as intern view */}
-                      <div className="bg-gray-100 rounded-2xl p-0 overflow-hidden flex items-center justify-center pt-0 pb-8 pr-8">
-                        <div
-                          className="relative mx-auto"
-                          style={{
-                            width: "100%",
-                            maxWidth: "1450px",
-                            height: "0",
-                            paddingBottom: "60%",
-                            minHeight: "400px",
-                          }}
-                        >
+                      <div 
+                        ref={mapViewportRef}
+                        className="bg-gray-100 rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar"
+                        style={{ height: "65vh", minHeight: "450px", maxHeight: "800px" }}
+                      >
+                        {ready && (
                           <div
-                            className="absolute inset-0"
+                            className="relative shrink-0 overflow-hidden"
                             style={{
-                              transform: "scale(0.8)",
-                              transformOrigin: "center center",
+                              width: `${MAP_WIDTH * scale}px`,
+                              height: `${MAP_HEIGHT * scale}px`,
                             }}
                           >
-                            {/* Entrance bar */}
                             <div
-                              className="absolute top-0 h-12 bg-gray-700 flex items-center"
-                              style={{ left: "-124px", width: "742px" }}
+                              className="absolute"
+                              style={{
+                                width: `${MAP_WIDTH}px`,
+                                height: `${MAP_HEIGHT}px`,
+                                transform: `scale(${scale})`,
+                                transformOrigin: '0 0',
+                              }}
                             >
+                              <div className="absolute inset-0" style={{ transform: 'translate(150px, 60px)' }}>
+                                {/* Entrance bar */}
+                                <div
+                                  className="absolute top-0 h-12 bg-gray-700 flex items-center shadow-lg rounded-2xl"
+                                  style={{ left: "-124px", width: "742px" }}
+                                >
                               <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
                                 Entrance
                               </div>
@@ -789,6 +801,8 @@ const AdminSeatManagement = () => {
                           </div>
                         </div>
                       </div>
+                    )}
+                  </div>
 
                       <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
                         <span>

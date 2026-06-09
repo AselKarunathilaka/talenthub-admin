@@ -33,17 +33,34 @@ import {
   FaChevronDown,
   FaQrcode,
   FaKey,
+  FaChevronRight,
+  FaTimes,
+  FaCamera,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import logo from "../assets/sltlogo.jpg";
 
-// Date formatting utilities
+/* ═══════════════════════════════════════════════════════════════
+   Brand Colors
+   ═══════════════════════════════════════════════════════════════ */
+const BRAND = {
+  primary: "#0056a2",
+  accent: "#00b4eb",
+  success: "#50b748",
+  primaryLight: "#e8f0fa",
+  accentLight: "#e0f5fc",
+  successLight: "#eaf7e9",
+  dangerLight: "#fef2f2",
+  danger: "#ef4444",
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   Date formatting utilities (unchanged)
+   ═══════════════════════════════════════════════════════════════ */
 const formatDateDisplay = (dateString) => {
   if (!dateString) return "N/A";
-
   try {
-    // Handle ISO date strings ( 2024-10-19T10:30:00.000Z)
     if (dateString.includes("T") || dateString.includes("Z")) {
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Invalid Date";
@@ -53,11 +70,8 @@ const formatDateDisplay = (dateString) => {
         day: "numeric",
       });
     }
-
-    // Handle YYYY-MM-DD format from backend
     if (dateString.includes("-") && dateString.split("-").length === 3) {
       const parts = dateString.split("-");
-      // Check if it's a simple YYYY-MM-DD (no time component)
       if (parts[2].length <= 2) {
         const [year, month, day] = parts.map(Number);
         const date = new Date(year, month - 1, day);
@@ -69,8 +83,6 @@ const formatDateDisplay = (dateString) => {
         });
       }
     }
-
-    // Fallback for other formats
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "Invalid Date";
     return date.toLocaleDateString("en-US", {
@@ -86,23 +98,17 @@ const formatDateDisplay = (dateString) => {
 
 const parseDateForComparison = (dateString) => {
   if (!dateString) return new Date(0);
-
   try {
-    // Handle ISO date strings (e.g., 2024-10-19T10:30:00.000Z)
     if (dateString.includes("T") || dateString.includes("Z")) {
       return new Date(dateString);
     }
-
-    // Handle YYYY-MM-DD format from backend
     if (dateString.includes("-") && dateString.split("-").length === 3) {
       const parts = dateString.split("-");
-      // Check if it's a simple YYYY-MM-DD (no time component)
       if (parts[2].length <= 2) {
         const [year, month, day] = parts.map(Number);
         return new Date(year, month - 1, day);
       }
     }
-
     return new Date(dateString);
   } catch (error) {
     console.error("Error parsing date for comparison:", dateString, error);
@@ -110,14 +116,13 @@ const parseDateForComparison = (dateString) => {
   }
 };
 
+/* ═══════════════════════════════════════════════════════════════
+   Component
+   ═══════════════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
-  // Toggle for showing date picker
+  /* ── State (unchanged) ── */
   const [showDateSelector, setShowDateSelector] = useState(false);
-  // Handler to show date selector
-  const handleShowDateSelector = () => {
-    setShowDateSelector(true);
-  };
-  // State for custom date range
+  const handleShowDateSelector = () => setShowDateSelector(true);
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const navigate = useNavigate();
@@ -133,21 +138,22 @@ const AdminDashboard = () => {
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [showExports, setShowExports] = useState(false);
-  const [activeExport, setActiveExport] = useState(null); // null | 'nonSub'
+  const [activeExport, setActiveExport] = useState(null);
 
-  // Fetch dashboard data
+  /* ── New UI state ── */
+  const [activeTab, setActiveTab] = useState("actions"); // "actions" | "exports" | "alerts"
+
+  /* ── Data fetching (unchanged) ── */
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
       if (!adminInfo.token) {
         setError("Admin authentication required");
         navigate("/admin-login");
         return;
       }
-
       const statsData = await adminApi.getDashboardStats();
       setDashboardStats(statsData);
       setInternReport([]);
@@ -155,7 +161,6 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error("Error in fetchData:", error);
       setError("Failed to load dashboard data. Please try again.");
-
       if (error.message.includes("403") || error.message.includes("401")) {
         localStorage.removeItem("adminInfo");
         navigate("/admin-login");
@@ -165,7 +170,6 @@ const AdminDashboard = () => {
     }
   }, [navigate]);
 
-  // Search for interns
   const searchInterns = useCallback(
     async (searchQuery) => {
       if (!searchQuery || searchQuery.trim().length < 2) {
@@ -187,7 +191,6 @@ const AdminDashboard = () => {
         }
         return;
       }
-
       try {
         setSearchLoading(true);
         const reportData = await adminApi.searchInterns(searchQuery.trim());
@@ -207,7 +210,6 @@ const AdminDashboard = () => {
     const timeoutId = setTimeout(() => {
       searchInterns(searchTerm);
     }, 500);
-
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchInterns]);
 
@@ -224,6 +226,7 @@ const AdminDashboard = () => {
     fetchData();
   }, [fetchData]);
 
+  /* ── Handlers (unchanged) ── */
   const handleSendNotifications = async () => {
     if (
       !dashboardStats?.overdueList ||
@@ -232,10 +235,8 @@ const AdminDashboard = () => {
       notificationUtils.showInfo("No overdue interns to notify");
       return;
     }
-
     try {
       setSendingNotifications(true);
-      // Send notifications to all overdue interns
       const notifications = dashboardStats.overdueList.map((intern) => ({
         id: intern._id,
         name: intern.traineeName,
@@ -264,7 +265,6 @@ const AdminDashboard = () => {
         notificationUtils.showInfo("No overdue interns to export.");
         return;
       }
-
       await csvUtils.downloadInternReport(
         dashboardStats.overdueList,
         "overdue_interns",
@@ -283,7 +283,6 @@ const AdminDashboard = () => {
   const handleExportSubmittedCSV = async () => {
     try {
       let submittedInterns = [];
-
       if (internReport && internReport.length > 0) {
         submittedInterns = internReport.filter(
           (intern) => !intern.isOverdue && intern.totalRecords > 0,
@@ -305,12 +304,10 @@ const AdminDashboard = () => {
           setSearchLoading(false);
         }
       }
-
       if (submittedInterns.length === 0) {
         notificationUtils.showInfo("No submitted interns found to export.");
         return;
       }
-
       await csvUtils.downloadInternReport(
         submittedInterns,
         "submitted_interns",
@@ -326,7 +323,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Download On Leave Excel
   const handleDownloadOnLeaveExcel = async () => {
     try {
       const blob = await adminApi.downloadOnLeaveExcel();
@@ -343,7 +339,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // Helper: sort interns by traineeId ascending (numeric-aware)
   const sortByTraineeId = (interns) =>
     [...interns].sort((a, b) =>
       (a.traineeId || "").localeCompare(b.traineeId || "", undefined, {
@@ -352,29 +347,22 @@ const AdminDashboard = () => {
       }),
     );
 
-  // Export weekly non-submissions for the last 5 working days from today
   const handleExportWeeklyNonSubmissionsWithinWeek = async () => {
     try {
       const weeklyNonSubmissionsData =
         await adminApi.getNonSubmissionsWithinAWeek();
-
-      // Sort the intern list by traineeId ascending before export
       weeklyNonSubmissionsData.nonSubmittedInterns = sortByTraineeId(
         weeklyNonSubmissionsData.nonSubmittedInterns,
       );
-
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
           "All interns have submitted records within the last 5 working days.",
         );
         return;
       }
-
-      // Format the start date for filename (5 working days back)
       const startDateStr =
         weeklyNonSubmissionsData.startDate ||
         new Date().toISOString().split("T")[0];
-
       await csvUtils.downloadInternReport(
         weeklyNonSubmissionsData,
         `weekly_non_submissions_from_${startDateStr}`,
@@ -397,14 +385,12 @@ const AdminDashboard = () => {
   const handleExportWeeklyNonSubmissionsCSV = async () => {
     try {
       let weeklyNonSubmissionsData;
-      // If both custom dates are set, use them
       if (customStartDate && customEndDate) {
         weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions({
           startDate: customStartDate,
           endDate: customEndDate,
         });
       } else {
-        // Fallback to default logic (current or previous week)
         const today = new Date();
         const isTuesday = today.getDay() === 2;
         if (isTuesday) {
@@ -414,25 +400,19 @@ const AdminDashboard = () => {
           weeklyNonSubmissionsData = await adminApi.getWeeklyNonSubmissions();
         }
       }
-
-      // Sort the intern list by traineeId ascending before export
       weeklyNonSubmissionsData.nonSubmittedInterns = sortByTraineeId(
         weeklyNonSubmissionsData.nonSubmittedInterns,
       );
-
       if (weeklyNonSubmissionsData.nonSubmittedInterns.length === 0) {
         notificationUtils.showInfo(
           "All interns have submitted records for the selected week.",
         );
         return;
       }
-
-      // Format the date for filename
       const weekStr =
         customStartDate && customEndDate
           ? `${customStartDate}_to_${customEndDate}`
           : new Date().toISOString().split("T")[0];
-
       await csvUtils.downloadInternReport(
         weeklyNonSubmissionsData,
         `weekly_non_submissions_${weekStr}`,
@@ -449,12 +429,9 @@ const AdminDashboard = () => {
     }
   };
 
+  /* ── Filtering & sorting (unchanged) ── */
   const getFilteredInterns = () => {
-    if (!internReport || internReport.length === 0) {
-      return [];
-    }
-
-    // Note: Backend already filtered by searchTerm, so we only apply filterStatus here
+    if (!internReport || internReport.length === 0) return [];
     const filtered = internReport
       .filter((intern) => {
         switch (filterStatus) {
@@ -465,7 +442,7 @@ const AdminDashboard = () => {
           case "overdue":
             return intern.isOverdue;
           default:
-            return true; // 'all' - no filtering
+            return true;
         }
       })
       .sort((a, b) => {
@@ -484,7 +461,6 @@ const AdminDashboard = () => {
             return 0;
         }
       });
-
     return filtered;
   };
 
@@ -493,21 +469,21 @@ const AdminDashboard = () => {
   const getStatusBadge = (intern) => {
     if (intern.isOverdue) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 border border-red-200">
+        <span className="admin-dash-badge admin-dash-badge--danger">
           <FaExclamationTriangle className="mr-1" />
           Overdue
         </span>
       );
     } else if (intern.totalRecords === 0) {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 border border-gray-200">
+        <span className="admin-dash-badge admin-dash-badge--neutral">
           <FaTimesCircle className="mr-1" />
           Not Submitted
         </span>
       );
     } else {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-600 border border-green-200">
+        <span className="admin-dash-badge admin-dash-badge--success">
           <FaCheckCircle className="mr-1" />
           Submitted
         </span>
@@ -515,30 +491,120 @@ const AdminDashboard = () => {
     }
   };
 
+  /* ── Quick-action items config ── */
+  const quickActions = [
+    {
+      label: "Daily Records",
+      icon: FaCalendarAlt,
+      route: "/admin/daily-records",
+      color: BRAND.success,
+    },
+    {
+      label: "Face Auth",
+      icon: FaCamera,
+      route: "/admin/face-attendance",
+      color: "#f59e0b",
+    },
+    {
+      label: "Attendance",
+      icon: FaCalendarCheck,
+      route: "/admin/intern-attendance",
+      color: "#6366f1",
+    },
+    {
+      label: "Leave Requests",
+      icon: FaRunning,
+      route: "/admin/leave-requests",
+      color: "#8b5cf6",
+    },
+    {
+      label: "Locations",
+      icon: FaMapMarkedAlt,
+      route: "/admin/intern-locations",
+      color: BRAND.primary,
+    },
+    {
+      label: "Announce",
+      icon: FaBullhorn,
+      route: "/admin/announcements",
+      color: BRAND.accent,
+    },
+    {
+      label: "Seat Layout",
+      icon: FaChair,
+      route: "/admin/seat-management",
+      color: "#ec4899",
+    },
+    {
+      label: "QR",
+      icon: FaQrcode,
+      route: "/admin/qr-management",
+      color: "#14b8a6",
+    },
+    {
+      label: "PIN",
+      icon: FaKey,
+      route: "/admin/pin-management",
+      color: BRAND.success,
+    },
+    {
+      label: "Terminated Interns",
+      icon: FaTimes,
+      route: "/admin/inactive-interns",
+      color: BRAND.danger,
+    },
+  ];
+
+  /* ── Tab definitions ── */
+  const tabs = [
+    { id: "actions", label: "Actions", icon: FaTasks },
+    { id: "exports", label: "Exports", icon: FaFileExport },
+    {
+      id: "alerts",
+      label: "Alerts",
+      icon: FaBell,
+      badge: dashboardStats?.overdueInterns || 0,
+    },
+  ];
+
+  /* ── Filter pill options ── */
+  const filterPills = [
+    { value: "all", label: "All" },
+    { value: "submitted", label: "Submitted" },
+    { value: "notsubmitted", label: "Not Submitted" },
+    { value: "overdue", label: "Overdue" },
+  ];
+
+  /* ══════════════════════════════════════════════════════════
+     Loading state
+     ══════════════════════════════════════════════════════════ */
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
-          />
-          <p className="text-gray-600 font-medium">Loading dashboard data...</p>
-        </div>
+      <div className="admin-dash-loader">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+          className="admin-dash-loader__spinner"
+        />
+        <p className="admin-dash-loader__text">Loading dashboard…</p>
       </div>
     );
   }
 
+  /* ══════════════════════════════════════════════════════════
+     Error state
+     ══════════════════════════════════════════════════════════ */
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
-          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
-          <p className="text-red-600 mb-6">{error}</p>
+      <div className="admin-dash-loader">
+        <div className="admin-dash-error-card">
+          <FaExclamationTriangle
+            style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }}
+          />
+          <p style={{ color: BRAND.danger, marginBottom: 20 }}>{error}</p>
           <button
             onClick={fetchData}
-            className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
+            className="admin-dash-btn admin-dash-btn--primary"
           >
             Retry
           </button>
@@ -547,972 +613,710 @@ const AdminDashboard = () => {
     );
   }
 
+  /* ══════════════════════════════════════════════════════════
+     Main render
+     ══════════════════════════════════════════════════════════ */
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Enhanced floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 20, 0],
-            rotate: [0, 5, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
-          animate={{
-            y: [0, 20, 0],
-            x: [0, -20, 0],
-            rotate: [0, -5, 0],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-        />
-        <motion.div
-          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 15, 0],
-            rotate: [0, 3, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-        <motion.div
-          className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
-          animate={{
-            y: [0, 25, 0],
-            x: [0, -15, 0],
-            rotate: [0, -3, 0],
-          }}
-          transition={{
-            duration: 17,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3,
-          }}
-        />
+    <div className="admin-dash-root">
+      {/* ── Ambient background ── */}
+      <div className="admin-dash-ambient">
+        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--1" />
+        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--2" />
+        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--3" />
       </div>
 
-      {/* Enhanced Top Navbar */}
+      {/* ══════════════ HEADER ══════════════ */}
       <motion.header
-        className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
-        initial={{ y: -100 }}
+        className="admin-dash-header"
+        initial={{ y: -80 }}
         animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
       >
-        <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-            <motion.div
-              className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-              onClick={() => {
-                localStorage.clear();
-                navigate("/admin-login");
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <motion.img
-                src={logo}
-                alt="SLT Logo"
-                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
-                whileHover={{ rotate: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              />
-              <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
-                  SLT Admin Portal
-                </span>
-                <span className="text-xs sm:text-sm text-gray-600 truncate">
-                  Dashboard
-                </span>
-              </div>
-            </motion.div>
-          </div>
-
-          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
-            <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
-              <motion.div
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center transition-all duration-300 group-hover:bg-gray-200 border border-gray-200 shadow-sm"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-              >
-                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </motion.div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">
-                  Administrator
-                </span>
-              </div>
+        <div className="admin-dash-header__inner">
+          {/* Left: Logo + title */}
+          <motion.div
+            className="admin-dash-header__brand"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              localStorage.clear();
+              navigate("/admin-login");
+            }}
+          >
+            <img
+              src={logo}
+              alt="SLT Logo"
+              className="admin-dash-header__logo"
+            />
+            <div className="admin-dash-header__titles">
+              <span className="admin-dash-header__title">TalentHub</span>
+              <span className="admin-dash-header__subtitle">Admin Portal</span>
             </div>
+          </motion.div>
 
+          {/* Right: User + Logout */}
+          <div className="admin-dash-header__actions">
+            <div className="admin-dash-header__user">
+              <div className="admin-dash-header__avatar">
+                <FaShieldAlt />
+              </div>
+              <span className="admin-dash-header__username">Admin</span>
+            </div>
             <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
+              whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
                 localStorage.removeItem("adminInfo");
                 navigate("/admin-login");
               }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
+              className="admin-dash-header__logout"
             >
-              <FaSignOutAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <FaSignOutAlt />
+              <span>Logout</span>
             </motion.button>
           </div>
         </div>
       </motion.header>
 
-      {/* Main Content */}
-      <div className="pt-[4.5rem] sm:pt-[5.5rem]">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
+      {/* ══════════════ MAIN CONTENT ══════════════ */}
+      <div className="admin-dash-content">
+        <main className="admin-dash-main">
+          <div className="admin-dash-container">
+            {/* ── Page title ── */}
             <motion.div
-              className="mb-4 md:mb-6"
+              className="admin-dash-page-title"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.35 }}
             >
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Intern Management
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
-                Monitor and manage intern logbook submissions
-              </p>
+              <h1>Intern Management</h1>
+              <p>Monitor and manage intern logbook submissions</p>
             </motion.div>
 
-            {/* Statistics Cards */}
+            {/* ══════════════ KPI STAT CARDS ══════════════ */}
             <motion.div
-              className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
+              className="admin-dash-stats"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15, duration: 0.4 }}
             >
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                whileHover={{ scale: 1.03 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                      Total Interns
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-gray-800">
-                      {dashboardStats?.totalInterns || 0}
-                    </p>
-                  </div>
-                  <FaUsers className="text-xl sm:text-2xl text-blue-500" />
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                whileHover={{ scale: 1.03 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                      Submitted Interns
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-green-600">
-                      {dashboardStats?.submittedInterns || 0}
-                    </p>
-                  </div>
-                  <FaCheckCircle className="text-xl sm:text-2xl text-green-500" />
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                whileHover={{ scale: 1.03 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                      Overdue Interns
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-red-600">
-                      {dashboardStats?.overdueInterns || 0}
-                    </p>
-                  </div>
-                  <FaExclamationTriangle className="text-xl sm:text-2xl text-red-500" />
-                </div>
-              </motion.div>
-
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                whileHover={{ scale: 1.03 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                      Total Records
-                    </p>
-                    <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                      {dashboardStats?.totalRecords || 0}
-                    </p>
-                  </div>
-                  <FaTasks className="text-xl sm:text-2xl text-purple-500" />
-                </div>
-              </motion.div>
-            </motion.div>
-
-            {/* Quick Actions Section */}
-            <motion.div
-              className="bg-white/80 backdrop-blur-sm p-5 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-5"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.3 }}
-            >
-              {/* ── Header ── */}
-              <p className="text-[10px] font-semibold tracking-[0.15em] uppercase text-gray-400 mb-4">
-                Quick Actions
-              </p>
-
-              {/* ── Primary 3 × 2 Grid ── */}
-              <div className="grid grid-cols-3 gap-2 mb-2.5">
-                {/* 1 · Daily Records */}
-                <motion.button
-                  onClick={() => navigate("/admin/daily-records")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100 group-hover:bg-emerald-200">
-                    <FaCalendarAlt className="h-3.5 w-3.5 text-emerald-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Daily Records
-                  </span>
-                </motion.button>
-
-                {/* 2 · Leave Requests */}
-                <motion.button
-                  onClick={() => navigate("/admin/leave-requests")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-purple-100">
-                    <FaRunning className="h-3.5 w-3.5 text-purple-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Leave Requests
-                  </span>
-                </motion.button>
-
-                {/* 3 · Overdue List */}
-                <motion.button
-                  onClick={() => setShowNotifications(!showNotifications)}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className={`flex flex-col items-center gap-2 py-4 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
-                    showNotifications
-                      ? "bg-amber-100 border-amber-300"
-                      : "bg-amber-50 hover:bg-amber-100 border-amber-100 hover:border-amber-200"
-                  }`}
+              {[
+                {
+                  label: "Total Interns",
+                  value: dashboardStats?.totalInterns || 0,
+                  icon: FaUsers,
+                  accent: BRAND.primary,
+                  bg: BRAND.primaryLight,
+                },
+                {
+                  label: "Submitted",
+                  value: dashboardStats?.submittedInterns || 0,
+                  icon: FaCheckCircle,
+                  accent: BRAND.success,
+                  bg: BRAND.successLight,
+                },
+                {
+                  label: "Overdue",
+                  value: dashboardStats?.overdueInterns || 0,
+                  icon: FaExclamationTriangle,
+                  accent: BRAND.danger,
+                  bg: BRAND.dangerLight,
+                },
+                {
+                  label: "Total Records",
+                  value: dashboardStats?.totalRecords || 0,
+                  icon: FaTasks,
+                  accent: BRAND.accent,
+                  bg: BRAND.accentLight,
+                },
+              ].map((stat, idx) => (
+                <motion.div
+                  key={stat.label}
+                  className="admin-dash-stat-card"
+                  style={{ borderLeftColor: stat.accent }}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + idx * 0.08, duration: 0.35 }}
+                  whileHover={{
+                    y: -3,
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
+                  }}
                 >
                   <div
-                    className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                      showNotifications ? "bg-amber-200" : "bg-amber-100"
-                    }`}
+                    className="admin-dash-stat-card__icon"
+                    style={{ background: stat.bg }}
                   >
-                    <FaClock className="h-3.5 w-3.5 text-amber-600" />
+                    <stat.icon style={{ color: stat.accent, fontSize: 18 }} />
                   </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    {showNotifications ? "Hide Overdue" : "Overdue List"}
-                  </span>
-                </motion.button>
+                  <div className="admin-dash-stat-card__text">
+                    <span
+                      className="admin-dash-stat-card__value"
+                      style={{ color: stat.accent }}
+                    >
+                      {stat.value}
+                    </span>
+                    <span className="admin-dash-stat-card__label">
+                      {stat.label}
+                    </span>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
 
-                {/* 4 · Seat Layout */}
-                <motion.button
-                  onClick={() => navigate("/admin/seat-management")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-pink-50 hover:bg-pink-100 border border-pink-100 hover:border-pink-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-pink-100">
-                    <FaChair className="h-3.5 w-3.5 text-pink-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Seat Layout
-                  </span>
-                </motion.button>
-
-                {/* 5 · Announce */}
-                <motion.button
-                  onClick={() => navigate("/admin/announcements")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-cyan-50 hover:bg-cyan-100 border border-cyan-100 hover:border-cyan-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-cyan-100">
-                    <FaBullhorn className="h-3.5 w-3.5 text-cyan-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Announce
-                  </span>
-                </motion.button>
-
-                {/* 6 · Intern Locations */}
-                <motion.button
-                  onClick={() => navigate("/admin/intern-locations")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-100 hover:border-blue-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-100">
-                    <FaMapMarkedAlt className="h-3.5 w-3.5 text-blue-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Intern Locations
-                  </span>
-                </motion.button>
-
-                {/* 7. Attendance Viewer */}
-                <motion.button
-                  onClick={() => navigate("/admin/intern-attendance")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 hover:border-indigo-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-100">
-                    <FaCalendarCheck className="h-3.5 w-3.5 text-indigo-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    Attendance
-                  </span>
-                </motion.button>
-
-                {/* 8. QR Generator */}
-                <motion.button
-                  onClick={() => navigate("/admin/qr-management")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-teal-50 hover:bg-teal-100 border border-teal-100 hover:border-teal-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-teal-100">
-                    <FaQrcode className="h-3.5 w-3.5 text-teal-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    QR Generator
-                  </span>
-                </motion.button>
-
-                {/* 9. PIN Generator */}
-                <motion.button
-                  onClick={() => navigate("/admin/pin-management")}
-                  whileHover={{ scale: 1.03, y: -1 }}
-                  whileTap={{ scale: 0.97 }}
-                  className="flex flex-col items-center gap-2 py-4 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
-                >
-                  <div className="w-8 h-8 flex items-center justify-center rounded-full bg-emerald-100">
-                    <FaKey className="h-3.5 w-3.5 text-emerald-600" />
-                  </div>
-                  <span className="text-[11px] font-medium text-gray-600 leading-tight text-center">
-                    PIN Generator
-                  </span>
-                </motion.button>
+            {/* ══════════════ COMMAND CENTER (Tabs) ══════════════ */}
+            <motion.div
+              className="admin-dash-command"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.35, duration: 0.35 }}
+            >
+              {/* Tab bar */}
+              <div className="admin-dash-tabs">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    className={`admin-dash-tab ${activeTab === tab.id ? "admin-dash-tab--active" : ""}`}
+                    onClick={() => setActiveTab(tab.id)}
+                  >
+                    <tab.icon className="admin-dash-tab__icon" />
+                    <span>{tab.label}</span>
+                    {tab.badge > 0 && (
+                      <span className="admin-dash-tab__badge">{tab.badge}</span>
+                    )}
+                  </button>
+                ))}
               </div>
 
-              {/* ── Thin Divider ── */}
-              <div className="h-px bg-gray-100 mb-2.5" />
+              {/* Tab panels */}
+              <div className="admin-dash-tab-panels">
+                <AnimatePresence mode="wait">
+                  {/* ── TAB: Actions ── */}
+                  {activeTab === "actions" && (
+                    <motion.div
+                      key="tab-actions"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="admin-dash-tab-panel"
+                    >
+                      <div className="admin-dash-actions-grid">
+                        {quickActions.map((action) => (
+                          <motion.button
+                            key={action.label}
+                            onClick={() => navigate(action.route)}
+                            whileHover={{ scale: 1.04, y: -2 }}
+                            whileTap={{ scale: 0.96 }}
+                            className="admin-dash-action-btn"
+                          >
+                            <div
+                              className="admin-dash-action-btn__icon"
+                              style={{
+                                background: `${action.color}14`,
+                                color: action.color,
+                              }}
+                            >
+                              <action.icon />
+                            </div>
+                            <span className="admin-dash-action-btn__label">
+                              {action.label}
+                            </span>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
 
-              {/* 7 · Exports — Collapsible Drawer */}
-              <motion.button
-                onClick={() => {
-                  setShowExports(!showExports);
-                  if (showExports) setActiveExport(null);
-                }}
-                whileHover={{ scale: 1.005 }}
-                whileTap={{ scale: 0.99 }}
-                className={`w-full flex flex-col items-center justify-center px-4 py-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
-                  showExports
-                    ? "bg-stone-100 border-stone-300"
-                    : "bg-stone-50 hover:bg-stone-100 border-stone-200 hover:border-stone-300"
-                }`}
-              >
-                <span className="text-xs font-semibold text-stone-600 tracking-wide">
-                  Exports
-                </span>
-                <motion.div
-                  animate={{ rotate: showExports ? 180 : 0 }}
-                  transition={{ duration: 0.22, ease: "easeInOut" }}
-                  className="mt-1"
-                >
-                  <FaChevronDown className="h-3 w-3 text-stone-400" />
-                </motion.div>
-              </motion.button>
+                  {/* ── TAB: Exports ── */}
+                  {activeTab === "exports" && (
+                    <motion.div
+                      key="tab-exports"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="admin-dash-tab-panel"
+                    >
+                      <div className="admin-dash-exports">
+                        {/* Quick export buttons */}
+                        <div className="admin-dash-exports__row">
+                          <motion.button
+                            onClick={handleExportSubmittedCSV}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="admin-dash-export-btn"
+                            style={{ borderColor: `${BRAND.success}40` }}
+                          >
+                            <FaRegFileExcel style={{ color: BRAND.success }} />
+                            <div>
+                              <strong>Submissions List</strong>
+                              <small>Export submitted interns CSV</small>
+                            </div>
+                            <FaChevronRight className="admin-dash-export-btn__arrow" />
+                          </motion.button>
 
-              {/* ── Exports Drawer ── */}
-              <AnimatePresence>
-                {showExports && (
-                  <motion.div
-                    key="exports-panel"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.25, ease: "easeInOut" }}
-                    className="overflow-hidden"
-                  >
-                    <div className="pt-2 space-y-2">
-                      {/* ── 3 Export Sub-buttons ── */}
-                      <div className="grid grid-cols-3 gap-2">
-                        {/* 7.1 · Submissions List */}
-                        <motion.button
-                          onClick={handleExportSubmittedCSV}
-                          whileHover={{ scale: 1.03, y: -1 }}
-                          whileTap={{ scale: 0.97 }}
-                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 hover:border-emerald-200 transition-colors duration-200 cursor-pointer"
-                        >
-                          <FaRegFileExcel className="h-4 w-4 text-emerald-600" />
-                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
-                            Submissions
+                          <motion.button
+                            onClick={handleDownloadOnLeaveExcel}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            className="admin-dash-export-btn"
+                            style={{ borderColor: "#8b5cf640" }}
+                          >
+                            <FaRegFileExcel style={{ color: "#8b5cf6" }} />
+                            <div>
+                              <strong>On-Leave List</strong>
+                              <small>Download on-leave Excel</small>
+                            </div>
+                            <FaChevronRight className="admin-dash-export-btn__arrow" />
+                          </motion.button>
+                        </div>
+
+                        {/* Non-submissions section */}
+                        <div className="admin-dash-exports__nonsub">
+                          <p className="admin-dash-exports__section-title">
+                            Non-Submissions Report
+                          </p>
+
+                          <motion.button
+                            onClick={handleExportWeeklyNonSubmissionsWithinWeek}
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            className="admin-dash-export-btn admin-dash-export-btn--highlight"
+                          >
+                            <FaFileExport style={{ color: BRAND.danger }} />
+                            <div>
+                              <strong>Current Week</strong>
+                              <small>Last 5 working days non-submissions</small>
+                            </div>
+                            <FaChevronRight className="admin-dash-export-btn__arrow" />
+                          </motion.button>
+
+                          {/* Custom date range */}
+                          <div className="admin-dash-exports__date-range">
+                            <div className="admin-dash-exports__dates">
+                              <div className="admin-dash-date-field">
+                                <label>From</label>
+                                <input
+                                  type="date"
+                                  value={customStartDate}
+                                  onChange={(e) =>
+                                    setCustomStartDate(e.target.value)
+                                  }
+                                />
+                              </div>
+                              <div className="admin-dash-date-field">
+                                <label>To</label>
+                                <input
+                                  type="date"
+                                  value={customEndDate}
+                                  onChange={(e) =>
+                                    setCustomEndDate(e.target.value)
+                                  }
+                                />
+                              </div>
+                            </div>
+                            <motion.button
+                              onClick={handleExportWeeklyNonSubmissionsCSV}
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.97 }}
+                              className="admin-dash-btn admin-dash-btn--danger"
+                            >
+                              <FaDownload style={{ marginRight: 6 }} />
+                              Download CSV
+                            </motion.button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* ── TAB: Alerts ── */}
+                  {activeTab === "alerts" && (
+                    <motion.div
+                      key="tab-alerts"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      className="admin-dash-tab-panel"
+                    >
+                      {/* Alerts header actions */}
+                      <div className="admin-dash-alerts-header">
+                        <h3>
+                          Overdue Interns
+                          <span className="admin-dash-alerts-header__count">
+                            {dashboardStats?.overdueList?.length || 0}
                           </span>
-                        </motion.button>
-
-                        {/* 7.2 · Non-Submissions */}
-                        <motion.button
-                          onClick={() =>
-                            setActiveExport(
-                              activeExport === "nonSub" ? null : "nonSub",
-                            )
-                          }
-                          whileHover={{ scale: 1.03, y: -1 }}
-                          whileTap={{ scale: 0.97 }}
-                          className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-colors duration-200 cursor-pointer ${
-                            activeExport === "nonSub"
-                              ? "bg-red-100 border-red-200"
-                              : "bg-red-50 hover:bg-red-100 border-red-100 hover:border-red-200"
-                          }`}
-                        >
-                          <FaDownload className="h-4 w-4 text-red-500" />
-                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
-                            Non-Submissions
-                          </span>
-                        </motion.button>
-
-                        {/* 7.3 · On-Leave List */}
-                        <motion.button
-                          onClick={handleDownloadOnLeaveExcel}
-                          whileHover={{ scale: 1.03, y: -1 }}
-                          whileTap={{ scale: 0.97 }}
-                          className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100 hover:border-purple-200 transition-colors duration-200 cursor-pointer"
-                        >
-                          <FaRegFileExcel className="h-4 w-4 text-purple-500" />
-                          <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
-                            On-Leave
-                          </span>
-                        </motion.button>
+                        </h3>
+                        <div className="admin-dash-alerts-header__actions">
+                          <motion.button
+                            onClick={handleExportOverdueCSV}
+                            disabled={!dashboardStats?.overdueList?.length}
+                            whileHover={{
+                              scale: !dashboardStats?.overdueList?.length
+                                ? 1
+                                : 1.03,
+                            }}
+                            whileTap={{
+                              scale: !dashboardStats?.overdueList?.length
+                                ? 1
+                                : 0.97,
+                            }}
+                            className="admin-dash-btn admin-dash-btn--warning"
+                          >
+                            <FaFileExport style={{ marginRight: 6 }} />
+                            Export List
+                          </motion.button>
+                          <motion.button
+                            onClick={handleSendNotifications}
+                            disabled={
+                              sendingNotifications ||
+                              !dashboardStats?.overdueList?.length
+                            }
+                            whileHover={{
+                              scale:
+                                sendingNotifications ||
+                                !dashboardStats?.overdueList?.length
+                                  ? 1
+                                  : 1.03,
+                            }}
+                            whileTap={{
+                              scale:
+                                sendingNotifications ||
+                                !dashboardStats?.overdueList?.length
+                                  ? 1
+                                  : 0.97,
+                            }}
+                            className="admin-dash-btn admin-dash-btn--danger"
+                          >
+                            {sendingNotifications ? (
+                              <FaSpinner
+                                className="animate-spin"
+                                style={{ marginRight: 6 }}
+                              />
+                            ) : (
+                              <FaRegPaperPlane style={{ marginRight: 6 }} />
+                            )}
+                            Remind All
+                          </motion.button>
+                        </div>
                       </div>
 
-                      {/* ── Non-Submissions Expanded Panel (7.2 + 7.2.1) ── */}
-                      <AnimatePresence>
-                        {activeExport === "nonSub" && (
-                          <motion.div
-                            key="nonsub-panel"
-                            initial={{ opacity: 0, y: -10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="overflow-hidden"
-                          >
-                            <div className="bg-white border border-slate-100 rounded-2xl shadow-sm p-6 space-y-6">
-                              {/* Section 1: Quick Action */}
-                              <div className="space-y-3">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
-                                  Quick Export
-                                </label>
-                                <motion.button
-                                  onClick={
-                                    handleExportWeeklyNonSubmissionsWithinWeek
-                                  }
-                                  whileHover={{
-                                    backgroundColor: "rgba(254, 242, 242, 1)",
+                      {/* Overdue list */}
+                      {dashboardStats?.overdueList?.length > 0 ? (
+                        <div className="admin-dash-overdue-list">
+                          {dashboardStats.overdueList.map((intern) => (
+                            <motion.div
+                              key={intern._id}
+                              className="admin-dash-overdue-item"
+                              transition={{ duration: 0.15 }}
+                            >
+                              <div className="admin-dash-overdue-item__info">
+                                <p className="admin-dash-overdue-item__name">
+                                  {intern.traineeName}
+                                </p>
+                                <p className="admin-dash-overdue-item__meta">
+                                  {intern.traineeId} · {intern.email}
+                                </p>
+                              </div>
+                              <div className="admin-dash-overdue-item__date">
+                                <FaClock
+                                  style={{
+                                    fontSize: 11,
+                                    marginRight: 4,
+                                    opacity: 0.6,
                                   }}
-                                  whileTap={{ scale: 0.99 }}
-                                  className="w-full flex items-center justify-between py-3 px-4 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 text-sm font-medium transition-all duration-200 cursor-pointer group"
-                                >
-                                  <span className="group-hover:text-red-600 transition-colors">
-                                    Current Week Non-Submissions
-                                  </span>
-                                  <FaFileExport className="h-4 w-4 text-slate-400 group-hover:text-red-500" />
-                                </motion.button>
+                                />
+                                {intern.lastSubmission
+                                  ? formatDateDisplay(intern.lastSubmission)
+                                  : "Never submitted"}
                               </div>
-
-                              {/* Section 2: Custom Range */}
-                              <div className="space-y-3">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-1">
-                                  Custom Date Range
-                                </label>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div className="space-y-1">
-                                    <input
-                                      type="date"
-                                      value={customStartDate}
-                                      onChange={(e) =>
-                                        setCustomStartDate(e.target.value)
-                                      }
-                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
-                                    />
-                                  </div>
-                                  <div className="space-y-1">
-                                    <input
-                                      type="date"
-                                      value={customEndDate}
-                                      onChange={(e) =>
-                                        setCustomEndDate(e.target.value)
-                                      }
-                                      className="w-full bg-slate-50 border-none rounded-xl px-3 py-2.5 text-sm text-slate-600 focus:ring-2 focus:ring-red-100 transition-all outline-none"
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Action Button */}
-                              <motion.button
-                                onClick={handleExportWeeklyNonSubmissionsCSV}
-                                whileHover={{
-                                  scale: 1.01,
-                                  backgroundColor: "#ef4444",
-                                }}
-                                whileTap={{ scale: 0.98 }}
-                                className="w-full py-3 bg-red-500 text-white text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer shadow-md shadow-red-100"
-                              >
-                                Download CSV Report
-                              </motion.button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="admin-dash-empty admin-dash-empty--sm">
+                          <FaCheckCircle
+                            style={{
+                              fontSize: 28,
+                              color: BRAND.success,
+                              marginBottom: 8,
+                            }}
+                          />
+                          <p>No overdue interns — all caught up!</p>
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
 
-            {/* Notifications Panel */}
-            <AnimatePresence>
-              {showNotifications && (
-                <motion.div
-                  className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-                    <h3 className="text-base md:text-lg font-semibold text-gray-900">
-                      Overdue Interns (
-                      {dashboardStats?.overdueList?.length || 0})
-                    </h3>
-
-                    <div className="flex space-x-2">
-                      <motion.button
-                        onClick={handleExportOverdueCSV}
-                        disabled={!dashboardStats?.overdueList?.length}
-                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
-                        whileHover={{
-                          scale: !dashboardStats?.overdueList?.length
-                            ? 1
-                            : 1.03,
-                        }}
-                        whileTap={{
-                          scale: !dashboardStats?.overdueList?.length
-                            ? 1
-                            : 0.98,
-                        }}
-                      >
-                        <FaFileExport className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="truncate">Export Overdue List</span>
-                      </motion.button>
-
-                      <motion.button
-                        onClick={handleSendNotifications}
-                        disabled={
-                          sendingNotifications ||
-                          !dashboardStats?.overdueList?.length
-                        }
-                        className="group relative flex items-center justify-center px-3 py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-300 shadow-md hover:shadow-lg text-xs sm:text-sm font-medium min-w-[120px]"
-                        whileHover={{
-                          scale:
-                            sendingNotifications ||
-                            !dashboardStats?.overdueList?.length
-                              ? 1
-                              : 1.03,
-                        }}
-                        whileTap={{
-                          scale:
-                            sendingNotifications ||
-                            !dashboardStats?.overdueList?.length
-                              ? 1
-                              : 0.98,
-                        }}
-                      >
-                        {sendingNotifications ? (
-                          <FaSpinner className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                        ) : (
-                          <FaRegPaperPlane className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                        )}
-                        <span className="truncate">Remind All</span>
-                      </motion.button>
-                    </div>
-                  </div>
-
-                  {dashboardStats?.overdueList?.length > 0 ? (
-                    <div className="space-y-3">
-                      {dashboardStats.overdueList.map((intern) => (
-                        <motion.div
-                          key={intern._id}
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 bg-red-100 rounded-xl border border-red-200 gap-3 sm:gap-0"
-                          whileHover={{ scale: 1.01 }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm md:text-base">
-                              {intern.traineeName}
-                            </p>
-                            <p className="text-xs md:text-sm text-gray-600">
-                              ID: {intern.traineeId}
-                            </p>
-                            <p className="text-xs md:text-sm text-gray-600 truncate">
-                              {intern.email}
-                            </p>
-                          </div>
-                          <div className="text-left sm:text-right flex-shrink-0">
-                            <p className="text-xs md:text-sm text-red-600">
-                              Last:{" "}
-                              {intern.lastSubmission
-                                ? formatDateDisplay(intern.lastSubmission)
-                                : "Never"}
-                            </p>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 md:py-8 bg-gray-50 rounded-xl">
-                      <p className="text-gray-500 text-sm md:text-base">
-                        No overdue interns found.
-                      </p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Search and Filter Controls */}
+            {/* ══════════════ SEARCH & FILTER ══════════════ */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
+              className="admin-dash-search-section"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.3 }}
+              transition={{ delay: 0.45, duration: 0.3 }}
             >
-              <div className="flex flex-col space-y-3 md:space-y-4 xl:flex-row xl:space-y-0 xl:space-x-4">
-                {/* Search */}
-                <div className="flex-1">
-                  <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 md:h-4 md:w-4" />
-                    {searchLoading && (
-                      <FaSpinner className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-3 w-3 md:h-4 md:w-4 animate-spin" />
-                    )}
-                    <input
-                      type="text"
-                      placeholder="Search by name, trainee ID, or email (min 2 characters)..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-8 md:pl-10 pr-8 md:pr-10 py-2 md:py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 text-sm md:text-base shadow-sm"
-                    />
-                  </div>
-                  {searchTerm.length > 0 && searchTerm.length < 2 && (
-                    <p className="text-xs text-gray-500 mt-1">
-                      Type at least 2 characters to search
-                    </p>
-                  )}
+              {/* Search input */}
+              <div className="admin-dash-search-bar">
+                <FaSearch className="admin-dash-search-bar__icon" />
+                <input
+                  type="text"
+                  placeholder="Search by name, trainee ID, or email…"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="admin-dash-search-bar__input"
+                />
+                {searchLoading && (
+                  <FaSpinner className="admin-dash-search-bar__spinner animate-spin" />
+                )}
+              </div>
+              {searchTerm.length > 0 && searchTerm.length < 2 && (
+                <p className="admin-dash-search-hint">
+                  Type at least 2 characters to search
+                </p>
+              )}
+
+              {/* Filter pills + sort */}
+              <div className="admin-dash-filters">
+                <div className="admin-dash-filter-pills">
+                  {filterPills.map((pill) => (
+                    <button
+                      key={pill.value}
+                      className={`admin-dash-pill ${filterStatus === pill.value ? "admin-dash-pill--active" : ""}`}
+                      onClick={() => setFilterStatus(pill.value)}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
                 </div>
-
-                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3 xl:space-x-4">
-                  {/* Filter by Status */}
-                  <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-                    <FaFilter className="text-gray-500 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                    <select
-                      value={filterStatus}
-                      onChange={(e) => setFilterStatus(e.target.value)}
-                      className="px-2 md:px-3 py-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 text-sm md:text-base flex-1 sm:flex-none"
-                    >
-                      <option value="all">All Status</option>
-                      <option value="submitted">Submitted</option>
-                      <option value="notsubmitted">Not Submitted</option>
-                      <option value="overdue">Overdue</option>
-                    </select>
-                  </div>
-
-                  {/* Sort */}
-                  <div className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm">
-                    <FaSort className="text-gray-500 h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-2 md:px-3 py-1 bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 text-sm md:text-base flex-1 sm:flex-none"
-                    >
-                      <option value="name">Sort by Name</option>
-                      <option value="id">Sort by Trainee ID</option>
-                      <option value="records">Sort by Records Count</option>
-                      <option value="lastSubmitted">
-                        Sort by Last Submission
-                      </option>
-                    </select>
-                  </div>
+                <div className="admin-dash-sort">
+                  <FaSort style={{ color: "#9ca3af", flexShrink: 0 }} />
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="admin-dash-sort__select"
+                  >
+                    <option value="name">Name</option>
+                    <option value="id">Trainee ID</option>
+                    <option value="records">Records</option>
+                    <option value="lastSubmitted">Last Submitted</option>
+                  </select>
                 </div>
               </div>
             </motion.div>
 
-            {/* Interns Table */}
-            {/* Interns Table */}
+            {/* ══════════════ INTERN RESULTS ══════════════ */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="admin-dash-results"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.3 }}
+              transition={{ delay: 0.55, duration: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-                <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
+              {/* Results header */}
+              <div className="admin-dash-results__header">
+                <h2>
                   {!hasSearched && filterStatus === "all"
                     ? "Search for Interns"
-                    : `Search Results (${filteredInterns.length})`}
+                    : `Results (${filteredInterns.length})`}
                 </h2>
                 {!hasSearched && filterStatus === "all" && (
-                  <p className="text-xs md:text-sm text-gray-500 mt-1">
-                    Use the search bar above to find specific interns or select
-                    a filter option
-                  </p>
+                  <p>Use the search bar or filters above to find interns</p>
                 )}
               </div>
 
+              {/* Empty / Placeholder states */}
               {!hasSearched && filterStatus === "all" ? (
-                <div className="text-center py-12 md:py-16 bg-gray-50 px-4">
-                  <FaSearch className="mx-auto h-8 w-8 md:h-12 md:w-12 text-gray-400 mb-4" />
-                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">
-                    Search for Interns
-                  </h3>
-                  <p className="text-gray-500 mb-4 text-sm md:text-base">
-                    Enter a name, trainee ID, or email to find specific interns
-                    and view their records.
+                <div className="admin-dash-empty">
+                  <div className="admin-dash-empty__icon-wrapper">
+                    <FaSearch style={{ fontSize: 28, color: BRAND.accent }} />
+                  </div>
+                  <h3>Find Interns Instantly</h3>
+                  <p>
+                    Type a name, trainee ID, or email above to search — or pick
+                    a filter to browse by status.
                   </p>
-                  <div className="bg-blue-100 border border-blue-200 rounded-xl p-3 md:p-4 max-w-md mx-auto">
-                    <p className="text-xs md:text-sm text-blue-700">
-                      💡 <strong>Tip:</strong> Type at least 2 characters to
-                      start searching or use the filter dropdown to see all
-                      interns by status
-                    </p>
+                  <div className="admin-dash-empty__tip">
+                    💡 <strong>Tip:</strong> Select "Overdue" filter to quickly
+                    see who needs attention.
                   </div>
                 </div>
               ) : filteredInterns.length === 0 ? (
-                <div className="text-center py-8 md:py-12 bg-gray-50 px-4">
-                  <FaUser className="mx-auto h-8 w-8 md:h-10 md:w-10 lg:h-12 lg:w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm md:text-base font-medium text-gray-700">
-                    No interns found
-                  </h3>
-                  <p className="mt-1 text-xs md:text-sm text-gray-500">
-                    Try adjusting your search terms or check the spelling.
-                  </p>
+                <div className="admin-dash-empty">
+                  <FaUser
+                    style={{ fontSize: 32, color: "#d1d5db", marginBottom: 8 }}
+                  />
+                  <h3>No interns found</h3>
+                  <p>Try adjusting your search or filters.</p>
                 </div>
               ) : (
                 <>
-                  {/* Mobile Card View */}
-                  <div className="block lg:hidden">
-                    <div className="divide-y divide-gray-200">
-                      {filteredInterns.map((intern) => (
-                        <motion.div
-                          key={intern._id}
-                          className="p-4 hover:bg-blue-50/60 transition-colors cursor-pointer"
-                          onClick={() =>
-                            navigate(`/admin/intern/${intern._id}`)
-                          }
-                          whileHover={{ y: -2 }}
-                          transition={{ duration: 0.1 }}
-                        >
-                          {/* Header with avatar and name */}
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex-shrink-0 h-8 w-8">
-                                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                  <FaUser className="text-blue-600 text-xs" />
-                                </div>
-                              </div>
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {intern.traineeName || "N/A"}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  ID: {intern.traineeId || "N/A"}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              {getStatusBadge(intern)}
-                            </div>
+                  {/* ── Mobile Card View ── */}
+                  <div className="admin-dash-cards-mobile">
+                    {filteredInterns.map((intern, idx) => (
+                      <motion.div
+                        key={intern._id}
+                        className={`admin-dash-intern-card ${
+                          intern.isOverdue
+                            ? "admin-dash-intern-card--danger"
+                            : intern.totalRecords > 0
+                              ? "admin-dash-intern-card--success"
+                              : "admin-dash-intern-card--neutral"
+                        }`}
+                        onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.03, duration: 0.25 }}
+                        whileHover={{ y: -2 }}
+                      >
+                        <div className="admin-dash-intern-card__top">
+                          <div className="admin-dash-intern-card__avatar">
+                            {(intern.traineeName || "?")[0].toUpperCase()}
                           </div>
+                          <div className="admin-dash-intern-card__identity">
+                            <span className="admin-dash-intern-card__name">
+                              {intern.traineeName || "N/A"}
+                            </span>
+                            <span className="admin-dash-intern-card__id">
+                              {intern.traineeId || "N/A"}
+                            </span>
+                          </div>
+                          {getStatusBadge(intern)}
+                        </div>
 
-                          {/* Contact info */}
-                          <div className="mb-3">
-                            <div className="text-xs text-gray-700 truncate">
-                              📧 {intern.email || "N/A"}
-                            </div>
-                            <div className="text-xs text-gray-500 truncate">
-                              🎯 {intern.fieldOfSpecialization || "N/A"}
-                            </div>
+                        <div className="admin-dash-intern-card__details">
+                          <div className="admin-dash-intern-card__detail">
+                            <span>📧</span>
+                            <span>{intern.email || "N/A"}</span>
                           </div>
+                          <div className="admin-dash-intern-card__detail">
+                            <span>🎯</span>
+                            <span>{intern.fieldOfSpecialization || "N/A"}</span>
+                          </div>
+                          <div className="admin-dash-intern-card__detail">
+                            <span>🗓️</span>
+                            <span>
+                              {intern.trainingStartDate
+                                ? formatDateDisplay(intern.trainingStartDate)
+                                : "N/A"}{" "}
+                              –{" "}
+                              {intern.trainingEndDate
+                                ? formatDateDisplay(intern.trainingEndDate)
+                                : "N/A"}
+                            </span>
+                          </div>
+                        </div>
 
-                          {/* Period */}
-                          <div className="mb-3 text-xs text-gray-600">
-                            🗓️ Period: {intern.trainingStartDate ? formatDateDisplay(intern.trainingStartDate) : "N/A"} - {intern.trainingEndDate ? formatDateDisplay(intern.trainingEndDate) : "N/A"}
-                          </div>
-
-                          {/* Stats */}
-                          <div className="flex justify-between items-center mb-3">
-                            <div className="text-xs text-gray-700">
-                              📊 {intern.totalRecords || 0} records
-                            </div>
-                          </div>
-
-                          {/* Last submission */}
-                          <div className="mb-1">
-                            <div className="text-xs text-gray-700">
-                              📅 Last:{" "}
-                              {intern.lastSubmission
-                                ? formatDateDisplay(intern.lastSubmission)
-                                : "Never"}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              ⏰{" "}
-                              {intern.daysSinceLastSubmission !== null &&
-                              intern.daysSinceLastSubmission !== undefined
-                                ? `${intern.daysSinceLastSubmission} days ago`
-                                : "No submissions"}
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
+                        <div className="admin-dash-intern-card__footer">
+                          <span>
+                            <strong>{intern.totalRecords || 0}</strong> records
+                          </span>
+                          <span>
+                            Last:{" "}
+                            {intern.lastSubmission
+                              ? formatDateDisplay(intern.lastSubmission)
+                              : "Never"}
+                          </span>
+                          {intern.daysSinceLastSubmission !== null &&
+                            intern.daysSinceLastSubmission !== undefined && (
+                              <span className="admin-dash-intern-card__days-ago">
+                                {intern.daysSinceLastSubmission}d ago
+                              </span>
+                            )}
+                        </div>
+                      </motion.div>
+                    ))}
                   </div>
 
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                  {/* ── Desktop Table View ── */}
+                  <div className="admin-dash-table-wrapper">
+                    <table className="admin-dash-table">
+                      <thead>
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[200px]">
-                            Intern Details
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                            Contact
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[180px]">
-                            Training Period
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">
-                            Records
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[140px]">
-                            Last Submission
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[100px]">
-                            Status
-                          </th>
+                          <th>Intern</th>
+                          <th>Contact</th>
+                          <th>Training Period</th>
+                          <th>Records</th>
+                          <th>Last Submission</th>
+                          <th>Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody>
                         {filteredInterns.map((intern) => (
                           <motion.tr
                             key={intern._id}
-                            className="hover:bg-blue-50/60 transition-colors cursor-pointer"
+                            className="admin-dash-table__row"
                             onClick={() =>
                               navigate(`/admin/intern/${intern._id}`)
                             }
-                            whileHover={{ y: -2 }}
-                            transition={{ duration: 0.1 }}
+                            whileHover={{
+                              backgroundColor: `${BRAND.accent}08`,
+                            }}
+                            transition={{ duration: 0.15 }}
                           >
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-10 w-10">
-                                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                    <FaUser className="text-blue-600" />
-                                  </div>
+                            <td>
+                              <div className="admin-dash-table__intern-cell">
+                                <div className="admin-dash-table__avatar">
+                                  {(intern.traineeName || "?")[0].toUpperCase()}
                                 </div>
-                                <div className="ml-4 flex-1">
-                                  <div className="text-sm font-medium text-gray-900 truncate max-w-[120px]">
+                                <div>
+                                  <div className="admin-dash-table__name">
                                     {intern.traineeName || "N/A"}
                                   </div>
-                                  <div className="text-sm text-gray-600 truncate">
-                                    ID: {intern.traineeId || "N/A"}
+                                  <div className="admin-dash-table__sub">
+                                    {intern.traineeId || "N/A"}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[180px]">
+                            <td>
                               <div
-                                className="text-sm text-gray-900 truncate max-w-[150px]"
+                                className="admin-dash-table__name"
                                 title={intern.email}
                               >
                                 {intern.email || "N/A"}
                               </div>
                               <div
-                                className="text-sm text-gray-600 truncate max-w-[150px]"
+                                className="admin-dash-table__sub"
                                 title={intern.fieldOfSpecialization}
                               >
                                 {intern.fieldOfSpecialization || "N/A"}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[180px]">
-                              <div className="text-sm text-gray-900">
-                                {intern.trainingStartDate ? formatDateDisplay(intern.trainingStartDate) : "N/A"}
+                            <td>
+                              <div className="admin-dash-table__name">
+                                {intern.trainingStartDate
+                                  ? formatDateDisplay(intern.trainingStartDate)
+                                  : "N/A"}
                               </div>
-                              <div className="text-sm text-gray-600">
-                                to {intern.trainingEndDate ? formatDateDisplay(intern.trainingEndDate) : "N/A"}
+                              <div className="admin-dash-table__sub">
+                                to{" "}
+                                {intern.trainingEndDate
+                                  ? formatDateDisplay(intern.trainingEndDate)
+                                  : "N/A"}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[120px]">
-                              <div className="text-sm font-medium text-gray-900">
-                                {intern.totalRecords || 0} records
-                              </div>
+                            <td>
+                              <span className="admin-dash-table__records-badge">
+                                {intern.totalRecords || 0}
+                              </span>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
-                              <div className="text-sm text-gray-900">
+                            <td>
+                              <div className="admin-dash-table__name">
                                 {intern.lastSubmission
                                   ? formatDateDisplay(intern.lastSubmission)
                                   : "Never"}
                               </div>
-                              <div className="text-sm text-gray-600">
+                              <div className="admin-dash-table__sub">
                                 {intern.daysSinceLastSubmission !== null &&
                                 intern.daysSinceLastSubmission !== undefined
                                   ? `${intern.daysSinceLastSubmission} days ago`
-                                  : "No submissions"}
+                                  : "—"}
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap min-w-[100px]">
-                              {getStatusBadge(intern)}
-                            </td>
+                            <td>{getStatusBadge(intern)}</td>
                           </motion.tr>
                         ))}
                       </tbody>

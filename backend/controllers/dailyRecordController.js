@@ -339,10 +339,16 @@ const validateBatchEntries = async (req, res) => {
     }
 
     const result = await validateBatchWithGemini(tasks, challenges, plans);
+    console.log("[BATCH VALIDATE] Gemini result:", JSON.stringify(result));
     return res.status(200).json(result);
   } catch (error) {
-    console.warn("Batch validation failed — failing open:", error.message);
-    return res.status(200).json(failOpenBatchResult());
+    console.error("[BATCH VALIDATE] ❌ Gemini validation failed:", error.message);
+    // Do NOT fail-open. Return 503 so the frontend blocks submission.
+    return res.status(503).json({
+      error: "AI validation is temporarily unavailable. Please try again in a moment.",
+      details: error.message,
+      stack: error.stack
+    });
   }
 };
 

@@ -62,14 +62,12 @@ const Navigation = ({ children }) => {
 
   // Hover colors for each nav item (different light colors per component)
   const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#50b748" },
-    { to: "/announcements", label: "Announcements", icon: <Megaphone className="h-5 w-5" />, hoverColor: "#f43f5e", badge: unreadCount },
-    { to: "/face-attendance", label: "Face Attendance", icon: <Camera className="h-5 w-5" />, hoverColor: "#f97316" },
-    { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" />, hoverColor: "#dfdf66ff" },
-    { to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
-    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#a78bfa" },
-    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#00b4eb" },
-    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
+    { to: "/attendance", label: "Attendance", icon: <FileText className="h-5 w-5" />, hoverColor: "#f9f116ff" },
+    //{ to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" />, hoverColor: "#14b8a6" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
+    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#a486fcff" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
   ];
 
   // Fetch trainee profile
@@ -208,6 +206,14 @@ const Navigation = ({ children }) => {
     navigate("/");
   };
 
+  const handleAnnouncementsToggle = () => {
+    if (location.pathname === "/announcements") {
+      navigate("/dashboard");
+    } else {
+      navigate("/announcements");
+    }
+  };
+
   const handleDownloadLeaveForm = () => {
     const link = document.createElement("a");
     link.href = leaveFormPdf;
@@ -237,68 +243,84 @@ const Navigation = ({ children }) => {
   return (
     <>
       {/* Mobile Top Bar */}
-      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-b from-[#006600] to-[#000066]">
+      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-r from-[#006600] to-[#000066]">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
             <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2">
-              <span className="text-xl font-extrabold">
-                <span className="text-[#00b4eb]">Talent</span>
-                <span className="text-[#50b748]">Hub</span>
-              </span>
+              <span className="text-xl font-extrabold text-white">TalentHub</span>
               <img src={logo} alt="SLT Logo" className="h-8 w-auto rounded-md border border-white/10" />
             </Link>
           </div>
 
-          <div className="flex items-center gap-3">
-            {unreadCount > 0 && (
-              <Link to="/announcements" className="relative">
-                <Megaphone className="h-5 w-5 text-white/80" />
-                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              </Link>
-            )}
-            {/* Clickable Avatar */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              {/* Announcement toggle button (from main) */}
+              <button 
+                onClick={handleAnnouncementsToggle} 
+                className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
+                aria-label="Toggle Announcements"
+              >
+                <Megaphone className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {/* Clickable Avatar (our profile picture feature) */}
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="h-8 w-8 rounded-full overflow-hidden border-2 border-white/30 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
+              >
+                <img
+                  src={profilePicUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium text-sm">
+                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
+                </div>
+              </button>
+            </div>
+
             <button
-              onClick={() => setIsProfileModalOpen(true)}
-              className="h-8 w-8 rounded-full overflow-hidden border-2 border-white/30 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
+                text-white hover:text-[#00b4eb] hover:bg-white/10 transition-all duration-200"
+              aria-expanded={isMobileMenuOpen}
             >
-              <img
-                src={profilePicUrl}
-                alt="Profile"
-                className="h-full w-full object-cover"
-                onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-              />
-              <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium text-sm">
-                {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
-              </div>
+              {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
-
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
-              text-white hover:text-[#00b4eb] hover:bg-white/10 transition-all duration-200"
-            aria-expanded={isMobileMenuOpen}
-          >
-            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
         </div>
       </header>
 
       {/* Desktop Top Bar */}
       <header
-        className={`hidden lg:flex items-center justify-between bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
+        className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
           transition-all duration-500 ease-out
           ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
         style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-[#00b4eb] to-[#50b748] bg-clip-text text-transparent">
-            {navLinks.find((link) => isActive(link.to))?.label || "Dashboard"}
+          <h2 className="text-2xl font-bold text-white">
+            {isActive("/announcements") ? "Announcements" : (navLinks.find((link) => isActive(link.to))?.label || "Dashboard")}
           </h2>
 
           <div className="flex items-center space-x-6">
+            <button 
+              onClick={handleAnnouncementsToggle} 
+              className={`relative p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white hover:text-[#00b4eb] hover:bg-white/10"}`}
+              aria-label="Toggle Announcements"
+            >
+              <Megaphone className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                  {unreadCount > 9 ? "9+" : unreadCount}
+                </span>
+              )}
+            </button>
             <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
               {/* Clickable Avatar for desktop */}
               <button
@@ -345,8 +367,7 @@ const Navigation = ({ children }) => {
               <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
             </Link>
             <span className="text-2xl font-extrabold tracking-tight">
-              <span className="text-[#00b4eb]">Talent</span>
-              <span className="text-[#50b748]">Hub</span>
+              <span className="text-[#ffffff]">TalentHub</span>
             </span>
           </div>
 
@@ -379,12 +400,12 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="flex-1 px-3 py-6 space-y-1.5 overflow-y-auto">
+          <nav className="px-3 py-6 flex-1 flex flex-col justify-evenly overflow-y-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3 rounded-xl mx-2 transition-all duration-200 group
+                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group
                   ${isActive(link.to)
                     ? "bg-white/10 shadow-lg backdrop-blur-sm border border-white/10"
                     : "text-white/70 hover:bg-white/5"
@@ -393,7 +414,7 @@ const Navigation = ({ children }) => {
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span
-                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[#00b4eb]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                 >
                   {link.icon}
                   {link.badge > 0 && (
@@ -408,7 +429,7 @@ const Navigation = ({ children }) => {
                   {link.label}
                 </span>
                 {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[#00b4eb] shadow-glow" />
+                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow" />
                 )}
               </Link>
             ))}
@@ -430,14 +451,6 @@ const Navigation = ({ children }) => {
             >
               <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
               <span className="text-sm font-medium">Guidelines Agreement</span>
-            </button>
-
-            <button
-              onClick={handleDownloadLeaveForm}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#50b748] transition-all duration-200 group"
-            >
-              <Download className="h-5 w-5 mr-3 group-hover:text-[#50b748]" />
-              <span className="text-sm font-medium">Leave Form</span>
             </button>
 
             <button

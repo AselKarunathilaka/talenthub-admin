@@ -38,6 +38,7 @@
     "passport-google-oauth20": "^2.0.0",
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
+    "uuid": "^14.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
