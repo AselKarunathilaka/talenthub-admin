@@ -1073,8 +1073,6 @@ const checkInternProjects = async (req, res) => {
 
 // =========================== PROFILE PICTURE MANAGEMENT ===========================
 
-const fs = require('fs');
-
 // Upload or update profile picture
 const uploadProfilePicture = async (req, res) => {
   try {
