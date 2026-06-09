@@ -28,7 +28,7 @@ router.get("/:year", async (req, res) => {
       "Holiday API Error:",
       error.response?.data || error.message
     );
-
+    // Error message
     res.status(500).json({
       error: "Failed to fetch holidays",
     });
