@@ -121,8 +121,10 @@ const verifyFaceAttendance = async (req, res) => {
       log: result.log,
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
+      checkedOut: result.checkedOut,
     });
   } catch (error) {
+    console.error("DEBUG CATCH ERROR:", error);
     const rawMessage = error.message || "";
     const isUserActionError =
       Boolean(error.locationRequired) ||
@@ -138,6 +140,7 @@ const verifyFaceAttendance = async (req, res) => {
           : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
+      alreadyMarked: Boolean(error.alreadyMarked),
     });
   }
 };
@@ -407,6 +410,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       log: result.log,
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
+      checkedOut: result.checkedOut,
     });
   } catch (error) {
     const rawMessage = error.message || "";
@@ -421,6 +425,47 @@ const scanInternFaceByAdmin = async (req, res) => {
       message: isUserActionError ? error.message : "Failed to verify face attendance.",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
+      alreadyMarked: Boolean(error.alreadyMarked),
+    });
+  }
+};
+
+const registerFaceProfileByAdmin = async (req, res) => {
+  try {
+    const { internId, descriptor, metadata = {} } = req.body;
+
+    if (!internId) {
+      return res.status(400).json({ message: "internId is required." });
+    }
+
+    let expectedInternId = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      expectedInternId = internId;
+    } else {
+      const internRecord = await Intern.findOne({ Trainee_ID: internId });
+      if (internRecord) expectedInternId = internRecord._id;
+      else return res.status(404).json({ message: "Intern not found." });
+    }
+
+    metadata.internId = expectedInternId;
+    metadata.adminId = req.user?.id;
+    metadata.enrolledByAdmin = true;
+
+    const result = await FaceAttendanceService.registerFaceProfile({
+      internId: expectedInternId,
+      descriptor,
+      source: metadata.source || "admin-browser-camera",
+      metadata,
+    });
+
+    return res.status(201).json({
+      message: "Face profile saved successfully by admin.",
+      profile: result.profile,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Failed to save face profile.",
+      error: error.message,
     });
   }
 };
@@ -437,4 +482,5 @@ module.exports = {
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
   scanInternFaceByAdmin,
+  registerFaceProfileByAdmin,
 };

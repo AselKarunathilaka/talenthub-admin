@@ -782,10 +782,12 @@ const Dashboard = () => {
                             {formattedDate}
                           </h4>
                           <div className="flex items-center gap-3 mt-1.5 text-xs">
-                            <span className="flex items-center text-gray-500 font-medium">
-                              <Clock className="h-3 w-3 mr-1" />{" "}
-                              {entry.time || "-"}
-                            </span>
+                            <div className="flex flex-col gap-1 text-gray-500 font-medium">
+                              <span className="flex items-center">
+                                <Clock className="h-3 w-3 mr-1 text-emerald-500" />{" "}
+                                {entry.time ? `${entry.time}` : "-"}
+                              </span>
+                            </div>
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
                             >
@@ -905,37 +907,7 @@ const Dashboard = () => {
               </motion.div>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => handleFilterByStatus("All")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "All"
-                    ? "bg-gray-800 text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleFilterByStatus("Present")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "Present"
-                    ? "text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-                style={
-                  filterStatus === "Present"
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                      }
-                    : {}
-                }
-              >
-                Present
-              </button>
-            </div>
+
 
             {/* Meeting History Accordion */}
             {filteredMeetingAttendance.length > 0 ? (

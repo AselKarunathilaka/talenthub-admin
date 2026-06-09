@@ -36,6 +36,7 @@ import {
   FaChevronRight,
   FaTimes,
   FaGraduationCap,
+  FaCamera,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -499,6 +500,12 @@ const AdminDashboard = () => {
       icon: FaCalendarAlt,
       route: "/admin/daily-records",
       color: BRAND.success,
+    },
+    {
+      label: "Face Auth",
+      icon: FaCamera,
+      route: "/admin/face-attendance",
+      color: "#f59e0b",
     },
     {
       label: "Attendance",

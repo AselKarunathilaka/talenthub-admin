@@ -49,6 +49,10 @@ const DailyRecordSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    checkOutTime: {
+      type: Date,
+      default: null,
+    },
     meetingAttendance: [
       {
         projectName: {

@@ -20,12 +20,13 @@ import {
   ScanLine,
   GraduationCap,
 } from "lucide-react";
-import logo from "../assets/talenthubwhitebg.jpeg";
+import logo from "../assets/talenthub.png";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
-import { FaRunning } from "react-icons/fa";
+import imageCompression from "browser-image-compression";
+import { toast } from "react-hot-toast";
 
 // Read-state helpers
 const READ_KEY = "readAnnouncementIds";
@@ -51,7 +52,15 @@ const Navigation = ({ children }) => {
   const [internName, setInternName] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Profile picture state
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [uploadingPic, setUploadingPic] = useState(false);
+  const [profilePicHash, setProfilePicHash] = useState(Date.now());
+
   const traineeId = localStorage.getItem("internId");
+  const profilePicUrl = traineeId
+    ? `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${traineeId}/profile-picture?t=${profilePicHash}`
+    : "";
 
 
 
@@ -125,6 +134,33 @@ const Navigation = ({ children }) => {
       setUnreadCount(0);
     }
   }, [location.pathname]);
+
+  // Profile picture upload handler
+  const handleProfilePicUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      setUploadingPic(true);
+      const options = { maxSizeMB: 0.02, maxWidthOrHeight: 150, useWebWorker: true };
+      const compressedFile = await imageCompression(file, options);
+      const formData = new FormData();
+      formData.append("image", compressedFile);
+      const token = getInternToken();
+      await axios.post(
+        `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${traineeId}/profile-picture`,
+        formData,
+        { headers: { "Content-Type": "multipart/form-data", Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Profile picture updated!");
+      setProfilePicHash(Date.now());
+      setIsProfileModalOpen(false);
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("Failed to upload profile picture");
+    } finally {
+      setUploadingPic(false);
+    }
+  };
 
   // Responsive & scroll handlers
   useEffect(() => {
@@ -223,6 +259,7 @@ const Navigation = ({ children }) => {
 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
+              {/* Announcement toggle button (from main) */}
               <button 
                 onClick={handleAnnouncementsToggle} 
                 className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
@@ -235,14 +272,21 @@ const Navigation = ({ children }) => {
                   </span>
                 )}
               </button>
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium text-sm shadow-md">
-                {internName
-                  ? internName
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                  : "U"}
-              </div>
+              {/* Clickable Avatar (our profile picture feature) */}
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="h-8 w-8 rounded-full overflow-hidden border-2 border-white/30 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
+              >
+                <img
+                  src={profilePicUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium text-sm">
+                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
+                </div>
+              </button>
             </div>
 
             <button
@@ -283,9 +327,21 @@ const Navigation = ({ children }) => {
               )}
             </button>
             <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
-              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center shadow-md">
-                <User className="h-5 w-5 text-white" />
-              </div>
+              {/* Clickable Avatar for desktop */}
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="h-9 w-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
+              >
+                <img
+                  src={profilePicUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+              </button>
               <div className="flex flex-col">
                 <span className="text-xs text-white/60">Welcome back,</span>
                 <span className="text-sm font-semibold text-white">{internName}</span>
@@ -323,12 +379,21 @@ const Navigation = ({ children }) => {
           {/* Mobile User Profile */}
           <div className="lg:hidden px-4 py-5 border-b border-white/10 bg-white/5 backdrop-blur-sm">
             <div className="flex items-center space-x-3">
-              <div className="h-10 w-10 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium shadow-md">
-                {internName
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")}
-              </div>
+              {/* Clickable Avatar for mobile sidebar */}
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="h-10 w-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none"
+              >
+                <img
+                  src={profilePicUrl}
+                  alt="Profile"
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
+                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
+                </div>
+              </button>
               <div className="flex flex-col">
                 <span className="text-xs text-white/60">Welcome,</span>
                 <span className="text-sm font-semibold text-white">{internName || "User"}</span>
@@ -408,6 +473,68 @@ const Navigation = ({ children }) => {
       {/* Spacers for fixed headers */}
       <div className="lg:hidden h-16" />
       <div className="hidden lg:block h-[5.5rem]" />
+
+      {/* Profile Picture Upload Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-gradient-to-b from-[#006600] to-[#000066] border border-white/10 rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex justify-between items-center mb-5">
+              <h3 className="text-lg font-bold text-white">Profile Picture</h3>
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center justify-center py-4">
+              {/* Preview ring */}
+              <div className="h-28 w-28 rounded-full overflow-hidden mb-4 border-4 border-[#00b4eb]/40 shadow-xl relative group cursor-pointer">
+                <img
+                  src={profilePicUrl}
+                  alt="Profile Preview"
+                  className="h-full w-full object-cover"
+                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                />
+                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
+                  <User className="h-12 w-12 text-white/60" />
+                </div>
+                {/* Hover overlay */}
+                <label className="absolute inset-0 bg-black/60 hidden group-hover:flex flex-col items-center justify-center cursor-pointer text-white">
+                  <Camera className="h-6 w-6 mb-1" />
+                  <span className="text-xs font-medium">Update</span>
+                  <input type="file" accept="image/*" className="hidden" onChange={handleProfilePicUpload} disabled={uploadingPic} />
+                </label>
+              </div>
+
+              <p className="text-sm font-semibold text-white mb-1">{internName}</p>
+              <p className="text-xs text-white/50 text-center mb-5">Hover the image above or click the button below to upload a new photo.</p>
+
+              <label
+                className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all ${
+                  uploadingPic
+                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                    : 'bg-[#00b4eb] hover:bg-[#0096c7] text-white cursor-pointer shadow-lg shadow-[#00b4eb]/20'
+                }`}
+              >
+                {uploadingPic ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Camera className="h-4 w-4" />
+                    Choose & Upload Photo
+                  </>
+                )}
+                <input type="file" accept="image/*" className="hidden" onChange={handleProfilePicUpload} disabled={uploadingPic} />
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
 
       {children}
     </>

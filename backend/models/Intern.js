@@ -20,6 +20,7 @@ const attendanceSchema = new mongoose.Schema({
     default: "manual",
   },
   timeMarked: { type: Date },
+  checkOutTime: { type: Date },
   qrCode: { type: String },
   projectName: { type: String },
   projectKey: { type: String },
@@ -62,6 +63,7 @@ const internSchema = new mongoose.Schema(
     agreementAcceptedDate: { type: Date },
     isTestAccount: { type: Boolean, default: false },
     password: { type: String, default: "" },
+    googlePictureUrl: { type: String, default: "" },
   },
   { timestamps: true },
 );
