@@ -144,7 +144,7 @@ const DailyRecords = () => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
 
-  //──Fetch Holidays──────────────────────────────────────────────
+  //──Fetch Holidays From Backend──────────────────────────────────────────────
   const fetchHolidays = useCallback(async () => {
   try {
     const year = currentMonth.getFullYear();
