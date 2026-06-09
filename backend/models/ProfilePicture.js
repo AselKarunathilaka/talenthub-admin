@@ -9,8 +9,8 @@ const profilePictureSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
-    imageBase64: {
-      type: String,
+    imageBuffer: {
+      type: Buffer,
       required: true,
     },
     contentType: {

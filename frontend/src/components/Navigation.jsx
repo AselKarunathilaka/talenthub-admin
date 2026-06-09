@@ -147,7 +147,7 @@ const Navigation = ({ children }) => {
     if (!file) return;
     try {
       setUploadingPic(true);
-      const options = { maxSizeMB: 0.1, maxWidthOrHeight: 250, useWebWorker: true };
+      const options = { maxSizeMB: 0.02, maxWidthOrHeight: 150, useWebWorker: true };
       const compressedFile = await imageCompression(file, options);
       const formData = new FormData();
       formData.append("image", compressedFile);

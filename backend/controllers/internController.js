@@ -1077,28 +1077,29 @@ const checkInternProjects = async (req, res) => {
 const uploadProfilePicture = async (req, res) => {
   try {
     const { id } = req.params;
-    let imageBase64 = null;
+    let imageBuffer = null;
     let contentType = "image/jpeg";
 
     if (req.file) {
-      imageBase64 = req.file.buffer.toString("base64");
+      imageBuffer = req.file.buffer;
       contentType = req.file.mimetype;
     } else if (req.body.imageBase64) {
-      imageBase64 = req.body.imageBase64;
-      if (imageBase64.includes("base64,")) {
-        const matches = imageBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      let base64Data = req.body.imageBase64;
+      if (base64Data.includes("base64,")) {
+        const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
         if (matches && matches.length === 3) {
           contentType = matches[1];
-          imageBase64 = matches[2];
+          base64Data = matches[2];
         }
       }
+      imageBuffer = Buffer.from(base64Data, "base64");
     } else {
       return res.status(400).json({ error: "No image file or base64 data provided" });
     }
 
     await ProfilePicture.findOneAndUpdate(
       { internId: id },
-      { internId: id, imageBase64, contentType },
+      { internId: id, imageBuffer, contentType },
       { upsert: true, new: true }
     );
 
@@ -1125,18 +1126,28 @@ const getProfilePicture = async (req, res) => {
       internId = intern._id;
     }
 
+    // 1. Check for custom upload first
     const profilePic = await ProfilePicture.findOne({ internId });
-    if (!profilePic || !profilePic.imageBase64) {
-      return res.status(404).json({ error: "Profile picture not found" });
+    if (profilePic && profilePic.imageBuffer) {
+      res.writeHead(200, {
+        "Content-Type": profilePic.contentType,
+        "Content-Length": profilePic.imageBuffer.length,
+        "Cache-Control": "public, max-age=86400",
+      });
+      return res.end(profilePic.imageBuffer);
     }
 
-    const imgBuffer = Buffer.from(profilePic.imageBase64, "base64");
-    res.writeHead(200, {
-      "Content-Type": profilePic.contentType,
-      "Content-Length": imgBuffer.length,
-      "Cache-Control": "public, max-age=86400",
-    });
-    res.end(imgBuffer);
+    // 2. Check for Google profile picture fallback
+    const mongoose = require("mongoose");
+    const Intern = mongoose.model("Intern");
+    const internDoc = await Intern.findById(internId);
+    if (internDoc && internDoc.googlePictureUrl) {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.redirect(302, internDoc.googlePictureUrl);
+    }
+
+    // 3. Fallback to 404
+    res.status(404).json({ error: "Profile picture not found" });
   } catch (error) {
     console.error("Error fetching profile picture:", error);
     res.status(500).json({ error: "Failed to fetch profile picture" });
