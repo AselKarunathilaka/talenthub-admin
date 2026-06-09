@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
 import toast from "react-hot-toast";
