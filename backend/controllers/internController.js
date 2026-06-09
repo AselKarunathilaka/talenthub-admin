@@ -1073,6 +1073,8 @@ const checkInternProjects = async (req, res) => {
 
 // =========================== PROFILE PICTURE MANAGEMENT ===========================
 
+const fs = require('fs');
+
 // Upload or update profile picture
 const uploadProfilePicture = async (req, res) => {
   try {
@@ -1081,8 +1083,13 @@ const uploadProfilePicture = async (req, res) => {
     let contentType = "image/jpeg";
 
     if (req.file) {
-      imageBuffer = req.file.buffer;
+      imageBuffer = fs.readFileSync(req.file.path);
       contentType = req.file.mimetype;
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch(err) {
+        console.error("Failed to delete temp file:", err);
+      }
     } else if (req.body.imageBase64) {
       let base64Data = req.body.imageBase64;
       if (base64Data.includes("base64,")) {
