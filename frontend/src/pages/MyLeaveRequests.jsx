@@ -56,9 +56,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
-  // Date filter — defaults to today
+  // Date filter — defaults to today for short leave, empty (all) for study leave
   const todayStr = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate, setSelectedDate] = useState(isStudyLeave ? "" : todayStr);
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -91,6 +91,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
         page: pagination.page,
         limit: pagination.limit,
         date: selectedDate,
+        requestType: requestType,
       };
 
       const response = await getMyLeaveRequests(params);
@@ -130,7 +131,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
 
   const handleFormSuccess = () => {
     setActiveTab("list");
-    setSelectedDate(todayStr);
+    setSelectedDate(isStudyLeave ? "" : todayStr);
     fetchLeaveRequests();
   };
 
@@ -204,6 +205,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   };
 
   const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return "All Dates";
     const date = new Date(dateStr + "T00:00:00");
     return date.toLocaleDateString("en-US", {
       weekday: "long",
@@ -271,7 +273,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                   <input 
                     type="date" 
                     value={selectedDate} 
-                    max={todayStr}
+                    max={isStudyLeave ? undefined : todayStr}
                     onChange={(e) => {
                       setSelectedDate(e.target.value);
                       setPagination((prev) => ({ ...prev, page: 1 }));
@@ -279,6 +281,20 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                     }} 
                     className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
                   />
+                  {selectedDate && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDate("");
+                        setPagination((prev) => ({ ...prev, page: 1 }));
+                        setActiveTab("list");
+                      }}
+                      className="ml-2 text-gray-400 hover:text-rose-500 transition-colors p-1"
+                      title="Clear date filter"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -294,7 +310,6 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                      toast.error(pageCopy.duplicate);
                      return;
                   }
-                  setSelectedDate(todayStr);
                   setActiveTab("new");
                 }} 
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${
@@ -352,7 +367,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                         <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
                           {isToday 
                             ? pageCopy.emptyToday 
-                            : `No requests found for ${formatDisplayDate(selectedDate)}.`}
+                            : selectedDate 
+                              ? `No requests found for ${formatDisplayDate(selectedDate)}.`
+                              : "No requests found."}
                         </p>
                         {isToday && (
                           <button 
@@ -365,7 +382,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                       </div>
                     ) : (
                       <>
-                        <h3 className="text-xl font-extrabold text-gray-800 tracking-tight mb-4 px-2">Requests for {formatDisplayDate(selectedDate)}</h3>
+                        <h3 className="text-xl font-extrabold text-gray-800 tracking-tight mb-4 px-2">
+                          {selectedDate ? `Requests for ${formatDisplayDate(selectedDate)}` : "All Requests"}
+                        </h3>
                         {leaveRequests.map((request) => (
                           <motion.div
                             layout
@@ -391,7 +410,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                 </div>
                                 <div>
                                   <h4 className="text-lg font-bold text-gray-900 leading-tight">
-                                    {request.leaveTime}
+                                    {isStudyLeave
+                                      ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
+                                      : request.leaveTime}
                                   </h4>
                                   <p className="text-sm font-medium text-gray-500 mt-0.5">
                                     {request.purpose} Purpose
