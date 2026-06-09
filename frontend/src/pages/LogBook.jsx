@@ -255,7 +255,7 @@ const Logbook = () => {
 
           const todayRecord = records.find(r => 
             r.status === "study_leave" && 
-            (r.date === dateStr || (r.createdAt && r.createdAt.startsWith(dateStr)))
+            r.date === dateStr
           );
 
           if (todayRecord) {
