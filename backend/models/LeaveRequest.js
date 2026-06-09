@@ -50,7 +50,7 @@ const leaveRequestSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["Personal", "Official", "Study"],
+      enum: ["Personal", "Official", "Study", "Academic Exams / Study"],
       required: true,
     },
     reason: {

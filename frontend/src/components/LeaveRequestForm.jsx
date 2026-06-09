@@ -16,7 +16,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
     studyEndDate: "",
     leaveTime: isStudyLeave ? "Full Day" : "",
     nationalId: "",
-    purpose: isStudyLeave ? "Study" : "Personal",
+    purpose: isStudyLeave ? "Academic Exams / Study" : "Personal",
     reason: "",
   });
 
@@ -149,7 +149,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
         studyEndDate: "",
         leaveTime: isStudyLeave ? "Full Day" : "",
         nationalId: "",
-        purpose: isStudyLeave ? "Study" : "Personal",
+        purpose: isStudyLeave ? "Academic Exams / Study" : "Personal",
         reason: "",
       });
 
@@ -303,7 +303,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               <input
                 type="text"
                 name="purpose"
-                value="Study"
+                value="Academic Exams / Study"
                 readOnly
                 className={`${inputClasses} appearance-none opacity-70 cursor-not-allowed pointer-events-none`}
               />

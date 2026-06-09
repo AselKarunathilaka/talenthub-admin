@@ -2,6 +2,8 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
+import FaceAttendance from "../pages/FaceAttendance";
+import ScanQRCode from "../pages/ScanQRCode";
 import Dashboard from "../pages/Dashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
@@ -41,6 +43,22 @@ const AppRoutes = () => {
         element={
           <AgreementGuard>
             <Attendance />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/face-attendance"
+        element={
+          <AgreementGuard>
+            <FaceAttendance />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/scan-qr"
+        element={
+          <AgreementGuard>
+            <ScanQRCode />
           </AgreementGuard>
         }
       />
