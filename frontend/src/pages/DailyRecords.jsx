@@ -602,13 +602,13 @@ useEffect(() => {
                         })}
                       </span>
                     </h3>
-
+                    
                     {getHolidayForDate(selectedDate) && (
                       <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                         <div className="font-semibold text-red-700">
                           {getHolidayForDate(selectedDate).name}
                         </div>
-
+                        
                         <div className="text-sm text-red-600">
                           {getHolidayForDate(selectedDate).type.join(", ")}
                         </div>
