@@ -785,14 +785,8 @@ const Dashboard = () => {
                             <div className="flex flex-col gap-1 text-gray-500 font-medium">
                               <span className="flex items-center">
                                 <Clock className="h-3 w-3 mr-1 text-emerald-500" />{" "}
-                                {entry.checkInTime ? `${entry.checkInTime} (In)` : "-"}
+                                {entry.time ? `${entry.time}` : "-"}
                               </span>
-                              {entry.checkOutTime && (
-                                <span className="flex items-center">
-                                  <Clock className="h-3 w-3 mr-1 text-amber-500" />{" "}
-                                  {`${entry.checkOutTime} (Out)`}
-                                </span>
-                              )}
                             </div>
                             <span
                               className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
@@ -1008,7 +1002,7 @@ const Dashboard = () => {
                                         <div className="flex items-center gap-3 mt-1.5 text-xs">
                                           <span className="flex items-center text-gray-500 font-medium">
                                             <Clock className="h-3 w-3 mr-1" />{" "}
-                                            {entry.checkInTime || "N/A"}
+                                            {entry.time || "N/A"}
                                           </span>
                                           <span
                                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}

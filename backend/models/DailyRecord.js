@@ -37,7 +37,7 @@ const DailyRecordSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["working", "leave", "wfh"],
+      enum: ["working", "leave", "wfh", "study_leave"],
       default: "working",
     },
     attendance: {

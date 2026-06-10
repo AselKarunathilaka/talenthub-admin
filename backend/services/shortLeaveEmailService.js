@@ -358,6 +358,7 @@ class ShortLeaveEmailService {
 
       // Query for leave requests submitted between 8:30 AM - 1:00 PM for TODAY's date
       const shortLeaveRequests = await LeaveRequest.find({
+        requestType: "short_leave",
         submittedAt: { $gte: startUTC, $lte: endUTC },
         leaveDate: { $gte: todayStart, $lte: todayEnd },
       }).populate("reviewedBy", "email");

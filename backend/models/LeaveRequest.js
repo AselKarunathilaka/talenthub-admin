@@ -29,10 +29,20 @@ const leaveRequestSchema = new mongoose.Schema(
           `${props.value} is not a valid Sri Lankan NIC number`,
       },
     },
+    requestType: {
+      type: String,
+      enum: ["short_leave", "study_leave"],
+      default: "short_leave",
+      index: true,
+    },
     leaveDate: {
       type: Date,
       required: true,
       trim: true,
+    },
+    studyEndDate: {
+      type: Date,
+      default: null,
     },
     leaveTime: {
       type: String,
@@ -40,7 +50,7 @@ const leaveRequestSchema = new mongoose.Schema(
     },
     purpose: {
       type: String,
-      enum: ["Personal", "Official"],
+      enum: ["Personal", "Official", "Study", "Academic Exams / Study"],
       required: true,
     },
     reason: {
@@ -116,6 +126,7 @@ leaveRequestSchema.methods.generatePassToken = function () {
 
 // Index for faster queries
 leaveRequestSchema.index({ intern: 1, status: 1 });
+leaveRequestSchema.index({ intern: 1, requestType: 1, leaveDate: 1 });
 leaveRequestSchema.index({ status: 1, submittedAt: -1 });
 leaveRequestSchema.index({ passToken: 1 });
 

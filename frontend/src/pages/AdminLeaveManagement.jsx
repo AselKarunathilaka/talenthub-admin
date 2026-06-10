@@ -25,8 +25,25 @@ import {
   FiSend,
 } from "react-icons/fi";
 import logo from "../assets/sltlogo.jpg";
+import { API_BASE_URL } from "../api/apiConfig";
 
-const AdminLeaveManagement = () => {
+const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
+  const isStudyLeave = requestType === "study_leave";
+  const pageCopy = isStudyLeave
+    ? {
+        title: "Extended Leave Requests Management",
+        description: "Review and manage intern extended leave requests",
+        empty: "No extended leave requests found",
+        details: "Extended Leave Request Details",
+        noForDate: "No extended leave requests submitted",
+      }
+    : {
+        title: "Short Leave Request Management",
+        description: "Review and manage intern short leave requests",
+        empty: "No short leave requests found",
+        details: "Short Leave Request Details",
+        noForDate: "No short leave requests found",
+      };
   const navigate = useNavigate();
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [documentViewer, setDocumentViewer] = useState({
@@ -52,7 +69,7 @@ const AdminLeaveManagement = () => {
   const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
-    return new Date().toISOString().split("T")[0];
+    return isStudyLeave ? "" : new Date().toISOString().split("T")[0];
   });
 
   // Intern ID filter
@@ -77,7 +94,7 @@ const AdminLeaveManagement = () => {
     }
     fetchLeaveRequests();
     fetchStats();
-  }, [filter, pagination.page, selectedDate]);
+  }, [filter, pagination.page, selectedDate, requestType]);
 
   // Auto-refresh every 30 seconds if enabled
   useEffect(() => {
@@ -89,7 +106,7 @@ const AdminLeaveManagement = () => {
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, filter, pagination.page, selectedDate]);
+  }, [autoRefresh, filter, pagination.page, selectedDate, requestType]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -97,13 +114,16 @@ const AdminLeaveManagement = () => {
       const params = {
         page: pagination.page,
         limit: pagination.limit,
+        requestType,
       };
 
       if (filter !== "all") {
         params.status = filter;
       }
 
-      if (selectedDate) {
+      if (selectedDate && isStudyLeave) {
+        params.submittedDate = selectedDate;
+      } else if (selectedDate) {
         params.date = selectedDate;
       }
       const response = await getAllLeaveRequests(params);
@@ -151,7 +171,12 @@ const AdminLeaveManagement = () => {
   const fetchStats = async () => {
     try {
       const params = {};
-      params.date = selectedDate || new Date().toISOString().split("T")[0];
+      if (isStudyLeave && selectedDate) {
+        params.submittedDate = selectedDate;
+      } else if (!isStudyLeave) {
+        params.date = selectedDate || new Date().toISOString().split("T")[0];
+      }
+      params.requestType = requestType;
       const response = await getLeaveRequestStats(params);
       setStats(response.data);
     } catch (error) {
@@ -164,10 +189,10 @@ const AdminLeaveManagement = () => {
       const authToken = localStorage.getItem("authToken");
       const adminInfo = localStorage.getItem("adminInfo");
       const token =
-        authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
+        (adminInfo ? JSON.parse(adminInfo).token : null) || authToken;
 
       const response = await fetch(
-        `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
+        `${API_BASE_URL}/leave-requests/${leaveRequestId}/document`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -176,7 +201,12 @@ const AdminLeaveManagement = () => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load document");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            errorData.error ||
+            `Failed to load document (${response.status})`,
+        );
       }
 
       const blob = await response.blob();
@@ -192,7 +222,7 @@ const AdminLeaveManagement = () => {
       setDocumentViewer({ show: true, url: fileUrl, type: fileType });
     } catch (error) {
       console.error("Error loading document:", error);
-      toast.error("Failed to load document");
+      toast.error(error.message || "Failed to load document");
     }
   };
 
@@ -286,7 +316,7 @@ const AdminLeaveManagement = () => {
 
       toast.success(
         `Successfully ${bulkAction === "approve" ? "approved" : "denied"} ${selectedRequests.size} request(s)${
-          bulkAction === "approve" && response.data.updated > 0
+          !isStudyLeave && bulkAction === "approve" && response.data.updated > 0
             ? " - Email notification sent!"
             : ""
         }`,
@@ -464,6 +494,33 @@ const AdminLeaveManagement = () => {
       )
     : leaveRequests;
 
+  const displayedStats = (() => {
+    if (!isStudyLeave || stats.total > 0 || pagination.total === 0) {
+      return stats;
+    }
+
+    const fallback = {
+      total: filter === "all" ? pagination.total : leaveRequests.length,
+      pending: leaveRequests.filter((request) => request.status === "Pending")
+        .length,
+      approved: leaveRequests.filter((request) => request.status === "Approved")
+        .length,
+      denied: leaveRequests.filter((request) => request.status === "Denied")
+        .length,
+    };
+
+    if (filter === "Pending") fallback.pending = pagination.total;
+    if (filter === "Approved") fallback.approved = pagination.total;
+    if (filter === "Denied") fallback.denied = pagination.total;
+
+    fallback.total = Math.max(
+      fallback.total,
+      fallback.pending + fallback.approved + fallback.denied,
+    );
+
+    return fallback;
+  })();
+
   // Helper to highlight matched text inside a string
   const highlightMatch = (text, query) => {
     if (!query || !text) return <span>{text ?? "N/A"}</span>;
@@ -503,10 +560,10 @@ const AdminLeaveManagement = () => {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
               <FiFileText className="text-blue-600" />
-              Short Leave Request Management
+              {pageCopy.title}
             </h1>
             <p className="text-gray-600 mt-1">
-              Review and manage intern short leave requests
+              {pageCopy.description}
             </p>
           </div>
         </div>
@@ -516,23 +573,27 @@ const AdminLeaveManagement = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <div className="text-3xl font-bold text-gray-900">
-                {stats.total}
+                {displayedStats.total}
               </div>
               <div className="text-sm text-gray-600 mt-1">Total Requests</div>
-              {selectedDate && (
+              {selectedDate ? (
                 <div className="text-xs text-gray-500 mt-1">
                   for {formatSelectedDate().replace(" (Today)", "")}
                 </div>
-              )}
+              ) : isStudyLeave ? (
+                <div className="text-xs text-gray-500 mt-1">
+                  all submitted dates
+                </div>
+              ) : null}
             </div>
             <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
-              {stats.pending > 0 && (
+              {displayedStats.pending > 0 && (
                 <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
-                  {stats.pending}
+                  {displayedStats.pending}
                 </div>
               )}
               <div className="text-3xl font-bold text-yellow-800">
-                {stats.pending}
+                {displayedStats.pending}
               </div>
               <div className="text-sm text-yellow-600 mt-1 font-semibold">
                 ⏰ Pending Review
@@ -540,13 +601,13 @@ const AdminLeaveManagement = () => {
             </div>
             <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
               <div className="text-3xl font-bold text-green-800">
-                {stats.approved}
+                {displayedStats.approved}
               </div>
               <div className="text-sm text-green-600 mt-1">✓ Approved</div>
             </div>
             <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
               <div className="text-3xl font-bold text-red-800">
-                {stats.denied}
+                {displayedStats.denied}
               </div>
               <div className="text-sm text-red-600 mt-1">✗ Denied</div>
             </div>
@@ -561,7 +622,7 @@ const AdminLeaveManagement = () => {
                 <div className="flex flex-col">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     <FiFilter className="inline mr-1" />
-                    Filter by Date
+                    {isStudyLeave ? "Filter by Submitted Date" : "Filter by Date"}
                   </label>
                   <input
                     type="date"
@@ -572,12 +633,28 @@ const AdminLeaveManagement = () => {
                     }}
                     className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                   />
+                  {isStudyLeave && selectedDate && (
+                    <button
+                      onClick={() => {
+                        setSelectedDate("");
+                        setPagination((prev) => ({ ...prev, page: 1 }));
+                      }}
+                      className="mt-2 text-left text-xs font-semibold text-blue-600 hover:text-blue-800"
+                    >
+                      Show all pending requests
+                    </button>
+                  )}
                   {selectedDate && (
                     <p className="text-sm text-gray-600 mt-2">
                       Showing:{" "}
                       <span className="font-semibold">
                         {formatSelectedDate()}
                       </span>
+                    </p>
+                  )}
+                  {isStudyLeave && !selectedDate && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      Showing: <span className="font-semibold">All submitted dates</span>
                     </p>
                   )}
                 </div>
@@ -634,6 +711,7 @@ const AdminLeaveManagement = () => {
 
               {/* Right: action buttons */}
               <div className="flex gap-3 flex-wrap">
+                {!isStudyLeave && (
                 <button
                   onClick={handleTriggerApprovedShortLeaveEmail}
                   disabled={triggeringEmail}
@@ -647,13 +725,16 @@ const AdminLeaveManagement = () => {
                     ? "Sending Email..."
                     : "📧 Send Approved Leaves Email"}
                 </button>
-                <button
-                  onClick={handleDownloadApprovedReport}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                >
-                  <FiFileText />
-                  Download Approved Leaves PDF
-                </button>
+                )}
+                {!isStudyLeave && (
+                  <button
+                    onClick={handleDownloadApprovedReport}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                  >
+                    <FiFileText />
+                    Download Approved Leaves PDF
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -665,10 +746,15 @@ const AdminLeaveManagement = () => {
             {/* Filter buttons */}
             <div className="flex flex-wrap gap-2">
               {[
-                { key: "Pending", count: stats.pending, icon: "⏰" },
-                { key: "Approved", count: stats.approved, icon: "✓" },
-                { key: "Denied", count: stats.denied, icon: "✗" },
-                { key: "all", count: stats.total, label: "All", icon: "📋" },
+                { key: "Pending", count: displayedStats.pending, icon: "⏰" },
+                { key: "Approved", count: displayedStats.approved, icon: "✓" },
+                { key: "Denied", count: displayedStats.denied, icon: "✗" },
+                {
+                  key: "all",
+                  count: displayedStats.total,
+                  label: "All",
+                  icon: "📋",
+                },
               ].map(({ key, count, label, icon }) => (
                 <button
                   key={key}
@@ -779,8 +865,8 @@ const AdminLeaveManagement = () => {
               {internIdFilter
                 ? `No requests found for intern ID "${internIdFilter}"`
                 : selectedDate
-                  ? `No short leave requests found for ${formatSelectedDate()}`
-                  : "No short leave requests found"}
+                  ? `${pageCopy.noForDate} for ${formatSelectedDate()}`
+                  : pageCopy.empty}
             </p>
             <div className="mt-4 flex gap-3 justify-center">
               {internIdFilter && (
@@ -829,7 +915,7 @@ const AdminLeaveManagement = () => {
                         Intern Details
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Leave Date & Time
+                        {isStudyLeave ? "Extended Leave Period" : "Leave Date & Time"}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Purpose
@@ -926,7 +1012,9 @@ const AdminLeaveManagement = () => {
                             </div>
                             <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
                               <FiClock className="text-gray-400" />
-                              {request.leaveTime}
+                              {isStudyLeave && request.studyEndDate
+                                ? `Until ${formatDate(request.studyEndDate)}`
+                                : request.leaveTime}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -1041,7 +1129,7 @@ const AdminLeaveManagement = () => {
               <div className="flex items-center justify-between p-6 border-b border-gray-200">
                 <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-blue-600" />
-                  Short Leave Request Details
+              {pageCopy.details}
                 </h2>
                 <button
                   onClick={closeReviewModal}
@@ -1093,6 +1181,17 @@ const AdminLeaveManagement = () => {
                     </p>
                   </div>
                 </div>
+                {isStudyLeave && selectedRequest.studyEndDate && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Extended Leave End Date
+                    </label>
+                    <p className="text-sm text-gray-900 flex items-center gap-2">
+                      <FiCalendar className="text-gray-400" />
+                      {formatDate(selectedRequest.studyEndDate)}
+                    </p>
+                  </div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">

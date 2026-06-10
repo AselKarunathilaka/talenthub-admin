@@ -284,7 +284,7 @@ function validateDailyRecordContent({ task, stack, progress, blockers, status })
     const reasons = [];
 
     // Skip all validation for leave records
-    if (status === "leave") {
+    if (status === "leave" || status === "study_leave") {
         return { valid: true, reasons: [], flagged: false, flagReason: null };
     }
 
