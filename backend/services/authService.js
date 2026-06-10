@@ -63,10 +63,16 @@ class AuthService {
 
     const payload = ticket.getPayload();
     const email = payload.email;
+    const googlePictureUrl = payload.picture;
 
     const intern = await InternRepository.findByEmail(email);
     if (!intern) {
       throw new Error("This email is not registered as an intern.");
+    }
+
+    if (googlePictureUrl && intern.googlePictureUrl !== googlePictureUrl) {
+      intern.googlePictureUrl = googlePictureUrl;
+      await intern.save();
     }
 
     const token = jwt.sign(

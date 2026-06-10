@@ -159,6 +159,7 @@ const Logbook = () => {
   });
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [projectAccessBlocked, setProjectAccessBlocked] = useState(null);
+  const [extendedLeaveBlocked, setExtendedLeaveBlocked] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
 
   const pendingSubmitRef = useRef(null);
@@ -226,6 +227,52 @@ const Logbook = () => {
     };
 
     checkAccess();
+  }, []);
+
+  /* ── Check for extended leave on mount ────────────────────────────────── */
+  useEffect(() => {
+    const checkExtendedLeave = async () => {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        setExtendedLeaveBlocked(false);
+        return;
+      }
+
+      try {
+        const { API_BASE_URL, API_ENDPOINTS } = await import("../api/apiConfig");
+        const res = await fetch(
+          `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`,
+          { headers: { Authorization: `Bearer ${authToken}` } },
+        );
+
+        if (res.ok) {
+          const records = await res.json();
+          const today = new Date();
+          const sriLankanOffset = 5.5 * 60;
+          const localOffset = today.getTimezoneOffset();
+          const sriLankanTime = new Date(today.getTime() + (localOffset + sriLankanOffset) * 60000);
+          const dateStr = sriLankanTime.toISOString().split("T")[0];
+
+          const todayRecord = records.find(r => 
+            r.status === "study_leave" && 
+            r.date === dateStr
+          );
+
+          if (todayRecord) {
+            setExtendedLeaveBlocked(true);
+          } else {
+            setExtendedLeaveBlocked(false);
+          }
+        } else {
+          setExtendedLeaveBlocked(false);
+        }
+      } catch (err) {
+        console.error("Extended leave check failed:", err);
+        setExtendedLeaveBlocked(false);
+      }
+    };
+
+    checkExtendedLeave();
   }, []);
 
   const submitRecord = useCallback(async (authToken, recordPayload) => {
@@ -535,12 +582,12 @@ const Logbook = () => {
 
   /* ── Derived states ───────────────────────────────────────────────────── */
   const isSubmitDisabled =
-    projectAccessBlocked !== false || isSubmitting || showSuccessAnimation;
+    projectAccessBlocked !== false || extendedLeaveBlocked !== false || isSubmitting || showSuccessAnimation;
 
-  const areFieldsDisabled = !!projectAccessBlocked;
+  const areFieldsDisabled = !!projectAccessBlocked || !!extendedLeaveBlocked;
 
   const submitButtonContent = () => {
-    if (projectAccessBlocked === null) {
+    if (projectAccessBlocked === null || extendedLeaveBlocked === null) {
       return (
         <>
           <FiLoader className="logbook-spin" style={{ width: 20, height: 20, marginRight: 8 }} />
@@ -870,8 +917,78 @@ const Logbook = () => {
               </div>
             )}
 
+            {/* ───── Extended Leave Blocked — Standalone Instruction Card ───── */}
+            {extendedLeaveBlocked === true && (
+              <div
+                className="logbook-card logbook-fade-in"
+                style={{
+                  background: "white",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  border: "2px solid #bae6fd",
+                  boxShadow: "0 4px 24px rgba(14, 165, 233, 0.08)",
+                  maxWidth: 640,
+                  margin: "0 auto",
+                  marginBottom: 32,
+                }}
+              >
+                <div style={{
+                  background: "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+                  padding: "20px 24px",
+                  borderBottom: "1px solid #bae6fd",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <FiUmbrella size={24} color="white" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#075985", margin: 0 }}>
+                      Extended Leave Active
+                    </h2>
+                    <p style={{ fontSize: 13, color: "#0c4a6e", marginTop: 4 }}>
+                      No daily update required for today
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ padding: "24px" }}>
+                  <p style={{ fontSize: 14, color: "#0c4a6e", marginBottom: 16, lineHeight: 1.6 }}>
+                    You have an approved Extended Leave for today. The system has automatically updated your logbook for this period. Enjoy your leave!
+                  </p>
+                  <button
+                    onClick={() => navigate("/DailyRecords")}
+                    style={{
+                      background: "#0ea5e9",
+                      color: "white",
+                      padding: "10px 20px",
+                      borderRadius: "10px",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}
+                  >
+                    Return to Daily Records
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ───── Loading state while checking access ───── */}
-            {projectAccessBlocked === null && (
+            {(projectAccessBlocked === null || extendedLeaveBlocked === null) && (
               <div
                 className="logbook-fade-in"
                 style={{
@@ -887,13 +1004,13 @@ const Logbook = () => {
                 }}
               >
                 <FiLoader className="logbook-spin" size={28} style={{ color: palette.light, marginBottom: 16 }} />
-                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Checking access...</p>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>Verifying your project assignment</p>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>Checking status...</p>
+                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>Verifying your project assignment and leave status</p>
               </div>
             )}
 
             {/* ───── Main Form Card (only when access is granted) ───── */}
-            {projectAccessBlocked === false && (
+            {projectAccessBlocked === false && extendedLeaveBlocked === false && (
             <div
               className="logbook-card logbook-fade-in"
               style={{

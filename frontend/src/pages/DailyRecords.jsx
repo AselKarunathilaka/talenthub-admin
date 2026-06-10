@@ -510,8 +510,14 @@ const DailyRecords = () => {
                                 {day.getDate()}
                               </div>
                               {getRecordsForDate(day).length > 0 && (
-                                <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2">
-                                  <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-500 rounded-full"></div>
+                                <div className="absolute bottom-1 w-full flex justify-center left-1/2 transform -translate-x-1/2">
+                                  {getRecordsForDate(day).some(r => r.status === "study_leave") ? (
+                                    <span className="text-[8px] md:text-[9px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-semibold whitespace-nowrap shadow-sm">
+                                      Extended Leave
+                                    </span>
+                                  ) : (
+                                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-500 rounded-full"></div>
+                                  )}
                                 </div>
                               )}
                             </>
@@ -576,6 +582,11 @@ const DailyRecords = () => {
                               {record.status === "leave" && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   On Leave
+                                </span>
+                              )}
+                              {record.status === "study_leave" && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                                  Extended Leave
                                 </span>
                               )}
                             </div>
@@ -767,6 +778,11 @@ const DailyRecords = () => {
                               {record.status === "leave" && (
                                 <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
                                   On Leave
+                                </span>
+                              )}
+                              {record.status === "study_leave" && (
+                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
+                                  Extended Leave
                                 </span>
                               )}
                             </div>

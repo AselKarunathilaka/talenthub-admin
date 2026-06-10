@@ -347,6 +347,7 @@ class ApprovedLeaveNotificationService {
 
       const approvedLeaves = await LeaveRequest.find({
         status: "Approved",
+        requestType: "short_leave",
         reviewedAt: { $gte: startUTC, $lte: endUTC },
       }).populate("reviewedBy", "email");
 

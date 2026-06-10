@@ -44,7 +44,12 @@ const collectBuffer = (doc) =>
   });
 
 /** Map status slugs to human-readable labels. */
-const STATUS_LABELS = { wfh: "WFH", leave: "On Leave", working: "Working" };
+const STATUS_LABELS = {
+  wfh: "WFH",
+  leave: "On Leave",
+  study_leave: "Extended Leave",
+  working: "Working",
+};
 
 /** Today formatted as "DD Mon YYYY". */
 const todayLabel = () =>

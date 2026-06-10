@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
 import toast from "react-hot-toast";
@@ -20,7 +21,27 @@ import {
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
-const MyLeaveRequests = () => {
+const MyLeaveRequests = ({ requestType = "short_leave" }) => {
+  const isStudyLeave = requestType === "study_leave";
+  const pageCopy = isStudyLeave
+    ? {
+        title: "My Extended Leave Requests",
+        description: "View and manage your extended leave requests",
+        newButton: "New Extended Leave Request",
+        duplicate:
+          "You already have an extended leave request for today. Only one request per day is allowed.",
+        emptyTitle: "No extended leave requests found",
+        emptyToday: "You haven't submitted any extended leave requests today.",
+      }
+    : {
+        title: "My Short Leave Requests",
+        description: "View and manage your short leave permission requests",
+        newButton: "New Short Leave Request",
+        duplicate:
+          "You already have a short leave request for today. Only one request per day is allowed.",
+        emptyTitle: "No short leave requests found",
+        emptyToday: "You haven't submitted any short leave requests today.",
+      };
   const navigate = useNavigate();
   const [documentViewer, setDocumentViewer] = useState({
     show: false,
@@ -36,9 +57,9 @@ const MyLeaveRequests = () => {
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
-  // Date filter — defaults to today
+  // Date filter — defaults to today for short leave, empty (all) for study leave
   const todayStr = new Date().toISOString().split("T")[0];
-  const [selectedDate, setSelectedDate] = useState(todayStr);
+  const [selectedDate, setSelectedDate] = useState(isStudyLeave ? "" : todayStr);
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -62,7 +83,7 @@ const MyLeaveRequests = () => {
     }
 
     fetchLeaveRequests();
-  }, [selectedDate, pagination.page]);
+  }, [selectedDate, pagination.page, requestType]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -71,6 +92,7 @@ const MyLeaveRequests = () => {
         page: pagination.page,
         limit: pagination.limit,
         date: selectedDate,
+        requestType: requestType,
       };
 
       const response = await getMyLeaveRequests(params);
@@ -110,7 +132,7 @@ const MyLeaveRequests = () => {
 
   const handleFormSuccess = () => {
     setActiveTab("list");
-    setSelectedDate(todayStr);
+    setSelectedDate(isStudyLeave ? "" : todayStr);
     fetchLeaveRequests();
   };
 
@@ -121,7 +143,7 @@ const MyLeaveRequests = () => {
       const token = authToken || (adminInfo ? JSON.parse(adminInfo).token : null);
 
       const response = await fetch(
-        `http://localhost:5000/api/leave-requests/${leaveRequestId}/document`,
+        `${API_BASE_URL}/leave-requests/${leaveRequestId}/document`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -130,7 +152,12 @@ const MyLeaveRequests = () => {
       );
 
       if (!response.ok) {
-        throw new Error("Failed to load document");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.message ||
+            errorData.error ||
+            `Failed to load document (${response.status})`,
+        );
       }
 
       const blob = await response.blob();
@@ -146,7 +173,7 @@ const MyLeaveRequests = () => {
       setDocumentViewer({ show: true, url: fileUrl, type: fileType });
     } catch (error) {
       console.error("Error loading document:", error);
-      toast.error("Failed to load document");
+      toast.error(error.message || "Failed to load document");
     }
   };
 
@@ -179,6 +206,7 @@ const MyLeaveRequests = () => {
   };
 
   const formatDisplayDate = (dateStr) => {
+    if (!dateStr) return "All Dates";
     const date = new Date(dateStr + "T00:00:00");
     return date.toLocaleDateString("en-US", {
       weekday: "long",
@@ -203,7 +231,7 @@ const MyLeaveRequests = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-50 font-sans">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
       <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1200px] w-full">
@@ -219,7 +247,7 @@ const MyLeaveRequests = () => {
                 <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                   <FiFileText className="text-[#0056a2] h-8 w-8" />
                 </div> 
-                Short Leave Permission
+                {pageCopy.title}
               </motion.h1>
               <motion.p 
                 initial={{ opacity: 0 }} 
@@ -227,7 +255,7 @@ const MyLeaveRequests = () => {
                 transition={{ delay: 0.05, duration: 0.2 }} 
                 className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
               >
-                Manage your short leave requests to exit SLT premises early.
+                {pageCopy.description}
               </motion.p>
             </div>
 
@@ -246,7 +274,7 @@ const MyLeaveRequests = () => {
                   <input 
                     type="date" 
                     value={selectedDate} 
-                    max={todayStr}
+                    max={isStudyLeave ? undefined : todayStr}
                     onChange={(e) => {
                       setSelectedDate(e.target.value);
                       setPagination((prev) => ({ ...prev, page: 1 }));
@@ -254,6 +282,20 @@ const MyLeaveRequests = () => {
                     }} 
                     className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
                   />
+                  {selectedDate && (
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedDate("");
+                        setPagination((prev) => ({ ...prev, page: 1 }));
+                        setActiveTab("list");
+                      }}
+                      className="ml-2 text-gray-400 hover:text-rose-500 transition-colors p-1"
+                      title="Clear date filter"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -266,10 +308,9 @@ const MyLeaveRequests = () => {
               <button 
                 onClick={() => {
                   if (hasRequestForToday() && activeTab === "list") {
-                     toast.error("You already have a short leave request for today.");
+                     toast.error(pageCopy.duplicate);
                      return;
                   }
-                  setSelectedDate(todayStr);
                   setActiveTab("new");
                 }} 
                 className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${
@@ -303,7 +344,7 @@ const MyLeaveRequests = () => {
                     exit={{ opacity: 0, x: -20 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <LeaveRequestForm onSuccess={handleFormSuccess} />
+                    <LeaveRequestForm onSuccess={handleFormSuccess} requestType={requestType} />
                   </motion.div>
                 ) : (
                   <motion.div
@@ -323,11 +364,13 @@ const MyLeaveRequests = () => {
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                           <FiFileText className="h-8 w-8 text-slate-300" />
                         </div>
-                        <h4 className="text-lg font-bold text-gray-700">No requests found</h4>
+                        <h4 className="text-lg font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
                         <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
                           {isToday 
-                            ? "You haven't submitted any short leave requests today." 
-                            : `No requests found for ${formatDisplayDate(selectedDate)}.`}
+                            ? pageCopy.emptyToday 
+                            : selectedDate 
+                              ? `No requests found for ${formatDisplayDate(selectedDate)}.`
+                              : "No requests found."}
                         </p>
                         {isToday && (
                           <button 
@@ -340,7 +383,9 @@ const MyLeaveRequests = () => {
                       </div>
                     ) : (
                       <>
-                        <h3 className="text-xl font-extrabold text-gray-800 tracking-tight mb-4 px-2">Requests for {formatDisplayDate(selectedDate)}</h3>
+                        <h3 className="text-xl font-extrabold text-gray-800 tracking-tight mb-4 px-2">
+                          {selectedDate ? `Requests for ${formatDisplayDate(selectedDate)}` : "All Requests"}
+                        </h3>
                         {leaveRequests.map((request) => (
                           <motion.div
                             layout
@@ -366,7 +411,9 @@ const MyLeaveRequests = () => {
                                 </div>
                                 <div>
                                   <h4 className="text-lg font-bold text-gray-900 leading-tight">
-                                    {request.leaveTime}
+                                    {isStudyLeave
+                                      ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
+                                      : request.leaveTime}
                                   </h4>
                                   <p className="text-sm font-medium text-gray-500 mt-0.5">
                                     {request.purpose} Purpose
