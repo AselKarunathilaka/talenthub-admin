@@ -989,6 +989,7 @@ const FaceAttendance = () => {
                       muted
                       playsInline
                       className="h-full w-full object-cover"
+                      style={{ transform: "scaleX(-1)" }}
                     />
                     <canvas ref={canvasRef} className="hidden" width={640} height={480} />
                     <canvas
@@ -996,6 +997,7 @@ const FaceAttendance = () => {
                       className="pointer-events-none absolute inset-0 z-10 h-full w-full"
                       width={640}
                       height={480}
+                      style={{ transform: "scaleX(-1)" }}
                     />
                     <FaceScanGuide
                       ready={faceGuide.ready}
