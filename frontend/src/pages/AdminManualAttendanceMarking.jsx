@@ -4,6 +4,7 @@ import {
   FaArrowLeft,
   FaSearch,
   FaCalendarCheck,
+  FaUpload,
   FaUsers,
   FaSpinner,
   FaCheckCircle,
