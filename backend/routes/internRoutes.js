@@ -58,6 +58,9 @@ const {
   // Profile Picture
   uploadProfilePicture,
   getProfilePicture,
+
+  // Tour
+  markTourSeen,
 } = require("../controllers/internController");
 
 const router = express.Router();
@@ -118,6 +121,9 @@ router.get("/:id/projects/check", checkInternProjects);
 // =========================== PROFILE PICTURE ===========================
 router.post("/:id/profile-picture", authenticateUser, upload.single("image"), uploadProfilePicture);
 router.get("/:id/profile-picture", getProfilePicture);
+
+// =========================== ONBOARDING TOUR ===========================
+router.patch("/:id/tour-seen", authenticateUser, markTourSeen);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);

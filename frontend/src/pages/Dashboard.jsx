@@ -5,6 +5,8 @@ import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
 import NoProjectNotification from "../components/NoProjectNotification";
 import FaceRegistrationModal from "../components/FaceRegistrationModal";
+import OnboardingTour from "../components/OnboardingTour";
+import FeatureTipModal from "../components/FeatureTipModal";
 import {
   Users,
   User,
@@ -57,6 +59,8 @@ const Dashboard = () => {
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [projectPopupPending, setProjectPopupPending] = useState(false);
   const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
+  const [showTour, setShowTour] = useState(false);
+  const [isNewIntern, setIsNewIntern] = useState(false);
   const rowsPerPage = 10;
   const initialLoadStartedRef = useRef(false);
   const faceModalOpenRef = useRef(false);
@@ -87,12 +91,14 @@ const Dashboard = () => {
           console.log("End date notification:", notification); // Debug log
           setEndDateNotification(notification);
         }
+        return response; // Return data so loadAllData can use it directly
       } else {
         throw new Error("No intern data returned from API");
       }
     } catch (err) {
       console.error("Error fetching intern data:", err);
       // Don't show error for intern data as it's not critical for attendance functionality
+      return null;
     }
   };
 
@@ -184,7 +190,7 @@ const Dashboard = () => {
 
   const loadAllData = async () => {
     setLoading(true);
-    await Promise.all([
+    const [fetchedInternData] = await Promise.all([
       loadInternData(), // Load intern details including end date
       loadAttendanceData(), // Load attendance data
     ]);
@@ -223,6 +229,23 @@ const Dashboard = () => {
       }
     } catch (err) {
       console.error("Error checking intern projects:", err);
+    }
+    // Show onboarding tour after all other modals are settled
+    // (face modal takes priority; if no face modal, show tour immediately after load)
+    try {
+      if (internId && fetchedInternData) {
+        const TOUR_VERSION = "v1.0-initial";
+        const seenVersion = fetchedInternData.tourSeenVersion ?? null;
+        if (seenVersion === null || seenVersion !== TOUR_VERSION) {
+          const isNew = seenVersion === null;
+          setIsNewIntern(isNew);
+          if (!shouldPromptFace) {
+            setShowTour(true);
+          }
+        }
+      }
+    } catch (err) {
+      // Non-critical
     }
   };
 
@@ -265,6 +288,15 @@ const Dashboard = () => {
     if (projectPopupPending) {
       setProjectPopupPending(false);
       setShowNoProjectPopup(true);
+    }
+    // Show tour after face modal closes (if applicable)
+    if (internData) {
+      const seenVersion = internData.tourSeenVersion ?? null;
+      const TOUR_VERSION = "v1.0-initial";
+      if (seenVersion === null || seenVersion !== TOUR_VERSION) {
+        setIsNewIntern(seenVersion === null);
+        setShowTour(true);
+      }
     }
   };
 
@@ -1077,6 +1109,13 @@ const Dashboard = () => {
       {showNoProjectPopup && (
         <NoProjectNotification onDismiss={() => setShowNoProjectPopup(false)} />
       )}
+      {showTour && (
+        <OnboardingTour
+          internData={internData}
+          internId={localStorage.getItem("internId")}
+          isNewIntern={isNewIntern}
+        />
+      )}
       {showCricketPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">
           <div className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-2xl">
@@ -1135,6 +1174,7 @@ const Dashboard = () => {
           {renderContent()}
         </main>
       </div>
+      <FeatureTipModal />
     </div>
   );
 };

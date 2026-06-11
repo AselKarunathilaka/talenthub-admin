@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
 import Navigation from "../components/Navigation";
+import SectionTip from "../components/SectionTip";
 import { useSeatManagement, useMapScale, getLocalISODate } from "./useSeatManagement";
 
 const SeatContext = React.createContext();
@@ -299,6 +300,7 @@ const InternSeatManagement = () => {
         <Navigation />
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            <SectionTip sectionKey="seat" />
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">

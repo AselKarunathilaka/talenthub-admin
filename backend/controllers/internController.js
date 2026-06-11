@@ -1159,6 +1159,40 @@ const getProfilePicture = async (req, res) => {
   }
 };
 
+// =========================== TOUR / ONBOARDING ===========================
+
+/**
+ * PATCH /interns/:id/tour-seen
+ * Body: { version: "v1.0-initial" }
+ * Saves the tour version the intern has seen so the tour is not shown again.
+ */
+const markTourSeen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { version } = req.body;
+
+    if (!version) {
+      return res.status(400).json({ message: "version is required" });
+    }
+
+    const Intern = require("../models/Intern");
+    const intern = await Intern.findOneAndUpdate(
+      { Trainee_ID: id },
+      { $set: { tourSeenVersion: version } },
+      { new: true }
+    );
+
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    res.status(200).json({ message: "Tour marked as seen", tourSeenVersion: intern.tourSeenVersion });
+  } catch (error) {
+    console.error("Error marking tour as seen:", error);
+    res.status(500).json({ message: "Error marking tour as seen", error: error.message });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -1196,4 +1230,5 @@ module.exports = {
   checkInternProjects,
   uploadProfilePicture,
   getProfilePicture,
+  markTourSeen,
 };

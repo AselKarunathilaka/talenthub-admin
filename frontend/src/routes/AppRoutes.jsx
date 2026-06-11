@@ -32,6 +32,7 @@ import AdminManualAttendance from "../pages/AdminManualAttendanceMarking";
 import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
+import AdminFeatureTips from "../pages/AdminFeatureTips";
 
 const AppRoutes = () => {
   return (
@@ -157,12 +158,13 @@ const AppRoutes = () => {
       />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
+      <Route path="/admin/announcements" element={<AdminAnnouncements />} />
+      <Route path="/admin/feature-tips" element={<AdminFeatureTips />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
       <Route
         path="/admin/intern-locations"
         element={<AdminInternLocations />}
       />
-      <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       <Route
         path="/admin/intern-attendance"
         element={<AdminInternAttendance />}
