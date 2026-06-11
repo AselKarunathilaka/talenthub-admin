@@ -194,7 +194,15 @@ export const useSeatManagement = () => {
   const [currentSeat, setCurrentSeat] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(() => getLocalISODate());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return getLocalISODate(tomorrow);
+    }
+    return getLocalISODate(now);
+  });
   const [dailyBookings, setDailyBookings] = useState({});
   const [minBookingDate, setMinBookingDate] = useState("");
   const [maxBookingDate, setMaxBookingDate] = useState("");
@@ -603,10 +611,19 @@ export const useSeatManagement = () => {
 
       setMinBookingDate(threeDayRange.minDate);
       setMaxBookingDate(threeDayRange.maxDate);
-      setSelectedDate(formatDate(today));
+      
+      const now = new Date();
+      let defaultDate = today;
+      if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
+        defaultDate = new Date(now);
+        defaultDate.setDate(defaultDate.getDate() + 1);
+      }
+      
+      const initialDateStr = formatDate(defaultDate);
+      setSelectedDate(initialDateStr);
 
       await fetchLockedSeats();
-      await loadBookingsForDate(formatDate(today));
+      await loadBookingsForDate(initialDateStr);
     };
 
     initializeDates();

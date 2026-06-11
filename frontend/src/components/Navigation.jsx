@@ -198,7 +198,7 @@ const Navigation = ({ children }) => {
     { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
     { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
     { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#a486fcff" },
-    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, hoverColor: "#6366f1" },
+    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, hoverColor: "#f19e63ff" },
     { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
   ];
   const isActive = (path) => location.pathname === path;
@@ -407,10 +407,10 @@ const Navigation = ({ children }) => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group
+                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group border focus:outline-none
                   ${isActive(link.to)
-                    ? "bg-white/10 shadow-lg backdrop-blur-sm border border-white/10"
-                    : "text-white/70 hover:bg-white/5"
+                    ? "bg-white/10 shadow-lg backdrop-blur-sm border-white/10"
+                    : "border-transparent text-white/70 hover:bg-white/5"
                   }`}
                 style={{ '--hover-color': link.hoverColor }}
                 onClick={() => setIsMobileMenuOpen(false)}
