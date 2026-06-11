@@ -4,12 +4,16 @@ const FeatureTip = require("./models/FeatureTip");
 const Intern = require("./models/Intern");
 
 const runTest = async () => {
+  let savedTip = null;
+  let intern = null;
+  
   try {
+    console.log("🔄 Connecting to Database...");
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log("Connected to DB.");
+    console.log("✅ Connected to DB.");
 
     // 1. Create a test feature tip
     const newTip = new FeatureTip({
@@ -19,38 +23,70 @@ const runTest = async () => {
       emoji: "🚀",
       color: "#ec4899"
     });
-    const savedTip = await newTip.save();
-    console.log("✅ Created Feature Tip:", savedTip.title);
+    savedTip = await newTip.save();
+    console.log(`\n1️⃣ Created Feature Tip: "${savedTip.title}"`);
 
-    // 2. Pick an intern (any intern)
-    const intern = await Intern.findOne();
+    // 2. Pick an intern
+    intern = await Intern.findOne();
     if (!intern) {
-      console.log("No intern found in DB to test with.");
+      console.log("❌ No intern found in DB to test with.");
       process.exit(0);
     }
-    console.log("✅ Selected Intern:", intern.email || intern.traineeName);
+    console.log(`2️⃣ Selected Intern: ${intern.email || intern.traineeName}`);
 
-    // 3. Check unseen feature tips for this intern
-    const unseenTips = await FeatureTip.find({
+    // 3. First Check: Should be unseen
+    let unseenTips = await FeatureTip.find({
       isActive: true,
       _id: { $nin: intern.seenFeatureTipIds || [] }
-    }).sort({ createdAt: -1 });
-
-    const seesTestTip = unseenTips.some(t => t._id.toString() === savedTip._id.toString());
+    });
+    
+    let seesTestTip = unseenTips.some(t => t._id.toString() === savedTip._id.toString());
     if (seesTestTip) {
-      console.log("✅ Intern CAN see the new feature tip in the 'unseen' list!");
+      console.log("3️⃣ ✅ Check 1 PASS: Intern CAN see the new feature tip initially.");
     } else {
-      console.log("❌ Intern CANNOT see the feature tip.");
+      console.log("3️⃣ ❌ Check 1 FAIL: Intern CANNOT see the feature tip.");
+      throw new Error("Initial visibility check failed");
     }
 
-    // 4. Clean up the test tip
-    await FeatureTip.findByIdAndDelete(savedTip._id);
-    console.log("🧹 Cleaned up test tip.");
+    // 4. Simulate intern clicking "Got it!" (mark as seen)
+    console.log("\n🔄 Simulating intern clicking 'Got it!'...");
+    intern.seenFeatureTipIds.push(savedTip._id.toString());
+    await intern.save();
+    console.log("4️⃣ Intern's profile updated in DB (tip marked as seen).");
 
-    process.exit(0);
+    // 5. Second Check: Should be hidden now
+    const updatedIntern = await Intern.findById(intern._id);
+    unseenTips = await FeatureTip.find({
+      isActive: true,
+      _id: { $nin: updatedIntern.seenFeatureTipIds || [] }
+    });
+
+    seesTestTip = unseenTips.some(t => t._id.toString() === savedTip._id.toString());
+    if (!seesTestTip) {
+      console.log("5️⃣ ✅ Check 2 PASS: Intern CANNOT see the tip anymore! The 'Do not show again' logic works perfectly.");
+    } else {
+      console.log("5️⃣ ❌ Check 2 FAIL: Intern can still see the tip!");
+      throw new Error("Dismissal visibility check failed");
+    }
+
   } catch (err) {
-    console.error("Test failed:", err);
-    process.exit(1);
+    console.error("❌ Test failed:", err);
+  } finally {
+    // 6. Clean up
+    console.log("\n🧹 Cleaning up test data...");
+    if (savedTip) {
+      await FeatureTip.findByIdAndDelete(savedTip._id);
+      console.log("   - Test Feature Tip deleted.");
+    }
+    if (intern && savedTip) {
+      intern.seenFeatureTipIds = intern.seenFeatureTipIds.filter(
+        id => id !== savedTip._id.toString()
+      );
+      await intern.save();
+      console.log("   - Intern profile restored to original state.");
+    }
+    
+    process.exit(0);
   }
 };
 
