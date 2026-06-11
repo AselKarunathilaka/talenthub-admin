@@ -1065,7 +1065,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation onLogout={handleLogout} />
       {showFaceModal && (
         <FaceRegistrationModal
@@ -1130,9 +1130,8 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-      <div className="flex-1 flex flex-col lg:mt-7 lg:px-10">
-        <div className="h-16" />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           {renderContent()}
         </main>
       </div>

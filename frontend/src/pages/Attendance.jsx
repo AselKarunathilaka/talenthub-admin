@@ -148,8 +148,9 @@ const Attendance = () => {
   const attendanceLocationReady = locationValid;
   
   const canStartCamera =
-    mode === "enroll" ||
-    (attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyFace));
+    modelsLoaded &&
+    (mode === "enroll" ||
+    (attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyFace)));
   
   const canStartQr = attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyQr);
 
@@ -740,17 +741,6 @@ const Attendance = () => {
     }
   };
 
-  if (!modelsLoaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
-          <Loader className="w-12 h-12 animate-spin mx-auto text-[#00b4eb] mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900">Loading modules</h2>
-          <p className="text-sm text-slate-500 mt-2">This usually takes a few seconds.</p>
-        </div>
-      </div>
-    );
-  }
 
   const containerVariants = {
     initial: { opacity: 0 },
@@ -766,8 +756,9 @@ const Attendance = () => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
 
-      <main className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
-        {enrollmentSuccess && (
+      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+          {enrollmentSuccess && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
             <div className="animate-[fadeIn_0.25s_ease-out] rounded-2xl border border-[#50b748]/30 bg-white px-8 py-7 text-center shadow-2xl">
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#50b748]/10">
@@ -779,7 +770,6 @@ const Attendance = () => {
           </div>
         )}
         
-        <div className="mx-auto p-4 sm:p-6 max-w-[1600px] w-full">
           {/* Header & Status */}
           <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
@@ -963,12 +953,23 @@ const Attendance = () => {
                           </>
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
-                            <Camera className="h-16 w-16 text-slate-300 mb-4" />
-                            <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
-                              {mode === "enroll"
-                                ? "Start the camera to enroll your face."
-                                : "Start the camera to mark your attendance."}
-                            </p>
+                            {!modelsLoaded ? (
+                              <>
+                                <Loader className="h-16 w-16 animate-spin text-slate-300 mb-4" />
+                                <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
+                                  Loading face recognition modules...
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="h-16 w-16 text-slate-300 mb-4" />
+                                <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
+                                  {mode === "enroll"
+                                    ? "Start the camera to enroll your face."
+                                    : "Start the camera to mark your attendance."}
+                                </p>
+                              </>
+                            )}
                           </div>
                         )}
                         {loading && (
@@ -1015,8 +1016,17 @@ const Attendance = () => {
                                 : "bg-gradient-to-r from-[#50b748] to-[#2e7d32] hover:shadow-green-500/30 active:scale-95"
                             }`}
                           >
-                            <Camera className="h-5 w-5" />
-                            {cooldown ? "Wait 60s" : "Start Camera"}
+                            {!modelsLoaded ? (
+                              <>
+                                <Loader className="h-5 w-5 animate-spin" />
+                                Initializing...
+                              </>
+                            ) : (
+                              <>
+                                <Camera className="h-5 w-5" />
+                                {cooldown ? "Wait 60s" : "Start Camera"}
+                              </>
+                            )}
                           </button>
                         )}
                       </div>
@@ -1197,8 +1207,8 @@ const Attendance = () => {
               </div>
             </motion.div>
           </div>
-        </div>
-      </main>
+        </main>
+      </div>
     </div>
   );
 };
