@@ -34,7 +34,7 @@ export const TIPS = {
     ],
   },
   attendance: {
-    version: 1,
+    version: 2,
     color: "#f59e0b",
     gradient: "linear-gradient(135deg, #f59e0b, #d97706)",
     title: "How to mark your Attendance 📍",
