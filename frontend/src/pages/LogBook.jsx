@@ -671,11 +671,11 @@ const Logbook = () => {
         <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
       )}
 
-      <div className="flex flex-col lg:flex-row min-h-screen" style={{ background: "#f0f4f8" }}>
+      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
         <Navigation />
 
-        <div className="flex-1 w-full lg:mt-20 lg:px-10">
-          <main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-4xl">
+        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
 
             {/* ───── Page Header ───── */}
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
