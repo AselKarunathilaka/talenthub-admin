@@ -359,6 +359,7 @@ const AdminManualAttendance = () => {
   const [recentMarks, setRecentMarks] = useState([]);
   const [bulkInternIds, setBulkInternIds] = useState("");
   const [bulkResults, setBulkResults] = useState(null);
+  const [uploadedFileName, setUploadedFileName] = useState("");
 
   const showToast = (text, type = "info") => setToast({ text, type });
 
