@@ -894,7 +894,7 @@ const handleExcelUpload = async (event) => {
                     <FaUpload className="text-blue-600" />
 
                     <span className="text-sm font-medium text-blue-700">
-                      Upload TXT File
+                                        
                     </span>
 
                     <input
@@ -910,7 +910,30 @@ const handleExcelUpload = async (event) => {
                       Loaded: {uploadedFileName}
                     </p>
                   )}
-                </div>                
+                </div>   
+
+                <div className="mt-3">
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-all">
+                      <FaUpload className="text-green-600" />
+
+                      <span className="text-sm font-medium text-green-700">
+                        Upload Attendance Excel
+                      </span>
+
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={handleExcelUpload}
+                      />
+                    </label>
+
+                    {uploadedExcelFileName && (
+                      <p className="mt-2 text-xs text-green-600">
+                        Loaded: {uploadedExcelFileName}
+                      </p>
+                    )}
+                  </div>             
                 
               </motion.div>
             )}
