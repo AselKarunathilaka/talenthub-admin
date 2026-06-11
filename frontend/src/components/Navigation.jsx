@@ -20,7 +20,7 @@ import {
   ScanLine,
   GraduationCap,
 } from "lucide-react";
-import logo from "../assets/talenthub.png";
+import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
@@ -402,12 +402,12 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="px-3 py-6 flex-1 flex flex-col justify-evenly overflow-y-auto">
+          <nav className="px-3 py-4 lg:py-6 flex-1 flex flex-col justify-evenly gap-2 lg:gap-0 overflow-y-auto">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-6 rounded-xl mx-2 transition-all duration-200 group border focus:outline-none
+                className={`flex items-center px-4 py-3.5 lg:py-6 rounded-xl mx-2 transition-all duration-200 group border focus:outline-none
                   ${isActive(link.to)
                     ? "bg-white/10 shadow-lg backdrop-blur-sm border-white/10"
                     : "border-transparent text-white/70 hover:bg-white/5"
