@@ -831,6 +831,30 @@ const AdminManualAttendance = () => {
                     IDs detected
                   </p>
                 )}
+                
+                <div className="mt-3">
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
+                    <FaUpload className="text-blue-600" />
+
+                    <span className="text-sm font-medium text-blue-700">
+                      Upload TXT File
+                    </span>
+
+                    <input
+                      type="file"
+                      accept=".txt"
+                      className="hidden"
+                      onChange={handleTxtUpload}
+                    />
+                  </label>
+
+                  {uploadedFileName && (
+                    <p className="mt-2 text-xs text-green-600">
+                      Loaded: {uploadedFileName}
+                    </p>
+                  )}
+                </div>                
+                
               </motion.div>
             )}
 
