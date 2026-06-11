@@ -515,6 +515,34 @@ const AdminManualAttendance = () => {
     }
   };
 
+  const handleTxtUpload = async (event) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+
+    const ids = text
+      .split(/[\n,\r]+/)
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    setBulkInternIds(ids.join("\n"));
+    setUploadedFileName(file.name);
+
+    showToast(
+      `${ids.length} IDs loaded from file`,
+      "success"
+    );
+  } catch (error) {
+    showToast(
+      "Failed to read TXT file",
+      "error"
+    );
+  }
+};
+
   const canSubmitSingle =
     selectedIntern &&
     selectedDate &&
