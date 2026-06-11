@@ -35,6 +35,7 @@ import {
   FaKey,
   FaChevronRight,
   FaTimes,
+  FaGraduationCap,
   FaCamera,
   FaLock,
 } from "react-icons/fa";
@@ -140,6 +141,7 @@ const AdminDashboard = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [showExports, setShowExports] = useState(false);
   const [activeExport, setActiveExport] = useState(null);
+  const [showLeaveRequestPicker, setShowLeaveRequestPicker] = useState(false);
 
   /* ── New UI state ── */
   const [activeTab, setActiveTab] = useState("actions"); // "actions" | "exports" | "alerts"
@@ -517,6 +519,12 @@ const AdminDashboard = () => {
       icon: FaRunning,
       route: "/admin/leave-requests",
       color: "#8b5cf6",
+    },
+    {
+      label: "Extended Leave",
+      icon: FaGraduationCap,
+      route: "/admin/study-leave-requests",
+      color: "#6366f1",
     },
     {
       label: "Locations",
@@ -1335,6 +1343,90 @@ const AdminDashboard = () => {
           </div>
         </main>
       </div>
+
+      <AnimatePresence>
+        {showLeaveRequestPicker && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLeaveRequestPicker(false)}
+          >
+            <motion.div
+              className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-100"
+              initial={{ y: 24, scale: 0.98, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 24, scale: 0.98, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Leave Requests Management
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Select which request type you want to manage
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveRequestPicker(false)}
+                  className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  aria-label="Close leave request selection"
+                >
+                  <FaTimesCircle className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="grid gap-3 p-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeaveRequestPicker(false);
+                    navigate("/admin/leave-requests");
+                  }}
+                  className="flex items-center gap-4 rounded-xl border border-purple-100 bg-purple-50 px-5 py-4 text-left hover:border-purple-200 hover:bg-purple-100 transition-colors"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100">
+                    <FaRunning className="h-5 w-5 text-purple-600" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-gray-900">
+                      Short Leave Request Management
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Review early-exit permission requests
+                    </span>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeaveRequestPicker(false);
+                    navigate("/admin/study-leave-requests");
+                  }}
+                  className="flex items-center gap-4 rounded-xl border border-sky-100 bg-sky-50 px-5 py-4 text-left hover:border-sky-200 hover:bg-sky-100 transition-colors"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100">
+                    <FaFileAlt className="h-5 w-5 text-sky-600" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-gray-900">
+                      Extended Leave Requests Management
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Review extended leave requests
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

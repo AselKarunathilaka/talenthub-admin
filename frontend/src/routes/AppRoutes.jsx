@@ -2,6 +2,8 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
+import FaceAttendance from "../pages/FaceAttendance";
+import ScanQRCode from "../pages/ScanQRCode";
 import Dashboard from "../pages/Dashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
@@ -43,6 +45,22 @@ const AppRoutes = () => {
         element={
           <AgreementGuard>
             <Attendance />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/face-attendance"
+        element={
+          <AgreementGuard>
+            <FaceAttendance />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/scan-qr"
+        element={
+          <AgreementGuard>
+            <ScanQRCode />
           </AgreementGuard>
         }
       />
@@ -91,7 +109,15 @@ const AppRoutes = () => {
         path="/leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests />
+            <MyLeaveRequests requestType="short_leave" />
+          </AgreementGuard>
+        }
+      />
+      <Route
+        path="/study-leave-requests"
+        element={
+          <AgreementGuard>
+            <MyLeaveRequests requestType="study_leave" />
           </AgreementGuard>
         }
       />
@@ -122,7 +148,14 @@ const AppRoutes = () => {
         path="/admin/intern/:internId/records"
         element={<AdminInternRecords />}
       />
-      <Route path="/admin/leave-requests" element={<AdminLeaveManagement />} />
+      <Route
+        path="/admin/leave-requests"
+        element={<AdminLeaveManagement requestType="short_leave" />}
+      />
+      <Route
+        path="/admin/study-leave-requests"
+        element={<AdminLeaveManagement requestType="study_leave" />}
+      />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />

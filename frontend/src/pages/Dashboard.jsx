@@ -783,14 +783,23 @@ const Dashboard = () => {
                           </h4>
                           <div className="flex items-center gap-3 mt-1.5 text-xs">
                             <div className="flex flex-col gap-1 text-gray-500 font-medium">
-                              <span className="flex items-center">
-                                <Clock className="h-3 w-3 mr-1 text-emerald-500" />{" "}
-                                {entry.checkInTime ? `${entry.checkInTime} (In)` : "-"}
-                              </span>
-                              {entry.checkOutTime && (
+                              {entry.checkInTime || entry.time ? (
+                                <>
+                                  <span className="flex items-center">
+                                    <Clock className="h-3 w-3 mr-1 text-emerald-500" />
+                                    {entry.checkInTime || entry.time}
+                                  </span>
+                                  {entry.checkOutTime && (
+                                    <span className="flex items-center text-gray-400">
+                                      <Clock className="h-3 w-3 mr-1 text-amber-500" />
+                                      {entry.checkOutTime}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
                                 <span className="flex items-center">
-                                  <Clock className="h-3 w-3 mr-1 text-amber-500" />{" "}
-                                  {`${entry.checkOutTime} (Out)`}
+                                  <Clock className="h-3 w-3 mr-1 text-emerald-500" />
+                                  -
                                 </span>
                               )}
                             </div>
@@ -913,37 +922,7 @@ const Dashboard = () => {
               </motion.div>
             </div>
 
-            {/* Filters */}
-            <div className="flex gap-2 mb-6">
-              <button
-                onClick={() => handleFilterByStatus("All")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "All"
-                    ? "bg-gray-800 text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => handleFilterByStatus("Present")}
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all ${
-                  filterStatus === "Present"
-                    ? "text-white shadow-md"
-                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
-                }`}
-                style={
-                  filterStatus === "Present"
-                    ? {
-                        background:
-                          "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                      }
-                    : {}
-                }
-              >
-                Present
-              </button>
-            </div>
+
 
             {/* Meeting History Accordion */}
             {filteredMeetingAttendance.length > 0 ? (
@@ -1038,7 +1017,7 @@ const Dashboard = () => {
                                         <div className="flex items-center gap-3 mt-1.5 text-xs">
                                           <span className="flex items-center text-gray-500 font-medium">
                                             <Clock className="h-3 w-3 mr-1" />{" "}
-                                            {entry.checkInTime || "N/A"}
+                                            {entry.checkInTime || entry.time || "N/A"}
                                           </span>
                                           <span
                                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
@@ -1086,7 +1065,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation onLogout={handleLogout} />
       {showFaceModal && (
         <FaceRegistrationModal
@@ -1151,9 +1130,8 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-      <div className="flex-1 flex flex-col lg:mt-7 lg:px-10">
-        <div className="h-16" />
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           {renderContent()}
         </main>
       </div>

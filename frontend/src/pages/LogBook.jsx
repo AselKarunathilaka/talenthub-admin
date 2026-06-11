@@ -376,6 +376,7 @@ const Logbook = () => {
   });
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [projectAccessBlocked, setProjectAccessBlocked] = useState(null);
+  const [extendedLeaveBlocked, setExtendedLeaveBlocked] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
 
   /* ── ★ New: logbook restriction state ── */
@@ -498,6 +499,52 @@ const Logbook = () => {
     };
 
     checkAccess();
+  }, []);
+
+  /* ── Check for extended leave on mount ────────────────────────────────── */
+  useEffect(() => {
+    const checkExtendedLeave = async () => {
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) {
+        setExtendedLeaveBlocked(false);
+        return;
+      }
+
+      try {
+        const { API_BASE_URL, API_ENDPOINTS } = await import("../api/apiConfig");
+        const res = await fetch(
+          `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`,
+          { headers: { Authorization: `Bearer ${authToken}` } },
+        );
+
+        if (res.ok) {
+          const records = await res.json();
+          const today = new Date();
+          const sriLankanOffset = 5.5 * 60;
+          const localOffset = today.getTimezoneOffset();
+          const sriLankanTime = new Date(today.getTime() + (localOffset + sriLankanOffset) * 60000);
+          const dateStr = sriLankanTime.toISOString().split("T")[0];
+
+          const todayRecord = records.find(r => 
+            r.status === "study_leave" && 
+            r.date === dateStr
+          );
+
+          if (todayRecord) {
+            setExtendedLeaveBlocked(true);
+          } else {
+            setExtendedLeaveBlocked(false);
+          }
+        } else {
+          setExtendedLeaveBlocked(false);
+        }
+      } catch (err) {
+        console.error("Extended leave check failed:", err);
+        setExtendedLeaveBlocked(false);
+      }
+    };
+
+    checkExtendedLeave();
   }, []);
 
   const submitRecord = useCallback(async (authToken, recordPayload) => {
@@ -821,12 +868,12 @@ const Logbook = () => {
 
   /* ── Derived states ───────────────────────────────────────────────────── */
   const isSubmitDisabled =
-    projectAccessBlocked !== false || isSubmitting || showSuccessAnimation;
+    projectAccessBlocked !== false || extendedLeaveBlocked !== false || isSubmitting || showSuccessAnimation;
 
-  const areFieldsDisabled = !!projectAccessBlocked;
+  const areFieldsDisabled = !!projectAccessBlocked || !!extendedLeaveBlocked;
 
   const submitButtonContent = () => {
-    if (projectAccessBlocked === null) {
+    if (projectAccessBlocked === null || extendedLeaveBlocked === null) {
       return (
         <>
           <FiLoader
@@ -941,13 +988,14 @@ const Logbook = () => {
       )}
 
       <div
-        className="flex flex-col lg:flex-row min-h-screen"
+        className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans"
         style={{ background: "#f0f4f8" }}
       >
         <Navigation />
 
-        <div className="flex-1 w-full lg:mt-20 lg:px-10">
-          <main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-4xl">
+        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+
             {/* ───── Page Header ───── */}
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
@@ -1278,6 +1326,105 @@ const Logbook = () => {
                         </p>
                       </div>
 
+                  {/* Action button */}
+                  <a
+                    href="https://talenttrail.slt.lk"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      width: "100%",
+                      padding: "12px 24px",
+                      marginTop: 20,
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                      color: "white",
+                      fontWeight: 600,
+                      fontSize: 15,
+                      textDecoration: "none",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 4px 14px rgba(245, 158, 11, 0.25)",
+                    }}
+                  >
+                    Go to TalentTrail
+                    <FiArrowRight size={16} />
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* ───── Extended Leave Blocked — Standalone Instruction Card ───── */}
+            {extendedLeaveBlocked === true && (
+              <div
+                className="logbook-card logbook-fade-in"
+                style={{
+                  background: "white",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  border: "2px solid #bae6fd",
+                  boxShadow: "0 4px 24px rgba(14, 165, 233, 0.08)",
+                  maxWidth: 640,
+                  margin: "0 auto",
+                  marginBottom: 32,
+                }}
+              >
+                <div style={{
+                  background: "linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)",
+                  padding: "20px 24px",
+                  borderBottom: "1px solid #bae6fd",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                }}>
+                  <div style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: "linear-gradient(135deg, #0284c7 0%, #0369a1 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <FiUmbrella size={24} color="white" />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 20, fontWeight: 700, color: "#075985", margin: 0 }}>
+                      Extended Leave Active
+                    </h2>
+                    <p style={{ fontSize: 13, color: "#0c4a6e", marginTop: 4 }}>
+                      No daily update required for today
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ padding: "24px" }}>
+                  <p style={{ fontSize: 14, color: "#0c4a6e", marginBottom: 16, lineHeight: 1.6 }}>
+                    You have an approved Extended Leave for today. The system has automatically updated your logbook for this period. Enjoy your leave!
+                  </p>
+                  <button
+                    onClick={() => navigate("/DailyRecords")}
+                    style={{
+                      background: "#0ea5e9",
+                      color: "white",
+                      padding: "10px 20px",
+                      borderRadius: "10px",
+                      border: "none",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "8px"
+                    }}
+                  >
+                    Return to Daily Records
+                  </button>
+                </div>
+              </div>
+            )}
                       {/* Action button */}
                       <a
                         href="https://talenttrail.slt.lk"

@@ -70,6 +70,7 @@ const internSchema = new mongoose.Schema(
     agreementAcceptedDate: { type: Date },
     isTestAccount: { type: Boolean, default: false },
     password: { type: String, default: "" },
+    googlePictureUrl: { type: String, default: "" },
 
     /* ── Logbook restriction ──────────────────────────────────────────────── */
     logbookRestricted: {
