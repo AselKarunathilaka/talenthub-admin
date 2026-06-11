@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   FaArrowLeft,
   FaSearch,
@@ -18,6 +19,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
+
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const getAuthHeaders = () => {
@@ -360,6 +362,7 @@ const AdminManualAttendance = () => {
   const [bulkInternIds, setBulkInternIds] = useState("");
   const [bulkResults, setBulkResults] = useState(null);
   const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedExcelFileName, setUploadedExcelFileName] = useState("");
 
   const showToast = (text, type = "info") => setToast({ text, type });
 
