@@ -546,6 +546,60 @@ const AdminManualAttendance = () => {
   }
 };
 
+const handleExcelUpload = async (event) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const data = await file.arrayBuffer();
+
+    const workbook = XLSX.read(data, {
+      type: "array",
+    });
+
+    const sheetName = workbook.SheetNames[0];
+
+    const worksheet = workbook.Sheets[sheetName];
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+    });
+
+    const presentIds = [];
+
+    rows.forEach((row) => {
+      const internId = row[0];
+      const status = row[2];
+
+      if (
+        internId &&
+        status &&
+        String(status).trim().toLowerCase() === "present"
+      ) {
+        presentIds.push(String(internId).trim());
+      }
+    });
+
+    setBulkInternIds(presentIds.join("\n"));
+
+    setUploadedExcelFileName(file.name);
+
+    showToast(
+      `${presentIds.length} present interns loaded`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      "Failed to read Excel file",
+      "error"
+    );
+  }
+};
+
+
   const canSubmitSingle =
     selectedIntern &&
     selectedDate &&
