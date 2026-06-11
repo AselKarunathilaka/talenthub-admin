@@ -531,7 +531,7 @@ const getAttendanceByInternId = async (req, res) => {
           type: "Meeting",
           attendanceMethod: normalizeAttendanceMethod(type),
           checkInTime: entry.date ? formatColomboTime(entry.date) : null,
-          isMeeting: true
+          isMeeting: true,
         });
       });
     }
@@ -566,8 +566,12 @@ const getAttendanceByInternId = async (req, res) => {
             dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
-          checkInTime: attendanceTime ? formatColomboTime(attendanceTime) : null,
-          checkOutTime: record.checkOutTime ? formatColomboTime(record.checkOutTime) : null,
+          checkInTime: attendanceTime
+            ? formatColomboTime(attendanceTime)
+            : null,
+          checkOutTime: record.checkOutTime
+            ? formatColomboTime(record.checkOutTime)
+            : null,
           attendanceTime: record.attendanceTime,
         });
       }
@@ -588,7 +592,7 @@ const getAttendanceByInternId = async (req, res) => {
                 meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
             checkInTime: formatColomboTime(attendanceTime),
-            isMeeting: true
+            isMeeting: true,
           });
         });
       }
@@ -671,7 +675,9 @@ const getAttendanceByInternId = async (req, res) => {
             type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
             checkInTime: formatColomboTime(entry.timeMarked || entryDate),
-            checkOutTime: entry.checkOutTime ? formatColomboTime(entry.checkOutTime) : null,
+            checkOutTime: entry.checkOutTime
+              ? formatColomboTime(entry.checkOutTime)
+              : null,
             attendanceTime: entry.timeMarked || entry.date,
           });
           datesWithDailyRecord.add(dayKey);
@@ -1070,7 +1076,6 @@ const checkInternProjects = async (req, res) => {
   }
 };
 
-
 // =========================== PROFILE PICTURE MANAGEMENT ===========================
 
 // Upload or update profile picture
@@ -1085,7 +1090,7 @@ const uploadProfilePicture = async (req, res) => {
       contentType = req.file.mimetype;
       try {
         fs.unlinkSync(req.file.path);
-      } catch(err) {
+      } catch (err) {
         console.error("Failed to delete temp file:", err);
       }
     } else if (req.body.imageBase64) {
@@ -1099,13 +1104,15 @@ const uploadProfilePicture = async (req, res) => {
       }
       imageBuffer = Buffer.from(base64Data, "base64");
     } else {
-      return res.status(400).json({ error: "No image file or base64 data provided" });
+      return res
+        .status(400)
+        .json({ error: "No image file or base64 data provided" });
     }
 
     await ProfilePicture.findOneAndUpdate(
       { internId: id },
       { internId: id, imageBuffer, contentType },
-      { upsert: true, new: true }
+      { upsert: true, new: true },
     );
 
     res.status(200).json({ message: "Profile picture uploaded successfully" });
@@ -1176,20 +1183,23 @@ const markTourSeen = async (req, res) => {
     }
 
     const Intern = require("../models/Intern");
-    const intern = await Intern.findOneAndUpdate(
-      { Trainee_ID: id },
+
+    const intern = await Intern.findByIdAndUpdate(
+      id,
       { $set: { tourSeenVersion: version } },
-      { new: true }
+      { new: true },
     );
 
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    res.status(200).json({ message: "Tour marked as seen", tourSeenVersion: intern.tourSeenVersion });
+    res.status(200).json({ ok: true, tourSeenVersion: intern.tourSeenVersion });
   } catch (error) {
     console.error("Error marking tour as seen:", error);
-    res.status(500).json({ message: "Error marking tour as seen", error: error.message });
+    res
+      .status(500)
+      .json({ message: "Error marking tour as seen", error: error.message });
   }
 };
 

@@ -60,7 +60,8 @@ const createFeatureTip = async (req, res) => {
 const toggleFeatureTip = async (req, res) => {
   try {
     const tip = await FeatureTip.findById(req.params.id);
-    if (!tip) return res.status(404).json({ message: "Feature tip not found." });
+    if (!tip)
+      return res.status(404).json({ message: "Feature tip not found." });
 
     tip.isActive = !tip.isActive;
     await tip.save();
@@ -78,7 +79,8 @@ const toggleFeatureTip = async (req, res) => {
 const deleteFeatureTip = async (req, res) => {
   try {
     const tip = await FeatureTip.findByIdAndDelete(req.params.id);
-    if (!tip) return res.status(404).json({ message: "Feature tip not found." });
+    if (!tip)
+      return res.status(404).json({ message: "Feature tip not found." });
 
     res.json({ message: "Feature tip deleted.", id: req.params.id });
   } catch (err) {
@@ -96,7 +98,7 @@ const deleteFeatureTip = async (req, res) => {
  */
 const getUnseenFeatureTips = async (req, res) => {
   try {
-    const internId = req.internId || req.params.internId;
+    const internId = req.user?._id || req.user?.id;
     const intern = await Intern.findById(internId).select("seenFeatureTipIds");
     if (!intern) return res.status(404).json({ message: "Intern not found." });
 
@@ -121,7 +123,7 @@ const getUnseenFeatureTips = async (req, res) => {
  */
 const markFeatureTipSeen = async (req, res) => {
   try {
-    const internId = req.internId;
+    const internId = req.user?._id || req.user?.id;
     const { tipId } = req.body;
     if (!tipId) return res.status(400).json({ message: "tipId is required." });
 

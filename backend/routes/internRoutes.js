@@ -40,7 +40,7 @@ const {
   testSLTAPI,
   getActiveTraineesFromSLT,
   cleanupInactiveInterns,
-  
+
   // SLT API Scheduler
   triggerManualSLTSync,
   triggerComprehensiveUpdate,
@@ -65,10 +65,51 @@ const {
 
 const router = express.Router();
 
+// =========================== ONBOARDING TOUR ===========================
+router.patch("/:id/tour-seen", authenticateUser, markTourSeen);
+
+// =========================== AGREEMENT ===========================
+router.put("/:id/accept-agreement", acceptAgreement);
+
+// =========================== PROJECT CHECK ===========================
+router.get("/:id/projects/check", checkInternProjects);
+
+// =========================== PROFILE PICTURE ===========================
+router.post(
+  "/:id/profile-picture",
+  authenticateUser,
+  upload.single("image"),
+  uploadProfilePicture,
+);
+router.get("/:id/profile-picture", getProfilePicture);
+
+// =========================== AVAILABILITY MANAGEMENT ===========================
+router.post("/:id/availability/add", addAvailableDay);
+router.post("/:id/availability/remove", removeAvailableDay);
+
 // =========================== ATTENDANCE STATS ===========================
-router.get("/attendance-stats-today", authenticateUser, getAttendanceStatsForToday);
+router.get(
+  "/attendance-stats-today",
+  authenticateUser,
+  getAttendanceStatsForToday,
+);
 router.get("/attendance-stats", authenticateUser, getAttendanceStats);
-router.get("/weekly-attendance-stats", authenticateUser, getWeeklyAttendanceStats);
+router.get(
+  "/weekly-attendance-stats",
+  authenticateUser,
+  getWeeklyAttendanceStats,
+);
+
+// =========================== ATTENDANCE MANAGEMENT ===========================
+router.put(
+  "/attendance/:id/update",
+  authenticateUser,
+  updateAttendanceForSpecificDate,
+);
+router.get("/attendance/:id", getAttendanceByInternId);
+router.post("/mark-attendance/:id", authenticateUser, markAttendance);
+router.post("/mark-attendance", authenticateUser, markAttendance);
+router.put("/update-attendance/:id", authenticateUser, updateAttendance);
 
 // =========================== INTERN MANAGEMENT ===========================
 router.post("/add", authenticateUser, addIntern);
@@ -79,24 +120,17 @@ router.get("/:id", authenticateUser, getInternById);
 router.put("/update/:id", authenticateUser, updateIntern);
 router.delete("/:id", authenticateUser, removeIntern);
 
-// =========================== ATTENDANCE MANAGEMENT ===========================
-router.get("/attendance/:id", getAttendanceByInternId);
-router.post("/mark-attendance/:id", authenticateUser, markAttendance);
-router.post("/mark-attendance", authenticateUser, markAttendance);
-router.put("/update-attendance/:id", authenticateUser, updateAttendance);
-router.put("/attendance/:id/update", authenticateUser, updateAttendanceForSpecificDate);
-
 // =========================== TEAM MANAGEMENT ===========================
 router.post("/assign-to-team", authenticateUser, assignToTeam);
 router.put("/teams/:oldTeamName", authenticateUser, updateTeamName);
 router.delete("/teams/:teamName", authenticateUser, deleteTeam);
-router.put("/teams/:teamName/assign-single", authenticateUser, assignSingleToTeam);
+router.put(
+  "/teams/:teamName/assign-single",
+  authenticateUser,
+  assignSingleToTeam,
+);
 router.put("/teams/:teamName/remove", authenticateUser, removeFromTeam);
 router.get("/teams/all", authenticateUser, getAllTeams);
-
-// =========================== AVAILABILITY MANAGEMENT ===========================
-router.post("/:id/availability/add", addAvailableDay);
-router.post("/:id/availability/remove", removeAvailableDay);
 
 // =========================== SLT API INTEGRATION ===========================
 router.post("/slt/sync", authenticateUser, syncWithSLTAPI);
@@ -106,24 +140,15 @@ router.post("/slt/cleanup", authenticateUser, cleanupInactiveInterns);
 
 // =========================== SLT API SCHEDULER ===========================
 router.post("/slt/sync/manual", authenticateUser, triggerManualSLTSync);
-router.post("/slt/update/comprehensive", authenticateUser, triggerComprehensiveUpdate);
+router.post(
+  "/slt/update/comprehensive",
+  authenticateUser,
+  triggerComprehensiveUpdate,
+);
 
 // =========================== FILE UPLOAD ===========================
 router.post("/upload", authenticateUser, upload.single("file"), uploadInterns);
 router.post("/upload-txt", upload.single("file"), uploadTXT);
-
-// =========================== AGREEMENT ===========================
-router.put("/:id/accept-agreement", acceptAgreement);
-
-// =========================== PROJECT CHECK ===========================
-router.get("/:id/projects/check", checkInternProjects);
-
-// =========================== PROFILE PICTURE ===========================
-router.post("/:id/profile-picture", authenticateUser, upload.single("image"), uploadProfilePicture);
-router.get("/:id/profile-picture", getProfilePicture);
-
-// =========================== ONBOARDING TOUR ===========================
-router.patch("/:id/tour-seen", authenticateUser, markTourSeen);
 
 // =========================== OPTIONAL FILTERS ===========================
 // router.get("/filter/by-day/:day", getInternsByDay);
