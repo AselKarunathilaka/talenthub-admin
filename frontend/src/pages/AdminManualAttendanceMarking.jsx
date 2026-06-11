@@ -566,20 +566,42 @@ const handleExcelUpload = async (event) => {
       header: 1,
     });
 
+    const headerRowIndex = rows.findIndex(
+      (row) =>
+        String(row[0] || "").trim() === "Intern ID" &&
+        String(row[2] || "").trim() === "Status"
+    );
+
+    if (headerRowIndex === -1) {
+      showToast(
+        "Could not find Intern ID / Status columns",
+        "error"
+      );
+      return;
+    }
+
     const presentIds = [];
 
-    rows.forEach((row) => {
-      const internId = row[0];
-      const status = row[2];
+    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+      const row = rows[i];
+
+      const internId = String(row[0] || "").trim();
+      const status = String(row[2] || "").trim();
+
+      // Stop when Attendance Summary is reached
+      if (
+        internId.toLowerCase().includes("attendance summary")
+      ) {
+        break;
+      }
 
       if (
         internId &&
-        status &&
-        String(status).trim().toLowerCase() === "present"
+        status.toLowerCase() === "present"
       ) {
-        presentIds.push(String(internId).trim());
+        presentIds.push(internId);
       }
-    });
+    }
 
     setBulkInternIds(presentIds.join("\n"));
 
@@ -894,7 +916,7 @@ const handleExcelUpload = async (event) => {
                     <FaUpload className="text-blue-600" />
 
                     <span className="text-sm font-medium text-blue-700">
-                                        
+
                     </span>
 
                     <input
