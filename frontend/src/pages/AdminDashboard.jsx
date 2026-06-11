@@ -539,6 +539,12 @@ const AdminDashboard = () => {
       color: BRAND.accent,
     },
     {
+      label: "Feature Tips",
+      icon: FaBullhorn,
+      route: "/admin/feature-tips",
+      color: "#ec4899",
+    },
+    {
       label: "Seat Layout",
       icon: FaChair,
       route: "/admin/seat-management",

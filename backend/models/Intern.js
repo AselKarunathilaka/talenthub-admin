@@ -71,6 +71,9 @@ const internSchema = new mongoose.Schema(
     isTestAccount: { type: Boolean, default: false },
     password: { type: String, default: "" },
     googlePictureUrl: { type: String, default: "" },
+    tourSeenVersion: { type: String, default: null },
+    // Array of FeatureTip _id strings the intern has already dismissed
+    seenFeatureTipIds: { type: [String], default: [] },
 
     /* ── Logbook restriction ──────────────────────────────────────────────── */
     logbookRestricted: {

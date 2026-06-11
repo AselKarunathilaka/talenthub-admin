@@ -31,6 +31,7 @@ import {
   FiLock,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
+import SectionTip from "../components/SectionTip";
 import EntryFeedbackIndicator from "../components/EntryFeedbackIndicator";
 import SuccessCheckmarkAnimation from "../components/SuccessCheckmarkAnimation";
 import {
@@ -1000,6 +1001,8 @@ const Logbook = () => {
 
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            <SectionTip sectionKey="logbook" />
+
             {/* ───── Page Header ───── */}
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">

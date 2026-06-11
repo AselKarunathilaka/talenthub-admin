@@ -901,3 +901,50 @@ export const announcementApi = {
     return res.json();
   },
 };
+
+// Feature Tip API (Admin)
+export const featureTipAdminApi = {
+  getAll: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to fetch feature tips: ${res.status}`);
+    return res.json();
+  },
+
+  create: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    await checkAuth(res);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Failed to create feature tip: ${res.status}`);
+    }
+    return res.json();
+  },
+
+  toggle: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips/${id}/toggle`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to toggle feature tip: ${res.status}`);
+    return res.json();
+  },
+
+  delete: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to delete feature tip: ${res.status}`);
+    return res.json();
+  },
+};

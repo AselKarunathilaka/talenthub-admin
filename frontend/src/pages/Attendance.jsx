@@ -22,6 +22,7 @@ import { BrowserMultiFormatReader } from "@zxing/library";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "../components/Navigation";
+import SectionTip from "../components/SectionTip";
 import FaceScanGuide from "../components/FaceScanGuide";
 import { apiFetch } from "../utils/api";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
@@ -758,6 +759,7 @@ const Attendance = () => {
 
       <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+          <SectionTip sectionKey="attendance" />
           {enrollmentSuccess && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
             <div className="animate-[fadeIn_0.25s_ease-out] rounded-2xl border border-[#50b748]/30 bg-white px-8 py-7 text-center shadow-2xl">
