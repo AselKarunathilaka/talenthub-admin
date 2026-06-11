@@ -37,6 +37,7 @@ import {
   FaTimes,
   FaGraduationCap,
   FaCamera,
+  FaLock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
@@ -566,6 +567,12 @@ const AdminDashboard = () => {
       icon: FaTimes,
       route: "/admin/inactive-interns",
       color: BRAND.danger,
+    },
+    {
+      label: "Logbook Restrictions",
+      icon: FaLock,
+      route: "/admin/logbook-restrictions",
+      color: "#7c3aed",
     },
   ];
 

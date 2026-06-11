@@ -33,6 +33,7 @@ import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
+import LogbookRestrictions from "../pages/LogbookRestrictions";
 
 const AppRoutes = () => {
   return (
@@ -183,15 +184,17 @@ const AppRoutes = () => {
         path="/admin/inactive-interns"
         element={<AdminInactiveInterns />}
       />
-      <Route
-        path="/admin/face-attendance"
-        element={<AdminFaceAttendance />}
-      />
+      <Route path="/admin/face-attendance" element={<AdminFaceAttendance />} />
 
       {/* Public Certificate Verification — no auth required */}
       <Route
         path="/verify/certificate/:token"
         element={<CertificateVerify />}
+      />
+
+      <Route
+        path="/admin/logbook-restrictions"
+        element={<LogbookRestrictions />}
       />
     </Routes>
   );

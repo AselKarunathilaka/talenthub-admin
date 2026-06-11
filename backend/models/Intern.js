@@ -28,6 +28,18 @@ const attendanceSchema = new mongoose.Schema({
   meetingSessionId: { type: String },
 });
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  Logbook restriction history entry                                          */
+/* ─────────────────────────────────────────────────────────────────────────── */
+const restrictionHistorySchema = new mongoose.Schema({
+  restrictedAt: { type: Date, required: true },
+  restrictionReason: { type: String, required: true },
+  liftedAt: { type: Date, default: null },
+  liftedBy: { type: String, default: null }, // admin identifier
+  liftReason: { type: String, default: null }, // reason given after supervisor meeting
+  autoRestricted: { type: Boolean, default: true }, // true = system-triggered, false = manual
+});
+
 // Store API-style keys as the canonical document shape so DB contains Trainee_* fields.
 const internSchema = new mongoose.Schema(
   {
@@ -37,13 +49,8 @@ const internSchema = new mongoose.Schema(
     district: { type: String, default: "" },
 
     location: {
-      type: {
-        type: String,
-        enum: ["Point"],
-      },
-      coordinates: {
-        type: [Number], // [longitude, latitude]
-      },
+      type: { type: String, enum: ["Point"] },
+      coordinates: { type: [Number] }, // [longitude, latitude]
     },
 
     Training_StartDate: { type: Date },
@@ -67,6 +74,26 @@ const internSchema = new mongoose.Schema(
     tourSeenVersion: { type: String, default: null },
     // Array of FeatureTip _id strings the intern has already dismissed
     seenFeatureTipIds: { type: [String], default: [] },
+
+    /* ── Logbook restriction ──────────────────────────────────────────────── */
+    logbookRestricted: {
+      type: Boolean,
+      default: false,
+      index: true, // fast look-up on every logbook submit request
+    },
+    logbookRestrictedAt: {
+      type: Date,
+      default: null,
+    },
+    logbookRestrictionReason: {
+      type: String,
+      default: null,
+      // e.g. "No logbook submissions for 5 consecutive working days (week of 2025-06-02)"
+    },
+    logbookRestrictionHistory: {
+      type: [restrictionHistorySchema],
+      default: [],
+    },
   },
   { timestamps: true },
 );
