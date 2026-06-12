@@ -1,9 +1,11 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
 import {
   FaArrowLeft,
   FaSearch,
   FaCalendarCheck,
+  FaUpload,
   FaUsers,
   FaSpinner,
   FaCheckCircle,
@@ -17,6 +19,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
+
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const getAuthHeaders = () => {
@@ -358,6 +361,8 @@ const AdminManualAttendance = () => {
   const [recentMarks, setRecentMarks] = useState([]);
   const [bulkInternIds, setBulkInternIds] = useState("");
   const [bulkResults, setBulkResults] = useState(null);
+  const [uploadedFileName, setUploadedFileName] = useState("");
+  const [uploadedExcelFileName, setUploadedExcelFileName] = useState("");
 
   const showToast = (text, type = "info") => setToast({ text, type });
 
@@ -512,6 +517,110 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
+
+  const handleTxtUpload = async (event) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+
+    const ids = text
+      .split(/[\n,\r]+/)
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    setBulkInternIds(ids.join("\n"));
+    setUploadedFileName(file.name);
+
+    showToast(
+      `${ids.length} IDs loaded from file`,
+      "success"
+    );
+  } catch (error) {
+    showToast(
+      "Failed to read TXT file",
+      "error"
+    );
+  }
+};
+
+const handleExcelUpload = async (event) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  try {
+    const data = await file.arrayBuffer();
+
+    const workbook = XLSX.read(data, {
+      type: "array",
+    });
+
+    const sheetName = workbook.SheetNames[0];
+
+    const worksheet = workbook.Sheets[sheetName];
+
+    const rows = XLSX.utils.sheet_to_json(worksheet, {
+      header: 1,
+    });
+
+    const headerRowIndex = rows.findIndex(
+      (row) =>
+        String(row[0] || "").trim() === "Intern ID" &&
+        String(row[2] || "").trim() === "Status"
+    );
+
+    if (headerRowIndex === -1) {
+      showToast(
+        "Could not find Intern ID / Status columns",
+        "error"
+      );
+      return;
+    }
+
+    const presentIds = [];
+
+    for (let i = headerRowIndex + 1; i < rows.length; i++) {
+      const row = rows[i];
+
+      const internId = String(row[0] || "").trim();
+      const status = String(row[2] || "").trim();
+
+      // Stop when Attendance Summary is reached
+      if (
+        internId.toLowerCase().includes("attendance summary")
+      ) {
+        break;
+      }
+
+      if (
+        internId &&
+        status.toLowerCase() === "present"
+      ) {
+        presentIds.push(internId);
+      }
+    }
+
+    setBulkInternIds(presentIds.join("\n"));
+
+    setUploadedExcelFileName(file.name);
+
+    showToast(
+      `${presentIds.length} present interns loaded`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+
+    showToast(
+      "Failed to read Excel file",
+      "error"
+    );
+  }
+};
+
 
   const canSubmitSingle =
     selectedIntern &&
@@ -801,6 +910,53 @@ const AdminManualAttendance = () => {
                     IDs detected
                   </p>
                 )}
+                
+                <div className="mt-3">
+                  <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
+                    <FaUpload className="text-blue-600" />
+
+                    <span className="text-sm font-medium text-blue-700">
+
+                    </span>
+
+                    <input
+                      type="file"
+                      accept=".txt"
+                      className="hidden"
+                      onChange={handleTxtUpload}
+                    />
+                  </label>
+
+                  {uploadedFileName && (
+                    <p className="mt-2 text-xs text-green-600">
+                      Loaded: {uploadedFileName}
+                    </p>
+                  )}
+                </div>   
+
+                <div className="mt-3">
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-all">
+                      <FaUpload className="text-green-600" />
+
+                      <span className="text-sm font-medium text-green-700">
+                        Upload Attendance Excel
+                      </span>
+
+                      <input
+                        type="file"
+                        accept=".xlsx,.xls"
+                        className="hidden"
+                        onChange={handleExcelUpload}
+                      />
+                    </label>
+
+                    {uploadedExcelFileName && (
+                      <p className="mt-2 text-xs text-green-600">
+                        Loaded: {uploadedExcelFileName}
+                      </p>
+                    )}
+                  </div>             
+                
               </motion.div>
             )}
 
