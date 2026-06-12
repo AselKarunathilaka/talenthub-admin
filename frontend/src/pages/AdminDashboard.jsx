@@ -42,6 +42,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import logo from "../assets/sltlogo.jpg";
+import AdminNavigation from "../components/AdminNavigation";
 
 /* ═══════════════════════════════════════════════════════════════
    Brand Colors
@@ -144,7 +145,7 @@ const AdminDashboard = () => {
   const [showLeaveRequestPicker, setShowLeaveRequestPicker] = useState(false);
 
   /* ── New UI state ── */
-  const [activeTab, setActiveTab] = useState("actions"); // "actions" | "exports" | "alerts"
+  const [activeTab, setActiveTab] = useState("exports"); // "exports" | "alerts"
 
   /* ── Data fetching (unchanged) ── */
   const fetchData = useCallback(async () => {
@@ -578,7 +579,6 @@ const AdminDashboard = () => {
 
   /* ── Tab definitions ── */
   const tabs = [
-    { id: "actions", label: "Actions", icon: FaTasks },
     { id: "exports", label: "Exports", icon: FaFileExport },
     {
       id: "alerts",
@@ -638,68 +638,7 @@ const AdminDashboard = () => {
      Main render
      ══════════════════════════════════════════════════════════ */
   return (
-    <div className="admin-dash-root">
-      {/* ── Ambient background ── */}
-      <div className="admin-dash-ambient">
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--1" />
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--2" />
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--3" />
-      </div>
-
-      {/* ══════════════ HEADER ══════════════ */}
-      <motion.header
-        className="admin-dash-header"
-        initial={{ y: -80 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
-      >
-        <div className="admin-dash-header__inner">
-          {/* Left: Logo + title */}
-          <motion.div
-            className="admin-dash-header__brand"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              localStorage.clear();
-              navigate("/admin-login");
-            }}
-          >
-            <img
-              src={logo}
-              alt="SLT Logo"
-              className="admin-dash-header__logo"
-            />
-            <div className="admin-dash-header__titles">
-              <span className="admin-dash-header__title">TalentHub</span>
-              <span className="admin-dash-header__subtitle">Admin Portal</span>
-            </div>
-          </motion.div>
-
-          {/* Right: User + Logout */}
-          <div className="admin-dash-header__actions">
-            <div className="admin-dash-header__user">
-              <div className="admin-dash-header__avatar">
-                <FaShieldAlt />
-              </div>
-              <span className="admin-dash-header__username">Admin</span>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-              className="admin-dash-header__logout"
-            >
-              <FaSignOutAlt />
-              <span>Logout</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* ══════════════ MAIN CONTENT ══════════════ */}
+    <AdminNavigation>
       <div className="admin-dash-content">
         <main className="admin-dash-main">
           <div className="admin-dash-container">
@@ -811,43 +750,6 @@ const AdminDashboard = () => {
               {/* Tab panels */}
               <div className="admin-dash-tab-panels">
                 <AnimatePresence mode="wait">
-                  {/* ── TAB: Actions ── */}
-                  {activeTab === "actions" && (
-                    <motion.div
-                      key="tab-actions"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="admin-dash-tab-panel"
-                    >
-                      <div className="admin-dash-actions-grid">
-                        {quickActions.map((action) => (
-                          <motion.button
-                            key={action.label}
-                            onClick={() => navigate(action.route)}
-                            whileHover={{ scale: 1.04, y: -2 }}
-                            whileTap={{ scale: 0.96 }}
-                            className="admin-dash-action-btn"
-                          >
-                            <div
-                              className="admin-dash-action-btn__icon"
-                              style={{
-                                background: `${action.color}14`,
-                                color: action.color,
-                              }}
-                            >
-                              <action.icon />
-                            </div>
-                            <span className="admin-dash-action-btn__label">
-                              {action.label}
-                            </span>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
                   {/* ── TAB: Exports ── */}
                   {activeTab === "exports" && (
                     <motion.div
@@ -1433,7 +1335,7 @@ const AdminDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </AdminNavigation>
   );
 };
 
