@@ -6,7 +6,7 @@ const LogbookRestrictionService = require("./logbookRestrictionService");
 // ── Single source of truth for recipients ────────────────────────────────
 const DEFAULT_RECIPIENTS = [
   "dimalshacooray@gmail.com", // Developer
-  //"mgiri@slt.com.lk", // Supervisor
+  "mgiri@slt.com.lk", // Supervisor
 ];
 
 class WeeklyScheduler {

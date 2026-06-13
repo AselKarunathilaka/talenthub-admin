@@ -408,10 +408,15 @@ const Logbook = () => {
     if (formData.status === "leave") return 100;
 
     let filled = 0;
+    // 1) Status selected (always true since default is "working")
     if (formData.status) filled++;
+    // 2) Stack selected
     if (formData.stack) filled++;
+    // 3) Tasks filled
     if (formData.tasks.trim()) filled++;
+    // 4) Challenges filled
     if (formData.challenges.trim()) filled++;
+    // 5) Plans filled
     if (formData.plans.trim()) filled++;
 
     return filled * 20;
@@ -697,6 +702,7 @@ const Logbook = () => {
           text: "All three fields (Tasks, Challenges, Plans) are required.",
         });
         setIsSubmitting(false);
+        // Jump to the fields step so users can see what's missing
         setActiveStep(2);
         return;
       }
@@ -846,6 +852,7 @@ const Logbook = () => {
   /* ── Stepper navigation ───────────────────────────────────────────────── */
   const isOnLeave = formData.status === "leave";
 
+  // Determine which steps are reachable
   const canGoToStep = (stepId) => {
     if (stepId === 0) return true;
     if (stepId === 1) return !!formData.status;
@@ -855,6 +862,7 @@ const Logbook = () => {
 
   const goNext = () => {
     if (isOnLeave && activeStep === 0) {
+      // Skip stack entirely, go straight to submit (leave mode)
       setActiveStep(2);
       return;
     }
@@ -1462,8 +1470,9 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Loading state while checking project access ───── */}
-                {projectAccessBlocked === null && (
+                {/* ───── Loading state while checking access ───── */}
+                {(projectAccessBlocked === null ||
+                  extendedLeaveBlocked === null) && (
                   <div
                     className="logbook-fade-in"
                     style={{
@@ -1490,106 +1499,129 @@ const Logbook = () => {
                         color: "#374151",
                       }}
                     >
-                      Checking access...
+                      Checking status...
                     </p>
                     <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
-                      Verifying your project assignment
+                      Verifying your project assignment and leave status
                     </p>
                   </div>
                 )}
 
-                {/* ───── Main Form Card (only when project access is granted) ───── */}
-                {projectAccessBlocked === false && (
-                  <div
-                    className="logbook-card logbook-fade-in"
-                    style={{
-                      background: "white",
-                      borderRadius: 20,
-                      overflow: "hidden",
-                      border: `2px solid transparent`,
-                      borderColor: palette.border,
-                      boxShadow: `0 4px 24px rgba(0,0,0,0.06), ${palette.glow}`,
-                      transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
-                      position: "relative",
-                    }}
-                  >
-                    {/* ── Progress bar (top border) ── */}
+                {/* ───── Main Form Card (only when access is granted) ───── */}
+                {projectAccessBlocked === false &&
+                  extendedLeaveBlocked === false && (
                     <div
+                      className="logbook-card logbook-fade-in"
                       style={{
-                        height: 4,
-                        background: "#e5e7eb",
-                        position: "relative",
+                        background: "white",
+                        borderRadius: 20,
                         overflow: "hidden",
+                        border: `2px solid transparent`,
+                        borderColor: palette.border,
+                        boxShadow: `0 4px 24px rgba(0,0,0,0.06), ${palette.glow}`,
+                        transition: "all 0.5s cubic-bezier(0.4, 0, 0.2, 1)",
+                        position: "relative",
                       }}
                     >
-                      <div
-                        className="logbook-progress-fill"
-                        style={{
-                          height: "100%",
-                          width: `${completionProgress}%`,
-                          background: palette.gradient,
-                          transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
-                          borderRadius:
-                            completionProgress === 100 ? 0 : "0 4px 4px 0",
-                        }}
-                      />
-                      {completionProgress === 100 && (
-                        <div
-                          className="logbook-shimmer"
-                          style={{
-                            position: "absolute",
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
-                          }}
-                        />
-                      )}
-                    </div>
-
-                    {/* ── Stepper Header ── */}
-                    <div
-                      style={{
-                        padding: "20px 24px 16px",
-                        borderBottom: "1px solid #f0f0f0",
-                        background: palette.bg,
-                        transition: "background 0.4s ease",
-                      }}
-                    >
+                      {/* ── Progress bar (top border) ── */}
                       <div
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 0,
+                          height: 4,
+                          background: "#e5e7eb",
+                          position: "relative",
+                          overflow: "hidden",
                         }}
                       >
-                        {STEPS.map((step, idx) => {
-                          if (isOnLeave && step.id === 1) return null;
+                        <div
+                          className="logbook-progress-fill"
+                          style={{
+                            height: "100%",
+                            width: `${completionProgress}%`,
+                            background: palette.gradient,
+                            transition:
+                              "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)",
+                            borderRadius:
+                              completionProgress === 100 ? 0 : "0 4px 4px 0",
+                          }}
+                        />
+                        {completionProgress === 100 && (
+                          <div
+                            className="logbook-shimmer"
+                            style={{
+                              position: "absolute",
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              background: `linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)`,
+                            }}
+                          />
+                        )}
+                      </div>
 
-                          const isActive = activeStep === step.id;
-                          const isCompleted =
-                            step.id === 0
-                              ? activeStep > 0
-                              : step.id === 1
-                                ? isOnLeave ||
-                                  (activeStep > 1 && !!formData.stack)
-                                : false;
+                      {/* ── Stepper Header ── */}
+                      <div
+                        style={{
+                          padding: "20px 24px 16px",
+                          borderBottom: "1px solid #f0f0f0",
+                          background: palette.bg,
+                          transition: "background 0.4s ease",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 0,
+                          }}
+                        >
+                          {STEPS.map((step, idx) => {
+                            // Determine if step should be skipped visually for leave
+                            if (isOnLeave && step.id === 1) return null;
 
-                          const StepIcon = step.icon;
+                            const isActive = activeStep === step.id;
+                            const isCompleted =
+                              step.id === 0
+                                ? activeStep > 0
+                                : step.id === 1
+                                  ? isOnLeave ||
+                                    (activeStep > 1 && !!formData.stack)
+                                  : false;
 
-                          return (
-                            <React.Fragment key={step.id}>
-                              {idx > 0 &&
-                                !(isOnLeave && step.id === 2 && idx === 2) && (
+                            const StepIcon = step.icon;
+
+                            return (
+                              <React.Fragment key={step.id}>
+                                {idx > 0 &&
+                                  !(
+                                    isOnLeave &&
+                                    step.id === 2 &&
+                                    idx === 2
+                                  ) && (
+                                    <div
+                                      style={{
+                                        flex: 1,
+                                        maxWidth: 80,
+                                        height: 2,
+                                        background:
+                                          isCompleted || isActive
+                                            ? palette.light
+                                            : "#e0e0e0",
+                                        transition: "background 0.4s ease",
+                                        margin: "0 4px",
+                                      }}
+                                    />
+                                  )}
+                                {/* Connector before step 2 (Details) when on leave - since Stack is hidden */}
+                                {isOnLeave && step.id === 2 && (
                                   <div
                                     style={{
                                       flex: 1,
                                       maxWidth: 80,
                                       height: 2,
                                       background:
-                                        isCompleted || isActive
+                                        activeStep >= 2
                                           ? palette.light
                                           : "#e0e0e0",
                                       transition: "background 0.4s ease",
@@ -1597,1060 +1629,1069 @@ const Logbook = () => {
                                     }}
                                   />
                                 )}
-                              {isOnLeave && step.id === 2 && (
-                                <div
-                                  style={{
-                                    flex: 1,
-                                    maxWidth: 80,
-                                    height: 2,
-                                    background:
-                                      activeStep >= 2
-                                        ? palette.light
-                                        : "#e0e0e0",
-                                    transition: "background 0.4s ease",
-                                    margin: "0 4px",
-                                  }}
-                                />
-                              )}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  canGoToStep(step.id) && setActiveStep(step.id)
-                                }
-                                disabled={!canGoToStep(step.id)}
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  alignItems: "center",
-                                  gap: 6,
-                                  cursor: canGoToStep(step.id)
-                                    ? "pointer"
-                                    : "default",
-                                  background: "none",
-                                  border: "none",
-                                  padding: "4px 12px",
-                                  opacity: canGoToStep(step.id) ? 1 : 0.4,
-                                  transition: "all 0.3s ease",
-                                }}
-                              >
-                                <div
-                                  className={
-                                    isActive ? "logbook-step-pulse" : ""
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    canGoToStep(step.id) &&
+                                    setActiveStep(step.id)
                                   }
+                                  disabled={!canGoToStep(step.id)}
                                   style={{
-                                    width: 40,
-                                    height: 40,
-                                    borderRadius: "50%",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    background: isCompleted
-                                      ? palette.gradient
-                                      : isActive
-                                        ? palette.gradient
-                                        : "#f3f4f6",
-                                    color:
-                                      isCompleted || isActive
-                                        ? "white"
-                                        : "#9ca3af",
-                                    transition: "all 0.4s ease",
-                                    boxShadow: isActive
-                                      ? `0 0 0 4px ${palette.bg}`
-                                      : "none",
-                                  }}
-                                >
-                                  {isCompleted ? (
-                                    <FiCheck size={18} />
-                                  ) : (
-                                    <StepIcon size={18} />
-                                  )}
-                                </div>
-                                <span
-                                  style={{
-                                    fontSize: 11,
-                                    fontWeight: isActive ? 700 : 500,
-                                    color: isActive
-                                      ? palette.primary
-                                      : "#9ca3af",
-                                    transition: "all 0.3s ease",
-                                    letterSpacing: 0.3,
-                                    textTransform: "uppercase",
-                                  }}
-                                >
-                                  {step.label}
-                                </span>
-                              </button>
-                            </React.Fragment>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* ── Form Body ── */}
-                    <div style={{ padding: "24px" }}>
-                      <form onSubmit={handleSubmit}>
-                        {/* ╔══════════════════════════════════════════════╗ */}
-                        {/* ║  STEP 0 — Status Selection                   ║ */}
-                        {/* ╚══════════════════════════════════════════════╝ */}
-                        <div
-                          className="logbook-step-content"
-                          style={{
-                            display: activeStep === 0 ? "block" : "none",
-                          }}
-                        >
-                          <div
-                            style={{ textAlign: "center", marginBottom: 24 }}
-                          >
-                            <h2
-                              style={{
-                                fontSize: 22,
-                                fontWeight: 700,
-                                color: "#1a1a2e",
-                                marginBottom: 6,
-                              }}
-                            >
-                              How are you working today?
-                            </h2>
-                            <p style={{ color: "#6b7280", fontSize: 14 }}>
-                              Select your work status for today
-                            </p>
-                          </div>
-
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: "#374151",
-                              marginBottom: 12,
-                            }}
-                          >
-                            <FiUmbrella
-                              style={{ marginRight: 8, color: palette.light }}
-                            />
-                            Status{" "}
-                            <span style={{ color: "#ef4444", marginLeft: 4 }}>
-                              *
-                            </span>
-                          </label>
-
-                          <div
-                            style={{
-                              display: "flex",
-                              flexWrap: "wrap",
-                              gap: 12,
-                              marginBottom: 16,
-                            }}
-                          >
-                            {statusOptions.map((opt) => {
-                              const isSelected = formData.status === opt.value;
-                              const isDisabled =
-                                areFieldsDisabled || opt.disabled;
-                              const Icon = opt.icon;
-
-                              return (
-                                <label
-                                  key={opt.value}
-                                  className="logbook-status-card"
-                                  style={{
-                                    flex: "1 1 160px",
                                     display: "flex",
                                     flexDirection: "column",
                                     alignItems: "center",
-                                    justifyContent: "center",
-                                    padding: "20px 16px",
-                                    borderRadius: 16,
-                                    border: isSelected
-                                      ? `2px solid ${opt.palette.light}`
-                                      : "2px solid #e5e7eb",
-                                    background: isSelected
-                                      ? opt.palette.softBg
-                                      : "#fafafa",
-                                    cursor: isDisabled
-                                      ? "not-allowed"
-                                      : "pointer",
-                                    opacity: isDisabled ? 0.45 : 1,
+                                    gap: 6,
+                                    cursor: canGoToStep(step.id)
+                                      ? "pointer"
+                                      : "default",
+                                    background: "none",
+                                    border: "none",
+                                    padding: "4px 12px",
+                                    opacity: canGoToStep(step.id) ? 1 : 0.4,
                                     transition: "all 0.3s ease",
-                                    textAlign: "center",
-                                    position: "relative",
-                                    overflow: "hidden",
                                   }}
                                 >
-                                  <input
-                                    type="radio"
-                                    name="status"
-                                    value={opt.value}
-                                    checked={isSelected}
-                                    onChange={handleChange}
-                                    disabled={isDisabled}
-                                    style={{ position: "absolute", opacity: 0 }}
-                                  />
-                                  {isSelected && (
-                                    <div
-                                      style={{
-                                        position: "absolute",
-                                        top: 8,
-                                        right: 8,
-                                        width: 20,
-                                        height: 20,
-                                        borderRadius: "50%",
-                                        background: opt.palette.gradient,
-                                        display: "flex",
-                                        alignItems: "center",
-                                        justifyContent: "center",
-                                      }}
-                                    >
-                                      <FiCheck size={12} color="white" />
-                                    </div>
-                                  )}
                                   <div
+                                    className={
+                                      isActive ? "logbook-step-pulse" : ""
+                                    }
                                     style={{
-                                      width: 48,
-                                      height: 48,
+                                      width: 40,
+                                      height: 40,
                                       borderRadius: "50%",
                                       display: "flex",
                                       alignItems: "center",
                                       justifyContent: "center",
-                                      background: isSelected
-                                        ? opt.palette.gradient
-                                        : "#e5e7eb",
-                                      marginBottom: 10,
-                                      transition: "all 0.3s ease",
+                                      background: isCompleted
+                                        ? palette.gradient
+                                        : isActive
+                                          ? palette.gradient
+                                          : "#f3f4f6",
+                                      color:
+                                        isCompleted || isActive
+                                          ? "white"
+                                          : "#9ca3af",
+                                      transition: "all 0.4s ease",
+                                      boxShadow: isActive
+                                        ? `0 0 0 4px ${palette.bg}`
+                                        : "none",
                                     }}
                                   >
-                                    <Icon
-                                      size={22}
-                                      color={isSelected ? "white" : "#9ca3af"}
-                                    />
+                                    {isCompleted ? (
+                                      <FiCheck size={18} />
+                                    ) : (
+                                      <StepIcon size={18} />
+                                    )}
                                   </div>
-                                  <span
-                                    style={{
-                                      fontSize: 14,
-                                      fontWeight: 700,
-                                      color: isSelected
-                                        ? opt.palette.primary
-                                        : "#374151",
-                                      marginBottom: 4,
-                                    }}
-                                  >
-                                    {opt.label}
-                                  </span>
                                   <span
                                     style={{
                                       fontSize: 11,
-                                      color: isSelected
-                                        ? opt.palette.text
-                                        : "#9ca3af",
-                                    }}
-                                  >
-                                    {opt.description}
-                                  </span>
-                                  {opt.disabled && (
-                                    <div
-                                      style={{
-                                        marginTop: 8,
-                                        padding: "4px 10px",
-                                        borderRadius: 8,
-                                        background: "rgba(239, 68, 68, 0.08)",
-                                        border:
-                                          "1px solid rgba(239, 68, 68, 0.15)",
-                                      }}
-                                    >
-                                      <span
-                                        style={{
-                                          fontSize: 11,
-                                          fontWeight: 600,
-                                          color: "#dc2626",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: 4,
-                                        }}
-                                      >
-                                        <FiClock size={12} /> Closed after 10:00
-                                        AM
-                                      </span>
-                                      <span
-                                        style={{
-                                          fontSize: 10,
-                                          color: "#b91c1c",
-                                          display: "block",
-                                          marginTop: 2,
-                                        }}
-                                      >
-                                        Now: {timeRestriction.currentTime}
-                                      </span>
-                                    </div>
-                                  )}
-                                </label>
-                              );
-                            })}
-                          </div>
-
-                          {/* Next button */}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "flex-end",
-                              paddingTop: 12,
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={goNext}
-                              disabled={areFieldsDisabled}
-                              className="logbook-next-btn"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "10px 28px",
-                                borderRadius: 12,
-                                border: "none",
-                                background: palette.gradient,
-                                color: "white",
-                                fontWeight: 600,
-                                fontSize: 14,
-                                cursor: areFieldsDisabled
-                                  ? "not-allowed"
-                                  : "pointer",
-                                transition: "all 0.3s ease",
-                                boxShadow: `0 4px 14px ${palette.bg}`,
-                              }}
-                            >
-                              {isOnLeave ? "Review & Submit" : "Next"}
-                              <FiArrowRight style={{ marginLeft: 8 }} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* ╔══════════════════════════════════════════════╗ */}
-                        {/* ║  STEP 1 — Task Stack                         ║ */}
-                        {/* ╚══════════════════════════════════════════════╝ */}
-                        <div
-                          className="logbook-step-content"
-                          style={{
-                            display:
-                              activeStep === 1 && !isOnLeave ? "block" : "none",
-                          }}
-                        >
-                          <div
-                            style={{ textAlign: "center", marginBottom: 24 }}
-                          >
-                            <h2
-                              style={{
-                                fontSize: 22,
-                                fontWeight: 700,
-                                color: "#1a1a2e",
-                                marginBottom: 6,
-                              }}
-                            >
-                              What's your focus area?
-                            </h2>
-                            <p style={{ color: "#6b7280", fontSize: 14 }}>
-                              Select the technology stack you worked on
-                            </p>
-                          </div>
-
-                          <label
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: "#374151",
-                              marginBottom: 12,
-                            }}
-                          >
-                            <FiMonitor
-                              style={{ marginRight: 8, color: palette.light }}
-                            />
-                            Task Stack{" "}
-                            <span style={{ color: "#ef4444", marginLeft: 4 }}>
-                              *
-                            </span>
-                          </label>
-
-                          <div
-                            style={{
-                              display: "grid",
-                              gridTemplateColumns:
-                                "repeat(auto-fill, minmax(180px, 1fr))",
-                              gap: 10,
-                              marginBottom: 20,
-                            }}
-                          >
-                            {stackOptions.map((opt) => {
-                              const isSelected = formData.stack === opt.value;
-                              return (
-                                <label
-                                  key={opt.value}
-                                  className="logbook-stack-card"
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    gap: 10,
-                                    padding: "12px 14px",
-                                    borderRadius: 12,
-                                    border: isSelected
-                                      ? `2px solid ${palette.light}`
-                                      : "2px solid #e5e7eb",
-                                    background: isSelected
-                                      ? palette.softBg
-                                      : "#fafafa",
-                                    cursor: areFieldsDisabled
-                                      ? "not-allowed"
-                                      : "pointer",
-                                    transition: "all 0.25s ease",
-                                    opacity: areFieldsDisabled ? 0.5 : 1,
-                                  }}
-                                >
-                                  <input
-                                    type="radio"
-                                    name="stack"
-                                    value={opt.value}
-                                    checked={isSelected}
-                                    onChange={handleChange}
-                                    disabled={areFieldsDisabled}
-                                    style={{ position: "absolute", opacity: 0 }}
-                                  />
-                                  <div
-                                    style={{
-                                      width: 32,
-                                      height: 32,
-                                      borderRadius: 8,
-                                      display: "flex",
-                                      alignItems: "center",
-                                      justifyContent: "center",
-                                      background: isSelected
-                                        ? palette.gradient
-                                        : "#e5e7eb",
-                                      color: isSelected ? "white" : "#9ca3af",
-                                      transition: "all 0.25s ease",
-                                      flexShrink: 0,
-                                    }}
-                                  >
-                                    {React.cloneElement(opt.icon, { size: 16 })}
-                                  </div>
-                                  <span
-                                    style={{
-                                      fontSize: 13,
-                                      fontWeight: isSelected ? 600 : 500,
-                                      color: isSelected
+                                      fontWeight: isActive ? 700 : 500,
+                                      color: isActive
                                         ? palette.primary
-                                        : "#4b5563",
-                                      transition: "color 0.2s ease",
+                                        : "#9ca3af",
+                                      transition: "all 0.3s ease",
+                                      letterSpacing: 0.3,
+                                      textTransform: "uppercase",
                                     }}
                                   >
-                                    {opt.label}
+                                    {step.label}
                                   </span>
-                                </label>
-                              );
-                            })}
-                          </div>
+                                </button>
+                              </React.Fragment>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                          {/* Nav buttons */}
+                      {/* ── Form Body ── */}
+                      <div style={{ padding: "24px" }}>
+                        <form onSubmit={handleSubmit}>
+                          {/* ╔══════════════════════════════════════════════╗ */}
+                          {/* ║  STEP 0 — Status Selection                   ║ */}
+                          {/* ╚══════════════════════════════════════════════╝ */}
                           <div
+                            className="logbook-step-content"
                             style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              paddingTop: 12,
+                              display: activeStep === 0 ? "block" : "none",
                             }}
                           >
-                            <button
-                              type="button"
-                              onClick={goPrev}
-                              className="logbook-back-btn"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "10px 24px",
-                                borderRadius: 12,
-                                border: `1.5px solid #e0e0e0`,
-                                background: "white",
-                                color: "#6b7280",
-                                fontWeight: 600,
-                                fontSize: 14,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
-                              }}
-                            >
-                              <FiArrowLeft style={{ marginRight: 8 }} />
-                              Back
-                            </button>
-                            <button
-                              type="button"
-                              onClick={goNext}
-                              disabled={!formData.stack}
-                              className="logbook-next-btn"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                padding: "10px 28px",
-                                borderRadius: 12,
-                                border: "none",
-                                background: formData.stack
-                                  ? palette.gradient
-                                  : "#d1d5db",
-                                color: "white",
-                                fontWeight: 600,
-                                fontSize: 14,
-                                cursor: formData.stack
-                                  ? "pointer"
-                                  : "not-allowed",
-                                transition: "all 0.3s ease",
-                                boxShadow: formData.stack
-                                  ? `0 4px 14px ${palette.bg}`
-                                  : "none",
-                              }}
-                            >
-                              Next
-                              <FiArrowRight style={{ marginLeft: 8 }} />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* ╔══════════════════════════════════════════════╗ */}
-                        {/* ║  STEP 2 — The Three Fields (or Leave msg)    ║ */}
-                        {/* ╚══════════════════════════════════════════════╝ */}
-                        <div
-                          className="logbook-step-content"
-                          style={{
-                            display: activeStep === 2 ? "block" : "none",
-                          }}
-                        >
-                          {isOnLeave ? (
-                            /* Leave mode */
                             <div
-                              style={{ textAlign: "center", padding: "24px 0" }}
+                              style={{ textAlign: "center", marginBottom: 24 }}
                             >
-                              <div
-                                style={{
-                                  width: 64,
-                                  height: 64,
-                                  borderRadius: "50%",
-                                  background: palette.gradient,
-                                  display: "flex",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  margin: "0 auto 16px",
-                                }}
-                              >
-                                <FiUmbrella size={28} color="white" />
-                              </div>
                               <h2
                                 style={{
-                                  fontSize: 20,
+                                  fontSize: 22,
                                   fontWeight: 700,
                                   color: "#1a1a2e",
                                   marginBottom: 6,
                                 }}
                               >
-                                Taking a Day Off
+                                How are you working today?
                               </h2>
-                              <div
+                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                                Select your work status for today
+                              </p>
+                            </div>
+
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: "#374151",
+                                marginBottom: 12,
+                              }}
+                            >
+                              <FiUmbrella
+                                style={{ marginRight: 8, color: palette.light }}
+                              />
+                              Status{" "}
+                              <span style={{ color: "#ef4444", marginLeft: 4 }}>
+                                *
+                              </span>
+                            </label>
+
+                            <div
+                              style={{
+                                display: "flex",
+                                flexWrap: "wrap",
+                                gap: 12,
+                                marginBottom: 16,
+                              }}
+                            >
+                              {statusOptions.map((opt) => {
+                                const isSelected =
+                                  formData.status === opt.value;
+                                const isDisabled =
+                                  areFieldsDisabled || opt.disabled;
+                                const Icon = opt.icon;
+
+                                return (
+                                  <label
+                                    key={opt.value}
+                                    className="logbook-status-card"
+                                    style={{
+                                      flex: "1 1 160px",
+                                      display: "flex",
+                                      flexDirection: "column",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      padding: "20px 16px",
+                                      borderRadius: 16,
+                                      border: isSelected
+                                        ? `2px solid ${opt.palette.light}`
+                                        : "2px solid #e5e7eb",
+                                      background: isSelected
+                                        ? opt.palette.softBg
+                                        : "#fafafa",
+                                      cursor: isDisabled
+                                        ? "not-allowed"
+                                        : "pointer",
+                                      opacity: isDisabled ? 0.45 : 1,
+                                      transition: "all 0.3s ease",
+                                      textAlign: "center",
+                                      position: "relative",
+                                      overflow: "hidden",
+                                    }}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="status"
+                                      value={opt.value}
+                                      checked={isSelected}
+                                      onChange={handleChange}
+                                      disabled={isDisabled}
+                                      style={{
+                                        position: "absolute",
+                                        opacity: 0,
+                                      }}
+                                    />
+                                    {isSelected && (
+                                      <div
+                                        style={{
+                                          position: "absolute",
+                                          top: 8,
+                                          right: 8,
+                                          width: 20,
+                                          height: 20,
+                                          borderRadius: "50%",
+                                          background: opt.palette.gradient,
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                        }}
+                                      >
+                                        <FiCheck size={12} color="white" />
+                                      </div>
+                                    )}
+                                    <div
+                                      style={{
+                                        width: 48,
+                                        height: 48,
+                                        borderRadius: "50%",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: isSelected
+                                          ? opt.palette.gradient
+                                          : "#e5e7eb",
+                                        marginBottom: 10,
+                                        transition: "all 0.3s ease",
+                                      }}
+                                    >
+                                      <Icon
+                                        size={22}
+                                        color={isSelected ? "white" : "#9ca3af"}
+                                      />
+                                    </div>
+                                    <span
+                                      style={{
+                                        fontSize: 14,
+                                        fontWeight: 700,
+                                        color: isSelected
+                                          ? opt.palette.primary
+                                          : "#374151",
+                                        marginBottom: 4,
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </span>
+                                    <span
+                                      style={{
+                                        fontSize: 11,
+                                        color: isSelected
+                                          ? opt.palette.text
+                                          : "#9ca3af",
+                                      }}
+                                    >
+                                      {opt.description}
+                                    </span>
+                                    {opt.disabled && (
+                                      <div
+                                        style={{
+                                          marginTop: 8,
+                                          padding: "4px 10px",
+                                          borderRadius: 8,
+                                          background: "rgba(239, 68, 68, 0.08)",
+                                          border:
+                                            "1px solid rgba(239, 68, 68, 0.15)",
+                                        }}
+                                      >
+                                        <span
+                                          style={{
+                                            fontSize: 11,
+                                            fontWeight: 600,
+                                            color: "#dc2626",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            gap: 4,
+                                          }}
+                                        >
+                                          <FiClock size={12} /> Closed after
+                                          10:00 AM
+                                        </span>
+                                        <span
+                                          style={{
+                                            fontSize: 10,
+                                            color: "#b91c1c",
+                                            display: "block",
+                                            marginTop: 2,
+                                          }}
+                                        >
+                                          Now: {timeRestriction.currentTime}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </label>
+                                );
+                              })}
+                            </div>
+
+                            {/* Next button */}
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "flex-end",
+                                paddingTop: 12,
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={goNext}
+                                disabled={areFieldsDisabled}
+                                className="logbook-next-btn"
                                 style={{
-                                  background: palette.softBg,
-                                  padding: "14px 20px",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "10px 28px",
                                   borderRadius: 12,
-                                  border: `1px solid ${palette.border}`,
-                                  maxWidth: 400,
-                                  margin: "16px auto",
+                                  border: "none",
+                                  background: palette.gradient,
+                                  color: "white",
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  cursor: areFieldsDisabled
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  transition: "all 0.3s ease",
+                                  boxShadow: `0 4px 14px ${palette.bg}`,
                                 }}
                               >
-                                <p
-                                  style={{
-                                    color: palette.text,
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: 8,
-                                  }}
-                                >
-                                  <FiInfo />
-                                  No further details needed for leave days.
-                                </p>
-                              </div>
+                                {isOnLeave ? "Review & Submit" : "Next"}
+                                <FiArrowRight style={{ marginLeft: 8 }} />
+                              </button>
                             </div>
-                          ) : (
-                            /* ── Working / WFH mode — all three fields ── */
-                            <>
+                          </div>
+
+                          {/* ╔══════════════════════════════════════════════╗ */}
+                          {/* ║  STEP 1 — Task Stack                         ║ */}
+                          {/* ╚══════════════════════════════════════════════╝ */}
+                          <div
+                            className="logbook-step-content"
+                            style={{
+                              display:
+                                activeStep === 1 && !isOnLeave
+                                  ? "block"
+                                  : "none",
+                            }}
+                          >
+                            <div
+                              style={{ textAlign: "center", marginBottom: 24 }}
+                            >
+                              <h2
+                                style={{
+                                  fontSize: 22,
+                                  fontWeight: 700,
+                                  color: "#1a1a2e",
+                                  marginBottom: 6,
+                                }}
+                              >
+                                What's your focus area?
+                              </h2>
+                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                                Select the technology stack you worked on
+                              </p>
+                            </div>
+
+                            <label
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                fontSize: 13,
+                                fontWeight: 600,
+                                color: "#374151",
+                                marginBottom: 12,
+                              }}
+                            >
+                              <FiMonitor
+                                style={{ marginRight: 8, color: palette.light }}
+                              />
+                              Task Stack{" "}
+                              <span style={{ color: "#ef4444", marginLeft: 4 }}>
+                                *
+                              </span>
+                            </label>
+
+                            <div
+                              style={{
+                                display: "grid",
+                                gridTemplateColumns:
+                                  "repeat(auto-fill, minmax(180px, 1fr))",
+                                gap: 10,
+                                marginBottom: 20,
+                              }}
+                            >
+                              {stackOptions.map((opt) => {
+                                const isSelected = formData.stack === opt.value;
+                                return (
+                                  <label
+                                    key={opt.value}
+                                    className="logbook-stack-card"
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 10,
+                                      padding: "12px 14px",
+                                      borderRadius: 12,
+                                      border: isSelected
+                                        ? `2px solid ${palette.light}`
+                                        : "2px solid #e5e7eb",
+                                      background: isSelected
+                                        ? palette.softBg
+                                        : "#fafafa",
+                                      cursor: areFieldsDisabled
+                                        ? "not-allowed"
+                                        : "pointer",
+                                      transition: "all 0.25s ease",
+                                      opacity: areFieldsDisabled ? 0.5 : 1,
+                                    }}
+                                  >
+                                    <input
+                                      type="radio"
+                                      name="stack"
+                                      value={opt.value}
+                                      checked={isSelected}
+                                      onChange={handleChange}
+                                      disabled={areFieldsDisabled}
+                                      style={{
+                                        position: "absolute",
+                                        opacity: 0,
+                                      }}
+                                    />
+                                    <div
+                                      style={{
+                                        width: 32,
+                                        height: 32,
+                                        borderRadius: 8,
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        background: isSelected
+                                          ? palette.gradient
+                                          : "#e5e7eb",
+                                        color: isSelected ? "white" : "#9ca3af",
+                                        transition: "all 0.25s ease",
+                                        flexShrink: 0,
+                                      }}
+                                    >
+                                      {React.cloneElement(opt.icon, {
+                                        size: 16,
+                                      })}
+                                    </div>
+                                    <span
+                                      style={{
+                                        fontSize: 13,
+                                        fontWeight: isSelected ? 600 : 500,
+                                        color: isSelected
+                                          ? palette.primary
+                                          : "#4b5563",
+                                        transition: "color 0.2s ease",
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+
+                            {/* Nav buttons */}
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                paddingTop: 12,
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={goPrev}
+                                className="logbook-back-btn"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "10px 24px",
+                                  borderRadius: 12,
+                                  border: `1.5px solid #e0e0e0`,
+                                  background: "white",
+                                  color: "#6b7280",
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  cursor: "pointer",
+                                  transition: "all 0.3s ease",
+                                }}
+                              >
+                                <FiArrowLeft style={{ marginRight: 8 }} />
+                                Back
+                              </button>
+                              <button
+                                type="button"
+                                onClick={goNext}
+                                disabled={!formData.stack}
+                                className="logbook-next-btn"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "10px 28px",
+                                  borderRadius: 12,
+                                  border: "none",
+                                  background: formData.stack
+                                    ? palette.gradient
+                                    : "#d1d5db",
+                                  color: "white",
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  cursor: formData.stack
+                                    ? "pointer"
+                                    : "not-allowed",
+                                  transition: "all 0.3s ease",
+                                  boxShadow: formData.stack
+                                    ? `0 4px 14px ${palette.bg}`
+                                    : "none",
+                                }}
+                              >
+                                Next
+                                <FiArrowRight style={{ marginLeft: 8 }} />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* ╔══════════════════════════════════════════════╗ */}
+                          {/* ║  STEP 2 — The Three Fields (or Leave msg)    ║ */}
+                          {/* ╚══════════════════════════════════════════════╝ */}
+                          <div
+                            className="logbook-step-content"
+                            style={{
+                              display: activeStep === 2 ? "block" : "none",
+                            }}
+                          >
+                            {isOnLeave ? (
+                              /* Leave mode */
                               <div
                                 style={{
                                   textAlign: "center",
-                                  marginBottom: 20,
+                                  padding: "24px 0",
                                 }}
                               >
+                                <div
+                                  style={{
+                                    width: 64,
+                                    height: 64,
+                                    borderRadius: "50%",
+                                    background: palette.gradient,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    margin: "0 auto 16px",
+                                  }}
+                                >
+                                  <FiUmbrella size={28} color="white" />
+                                </div>
                                 <h2
                                   style={{
-                                    fontSize: 22,
+                                    fontSize: 20,
                                     fontWeight: 700,
                                     color: "#1a1a2e",
                                     marginBottom: 6,
                                   }}
                                 >
-                                  Log your daily impact
+                                  Taking a Day Off
                                 </h2>
-                                <p style={{ color: "#6b7280", fontSize: 14 }}>
-                                  Complete your daily work summary
-                                </p>
-                              </div>
-
-                              {/* ── Tasks Completed ── */}
-                              <div style={{ marginBottom: 20 }}>
-                                <label
+                                <div
                                   style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    marginBottom: 8,
+                                    background: palette.softBg,
+                                    padding: "14px 20px",
+                                    borderRadius: 12,
+                                    border: `1px solid ${palette.border}`,
+                                    maxWidth: 400,
+                                    margin: "16px auto",
                                   }}
                                 >
+                                  <p
+                                    style={{
+                                      color: palette.text,
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      gap: 8,
+                                    }}
+                                  >
+                                    <FiInfo />
+                                    No further details needed for leave days.
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              /* ── Working / WFH mode — all three fields ── */
+                              <>
+                                <div
+                                  style={{
+                                    textAlign: "center",
+                                    marginBottom: 20,
+                                  }}
+                                >
+                                  <h2
+                                    style={{
+                                      fontSize: 22,
+                                      fontWeight: 700,
+                                      color: "#1a1a2e",
+                                      marginBottom: 6,
+                                    }}
+                                  >
+                                    Log your daily impact
+                                  </h2>
+                                  <p style={{ color: "#6b7280", fontSize: 14 }}>
+                                    Complete your daily work summary
+                                  </p>
+                                </div>
+
+                                {/* ── Tasks Completed ── */}
+                                <div style={{ marginBottom: 20 }}>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: "#374151",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    <FiCheckCircle
+                                      style={{
+                                        marginRight: 8,
+                                        color: palette.light,
+                                      }}
+                                    />
+                                    Tasks Completed{" "}
+                                    <span
+                                      style={{
+                                        color: "#ef4444",
+                                        marginLeft: 4,
+                                      }}
+                                    >
+                                      *
+                                    </span>
+                                  </label>
+                                  <textarea
+                                    name="tasks"
+                                    value={formData.tasks}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={areFieldsDisabled}
+                                    rows={4}
+                                    placeholder="What did you accomplish today? Be specific..."
+                                    className="logbook-textarea"
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px 16px",
+                                      border: `1.5px solid ${formData.tasks.trim() ? palette.border : "#e0e0e0"}`,
+                                      borderRadius: 14,
+                                      fontSize: 14,
+                                      resize: "vertical",
+                                      outline: "none",
+                                      transition: "all 0.3s ease",
+                                      background: areFieldsDisabled
+                                        ? "#f5f5f5"
+                                        : "#fafafa",
+                                      color: "#1a1a2e",
+                                      fontFamily: "inherit",
+                                      lineHeight: 1.6,
+                                    }}
+                                  />
+                                  <EntryFeedbackIndicator
+                                    text={formData.tasks}
+                                    forcedResult={validationResults.tasks}
+                                  />
+                                </div>
+
+                                {/* ── Challenges Faced ── */}
+                                <div style={{ marginBottom: 20 }}>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: "#374151",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    <FiAlertTriangle
+                                      style={{
+                                        marginRight: 8,
+                                        color: palette.light,
+                                      }}
+                                    />
+                                    Challenges Faced{" "}
+                                    <span
+                                      style={{
+                                        color: "#ef4444",
+                                        marginLeft: 4,
+                                      }}
+                                    >
+                                      *
+                                    </span>
+                                  </label>
+                                  <textarea
+                                    name="challenges"
+                                    value={formData.challenges}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={areFieldsDisabled}
+                                    rows={3}
+                                    placeholder="Any obstacles or difficulties you encountered..."
+                                    className="logbook-textarea"
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px 16px",
+                                      border: `1.5px solid ${formData.challenges.trim() ? palette.border : "#e0e0e0"}`,
+                                      borderRadius: 14,
+                                      fontSize: 14,
+                                      resize: "vertical",
+                                      outline: "none",
+                                      transition: "all 0.3s ease",
+                                      background: areFieldsDisabled
+                                        ? "#f5f5f5"
+                                        : "#fafafa",
+                                      color: "#1a1a2e",
+                                      fontFamily: "inherit",
+                                      lineHeight: 1.6,
+                                    }}
+                                  />
+                                  <EntryFeedbackIndicator
+                                    text={formData.challenges}
+                                    forcedResult={validationResults.challenges}
+                                  />
+                                </div>
+
+                                {/* ── Plans for Tomorrow ── */}
+                                <div style={{ marginBottom: 20 }}>
+                                  <label
+                                    style={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      fontSize: 13,
+                                      fontWeight: 600,
+                                      color: "#374151",
+                                      marginBottom: 8,
+                                    }}
+                                  >
+                                    <FiTarget
+                                      style={{
+                                        marginRight: 8,
+                                        color: palette.light,
+                                      }}
+                                    />
+                                    Plans for Tomorrow{" "}
+                                    <span
+                                      style={{
+                                        color: "#ef4444",
+                                        marginLeft: 4,
+                                      }}
+                                    >
+                                      *
+                                    </span>
+                                  </label>
+                                  <textarea
+                                    name="plans"
+                                    value={formData.plans}
+                                    onChange={handleChange}
+                                    required
+                                    disabled={areFieldsDisabled}
+                                    rows={3}
+                                    placeholder="What will you focus on tomorrow?"
+                                    className="logbook-textarea"
+                                    style={{
+                                      width: "100%",
+                                      padding: "12px 16px",
+                                      border: `1.5px solid ${formData.plans.trim() ? palette.border : "#e0e0e0"}`,
+                                      borderRadius: 14,
+                                      fontSize: 14,
+                                      resize: "vertical",
+                                      outline: "none",
+                                      transition: "all 0.3s ease",
+                                      background: areFieldsDisabled
+                                        ? "#f5f5f5"
+                                        : "#fafafa",
+                                      color: "#1a1a2e",
+                                      fontFamily: "inherit",
+                                      lineHeight: 1.6,
+                                    }}
+                                  />
+                                  <EntryFeedbackIndicator
+                                    text={formData.plans}
+                                    forcedResult={validationResults.plans}
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            {/* ── Status / error messages ── */}
+                            {statusMessage && (
+                              <div
+                                className="logbook-fade-in"
+                                style={{
+                                  display: "flex",
+                                  alignItems: "flex-start",
+                                  gap: 12,
+                                  padding: "14px 16px",
+                                  borderRadius: 14,
+                                  borderLeft: `4px solid ${
+                                    statusMessage.type === "success"
+                                      ? "#50b748"
+                                      : statusMessage.type === "project_error"
+                                        ? "#f59e0b"
+                                        : "#ef4444"
+                                  }`,
+                                  background:
+                                    statusMessage.type === "success"
+                                      ? "#f0fdf4"
+                                      : statusMessage.type === "project_error"
+                                        ? "#fffbeb"
+                                        : "#fef2f2",
+                                  marginBottom: 16,
+                                }}
+                              >
+                                {statusMessage.type === "success" ? (
                                   <FiCheckCircle
                                     style={{
-                                      marginRight: 8,
-                                      color: palette.light,
+                                      color: "#50b748",
+                                      marginTop: 2,
+                                      flexShrink: 0,
                                     }}
                                   />
-                                  Tasks Completed{" "}
-                                  <span
-                                    style={{ color: "#ef4444", marginLeft: 4 }}
-                                  >
-                                    *
-                                  </span>
-                                </label>
-                                <textarea
-                                  name="tasks"
-                                  value={formData.tasks}
-                                  onChange={handleChange}
-                                  required
-                                  disabled={areFieldsDisabled}
-                                  rows={4}
-                                  placeholder="What did you accomplish today? Be specific..."
-                                  className="logbook-textarea"
-                                  style={{
-                                    width: "100%",
-                                    padding: "12px 16px",
-                                    border: `1.5px solid ${formData.tasks.trim() ? palette.border : "#e0e0e0"}`,
-                                    borderRadius: 14,
-                                    fontSize: 14,
-                                    resize: "vertical",
-                                    outline: "none",
-                                    transition: "all 0.3s ease",
-                                    background: areFieldsDisabled
-                                      ? "#f5f5f5"
-                                      : "#fafafa",
-                                    color: "#1a1a2e",
-                                    fontFamily: "inherit",
-                                    lineHeight: 1.6,
-                                  }}
-                                />
-                                <EntryFeedbackIndicator
-                                  text={formData.tasks}
-                                  forcedResult={validationResults.tasks}
-                                />
-                              </div>
-
-                              {/* ── Challenges Faced ── */}
-                              <div style={{ marginBottom: 20 }}>
-                                <label
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    marginBottom: 8,
-                                  }}
-                                >
+                                ) : statusMessage.type === "project_error" ? (
                                   <FiAlertTriangle
                                     style={{
-                                      marginRight: 8,
-                                      color: palette.light,
+                                      color: "#f59e0b",
+                                      marginTop: 2,
+                                      flexShrink: 0,
                                     }}
                                   />
-                                  Challenges Faced{" "}
-                                  <span
-                                    style={{ color: "#ef4444", marginLeft: 4 }}
-                                  >
-                                    *
-                                  </span>
-                                </label>
-                                <textarea
-                                  name="challenges"
-                                  value={formData.challenges}
-                                  onChange={handleChange}
-                                  required
-                                  disabled={areFieldsDisabled}
-                                  rows={3}
-                                  placeholder="Any obstacles or difficulties you encountered..."
-                                  className="logbook-textarea"
-                                  style={{
-                                    width: "100%",
-                                    padding: "12px 16px",
-                                    border: `1.5px solid ${formData.challenges.trim() ? palette.border : "#e0e0e0"}`,
-                                    borderRadius: 14,
-                                    fontSize: 14,
-                                    resize: "vertical",
-                                    outline: "none",
-                                    transition: "all 0.3s ease",
-                                    background: areFieldsDisabled
-                                      ? "#f5f5f5"
-                                      : "#fafafa",
-                                    color: "#1a1a2e",
-                                    fontFamily: "inherit",
-                                    lineHeight: 1.6,
-                                  }}
-                                />
-                                <EntryFeedbackIndicator
-                                  text={formData.challenges}
-                                  forcedResult={validationResults.challenges}
-                                />
-                              </div>
-
-                              {/* ── Plans for Tomorrow ── */}
-                              <div style={{ marginBottom: 20 }}>
-                                <label
-                                  style={{
-                                    display: "flex",
-                                    alignItems: "center",
-                                    fontSize: 13,
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                    marginBottom: 8,
-                                  }}
-                                >
-                                  <FiTarget
+                                ) : (
+                                  <FiAlertCircle
                                     style={{
-                                      marginRight: 8,
-                                      color: palette.light,
+                                      color: "#ef4444",
+                                      marginTop: 2,
+                                      flexShrink: 0,
                                     }}
                                   />
-                                  Plans for Tomorrow{" "}
-                                  <span
-                                    style={{ color: "#ef4444", marginLeft: 4 }}
-                                  >
-                                    *
-                                  </span>
-                                </label>
-                                <textarea
-                                  name="plans"
-                                  value={formData.plans}
-                                  onChange={handleChange}
-                                  required
-                                  disabled={areFieldsDisabled}
-                                  rows={3}
-                                  placeholder="What will you focus on tomorrow?"
-                                  className="logbook-textarea"
-                                  style={{
-                                    width: "100%",
-                                    padding: "12px 16px",
-                                    border: `1.5px solid ${formData.plans.trim() ? palette.border : "#e0e0e0"}`,
-                                    borderRadius: 14,
-                                    fontSize: 14,
-                                    resize: "vertical",
-                                    outline: "none",
-                                    transition: "all 0.3s ease",
-                                    background: areFieldsDisabled
-                                      ? "#f5f5f5"
-                                      : "#fafafa",
-                                    color: "#1a1a2e",
-                                    fontFamily: "inherit",
-                                    lineHeight: 1.6,
-                                  }}
-                                />
-                                <EntryFeedbackIndicator
-                                  text={formData.plans}
-                                  forcedResult={validationResults.plans}
-                                />
-                              </div>
-                            </>
-                          )}
+                                )}
 
-                          {/* ── Status / error messages ── */}
-                          {statusMessage && (
-                            <div
-                              className="logbook-fade-in"
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 12,
-                                padding: "14px 16px",
-                                borderRadius: 14,
-                                borderLeft: `4px solid ${
-                                  statusMessage.type === "success"
-                                    ? "#50b748"
-                                    : statusMessage.type === "project_error"
-                                      ? "#f59e0b"
-                                      : "#ef4444"
-                                }`,
-                                background:
-                                  statusMessage.type === "success"
-                                    ? "#f0fdf4"
-                                    : statusMessage.type === "project_error"
-                                      ? "#fffbeb"
-                                      : "#fef2f2",
-                                marginBottom: 16,
-                              }}
-                            >
-                              {statusMessage.type === "success" ? (
-                                <FiCheckCircle
-                                  style={{
-                                    color: "#50b748",
-                                    marginTop: 2,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                              ) : statusMessage.type === "project_error" ? (
-                                <FiAlertTriangle
-                                  style={{
-                                    color: "#f59e0b",
-                                    marginTop: 2,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                              ) : (
-                                <FiAlertCircle
-                                  style={{
-                                    color: "#ef4444",
-                                    marginTop: 2,
-                                    flexShrink: 0,
-                                  }}
-                                />
-                              )}
-
-                              <div style={{ flex: 1 }}>
-                                {statusMessage.type === "project_error" ? (
-                                  <>
-                                    <p
-                                      style={{
-                                        fontWeight: 600,
-                                        color: "#92400e",
-                                        marginBottom: 4,
-                                        fontSize: 14,
-                                      }}
-                                    >
-                                      Team Assignment Required
-                                    </p>
-                                    <p
-                                      style={{
-                                        fontSize: 13,
-                                        color: "#a16207",
-                                        marginBottom: 12,
-                                      }}
-                                    >
-                                      {statusMessage.text}
-                                    </p>
-                                    <p
-                                      style={{
-                                        fontSize: 13,
-                                        color: "#a16207",
-                                        marginBottom: 8,
-                                      }}
-                                    >
-                                      To submit logbook entries, you must first
-                                      join a project team on{" "}
-                                      <a
-                                        href="https://talenttrail.slt.lk"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                <div style={{ flex: 1 }}>
+                                  {statusMessage.type === "project_error" ? (
+                                    <>
+                                      <p
                                         style={{
                                           fontWeight: 600,
-                                          textDecoration: "underline",
+                                          color: "#92400e",
+                                          marginBottom: 4,
+                                          fontSize: 14,
                                         }}
                                       >
-                                        talenttrail.slt.lk
-                                      </a>
-                                      . Follow these steps:
-                                    </p>
-                                    <ol
-                                      style={{
-                                        fontSize: 13,
-                                        color: "#a16207",
-                                        listStyleType: "decimal",
-                                        paddingLeft: 20,
-                                        marginBottom: 12,
-                                      }}
-                                    >
-                                      <li style={{ marginBottom: 6 }}>
-                                        Go to{" "}
+                                        Team Assignment Required
+                                      </p>
+                                      <p
+                                        style={{
+                                          fontSize: 13,
+                                          color: "#a16207",
+                                          marginBottom: 12,
+                                        }}
+                                      >
+                                        {statusMessage.text}
+                                      </p>
+                                      <p
+                                        style={{
+                                          fontSize: 13,
+                                          color: "#a16207",
+                                          marginBottom: 8,
+                                        }}
+                                      >
+                                        To submit logbook entries, you must
+                                        first join a project team on{" "}
                                         <a
                                           href="https://talenttrail.slt.lk"
                                           target="_blank"
                                           rel="noopener noreferrer"
                                           style={{
-                                            fontWeight: 500,
+                                            fontWeight: 600,
                                             textDecoration: "underline",
                                           }}
                                         >
                                           talenttrail.slt.lk
-                                        </a>{" "}
-                                        and log in with your credentials
-                                      </li>
-                                      <li style={{ marginBottom: 6 }}>
-                                        Browse the available projects and find
-                                        the project that you are assigned to.
-                                      </li>
-                                      <li style={{ marginBottom: 6 }}>
-                                        Select the project and send a request to
-                                        join the team
-                                      </li>
-                                      <li style={{ marginBottom: 6 }}>
-                                        Wait for the admin to approve your
-                                        request
-                                      </li>
-                                      <li>
-                                        Once approved, return here and try
-                                        submitting your logbook again
-                                      </li>
-                                    </ol>
-                                    <p
-                                      style={{
-                                        fontSize: 11,
-                                        color: "#b45309",
-                                        borderTop: "1px solid #fde68a",
-                                        paddingTop: 8,
-                                        marginTop: 8,
-                                      }}
-                                    >
-                                      Already joined a team? Team data is synced
-                                      every 5 minutes — please wait a moment and
-                                      refresh, or contact your administrator if
-                                      the issue persists.
-                                    </p>
-                                  </>
-                                ) : (
-                                  <>
-                                    <span
-                                      style={{
-                                        fontWeight: 600,
-                                        fontSize: 14,
-                                        color:
-                                          statusMessage.type === "success"
-                                            ? "#166534"
-                                            : "#991b1b",
-                                      }}
-                                    >
-                                      {statusMessage.text}
-                                    </span>
-                                    {statusMessage.type === "success" && (
-                                      <div
+                                        </a>
+                                        . Follow these steps:
+                                      </p>
+                                      <ol
                                         style={{
-                                          color: "#15803d",
-                                          fontSize: 11,
-                                          marginTop: 4,
+                                          fontSize: 13,
+                                          color: "#a16207",
+                                          listStyleType: "decimal",
+                                          paddingLeft: 20,
+                                          marginBottom: 12,
                                         }}
                                       >
-                                        Redirecting to records...
-                                      </div>
-                                    )}
-                                  </>
-                                )}
+                                        <li style={{ marginBottom: 6 }}>
+                                          Go to{" "}
+                                          <a
+                                            href="https://talenttrail.slt.lk"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            style={{
+                                              fontWeight: 500,
+                                              textDecoration: "underline",
+                                            }}
+                                          >
+                                            talenttrail.slt.lk
+                                          </a>{" "}
+                                          and log in with your credentials
+                                        </li>
+                                        <li style={{ marginBottom: 6 }}>
+                                          Browse the available projects and find
+                                          the project that you are assigned to.
+                                        </li>
+                                        <li style={{ marginBottom: 6 }}>
+                                          Select the project and send a request
+                                          to join the team
+                                        </li>
+                                        <li style={{ marginBottom: 6 }}>
+                                          Wait for the admin to approve your
+                                          request
+                                        </li>
+                                        <li>
+                                          Once approved, return here and try
+                                          submitting your logbook again
+                                        </li>
+                                      </ol>
+                                      <p
+                                        style={{
+                                          fontSize: 11,
+                                          color: "#b45309",
+                                          borderTop: "1px solid #fde68a",
+                                          paddingTop: 8,
+                                          marginTop: 8,
+                                        }}
+                                      >
+                                        Already joined a team? Team data is
+                                        synced every 5 minutes — please wait a
+                                        moment and refresh, or contact your
+                                        administrator if the issue persists.
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span
+                                        style={{
+                                          fontWeight: 600,
+                                          fontSize: 14,
+                                          color:
+                                            statusMessage.type === "success"
+                                              ? "#166534"
+                                              : "#991b1b",
+                                        }}
+                                      >
+                                        {statusMessage.text}
+                                      </span>
+                                      {statusMessage.type === "success" && (
+                                        <div
+                                          style={{
+                                            color: "#15803d",
+                                            fontSize: 11,
+                                            marginTop: 4,
+                                          }}
+                                        >
+                                          Redirecting to records...
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            )}
 
-                          {/* ── Nav & Submit buttons ── */}
-                          <div
-                            style={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              paddingTop: 8,
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={goPrev}
-                              className="logbook-back-btn"
+                            {/* ── Nav & Submit buttons ── */}
+                            <div
                               style={{
-                                display: "inline-flex",
+                                display: "flex",
+                                justifyContent: "space-between",
                                 alignItems: "center",
-                                padding: "10px 24px",
-                                borderRadius: 12,
-                                border: "1.5px solid #e0e0e0",
-                                background: "white",
-                                color: "#6b7280",
-                                fontWeight: 600,
-                                fontSize: 14,
-                                cursor: "pointer",
-                                transition: "all 0.3s ease",
+                                paddingTop: 8,
                               }}
                             >
-                              <FiArrowLeft style={{ marginRight: 8 }} />
-                              Back
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={isSubmitDisabled}
-                              className="logbook-submit-btn"
-                              style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                padding: "12px 32px",
-                                borderRadius: 14,
-                                border: "none",
-                                background: isSubmitDisabled
-                                  ? projectAccessBlocked
-                                    ? "#fbbf24"
-                                    : "#d1d5db"
-                                  : completionProgress === 100
-                                    ? palette.gradient
-                                    : palette.gradient,
-                                color:
-                                  isSubmitDisabled && projectAccessBlocked
-                                    ? "#92400e"
-                                    : "white",
-                                fontWeight: 700,
-                                fontSize: 15,
-                                cursor: isSubmitDisabled
-                                  ? "not-allowed"
-                                  : "pointer",
-                                transition: "all 0.4s ease",
-                                boxShadow: isSubmitDisabled
-                                  ? "none"
-                                  : `0 6px 20px ${palette.bg}`,
-                                minWidth: 180,
-                              }}
-                            >
-                              {submitButtonContent()}
-                            </button>
-                          </div>
-
-                          {/* Hint text under button when project blocked */}
-                          {projectAccessBlocked && (
-                            <p
-                              style={{
-                                textAlign: "center",
-                                fontSize: 12,
-                                color: "#b45309",
-                                marginTop: 8,
-                              }}
-                            >
-                              You must be assigned to a project on{" "}
-                              <a
-                                href="https://talenttrail.slt.lk"
-                                target="_blank"
-                                rel="noopener noreferrer"
+                              <button
+                                type="button"
+                                onClick={goPrev}
+                                className="logbook-back-btn"
                                 style={{
-                                  fontWeight: 500,
-                                  textDecoration: "underline",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  padding: "10px 24px",
+                                  borderRadius: 12,
+                                  border: "1.5px solid #e0e0e0",
+                                  background: "white",
+                                  color: "#6b7280",
+                                  fontWeight: 600,
+                                  fontSize: 14,
+                                  cursor: "pointer",
+                                  transition: "all 0.3s ease",
                                 }}
                               >
-                                talenttrail.slt.lk
-                              </a>{" "}
-                              before submitting.
-                            </p>
-                          )}
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                )}
+                                <FiArrowLeft style={{ marginRight: 8 }} />
+                                Back
+                              </button>
+                              <button
+                                type="submit"
+                                disabled={isSubmitDisabled}
+                                className="logbook-submit-btn"
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  padding: "12px 32px",
+                                  borderRadius: 14,
+                                  border: "none",
+                                  background: isSubmitDisabled
+                                    ? projectAccessBlocked
+                                      ? "#fbbf24"
+                                      : "#d1d5db"
+                                    : completionProgress === 100
+                                      ? palette.gradient
+                                      : palette.gradient,
+                                  color:
+                                    isSubmitDisabled && projectAccessBlocked
+                                      ? "#92400e"
+                                      : "white",
+                                  fontWeight: 700,
+                                  fontSize: 15,
+                                  cursor: isSubmitDisabled
+                                    ? "not-allowed"
+                                    : "pointer",
+                                  transition: "all 0.4s ease",
+                                  boxShadow: isSubmitDisabled
+                                    ? "none"
+                                    : `0 6px 20px ${palette.bg}`,
+                                  minWidth: 180,
+                                }}
+                              >
+                                {submitButtonContent()}
+                              </button>
+                            </div>
 
-                {/* ───── Info Cards (only when project access is granted) ───── */}
+                            {/* Hint text under button when blocked */}
+                            {projectAccessBlocked && (
+                              <p
+                                style={{
+                                  textAlign: "center",
+                                  fontSize: 12,
+                                  color: "#b45309",
+                                  marginTop: 8,
+                                }}
+                              >
+                                You must be assigned to a project on{" "}
+                                <a
+                                  href="https://talenttrail.slt.lk"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{
+                                    fontWeight: 500,
+                                    textDecoration: "underline",
+                                  }}
+                                >
+                                  talenttrail.slt.lk
+                                </a>{" "}
+                                before submitting.
+                              </p>
+                            )}
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  )}
+
+                {/* ───── Info Cards (only when access is granted) ───── */}
                 {projectAccessBlocked === false && (
                   <div style={{ marginTop: 24 }} className="logbook-fade-in">
                     <div className="grid gap-4 md:grid-cols-2">
