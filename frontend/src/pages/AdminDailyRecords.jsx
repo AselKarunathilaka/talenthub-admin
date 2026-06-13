@@ -418,11 +418,11 @@ const AdminDailyRecords = () => {
                 <div>
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                      Daily Records
+                      Daily Log Submissions
                     </span>
                   </h2>
                   <p className="text-sm text-gray-500">
-                    Browse submissions day by day
+                    Browse daily logbook submissions 
                   </p>
                 </div>
               </div>

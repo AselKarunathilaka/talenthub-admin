@@ -670,8 +670,6 @@ const AdminDashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35 }}
             >
-              <h1>Intern Management</h1>
-              <p>Monitor and manage intern logbook submissions</p>
             </motion.div>
 
             {/* ══════════════ TWO-COLUMN GRID ══════════════ */}

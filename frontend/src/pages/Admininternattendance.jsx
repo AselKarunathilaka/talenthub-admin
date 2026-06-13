@@ -903,7 +903,7 @@ const AdminInternAttendance = () => {
                 </span>
               </h2>
               <p className="text-gray-600 text-sm md:text-base">
-                View meeting &amp; daily attendance records and export reports
+                View attendance records and exports
               </p>
             </motion.div>
 

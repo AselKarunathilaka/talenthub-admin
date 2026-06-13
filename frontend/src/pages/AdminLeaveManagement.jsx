@@ -32,14 +32,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
-        title: "Extended Leave Requests Management",
+        title: "Extended Leave Requests",
         description: "Review and manage intern extended leave requests",
         empty: "No extended leave requests found",
         details: "Extended Leave Request Details",
         noForDate: "No extended leave requests submitted",
       }
     : {
-        title: "Short Leave Request Management",
+        title: "Short Leave Requests",
         description: "Review and manage intern short leave requests",
         empty: "No short leave requests found",
         details: "Short Leave Request Details",
