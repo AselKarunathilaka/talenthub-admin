@@ -53,7 +53,7 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       {/* Desktop Top Bar */}
       <header
         className="hidden lg:flex items-center justify-between bg-gradient-to-r from-[#000066] to-[#006600] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8 transition-all duration-500 ease-out translate-y-0 opacity-100"
-        style={{ left: "320px", width: "calc(100% - 320px)" }}
+        style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
           <h2 className="text-2xl font-bold text-white">

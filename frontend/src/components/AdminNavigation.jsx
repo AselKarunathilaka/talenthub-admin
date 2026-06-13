@@ -76,7 +76,7 @@ const AdminNavigation = ({ children }) => {
         className={`fixed lg:sticky inset-y-0 left-0 z-40
           bg-gradient-to-b from-[#000066] to-[#006600] shadow-2xl transition-all duration-300 ease-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 w-full lg:w-[320px] h-screen lg:top-0`}
+          lg:translate-x-0 w-[270px] h-screen lg:top-0`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header with TalentHub + Logo */}
@@ -89,9 +89,9 @@ const AdminNavigation = ({ children }) => {
             </span>
           </div>
 
-          {/* Navigation Links - Split into 2 columns on desktop using grid, and covers full width on mobile */}
+          {/* Navigation Links - Split into 2 columns on both mobile and desktop */}
           <nav className="px-3 py-4 lg:py-6 flex-1 overflow-y-auto">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
@@ -136,7 +136,7 @@ const AdminNavigation = ({ children }) => {
       <div className="lg:hidden h-16" />
       <div className="hidden lg:block h-[5.5rem]" />
 
-      <main className="flex-1 lg:ml-[320px] transition-all duration-300">
+      <main className="flex-1 lg:ml-[270px] transition-all duration-300">
          <div className="lg:ml-[0px]">
            {children}
          </div>
