@@ -2,20 +2,21 @@ import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Home,
-  LogOut,
-  Calendar,
-  FileText,
-  CalendarCheck,
-  Map,
-  Lightbulb,
+  BookOpen,
+  ScanLine,
+  ScanFace,
+  Bike,
+  GraduationCap,
+  MapPin,
   Armchair,
   QrCode,
-  Key,
+  KeyRound,
   UserX,
   Lock,
-  Camera,
-  LayoutDashboard,
-  Youtube
+  Lightbulb,
+  SquarePlay,
+  FileText,
+  LogOut,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -40,19 +41,19 @@ const AdminNavigation = ({ children }) => {
   }, []);
 
   const navLinks = [
-    { to: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-[18px] w-[18px]" />, hoverColor: "#00b4eb" },
-    { to: "/admin/daily-records", label: "Daily Records", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#50b748" },
-    { to: "/admin/intern-attendance", label: "Attendance", icon: <CalendarCheck className="h-[18px] w-[18px]" />, hoverColor: "#6366f1" },
-    { to: "/admin/face-attendance", label: "Face Auth", icon: <Camera className="h-[18px] w-[18px]" />, hoverColor: "#f59e0b" },
-    { to: "/admin/leave-requests", label: "Short Leave", icon: <FileText className="h-[18px] w-[18px]" />, hoverColor: "#8b5cf6" },
-    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <FileText className="h-[18px] w-[18px]" />, hoverColor: "#6366f1" },
-    { to: "/admin/intern-locations", label: "Locations", icon: <Map className="h-[18px] w-[18px]" />, hoverColor: "#0056a2" },
-    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
-    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#14b8a6" },
-    { to: "/admin/pin-management", label: "PIN", icon: <Key className="h-[18px] w-[18px]" />, hoverColor: "#50b748" },
-    { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ef4444" },
-    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#7c3aed" },
-    { to: "/admin/feature-tips", label: "Broadcast New", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
+    { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/daily-records", label: "Daily Records", icon: <BookOpen className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/intern-attendance", label: "Attendance", icon: <ScanLine className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/face-attendance", label: "Face Auth", icon: <ScanFace className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/leave-requests", label: "Short Leave", icon: <Bike className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/intern-locations", label: "Locations", icon: <MapPin className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/pin-management", label: "PIN", icon: <KeyRound className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
+    { to: "/admin/feature-tips", label: "Broadcast New", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -147,7 +148,7 @@ const AdminNavigation = ({ children }) => {
               onClick={handleYouTubeClick}
               className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
             >
-              <Youtube className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
+              <SquarePlay className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
               <span className="text-sm font-medium">Digital Serendib</span>
             </button>
 
