@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   FaArrowLeft,
   FaBullhorn,
@@ -236,9 +237,10 @@ const AdminFeatureTips = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 text-gray-800 overflow-hidden">
-      {/* Floating BG blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 text-gray-800 relative z-10 overflow-hidden">
+        {/* Floating BG blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
           animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
@@ -555,7 +557,8 @@ const AdminFeatureTips = () => {
       </AnimatePresence>
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+      </div>
+    </AdminNavigation>
   );
 };
 

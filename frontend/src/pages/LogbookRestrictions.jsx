@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   FaLock,
@@ -384,54 +385,16 @@ const LogbookRestrictions = () => {
 
   /* ── Render ── */
   return (
-    <div className="logres-root">
-      {/* Ambient */}
-      <div className="logres-ambient">
-        <div className="logres-ambient__orb logres-ambient__orb--1" />
-        <div className="logres-ambient__orb logres-ambient__orb--2" />
-      </div>
-
-      {/* Header */}
-      <motion.header
-        className="logres-header"
-        initial={{ y: -70 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
-      >
-        <div className="logres-header__inner">
-          <div
-            className="logres-header__brand"
-            onClick={() => navigate("/admin/dashboard")}
-          >
-            <img src={logo} alt="SLT" className="logres-header__logo" />
-            <div>
-              <span className="logres-header__title">TalentHub</span>
-              <span className="logres-header__subtitle">Admin Portal</span>
-            </div>
-          </div>
-          <div className="logres-header__actions">
-            <div className="logres-header__user">
-              <div className="logres-header__avatar">
-                <FaShieldAlt />
-              </div>
-              <span>Admin</span>
-            </div>
-            <button
-              className="logres-header__logout"
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-            >
-              <FaSignOutAlt />
-              <span>Logout</span>
-            </button>
-          </div>
+    <AdminNavigation>
+      <div className="logres-root relative z-10">
+        {/* Ambient */}
+        <div className="logres-ambient absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="logres-ambient__orb logres-ambient__orb--1 absolute" />
+          <div className="logres-ambient__orb logres-ambient__orb--2 absolute" />
         </div>
-      </motion.header>
 
-      {/* Main */}
-      <div className="logres-content">
+        {/* Main */}
+        <div className="logres-content relative z-10 pt-4">
         <main className="logres-main">
           {/* Back + title */}
           <motion.div
@@ -775,7 +738,7 @@ const LogbookRestrictions = () => {
         }
 
         /* ── Ambient ── */
-        .logres-ambient { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
+        .logres-ambient { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
         .logres-ambient__orb {
           position: absolute;
           border-radius: 50%;
@@ -792,46 +755,6 @@ const LogbookRestrictions = () => {
           background: #ef4444;
           bottom: -80px; left: -80px;
         }
-
-        /* ── Header ── */
-        .logres-header {
-          position: sticky; top: 0; z-index: 100;
-          background: rgba(255,255,255,0.95);
-          backdrop-filter: blur(12px);
-          border-bottom: 1px solid rgba(0,0,0,0.06);
-          box-shadow: 0 2px 16px rgba(0,0,0,0.06);
-        }
-        .logres-header__inner {
-          max-width: 1200px; margin: 0 auto;
-          padding: 0 24px;
-          height: 64px;
-          display: flex; align-items: center; justify-content: space-between;
-        }
-        .logres-header__brand {
-          display: flex; align-items: center; gap: 12px; cursor: pointer;
-        }
-        .logres-header__logo { height: 36px; width: auto; border-radius: 6px; }
-        .logres-header__title { display: block; font-size: 16px; font-weight: 800; color: #0056a2; }
-        .logres-header__subtitle { display: block; font-size: 11px; color: #9ca3af; }
-        .logres-header__actions { display: flex; align-items: center; gap: 12px; }
-        .logres-header__user {
-          display: flex; align-items: center; gap: 8px;
-          font-size: 13px; font-weight: 600; color: #374151;
-        }
-        .logres-header__avatar {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: linear-gradient(135deg, #0056a2, #00b4eb);
-          display: flex; align-items: center; justify-content: center;
-          color: white; font-size: 14px;
-        }
-        .logres-header__logout {
-          display: flex; align-items: center; gap: 6px;
-          padding: 7px 14px; border-radius: 8px;
-          border: 1.5px solid #e0e0e0; background: white;
-          font-size: 13px; font-weight: 600; color: #6b7280;
-          cursor: pointer; transition: all 0.2s;
-        }
-        .logres-header__logout:hover { border-color: #ef4444; color: #ef4444; }
 
         /* ── Content layout ── */
         .logres-content { position: relative; z-index: 1; padding-top: 8px; }
@@ -1163,6 +1086,7 @@ const LogbookRestrictions = () => {
         .logres-spin { animation: logres-spin 0.8s linear infinite; }
       `}</style>
     </div>
+  </AdminNavigation>
   );
 };
 

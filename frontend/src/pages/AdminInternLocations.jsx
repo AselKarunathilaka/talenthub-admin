@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -475,8 +476,9 @@ const AdminInternLocations = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800">
-      <main className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800 relative">
+        <main className="p-6 lg:p-8 max-w-7xl mx-auto">
 
         {/* ── HEADER ── */}
         <motion.div
@@ -926,6 +928,7 @@ const AdminInternLocations = () => {
         </AnimatePresence>
       </main>
     </div>
+  </AdminNavigation>
   );
 };
 

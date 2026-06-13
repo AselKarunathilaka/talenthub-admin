@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   getAllLeaveRequests,
   updateLeaveRequestStatus,
@@ -545,8 +546,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 relative">
+        <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-6 flex items-center gap-4 pb-6 border-b border-gray-200">
           <button
@@ -1114,6 +1116,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             )}
           </>
         )}
+        </div>
 
         {/* Review Modal */}
         {selectedRequest && (
@@ -1498,7 +1501,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           </div>
         )}
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

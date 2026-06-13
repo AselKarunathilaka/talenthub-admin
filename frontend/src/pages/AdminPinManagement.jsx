@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import AdminNavigation from '../components/AdminNavigation';
 import {
-  FaArrowLeft,
   FaCheckCircle,
   FaKey,
   FaRedo,
@@ -140,34 +140,14 @@ const AdminPinManagement = () => {
     : 'Never';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans">
-      <header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] border-b border-gray-100">
-        <div className="flex items-center justify-between h-full px-6 lg:px-8">
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigate('/admin/dashboard')}>
-            <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-lg shadow-sm" />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900">SLT Admin Portal</span>
-              <span className="text-sm text-gray-600 font-medium">PIN Management</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="pt-[5.5rem] pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between gap-4 mb-8">
-            <motion.button
-              onClick={() => navigate('/admin/dashboard')}
-              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all text-gray-700 font-medium"
-              whileHover={{ scale: 1.05, x: -5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FaArrowLeft className="h-4 w-4" />
-              <span>Back to Dashboard</span>
-            </motion.button>
-            <motion.button
-              type="button"
-              onClick={openProfilesModal}
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans relative">
+        <div className="pt-8 pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center justify-end gap-4 mb-8">
+              <motion.button
+                type="button"
+                onClick={openProfilesModal}
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white/90 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -407,6 +387,7 @@ const AdminPinManagement = () => {
         )}
       </AnimatePresence>
     </div>
+  </AdminNavigation>
   );
 };
 

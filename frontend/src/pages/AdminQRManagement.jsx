@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import AdminNavigation from '../components/AdminNavigation';
 import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, FaSpinner, FaCopy } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
@@ -52,9 +53,10 @@ const AdminQRManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans">
-      {/* Background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans relative">
+        {/* Background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20" animate={{ y: [0, -30, 0], x: [0, 20, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} />
         <motion.div className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0" animate={{ y: [0, 20, 0], x: [0, -20, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }} />
       </div>
@@ -253,8 +255,9 @@ const AdminQRManagement = () => {
             
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

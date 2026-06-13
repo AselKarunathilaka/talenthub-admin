@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   AlertCircle,
   Camera,
@@ -478,7 +479,8 @@ const AdminFaceAttendance = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
+    <AdminNavigation>
+      <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 relative">
       <div className="max-w-4xl mx-auto">
         <button
           onClick={() => navigate("/admin/dashboard")}
@@ -680,8 +682,9 @@ const AdminFaceAttendance = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

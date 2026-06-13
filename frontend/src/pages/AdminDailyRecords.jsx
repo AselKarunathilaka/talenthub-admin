@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   FaSearch,
   FaCalendarAlt,
@@ -368,9 +369,10 @@ const AdminDailyRecords = () => {
 
   // Main render
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden relative">
+        {/* Background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {[
           {
             cls: "w-80 h-80 bg-blue-100/40 -top-20 -left-20",
@@ -898,8 +900,9 @@ const AdminDailyRecords = () => {
             </motion.div>
           </div>
         </main>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

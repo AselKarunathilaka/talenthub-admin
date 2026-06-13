@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   FaChair,
   FaUsers,
@@ -347,9 +348,10 @@ const AdminSeatManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Enhanced floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden relative">
+        {/* Enhanced floating background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
           animate={{
@@ -1161,8 +1163,9 @@ const AdminSeatManagement = () => {
             </motion.div>
           </div>
         </main>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 
