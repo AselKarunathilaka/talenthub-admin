@@ -87,21 +87,9 @@ const AdminQRManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Top Navbar */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] border-b border-gray-100">
-        <div className="flex items-center justify-between h-full px-6 lg:px-8">
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigate('/admin/dashboard')}>
-            <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-lg shadow-sm" />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900">SLT Admin Portal</span>
-              <span className="text-sm text-gray-600 font-medium">QR Management</span>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
-      <div className="pt-[5.5rem] pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-5xl mx-auto">
           
           <div className="flex items-center space-x-4 mb-8">

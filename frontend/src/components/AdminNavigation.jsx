@@ -92,7 +92,7 @@ const AdminNavigation = ({ children }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky inset-y-0 left-0 z-40
+        className={`fixed inset-y-0 left-0 z-40
           bg-gradient-to-b from-[#000066] to-[#006600] shadow-2xl transition-all duration-300 ease-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 w-[270px] h-screen lg:top-0`}

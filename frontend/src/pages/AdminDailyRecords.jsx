@@ -409,73 +409,9 @@ const AdminDailyRecords = () => {
         ))}
       </div>
 
-      {/* Enhanced Top Navbar */}
-      <motion.header
-        className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-      >
-        <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-          <motion.div
-            className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-            onClick={() => {
-              localStorage.clear();
-              navigate("/admin-login");
-            }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <motion.img
-              src={logo}
-              alt="SLT Logo"
-              className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
-              whileHover={{ rotate: 5 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            />
-            <div className="hidden sm:flex flex-col">
-              <span className="text-sm sm:text-lg font-semibold text-gray-900">
-                SLT Admin Portal
-              </span>
-              <span className="text-xs sm:text-sm text-gray-600">
-                Daily Records
-              </span>
-            </div>
-          </motion.div>
-          <div className="flex items-center space-x-2 sm:space-x-6">
-            <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
-              <motion.div
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center border border-gray-200 shadow-sm"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-              >
-                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </motion.div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">
-                  Administrator
-                </span>
-              </div>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
-            >
-              <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
 
       {/* Main Content */}
-      <div className="pt-[4.5rem] sm:pt-[5.5rem]">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6">
+        <div className="p-3 sm:p-4 lg:p-6 relative z-10">
           <div className="max-w-7xl mx-auto">
             {/* Page header */}
             <motion.div
@@ -899,7 +835,6 @@ const AdminDailyRecords = () => {
               <PaginationBar />
             </motion.div>
           </div>
-        </main>
         </div>
       </div>
     </AdminNavigation>
