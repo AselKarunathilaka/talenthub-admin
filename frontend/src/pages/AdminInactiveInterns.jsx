@@ -755,14 +755,7 @@ export default function AdminInactiveInterns() {
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center px-3 sm:px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all border border-gray-200 shadow-sm hover:shadow-md"
-                  whileHover={{ x: -3 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaArrowLeft className="mr-2" /> Back to Dashboard
-                </motion.button>
+                
                 <div>
                   <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">

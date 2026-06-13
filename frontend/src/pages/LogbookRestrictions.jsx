@@ -402,12 +402,7 @@ const LogbookRestrictions = () => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <button
-              className="logres-back-btn"
-              onClick={() => navigate("/admin/dashboard")}
-            >
-              <FaArrowLeft style={{ marginRight: 8 }} /> Back to Dashboard
-            </button>
+            
             <div className="logres-page-head__title-block">
               <div className="logres-page-head__icon">
                 <FaLock />

@@ -92,17 +92,7 @@ const AdminQRManagement = () => {
       <div className="pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-5xl mx-auto">
           
-          <div className="flex items-center space-x-4 mb-8">
-            <motion.button
-              onClick={() => navigate('/admin/dashboard')}
-              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all text-gray-700 font-medium"
-              whileHover={{ scale: 1.05, x: -5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FaArrowLeft className="h-4 w-4" />
-              <span>Back to Dashboard</span>
-            </motion.button>
-          </div>
+          
 
           <div className="text-center mb-10">
             <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">

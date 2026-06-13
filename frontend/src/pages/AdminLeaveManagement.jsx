@@ -551,13 +551,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-6 flex items-center gap-4 pb-6 border-b border-gray-200">
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
-            title="Go back"
-          >
-            <FiArrowLeft className="w-6 h-6" />
-          </button>
+          
           <img src={logo} alt="SLT Logo" className="w-16 h-16 object-contain" />
           <div>
             <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
