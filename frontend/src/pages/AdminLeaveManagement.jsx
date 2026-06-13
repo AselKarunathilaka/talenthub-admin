@@ -25,7 +25,7 @@ import {
   FiFilter,
   FiSend,
 } from "react-icons/fi";
-import logo from "../assets/sltlogo.jpg";
+import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 
 const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
@@ -439,20 +439,20 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "Approved":
-        return "px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800";
+        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-700 border border-green-200";
       case "Denied":
-        return "px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800";
+        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 border border-rose-200";
       case "Pending":
-        return "px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800";
+        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200";
       default:
-        return "px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800";
+        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-700 border border-gray-200";
     }
   };
 
   const getPurposeBadgeClass = (purpose) => {
     return purpose === "Official"
-      ? "px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800"
-      : "px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-800";
+      ? "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-blue-100 text-[#0056a2] border border-blue-200"
+      : "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-purple-100 text-purple-700 border border-purple-200";
   };
 
   const formatDate = (dateString) => {
@@ -547,79 +547,207 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 relative">
-        <div className="max-w-7xl mx-auto">
-        {/* Page Header */}
-        <div className="mb-6 flex items-center gap-4 pb-6 border-b border-gray-200">
-          
-          <img src={logo} alt="SLT Logo" className="w-16 h-16 object-contain" />
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <FiFileText className="text-blue-600" />
-              {pageCopy.title}
-            </h1>
-            <p className="text-gray-600 mt-1">
-              {pageCopy.description}
-            </p>
-          </div>
-        </div>
-
-        {/* Statistics Cards */}
-        <div className="mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="text-3xl font-bold text-gray-900">
-                {displayedStats.total}
-              </div>
-              <div className="text-sm text-gray-600 mt-1">Total Requests</div>
-              {selectedDate ? (
-                <div className="text-xs text-gray-500 mt-1">
-                  for {formatSelectedDate().replace(" (Today)", "")}
+      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
+        <main className="flex-1 p-4 sm:p-6 lg:px-8 mx-auto max-w-[1600px] w-full mt-20">
+          {/* Header & Page Info */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <FiFileText className="text-[#0056a2] h-8 w-8" />
                 </div>
-              ) : isStudyLeave ? (
-                <div className="text-xs text-gray-500 mt-1">
-                  all submitted dates
-                </div>
-              ) : null}
+                {pageCopy.title}
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
+                {pageCopy.description}
+              </motion.p>
             </div>
-            <div className="bg-yellow-50 rounded-lg shadow-sm border border-yellow-200 p-6 relative">
-              {displayedStats.pending > 0 && (
-                <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-8 h-8 flex items-center justify-center text-sm font-bold animate-pulse">
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.2 }}
+              className="flex gap-3 flex-wrap justify-end"
+            >
+              {!isStudyLeave && (
+                <button
+                  onClick={handleTriggerApprovedShortLeaveEmail}
+                  disabled={triggeringEmail}
+                  className={`bg-white text-[#15803d] border border-[#15803d]/30 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-green-50 transition-all flex items-center gap-2 ${
+                    triggeringEmail ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                  title="Manually send approved short leave email to gate staff"
+                >
+                  <FiSend className={triggeringEmail ? "animate-pulse" : ""} />
+                  {triggeringEmail ? "Sending..." : "Send Gate Email"}
+                </button>
+              )}
+              {!isStudyLeave && (
+                <button
+                  onClick={handleDownloadApprovedReport}
+                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <FiFileText />
+                  Download PDF Report
+                </button>
+              )}
+            </motion.div>
+          </div>
+
+          {/* Premium Stat Cards */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"
+          >
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-[#0056a2]/30 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 z-10 text-gray-500 group-hover:text-[#0056a2] transition-colors">
+                <FiFileText size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                  {displayedStats.total}
+                </div>
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">
+                  Total Requests
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  {selectedDate
+                    ? formatSelectedDate().replace(" (Today)", "")
+                    : isStudyLeave
+                      ? "all dates"
+                      : ""}
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl shadow-sm border border-amber-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-amber-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-amber-100 z-10 text-amber-500 shadow-sm">
+                <FiClock size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
                   {displayedStats.pending}
                 </div>
+                <div className="text-xs font-bold text-amber-700 uppercase tracking-wider mt-0.5">
+                  Pending Review
+                </div>
+              </div>
+              {displayedStats.pending > 0 && (
+                <div className="absolute top-4 right-4 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                </div>
               )}
-              <div className="text-3xl font-bold text-yellow-800">
-                {displayedStats.pending}
-              </div>
-              <div className="text-sm text-yellow-600 mt-1 font-semibold">
-                ⏰ Pending Review
-              </div>
             </div>
-            <div className="bg-green-50 rounded-lg shadow-sm border border-green-200 p-6">
-              <div className="text-3xl font-bold text-green-800">
-                {displayedStats.approved}
-              </div>
-              <div className="text-sm text-green-600 mt-1">✓ Approved</div>
-            </div>
-            <div className="bg-red-50 rounded-lg shadow-sm border border-red-200 p-6">
-              <div className="text-3xl font-bold text-red-800">
-                {displayedStats.denied}
-              </div>
-              <div className="text-sm text-red-600 mt-1">✗ Denied</div>
-            </div>
-          </div>
 
-          {/* Date + Intern ID filter bar */}
-          <div className="mb-4 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              {/* Left: date + intern ID filters */}
-              <div className="flex flex-wrap items-start gap-6">
-                {/* Date filter */}
-                <div className="flex flex-col">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    <FiFilter className="inline mr-1" />
-                    {isStudyLeave ? "Filter by Submitted Date" : "Filter by Date"}
-                  </label>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl shadow-sm border border-green-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-green-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-green-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-green-100 z-10 text-green-500 shadow-sm">
+                <FiCheckCircle size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-green-600 tracking-tight">
+                  {displayedStats.approved}
+                </div>
+                <div className="text-xs font-bold text-green-700 uppercase tracking-wider mt-0.5">
+                  Approved
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-3xl shadow-sm border border-rose-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-rose-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-rose-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-rose-100 z-10 text-rose-500 shadow-sm">
+                <FiX size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-rose-600 tracking-tight">
+                  {displayedStats.denied}
+                </div>
+                <div className="text-xs font-bold text-rose-700 uppercase tracking-wider mt-0.5">
+                  Denied
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Filters & Controls */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 mb-6"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Filter Tabs */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    key: "Pending",
+                    count: displayedStats.pending,
+                    label: "Pending",
+                  },
+                  {
+                    key: "Approved",
+                    count: displayedStats.approved,
+                    label: "Approved",
+                  },
+                  {
+                    key: "Denied",
+                    count: displayedStats.denied,
+                    label: "Denied",
+                  },
+                  {
+                    key: "all",
+                    count: displayedStats.total,
+                    label: "All Requests",
+                  },
+                ].map(({ key, count, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setFilter(key);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                      setSelectedRequests(new Set());
+                      setIsSelectAll(false);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center gap-2 ${
+                      filter === key
+                        ? "bg-slate-800 text-white shadow-md shadow-slate-200"
+                        : "bg-white text-gray-500 hover:text-gray-800 hover:bg-slate-50 border border-gray-200"
+                    }`}
+                  >
+                    {label}
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[10px] ${filter === key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"}`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Date Filter */}
+                <div className="bg-slate-50 rounded-xl p-1.5 flex items-center border border-slate-200">
+                  <div className="bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm mr-2 ml-1">
+                    <FiCalendar className="text-[#0056a2] w-4 h-4" />
+                  </div>
                   <input
                     type="date"
                     value={selectedDate}
@@ -627,671 +755,654 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                       setSelectedDate(e.target.value);
                       setPagination((prev) => ({ ...prev, page: 1 }));
                     }}
-                    className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer w-32"
+                    title={
+                      isStudyLeave
+                        ? "Filter by Submitted Date"
+                        : "Filter by Leave Date"
+                    }
                   />
-                  {isStudyLeave && selectedDate && (
+                  {selectedDate && (
                     <button
                       onClick={() => {
                         setSelectedDate("");
                         setPagination((prev) => ({ ...prev, page: 1 }));
                       }}
-                      className="mt-2 text-left text-xs font-semibold text-blue-600 hover:text-blue-800"
+                      className="ml-1 mr-2 text-gray-400 hover:text-rose-500"
                     >
-                      Show all pending requests
+                      <FiX size={14} />
                     </button>
                   )}
-                  {selectedDate && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      Showing:{" "}
-                      <span className="font-semibold">
-                        {formatSelectedDate()}
-                      </span>
-                    </p>
-                  )}
-                  {isStudyLeave && !selectedDate && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      Showing: <span className="font-semibold">All submitted dates</span>
-                    </p>
-                  )}
                 </div>
 
-                {/* Intern ID filter — now filters on internTraineeId */}
-                <div className="flex flex-col">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    <FiUser className="inline mr-1" />
-                    Filter by Intern ID
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={internIdFilter}
-                      onChange={(e) =>
-                        setInternIdFilter(
-                          e.target.value.replace(/\D/g, "").slice(0, 4),
-                        )
-                      }
-                      placeholder="4-digit ID"
-                      maxLength={4}
-                      className="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:border-blue-500 w-32"
-                    />
-                    {internIdFilter && (
-                      <button
-                        onClick={() => setInternIdFilter("")}
-                        className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-800 transition-colors"
-                        title="Clear intern ID filter"
-                      >
-                        <FiX className="w-4 h-4" /> Clear
-                      </button>
-                    )}
+                {/* ID Filter */}
+                <div className="bg-slate-50 rounded-xl p-1.5 flex items-center border border-slate-200">
+                  <div className="bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm mr-2 ml-1">
+                    <FiUser className="text-[#0056a2] w-4 h-4" />
                   </div>
+                  <input
+                    type="text"
+                    value={internIdFilter}
+                    onChange={(e) =>
+                      setInternIdFilter(
+                        e.target.value.replace(/\D/g, "").slice(0, 4),
+                      )
+                    }
+                    placeholder="Intern ID"
+                    maxLength={4}
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none w-20 placeholder-gray-400"
+                  />
                   {internIdFilter && (
-                    <p className="text-sm text-gray-600 mt-2">
-                      ID:{" "}
-                      <span className="font-semibold text-blue-700">
-                        {internIdFilter}
-                      </span>
-                      {filteredRequests.length === 0 ? (
-                        <span className="ml-2 text-red-500 text-xs">
-                          No matches
-                        </span>
-                      ) : (
-                        <span className="ml-2 text-green-600 text-xs">
-                          {filteredRequests.length} result
-                          {filteredRequests.length !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </p>
+                    <button
+                      onClick={() => setInternIdFilter("")}
+                      className="ml-1 mr-2 text-gray-400 hover:text-rose-500"
+                    >
+                      <FiX size={14} />
+                    </button>
                   )}
                 </div>
-              </div>
 
-              {/* Right: action buttons */}
-              <div className="flex gap-3 flex-wrap">
-                {!isStudyLeave && (
-                <button
-                  onClick={handleTriggerApprovedShortLeaveEmail}
-                  disabled={triggeringEmail}
-                  className={`bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 ${
-                    triggeringEmail ? "opacity-50 cursor-not-allowed" : ""
-                  }`}
-                  title="Manually send approved short leave email to gate staff"
-                >
-                  <FiSend className={triggeringEmail ? "animate-pulse" : ""} />
-                  {triggeringEmail
-                    ? "Sending Email..."
-                    : "📧 Send Approved Leaves Email"}
-                </button>
-                )}
-                {!isStudyLeave && (
-                  <button
-                    onClick={handleDownloadApprovedReport}
-                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-semibold text-sm shadow-sm hover:bg-indigo-700 transition-colors flex items-center gap-2"
-                  >
-                    <FiFileText />
-                    Download Approved Leaves PDF
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Filter Buttons & Controls */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Filter buttons */}
-            <div className="flex flex-wrap gap-2">
-              {[
-                { key: "Pending", count: displayedStats.pending, icon: "⏰" },
-                { key: "Approved", count: displayedStats.approved, icon: "✓" },
-                { key: "Denied", count: displayedStats.denied, icon: "✗" },
-                {
-                  key: "all",
-                  count: displayedStats.total,
-                  label: "All",
-                  icon: "📋",
-                },
-              ].map(({ key, count, label, icon }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setFilter(key);
-                    setPagination((prev) => ({ ...prev, page: 1 }));
-                    setSelectedRequests(new Set());
-                    setIsSelectAll(false);
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    fetchLeaveRequests();
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                    filter === key
-                      ? "bg-blue-600 text-white shadow-md"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-700 focus:outline-none hover:bg-slate-50 transition-colors"
                 >
-                  <span>{icon}</span>
-                  {label || key} ({count})
-                </button>
-              ))}
-            </div>
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="urgent">Urgent First</option>
+                </select>
 
-            {/* Sort and refresh controls */}
-            <div className="flex items-center gap-3">
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value);
-                  fetchLeaveRequests();
-                }}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="urgent">Urgent First (Today)</option>
-              </select>
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer ml-1">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="w-4 h-4 text-[#0056a2] rounded focus:ring-[#0056a2] border-gray-300"
+                  />
+                  Auto-refresh
+                </label>
 
-              <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={autoRefresh}
-                  onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
-                />
-                Auto-refresh (30s)
-              </label>
-
-              <button
-                onClick={() => {
-                  fetchLeaveRequests();
-                  fetchStats();
-                  toast.success("Refreshed!");
-                }}
-                className="px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-              >
-                🔄 Refresh
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Bulk Actions Bar */}
-        {filter === "Pending" && selectedRequests.size > 0 && (
-          <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-700 font-medium">
-                {selectedRequests.size} request(s) selected
-              </span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => handleBulkAction("approve")}
-                  disabled={processing}
-                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  <FiCheckCircle />
-                  Approve Selected
-                </button>
-                <button
-                  onClick={() => handleBulkAction("deny")}
-                  disabled={processing}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                >
-                  <FiX />
-                  Deny Selected
-                </button>
                 <button
                   onClick={() => {
-                    setSelectedRequests(new Set());
-                    setIsSelectAll(false);
+                    fetchLeaveRequests();
+                    fetchStats();
+                    toast.success("Refreshed!");
                   }}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                  className="p-2.5 bg-slate-100 text-gray-600 rounded-xl hover:bg-slate-200 transition-colors ml-1"
+                  title="Refresh manually"
                 >
-                  Clear Selection
+                  🔄
                 </button>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* Content */}
-        {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : filteredRequests.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12 text-center">
-            <FiFileText className="mx-auto text-gray-400 text-6xl mb-4" />
-            <p className="text-gray-600 text-lg">
-              {internIdFilter
-                ? `No requests found for intern ID "${internIdFilter}"`
-                : selectedDate
-                  ? `${pageCopy.noForDate} for ${formatSelectedDate()}`
-                  : pageCopy.empty}
-            </p>
-            <div className="mt-4 flex gap-3 justify-center">
-              {internIdFilter && (
-                <button
-                  onClick={() => setInternIdFilter("")}
-                  className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-                >
-                  Clear Intern ID Filter
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  const today = new Date().toISOString().split("T")[0];
-                  setSelectedDate(today);
-                }}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                View Today's Requests
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* Requests Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-6">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {filter === "Pending" && (
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">
-                          <button
-                            onClick={handleSelectAll}
-                            className="flex items-center justify-center"
-                            title={isSelectAll ? "Deselect all" : "Select all"}
-                          >
-                            {isSelectAll ? (
-                              <FiCheckSquare className="w-5 h-5 text-blue-600" />
-                            ) : (
-                              <FiSquare className="w-5 h-5 text-gray-400" />
-                            )}
-                          </button>
-                        </th>
-                      )}
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Intern Details
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        {isStudyLeave ? "Extended Leave Period" : "Leave Date & Time"}
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Purpose
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Submitted
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredRequests.map((request) => {
-                      const urgent = isUrgentRequest(request.leaveDate);
-                      const todayRequest = isToday(request.leaveDate);
-                      return (
-                        <tr
-                          key={request._id}
-                          className={`hover:bg-gray-50 ${
-                            urgent && request.status === "Pending"
-                              ? "bg-orange-50 border-l-4 border-l-orange-500"
-                              : todayRequest
-                                ? "bg-blue-50"
-                                : ""
-                          }`}
-                        >
-                          {filter === "Pending" && (
-                            <td className="px-6 py-4">
-                              <div className="flex items-center justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedRequests.has(request._id)}
-                                  onChange={() =>
-                                    handleSelectRequest(request._id)
-                                  }
-                                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                                  disabled={request.status !== "Pending"}
-                                />
-                              </div>
-                            </td>
-                          )}
-
-                          {/* ── UPDATED: Intern Details cell ── */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {/* Name + urgent badge */}
-                            <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
-                              {request.internName}
-                              {urgent && request.status === "Pending" && (
-                                <span className="text-xs px-2 py-0.5 bg-red-500 text-white rounded-full font-bold animate-pulse">
-                                  URGENT
-                                </span>
-                              )}
-                            </div>
-
-                            {/* Intern Trainee ID (4-digit) — highlighted when filter active */}
-                            <div className="text-xs text-blue-700 font-semibold mt-0.5 flex items-center gap-1">
-                              <FiUser className="w-3 h-3 flex-shrink-0" />
-                              ID:{" "}
-                              {request.internTraineeId ? (
-                                internIdFilter ? (
-                                  highlightMatch(
-                                    request.internTraineeId,
-                                    internIdFilter,
-                                  )
-                                ) : (
-                                  request.internTraineeId
-                                )
-                              ) : (
-                                <span className="text-gray-400 font-normal">
-                                  N/A
-                                </span>
-                              )}
-                            </div>
-
-                            {/* National ID */}
-                            <div className="text-sm text-gray-500 mt-0.5">
-                              NIC: {request.nationalId}
-                            </div>
-                          </td>
-
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 flex items-center gap-2">
-                              <FiCalendar className="text-gray-400" />
-                              {formatDate(request.leaveDate)}
-                              {todayRequest && (
-                                <span className="text-xs px-2 py-0.5 bg-blue-500 text-white rounded-full font-bold">
-                                  TODAY
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-500 flex items-center gap-2 mt-1">
-                              <FiClock className="text-gray-400" />
-                              {isStudyLeave && request.studyEndDate
-                                ? `Until ${formatDate(request.studyEndDate)}`
-                                : request.leaveTime}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={getPurposeBadgeClass(request.purpose)}
-                            >
-                              {request.purpose}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {formatDate(request.submittedAt)}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={getStatusBadgeClass(request.status)}
-                            >
-                              {request.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex items-center gap-2">
-                              {request.status === "Pending" ? (
-                                <>
-                                  <button
-                                    onClick={() =>
-                                      handleQuickAction(request._id, "approve")
-                                    }
-                                    disabled={processing}
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 text-xs font-semibold"
-                                    title="Quick Approve"
-                                  >
-                                    <FiCheck className="w-4 h-4" />
-                                    Approve
-                                  </button>
-                                  <button
-                                    onClick={() =>
-                                      handleQuickAction(request._id, "deny")
-                                    }
-                                    disabled={processing}
-                                    className="flex items-center gap-1 px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-xs font-semibold"
-                                    title="Quick Deny"
-                                  >
-                                    <FiX className="w-4 h-4" />
-                                    Deny
-                                  </button>
-                                  <button
-                                    onClick={() => openReviewModal(request)}
-                                    className="px-3 py-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors text-xs font-semibold border border-blue-300"
-                                    title="View Details"
-                                  >
-                                    <FiEye className="w-4 h-4 inline" /> Details
-                                  </button>
-                                </>
-                              ) : (
-                                <button
-                                  onClick={() => openReviewModal(request)}
-                                  className="text-blue-600 hover:text-blue-900 px-3 py-1 rounded hover:bg-blue-50 transition-colors"
-                                >
-                                  Review
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4">
-                <button
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-                  }
-                  disabled={pagination.page === 1}
-                  className="px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Previous
-                </button>
-                <span className="text-sm text-gray-700">
-                  Page {pagination.page} of {pagination.totalPages}
-                </span>
-                <button
-                  onClick={() =>
-                    setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-                  }
-                  disabled={pagination.page === pagination.totalPages}
-                  className="px-4 py-2 rounded-lg font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
-                >
-                  Next
-                </button>
+            {/* Context hints under filters */}
+            {(selectedDate || internIdFilter) && (
+              <div className="mt-3 flex gap-4 border-t border-slate-100 pt-3">
+                {selectedDate && (
+                  <p className="text-xs text-gray-500 font-medium">
+                    Showing date:{" "}
+                    <span className="font-bold text-[#0056a2]">
+                      {formatSelectedDate()}
+                    </span>
+                  </p>
+                )}
+                {internIdFilter && (
+                  <p className="text-xs text-gray-500 font-medium">
+                    Searching ID:{" "}
+                    <span className="font-bold text-[#0056a2]">
+                      {internIdFilter}
+                    </span>
+                    <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                      {filteredRequests.length} results
+                    </span>
+                  </p>
+                )}
               </div>
             )}
-          </>
-        )}
-        </div>
+          </motion.div>
 
-        {/* Review Modal */}
+          {/* Bulk Actions Bar */}
+          <AnimatePresence>
+            {filter === "Pending" && selectedRequests.size > 0 && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="mb-6 bg-[#0056a2]/5 border border-[#0056a2]/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="bg-[#0056a2] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                    {selectedRequests.size}
+                  </div>
+                  <span className="text-[#0056a2] font-bold">
+                    Request{selectedRequests.size > 1 ? "s" : ""} Selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleBulkAction("approve")}
+                    disabled={processing}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-green-700 transition-all disabled:opacity-50"
+                  >
+                    <FiCheckCircle /> Approve Selected
+                  </button>
+                  <button
+                    onClick={() => handleBulkAction("deny")}
+                    disabled={processing}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50"
+                  >
+                    <FiX /> Deny Selected
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedRequests(new Set());
+                      setIsSelectAll(false);
+                    }}
+                    className="px-4 py-2 text-gray-500 hover:text-gray-800 font-bold text-sm transition-colors"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Content Body */}
+          {loading ? (
+            <div className="flex justify-center items-center py-20">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0056a2]"></div>
+            </div>
+          ) : filteredRequests.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-white rounded-3xl shadow-sm border border-dashed border-gray-300 p-16 text-center"
+            >
+              <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <FiFileText className="h-10 w-10 text-slate-300" />
+              </div>
+              <h4 className="text-xl font-bold text-gray-700 mb-2">
+                {internIdFilter
+                  ? `No requests found for intern ID "${internIdFilter}"`
+                  : pageCopy.empty}
+              </h4>
+              <p className="text-gray-500">
+                {selectedDate && !internIdFilter
+                  ? `No requests found for ${formatSelectedDate()}.`
+                  : "Try adjusting your filters."}
+              </p>
+              <div className="mt-8 flex justify-center gap-4">
+                {(internIdFilter || selectedDate || filter !== "all") && (
+                  <button
+                    onClick={() => {
+                      setInternIdFilter("");
+                      setSelectedDate("");
+                      setFilter("all");
+                    }}
+                    className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-50 shadow-sm"
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setSelectedDate(new Date().toISOString().split("T")[0]);
+                    setFilter("Pending");
+                  }}
+                  className="px-6 py-2.5 bg-[#0056a2] text-white rounded-xl font-bold text-sm hover:bg-[#00488a] shadow-sm shadow-blue-500/20"
+                >
+                  View Today's Pending
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <>
+              {/* Premium Data Table */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-100">
+                    <thead className="bg-slate-50/50">
+                      <tr>
+                        {filter === "Pending" && (
+                          <th className="px-6 py-4 text-center w-12">
+                            <button
+                              onClick={handleSelectAll}
+                              className="flex items-center justify-center transition-transform hover:scale-110"
+                              title={
+                                isSelectAll ? "Deselect all" : "Select all"
+                              }
+                            >
+                              {isSelectAll ? (
+                                <FiCheckSquare className="w-5 h-5 text-[#0056a2]" />
+                              ) : (
+                                <FiSquare className="w-5 h-5 text-gray-300 hover:text-gray-400" />
+                              )}
+                            </button>
+                          </th>
+                        )}
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Intern Details
+                        </th>
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          {isStudyLeave
+                            ? "Extended Leave Period"
+                            : "Leave Date & Time"}
+                        </th>
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Purpose
+                        </th>
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Submitted
+                        </th>
+                        <th className="px-6 py-4 text-left text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Status
+                        </th>
+                        <th className="px-6 py-4 text-right text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50 bg-white">
+                      <AnimatePresence>
+                        {filteredRequests.map((request) => {
+                          const urgent = isUrgentRequest(request.leaveDate);
+                          const todayRequest = isToday(request.leaveDate);
+                          return (
+                            <motion.tr
+                              layout
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              key={request._id}
+                              className={`transition-colors hover:bg-slate-50/50 ${
+                                urgent && request.status === "Pending"
+                                  ? "bg-rose-50/30"
+                                  : todayRequest
+                                    ? "bg-blue-50/30"
+                                    : ""
+                              }`}
+                            >
+                              {filter === "Pending" && (
+                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRequests.has(request._id)}
+                                    onChange={() =>
+                                      handleSelectRequest(request._id)
+                                    }
+                                    className="w-4 h-4 text-[#0056a2] border-gray-300 rounded focus:ring-[#0056a2] cursor-pointer"
+                                    disabled={request.status !== "Pending"}
+                                  />
+                                </td>
+                              )}
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="font-bold text-gray-900 text-sm">
+                                    {request.internName}
+                                  </div>
+                                  {urgent && request.status === "Pending" && (
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-rose-500 text-white rounded uppercase tracking-wider font-bold animate-pulse">
+                                      Urgent
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <div className="text-xs font-bold text-[#0056a2] bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <FiUser size={10} /> ID:{" "}
+                                    {request.internTraineeId
+                                      ? internIdFilter
+                                        ? highlightMatch(
+                                            request.internTraineeId,
+                                            internIdFilter,
+                                          )
+                                        : request.internTraineeId
+                                      : "N/A"}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    NIC: {request.nationalId}
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                                  <FiCalendar className="text-gray-400" />
+                                  {formatDate(request.leaveDate)}
+                                  {todayRequest && (
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-[#00b4eb] text-white rounded uppercase tracking-wider font-bold">
+                                      Today
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 mt-1">
+                                  <FiClock className="text-gray-400" />
+                                  {isStudyLeave && request.studyEndDate
+                                    ? `Until ${formatDate(request.studyEndDate)}`
+                                    : request.leaveTime}
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={getPurposeBadgeClass(
+                                    request.purpose,
+                                  )}
+                                >
+                                  {request.purpose}
+                                </span>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
+                                {formatDate(request.submittedAt)}
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={getStatusBadgeClass(
+                                    request.status,
+                                  )}
+                                >
+                                  {request.status}
+                                </span>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end gap-2">
+                                  {request.status === "Pending" ? (
+                                    <>
+                                      <button
+                                        onClick={() =>
+                                          handleQuickAction(
+                                            request._id,
+                                            "approve",
+                                          )
+                                        }
+                                        disabled={processing}
+                                        className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-xl transition-all disabled:opacity-50 border border-green-200 hover:border-transparent"
+                                        title="Quick Approve"
+                                      >
+                                        <FiCheck size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleQuickAction(request._id, "deny")
+                                        }
+                                        disabled={processing}
+                                        className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all disabled:opacity-50 border border-rose-200 hover:border-transparent"
+                                        title="Quick Deny"
+                                      >
+                                        <FiX size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => openReviewModal(request)}
+                                        className="px-3 py-1.5 bg-white text-[#0056a2] hover:bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-sm"
+                                        title="Review Details"
+                                      >
+                                        Review
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => openReviewModal(request)}
+                                      className="px-3 py-1.5 bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all"
+                                    >
+                                      Details
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          );
+                        })}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Pagination */}
+              {pagination.totalPages > 1 && (
+                <div className="flex items-center justify-center gap-4 pb-6">
+                  <button
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        page: prev.page - 1,
+                      }))
+                    }
+                    disabled={pagination.page === 1}
+                    className="px-4 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm font-bold text-gray-500 bg-white px-4 py-2 rounded-xl border border-gray-100 shadow-sm">
+                    Page {pagination.page} of {pagination.totalPages}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setPagination((prev) => ({
+                        ...prev,
+                        page: prev.page + 1,
+                      }))
+                    }
+                    disabled={pagination.page === pagination.totalPages}
+                    className="px-4 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* Review Modal */}
+      <AnimatePresence>
         {selectedRequest && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
             onClick={closeReviewModal}
           >
-            <div
-              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col relative"
               onClick={(e) => e.stopPropagation()}
             >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] to-[#0056a2]"></div>
+
               {/* Modal Header */}
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                  <FiFileText className="text-blue-600" />
-              {pageCopy.details}
+              <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-slate-50/50">
+                <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-3">
+                  <div className="p-2 bg-[#00b4eb]/10 rounded-xl">
+                    <FiFileText className="text-[#0056a2]" />
+                  </div>
+                  {pageCopy.details}
                 </h2>
                 <button
                   onClick={closeReviewModal}
-                  className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="text-gray-400 hover:text-gray-700 p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200 shadow-sm"
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX size={20} />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-4">
-                {/* ── UPDATED: show intern ID + NIC together ── */}
-                <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-5 flex-1 overflow-auto">
+                {/* Intern Info Card */}
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col sm:flex-row gap-4 justify-between">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
                       Intern Name
-                    </label>
-                    <p className="text-sm text-gray-900">
+                    </span>
+                    <span className="text-lg font-bold text-gray-900">
                       {selectedRequest.internName}
-                    </p>
+                    </span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Intern ID
-                    </label>
-                    <p className="text-sm font-semibold text-blue-700">
-                      {selectedRequest.internTraineeId ?? (
-                        <span className="text-gray-400 font-normal">N/A</span>
-                      )}
-                    </p>
+                  <div className="flex gap-4">
+                    <div>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                        Intern ID
+                      </span>
+                      <span className="text-sm font-bold text-[#0056a2] bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                        {selectedRequest.internTraineeId || "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                        NIC
+                      </span>
+                      <span className="text-sm font-bold text-gray-700 bg-white px-2 py-1 rounded-lg border border-gray-200">
+                        {selectedRequest.nationalId}
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      NIC
-                    </label>
-                    <p className="text-sm text-gray-900">
-                      {selectedRequest.nationalId}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Leave Date
-                    </label>
-                    <p className="text-sm text-gray-900 flex items-center gap-2">
-                      <FiCalendar className="text-gray-400" />
+
+                {/* Dates Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 flex items-center gap-1">
+                      <FiCalendar /> Leave Date
+                    </span>
+                    <span className="text-sm font-bold text-gray-900">
                       {formatDate(selectedRequest.leaveDate)}
-                    </p>
+                    </span>
                   </div>
-                </div>
-                {isStudyLeave && selectedRequest.studyEndDate && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Extended Leave End Date
-                    </label>
-                    <p className="text-sm text-gray-900 flex items-center gap-2">
-                      <FiCalendar className="text-gray-400" />
-                      {formatDate(selectedRequest.studyEndDate)}
-                    </p>
-                  </div>
-                )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Leave Time
-                    </label>
-                    <p className="text-sm text-gray-900 flex items-center gap-2">
-                      <FiClock className="text-gray-400" />
-                      {selectedRequest.leaveTime}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {isStudyLeave && selectedRequest.studyEndDate ? (
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 flex items-center gap-1">
+                        <FiCalendar /> End Date
+                      </span>
+                      <span className="text-sm font-bold text-gray-900">
+                        {formatDate(selectedRequest.studyEndDate)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 flex items-center gap-1">
+                        <FiClock /> Leave Time
+                      </span>
+                      <span className="text-sm font-bold text-gray-900">
+                        {selectedRequest.leaveTime}
+                      </span>
+                    </div>
+                  )}
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
                       Purpose
-                    </label>
+                    </span>
                     <span
                       className={getPurposeBadgeClass(selectedRequest.purpose)}
                     >
                       {selectedRequest.purpose}
                     </span>
                   </div>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                      Submitted At
+                    </span>
+                    <span className="text-sm font-bold text-gray-700">
+                      {formatDateTime(selectedRequest.submittedAt)}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Reason */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">
                     Reason
-                  </label>
-                  <p className="text-sm text-gray-900 bg-gray-50 p-3 rounded-lg">
+                  </span>
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm text-sm text-gray-800 font-medium leading-relaxed">
                     {selectedRequest.reason}
-                  </p>
+                  </div>
                 </div>
+
+                {/* Proof Document */}
                 {selectedRequest.proofDocument?.data && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Proof Document
-                    </label>
+                  <div className="flex items-center justify-between bg-blue-50 rounded-2xl p-4 border border-blue-100">
+                    <div>
+                      <span className="text-[10px] font-black text-[#0056a2] uppercase tracking-widest block mb-1">
+                        Proof Document
+                      </span>
+                      <span className="text-xs font-bold text-gray-600 truncate max-w-[200px] block">
+                        {selectedRequest.proofDocument.filename}
+                      </span>
+                    </div>
                     <button
                       onClick={() => handleViewDocument(selectedRequest._id)}
-                      className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1 underline bg-transparent border-none cursor-pointer"
+                      className="text-sm font-bold px-4 py-2 bg-white text-[#0056a2] border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors shadow-sm flex items-center gap-2"
                     >
-                      <FiEye /> View Document (
-                      {selectedRequest.proofDocument.filename})
+                      <FiEye /> View
                     </button>
                   </div>
                 )}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Submitted At
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {formatDateTime(selectedRequest.submittedAt)}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Status
-                  </label>
+
+                {/* Current Status */}
+                <div className="flex items-center gap-4 py-2 border-t border-gray-100">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    Current Status:
+                  </span>
                   <span className={getStatusBadgeClass(selectedRequest.status)}>
                     {selectedRequest.status}
                   </span>
                 </div>
+
+                {/* Previous Review Info */}
                 {selectedRequest.reviewedBy && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Reviewed By
-                      </label>
-                      <p className="text-sm text-gray-900">
+                  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-gray-500">
+                        Reviewed By:
+                      </span>
+                      <span className="font-bold text-gray-900">
                         {selectedRequest.reviewedBy?.email}
-                      </p>
+                      </span>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Reviewed At
-                      </label>
-                      <p className="text-sm text-gray-900">
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-gray-500">
+                        Reviewed At:
+                      </span>
+                      <span className="font-bold text-gray-900">
                         {formatDateTime(selectedRequest.reviewedAt)}
-                      </p>
+                      </span>
                     </div>
                     {selectedRequest.adminResponse && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <div className="pt-3 border-t border-slate-200">
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">
                           Previous Admin Response
-                        </label>
-                        <p className="text-sm text-gray-900 bg-blue-50 p-3 rounded-lg">
+                        </span>
+                        <p className="text-sm text-gray-800 font-medium bg-white p-3 rounded-xl border border-gray-200">
                           {selectedRequest.adminResponse}
                         </p>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
+
+                {/* Admin Action Area */}
                 {selectedRequest.status === "Pending" && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Admin Response (Optional)
-                      </label>
-                      <textarea
-                        value={adminResponse}
-                        onChange={(e) => setAdminResponse(e.target.value)}
-                        placeholder="Add a comment or reason for your decision..."
-                        rows="3"
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
-                      />
-                    </div>
+                  <div className="pt-4 border-t border-gray-200">
+                    <span className="text-[10px] font-black text-[#0056a2] uppercase tracking-widest block mb-2 flex items-center gap-1">
+                      <FiFileText /> Admin Response (Optional)
+                    </span>
+                    <textarea
+                      value={adminResponse}
+                      onChange={(e) => setAdminResponse(e.target.value)}
+                      placeholder="Add a comment or reason for your decision..."
+                      rows="2"
+                      className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all resize-none text-sm font-medium text-gray-800"
+                    />
                     <div className="flex gap-3 pt-4">
                       <button
                         onClick={() =>
@@ -1302,13 +1413,13 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                           )
                         }
                         disabled={processing}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-white transition-all shadow-md ${
                           processing
                             ? "bg-gray-400 cursor-not-allowed"
-                            : "bg-green-600 hover:bg-green-700 hover:shadow-lg"
+                            : "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30 ring-1 ring-green-400/50 transform hover:-translate-y-0.5"
                         }`}
                       >
-                        <FiCheck className="w-5 h-5" />
+                        <FiCheckCircle size={18} />{" "}
                         {processing ? "Processing..." : "Approve"}
                       </button>
                       <button
@@ -1320,155 +1431,177 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                           )
                         }
                         disabled={processing}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-white transition-all shadow-md ${
                           processing
                             ? "bg-gray-400 cursor-not-allowed"
-                            : "bg-red-600 hover:bg-red-700 hover:shadow-lg"
+                            : "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-lg hover:shadow-red-500/30 ring-1 ring-red-400/50 transform hover:-translate-y-0.5"
                         }`}
                       >
-                        <FiX className="w-5 h-5" />
+                        <FiX size={18} />{" "}
                         {processing ? "Processing..." : "Deny"}
                       </button>
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* Bulk Action Modal */}
+      {/* Bulk Action Modal */}
+      <AnimatePresence>
         {isBulkModalOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
             onClick={() => !processing && setIsBulkModalOpen(false)}
           >
-            <div
-              className="bg-white rounded-lg shadow-xl max-w-md w-full"
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full relative overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <div
+                className={`absolute top-0 left-0 w-full h-1 ${bulkAction === "approve" ? "bg-green-500" : "bg-rose-500"}`}
+              ></div>
+
+              <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
                   {bulkAction === "approve" ? (
                     <FiCheckCircle className="text-green-600" />
                   ) : (
-                    <FiX className="text-red-600" />
+                    <FiX className="text-rose-600" />
                   )}
-                  Bulk {bulkAction === "approve" ? "Approve" : "Deny"} Requests
+                  Bulk {bulkAction === "approve" ? "Approve" : "Deny"}
                 </h2>
                 <button
                   onClick={() => !processing && setIsBulkModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="text-gray-400 hover:text-gray-700 p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200 shadow-sm"
                   disabled={processing}
                 >
-                  <FiX className="w-6 h-6" />
+                  <FiX size={20} />
                 </button>
               </div>
 
               <div className="p-6 space-y-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-blue-800 text-sm">
+                <div
+                  className={`p-4 rounded-xl border ${bulkAction === "approve" ? "bg-green-50 border-green-100" : "bg-rose-50 border-rose-100"}`}
+                >
+                  <p
+                    className={`text-sm font-bold ${bulkAction === "approve" ? "text-green-800" : "text-rose-800"}`}
+                  >
                     You are about to{" "}
                     {bulkAction === "approve" ? "approve" : "deny"}{" "}
-                    <span className="font-bold">{selectedRequests.size}</span>{" "}
-                    leave request(s).
+                    <span className="text-lg">{selectedRequests.size}</span>{" "}
+                    request(s).
                   </p>
                 </div>
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Admin Response (Optional - applied to all selected requests)
-                  </label>
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">
+                    Admin Response (Optional - applies to all)
+                  </span>
                   <textarea
                     value={bulkAdminResponse}
                     onChange={(e) => setBulkAdminResponse(e.target.value)}
-                    placeholder={`Add a comment or reason for ${bulkAction === "approve" ? "approving" : "denying"} these requests...`}
+                    placeholder={`Add a comment for ${bulkAction === "approve" ? "approving" : "denying"} these requests...`}
                     rows="3"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all resize-none text-sm font-medium"
                     disabled={processing}
                   />
                 </div>
+
                 <div className="flex gap-3 pt-4">
                   <button
                     onClick={() => !processing && setIsBulkModalOpen(false)}
                     disabled={processing}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmBulkAction}
                     disabled={processing}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-lg font-semibold text-white transition-all ${
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-white transition-all shadow-md ${
                       processing
                         ? "bg-gray-400 cursor-not-allowed"
                         : bulkAction === "approve"
-                          ? "bg-green-600 hover:bg-green-700"
-                          : "bg-red-600 hover:bg-red-700"
+                          ? "bg-gradient-to-r from-[#15803d] to-[#50b748]"
+                          : "bg-gradient-to-r from-rose-600 to-red-500"
                     }`}
                   >
-                    {processing ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        {bulkAction === "approve" ? <FiCheckCircle /> : <FiX />}
-                        Confirm {bulkAction === "approve"
-                          ? "Approve"
-                          : "Deny"}{" "}
-                        ({selectedRequests.size})
-                      </>
-                    )}
+                    {processing
+                      ? "Processing..."
+                      : `Confirm ${bulkAction === "approve" ? "Approve" : "Deny"}`}
                   </button>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
+      </AnimatePresence>
 
-        {/* Document Viewer Modal */}
+      {/* Document Viewer Modal */}
+      <AnimatePresence>
         {documentViewer.show && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4">
-            <div className="relative bg-white rounded-lg shadow-2xl max-w-6xl w-full max-h-[90vh] flex flex-col">
-              <div className="flex items-center justify-between p-4 border-b">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Document Viewer
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="relative bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] to-[#0056a2]"></div>
+
+              <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-slate-50/50">
+                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  <FiFileText className="text-[#0056a2]" /> Document Viewer
                 </h3>
                 <button
                   onClick={closeDocumentViewer}
-                  className="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="text-gray-400 hover:text-gray-700 p-2 rounded-xl bg-white hover:bg-gray-100 transition-colors border border-gray-200 shadow-sm"
                 >
-                  <FiX size={24} />
+                  <FiX size={20} />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-auto p-4">
+              <div className="flex-1 overflow-auto p-4 bg-slate-100/50">
                 {documentViewer.type === "pdf" ? (
                   <iframe
                     src={documentViewer.url}
-                    className="w-full h-full min-h-[600px] border-0"
+                    className="w-full h-full min-h-[60vh] border-0 rounded-xl bg-white shadow-sm"
                     title="Document Viewer"
                   />
                 ) : documentViewer.type === "image" ? (
-                  <img
-                    src={documentViewer.url}
-                    alt="Document"
-                    className="max-w-full h-auto mx-auto"
-                  />
-                ) : (
-                  <div className="text-center py-12">
-                    <FiFileText
-                      size={64}
-                      className="mx-auto text-gray-400 mb-4"
+                  <div className="flex items-center justify-center min-h-[60vh] bg-white rounded-xl shadow-sm p-4">
+                    <img
+                      src={documentViewer.url}
+                      alt="Document"
+                      className="max-w-full max-h-[70vh] object-contain rounded-lg"
                     />
-                    <p className="text-gray-600 mb-4">
+                  </div>
+                ) : (
+                  <div className="text-center py-20 bg-white rounded-xl shadow-sm min-h-[50vh] flex flex-col items-center justify-center">
+                    <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                      <FiFileText size={32} className="text-slate-300" />
+                    </div>
+                    <p className="text-gray-600 font-medium mb-6">
                       This file type cannot be previewed.
                     </p>
                     <a
                       href={documentViewer.url}
                       download
-                      className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-[#0056a2] text-white font-bold rounded-xl shadow-md"
                     >
                       <FiFileText /> Download File
                     </a>
@@ -1476,25 +1609,25 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 p-4 border-t bg-gray-50">
+              <div className="flex justify-end gap-3 p-4 border-t border-gray-100 bg-white">
                 <a
                   href={documentViewer.url}
                   download
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-sm"
                 >
                   Download
                 </a>
                 <button
                   onClick={closeDocumentViewer}
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  className="px-6 py-2.5 text-sm font-bold text-white bg-slate-800 rounded-xl hover:bg-slate-900 shadow-sm"
                 >
-                  Close
+                  Close Viewer
                 </button>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </AdminNavigation>
   );
 };
