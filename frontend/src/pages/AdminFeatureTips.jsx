@@ -323,7 +323,7 @@ const AdminFeatureTips = () => {
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. 🆕 New: Dark Mode!"
+                      placeholder="e.g. 🆕 Study Leave feature is now live!"
                       maxLength={120}
                       className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm shadow-sm"
                     />

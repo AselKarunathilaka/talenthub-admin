@@ -51,11 +51,14 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#14b8a6" },
     { to: "/admin/pin-management", label: "PIN", icon: <Key className="h-[18px] w-[18px]" />, hoverColor: "#50b748" },
     { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ef4444" },
-    { to: "/admin/logbook-restrictions", label: "Logbook Rest.", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#7c3aed" },
-    { to: "/admin/feature-tips", label: "Feature Tips", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
+    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#7c3aed" },
+    { to: "/admin/feature-tips", label: "Broadcast New", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
   ];
 
   const isActive = (path) => location.pathname === path;
+
+  const activeLink = navLinks.find(link => isActive(link.to));
+  const activeTitle = activeLink ? activeLink.label : (isActive("/admin/announcements") ? "Announcements" : "Dashboard");
 
   const handleLogout = () => {
     localStorage.removeItem("adminInfo");
@@ -81,7 +84,7 @@ const AdminNavigation = ({ children }) => {
 
   return (
     <>
-      <AdminNavbar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} />
+      <AdminNavbar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} activeTitle={activeTitle} />
 
       {/* Mobile Menu Overlay */}
       <div

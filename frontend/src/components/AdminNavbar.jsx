@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Megaphone, Shield } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 
-const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
+const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen, activeTitle }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -66,7 +66,7 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       >
         <div className="flex items-center justify-between w-full">
           <h2 className="text-2xl font-bold text-white">
-            {isActive("/admin/announcements") ? "Announcements" : "Dashboard"}
+            {activeTitle || "Dashboard"}
           </h2>
 
           <div className="flex items-center space-x-6">
