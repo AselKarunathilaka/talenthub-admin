@@ -30,13 +30,22 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <button 
-              onClick={handleAnnouncementsToggle} 
-              className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/admin/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
-              aria-label="Toggle Announcements"
-            >
-              <Megaphone className="h-5 w-5" />
-            </button>
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleAnnouncementsToggle} 
+                className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/admin/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
+                aria-label="Toggle Announcements"
+              >
+                <Megaphone className="h-5 w-5" />
+              </button>
+
+              {/* Profile Avatar for Mobile */}
+              <div className="h-8 w-8 rounded-full overflow-hidden border-2 border-white/30 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]">
+                <div className="flex h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
+                  <Shield className="h-4 w-4 text-white" />
+                </div>
+              </div>
+            </div>
 
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -69,11 +78,13 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
               <Megaphone className="h-5 w-5" />
             </button>
             <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
-              <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-white/20 flex items-center justify-center bg-gradient-to-br from-[#00b4eb] to-[#0056a2] shadow-md">
-                <Shield className="h-5 w-5 text-white" />
+              <div className="h-9 w-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]">
+                <div className="flex h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
               </div>
               <div className="flex flex-col">
-                <span className="text-xs text-white/60">Welcome,</span>
+                <span className="text-xs text-white/60">Welcome back,</span>
                 <span className="text-sm font-semibold text-white">Admin</span>
               </div>
             </div>

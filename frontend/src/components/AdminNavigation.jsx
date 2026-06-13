@@ -14,10 +14,12 @@ import {
   UserX,
   Lock,
   Camera,
-  LayoutDashboard
+  LayoutDashboard,
+  Youtube
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
+import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 
 const AdminNavigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,19 +40,19 @@ const AdminNavigation = ({ children }) => {
   }, []);
 
   const navLinks = [
-    { to: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" />, hoverColor: "#00b4eb" },
-    { to: "/admin/daily-records", label: "Daily Records", icon: <Calendar className="h-5 w-5" />, hoverColor: "#50b748" },
-    { to: "/admin/intern-attendance", label: "Attendance", icon: <CalendarCheck className="h-5 w-5" />, hoverColor: "#6366f1" },
-    { to: "/admin/face-attendance", label: "Face Auth", icon: <Camera className="h-5 w-5" />, hoverColor: "#f59e0b" },
-    { to: "/admin/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#8b5cf6" },
-    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#6366f1" },
-    { to: "/admin/intern-locations", label: "Locations", icon: <Map className="h-5 w-5" />, hoverColor: "#0056a2" },
-    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
-    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-5 w-5" />, hoverColor: "#14b8a6" },
-    { to: "/admin/pin-management", label: "PIN", icon: <Key className="h-5 w-5" />, hoverColor: "#50b748" },
-    { to: "/admin/inactive-interns", label: "Terminated Interns", icon: <UserX className="h-5 w-5" />, hoverColor: "#ef4444" },
-    { to: "/admin/logbook-restrictions", label: "Logbook Restrictions", icon: <Lock className="h-5 w-5" />, hoverColor: "#7c3aed" },
-    { to: "/admin/feature-tips", label: "Feature Tips", icon: <Lightbulb className="h-5 w-5" />, hoverColor: "#ec4899" },
+    { to: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-[18px] w-[18px]" />, hoverColor: "#00b4eb" },
+    { to: "/admin/daily-records", label: "Daily Records", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#50b748" },
+    { to: "/admin/intern-attendance", label: "Attendance", icon: <CalendarCheck className="h-[18px] w-[18px]" />, hoverColor: "#6366f1" },
+    { to: "/admin/face-attendance", label: "Face Auth", icon: <Camera className="h-[18px] w-[18px]" />, hoverColor: "#f59e0b" },
+    { to: "/admin/leave-requests", label: "Short Leave", icon: <FileText className="h-[18px] w-[18px]" />, hoverColor: "#8b5cf6" },
+    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <FileText className="h-[18px] w-[18px]" />, hoverColor: "#6366f1" },
+    { to: "/admin/intern-locations", label: "Locations", icon: <Map className="h-[18px] w-[18px]" />, hoverColor: "#0056a2" },
+    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
+    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#14b8a6" },
+    { to: "/admin/pin-management", label: "PIN", icon: <Key className="h-[18px] w-[18px]" />, hoverColor: "#50b748" },
+    { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ef4444" },
+    { to: "/admin/logbook-restrictions", label: "Logbook Rest.", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#7c3aed" },
+    { to: "/admin/feature-tips", label: "Feature Tips", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ec4899" },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -58,6 +60,23 @@ const AdminNavigation = ({ children }) => {
   const handleLogout = () => {
     localStorage.removeItem("adminInfo");
     navigate("/admin-login");
+  };
+
+  const handleYouTubeClick = () => {
+    window.open(
+      "https://youtube.com/@digitalserendib?si=9A0u6vWxGWY5EdnG",
+      "_blank",
+      "noopener,noreferrer"
+    );
+  };
+
+  const handleDownloadAgreement = () => {
+    const link = document.createElement("a");
+    link.href = agreementPdf;
+    link.download = "Trainee_Guidelines_Agreement.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -90,13 +109,13 @@ const AdminNavigation = ({ children }) => {
           </div>
 
           {/* Navigation Links - Split into 2 columns on both mobile and desktop */}
-          <nav className="px-3 py-4 lg:py-6 flex-1 overflow-y-auto">
-            <div className="grid grid-cols-2 gap-2">
+          <nav className="px-2 py-2 lg:py-3 flex-1 overflow-y-auto hide-scrollbar flex flex-col justify-evenly">
+            <div className="grid grid-cols-2 gap-1.5 h-full content-evenly">
               {navLinks.map((link) => (
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`flex flex-col items-center justify-center text-center p-3 rounded-xl transition-all duration-200 group border focus:outline-none
+                  className={`flex flex-col items-center justify-center text-center p-2 rounded-xl transition-all duration-200 group border focus:outline-none
                     ${isActive(link.to)
                       ? "bg-white/10 shadow-lg backdrop-blur-sm border-white/10"
                       : "border-transparent text-white/70 hover:bg-white/5"
@@ -105,12 +124,12 @@ const AdminNavigation = ({ children }) => {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <span
-                    className={`mb-2 transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                    className={`mb-1 transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                   >
                     {link.icon}
                   </span>
                   <span
-                    className={`font-medium text-xs lg:text-sm transition-colors duration-200 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
+                    className={`font-medium text-[10px] lg:text-xs leading-tight transition-colors duration-200 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
                   >
                     {link.label}
                   </span>
@@ -120,10 +139,26 @@ const AdminNavigation = ({ children }) => {
           </nav>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-white/10">
+          <div className="p-4 border-t border-white/10 space-y-2">
+            <button
+              onClick={handleYouTubeClick}
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
+            >
+              <Youtube className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
+              <span className="text-sm font-medium">Digital Serendib</span>
+            </button>
+
+            <button
+              onClick={handleDownloadAgreement}
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#00b4eb] transition-all duration-200 group"
+            >
+              <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
+              <span className="text-sm font-medium">Guidelines Agreement</span>
+            </button>
+
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group"
+              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
             >
               <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
               <span className="font-medium">Logout</span>
