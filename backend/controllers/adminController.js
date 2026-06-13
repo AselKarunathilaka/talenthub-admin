@@ -10,6 +10,11 @@ const axios = require("axios");
 const https = require("https");
 const talentTrailSyncSvc = require("../services/talentTrailSyncService");
 
+// In-memory cache for dashboard stats (60 seconds TTL)
+let dashboardStatsCache = null;
+let dashboardStatsCacheTime = 0;
+const STATS_CACHE_TTL = 60 * 1000;
+
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
   try {
@@ -19,6 +24,12 @@ const getDashboardStats = async (req, res) => {
     const adminUser = await User.findById(userId).lean();
     if (!adminUser) {
       return res.status(403).json({ error: "Admin access required" });
+    }
+
+    // Check cache
+    const now = Date.now();
+    if (dashboardStatsCache && (now - dashboardStatsCacheTime < STATS_CACHE_TTL)) {
+      return res.status(200).json(dashboardStatsCache);
     }
 
     const threeDaysAgo = new Date();
@@ -100,13 +111,19 @@ const getDashboardStats = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
+    const responseData = {
       totalInterns: interns.length,
       totalRecords,
       submittedInterns: submittedCount,
       overdueInterns: overdueList.length,
       overdueList,
-    });
+    };
+
+    // Update cache
+    dashboardStatsCache = responseData;
+    dashboardStatsCacheTime = now;
+
+    return res.status(200).json(responseData);
   } catch (error) {
     console.error("Error getting dashboard stats:", error);
     res.status(500).json({ error: "Failed to get dashboard statistics" });

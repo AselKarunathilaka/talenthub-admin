@@ -597,22 +597,6 @@ const AdminDashboard = () => {
   ];
 
   /* ══════════════════════════════════════════════════════════
-     Loading state
-     ══════════════════════════════════════════════════════════ */
-  if (loading) {
-    return (
-      <div className="admin-dash-loader">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="admin-dash-loader__spinner"
-        />
-        <p className="admin-dash-loader__text">Loading dashboard…</p>
-      </div>
-    );
-  }
-
-  /* ══════════════════════════════════════════════════════════
      Error state
      ══════════════════════════════════════════════════════════ */
   if (error) {
@@ -663,28 +647,28 @@ const AdminDashboard = () => {
               {[
                 {
                   label: "Total Interns",
-                  value: dashboardStats?.totalInterns || 0,
+                  value: loading ? "..." : (dashboardStats?.totalInterns || 0),
                   icon: FaUsers,
                   accent: BRAND.primary,
                   bg: BRAND.primaryLight,
                 },
                 {
-                  label: "Submitted",
-                  value: dashboardStats?.submittedInterns || 0,
+                  label: "Submitted Today",
+                  value: loading ? "..." : (dashboardStats?.submittedInterns || 0),
                   icon: FaCheckCircle,
                   accent: BRAND.success,
                   bg: BRAND.successLight,
                 },
                 {
                   label: "Overdue",
-                  value: dashboardStats?.overdueInterns || 0,
+                  value: loading ? "..." : (dashboardStats?.overdueInterns || 0),
                   icon: FaExclamationTriangle,
                   accent: BRAND.danger,
                   bg: BRAND.dangerLight,
                 },
                 {
                   label: "Total Records",
-                  value: dashboardStats?.totalRecords || 0,
+                  value: loading ? "..." : (dashboardStats?.totalRecords || 0),
                   icon: FaTasks,
                   accent: BRAND.accent,
                   bg: BRAND.accentLight,

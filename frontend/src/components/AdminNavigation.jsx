@@ -40,17 +40,17 @@ const AdminNavigation = ({ children }) => {
   const navLinks = [
     { to: "/admin/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" />, hoverColor: "#00b4eb" },
     { to: "/admin/daily-records", label: "Daily Records", icon: <Calendar className="h-5 w-5" />, hoverColor: "#50b748" },
-    { to: "/admin/face-attendance", label: "Face Auth", icon: <Camera className="h-5 w-5" />, hoverColor: "#f59e0b" },
     { to: "/admin/intern-attendance", label: "Attendance", icon: <CalendarCheck className="h-5 w-5" />, hoverColor: "#6366f1" },
-    { to: "/admin/leave-requests", label: "Leave Requests", icon: <FileText className="h-5 w-5" />, hoverColor: "#8b5cf6" },
+    { to: "/admin/face-attendance", label: "Face Auth", icon: <Camera className="h-5 w-5" />, hoverColor: "#f59e0b" },
+    { to: "/admin/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#8b5cf6" },
     { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#6366f1" },
     { to: "/admin/intern-locations", label: "Locations", icon: <Map className="h-5 w-5" />, hoverColor: "#0056a2" },
-    { to: "/admin/feature-tips", label: "Feature Tips", icon: <Lightbulb className="h-5 w-5" />, hoverColor: "#ec4899" },
     { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ec4899" },
     { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-5 w-5" />, hoverColor: "#14b8a6" },
     { to: "/admin/pin-management", label: "PIN", icon: <Key className="h-5 w-5" />, hoverColor: "#50b748" },
     { to: "/admin/inactive-interns", label: "Terminated Interns", icon: <UserX className="h-5 w-5" />, hoverColor: "#ef4444" },
     { to: "/admin/logbook-restrictions", label: "Logbook Restrictions", icon: <Lock className="h-5 w-5" />, hoverColor: "#7c3aed" },
+    { to: "/admin/feature-tips", label: "Feature Tips", icon: <Lightbulb className="h-5 w-5" />, hoverColor: "#ec4899" },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -126,7 +126,7 @@ const AdminNavigation = ({ children }) => {
               className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group"
             >
               <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
-              <span className="font-medium">Admin Logout</span>
+              <span className="font-medium">Logout</span>
             </button>
           </div>
         </div>

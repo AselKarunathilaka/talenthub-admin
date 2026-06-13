@@ -57,7 +57,7 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen }) => {
       >
         <div className="flex items-center justify-between w-full">
           <h2 className="text-2xl font-bold text-white">
-            {isActive("/admin/announcements") ? "Announcements" : "Admin Dashboard"}
+            {isActive("/admin/announcements") ? "Announcements" : "Dashboard"}
           </h2>
 
           <div className="flex items-center space-x-6">
