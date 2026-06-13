@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { announcementApi } from "../api/adminApi";
+import AdminNavigation from "../components/AdminNavigation";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDateTime = (dateString) => {
@@ -235,7 +236,8 @@ const AdminAnnouncements = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
+    <AdminNavigation>
+    <div className="min-h-screen bg-gray-50 text-gray-800 overflow-hidden">
       {/* Floating BG blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -278,14 +280,8 @@ const AdminAnnouncements = () => {
               <div className="flex items-center space-x-4 mb-2">
                 <motion.button
                   onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
-                  whileHover={{ scale: 1.05, x: -5 }}
-                  whileTap={{ scale: 0.95 }}
+                  className="hidden"
                 >
-                  <FaArrowLeft className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Back to Dashboard
-                  </span>
                 </motion.button>
               </div>
               <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
@@ -717,6 +713,7 @@ const AdminAnnouncements = () => {
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
+    </AdminNavigation>
   );
 };
 
