@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
+import { Lightbulb } from "lucide-react";
 import {
   FaArrowLeft,
   FaBullhorn,
@@ -257,24 +258,27 @@ const AdminFeatureTips = () => {
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
-            <motion.div
-              className="mb-4 md:mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center space-x-4 mb-2">
-                
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-purple-600">
-                  Feature Tips
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
+            <div className="mb-8">
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <Lightbulb className="text-[#0056a2] h-8 w-8" />
+                </div>
+                Feature Tips
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
                 Create "What's New" modals to announce new features to all interns.
-              </p>
-            </motion.div>
+              </motion.p>
+            </div>
 
             {/* Error banner */}
             <AnimatePresence>

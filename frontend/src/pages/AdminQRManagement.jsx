@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import AdminNavigation from '../components/AdminNavigation';
+import { QrCode } from "lucide-react";
 import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, FaSpinner, FaCopy } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
@@ -94,11 +95,29 @@ const AdminQRManagement = () => {
           
           
 
-          <div className="text-center mb-10">
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">
-              Generate <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">Attendance QR</span>
-            </h2>
-            <p className="text-gray-500 text-lg">Create secure QR codes for daily check-ins or special meetings.</p>
+          {/* ── Header ── */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <QrCode className="text-[#0056a2] h-8 w-8" />
+                </div>
+                QR
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
+                Create secure QR codes for daily check-ins or special meetings.
+              </motion.p>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-12 gap-8 items-start">

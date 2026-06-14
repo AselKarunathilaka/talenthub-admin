@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
+import { BookOpen } from "lucide-react";
 import {
   FaSearch,
   FaCalendarAlt,
@@ -407,24 +408,27 @@ const AdminDailyRecords = () => {
         <div className="p-3 sm:p-4 lg:p-6 relative z-10">
           <div className="max-w-7xl mx-auto">
             {/* Page header */}
-            <motion.div
-              className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                
-                <div>
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                      Daily Log Submissions
-                    </span>
-                  </h2>
-                  <p className="text-sm text-gray-500">
-                    Browse daily logbook submissions 
-                  </p>
-                </div>
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <BookOpen className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Daily Logs
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  Browse daily logbook submissions
+                </motion.p>
               </div>
 
               {/* Summary pill */}
@@ -441,7 +445,7 @@ const AdminDailyRecords = () => {
                   {pagination.total}
                 </p>
               </motion.div>
-            </motion.div>
+            </div>
 
             {/* Date Navigator */}
             <motion.div

@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
+import { MapPin } from "lucide-react";
 import {
-  FaMapMarkerAlt,
   FaArrowLeft,
   FaUsers,
   FaSearch,
@@ -487,20 +487,25 @@ const AdminInternLocations = () => {
           className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6"
         >
           <div>
-            
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 p-3 rounded-xl">
-                <FaMapMarkerAlt className="text-blue-600 text-xl" />
+            <motion.h1
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            >
+              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                <MapPin className="text-[#0056a2] h-8 w-8" />
               </div>
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">
-                  Intern Locations
-                </h2>
-                <p className="text-gray-500 text-sm">
-                  Live overview of all registered intern locations
-                </p>
-              </div>
-            </div>
+              Intern Locations
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+            >
+              Live overview of all registered intern locations
+            </motion.p>
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">

@@ -388,10 +388,23 @@ const AdminSeatManagement = () => {
             {/* Header Section */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
-                <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl"><Armchair className="text-[#0056a2] h-8 w-8" /></div> Seat Booking Monitor
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <Armchair className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Seat Booking Monitor
                 </motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05, duration: 0.2 }} className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
                   View, monitor, and manage intern seat bookings.
                 </motion.p>
               </div>
