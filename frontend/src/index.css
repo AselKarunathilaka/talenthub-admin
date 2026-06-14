@@ -1840,3 +1840,12 @@
   font-size: 12px;
   padding: 7px 12px;
 }
+
+/* Fix for WebKit autofill styling on dark mode inputs */
+.autofill-fix:-webkit-autofill,
+.autofill-fix:-webkit-autofill:hover, 
+.autofill-fix:-webkit-autofill:focus, 
+.autofill-fix:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s;
+  -webkit-text-fill-color: white !important;
+}
