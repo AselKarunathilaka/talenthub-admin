@@ -547,8 +547,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
   return (
     <AdminNavigation>
-      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
-        <main className="flex-1 p-4 sm:p-6 lg:px-8 mx-auto max-w-[1600px] w-full mt-20">
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           {/* Header & Page Info */}
           <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
@@ -1199,7 +1200,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               )}
             </>
           )}
-        </main>
+          </main>
+        </div>
       </div>
 
       {/* Review Modal */}
