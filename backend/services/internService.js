@@ -347,22 +347,28 @@ class InternService {
                 updatedData,
               );
               updatedCount++;
-              console.log(
-                `📝 Updated intern: ${internData.traineeName} (${internData.traineeId}) - Updated: ${Object.keys(updatedData).join(", ")}`,
-              );
+              if (process.env.DEBUG_SYNC === "true") {
+                console.log(
+                  `📝 Updated intern: ${internData.traineeName} (${internData.traineeId}) - Updated: ${Object.keys(updatedData).join(", ")}`,
+                );
+              }
             } else {
               skippedCount++;
-              console.log(
-                `⏭️ Skipped intern: ${internData.traineeName} (${internData.traineeId}) - No changes needed`,
-              );
+              if (process.env.DEBUG_SYNC === "true") {
+                console.log(
+                  `⏭️ Skipped intern: ${internData.traineeName} (${internData.traineeId}) - No changes needed`,
+                );
+              }
             }
           } else {
             // Create new intern
             await InternRepository.addIntern(internData);
             addedCount++;
-            console.log(
-              `➕ Added new intern: ${internData.traineeName} (${internData.traineeId})`,
-            );
+            if (process.env.DEBUG_SYNC === "true") {
+              console.log(
+                `➕ Added new intern: ${internData.traineeName} (${internData.traineeId})`,
+              );
+            }
           }
         } catch (error) {
           console.error(
@@ -394,23 +400,27 @@ class InternService {
           });
 
           if (internsToRemove.length > 0) {
-            console.log(
-              `🗑️  Found ${internsToRemove.length} interns to remove (no longer in API):`,
-            );
-            internsToRemove.forEach((intern) => {
+            if (process.env.DEBUG_SYNC === "true") {
               console.log(
-                `   - ${intern.Trainee_ID}: ${intern.Trainee_Name} (${intern.Trainee_Email || "No email"})`,
+                `🗑️  Found ${internsToRemove.length} interns to remove (no longer in API):`,
               );
-            });
+              internsToRemove.forEach((intern) => {
+                console.log(
+                  `   - ${intern.Trainee_ID}: ${intern.Trainee_Name} (${intern.Trainee_Email || "No email"})`,
+                );
+              });
+            }
 
             // Remove the interns that are no longer in API
             for (const intern of internsToRemove) {
               try {
                 await InternRepository.removeIntern(intern._id);
                 removedCount++;
-                console.log(
-                  `✅ Removed: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
-                );
+                if (process.env.DEBUG_SYNC === "true") {
+                  console.log(
+                    `✅ Removed: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
+                  );
+                }
               } catch (error) {
                 console.error(
                   `❌ Failed to remove ${intern.Trainee_Name} (${intern.Trainee_ID}):`,

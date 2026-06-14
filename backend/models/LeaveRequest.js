@@ -128,7 +128,6 @@ leaveRequestSchema.methods.generatePassToken = function () {
 leaveRequestSchema.index({ intern: 1, status: 1 });
 leaveRequestSchema.index({ intern: 1, requestType: 1, leaveDate: 1 });
 leaveRequestSchema.index({ status: 1, submittedAt: -1 });
-leaveRequestSchema.index({ passToken: 1 });
 
 const LeaveRequest = mongoose.model("LeaveRequest", leaveRequestSchema);
 
