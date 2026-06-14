@@ -661,9 +661,9 @@ const AdminDashboard = () => {
      ══════════════════════════════════════════════════════════ */
   return (
     <AdminNavigation>
-      <div className="admin-dash-content">
-        <main className="admin-dash-main">
-          <div className="admin-dash-container">
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             {/* ── Page title ── */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
@@ -1128,8 +1128,8 @@ const AdminDashboard = () => {
                 </motion.div>
               </div>
             </div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
 
       <AnimatePresence>

@@ -484,17 +484,18 @@ const AdminInternLocations = () => {
         <motion.div
           initial={{ opacity: 0, y: -15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6"
+          className="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4 xl:gap-6"
         >
-          <div>
+          {/* TITLE */}
+          <div className="shrink-0">
             <motion.h1
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
-              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight whitespace-nowrap"
             >
-              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                <MapPin className="text-[#0056a2] h-8 w-8" />
+              <div className="p-2 bg-[#00b4eb]/10 rounded-xl shrink-0">
+                <MapPin className="text-[#0056a2] h-6 w-6 sm:h-8 sm:w-8" />
               </div>
               Intern Locations
             </motion.h1>
@@ -502,67 +503,178 @@ const AdminInternLocations = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              className="text-gray-500 mt-2 text-sm font-medium whitespace-nowrap"
             >
               Live overview of all registered intern locations
             </motion.p>
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap">
-            {/* Active intern count card */}
+          {/* RIGHT SIDE ITEMS - 4 CARDS */}
+          <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2 xl:gap-3 w-full min-w-0">
+            
+            {/* Active intern count card (a) */}
             <motion.div
-              whileHover={{ scale: 1.03 }}
-              className="flex items-center gap-4 bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-100"
+              whileHover={{ scale: 1.02 }}
+              className="order-1 lg:order-none flex items-center gap-2 sm:gap-3 bg-white px-2 sm:px-3 py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[60px] sm:min-h-[68px]"
             >
-              <div className="bg-blue-500 text-white p-4 rounded-xl shadow-lg">
-                <FaUsers className="text-2xl" />
+              <div className="bg-blue-50 text-blue-600 p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
+                <FaUsers className="text-sm sm:text-base" />
               </div>
-              <div>
-                <p className="text-sm text-gray-500">
+              <div className="flex flex-col min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5 truncate">
                   {selectedDistrict === "All"
-                    ? "Active Interns with Location"
+                    ? "Active Interns"
                     : `Active in ${selectedDistrict}`}
                 </p>
-                <p className="text-3xl font-bold text-blue-600">
+                <p className="text-base sm:text-lg font-bold text-gray-800 leading-none truncate">
                   {interns.length}
                 </p>
               </div>
             </motion.div>
 
-            {/* Past interns toggle card */}
+            {/* Past interns toggle card (b) */}
             <motion.div
-              whileHover={{ scale: 1.03 }}
-              className="flex items-center gap-4 bg-white px-6 py-5 rounded-2xl shadow-md border border-gray-100"
+              whileHover={{ scale: 1.02 }}
+              className="order-3 lg:order-none flex items-center justify-between bg-white px-2 sm:px-3 py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[60px] sm:min-h-[68px]"
             >
-              <div className="bg-violet-100 p-4 rounded-xl">
-                <FaHistory className="text-violet-600 text-xl" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Past Interns</p>
-                <p className="text-2xl font-bold text-violet-600">
-                  {pastFetched ? pastInterns.length : "—"}
-                </p>
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="bg-violet-50 text-violet-600 p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
+                  <FaHistory className="text-sm sm:text-base" />
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5 truncate">
+                    Past Interns
+                  </p>
+                  <p className="text-base sm:text-lg font-bold text-gray-800 leading-none truncate">
+                    {pastFetched ? pastInterns.length : "—"}
+                  </p>
+                </div>
               </div>
               <button
                 onClick={handleTogglePastInterns}
                 disabled={pastLoading}
-                className="ml-2 flex items-center gap-2 text-sm font-semibold transition-all duration-200"
+                className="flex items-center justify-center transition-all duration-200 ml-1 shrink-0"
                 title={showPastInterns ? "Hide past interns" : "Show past interns"}
               >
                 {pastLoading ? (
-                  <span className="w-5 h-5 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
                 ) : showPastInterns ? (
-                  <FaToggleOn className="text-3xl text-violet-600" />
+                  <FaToggleOn className="text-[20px] sm:text-[24px] text-violet-600" />
                 ) : (
-                  <FaToggleOff className="text-3xl text-gray-400" />
+                  <FaToggleOff className="text-[20px] sm:text-[24px] text-gray-300 hover:text-gray-400" />
                 )}
-                <span className={showPastInterns ? "text-violet-600" : "text-gray-400"}>
-                  {showPastInterns ? "On" : "Off"}
-                </span>
               </button>
             </motion.div>
+
+            {/* Filter by district (c) */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="order-2 lg:order-none flex flex-col justify-center bg-white px-2 sm:px-3 py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[60px] sm:min-h-[68px]"
+            >
+              <label className="block text-[9px] sm:text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wider flex items-center gap-1">
+                <FaFilter className="text-emerald-500 text-[9px] shrink-0" /> <span className="truncate">Filter by District</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedDistrict}
+                  onChange={(e) => setSelectedDistrict(e.target.value)}
+                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-2 py-1 text-[10px] sm:text-xs text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all cursor-pointer pr-6"
+                >
+                  {SRI_LANKA_DISTRICTS.map((d) => (
+                    <option key={d} value={d}>
+                      {d === "All"
+                        ? "All Districts"
+                        : `${d}${countForDistrict(d) > 0 ? ` (${countForDistrict(d)})` : ""}`}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-gray-400">
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Find interns by id (d) */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              className="order-4 lg:order-none flex flex-col justify-center bg-white px-2 sm:px-3 py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[60px] sm:min-h-[68px]"
+            >
+              <label className="block text-[9px] sm:text-[10px] font-semibold text-gray-500 mb-1 uppercase tracking-wider flex items-center gap-1">
+                <FaIdCard className="text-blue-500 text-[9px] shrink-0" /> <span className="truncate">Find Intern by ID</span>
+              </label>
+              <div className="flex gap-1">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={idSearch}
+                    onChange={(e) => setIdSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleIdSearch()}
+                    placeholder="Search ID"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-2 py-1 text-[10px] sm:text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all pr-5"
+                  />
+                  {idSearch && (
+                    <button
+                      onClick={clearIdSearch}
+                      className="absolute inset-y-0 right-1.5 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      <FaTimes className="text-[9px]" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={handleIdSearch}
+                  disabled={idSearchLoading}
+                  className="px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg sm:rounded-xl shadow-sm transition-all duration-200 flex items-center justify-center shrink-0"
+                  title="Search"
+                >
+                  {idSearchLoading ? (
+                    <span className="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <FaSearch className="text-[10px]" />
+                  )}
+                </button>
+              </div>
+            </motion.div>
+
           </div>
         </motion.div>
+
+        {/* ── SEARCH MESSAGES / ALERTS ── */}
+        <AnimatePresence>
+          {(idSearchError || highlightedIntern) && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-4 overflow-hidden"
+            >
+              {idSearchError && (
+                <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm shadow-sm">
+                  <FaExclamationTriangle className="shrink-0" />
+                  {idSearchError}
+                </div>
+              )}
+              {highlightedIntern && !idSearchError && (
+                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm shadow-sm">
+                  <MapPin className="shrink-0 text-amber-500 w-4 h-4" />
+                  <span>
+                    Showing location for{" "}
+                    <strong>{highlightedIntern.name}</strong>
+                    {highlightedIntern.district
+                      ? ` — ${highlightedIntern.district}`
+                      : ""}
+                  </span>
+                  <button
+                    onClick={clearIdSearch}
+                    className="ml-auto text-amber-600 hover:text-amber-800"
+                  >
+                    <FaTimes />
+                  </button>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── PAST INTERN LOADING / ERROR ── */}
         <AnimatePresence>
@@ -571,7 +683,7 @@ const AdminInternLocations = () => {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="bg-violet-50 border border-violet-200 text-violet-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-3"
+              className="bg-violet-50 border border-violet-200 text-violet-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-3 shadow-sm"
             >
               <span className="w-4 h-4 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin shrink-0" />
               Loading past intern locations…
@@ -582,7 +694,7 @@ const AdminInternLocations = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-2"
+              className="bg-red-50 border border-red-200 text-red-700 px-5 py-3 rounded-xl mb-4 text-sm flex items-center gap-2 shadow-sm"
             >
               <FaExclamationTriangle className="shrink-0" />
               {pastError}
@@ -595,9 +707,8 @@ const AdminInternLocations = () => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-6 bg-white px-5 py-3 rounded-xl shadow-sm border border-gray-100 mb-4 text-sm"
+            className="flex flex-wrap items-center justify-center gap-6 bg-white px-5 py-3 rounded-xl shadow-sm border border-gray-100 mb-4 text-sm"
           >
-            <span className="font-semibold text-gray-600">Legend:</span>
             <span className="flex items-center gap-2">
               <img
                 src="https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png"
@@ -616,130 +727,6 @@ const AdminInternLocations = () => {
             </span>
           </motion.div>
         )}
-
-        {/* ── FILTER & SEARCH BAR ── */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-2xl shadow-md border border-gray-100 p-5 mb-6"
-        >
-          <div className="flex flex-col lg:flex-row gap-4">
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                <FaFilter className="inline mr-1" /> Filter by District
-              </label>
-              <div className="relative">
-                <select
-                  value={selectedDistrict}
-                  onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all cursor-pointer pr-10"
-                >
-                  {SRI_LANKA_DISTRICTS.map((d) => (
-                    <option key={d} value={d}>
-                      {d === "All"
-                        ? "All Districts"
-                        : `${d}${countForDistrict(d) > 0 ? ` (${countForDistrict(d)})` : ""}`}
-                    </option>
-                  ))}
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden lg:flex items-center">
-              <div className="w-px h-12 bg-gray-200" />
-            </div>
-
-            <div className="flex-1">
-              <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">
-                <FaSearch className="inline mr-1" /> Find Intern by ID
-              </label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={idSearch}
-                    onChange={(e) => setIdSearch(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleIdSearch()}
-                    placeholder="intern ID"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all pr-8"
-                  />
-                  {idSearch && (
-                    <button
-                      onClick={clearIdSearch}
-                      className="absolute inset-y-0 right-2.5 flex items-center text-gray-400 hover:text-gray-600"
-                    >
-                      <FaTimes className="text-xs" />
-                    </button>
-                  )}
-                </div>
-                <button
-                  onClick={handleIdSearch}
-                  disabled={idSearchLoading}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 flex items-center gap-2 whitespace-nowrap"
-                >
-                  {idSearchLoading ? (
-                    <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <FaSearch />
-                  )}
-                  Search
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <AnimatePresence>
-            {(idSearchError || highlightedIntern) && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="mt-3 overflow-hidden"
-              >
-                {idSearchError && (
-                  <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-xl text-sm">
-                    <FaExclamationTriangle className="shrink-0" />
-                    {idSearchError}
-                  </div>
-                )}
-                {highlightedIntern && !idSearchError && (
-                  <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2.5 rounded-xl text-sm">
-                    <FaMapMarkerAlt className="shrink-0 text-amber-500" />
-                    <span>
-                      Showing location for{" "}
-                      <strong>{highlightedIntern.name}</strong>
-                      {highlightedIntern.district
-                        ? ` — ${highlightedIntern.district}`
-                        : ""}
-                    </span>
-                    <button
-                      onClick={clearIdSearch}
-                      className="ml-auto text-amber-600 hover:text-amber-800"
-                    >
-                      <FaTimes />
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
 
         {/* ── ERROR ── */}
         {error && (
