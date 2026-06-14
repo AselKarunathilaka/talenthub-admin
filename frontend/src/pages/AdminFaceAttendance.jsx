@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   AlertCircle,
   Camera,
@@ -11,6 +12,7 @@ import {
   UserCheck,
   ArrowLeft,
   X,
+  ScanFace,
 } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
@@ -478,19 +480,34 @@ const AdminFaceAttendance = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 md:p-8">
+    <AdminNavigation>
+      <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 relative">
       <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate("/admin/dashboard")}
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-800 transition mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
-        </button>
+        
 
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-900">Admin Face Management</h1>
-          <p className="text-slate-500 mt-1">Enroll faces or mark camera attendance on behalf of interns.</p>
+        {/* ── Header ── */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            >
+              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                <ScanFace className="text-[#0056a2] h-8 w-8" />
+              </div>
+              Face ID
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+            >
+              Enroll faces or mark camera attendance on behalf of interns.
+            </motion.p>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-[340px_1fr] gap-6">
@@ -680,8 +697,9 @@ const AdminFaceAttendance = () => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

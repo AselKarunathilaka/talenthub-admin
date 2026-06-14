@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import {
   FaChair,
   FaUsers,
@@ -32,11 +33,44 @@ const TOTAL_SEATS = 88;
 
 const AdminSeatManagement = () => {
   const navigate = useNavigate();
-  const mapViewportRef = React.useRef(null);
+  const [mapElement, setMapElement] = useState(null);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 910;
-  const [showLockManager, setShowLockManager] = useState(false);
-  const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef, showLockManager);
+  const [showLockManager, setShowLockManager] = useState(true);
+  const [scale, setScale] = useState(1);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (!mapElement) return;
+
+    const updateScale = () => {
+      const rect = mapElement.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      
+      const isMobile = window.innerWidth < 768;
+      let fitScale;
+      if (isMobile) {
+        fitScale = (rect.height / MAP_HEIGHT) * 0.98;
+      } else {
+        const scaleX = (rect.width / MAP_WIDTH) * 0.98;
+        const scaleY = (rect.height / MAP_HEIGHT) * 0.98;
+        fitScale = Math.min(scaleX, scaleY, 1);
+      }
+      setScale(fitScale);
+      setReady(true);
+    };
+
+    updateScale();
+    
+    const observer = new ResizeObserver(() => updateScale());
+    observer.observe(mapElement);
+    
+    window.addEventListener('resize', updateScale);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [mapElement]);
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -347,125 +381,93 @@ const AdminSeatManagement = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Enhanced floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 20, 0],
-            rotate: [0, 5, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
-          animate={{
-            y: [0, 20, 0],
-            x: [0, -20, 0],
-            rotate: [0, -5, 0],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-        />
-        <motion.div
-          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 15, 0],
-            rotate: [0, 3, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="pt-2 sm:pt-4">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Header with Back Button */}
-            <motion.div
-              className="mb-4 md:mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center space-x-4 mb-2">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
-                  whileHover={{ scale: 1.05, x: -5 }}
-                  whileTap={{ scale: 0.95 }}
+    <AdminNavigation>
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            {/* Header Section */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
                 >
-                  <FaArrowLeft className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Back to Dashboard
-                  </span>
-                </motion.button>
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <Armchair className="text-[#0056a2] h-8 w-8" />
+                  </div>
                   Seat Booking Monitor
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
-                View and monitor intern seat booking details
-              </p>
-            </motion.div>
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  View, monitor, and manage intern seat bookings.
+                </motion.p>
+              </div>
+
+              {/* Stats & Date Filter */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
+                {!showHistory && (
+                  <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                    <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><FaCalendarAlt className="text-[#00b4eb] h-5 w-5" /></div>
+                    <div className="flex-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label>
+                      <input type="date" value={selectedDate} onChange={handleDateChange} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" />
+                    </div>
+                  </div>
+                )}
+                {!showHistory && (
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <div className="flex-1 sm:w-28 text-center p-3 bg-gray-50/80 rounded-2xl border border-gray-200">
+                      <div className="text-2xl font-black text-gray-600 leading-none mb-1">{lockedSeatsCount}</div>
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Locked</div>
+                    </div>
+                    <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100">
+                      <div className="text-2xl font-black text-rose-600 leading-none mb-1">{stats.occupiedSeats}</div>
+                      <div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Occupied</div>
+                    </div>
+                    <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100">
+                      <div className="text-2xl font-black text-[#50b748] leading-none mb-1">{TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}</div>
+                      <div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
 
             {/* Error Message */}
             <AnimatePresence>
               {error && (
                 <motion.div
-                  className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start space-x-3"
+                  className="mb-6 bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start space-x-3"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                 >
-                  <FaExclamationTriangle className="text-red-500 flex-shrink-0 mt-0.5" />
+                  <FaExclamationTriangle className="text-rose-500 flex-shrink-0 mt-0.5" />
                   <div className="flex-1">
-                    <p className="text-sm text-red-800 font-medium">Error</p>
-                    <p className="text-sm text-red-700">{error}</p>
+                    <p className="text-sm text-rose-800 font-bold">Error</p>
+                    <p className="text-sm text-rose-700">{error}</p>
                   </div>
-                  <button
-                    onClick={() => setError(null)}
-                    className="text-red-500 hover:text-red-700 text-xl font-bold"
-                  >
-                    ×
-                  </button>
+                  <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700 text-xl font-bold">×</button>
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Search Bar */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
+              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
             >
               <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
                 <div className="flex-1">
-                  <label
-                    htmlFor="search-input"
-                    className="block text-sm font-medium text-gray-700 mb-2"
-                  >
-                    Search Intern
-                  </label>
+                  <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">Search Intern</label>
                   <div className="flex items-center space-x-2">
                     <div className="relative flex-1">
                       <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -474,43 +476,27 @@ const AdminSeatManagement = () => {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        onKeyPress={(e) =>
-                          e.key === "Enter" && handleSearchBookingHistory()
-                        }
+                        onKeyPress={(e) => e.key === "Enter" && handleSearchBookingHistory()}
                         placeholder="Search by Trainee ID or Name..."
-                        className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm shadow-sm"
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
                       />
                       {searchQuery && (
-                        <button
-                          onClick={clearSearch}
-                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                          <FaTimes className="h-4 w-4" />
+                        <button onClick={clearSearch} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm">
+                          <FaTimes className="h-3 w-3" />
                         </button>
                       )}
                     </div>
                     <motion.button
                       onClick={handleSearchBookingHistory}
                       disabled={!searchQuery.trim() || searchLoading}
-                      className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed"
-                      whileHover={{
-                        scale: searchQuery.trim() && !searchLoading ? 1.05 : 1,
-                      }}
-                      whileTap={{
-                        scale: searchQuery.trim() && !searchLoading ? 0.95 : 1,
-                      }}
+                      className="flex items-center space-x-2 px-5 py-3 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#0056a2]/20 disabled:shadow-none disabled:cursor-not-allowed"
+                      whileHover={{ scale: searchQuery.trim() && !searchLoading ? 1.05 : 1 }}
+                      whileTap={{ scale: searchQuery.trim() && !searchLoading ? 0.95 : 1 }}
                     >
                       {searchLoading ? (
-                        <>
-                          <FaSpinner className="h-4 w-4 animate-spin" />
-                          <span>Searching...</span>
-                        </>
+                        <><FaSpinner className="h-4 w-4 animate-spin" /><span>Searching...</span></>
                       ) : (
-                        <>
-                          <FaHistory className="h-4 w-4" />
-                          <span className="hidden sm:inline">View History</span>
-                          <span className="sm:hidden">History</span>
-                        </>
+                        <><FaHistory className="h-4 w-4" /><span className="hidden sm:inline">View History</span><span className="sm:hidden">History</span></>
                       )}
                     </motion.button>
                   </div>
@@ -521,648 +507,332 @@ const AdminSeatManagement = () => {
               <AnimatePresence>
                 {searchMessage && (
                   <motion.div
-                    className={`mt-4 p-3 rounded-xl border ${searchMessage.type === "success"
-                        ? "bg-green-50 border-green-200"
-                        : searchMessage.type === "error"
-                          ? "bg-red-50 border-red-200"
-                          : "bg-blue-50 border-blue-200"
-                      }`}
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+                    className={`mt-4 p-4 rounded-2xl border ${searchMessage.type === "success" ? "bg-[#50b748]/10 border-[#50b748]/30" : searchMessage.type === "error" ? "bg-rose-50 border-rose-200" : "bg-[#00b4eb]/10 border-[#00b4eb]/30"}`}
+                    initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
                   >
                     <div className="flex items-center justify-between">
-                      <p
-                        className={`text-sm font-medium ${searchMessage.type === "success"
-                            ? "text-green-800"
-                            : searchMessage.type === "error"
-                              ? "text-red-800"
-                              : "text-blue-800"
-                          }`}
-                      >
-                        {searchMessage.text}
-                      </p>
-                      <button
-                        onClick={() => setSearchMessage(null)}
-                        className={`${searchMessage.type === "success"
-                            ? "text-green-600 hover:text-green-800"
-                            : searchMessage.type === "error"
-                              ? "text-red-600 hover:text-red-800"
-                              : "text-blue-600 hover:text-blue-800"
-                          }`}
-                      >
-                        <FaTimes className="h-4 w-4" />
-                      </button>
+                      <p className={`text-sm font-bold ${searchMessage.type === "success" ? "text-[#15803d]" : searchMessage.type === "error" ? "text-rose-800" : "text-[#0056a2]"}`}>{searchMessage.text}</p>
+                      <button onClick={() => setSearchMessage(null)} className={`${searchMessage.type === "success" ? "text-[#15803d] hover:text-[#50b748]" : searchMessage.type === "error" ? "text-rose-600 hover:text-rose-800" : "text-[#0056a2] hover:text-[#00b4eb]"}`}><FaTimes className="h-4 w-4" /></button>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </motion.div>
 
-            {/* Statistics Cards */}
+            {/* Map Section */}
             {!showHistory && (
-              <>
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 mb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 px-2 gap-3">
+                <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                    <div className="p-1.5 bg-blue-50 rounded-lg text-[#0056a2]"><Armchair size={18} /></div>
+                    Seat Map Manager
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-1 font-medium">
+                    Click a seat to lock or unlock it. Locked seats cannot be booked by interns.
+                  </p>
+                </div>
+                <div className="flex items-center gap-4 bg-slate-50 px-4 py-2.5 rounded-2xl border border-slate-100">
+                  <div className="flex items-center gap-2"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center"></div><span className="text-xs font-bold text-gray-600">Available</span></div>
+                  <div className="flex items-center gap-2"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center"><FaTimes size={10} className="text-white"/></div><span className="text-xs font-bold text-gray-600">Booked</span></div>
+                  <div className="flex items-center gap-2"><div className="w-5 h-5 bg-slate-200 border-2 border-slate-300 rounded-lg shadow-sm opacity-75 flex items-center justify-center"><FaLock size={8} className="text-slate-400"/></div><span className="text-xs font-bold text-gray-600">Locked</span></div>
+                </div>
+              </div>
+              
+              <div 
+                ref={setMapElement}
+                className="w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar border border-gray-100 shadow-inner"
+                style={{ height: "75vh", minHeight: "550px", maxHeight: "900px" }}
+              >
+                <div className={`relative shrink-0 overflow-hidden transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
+                  <div className="absolute" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
+                      <div className="absolute inset-0" style={{ transform: 'translate(150px, 60px)' }}>
+                        <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
+                          <div className="text-lg font-bold text-white/90 z-10 pl-6 uppercase tracking-[0.2em]">Entrance</div>
+                        </div>
+                        <div className="absolute h-14 bg-slate-800 rounded-2xl shadow-lg" style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}></div>
+                        <div className="absolute top-11 w-33 bg-slate-800 rounded-b-2xl shadow-lg" style={{ left: "486px", height: "750px" }}></div>
+
+                        <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "-125px", top: "70px", width: "610px", height: "720px" }}>
+                          <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "235px", top: "230px", width: "140px", height: "140px" }}></div>
+                        </div>
+                        <div className="absolute bg-slate-100 rounded-3xl border border-slate-200 shadow-inner" style={{ left: "620px", top: "20px", width: "650px", height: "770px" }}>
+                          <div className="absolute bg-white rounded-full shadow-md border-8 border-slate-50" style={{ left: "230px", top: "280px", width: "140px", height: "140px" }}></div>
+                        </div>
+
+                        {(() => {
+                          const AdminSeat = ({ number, x, y, angle, radius, centerX, centerY }) => {
+                            const isLocked = lockedSeats.includes(number);
+                            const booking = bookingsBySeat[number];
+                            const isBooked = !!booking;
+                            let posX = x; let posY = y;
+                            if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
+                              posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
+                              posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
+                            }
+
+                            const lockDetail = lockedSeatDetailsBySeat[number];
+                            let statusClasses = "";
+                            let titleText = "";
+                            const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden cursor-pointer";
+
+                            if (isLocked) {
+                              statusClasses = "bg-slate-200 text-slate-500 border-slate-300 opacity-75 hover:border-slate-400 hover:shadow-md";
+                              titleText = lockDetail?.traineeId ? `Seat ${number} (Locked for: ${lockDetail.traineeId}) — Click to unlock` : `Seat ${number} (Locked) — Click to unlock`;
+                            } else if (isBooked) {
+                              statusClasses = "bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-200/50 hover:bg-rose-600";
+                              titleText = `Seat ${number} — Booked by: ${booking.traineeId || booking.internName || booking.email || "Unknown"} — Click to lock`;
+                            } else {
+                              statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30";
+                              titleText = `Seat ${number} (Available) — Click to lock`;
+                            }
+
+                            return (
+                              <motion.div
+                                onClick={() => {
+                                  if (lockLoading) return;
+                                  if (isLocked) setLockConfirm({ seatNumber: number, action: "unlock" });
+                                  else setLockConfirm({ seatNumber: number, action: "lock" });
+                                }}
+                                className={`${baseClasses} ${statusClasses}`}
+                                style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
+                                whileHover={{ scale: 1.15, zIndex: 10 }}
+                                whileTap={{ scale: 0.95 }}
+                                title={titleText}
+                              >
+                                <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+                                  {isBooked && !isLocked ? (
+                                    <FaTimes size={16} className="text-white/90 mb-0.5" />
+                                  ) : isLocked ? (
+                                    <FaLock size={14} className="mb-1 opacity-60" />
+                                  ) : (
+                                    <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
+                                  )}
+                                  {isLocked && lockDetail?.traineeId ? (
+                                    <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5 leading-none">{lockDetail.traineeId}</span>
+                                  ) : isBooked && !isLocked ? (
+                                    <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5 leading-none">{booking.traineeId || number}</span>
+                                  ) : (
+                                    <span className="text-[10px] mt-0.5 leading-none">{number}</span>
+                                  )}
+                                </div>
+                              </motion.div>
+                            );
+                          };
+
+                          return (
+                            <>
+                              {leftSection.topRow.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                              {leftSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                              {leftSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                              {leftSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                              {leftSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
+                              {rightSection.straightSeats.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
+                              {rightSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                              {rightSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                              {rightSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                              {rightSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+              </div>
+            </div>
+            )}
+
+            {/* Lock Confirmation Modal */}
+            <AnimatePresence>
+              {lockConfirm && (
                 <motion.div
-                  className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2, duration: 0.3 }}
+                  className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                 >
                   <motion.div
-                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm cursor-pointer"
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2 }}
-                    onClick={() => setShowLockManager(!showLockManager)}
+                    className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100 overflow-hidden relative"
+                    initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                          Locked Seats
-                        </p>
-                        <p className="text-xl sm:text-2xl font-bold text-gray-800">
-                          {lockedSeatsCount}
-                        </p>
-                        <p className="text-xs text-blue-500 mt-1">
-                          {showLockManager ? "Hide manager ▲" : "Click to manage ▼"}
-                        </p>
+                    <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
+                    <div className="flex justify-between items-center mb-6 mt-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${lockConfirm.action === "lock" ? "bg-red-50 text-red-500" : "bg-green-50 text-green-500"}`}>
+                          {lockConfirm.action === "lock" ? <FaLock size={20} /> : <FaUnlock size={20} />}
+                        </div>
+                        <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">
+                          {lockConfirm.action === "lock" ? "Lock Seat" : "Unlock Seat"} {lockConfirm.seatNumber}
+                        </h2>
                       </div>
-                      <FaLock className="text-xl sm:text-2xl text-blue-500" />
+                      <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                        <FaTimes size={16} />
+                      </button>
                     </div>
-                  </motion.div>
 
-                  <motion.div
-                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                          Occupied Seats
-                        </p>
-                        <p className="text-xl sm:text-2xl font-bold text-purple-600">
-                          {stats.occupiedSeats}
-                        </p>
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600 font-medium px-1">
+                        {lockConfirm.action === "lock"
+                          ? "Interns will no longer be able to book this seat."
+                          : "This seat will become available for interns to book."}
+                      </p>
+                      {lockConfirm.action === "lock" && (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Trainee ID <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
+                          <input type="text" value={lockTraineeId} onChange={(e) => setLockTraineeId(e.target.value)} placeholder="e.g. 3425" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all shadow-sm" autoFocus />
+                          <p className="text-xs text-gray-400 mt-2 font-medium">Tag this seat for a specific intern.</p>
+                        </div>
+                      )}
+                      <div className="flex gap-3 pt-4">
+                        <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} disabled={lockLoading} className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95">Cancel</button>
+                        <button onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)} disabled={lockLoading} className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-all shadow-lg focus:outline-none focus:ring-4 active:scale-95 flex items-center justify-center gap-2 ${lockConfirm.action === "lock" ? "bg-red-500 hover:bg-red-600 shadow-red-500/30 focus:ring-red-100" : "bg-[#50b748] hover:bg-[#43a03c] shadow-[#50b748]/30 focus:ring-green-100"}`}>
+                          {lockLoading ? <FaSpinner className="animate-spin" /> : (lockConfirm.action === "lock" ? <><FaLock size={14}/> Confirm Lock</> : <><FaUnlock size={14}/> Confirm Unlock</>)}
+                        </button>
                       </div>
-                      <FaCheckCircle className="text-xl sm:text-2xl text-purple-500" />
-                    </div>
-                  </motion.div>
-
-                  <motion.div
-                    className="bg-white/80 backdrop-blur-sm p-4 sm:p-6 rounded-2xl border border-gray-100 shadow-sm"
-                    whileHover={{ scale: 1.03 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                          Available Seats
-                        </p>
-                        <p className="text-xl sm:text-2xl font-bold text-green-600">
-                          {TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}
-                        </p>
-                      </div>
-                      <FaChair className="text-xl sm:text-2xl text-green-500" />
                     </div>
                   </motion.div>
                 </motion.div>
+              )}
+            </AnimatePresence>
 
-                {/* Seat Lock Manager Panel */}
-                <AnimatePresence>
-                  {showLockManager && (
-                    <motion.div
-                      className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 mt-4"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
-                        <div>
-                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <FaLock className="text-blue-500" />
-                            Manage Seat Locks
-                          </h3>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Click a seat to lock/unlock it. Locked seats cannot be booked by interns.
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-5 h-5 bg-gray-500 rounded-lg"></div>
-                            <span>Locked</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-5 h-5 bg-red-400 rounded-lg"></div>
-                            <span>Booked</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs">
-                            <div className="w-5 h-5 bg-cyan-400 rounded-lg"></div>
-                            <span>Available</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Floor Plan Layout - Same as intern view */}
-                      <div 
-                        ref={mapViewportRef}
-                        className="bg-gray-100 rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar"
-                        style={{ height: "65vh", minHeight: "450px", maxHeight: "800px" }}
-                      >
-                        {ready && (
-                          <div
-                            className="relative shrink-0 overflow-hidden"
-                            style={{
-                              width: `${MAP_WIDTH * scale}px`,
-                              height: `${MAP_HEIGHT * scale}px`,
-                            }}
-                          >
-                            <div
-                              className="absolute"
-                              style={{
-                                width: `${MAP_WIDTH}px`,
-                                height: `${MAP_HEIGHT}px`,
-                                transform: `scale(${scale})`,
-                                transformOrigin: '0 0',
-                              }}
-                            >
-                              <div className="absolute inset-0" style={{ transform: 'translate(150px, 60px)' }}>
-                                {/* Entrance bar */}
-                                <div
-                                  className="absolute top-0 h-12 bg-gray-700 flex items-center shadow-lg rounded-2xl"
-                                  style={{ left: "-124px", width: "742px" }}
-                                >
-                              <div className="text-base lg:text-xl font-bold text-white z-10 pl-4">
-                                Entrance
-                              </div>
-                            </div>
-                            <div
-                              className="absolute h-12 bg-gray-700 flex items-center"
-                              style={{ left: "485px", top: "-45px", width: "785px", zIndex: 20 }}
-                            ></div>
-                            <div
-                              className="absolute top-11 w-33 bg-gray-700"
-                              style={{ left: "486px", bottom: "-110px" }}
-                            ></div>
-
-                            {/* Left section background + pillar */}
-                            <div
-                              className="absolute bg-gray-400 rounded-lg"
-                              style={{ left: "-125px", top: "50px", width: "610px", height: "720px" }}
-                            >
-                              <div
-                                className="absolute bg-gray-600 rounded-full"
-                                style={{ left: "235px", top: "250px", width: "140px", height: "140px" }}
-                              ></div>
-                            </div>
-
-                            {/* Right section background + pillar */}
-                            <div
-                              className="absolute bg-gray-400 rounded-lg"
-                              style={{ left: "620px", top: "0px", width: "650px", height: "770px" }}
-                            >
-                              <div
-                                className="absolute bg-gray-600 rounded-full"
-                                style={{ left: "230px", top: "300px", width: "140px", height: "140px" }}
-                              ></div>
-                            </div>
-
-                            {/* AdminSeat component - renders on the floor plan */}
-                            {(() => {
-                              const AdminSeat = ({ number, x, y, angle, radius, centerX, centerY }) => {
-                                const isLocked = lockedSeats.includes(number);
-                                const booking = bookingsBySeat[number];
-                                const isBooked = !!booking;
-                                let posX = x;
-                                let posY = y;
-                                if (angle !== undefined && radius !== undefined && centerX !== undefined && centerY !== undefined) {
-                                  posX = centerX + Math.cos((angle * Math.PI) / 180) * radius;
-                                  posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
-                                }
-
-                                // 3 states: locked (gray), booked (red), available (cyan)
-                                const lockDetail = lockedSeatDetailsBySeat[number];
-                                let bgClass, titleText;
-                                if (isLocked) {
-                                  bgClass = "bg-gray-500 text-white";
-                                  titleText = lockDetail?.traineeId
-                                    ? `Seat ${number} (Locked for: ${lockDetail.traineeId}) — Click to unlock`
-                                    : `Seat ${number} (Locked) — Click to unlock`;
-                                } else if (isBooked) {
-                                  bgClass = "bg-red-400 text-white hover:bg-red-500";
-                                  titleText = `Seat ${number} — Booked by: ${booking.traineeId || booking.internName || booking.email || "Unknown"}`;
-                                } else {
-                                  bgClass = "bg-cyan-400 text-white hover:bg-cyan-500";
-                                  titleText = `Seat ${number} — Click to lock`;
-                                }
-
-                                return (
-                                  <div
-                                    onClick={() => {
-                                      if (lockLoading) return;
-                                      if (isLocked) {
-                                        setLockConfirm({ seatNumber: number, action: "unlock" });
-                                      } else {
-                                        setLockConfirm({ seatNumber: number, action: "lock" });
-                                      }
-                                    }}
-                                    className={`absolute w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold transition-all shadow-md cursor-pointer hover:scale-110 ${bgClass}`}
-                                    style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-                                    title={titleText}
-                                  >
-                                    {isLocked ? <FaLock size={12} className="mb-[-2px]" /> : null}
-                                    <Armchair size={16} />
-                                    {isLocked && lockDetail?.traineeId ? (
-                                      <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5">{lockDetail.traineeId}</span>
-                                    ) : isBooked && !isLocked ? (
-                                      <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5">{booking.traineeId || number}</span>
-                                    ) : (
-                                      <span className="text-[10px] mt-0.5">{number}</span>
-                                    )}
-                                  </div>
-                                );
-                              };
-
-                              return (
-                                <>
-                                  {leftSection.topRow.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
-                                  {leftSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                  {leftSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                  {leftSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                  {leftSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={180} centerY={377} />)}
-                                  {rightSection.straightSeats.map((s) => <AdminSeat key={s.number} number={s.number} x={s.x} y={s.y} />)}
-                                  {rightSection.pillarSeats.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                  {rightSection.outerRing1.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                  {rightSection.outerRing2.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                  {rightSection.outerRing3.map((s) => <AdminSeat key={s.number} number={s.number} angle={s.angle} radius={s.radius} centerX={920} centerY={377} />)}
-                                </>
-                              );
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                      <div className="mt-4 flex flex-col sm:flex-row items-center justify-between text-sm text-gray-600 gap-2">
-                        <span>
-                          {lockedSeatsCount} of {TOTAL_SEATS} seats locked
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          Changes take effect immediately for intern bookings
-                        </span>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                {/* Lock Confirmation Modal */}
-                <AnimatePresence>
-                  {lockConfirm && (
-                    <motion.div
-                      className="fixed inset-0 backdrop-blur-sm bg-black/30 flex items-center justify-center z-50 p-4"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      onClick={() => setLockConfirm(null)}
-                    >
-                      <motion.div
-                        className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
-                        initial={{ scale: 0.9, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="text-center mb-4">
-                          {lockConfirm.action === "lock" ? (
-                            <FaLock className="mx-auto text-3xl text-red-500 mb-3" />
-                          ) : (
-                            <FaUnlock className="mx-auto text-3xl text-green-500 mb-3" />
-                          )}
-                          <h3 className="text-lg font-bold text-gray-900">
-                            {lockConfirm.action === "lock" ? "Lock" : "Unlock"} Seat {lockConfirm.seatNumber}?
-                          </h3>
-                          <p className="text-sm text-gray-600 mt-2">
-                            {lockConfirm.action === "lock"
-                              ? "Interns will no longer be able to book this seat."
-                              : "This seat will become available for interns to book."}
-                          </p>
-                        </div>
-                        {/* Trainee ID input — only shown when locking */}
-                        {lockConfirm.action === "lock" && (
-                          <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Trainee ID <span className="text-gray-400 font-normal">(optional)</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={lockTraineeId}
-                              onChange={(e) => setLockTraineeId(e.target.value)}
-                              placeholder="e.g. 3425"
-                              className="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-400 focus:border-transparent"
-                              autoFocus
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Tag this seat for a specific intern</p>
-                          </div>
-                        )}
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => { setLockConfirm(null); setLockTraineeId(""); }}
-                            disabled={lockLoading}
-                            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-colors text-sm font-medium"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)}
-                            disabled={lockLoading}
-                            className={`flex-1 px-4 py-2.5 text-white rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2 ${lockConfirm.action === "lock"
-                                ? "bg-red-500 hover:bg-red-600"
-                                : "bg-green-500 hover:bg-green-600"
-                              }`}
-                          >
-                            {lockLoading ? (
-                              <FaSpinner className="animate-spin" />
-                            ) : lockConfirm.action === "lock" ? (
-                              <><FaLock /> Lock</>
-                            ) : (
-                              <><FaUnlock /> Unlock</>
-                            )}
-                          </button>
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </>
-            )}
-
-            {/* Date Filter and Export */}
-            {!showHistory && (
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm p-4 md:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 md:mb-6"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.3 }}
-              >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                    <div className="flex items-center space-x-2">
-                      <FaFilter className="text-gray-500 h-4 w-4" />
-                      <label
-                        htmlFor="date-filter"
-                        className="text-sm font-medium text-gray-700"
-                      >
-                        Filter by Date:
-                      </label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="date"
-                        id="date-filter"
-                        value={selectedDate}
-                        onChange={handleDateChange}
-                        className="px-4 py-2 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm shadow-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Export Button */}
+            {/* Date Filter and Export for Bookings */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4 mt-8">
+               <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
+                    {showHistory && searchResults
+                      ? `Booking History - ${searchResults.internInfo?.internName || "Intern"}`
+                      : `Seat Bookings${selectedDate ? ` - ${formatDate(selectedDate)}` : ""}`}
+                  </h3>
+               </div>
+               <div className="flex items-center gap-3">
                   <motion.button
                     onClick={handleExportCSV}
                     disabled={displayBookings.length === 0}
-                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed"
-                    whileHover={{
-                      scale: displayBookings.length === 0 ? 1 : 1.05,
-                    }}
-                    whileTap={{
-                      scale: displayBookings.length === 0 ? 1 : 0.95,
-                    }}
+                    className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none"
+                    whileHover={{ scale: displayBookings.length === 0 ? 1 : 1.05 }}
+                    whileTap={{ scale: displayBookings.length === 0 ? 1 : 0.95 }}
                   >
                     <FaDownload className="h-4 w-4" />
                     <span>Export to CSV</span>
                     {displayBookings.length > 0 && (
-                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                        {displayBookings.length}
-                      </span>
+                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{displayBookings.length}</span>
                     )}
                   </motion.button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Export Button for History View */}
-            {showHistory && searchResults && (
-              <motion.div
-                className="mb-4 md:mb-6 flex justify-end"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <motion.button
-                  onClick={handleExportCSV}
-                  disabled={displayBookings.length === 0}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm hover:shadow-md disabled:cursor-not-allowed"
-                  whileHover={{
-                    scale: displayBookings.length === 0 ? 1 : 1.05,
-                  }}
-                  whileTap={{ scale: displayBookings.length === 0 ? 1 : 0.95 }}
-                >
-                  <FaDownload className="h-4 w-4" />
-                  <span>Export History to CSV</span>
-                  {displayBookings.length > 0 && (
-                    <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">
-                      {displayBookings.length}
-                    </span>
-                  )}
-                </motion.button>
-              </motion.div>
-            )}
+               </div>
+            </div>
 
             {/* Bookings Table */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.3 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-900">
-                    {showHistory && searchResults
-                      ? `Booking History - ${searchResults.internInfo?.internName || "Intern"}`
-                      : `Seat Bookings${selectedDate ? ` - ${formatDate(selectedDate)}` : ""}`}
-                  </h2>
-                  {(loading || searchLoading) && (
-                    <FaSpinner className="animate-spin text-blue-500 h-5 w-5" />
-                  )}
-                </div>
-              </div>
-
               {displayBookings.length === 0 ? (
-                <div className="text-center py-12 md:py-16 bg-gray-50 px-4">
-                  <FaChair className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="text-base md:text-lg font-medium text-gray-700 mb-2">
-                    No bookings found
-                  </h3>
-                  <p className="text-gray-500 text-sm md:text-base">
+                <div className="text-center py-16 bg-gray-50 px-4">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100"><FaChair className="h-8 w-8 text-gray-300" /></div>
+                  <h3 className="text-lg font-bold text-gray-700 mb-2">No bookings found</h3>
+                  <p className="text-gray-500 text-sm font-medium">
                     {showHistory
-                      ? "No booking history found"
+                      ? "No booking history found for this intern."
                       : selectedDate
-                        ? `No seat bookings found for ${formatDate(selectedDate)}`
-                        : "There are no active seat bookings at the moment"}
+                        ? `No seat bookings found for ${formatDate(selectedDate)}.`
+                        : "There are no active seat bookings at the moment."}
                   </p>
                 </div>
               ) : (
                 <>
-                  {/* Mobile Card View */}
                   <div className="block lg:hidden">
-                    <div className="divide-y divide-gray-200">
+                    <div className="divide-y divide-gray-100">
                       {displayBookings.map((booking) => (
-                        <motion.div
-                          key={booking._id}
-                          className="p-4 hover:bg-gray-50 transition-colors"
-                          whileHover={{ y: -2 }}
-                          transition={{ duration: 0.1 }}
-                        >
+                        <div key={booking._id} className="p-4 hover:bg-slate-50/50 transition-colors">
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center space-x-3">
                               <div className="flex-shrink-0">
-                                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                  <span className="text-sm font-bold text-blue-600">
-                                    #{booking.seatNumber}
-                                  </span>
+                                <div className="h-12 w-12 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shadow-sm border border-[#00b4eb]/20">
+                                  <span className="text-sm font-extrabold text-[#0056a2]">#{booking.seatNumber}</span>
                                 </div>
                               </div>
                               <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {booking.internName}
-                                </div>
-                                <div className="text-xs text-gray-600">
-                                  {booking.traineeId}
-                                </div>
+                                <div className="text-sm font-bold text-gray-900">{booking.internName}</div>
+                                <div className="text-xs font-medium text-gray-500 mt-0.5">ID: {booking.traineeId}</div>
                               </div>
                             </div>
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === "active"
-                                  ? "bg-green-100 text-green-600 border border-green-200"
-                                  : "bg-red-100 text-red-600 border border-red-200"
-                                }`}
-                            >
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${booking.status === "active" ? "bg-[#50b748]/10 text-[#15803d]" : "bg-rose-50 text-rose-600"}`}>
                               {booking.status}
                             </span>
                           </div>
-                          <div className="space-y-1">
-                            <div className="text-xs text-gray-700 truncate">
-                              📧 {booking.email}
+                          <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
+                              <span className="text-gray-400">📧</span> {booking.email}
                             </div>
-                            <div className="text-xs text-gray-600">
-                              📅 Booking: {formatDate(booking.bookingDate)}
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                              <span className="text-gray-400">📅</span> {formatDate(booking.bookingDate)}
                             </div>
-                            <div className="text-xs text-gray-600">
-                              ⏰ Booked: {formatDateTime(booking.bookedAt)}
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                              <span className="text-gray-400">⏰</span> {formatDateTime(booking.bookedAt)}
                             </div>
                           </div>
-                        </motion.div>
+                        </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Desktop Table View */}
-                  <div className="hidden lg:block">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50/80 border-b border-gray-100">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Seat Number
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Trainee ID
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Name
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Booking Date
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Booked At
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Status
-                          </th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Intern Info</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booking Date</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booked At</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-200">
+                      <tbody className="divide-y divide-gray-50">
                         {displayBookings.map((booking) => (
-                          <motion.tr
-                            key={booking._id}
-                            className="hover:bg-gray-50 transition-colors"
-                            whileHover={{ y: -2 }}
-                            transition={{ duration: 0.1 }}
-                          >
+                          <tr key={booking._id} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-700 border border-blue-200">
-                                #{booking.seatNumber}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {booking.traineeId}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <div className="flex-shrink-0 h-8 w-8">
-                                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm">
-                                    <FaUser className="text-blue-600 text-xs" />
-                                  </div>
-                                </div>
-                                <div className="ml-3">
-                                  <div className="text-sm font-medium text-gray-900">
-                                    {booking.internName}
-                                  </div>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shrink-0 border border-[#00b4eb]/20">
+                                  <span className="font-extrabold text-[#0056a2] leading-none">{booking.seatNumber}</span>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                              {formatDate(booking.bookingDate)}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                              {formatDateTime(booking.bookedAt)}
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-900">{booking.internName}</span>
+                                <span className="text-xs font-medium text-gray-500 mt-0.5">ID: {booking.traineeId}</span>
+                              </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <span
-                                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${booking.status === "active"
-                                    ? "bg-green-100 text-green-600 border border-green-200"
-                                    : "bg-red-100 text-red-600 border border-red-200"
-                                  }`}
-                              >
+                              <div className="font-medium text-gray-700">{formatDate(booking.bookingDate)}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-xs font-medium text-gray-500">{formatDateTime(booking.bookedAt)}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${booking.status === "active" ? "bg-[#50b748]/10 text-[#15803d]" : "bg-rose-50 text-rose-600"}`}>
                                 {booking.status}
                               </span>
                             </td>
-                          </motion.tr>
+                          </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Results Summary */}
-                  <div className="px-4 md:px-6 py-4 bg-gray-50 border-t border-gray-200">
-                    <p className="text-sm text-gray-600 text-center">
-                      Showing {displayBookings.length} booking
-                      {displayBookings.length !== 1 ? "s" : ""}
-                      {showHistory
-                        ? ` for ${searchResults?.internInfo?.internName || "intern"}`
-                        : selectedDate
-                          ? ` for ${formatDate(selectedDate)}`
-                          : ""}
+                  <div className="px-6 py-4 bg-slate-50/80 border-t border-gray-100">
+                    <p className="text-sm font-bold text-gray-500 text-center uppercase tracking-wider">
+                      Showing {displayBookings.length} booking{displayBookings.length !== 1 ? "s" : ""}
+                      {showHistory ? ` for ${searchResults?.internInfo?.internName || "intern"}` : selectedDate ? ` for ${formatDate(selectedDate)}` : ""}
                     </p>
                   </div>
                 </>
               )}
             </motion.div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

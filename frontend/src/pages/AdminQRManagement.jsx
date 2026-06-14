@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import AdminNavigation from '../components/AdminNavigation';
+import { QrCode } from "lucide-react";
 import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, FaSpinner, FaCopy } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
@@ -52,9 +54,10 @@ const AdminQRManagement = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans">
-      {/* Background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans relative">
+        {/* Background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20" animate={{ y: [0, -30, 0], x: [0, 20, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} />
         <motion.div className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0" animate={{ y: [0, 20, 0], x: [0, -20, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }} />
       </div>
@@ -85,40 +88,36 @@ const AdminQRManagement = () => {
         )}
       </AnimatePresence>
 
-      {/* Top Navbar */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] border-b border-gray-100">
-        <div className="flex items-center justify-between h-full px-6 lg:px-8">
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigate('/admin/dashboard')}>
-            <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-lg shadow-sm" />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900">SLT Admin Portal</span>
-              <span className="text-sm text-gray-600 font-medium">QR Management</span>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
-      <div className="pt-[5.5rem] pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-5xl mx-auto">
           
-          <div className="flex items-center space-x-4 mb-8">
-            <motion.button
-              onClick={() => navigate('/admin/dashboard')}
-              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all text-gray-700 font-medium"
-              whileHover={{ scale: 1.05, x: -5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FaArrowLeft className="h-4 w-4" />
-              <span>Back to Dashboard</span>
-            </motion.button>
-          </div>
+          
 
-          <div className="text-center mb-10">
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">
-              Generate <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-600">Attendance QR</span>
-            </h2>
-            <p className="text-gray-500 text-lg">Create secure QR codes for daily check-ins or special meetings.</p>
+          {/* ── Header ── */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <QrCode className="text-[#0056a2] h-8 w-8" />
+                </div>
+                QR
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
+                Create secure QR codes for daily check-ins or special meetings.
+              </motion.p>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-12 gap-8 items-start">
@@ -253,8 +252,9 @@ const AdminQRManagement = () => {
             
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

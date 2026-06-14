@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import AdminNavigation from '../components/AdminNavigation';
+import { KeyRound } from "lucide-react";
 import {
-  FaArrowLeft,
   FaCheckCircle,
   FaKey,
   FaRedo,
@@ -140,34 +141,14 @@ const AdminPinManagement = () => {
     : 'Never';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans">
-      <header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] border-b border-gray-100">
-        <div className="flex items-center justify-between h-full px-6 lg:px-8">
-          <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigate('/admin/dashboard')}>
-            <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-lg shadow-sm" />
-            <div className="flex flex-col">
-              <span className="text-lg font-bold text-gray-900">SLT Admin Portal</span>
-              <span className="text-sm text-gray-600 font-medium">PIN Management</span>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <div className="pt-[5.5rem] pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between gap-4 mb-8">
-            <motion.button
-              onClick={() => navigate('/admin/dashboard')}
-              className="flex items-center space-x-2 px-4 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all text-gray-700 font-medium"
-              whileHover={{ scale: 1.05, x: -5 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <FaArrowLeft className="h-4 w-4" />
-              <span>Back to Dashboard</span>
-            </motion.button>
-            <motion.button
-              type="button"
-              onClick={openProfilesModal}
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden font-sans relative">
+        <div className="pt-8 pb-8 px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-5xl mx-auto">
+            <div className="flex items-center justify-end gap-4 mb-8">
+              <motion.button
+                type="button"
+                onClick={openProfilesModal}
               className="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-white/90 px-4 py-2 text-sm font-semibold text-emerald-700 shadow-sm transition hover:bg-emerald-50"
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
@@ -177,11 +158,29 @@ const AdminPinManagement = () => {
             </motion.button>
           </div>
 
-          <div className="text-center mb-10">
-            <h2 className="text-3xl lg:text-4xl font-extrabold text-gray-900 mb-3 tracking-tight">
-              Generate <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-cyan-600">Face Meeting PIN</span>
-            </h2>
-            <p className="text-gray-500 text-lg">Create the 5-minute PIN for Face Attendance Daily + Meeting.</p>
+          {/* ── Header ── */}
+          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <KeyRound className="text-[#0056a2] h-8 w-8" />
+                </div>
+                PIN
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
+                Create the 5-minute PIN for Face Attendance Daily + Meeting.
+              </motion.p>
+            </div>
           </div>
 
           <div className="grid lg:grid-cols-12 gap-8 items-start">
@@ -407,6 +406,7 @@ const AdminPinManagement = () => {
         )}
       </AnimatePresence>
     </div>
+  </AdminNavigation>
   );
 };
 

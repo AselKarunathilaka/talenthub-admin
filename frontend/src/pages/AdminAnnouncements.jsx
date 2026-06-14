@@ -18,6 +18,8 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { announcementApi } from "../api/adminApi";
+import AdminNavigation from "../components/AdminNavigation";
+import { Megaphone } from "lucide-react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const formatDateTime = (dateString) => {
@@ -235,7 +237,8 @@ const AdminAnnouncements = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
+    <AdminNavigation>
+    <div className="min-h-screen bg-gray-50 text-gray-800 overflow-hidden">
       {/* Floating BG blobs */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div
@@ -269,34 +272,27 @@ const AdminAnnouncements = () => {
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
-            <motion.div
-              className="mb-4 md:mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center space-x-4 mb-2">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
-                  whileHover={{ scale: 1.05, x: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <FaArrowLeft className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Back to Dashboard
-                  </span>
-                </motion.button>
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Announcements
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
+            <div className="mb-8">
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <Megaphone className="text-[#0056a2] h-8 w-8" />
+                </div>
+                Announcements
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
                 Broadcast messages and important notices to all interns
-              </p>
-            </motion.div>
+              </motion.p>
+            </div>
 
             {/* Error banner */}
             <AnimatePresence>
@@ -717,6 +713,7 @@ const AdminAnnouncements = () => {
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </div>
+    </AdminNavigation>
   );
 };
 

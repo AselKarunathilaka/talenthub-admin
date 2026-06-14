@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
+import { ScanLine } from "lucide-react";
 import {
   FaArrowLeft,
   FaCalendarCheck,
@@ -726,9 +728,10 @@ const AdminInternAttendance = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden relative">
+        {/* Background blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {blobs.map((b, i) => (
           <motion.div
             key={i}
@@ -878,42 +881,44 @@ const AdminInternAttendance = () => {
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-[92rem] mx-auto space-y-4 md:space-y-5">
             {/* ── Header ── */}
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
-                  whileHover={{ scale: 1.05, x: -5 }}
-                  whileTap={{ scale: 0.95 }}
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
                 >
-                  <FaArrowLeft className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Back to Dashboard
-                  </span>
-                </motion.button>
-                <motion.button
-                  onClick={() => navigate("/admin/manual-attendance")}
-                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl shadow-sm text-sm font-semibold transition-all"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <ScanLine className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Attendance
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
                 >
-                  <FaEdit className="h-3.5 w-3.5" />
-                  Manual Attendance
-                </motion.button>
+                  View attendance records and exports
+                </motion.p>
               </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                  Intern Attendance
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
-                View meeting &amp; daily attendance records and export reports
-              </p>
-            </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.2 }}
+                className="flex gap-3 flex-wrap justify-end"
+              >
+                <button
+                  onClick={() => navigate("/admin/manual-attendance")}
+                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <FaEdit className="h-4 w-4" />
+                  Manual Attendance
+                </button>
+              </motion.div>
+            </div>
 
             {/* SLT Location Toggle */}
             <motion.div
@@ -1297,8 +1302,9 @@ const AdminInternAttendance = () => {
             </motion.div>
           </div>
         </main>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 

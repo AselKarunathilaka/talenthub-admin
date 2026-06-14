@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
+import { Lightbulb } from "lucide-react";
 import {
   FaArrowLeft,
   FaBullhorn,
@@ -236,9 +238,10 @@ const AdminFeatureTips = () => {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 text-gray-800 overflow-hidden">
-      {/* Floating BG blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 text-gray-800 relative z-10 overflow-hidden">
+        {/* Floating BG blobs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div
           className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
           animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
@@ -255,34 +258,27 @@ const AdminFeatureTips = () => {
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Page Header */}
-            <motion.div
-              className="mb-4 md:mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex items-center space-x-4 mb-2">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center space-x-2 px-3 py-2 bg-white/80 backdrop-blur-sm hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm transition-all"
-                  whileHover={{ scale: 1.05, x: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <FaArrowLeft className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">
-                    Back to Dashboard
-                  </span>
-                </motion.button>
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-purple-600">
-                  Feature Tips
-                </span>
-              </h2>
-              <p className="text-gray-600 text-sm md:text-base">
+            <div className="mb-8">
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <Lightbulb className="text-[#0056a2] h-8 w-8" />
+                </div>
+                Feature Tips
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
                 Create "What's New" modals to announce new features to all interns.
-              </p>
-            </motion.div>
+              </motion.p>
+            </div>
 
             {/* Error banner */}
             <AnimatePresence>
@@ -331,7 +327,7 @@ const AdminFeatureTips = () => {
                       type="text"
                       value={title}
                       onChange={(e) => setTitle(e.target.value)}
-                      placeholder="e.g. 🆕 New: Dark Mode!"
+                      placeholder="e.g. 🆕 Study Leave feature is now live!"
                       maxLength={120}
                       className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 focus:border-transparent text-sm shadow-sm"
                     />
@@ -555,7 +551,8 @@ const AdminFeatureTips = () => {
       </AnimatePresence>
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
-    </div>
+      </div>
+    </AdminNavigation>
   );
 };
 

@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import { motion, AnimatePresence } from "framer-motion";
+import { MapPin } from "lucide-react";
 import {
-  FaMapMarkerAlt,
   FaArrowLeft,
   FaUsers,
   FaSearch,
@@ -475,8 +476,9 @@ const AdminInternLocations = () => {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800">
-      <main className="p-6 lg:p-8 max-w-7xl mx-auto">
+    <AdminNavigation>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800 relative">
+        <main className="p-6 lg:p-8 max-w-7xl mx-auto">
 
         {/* ── HEADER ── */}
         <motion.div
@@ -485,26 +487,25 @@ const AdminInternLocations = () => {
           className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-8 gap-6"
         >
           <div>
-            <button
-              onClick={() => navigate("/admin/dashboard")}
-              className="mb-4 px-4 py-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-xl shadow-sm transition-all duration-200 text-sm font-medium text-gray-600"
+            <motion.h1
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
             >
-              <FaArrowLeft className="inline mr-2" />
-              Back to Dashboard
-            </button>
-            <div className="flex items-center gap-3">
-              <div className="bg-blue-100 p-3 rounded-xl">
-                <FaMapMarkerAlt className="text-blue-600 text-xl" />
+              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                <MapPin className="text-[#0056a2] h-8 w-8" />
               </div>
-              <div>
-                <h2 className="text-3xl font-bold text-gray-800">
-                  Intern Locations
-                </h2>
-                <p className="text-gray-500 text-sm">
-                  Live overview of all registered intern locations
-                </p>
-              </div>
-            </div>
+              Intern Locations
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+            >
+              Live overview of all registered intern locations
+            </motion.p>
           </div>
 
           <div className="flex items-center gap-4 flex-wrap">
@@ -926,6 +927,7 @@ const AdminInternLocations = () => {
         </AnimatePresence>
       </main>
     </div>
+  </AdminNavigation>
   );
 };
 
