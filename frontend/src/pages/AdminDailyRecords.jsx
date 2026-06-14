@@ -19,10 +19,12 @@ import {
   FaAngleDoubleRight,
   FaSpinner,
   FaCalendarDay,
+  FaTimes,
+  FaDownload,
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { adminApi, notificationUtils } from "../api/adminApi";
-import logo from "../assets/sltlogo.jpg";
+
 
 const LIMIT = 50;
 
@@ -118,18 +120,6 @@ const AdminDailyRecords = () => {
   const handleDateChange = (e) => switchDate(e.target.value);
   const handleGoToToday = () => switchDate(todayStr);
 
-  const handlePrevDay = () => {
-    const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() - 1);
-    switchDate(toDateStr(d));
-  };
-
-  const handleNextDay = () => {
-    const d = new Date(selectedDate + "T00:00:00");
-    d.setDate(d.getDate() + 1);
-    switchDate(toDateStr(d));
-  };
-
   // Debounced search within current date
   const handleSearchChange = (e) => {
     const val = e.target.value;
@@ -198,6 +188,7 @@ const AdminDailyRecords = () => {
         `Exported ${displayedRecords.length} records for ${selectedDate}`,
       );
     } catch (err) {
+      console.error(err);
       notificationUtils.showError("Failed to export CSV");
     }
   };
@@ -364,50 +355,10 @@ const AdminDailyRecords = () => {
   // Main render
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden relative">
-        {/* Background blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[
-          {
-            cls: "w-80 h-80 bg-blue-100/40 -top-20 -left-20",
-            dur: 15,
-            delay: 0,
-          },
-          {
-            cls: "w-96 h-96 bg-cyan-100/40 top-1/4 right-0",
-            dur: 18,
-            delay: 2,
-          },
-          {
-            cls: "w-64 h-64 bg-green-100/40 bottom-20 left-1/4",
-            dur: 20,
-            delay: 1,
-          },
-          {
-            cls: "w-72 h-72 bg-purple-100/40 bottom-0 right-20",
-            dur: 17,
-            delay: 3,
-          },
-        ].map((b, i) => (
-          <motion.div
-            key={i}
-            className={`absolute rounded-full ${b.cls}`}
-            animate={{ y: [0, -20, 0], x: [0, 15, 0] }}
-            transition={{
-              duration: b.dur,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: b.delay,
-            }}
-          />
-        ))}
-      </div>
-
-
-      {/* Main Content */}
-        <div className="p-3 sm:p-4 lg:p-6 relative z-10">
-          <div className="max-w-7xl mx-auto">
-            {/* Page header */}
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            {/* Header Section */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
                 <motion.h1
@@ -431,129 +382,73 @@ const AdminDailyRecords = () => {
                 </motion.p>
               </div>
 
-              {/* Summary pill */}
-              <motion.div
-                className="bg-white/80 backdrop-blur-sm px-5 py-3 rounded-2xl border border-gray-100 shadow-sm text-right"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.15 }}
-              >
-                <p className="text-xs text-gray-500">
-                  Submissions on this date
-                </p>
-                <p className="text-2xl font-bold text-cyan-600">
-                  {pagination.total}
-                </p>
+              {/* Stats & Date Filter */}
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
+                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><FaCalendarAlt className="text-[#00b4eb] h-5 w-5" /></div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label>
+                    <input type="date" value={selectedDate} max={todayStr} onChange={handleDateChange} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" />
+                  </div>
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <div className="flex-1 sm:w-32 text-center p-3 bg-blue-50/80 rounded-2xl border border-blue-100">
+                    <div className="text-2xl font-black text-cyan-600 leading-none mb-1">{pagination.total}</div>
+                    <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-wider">Submissions</div>
+                  </div>
+                </div>
               </motion.div>
             </div>
 
-            {/* Date Navigator */}
+            {/* Search Bar */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
             >
-              <div className="flex flex-col sm:flex-row items-center gap-3">
-                {/* ← Prev */}
-                <motion.button
-                  onClick={handlePrevDay}
-                  disabled={pageLoading}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all shadow-sm disabled:opacity-40 w-full sm:w-auto justify-center"
-                  whileHover={{ x: -2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <FaChevronLeft className="h-3 w-3" /> Prev Day
-                </motion.button>
-
-                {/* Date picker + label */}
-                <div className="flex-1 flex flex-col items-center gap-1.5 w-full">
-                  <label className="flex items-center gap-2 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl px-4 py-2.5 w-full sm:w-auto cursor-pointer shadow-sm hover:shadow-md transition-all">
-                    <FaCalendarDay className="text-blue-500 flex-shrink-0" />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      max={todayStr}
-                      onChange={handleDateChange}
-                      className="bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 font-semibold text-sm sm:text-base cursor-pointer w-full"
-                    />
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    {prettyDate(selectedDate)}
-                  </p>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
+                <div className="flex-1">
+                  <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">Search Records</label>
+                  <div className="flex items-center space-x-2">
+                    <div className="relative flex-1">
+                      <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <input
+                        id="search-input"
+                        type="text"
+                        value={searchTerm}
+                        onChange={handleSearchChange}
+                        placeholder="Search by name or Trainee ID within this day..."
+                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
+                      />
+                      {searchTerm && (
+                        <button onClick={() => {setSearchTerm(''); fetchRecords({ page: 1, date: selectedDate, search: '' });}} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm">
+                          <FaTimes className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
-
-                {/* Next */}
-                <motion.button
-                  onClick={handleNextDay}
-                  disabled={selectedDate >= todayStr || pageLoading}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-medium transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed w-full sm:w-auto justify-center"
-                  whileHover={{ x: 2 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Next Day <FaChevronRight className="h-3 w-3" />
-                </motion.button>
-
-                {/* Today shortcut — only shown when not on today */}
-                {selectedDate !== todayStr && (
+                <div className="flex gap-3 pt-6 lg:pt-0">
                   <motion.button
-                    onClick={handleGoToToday}
-                    disabled={pageLoading}
-                    className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm font-medium rounded-xl shadow-sm hover:shadow-md w-full sm:w-auto"
-                    initial={{ opacity: 0, scale: 0.85 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+                    className="flex items-center space-x-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold transition-all shadow-sm hover:bg-gray-50"
                   >
-                    Jump to Today
-                  </motion.button>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Search + controls */}
-            <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 rounded-2xl border border-gray-100 shadow-sm mb-4"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="flex-1 relative">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    placeholder="Search by name or Trainee ID within this day…"
-                    value={searchTerm}
-                    onChange={handleSearchChange}
-                    className="w-full pl-10 pr-4 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-400 shadow-sm"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <motion.button
-                    onClick={() =>
-                      setSortOrder((o) => (o === "desc" ? "asc" : "desc"))
-                    }
-                    className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-700 text-sm shadow-sm hover:bg-gray-50"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    <FaSort className="text-blue-400" />
-                    {sortOrder === "desc" ? "↓ Newest first" : "↑ Oldest first"}
+                    <FaSort className="text-blue-400 h-4 w-4" />
+                    <span>{sortOrder === "desc" ? "↓ Newest" : "↑ Oldest"}</span>
                   </motion.button>
                   <motion.button
                     onClick={handleExportCSV}
                     disabled={displayedRecords.length === 0 || pageLoading}
-                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl text-sm shadow-sm hover:shadow-md transition-all disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed"
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
+                    className="flex items-center space-x-2 px-5 py-3 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none disabled:cursor-not-allowed"
                   >
-                    <FaFileExport className="h-3.5 w-3.5" /> Export CSV
+                    <FaDownload className="h-4 w-4" />
+                    <span>Export CSV</span>
                   </motion.button>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-400 mt-2.5">
+              <p className="text-xs text-gray-400 mt-3 font-medium">
                 {pagination.total === 0
                   ? `No submissions found for ${prettyDate(selectedDate)}`
                   : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
@@ -563,15 +458,15 @@ const AdminDailyRecords = () => {
 
             {/* Records Table */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
             >
               {/* Table title bar */}
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
                 <div>
-                  <h2 className="text-base sm:text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
                     Submissions —{" "}
                     <span className="text-blue-600">
                       {new Date(selectedDate + "T00:00:00").toLocaleDateString(
@@ -580,7 +475,7 @@ const AdminDailyRecords = () => {
                       )}
                     </span>
                   </h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
+                  <p className="text-sm text-gray-500 font-medium mt-0.5">
                     {pagination.total} record{pagination.total !== 1 ? "s" : ""}{" "}
                     total
                   </p>
@@ -594,7 +489,7 @@ const AdminDailyRecords = () => {
                       ease: "linear",
                     }}
                   >
-                    <FaSpinner className="text-blue-400 h-5 w-5" />
+                    <FaSpinner className="text-[#00b4eb] h-5 w-5" />
                   </motion.div>
                 )}
               </div>
@@ -724,8 +619,8 @@ const AdminDailyRecords = () => {
 
                     {/* Desktop table */}
                     <div className="hidden lg:block overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-100">
-                        <thead className="bg-gray-50/80">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50/80 border-b border-gray-100">
                           <tr>
                             {[
                               "#",
@@ -736,14 +631,14 @@ const AdminDailyRecords = () => {
                             ].map((h) => (
                               <th
                                 key={h}
-                                className="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider"
+                                className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs"
                               >
                                 {h}
                               </th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-50">
                           {displayedRecords.map((record, idx) => {
                             const name =
                               record.internId?.Trainee_Name ||
@@ -760,8 +655,7 @@ const AdminDailyRecords = () => {
                             return (
                               <motion.tr
                                 key={record._id}
-                                className="hover:bg-gray-50/70 transition-colors bg-white"
-                                whileHover={{ y: -1 }}
+                                className="hover:bg-slate-50/50 transition-colors group"
                               >
                                 <td className="px-6 py-4 text-sm text-gray-400 w-12">
                                   {rowNum}
@@ -824,7 +718,7 @@ const AdminDailyRecords = () => {
 
               <PaginationBar />
             </motion.div>
-          </div>
+          </main>
         </div>
       </div>
     </AdminNavigation>
