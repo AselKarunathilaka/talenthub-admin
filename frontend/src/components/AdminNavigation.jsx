@@ -89,14 +89,14 @@ const AdminNavigation = ({ children }) => {
 
       {/* Mobile Menu Overlay */}
       <div
-        className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 backdrop-blur-sm
+        className={`fixed inset-0 bg-black/60 z-[9990] transition-opacity duration-300 backdrop-blur-sm
           ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"} lg:hidden`}
         onClick={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40
+        className={`fixed inset-y-0 left-0 z-[9995]
           bg-gradient-to-b from-[#000066] to-[#006600] shadow-2xl transition-all duration-300 ease-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 w-[270px] h-screen lg:top-0`}
