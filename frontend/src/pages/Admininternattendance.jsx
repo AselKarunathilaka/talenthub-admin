@@ -390,7 +390,7 @@ const AttendanceTable = ({
 
       {/* ── Desktop table — 7 fixed columns ── */}
       <div className="hidden lg:block w-full">
-        <table className="w-full table-fixed divide-y divide-gray-100">
+        <table className="w-full text-left text-sm table-fixed divide-y divide-gray-100">
           <colgroup>
             <col style={{ width: "4%" }} />
             <col style={{ width: "10%" }} />
@@ -400,38 +400,36 @@ const AttendanceTable = ({
             <col style={{ width: "10%" }} />
             <col style={{ width: "8%" }} />
           </colgroup>
-          <thead className="bg-gray-50">
+          <thead className="bg-slate-50/80 border-b border-gray-100">
             <tr>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 #
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 ID
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 Name
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 Field
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 Institute
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 {isMeeting ? "Meetings" : "Check-in / Out"}
               </th>
-              <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">
+              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
                 Type
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-50">
             {paginated.map((intern, idx) => (
               <React.Fragment key={intern._id}>
                 <motion.tr
-                  className="hover:bg-gray-50 transition-colors"
-                  whileHover={{ y: -1 }}
-                  transition={{ duration: 0.1 }}
+                  className="hover:bg-slate-50/50 transition-colors group"
                 >
                   <td className="px-3 py-3 text-xs text-gray-400 font-mono">
                     {(page - 1) * PAGE_SIZE + idx + 1}
@@ -704,48 +702,12 @@ const AdminInternAttendance = () => {
       day: "numeric",
     });
 
-  const blobs = [
-    {
-      cls: "w-80 h-80 bg-blue-100/40 -top-20 -left-20",
-      dur: 15,
-      dx: 20,
-      dy: -30,
-    },
-    {
-      cls: "w-96 h-96 bg-cyan-100/40 top-1/4 right-0",
-      dur: 18,
-      dx: -20,
-      dy: 20,
-      delay: 2,
-    },
-    {
-      cls: "w-64 h-64 bg-green-100/40 bottom-20 left-1/4",
-      dur: 20,
-      dx: 15,
-      dy: -20,
-      delay: 1,
-    },
-  ];
+
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden relative">
-        {/* Background blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {blobs.map((b, i) => (
-          <motion.div
-            key={i}
-            className={`absolute rounded-full ${b.cls}`}
-            animate={{ y: [0, b.dy, 0], x: [0, b.dx, 0] }}
-            transition={{
-              duration: b.dur,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: b.delay || 0,
-            }}
-          />
-        ))}
-      </div>
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
 
       <AnimatePresence>
         {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
@@ -877,9 +839,8 @@ const AdminInternAttendance = () => {
       </AnimatePresence>
 
       {/* ── Page ── */}
-      <div className="pt-2 sm:pt-4">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-[92rem] mx-auto space-y-4 md:space-y-5">
+      <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+        <div className="space-y-4 md:space-y-5">
             {/* ── Header ── */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
               <div>
@@ -1025,229 +986,191 @@ const AdminInternAttendance = () => {
               </div>
             </motion.div>
 
-            {/* Section divider */}
+            {/* ── Tabs (Dashboard Style) ── */}
             <motion.div
-              className="flex items-center gap-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              className="flex mb-6 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 max-w-md relative"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 whitespace-nowrap">
-                Daily Attendance Records
-              </span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <button
+                onClick={() => {
+                  setActiveTab("meeting");
+                  setSearchTerm("");
+                  setExpandedInterns({});
+                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                  activeTab === "meeting"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Meeting Attendance
+                {meetingData?.count != null && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === "meeting" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+                    {meetingData.count}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setActiveTab("daily");
+                  setSearchTerm("");
+                  setExpandedInterns({});
+                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
+                  activeTab === "daily"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                Daily Attendance
+                {dailyData?.count != null && (
+                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === "daily" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
+                    {dailyData.count}
+                  </span>
+                )}
+              </button>
+
+              <div
+                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
+                style={{
+                  background:
+                    activeTab === "meeting"
+                      ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
+                      : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                  left: activeTab === "meeting" ? "6px" : "calc(50%)",
+                }}
+              />
             </motion.div>
 
-            {/* Toolbar */}
+            {/* ── Toolbar (Date, Search, Export) ── */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.3 }}
             >
-              {/* Tabs */}
-              <div className="flex border-b border-gray-100">
-                {[
-                  {
-                    key: "meeting",
-                    label: "Meeting Attendance",
-                    icon: FaUsers,
-                    count: meetingData?.count,
-                  },
-                  {
-                    key: "daily",
-                    label: "Daily Attendance",
-                    icon: FaCalendarDay,
-                    count: dailyData?.count,
-                  },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    onClick={() => {
-                      setActiveTab(tab.key);
-                      setSearchTerm("");
-                      setExpandedInterns({});
-                    }}
-                    className={`flex items-center gap-2 px-5 py-3.5 text-sm font-semibold transition-all border-b-2 ${
-                      activeTab === tab.key
-                        ? "border-blue-500 text-blue-600 bg-blue-50/40"
-                        : "border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <tab.icon className="h-3.5 w-3.5" />
-                    {tab.label}
-                    {tab.count != null && (
-                      <span
-                        className={`px-1.5 py-0.5 rounded-full text-xs ${activeTab === tab.key ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-600"}`}
-                      >
-                        {tab.count}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Controls row */}
-              <div className="p-4 md:p-5">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1">
-                    {/* Date picker */}
-                    <div className="flex-1">
-                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                        Filter by Date
-                      </label>
-                      <div className="flex items-center space-x-2">
-                        <div className="relative">
-                          <FaFilter className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5 pointer-events-none" />
-                          <input
-                            type="date"
-                            value={selectedDate}
-                            onChange={(e) => setSelectedDate(e.target.value)}
-                            className="pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-gray-900 text-sm shadow-sm"
-                          />
-                        </div>
-                        {selectedDate !== today && (
-                          <motion.button
-                            onClick={() => setSelectedDate(today)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className="px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-medium transition-colors"
-                          >
-                            Today
-                          </motion.button>
-                        )}
-                      </div>
-                    </div>
-                    {/* Search */}
-                    <div className="flex-1 sm:max-w-xs">
-                      <label className="block text-[10px] font-semibold uppercase tracking-widest text-gray-400 mb-1.5">
-                        Search Interns
-                      </label>
-                      <div className="relative">
-                        <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-3.5 w-3.5 pointer-events-none" />
-                        <input
-                          type="text"
-                          placeholder="Name, ID, field or institute…"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm shadow-sm"
-                        />
-                        {searchTerm && (
-                          <button
-                            onClick={() => setSearchTerm("")}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          >
-                            <FaTimes className="h-3 w-3" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
+                
+                {/* Date Selector */}
+                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+                    <FaCalendarDay className="text-[#00b4eb] h-5 w-5" />
                   </div>
+                  <div className="flex-1">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                      Select Date
+                    </label>
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                </div>
 
-                  {/* Export buttons */}
-                  <div className="flex flex-wrap gap-2">
-                    {activeTab === "meeting" && (
-                      <>
-                        <motion.button
-                          onClick={async () => {
-                            if (!meetingData || meetingData.count === 0) {
-                              showToast("No records to export", "info");
-                              return;
-                            }
-                            setExportingMeetingPdf(true);
-                            try {
-                              await attendanceApi.exportMeetingPdf(
-                                selectedDate,
-                              );
-                              showToast("Meeting PDF downloaded", "success");
-                            } catch (err) {
-                              showToast(
-                                err.message || "PDF export failed",
-                                "error",
-                              );
-                            } finally {
-                              setExportingMeetingPdf(false);
-                            }
-                          }}
-                          disabled={
-                            exportingMeetingPdf ||
-                            !meetingData ||
-                            meetingData.count === 0
-                          }
-                          whileHover={{ scale: 1.04 }}
-                          whileTap={{ scale: 0.96 }}
-                          className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm disabled:cursor-not-allowed"
-                        >
-                          {exportingMeetingPdf ? (
-                            <FaSpinner className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <FaFilePdf className="h-4 w-4" />
-                          )}
-                          <span>Export PDF</span>
-                        </motion.button>
-                      </>
+                {/* Search Bar */}
+                <div className="flex-[2]">
+                  <div className="relative">
+                    <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Name, ID, field or institute..."
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm"
+                      >
+                        <FaTimes className="h-3 w-3" />
+                      </button>
                     )}
+                  </div>
+                </div>
 
-                    {activeTab === "daily" && (
-                      <motion.button
-                        onClick={async () => {
-                          if (!dailyData || dailyData.count === 0) {
-                            showToast("No records to export", "info");
-                            return;
-                          }
-                          setExportingDailyPdf(true);
-                          try {
-                            await attendanceApi.exportDailyPdf(selectedDate);
-                            showToast(
-                              "Daily attendance PDF downloaded",
-                              "success",
-                            );
-                          } catch (err) {
-                            showToast(
-                              err.message || "PDF export failed",
-                              "error",
-                            );
-                          } finally {
-                            setExportingDailyPdf(false);
-                          }
-                        }}
-                        disabled={
-                          exportingDailyPdf ||
-                          !dailyData ||
-                          dailyData.count === 0
+                {/* Actions */}
+                <div className="flex gap-3 pt-4 lg:pt-0">
+                  {selectedDate !== today && (
+                    <motion.button
+                      onClick={() => setSelectedDate(today)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold transition-all shadow-sm hover:bg-gray-50"
+                    >
+                      Today
+                    </motion.button>
+                  )}
+                  {activeTab === "meeting" && (
+                    <motion.button
+                      onClick={async () => {
+                        if (!meetingData || meetingData.count === 0) {
+                          showToast("No records to export", "info");
+                          return;
                         }
-                        whileHover={{ scale: 1.04 }}
-                        whileTap={{ scale: 0.96 }}
-                        className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-rose-500 to-red-600 hover:from-rose-600 hover:to-red-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm disabled:cursor-not-allowed"
-                      >
-                        {exportingDailyPdf ? (
-                          <FaSpinner className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <FaFilePdf className="h-4 w-4" />
-                        )}
-                        <span>Export PDF</span>
-                        {dailyData && dailyData.count > 0 && (
-                          <span className="bg-white/25 px-1.5 py-0.5 rounded-full text-xs">
-                            {dailyData.count}
-                          </span>
-                        )}
-                      </motion.button>
-                    )}
-                  </div>
+                        setExportingMeetingPdf(true);
+                        try {
+                          await attendanceApi.exportMeetingPdf(selectedDate);
+                          showToast("Meeting PDF downloaded", "success");
+                        } catch (err) {
+                          showToast(err.message || "PDF export failed", "error");
+                        } finally {
+                          setExportingMeetingPdf(false);
+                        }
+                      }}
+                      disabled={exportingMeetingPdf || !meetingData || meetingData.count === 0}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-[#e11d48] hover:bg-[#be123c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#e11d48]/20 disabled:shadow-none disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {exportingMeetingPdf ? <FaSpinner className="h-4 w-4 animate-spin" /> : <FaFilePdf className="h-4 w-4" />}
+                      <span>Export PDF</span>
+                    </motion.button>
+                  )}
+                  {activeTab === "daily" && (
+                    <motion.button
+                      onClick={async () => {
+                        if (!dailyData || dailyData.count === 0) {
+                          showToast("No records to export", "info");
+                          return;
+                        }
+                        setExportingDailyPdf(true);
+                        try {
+                          await attendanceApi.exportDailyPdf(selectedDate);
+                          showToast("Daily attendance PDF downloaded", "success");
+                        } catch (err) {
+                          showToast(err.message || "PDF export failed", "error");
+                        } finally {
+                          setExportingDailyPdf(false);
+                        }
+                      }}
+                      disabled={exportingDailyPdf || !dailyData || dailyData.count === 0}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-[#e11d48] hover:bg-[#be123c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#e11d48]/20 disabled:shadow-none disabled:cursor-not-allowed whitespace-nowrap"
+                    >
+                      {exportingDailyPdf ? <FaSpinner className="h-4 w-4 animate-spin" /> : <FaFilePdf className="h-4 w-4" />}
+                      <span>Export PDF</span>
+                    </motion.button>
+                  )}
                 </div>
               </div>
             </motion.div>
 
             {/* ── Attendance Table ── */}
             <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
                 <div>
-                  <h2 className="text-base md:text-lg font-semibold text-gray-900">
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
                     {loading
                       ? "Loading…"
                       : activeData
@@ -1255,7 +1178,7 @@ const AdminInternAttendance = () => {
                         : "Attendance Records"}
                   </h2>
                   {!loading && activeData && (
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-sm text-gray-500 font-medium mt-0.5">
                       {searchTerm
                         ? `${filtered.length} of ${activeData.count} shown`
                         : `${activeData.count} intern${activeData.count !== 1 ? "s" : ""} marked present`}
@@ -1263,7 +1186,7 @@ const AdminInternAttendance = () => {
                   )}
                 </div>
                 {loading && (
-                  <FaSpinner className="animate-spin text-blue-500 h-5 w-5" />
+                  <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
                 )}
               </div>
 
@@ -1300,10 +1223,10 @@ const AdminInternAttendance = () => {
                 />
               )}
             </motion.div>
-          </div>
-        </main>
         </div>
+      </main>
       </div>
+    </div>
     </AdminNavigation>
   );
 };
