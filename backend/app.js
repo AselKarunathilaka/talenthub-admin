@@ -21,7 +21,7 @@ const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const featureTipRoutes = require("./routes/featureTipRoutes");
-const logBookRestrictionRoutes = require("./routes/LogBookRestrictionroutes");
+const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 
 require("./scheduler");
 
