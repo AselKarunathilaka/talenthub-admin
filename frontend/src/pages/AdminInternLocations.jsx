@@ -16,6 +16,7 @@ import {
   FaHistory,
   FaToggleOn,
   FaToggleOff,
+  FaMapMarkerAlt,
 } from "react-icons/fa";
 import axios from "axios";
 import L from "leaflet";
