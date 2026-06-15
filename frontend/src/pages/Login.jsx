@@ -296,7 +296,7 @@ const Login = () => {
                 {/* Middle Section */}
                 <div className="flex-1 flex flex-col justify-center mb-1">
                   {/* Google Login Button */}
-                  <div className="flex justify-center">
+                  <div className="flex justify-center scale-95 sm:scale-[1.2] origin-center">
                     {isLoading ? (
                       <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/5 border border-white/10">
                         <div className="w-5 h-5 border-t-2 border-b-2 border-[#00b4eb] rounded-full animate-spin mr-3" />

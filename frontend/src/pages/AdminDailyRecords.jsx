@@ -407,7 +407,7 @@ const AdminDailyRecords = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.15, duration: 0.3 }}
             >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
+              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
                 <div className="flex-1">
                   <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">Search Records</label>
                   <div className="flex items-center space-x-2">

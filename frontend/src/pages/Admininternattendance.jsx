@@ -841,39 +841,55 @@ const AdminInternAttendance = () => {
       {/* ── Page ── */}
       <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
         <div className="space-y-4 md:space-y-5">
-            {/* ── Header ── */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            {/* ── Header Row ── */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
                 <motion.h1
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                  className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
                 >
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <ScanLine className="text-[#0056a2] h-8 w-8" />
+                    <ScanLine className="text-[#0056a2] h-7 w-7" />
                   </div>
                   Attendance
                 </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  View attendance records and exports
-                </motion.p>
               </div>
 
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1, duration: 0.2 }}
-                className="flex gap-3 flex-wrap justify-end"
+                className="flex flex-wrap items-center gap-3"
               >
+                {/* SLT Location Toggle */}
+                <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
+                  <div className="inline-flex items-center gap-2">
+                    <FaMapMarkerAlt
+                      className={`h-3.5 w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
+                    />
+                    <span className="text-xs font-semibold text-gray-700">
+                      SLT Location
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleToggleLocationRequirement}
+                    disabled={settingsLoading || settingsSaving}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
+                    aria-pressed={sltLocationRequired}
+                    aria-label="Toggle SLT location requirement"
+                  >
+                    <span
+                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-5" : "translate-x-0.5"}`}
+                    />
+                  </button>
+                </div>
+
                 <button
                   onClick={() => navigate("/admin/manual-attendance")}
-                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50 hover:opacity-90 transition-all flex items-center gap-2"
+                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm hover:opacity-90 transition-all flex items-center gap-2"
                 >
                   <FaEdit className="h-4 w-4" />
                   Manual Attendance
@@ -881,233 +897,109 @@ const AdminInternAttendance = () => {
               </motion.div>
             </div>
 
-            {/* SLT Location Toggle */}
+            {/* ── Unified Toolbar ── */}
             <motion.div
-              className="flex justify-end"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.03, duration: 0.25 }}
-            >
-              <div className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-white/90 px-3 py-2 shadow-sm">
-                <div className="inline-flex items-center gap-2">
-                  <FaMapMarkerAlt
-                    className={`h-3.5 w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
-                  />
-                  <span className="text-xs font-semibold text-gray-700">
-                    SLT location
-                  </span>
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${sltLocationRequired ? "bg-blue-50 text-blue-700" : "bg-gray-100 text-gray-600"}`}
-                  >
-                    {sltLocationRequired ? "Required" : "Off"}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleToggleLocationRequirement}
-                  disabled={settingsLoading || settingsSaving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
-                  aria-pressed={sltLocationRequired}
-                  aria-label="Toggle SLT location requirement"
-                >
-                  <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-5" : "translate-x-0.5"}`}
-                  />
-                </button>
-              </div>
-            </motion.div>
-
-            {/* Non-Attendance Report card */}
-            <motion.div
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white p-2.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-2.5"
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.3 }}
-            >
-              <div className="px-4 md:px-6 py-3.5 border-b border-gray-100 bg-gradient-to-r from-indigo-50/70 to-purple-50/40 flex items-center space-x-3">
-                <div className="w-7 h-7 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-                  <FaChartBar className="h-3 w-3 text-indigo-600" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    Non-Attendance Report
-                  </h3>
-                  <p className="text-xs text-gray-500">
-                    Interns who missed meetings in the past 14 days
-                  </p>
-                </div>
-              </div>
-              <div className="px-4 md:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <p className="text-xs text-gray-500 max-w-sm">
-                  Download or email the non-attendance report for all active
-                  interns over the{" "}
-                  <span className="font-medium text-gray-700">
-                    past 14 days
-                  </span>
-                  .
-                </p>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <motion.button
-                    onClick={async () => {
-                      setExportingNonAttendance(true);
-                      try {
-                        await attendanceApi.exportNonAttendanceExcel();
-                        showToast("Non-attendance Excel downloaded", "success");
-                      } catch (err) {
-                        showToast(err.message || "Export failed", "error");
-                      } finally {
-                        setExportingNonAttendance(false);
-                      }
-                    }}
-                    disabled={exportingNonAttendance}
-                    whileHover={{ scale: exportingNonAttendance ? 1 : 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-medium transition-all shadow-sm disabled:cursor-not-allowed"
-                  >
-                    {exportingNonAttendance ? (
-                      <FaSpinner className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <FaFileExcel className="h-3.5 w-3.5" />
-                    )}
-                    <span>
-                      {exportingNonAttendance ? "Exporting…" : "Export Report"}
-                    </span>
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setShowTriggerModal(true)}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white rounded-xl text-sm font-medium transition-all shadow-sm"
-                  >
-                    <FaRegPaperPlane className="h-3.5 w-3.5" />
-                    <span>Share Report</span>
-                  </motion.button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* ── Tabs (Dashboard Style) ── */}
-            <motion.div
-              className="flex mb-6 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 max-w-md relative"
-              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
             >
-              <button
-                onClick={() => {
-                  setActiveTab("meeting");
-                  setSearchTerm("");
-                  setExpandedInterns({});
-                }}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-                  activeTab === "meeting"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Meeting Attendance
-                {meetingData?.count != null && (
-                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === "meeting" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
-                    {meetingData.count}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  setActiveTab("daily");
-                  setSearchTerm("");
-                  setExpandedInterns({});
-                }}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-                  activeTab === "daily"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                Daily Attendance
-                {dailyData?.count != null && (
-                  <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === "daily" ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
-                    {dailyData.count}
-                  </span>
-                )}
-              </button>
-
-              <div
-                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
-                style={{
-                  background:
-                    activeTab === "meeting"
-                      ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                      : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
-                  left: activeTab === "meeting" ? "6px" : "calc(50%)",
-                }}
-              />
-            </motion.div>
-
-            {/* ── Toolbar (Date, Search, Export) ── */}
-            <motion.div
-              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.3 }}
-            >
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
-                
-                {/* Date Selector */}
-                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                    <FaCalendarDay className="text-[#00b4eb] h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
-                      Select Date
-                    </label>
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
-                    />
-                  </div>
-                </div>
-
-                {/* Search Bar */}
-                <div className="flex-[2]">
-                  <div className="relative">
-                    <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Name, ID, field or institute..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
-                    />
-                    {searchTerm && (
-                      <button
-                        onClick={() => setSearchTerm("")}
-                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm"
-                      >
-                        <FaTimes className="h-3 w-3" />
-                      </button>
+              {/* Top Toolbar Row: Tabs & Reports */}
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
+                {/* Tabs */}
+                <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 max-w-fit">
+                  <button
+                    onClick={() => {
+                      setActiveTab("meeting");
+                      setSearchTerm("");
+                      setExpandedInterns({});
+                    }}
+                    className={`py-2 px-5 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
+                      activeTab === "meeting"
+                        ? "bg-white text-blue-700 shadow-sm border border-gray-100"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    Meeting
+                    {meetingData?.count != null && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === "meeting" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-500"}`}>
+                        {meetingData.count}
+                      </span>
                     )}
-                  </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setActiveTab("daily");
+                      setSearchTerm("");
+                      setExpandedInterns({});
+                    }}
+                    className={`py-2 px-5 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
+                      activeTab === "daily"
+                        ? "bg-white text-green-700 shadow-sm border border-gray-100"
+                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    Daily
+                    {dailyData?.count != null && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === "daily" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
+                        {dailyData.count}
+                      </span>
+                    )}
+                  </button>
                 </div>
 
-                {/* Actions */}
-                <div className="flex gap-3 pt-4 lg:pt-0">
-                  {selectedDate !== today && (
-                    <motion.button
-                      onClick={() => setSelectedDate(today)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold transition-all shadow-sm hover:bg-gray-50"
-                    >
-                      Today
-                    </motion.button>
-                  )}
-                  {activeTab === "meeting" && (
+                {/* Reports Actions */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-gray-100">
+                    <div className="flex items-center gap-1.5 px-2">
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Missed Meetings
+                      </span>
+                    </div>
+                    
                     <motion.button
                       onClick={async () => {
+                        setExportingNonAttendance(true);
+                        try {
+                          await attendanceApi.exportNonAttendanceExcel();
+                          showToast("Non-attendance Excel downloaded", "success");
+                        } catch (err) {
+                          showToast(err.message || "Export failed", "error");
+                        } finally {
+                          setExportingNonAttendance(false);
+                        }
+                      }}
+                      disabled={exportingNonAttendance}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                      title="Export non-attendance report (last 14 days)"
+                    >
+                      {exportingNonAttendance ? (
+                        <FaSpinner className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <FaFileExcel className="h-3 w-3" />
+                      )}
+                      <span>Excel</span>
+                    </motion.button>
+                    
+                    <motion.button
+                      onClick={() => setShowTriggerModal(true)}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
+                      title="Email non-attendance report to managers"
+                    >
+                      <FaRegPaperPlane className="h-3 w-3" />
+                      <span>Share</span>
+                    </motion.button>
+                  </div>
+
+                  <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
+
+                  <motion.button
+                    onClick={async () => {
+                      if (activeTab === "meeting") {
                         if (!meetingData || meetingData.count === 0) {
                           showToast("No records to export", "info");
                           return;
@@ -1121,19 +1013,7 @@ const AdminInternAttendance = () => {
                         } finally {
                           setExportingMeetingPdf(false);
                         }
-                      }}
-                      disabled={exportingMeetingPdf || !meetingData || meetingData.count === 0}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-[#e11d48] hover:bg-[#be123c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#e11d48]/20 disabled:shadow-none disabled:cursor-not-allowed whitespace-nowrap"
-                    >
-                      {exportingMeetingPdf ? <FaSpinner className="h-4 w-4 animate-spin" /> : <FaFilePdf className="h-4 w-4" />}
-                      <span>Export PDF</span>
-                    </motion.button>
-                  )}
-                  {activeTab === "daily" && (
-                    <motion.button
-                      onClick={async () => {
+                      } else {
                         if (!dailyData || dailyData.count === 0) {
                           showToast("No records to export", "info");
                           return;
@@ -1141,21 +1021,69 @@ const AdminInternAttendance = () => {
                         setExportingDailyPdf(true);
                         try {
                           await attendanceApi.exportDailyPdf(selectedDate);
-                          showToast("Daily attendance PDF downloaded", "success");
+                          showToast("Daily PDF downloaded", "success");
                         } catch (err) {
                           showToast(err.message || "PDF export failed", "error");
                         } finally {
                           setExportingDailyPdf(false);
                         }
-                      }}
-                      disabled={exportingDailyPdf || !dailyData || dailyData.count === 0}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex items-center justify-center space-x-2 px-5 py-3 bg-[#e11d48] hover:bg-[#be123c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#e11d48]/20 disabled:shadow-none disabled:cursor-not-allowed whitespace-nowrap"
+                      }
+                    }}
+                    disabled={(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) || ((activeTab === "meeting" ? meetingData?.count : dailyData?.count) === 0)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="flex items-center space-x-1.5 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
+                  >
+                    {(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) ? (
+                      <FaSpinner className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <FaFilePdf className="h-3.5 w-3.5" />
+                    )}
+                    <span>Export PDF</span>
+                  </motion.button>
+                </div>
+              </div>
+
+              <hr className="border-gray-100 m-0" />
+
+              {/* Bottom Toolbar Row: Filters */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 p-1">
+                {/* Date Selector */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-gray-100 rounded-xl px-3 py-2 w-full sm:w-auto">
+                  <FaCalendarDay className="text-[#00b4eb] h-4 w-4" />
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="bg-transparent text-sm font-semibold text-gray-800 w-full focus:outline-none cursor-pointer"
+                  />
+                </div>
+                {selectedDate !== today && (
+                  <button
+                    onClick={() => setSelectedDate(today)}
+                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
+                  >
+                    Today
+                  </button>
+                )}
+
+                {/* Search Bar */}
+                <div className="relative w-full flex-1">
+                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search by name, ID, field, or institute..."
+                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#00b4eb] text-sm transition-all"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full"
                     >
-                      {exportingDailyPdf ? <FaSpinner className="h-4 w-4 animate-spin" /> : <FaFilePdf className="h-4 w-4" />}
-                      <span>Export PDF</span>
-                    </motion.button>
+                      <FaTimes className="h-3 w-3" />
+                    </button>
                   )}
                 </div>
               </div>
