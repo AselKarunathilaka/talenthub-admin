@@ -62,6 +62,12 @@ const getCertificateData = async (req, res) => {
       ? localIntern.attendance.filter((a) => a.status === "Present").length
       : 0;
 
+    // Check if certificate has already been issued
+    const existingRecord = await CertificateRecord.findOne({
+      internId: localIntern._id,
+      isValid: true,
+    });
+
     const certificateData = {
       intern: {
         name: ttIntern?.name || localIntern.Trainee_Name || "N/A",
@@ -89,6 +95,7 @@ const getCertificateData = async (req, res) => {
         description: p.description || "",
       })),
       attendanceCount: ttData.attendanceCount || localAttendanceCount,
+      alreadyIssued: !!existingRecord,
       source: {
         talentTrailConnected: !!ttIntern,
         projectsFromTalentTrail: fallbackProjects.length > 0,
@@ -127,34 +134,30 @@ const issueCertificate = async (req, res) => {
       frontendOrigin = "http://localhost:3000";
     }
 
-    // Re-use existing valid token for this intern (so re-downloads keep same QR)
+    // Check if already issued
     let existingRecord = await CertificateRecord.findOne({
       internId: localIntern._id,
       isValid: true,
     });
 
-    let token;
     if (existingRecord) {
-      token = existingRecord.verificationToken;
-      // Update issuedAt to now for the new download
-      existingRecord.issuedAt = new Date();
-      await existingRecord.save();
-    } else {
-      token = uuidv4();
-      await CertificateRecord.create({
-        verificationToken: token,
-        internId: localIntern._id,
-        traineeId: traineeId || "N/A",
-        traineeName: localIntern.Trainee_Name || "N/A",
-        email: email || "",
-        institute: localIntern.Institute || "",
-        fieldOfSpecialization: localIntern.field_of_spec_name || "",
-        trainingStartDate: localIntern.Training_StartDate || null,
-        trainingEndDate: localIntern.Training_EndDate || null,
-        issuedAt: new Date(),
-        isValid: true,
-      });
+      return res.status(403).json({ error: "Certificate has already been issued and can only be downloaded once." });
     }
+
+    const token = uuidv4();
+    await CertificateRecord.create({
+      verificationToken: token,
+      internId: localIntern._id,
+      traineeId: traineeId || "N/A",
+      traineeName: localIntern.Trainee_Name || "N/A",
+      email: email || "",
+      institute: localIntern.Institute || "",
+      fieldOfSpecialization: localIntern.field_of_spec_name || "",
+      trainingStartDate: localIntern.Training_StartDate || null,
+      trainingEndDate: localIntern.Training_EndDate || null,
+      issuedAt: new Date(),
+      isValid: true,
+    });
 
     const verificationUrl = `${frontendOrigin}/verify/certificate/${token}`;
 

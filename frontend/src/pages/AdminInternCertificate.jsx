@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUser, FaDownload, FaSpinner, FaExclamationTriangle, FaShieldAlt, FaBuilding, FaCalendarAlt, FaProjectDiagram, FaCheckCircle, FaCertificate, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaUser, FaDownload, FaSpinner, FaExclamationTriangle, FaShieldAlt, FaBuilding, FaCalendarAlt, FaProjectDiagram, FaCheckCircle, FaCertificate, FaTimes, FaLock } from 'react-icons/fa';
 import { motion, AnimatePresence } from 'framer-motion';
 import { generateCertificatePDF } from '../utils/generateCertificatePDF';
 import { adminApi } from '../api/adminApi';
@@ -132,7 +132,14 @@ const AdminInternCertificate = () => {
       try {
         const issued = await adminApi.issueCertificate(internId);
         verificationUrl = issued.verificationUrl;
+        // Mark as already issued locally so button gets disabled
+        setCertData((prev) => ({ ...prev, alreadyIssued: true }));
       } catch (err) {
+        if (err.message.includes("already been issued")) {
+          setToast({ text: "Certificate has already been downloaded and can only be downloaded once.", type: 'error' });
+          setCertData((prev) => ({ ...prev, alreadyIssued: true }));
+          return;
+        }
         console.warn("Could not issue certificate token, QR will be omitted:", err);
       }
 
@@ -392,15 +399,25 @@ const AdminInternCertificate = () => {
 
                 {/* Download button */}
                 <div className="flex justify-center mt-12">
-                  <motion.button onClick={handleGeneratePDF} disabled={generating}
-                    whileHover={{ scale: generating ? 1 : 1.02, y: generating ? 0 : -2 }}
-                    whileTap={{ scale: generating ? 1 : 0.98 }}
-                    className="flex items-center space-x-3 px-10 py-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 text-white rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-md hover:shadow-lg disabled:cursor-not-allowed cursor-pointer">
-                    {generating
-                      ? <><FaSpinner className="h-5 w-5 animate-spin" /><span>Generating PDF...</span></>
-                      : <><FaDownload className="h-5 w-5" /><span>Download Official PDF</span></>
-                    }
-                  </motion.button>
+                  {certData?.alreadyIssued ? (
+                    <motion.div
+                      className="flex items-center space-x-3 px-8 py-4 bg-amber-50 text-amber-800 rounded-xl text-sm font-bold uppercase tracking-widest border border-amber-200 shadow-sm"
+                      initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    >
+                      <FaLock className="h-5 w-5" />
+                      <span>Certificate Already Downloaded</span>
+                    </motion.div>
+                  ) : (
+                    <motion.button onClick={handleGeneratePDF} disabled={generating}
+                      whileHover={{ scale: generating ? 1 : 1.02, y: generating ? 0 : -2 }}
+                      whileTap={{ scale: generating ? 1 : 0.98 }}
+                      className="flex items-center space-x-3 px-10 py-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:text-slate-500 text-white rounded-xl text-sm font-bold uppercase tracking-widest transition-all shadow-md hover:shadow-lg disabled:cursor-not-allowed cursor-pointer">
+                      {generating
+                        ? <><FaSpinner className="h-5 w-5 animate-spin" /><span>Generating PDF...</span></>
+                        : <><FaDownload className="h-5 w-5" /><span>Download Official PDF</span></>
+                      }
+                    </motion.button>
+                  )}
                 </div>
               </div>
             </motion.div>

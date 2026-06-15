@@ -191,7 +191,8 @@ export const adminApi = {
 
       await checkAuth(response);
       if (!response.ok) {
-        throw new Error(`Failed to issue certificate: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Failed to issue certificate: ${response.status}`);
       }
 
       return await response.json(); // { token, verificationUrl }
