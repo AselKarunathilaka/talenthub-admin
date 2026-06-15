@@ -191,8 +191,7 @@ export const adminApi = {
 
       await checkAuth(response);
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Failed to issue certificate: ${response.status}`);
+        throw new Error(`Failed to issue certificate: ${response.status}`);
       }
 
       return await response.json(); // { token, verificationUrl }
@@ -391,7 +390,7 @@ export const adminApi = {
       if (type === 'meeting' && projectName) {
         url += `&projectName=${encodeURIComponent(projectName)}`;
       }
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: getHeaders(),
@@ -549,7 +548,7 @@ export const csvUtils = {
             ? formatDateForExport(intern.lastSubmission)
             : '="Never"',
           intern.daysSinceLastSubmission !== null &&
-          intern.daysSinceLastSubmission !== undefined
+            intern.daysSinceLastSubmission !== undefined
             ? intern.daysSinceLastSubmission
             : "N/A",
           status,
@@ -682,7 +681,7 @@ export const csvUtils = {
           if (intern.lastSubmission) {
             daysSinceLastSubmission = Math.floor(
               (new Date() - new Date(intern.lastSubmission)) /
-                (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24),
             );
           } else {
             daysSinceLastSubmission = "N/A";
