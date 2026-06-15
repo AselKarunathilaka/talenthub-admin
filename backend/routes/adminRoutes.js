@@ -37,13 +37,6 @@ const {
 } = require("../controllers/AnnouncementController");
 
 const {
-  getAllFeatureTips,
-  createFeatureTip,
-  toggleFeatureTip,
-  deleteFeatureTip,
-} = require("../controllers/featureTipController");
-
-const {
   getAttendanceByDate,
   getAttendanceByDateDaily,
   triggerAttendanceReport,
@@ -163,12 +156,6 @@ router.get("/past-intern-sync-stats", getPastInternSyncStats);
 router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
-
-// Feature Tips routes (admin only)
-router.get("/feature-tips", getAllFeatureTips);
-router.post("/feature-tips", createFeatureTip);
-router.patch("/feature-tips/:id/toggle", toggleFeatureTip);
-router.delete("/feature-tips/:id", deleteFeatureTip);
 
 // GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns (meeting + daily combined)
 router.get("/attendance/by-date", getAttendanceByDate);

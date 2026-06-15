@@ -53,7 +53,6 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
     { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
     { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/feature-tips", label: "Broadcast New", icon: <Lightbulb className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
   ];
 
   const isActive = (path) => location.pathname === path;
