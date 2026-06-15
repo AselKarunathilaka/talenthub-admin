@@ -7,7 +7,6 @@ const path = require("path");
 const {
   getDashboardStats,
   getInternReport,
-  sendOverdueNotifications,
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
@@ -57,7 +56,10 @@ const {
   registerFaceProfileByAdmin,
 } = require("../controllers/faceAttendanceController");
 
-const { getCertificateData, issueCertificate } = require("../controllers/certificateController");
+const {
+  getCertificateData,
+  issueCertificate,
+} = require("../controllers/certificateController");
 
 const { syncTalentTrailData } = require("../services/talentTrailSyncService");
 
@@ -97,9 +99,6 @@ router.get("/non-submissions-within-week", getNonSubmissionsWithinAWeek);
 
 // Get weekly non-submissions (Monday to Friday of current week)
 router.get("/weekly-non-submissions", getWeeklyNonSubmissions);
-
-// Send notifications to overdue interns
-router.post("/notifications/overdue", sendOverdueNotifications);
 
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);

@@ -28,7 +28,10 @@ const getDashboardStats = async (req, res) => {
 
     // Check cache
     const now = Date.now();
-    if (dashboardStatsCache && (now - dashboardStatsCacheTime < STATS_CACHE_TTL)) {
+    if (
+      dashboardStatsCache &&
+      now - dashboardStatsCacheTime < STATS_CACHE_TTL
+    ) {
       return res.status(200).json(dashboardStatsCache);
     }
 
@@ -184,84 +187,6 @@ const getInternReport = async (req, res) => {
   } catch (error) {
     console.error("Error getting intern report:", error);
     res.status(500).json({ error: "Failed to generate intern report" });
-  }
-};
-
-// Send notifications to overdue interns
-const sendOverdueNotifications = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { overdueInterns } = req.body;
-
-    // Verify admin user
-    const adminUser = await User.findById(userId);
-    if (!adminUser) {
-      return res.status(403).json({ error: "Admin access required" });
-    }
-
-    if (!overdueInterns || !Array.isArray(overdueInterns)) {
-      return res.status(400).json({ error: "Invalid overdue interns data" });
-    }
-
-    const notifications = [];
-    const errors = [];
-
-    for (const intern of overdueInterns) {
-      try {
-        if (intern.email) {
-          const emailSubject = "Daily Logbook Submission Reminder";
-          const emailContent = `
-            Dear ${intern.name},
-
-            This is a friendly reminder that you haven't submitted your daily logbook in the past 3 days.
-
-            Please make sure to fill out your daily logbook regularly to track your progress and maintain good communication with your supervisors.
-
-            You can submit your logbook at: [https://talenthub.slt.lk/]
-
-            Trainee ID: ${intern.traineeId}
-
-            If you have any questions or technical issues, please contact your supervisor immediately.
-
-            Best regards,
-            SLT Mobitel
-            Digital Platforms Development Section
-          `;
-
-          await emailSender(intern.email, emailSubject, emailContent);
-          notifications.push({
-            internId: intern.id,
-            name: intern.name,
-            email: intern.email,
-            status: "sent",
-          });
-        } else {
-          errors.push({
-            internId: intern.id,
-            name: intern.name,
-            error: "No email address",
-          });
-        }
-      } catch (error) {
-        console.error(`Error sending notification to ${intern.name}:`, error);
-        errors.push({
-          internId: intern.id,
-          name: intern.name,
-          error: error.message,
-        });
-      }
-    }
-
-    res.status(200).json({
-      message: `Notifications sent to ${notifications.length} interns`,
-      successful: notifications,
-      failed: errors,
-      totalSent: notifications.length,
-      totalFailed: errors.length,
-    });
-  } catch (error) {
-    console.error("Error sending overdue notifications:", error);
-    res.status(500).json({ error: "Failed to send notifications" });
   }
 };
 
@@ -1404,12 +1329,10 @@ const getInternGitCommits = async (req, res) => {
       !syncRecord.projects ||
       syncRecord.projects.length === 0
     ) {
-      return res
-        .status(200)
-        .json({
-          commits: [],
-          message: "No TalentTrail projects found for this intern",
-        });
+      return res.status(200).json({
+        commits: [],
+        message: "No TalentTrail projects found for this intern",
+      });
     }
 
     // Authenticate with TalentTrail to get project repo details (including tokens)
@@ -1602,7 +1525,6 @@ const getInternGitCommits = async (req, res) => {
 module.exports = {
   getDashboardStats,
   getInternReport,
-  sendOverdueNotifications,
   getInternDetails,
   searchInterns,
   getAllDailyRecords,

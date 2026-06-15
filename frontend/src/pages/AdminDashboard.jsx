@@ -4,7 +4,6 @@ import {
   FaUsers,
   FaSearch,
   FaDownload,
-  FaBell,
   FaExclamationTriangle,
   FaCheckCircle,
   FaTimesCircle,
@@ -27,7 +26,6 @@ import {
   FaRegFileExcel,
   FaSlidersH,
   FaCalendarCheck,
-  FaRegPaperPlane,
   FaMapMarkedAlt,
   FaBullhorn,
   FaChevronDown,
@@ -69,7 +67,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 );
 
 /* ═══════════════════════════════════════════════════════════════
@@ -159,7 +157,11 @@ const generateTrendData = (dashboardStats) => {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     labels.push(
-      d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })
+      d.toLocaleDateString("en-US", {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }),
     );
   }
 
@@ -292,7 +294,10 @@ const AdminDashboard = () => {
   }, [fetchData]);
 
   /* ── Chart data (memoized) ── */
-  const trendData = useMemo(() => generateTrendData(dashboardStats), [dashboardStats]);
+  const trendData = useMemo(
+    () => generateTrendData(dashboardStats),
+    [dashboardStats],
+  );
 
   const chartData = useMemo(
     () => ({
@@ -351,7 +356,10 @@ const AdminDashboard = () => {
           ticks: {
             font: { family: "'Inter', sans-serif", size: 11 },
             color: "#94a3b8",
-            stepSize: Math.max(1, Math.ceil((dashboardStats?.totalInterns || 10) / 5)),
+            stepSize: Math.max(
+              1,
+              Math.ceil((dashboardStats?.totalInterns || 10) / 5),
+            ),
           },
           border: { display: false },
         },
@@ -360,60 +368,6 @@ const AdminDashboard = () => {
     }),
     [dashboardStats],
   );
-
-  /* ── Handlers (unchanged) ── */
-  const handleSendNotifications = async () => {
-    if (
-      !dashboardStats?.overdueList ||
-      dashboardStats.overdueList.length === 0
-    ) {
-      notificationUtils.showInfo("No overdue interns to notify");
-      return;
-    }
-    try {
-      setSendingNotifications(true);
-      const notifications = dashboardStats.overdueList.map((intern) => ({
-        id: intern._id,
-        name: intern.traineeName,
-        traineeId: intern.traineeId,
-        email: intern.email,
-        body: `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`,
-      }));
-      await adminApi.sendOverdueNotifications(notifications);
-      notificationUtils.showSuccess(
-        "Notifications sent to all overdue interns.",
-      );
-    } catch (error) {
-      console.error("Error sending notifications:", error);
-      notificationUtils.showError("Failed to send notifications");
-    } finally {
-      setSendingNotifications(false);
-    }
-  };
-
-  const handleExportOverdueCSV = async () => {
-    try {
-      if (
-        !dashboardStats?.overdueList ||
-        dashboardStats.overdueList.length === 0
-      ) {
-        notificationUtils.showInfo("No overdue interns to export.");
-        return;
-      }
-      await csvUtils.downloadInternReport(
-        dashboardStats.overdueList,
-        "overdue_interns",
-      );
-      notificationUtils.showSuccess(
-        `Overdue interns CSV report with ${dashboardStats.overdueList.length} interns downloaded successfully`,
-      );
-    } catch (error) {
-      console.error("Error exporting overdue interns CSV:", error);
-      notificationUtils.showError(
-        "Failed to export overdue interns CSV report",
-      );
-    }
-  };
 
   const handleExportSubmittedCSV = async () => {
     try {
@@ -684,7 +638,8 @@ const AdminDashboard = () => {
                   transition={{ delay: 0.05, duration: 0.2 }}
                   className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
                 >
-                  Overview of intern attendance, logbook submissions, and statistics
+                  Overview of intern attendance, logbook submissions, and
+                  statistics
                 </motion.p>
               </div>
             </div>
@@ -711,8 +666,18 @@ const AdminDashboard = () => {
                   </div>
                   <div className="admin-dash-chart-card__body">
                     {loading ? (
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                        <FaSpinner className="animate-spin" style={{ fontSize: 24, color: BRAND.accent }} />
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          height: "100%",
+                        }}
+                      >
+                        <FaSpinner
+                          className="animate-spin"
+                          style={{ fontSize: 24, color: BRAND.accent }}
+                        />
                       </div>
                     ) : (
                       <Line data={chartData} options={chartOptions} />
@@ -730,28 +695,36 @@ const AdminDashboard = () => {
                   {[
                     {
                       label: "Total Interns",
-                      value: loading ? "..." : (dashboardStats?.totalInterns || 0),
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.totalInterns || 0,
                       icon: FaUsers,
                       accent: BRAND.primary,
                       bg: BRAND.primaryLight,
                     },
                     {
                       label: "Submitted",
-                      value: loading ? "..." : (dashboardStats?.submittedInterns || 0),
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.submittedInterns || 0,
                       icon: FaCheckCircle,
                       accent: BRAND.success,
                       bg: BRAND.successLight,
                     },
                     {
                       label: "Overdue",
-                      value: loading ? "..." : (dashboardStats?.overdueInterns || 0),
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.overdueInterns || 0,
                       icon: FaExclamationTriangle,
                       accent: BRAND.danger,
                       bg: BRAND.dangerLight,
                     },
                     {
                       label: "Total Records",
-                      value: loading ? "..." : (dashboardStats?.totalRecords || 0),
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.totalRecords || 0,
                       icon: FaTasks,
                       accent: BRAND.accent,
                       bg: BRAND.accentLight,
@@ -773,7 +746,9 @@ const AdminDashboard = () => {
                         className="admin-dash-stat-card__icon"
                         style={{ background: stat.bg }}
                       >
-                        <stat.icon style={{ color: stat.accent, fontSize: 18 }} />
+                        <stat.icon
+                          style={{ color: stat.accent, fontSize: 18 }}
+                        />
                       </div>
                       <div className="admin-dash-stat-card__text">
                         <span
@@ -798,7 +773,9 @@ const AdminDashboard = () => {
                   transition={{ delay: 0.35, duration: 0.4 }}
                 >
                   <div className="admin-dash-exports-card__header">
-                    <FaFileExport style={{ color: BRAND.primary, fontSize: 16 }} />
+                    <FaFileExport
+                      style={{ color: BRAND.primary, fontSize: 16 }}
+                    />
                     <h3 className="admin-dash-exports-card__title">Exports</h3>
                   </div>
 
@@ -874,9 +851,7 @@ const AdminDashboard = () => {
                             <input
                               type="date"
                               value={customEndDate}
-                              onChange={(e) =>
-                                setCustomEndDate(e.target.value)
-                              }
+                              onChange={(e) => setCustomEndDate(e.target.value)}
                             />
                           </div>
                         </div>
@@ -963,21 +938,49 @@ const AdminDashboard = () => {
                   <div className="admin-dash-sidebar-card__results">
                     {!hasSearched && filterStatus === "all" ? (
                       <div className="admin-dash-empty admin-dash-empty--sm">
-                        <FaSearch style={{ fontSize: 22, color: BRAND.accent, marginBottom: 8 }} />
+                        <FaSearch
+                          style={{
+                            fontSize: 22,
+                            color: BRAND.accent,
+                            marginBottom: 8,
+                          }}
+                        />
                         <h3 style={{ fontSize: 14 }}>Find Interns</h3>
                         <p style={{ fontSize: 12, maxWidth: 240 }}>
-                          Search by name, ID, or email — or pick a filter to browse by status.
+                          Search by name, ID, or email — or pick a filter to
+                          browse by status.
                         </p>
                       </div>
                     ) : filteredInterns.length === 0 ? (
                       <div className="admin-dash-empty admin-dash-empty--sm">
-                        <FaUser style={{ fontSize: 24, color: "#d1d5db", marginBottom: 8 }} />
+                        <FaUser
+                          style={{
+                            fontSize: 24,
+                            color: "#d1d5db",
+                            marginBottom: 8,
+                          }}
+                        />
                         <h3 style={{ fontSize: 14 }}>No interns found</h3>
-                        <p style={{ fontSize: 12 }}>Try adjusting your search or filters.</p>
+                        <p style={{ fontSize: 12 }}>
+                          Try adjusting your search or filters.
+                        </p>
                       </div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#64748b",
+                            marginBottom: 4,
+                          }}
+                        >
                           Results ({filteredInterns.length})
                         </div>
                         {filteredInterns.map((intern, idx) => (
@@ -990,7 +993,9 @@ const AdminDashboard = () => {
                                   ? "admin-dash-sidebar-intern--success"
                                   : "admin-dash-sidebar-intern--neutral"
                             }`}
-                            onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                            onClick={() =>
+                              navigate(`/admin/intern/${intern._id}`)
+                            }
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.02, duration: 0.2 }}
@@ -1003,7 +1008,8 @@ const AdminDashboard = () => {
                                 {intern.traineeName || "N/A"}
                               </div>
                               <div className="admin-dash-sidebar-intern__meta">
-                                {intern.traineeId || "N/A"} · {intern.totalRecords || 0} records
+                                {intern.traineeId || "N/A"} ·{" "}
+                                {intern.totalRecords || 0} records
                               </div>
                             </div>
                             {getStatusBadge(intern)}
@@ -1012,119 +1018,6 @@ const AdminDashboard = () => {
                       </div>
                     )}
                   </div>
-                </motion.div>
-
-                {/* ══════════════ OVERDUE INTERNS ══════════════ */}
-                <motion.div
-                  className="admin-dash-sidebar-card admin-dash-sidebar-card--overdue"
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3, duration: 0.4 }}
-                >
-                  <div className="admin-dash-sidebar-card__header">
-                    <h3 className="admin-dash-sidebar-card__title">
-                      <FaExclamationTriangle style={{ color: BRAND.danger, fontSize: 14 }} />
-                      Overdue
-                      <span className="admin-dash-alerts-header__count">
-                        {dashboardStats?.overdueList?.length || 0}
-                      </span>
-                    </h3>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="admin-dash-overdue-actions">
-                    <motion.button
-                      onClick={handleExportOverdueCSV}
-                      disabled={!dashboardStats?.overdueList?.length}
-                      whileHover={{
-                        scale: !dashboardStats?.overdueList?.length ? 1 : 1.03,
-                      }}
-                      whileTap={{
-                        scale: !dashboardStats?.overdueList?.length ? 1 : 0.97,
-                      }}
-                      className="admin-dash-btn admin-dash-btn--warning"
-                    >
-                      <FaFileExport style={{ marginRight: 5 }} />
-                      Export
-                    </motion.button>
-                    <motion.button
-                      onClick={handleSendNotifications}
-                      disabled={
-                        sendingNotifications ||
-                        !dashboardStats?.overdueList?.length
-                      }
-                      whileHover={{
-                        scale:
-                          sendingNotifications ||
-                          !dashboardStats?.overdueList?.length
-                            ? 1
-                            : 1.03,
-                      }}
-                      whileTap={{
-                        scale:
-                          sendingNotifications ||
-                          !dashboardStats?.overdueList?.length
-                            ? 1
-                            : 0.97,
-                      }}
-                      className="admin-dash-btn admin-dash-btn--danger"
-                    >
-                      {sendingNotifications ? (
-                        <FaSpinner
-                          className="animate-spin"
-                          style={{ marginRight: 5 }}
-                        />
-                      ) : (
-                        <FaRegPaperPlane style={{ marginRight: 5 }} />
-                      )}
-                      Remind All
-                    </motion.button>
-                  </div>
-
-                  {/* Overdue list */}
-                  {dashboardStats?.overdueList?.length > 0 ? (
-                    <div className="admin-dash-sidebar-card__scrollable">
-                      {dashboardStats.overdueList.map((intern) => (
-                        <motion.div
-                          key={intern._id}
-                          className="admin-dash-overdue-item"
-                          transition={{ duration: 0.15 }}
-                        >
-                          <div className="admin-dash-overdue-item__info">
-                            <p className="admin-dash-overdue-item__name">
-                              {intern.traineeName}
-                            </p>
-                            <p className="admin-dash-overdue-item__meta">
-                              {intern.traineeId} · {intern.email}
-                            </p>
-                          </div>
-                          <div className="admin-dash-overdue-item__date">
-                            <FaClock
-                              style={{
-                                fontSize: 11,
-                                marginRight: 4,
-                                opacity: 0.6,
-                              }}
-                            />
-                            {intern.lastSubmission
-                              ? formatDateDisplay(intern.lastSubmission)
-                              : "Never submitted"}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="admin-dash-empty admin-dash-empty--sm">
-                      <FaCheckCircle
-                        style={{
-                          fontSize: 28,
-                          color: BRAND.success,
-                          marginBottom: 8,
-                        }}
-                      />
-                      <p>No overdue interns — all caught up!</p>
-                    </div>
-                  )}
                 </motion.div>
               </div>
             </div>
