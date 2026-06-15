@@ -1,19 +1,18 @@
 // src/utils/generateCertificatePDF.js
 // Generates a professional Internship Completion Certificate as a PDF
+// Landscape A4 — standard certificate size
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 import QRCode from "qrcode";
 
 const COLORS = {
   navy: [0, 16, 47],
   blue: [0, 119, 182],
   gold: [180, 150, 50],
+  goldLight: [210, 190, 110],
   black: [30, 30, 30],
   gray: [100, 100, 100],
   lightGray: [180, 180, 180],
   white: [255, 255, 255],
-  tableHead: [0, 40, 80],
-  tableAlt: [245, 248, 255],
 };
 
 const fmt = (dateStr) => {
@@ -52,268 +51,225 @@ export const generateCertificatePDF = async (data) => {
     verificationUrl,
   } = data;
 
-  const doc = new jsPDF("p", "mm", "a4");
-  const W = doc.internal.pageSize.getWidth();
-  const H = doc.internal.pageSize.getHeight();
-  const M = 18;
+  // ── Landscape A4 — standard certificate format ─────────────────────
+  const doc = new jsPDF("l", "mm", "a4");
+  const W = doc.internal.pageSize.getWidth(); // 297mm
+  const H = doc.internal.pageSize.getHeight(); // 210mm
+  const M = 20; // margin
 
   // ── Decorative double border ───────────────────────────────────────
   doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(1.5);
-  doc.rect(7, 7, W - 14, H - 14);
-  doc.setLineWidth(0.4);
-  doc.rect(10, 10, W - 20, H - 20);
+  doc.setLineWidth(1.8);
+  doc.rect(8, 8, W - 16, H - 16);
+  doc.setLineWidth(0.5);
+  doc.rect(12, 12, W - 24, H - 24);
 
-  // Corner L-brackets
-  const cs = 10;
-  const corners = [
-    [10, 10],
-    [W - 10 - cs, 10],
-    [10, H - 10 - cs],
-    [W - 10 - cs, H - 10 - cs],
+  // Corner L-brackets (decorative)
+  const cs = 12;
+  const cornerPositions = [
+    [12, 12],
+    [W - 12 - cs, 12],
+    [12, H - 12 - cs],
+    [W - 12 - cs, H - 12 - cs],
   ];
-  corners.forEach(([x, cy]) => {
-    doc.setLineWidth(0.8);
+  cornerPositions.forEach(([x, cy]) => {
+    doc.setLineWidth(1);
     doc.setDrawColor(...COLORS.gold);
     doc.line(x, cy, x + cs, cy);
     doc.line(x, cy, x, cy + cs);
   });
 
-  let y = 20;
+  let y = 22;
 
-  // ── Logo + header ─────────────────────────────────────────────────
+  // ── Logo — centered at top ────────────────────────────────────────
   if (logoBase64) {
     try {
-      doc.addImage(logoBase64, "PNG", M, y, 30, 15);
+      const logoW = 30;
+      const logoH = 15;
+      doc.addImage(logoBase64, "PNG", W / 2 - logoW / 2, y, logoW, logoH);
+      y += logoH + 4;
     } catch (e) {
       console.warn("Logo failed:", e);
+      y += 8;
     }
   }
+
+  // Company name — centered
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
+  doc.setFontSize(10);
   doc.setTextColor(...COLORS.navy);
-  doc.text("Sri Lanka Telecom PLC", W - M, y + 6, { align: "right" });
-
+  doc.text("SRI LANKA TELECOM PLC", W / 2, y, { align: "center" });
+  y += 4;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...COLORS.gray);
-  doc.text("Lotus Road, Colombo 01, Sri Lanka", W - M, y + 11, {
-    align: "right",
-  });
+  doc.text("Lotus Road, Colombo 01, Sri Lanka", W / 2, y, { align: "center" });
 
-  y += 20;
-
-  // Divider
+  // ── Divider ────────────────────────────────────────────────────────
+  y += 6;
   doc.setDrawColor(...COLORS.gold);
   doc.setLineWidth(0.8);
-  doc.line(M, y, W - M, y);
+  doc.line(M + 40, y, W - M - 40, y);
   y += 1.5;
   doc.setLineWidth(0.3);
-  doc.line(M, y, W - M, y);
+  doc.line(M + 40, y, W - M - 40, y);
 
   // ── Title ──────────────────────────────────────────────────────────
   y += 10;
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(24);
+  doc.setFont("times", "bold");
+  doc.setFontSize(30);
   doc.setTextColor(...COLORS.navy);
   doc.text("INTERNSHIP COMPLETION", W / 2, y, { align: "center" });
 
-  y += 8;
-  doc.setFontSize(18);
+  y += 10;
+  doc.setFont("times", "bold");
+  doc.setFontSize(22);
   doc.setTextColor(...COLORS.blue);
   doc.text("CERTIFICATE", W / 2, y, { align: "center" });
 
-  y += 4;
-  const dw = 40;
+  // Gold accent line under title
+  y += 5;
+  const accentW = 50;
   doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(0.6);
-  doc.line(W / 2 - dw / 2, y, W / 2 + dw / 2, y);
+  doc.setLineWidth(0.8);
+  doc.line(W / 2 - accentW / 2, y, W / 2 + accentW / 2, y);
 
-  // ── Body text ──────────────────────────────────────────────────────
+  // ── "This is to certify that" ──────────────────────────────────────
   y += 10;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
+  doc.setFontSize(12);
   doc.setTextColor(...COLORS.black);
   doc.text("This is to certify that", W / 2, y, { align: "center" });
 
-  y += 10;
+  // ── Intern Name — large & prominent ────────────────────────────────
+  y += 12;
   const name = intern.traineeName || intern.name || "N/A";
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFont("times", "bolditalic");
+  doc.setFontSize(32);
   doc.setTextColor(...COLORS.navy);
   doc.text(name, W / 2, y, { align: "center" });
 
-  y += 3;
-  const nw = doc.getTextWidth(name);
+  // Gold underline beneath name
+  y += 4;
+  const nameWidth = doc.getTextWidth(name);
+  const lineHalf = Math.max(nameWidth / 2 + 15, 60);
   doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(0.5);
-  doc.line(W / 2 - nw / 2, y, W / 2 + nw / 2, y);
+  doc.setLineWidth(0.6);
+  doc.line(W / 2 - lineHalf, y, W / 2 + lineHalf, y);
 
-  y += 10;
+  // ── Formal paragraph ──────────────────────────────────────────────
+  y += 12;
+  const field = specialization || intern.fieldOfSpecialization || "N/A";
+  const institute = intern.institute || intern.university || "N/A";
+  const duration = dur(startDate, endDate);
+  const traineeId = intern.traineeId || "N/A";
+  const attendDays = `${attendanceCount} day${attendanceCount !== 1 ? "s" : ""}`;
+
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.black);
 
-  const bodyLines = [
-    "has successfully completed the internship training program",
-    "at Sri Lanka Telecom PLC during the period",
-    `${fmt(startDate)}  to  ${fmt(endDate)}  (${dur(startDate, endDate)}).`,
-  ];
-  bodyLines.forEach((l) => {
-    doc.text(l, W / 2, y, { align: "center" });
+  const maxTextWidth = W - M * 2 - 60;
+  const paragraph =
+    `bearing Trainee ID ${traineeId}, from ${institute}, ` +
+    `specializing in ${field}, has successfully completed the internship ` +
+    `training program at Sri Lanka Telecom PLC during the period ` +
+    `${fmt(startDate)} to ${fmt(endDate)} (${duration}). ` +
+    `Throughout the training period, the intern demonstrated outstanding ` +
+    `dedication and commitment, attending ${attendDays} of scheduled meetings. ` +
+    `We acknowledge and appreciate the valuable contributions made during this internship.`;
+
+  const wrappedLines = doc.splitTextToSize(paragraph, maxTextWidth);
+  wrappedLines.forEach((line) => {
+    doc.text(line, W / 2, y, { align: "center" });
     y += 6;
   });
 
-  // ── Details table ──────────────────────────────────────────────────
-  y += 4;
-  const details = [
-    ["Trainee ID", intern.traineeId || "N/A"],
-    ["Email", intern.email || "N/A"],
-    ["University / Institute", intern.institute || intern.university || "N/A"],
-    [
-      "Field of Specialization",
-      specialization || intern.fieldOfSpecialization || "N/A",
-    ],
-    ["Training Period", `${fmt(startDate)}  –  ${fmt(endDate)}`],
-    ["Duration", dur(startDate, endDate)],
-    [
-      "Meeting Attendance",
-      `${attendanceCount} day${attendanceCount !== 1 ? "s" : ""}`,
-    ],
-  ];
-
-  autoTable(doc, {
-    startY: y,
-    head: [["Detail", "Information"]],
-    body: details,
-    margin: { left: M + 8, right: M + 8 },
-    theme: "grid",
-    headStyles: {
-      fillColor: COLORS.tableHead,
-      textColor: COLORS.white,
-      fontStyle: "bold",
-      fontSize: 9,
-      cellPadding: 2,
-    },
-    bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 2 },
-    columnStyles: {
-      0: {
-        fontStyle: "bold",
-        cellWidth: 52,
-        fillColor: [235, 240, 250],
-        textColor: COLORS.navy,
-      },
-    },
-    alternateRowStyles: { fillColor: COLORS.tableAlt },
-    styles: { lineColor: [200, 210, 225], lineWidth: 0.2 },
-  });
-  y = (doc.lastAutoTable?.finalY ?? y) + 8;
-
-  // ── Projects table ─────────────────────────────────────────────────
+  // ── Projects paragraph ─────────────────────────────────────────────
   if (projects.length > 0) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(...COLORS.navy);
-    doc.text("Projects Contributed To", M + 8, y);
-    y += 3;
-
-    const projBody = projects.map((p, i) => {
-      let commitsCount = "N/A";
+    y += 2;
+    const projDescriptions = projects.map((p) => {
+      const projName = p.projectName || p.name || "N/A";
+      const supervisor = p.supervisorName || p.supervisor || "";
+      let commitsInfo = "";
       if (gitCommitsData && gitCommitsData.projectCommits) {
         const match = gitCommitsData.projectCommits.find(
           (gc) => gc.projectName === (p.projectName || p.name)
         );
-        if (match) {
-          commitsCount = match.totalCommits !== undefined ? match.totalCommits.toString() : "0";
-        } else {
-          commitsCount = "0";
+        if (match && match.totalCommits !== undefined) {
+          commitsInfo = ` with ${match.totalCommits} commits`;
         }
       }
-
-      return [
-        i + 1,
-        p.projectName || p.name || "N/A",
-        p.supervisorName || p.supervisor || "N/A",
-        p.status || "N/A",
-        commitsCount,
-      ];
+      let desc = projName;
+      if (supervisor) desc += ` (supervised by ${supervisor})`;
+      if (commitsInfo) desc += commitsInfo;
+      return desc;
     });
 
-    autoTable(doc, {
-      startY: y,
-      head: [["#", "Project Name", "Supervisor", "Status", "Commits"]],
-      body: projBody,
-      margin: { left: M + 8, right: M + 8 },
-      theme: "grid",
-      headStyles: {
-        fillColor: COLORS.blue,
-        textColor: COLORS.white,
-        fontStyle: "bold",
-        fontSize: 9,
-        cellPadding: 2,
-      },
-      bodyStyles: { fontSize: 9, textColor: COLORS.black, cellPadding: 2 },
-      columnStyles: {
-        0: { cellWidth: 10, halign: "center" },
-        2: { cellWidth: 38 },
-        3: { cellWidth: 26, halign: "center" },
-        4: { cellWidth: 20, halign: "center" },
-      },
-      alternateRowStyles: { fillColor: [245, 250, 255] },
-      styles: { lineColor: [200, 210, 225], lineWidth: 0.2 },
+    let projSentence;
+    if (projDescriptions.length === 1) {
+      projSentence = projDescriptions[0];
+    } else {
+      projSentence =
+        projDescriptions.slice(0, -1).join(", ") +
+        ", and " +
+        projDescriptions[projDescriptions.length - 1];
+    }
+
+    const projParagraph =
+      `During the internship, the trainee contributed to the following ` +
+      `project${projects.length > 1 ? "s" : ""}: ${projSentence}.`;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(...COLORS.black);
+    const projWrapped = doc.splitTextToSize(projParagraph, maxTextWidth);
+    projWrapped.forEach((line) => {
+      doc.text(line, W / 2, y, { align: "center" });
+      y += 5.5;
     });
-    y = (doc.lastAutoTable?.finalY ?? y) + 8;
   }
 
   // ── Signature area ─────────────────────────────────────────────────
-  // Ensure the signature Y does not overlap the footer (H - 35)
-  // If y is pushing too far down, cap it so it stays above the footer, 
-  // or use the max of (y + 10) and (H - 45).
-  let sigY = Math.max(y + 10, H - 45);
-  if (sigY > H - 38) {
-    // If it's still too low and overlapping the footer lines at H - 28,
-    // force it to exactly above the footer text.
-    sigY = H - 38;
-  }
+  const sigY = H - 42;
+  const sw = 60;
+  const leftX = M + 30;
+  const rightX = W - M - 30 - sw;
 
-  const sw = 55;
-  const lx = M + 15;
-  const rx = W - M - 15 - sw;
-
+  // Left: Authorized Signature
   doc.setDrawColor(...COLORS.lightGray);
   doc.setLineWidth(0.3);
-  doc.line(lx, sigY, lx + sw, sigY);
-  doc.line(rx, sigY, rx + sw, sigY);
-
+  doc.line(leftX, sigY, leftX + sw, sigY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.black);
-  doc.text("Authorized Signature", lx + sw / 2, sigY + 5, {
-    align: "center",
-  });
-  doc.text("Supervisor Signature", rx + sw / 2, sigY + 5, {
-    align: "center",
-  });
-
+  doc.text("Authorized Signature", leftX + sw / 2, sigY + 5, { align: "center" });
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.gray);
-  doc.text("Training Division", lx + sw / 2, sigY + 9, { align: "center" });
-  doc.text("Sri Lanka Telecom PLC", rx + sw / 2, sigY + 9, {
-    align: "center",
-  });
+  doc.text("Training Division", leftX + sw / 2, sigY + 9, { align: "center" });
 
+  // Center: Date Issued
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.black);
+  doc.text(`Date Issued: ${fmt(new Date().toISOString())}`, W / 2, sigY + 5, { align: "center" });
+
+  // Right: Supervisor Signature
+  doc.setDrawColor(...COLORS.lightGray);
+  doc.setLineWidth(0.3);
+  doc.line(rightX, sigY, rightX + sw, sigY);
+  doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
+  doc.setTextColor(...COLORS.black);
+  doc.text("Supervisor Signature", rightX + sw / 2, sigY + 5, { align: "center" });
+  doc.setFontSize(7);
   doc.setTextColor(...COLORS.gray);
-  doc.text(`Date Issued: ${fmt(new Date().toISOString())}`, W / 2, sigY + 5, {
-    align: "center",
-  });
+  doc.text("Sri Lanka Telecom PLC", rightX + sw / 2, sigY + 9, { align: "center" });
 
   // ── Footer ─────────────────────────────────────────────────────────
   doc.setDrawColor(...COLORS.gold);
-  doc.setLineWidth(0.8);
-  doc.line(M, H - 28, W - M, H - 28);
-  doc.setLineWidth(0.3);
-  doc.line(M, H - 26.5, W - M, H - 26.5);
+  doc.setLineWidth(0.6);
+  doc.line(M + 15, H - 25, W - M - 15, H - 25);
 
   doc.setFont("helvetica", "italic");
   doc.setFontSize(7);
@@ -321,26 +277,26 @@ export const generateCertificatePDF = async (data) => {
   doc.text(
     "This certificate is system-generated from TalentHub — Sri Lanka Telecom Intern Management System",
     W / 2,
-    H - 21,
+    H - 20,
     { align: "center" }
   );
 
   const ref = `REF/SLT/INTERN/${intern.traineeId || "000"}/${new Date().getFullYear()}`;
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text(`Ref: ${ref}`, W / 2, H - 16, { align: "center" });
+  doc.text(`Validate Certificate ID:  ${ref}`, W / 2, H - 15, { align: "center" });
 
   // ── QR Code (verification) ────────────────────────────────────────
   if (verificationUrl) {
     try {
       const qrDataUrl = await QRCode.toDataURL(verificationUrl, {
-        width: 80,
+        width: 100,
         margin: 1,
         color: { dark: "#00102f", light: "#ffffff" },
       });
-      const qrSize = 22;
-      const qrX = M + 8;
-      const qrY = H - 28 - qrSize - 4;
+      const qrSize = 24;
+      const qrX = W - M - 15 - qrSize;
+      const qrY = H - 25 - qrSize - 6;
       doc.addImage(qrDataUrl, "PNG", qrX, qrY, qrSize, qrSize);
       doc.setFont("helvetica", "normal");
       doc.setFontSize(5.5);
