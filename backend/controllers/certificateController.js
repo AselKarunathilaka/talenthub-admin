@@ -62,12 +62,6 @@ const getCertificateData = async (req, res) => {
       ? localIntern.attendance.filter((a) => a.status === "Present").length
       : 0;
 
-    // Determine if the intern has finished their training period
-    const trainingEndDate =
-      ttIntern?.trainingEndDate || localIntern.Training_EndDate || null;
-    const internshipCompleted =
-      trainingEndDate ? new Date(trainingEndDate) <= new Date() : false;
-
     const certificateData = {
       intern: {
         name: ttIntern?.name || localIntern.Trainee_Name || "N/A",
@@ -82,7 +76,10 @@ const getCertificateData = async (req, res) => {
           ttIntern?.trainingStartDate ||
           localIntern.Training_StartDate ||
           null,
-        trainingEndDate: trainingEndDate,
+        trainingEndDate:
+          ttIntern?.trainingEndDate ||
+          localIntern.Training_EndDate ||
+          null,
         status: ttIntern?.status || localIntern.status || "N/A",
       },
       projects: fallbackProjects.map((p) => ({
@@ -92,7 +89,6 @@ const getCertificateData = async (req, res) => {
         description: p.description || "",
       })),
       attendanceCount: ttData.attendanceCount || localAttendanceCount,
-      internshipCompleted,
       source: {
         talentTrailConnected: !!ttIntern,
         projectsFromTalentTrail: fallbackProjects.length > 0,
@@ -118,15 +114,6 @@ const issueCertificate = async (req, res) => {
     const localIntern = await InternRepository.getInternById(internId);
     if (!localIntern) {
       return res.status(404).json({ error: "Intern not found" });
-    }
-
-    // Block certificate issuance if the intern has not finished their training period
-    const trainingEndDate = localIntern.Training_EndDate;
-    if (!trainingEndDate || new Date(trainingEndDate) > new Date()) {
-      return res.status(403).json({
-        error: "Certificate cannot be issued before the internship period ends",
-        trainingEndDate: trainingEndDate || null,
-      });
     }
 
     const traineeId = localIntern.Trainee_ID || localIntern.traineeId;
