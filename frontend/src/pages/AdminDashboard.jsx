@@ -998,7 +998,7 @@ const AdminDashboard = () => {
                           >
                             <div className="admin-dash-sidebar-intern__avatar" style={{ padding: 0, overflow: 'hidden' }}>
                               <img 
-                                src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`} 
+                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`} 
                                 alt={intern.traineeName}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={(e) => {

@@ -501,7 +501,7 @@ const AdminInternDetails = () => {
                             <div className="h-20 w-20 sm:h-24 sm:w-24 bg-white p-1 rounded-2xl shadow-md border border-gray-100">
                               <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
                                 <img
-                                  src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`}
+                                  src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                                   alt={intern.traineeName}
                                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                   onError={(e) => {

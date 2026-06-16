@@ -242,7 +242,7 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
           <div className="logres-lift-summary">
             <div className="logres-lift-summary__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
               <img
-                src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`}
+                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                 alt={intern.traineeName}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => {
@@ -576,7 +576,7 @@ const LogbookRestrictions = () => {
                           <div className="logres-table__intern-cell">
                             <div className="logres-table__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                               <img
-                                src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`}
+                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                                 alt={intern.traineeName}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={(e) => {
@@ -665,7 +665,7 @@ const LogbookRestrictions = () => {
                     <div className="logres-card__top">
                       <div className="logres-card__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                         <img
-                          src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`}
+                          src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                           alt={intern.traineeName}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           onError={(e) => {
