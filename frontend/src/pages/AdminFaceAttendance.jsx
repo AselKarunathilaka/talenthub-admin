@@ -158,7 +158,7 @@ const AdminFaceAttendance = () => {
   // States
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState("daily"); // "enroll", "daily", "meeting"
+  const [mode, setMode] = useState("meeting"); // "enroll", "daily", "meeting"
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -467,236 +467,283 @@ const AdminFaceAttendance = () => {
     }
   };
 
-  if (!modelsLoaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
-          <Loader className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900">Loading AI Models</h2>
-          <p className="text-sm text-slate-500 mt-2">Preparing face recognition...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 relative">
-      <div className="max-w-4xl mx-auto">
-        
-
-        {/* ── Header ── */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-            >
-              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                <ScanFace className="text-[#0056a2] h-8 w-8" />
-              </div>
-              Face ID
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-            >
-              Enroll faces or mark camera attendance on behalf of interns.
-            </motion.p>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-[340px_1fr] gap-6">
-          {/* Sidebar Controls */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                1. Select Intern
-              </label>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    handleSearch(e.target.value);
-                    if (selectedIntern) setSelectedIntern(null);
-                  }}
-                  placeholder="Search by name or ID..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                {searchQuery && (
-                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSelectedIntern(null); }} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
-                )}
-              </div>
-              
-              <AnimatePresence>
-                {searchResults.length > 0 && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 max-h-48 overflow-y-auto">
-                    {searchResults.map((intern) => (
-                      <InternCard key={intern._id} intern={intern} onSelect={handleSelectIntern} selected={selectedIntern?._id === intern._id} />
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              {selectedIntern && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900">{selectedIntern.Trainee_Name}</p>
-                    <p className="text-xs text-blue-700">{selectedIntern.Trainee_ID}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-opacity ${!selectedIntern ? 'opacity-50 pointer-events-none' : ''}`}>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                2. Select Action
-              </label>
-              <div className="space-y-2">
-                {[
-                  { id: "enroll", label: "Face Enrollment", icon: Camera },
-                  { id: "daily", label: "Daily Attendance", icon: UserCheck },
-                  { id: "meeting", label: "Meeting Attendance", icon: Video }
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => { setMode(opt.id); stopCamera(); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition ${
-                      mode === opt.id ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    <opt.icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {mode === "meeting" && (
-                <div className="mt-4 space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <input
-                    type="text"
-                    placeholder="Meeting Title"
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-slate-900 outline-none"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Camera Feed Area */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 overflow-hidden flex flex-col">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              3. Camera View
-            </label>
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             
-            <div className="relative flex-1 bg-slate-950 rounded-lg overflow-hidden min-h-[300px] flex items-center justify-center border border-slate-800">
-              {loading && (
-                <div className="absolute inset-0 z-50 bg-slate-950/80 flex flex-col items-center justify-center text-white backdrop-blur-sm">
-                  <Loader className="w-8 h-8 animate-spin mb-3 text-blue-500" />
-                  <p className="text-sm font-medium">Processing...</p>
-                </div>
-              )}
-
-              {!cameraActive ? (
-                <div className="text-center p-6">
-                  <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                    <Camera className="w-6 h-6 text-slate-400" />
+            {/* Header Section */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <ScanFace className="text-[#0056a2] h-8 w-8" />
                   </div>
-                  <h3 className="text-slate-200 font-medium mb-2">Camera is inactive</h3>
-                  <p className="text-slate-400 text-sm mb-6">Select an intern and action, then start the camera.</p>
-                  <button
-                    onClick={startCamera}
-                    disabled={!selectedIntern || loading}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
-                  >
-                    Start Camera
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <video
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ transform: "scaleX(-1)" }}
-                    playsInline
-                    muted
-                    onLoadedMetadata={(e) => {
-                      setVideoDims({
-                        width: e.target.videoWidth || 640,
-                        height: e.target.videoHeight || 480
-                      });
-                    }}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    width={videoDims.width}
-                    height={videoDims.height}
-                    className="hidden"
-                  />
-                  <canvas
-                    ref={meshCanvasRef}
-                    width={videoDims.width}
-                    height={videoDims.height}
-                    className="absolute inset-0 w-full h-full object-cover z-10"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  
-                  {/* Overlay Guides */}
-                  <div className="absolute top-4 inset-x-4 z-20 flex justify-between items-start">
-                    <div className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow-md backdrop-blur-md border ${
-                      faceGuide.ready ? "bg-emerald-500/20 text-emerald-100 border-emerald-500/50" : "bg-red-500/20 text-red-100 border-red-500/50"
-                    }`}>
-                      {faceGuide.message}
-                    </div>
+                  Face ID
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  Enroll faces or mark camera attendance on behalf of interns.
+                </motion.p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-3 lg:gap-8 items-stretch">
+              
+              {/* Sidebar Configuration */}
+              <motion.div 
+                className="lg:col-span-1 space-y-6 h-full"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col">
+
+                  <div className="relative z-10 flex-1 flex flex-col">
+                    <h3 className="text-xl font-extrabold text-gray-900 mb-8">Configuration</h3>
                     
-                    <button onClick={stopCamera} className="w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
+                    {/* Switcher */}
+                    <div className="flex mb-8 bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full relative">
+                      <button
+                        onClick={() => { setMode("meeting"); stopCamera(); }}
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
+                          mode === "meeting" ? "text-white" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        <span>Meeting</span>
+                      </button>
+                      <button
+                        onClick={() => { setMode("daily"); stopCamera(); }}
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
+                          mode === "daily" ? "text-white" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        <span>Daily</span>
+                      </button>
+                      <button
+                        onClick={() => { setMode("enroll"); stopCamera(); }}
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
+                          mode === "enroll" ? "text-white" : "text-gray-500 hover:text-gray-700"
+                        }`}
+                      >
+                        <span>Enrol</span>
+                      </button>
 
-                  {/* Mode specific controls overlay */}
-                  <div className="absolute bottom-6 inset-x-6 z-20">
-                    {mode === "enroll" ? (
-                      <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                        <div className="flex justify-between text-xs text-slate-300 font-medium mb-2">
-                          <span>Enrollment Progress</span>
-                          <span>{enrollmentFrames.length} / {REQUIRED_ENROLLMENT_SAMPLES}</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-500 transition-all duration-300"
-                            style={{ width: `${(enrollmentFrames.length / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
+                      <div
+                        className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-sm"
+                        style={{
+                          width: "calc(33.333% - 4px)",
+                          background:
+                            mode === "meeting"
+                              ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)" // Blue
+                              : mode === "daily"
+                              ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)" // Green
+                              : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)", // Yellow
+                          left:
+                            mode === "meeting"
+                              ? "6px"
+                              : mode === "daily"
+                              ? "calc(33.333% + 2px)"
+                              : "calc(66.666% - 2px)",
+                        }}
+                      />
+                    </div>
+
+                    <div className="flex-1 flex flex-col space-y-6">
+                      
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+                          Select Intern
+                        </label>
+                        <div className="relative mb-3">
+                          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => {
+                              handleSearch(e.target.value);
+                              if (selectedIntern) setSelectedIntern(null);
+                            }}
+                            placeholder="Search by name or ID..."
+                            className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-4 focus:ring-blue-100 focus:border-[#00b4eb] transition-all outline-none"
                           />
+                          {searchQuery && (
+                            <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSelectedIntern(null); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-gray-200 hover:bg-gray-300 rounded-full transition-colors">
+                              <X className="w-3 h-3 text-gray-600" />
+                            </button>
+                          )}
                         </div>
+                        
+                        <AnimatePresence>
+                          {searchResults.length > 0 && (
+                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 max-h-48 overflow-y-auto mb-4 custom-scrollbar">
+                              {searchResults.map((intern) => (
+                                <InternCard key={intern._id} intern={intern} onSelect={handleSelectIntern} selected={selectedIntern?._id === intern._id} />
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                        
+                        {selectedIntern && (
+                          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-blue-50/60 rounded-2xl border border-blue-100/60 flex items-center gap-4 mt-2">
+                            <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                              <CheckCircle className="w-5 h-5 text-[#0056a2]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-gray-900 truncate">{selectedIntern.Trainee_Name}</p>
+                              <p className="text-xs font-semibold text-gray-500 truncate">{selectedIntern.Trainee_ID}</p>
+                            </div>
+                          </motion.div>
+                        )}
+                      </div>
+
+                      <AnimatePresence mode="wait">
+                        {mode === 'meeting' && (
+                          <motion.div key="meeting-form" initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -10, height: 0 }} className="space-y-4">
+                            <label className="block">
+                              <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Meeting Title</span>
+                              <input
+                                type="text"
+                                placeholder="e.g. Weekly Standup"
+                                value={meetingTitle}
+                                onChange={(e) => setMeetingTitle(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#00b4eb] transition-all font-semibold text-gray-800 outline-none text-sm"
+                              />
+                            </label>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+
+              {/* Main Camera Display */}
+              <motion.div 
+                className="lg:col-span-2 space-y-6 h-full"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
+              >
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 min-h-[400px] lg:min-h-[500px] flex flex-col relative overflow-hidden h-full">
+                  
+                  <div className="relative flex-1 bg-slate-950 rounded-2xl overflow-hidden min-h-[300px] flex items-center justify-center border-4 border-slate-900 shadow-inner">
+                    {loading && (
+                      <div className="absolute inset-0 z-50 bg-slate-950/80 flex flex-col items-center justify-center text-white backdrop-blur-sm">
+                        <Loader className="w-10 h-10 animate-spin mb-4 text-[#00b4eb]" />
+                        <p className="text-sm font-semibold tracking-wide">Processing...</p>
+                      </div>
+                    )}
+
+                    {!modelsLoaded ? (
+                      <div className="text-center p-6 max-w-sm flex flex-col items-center justify-center h-full text-slate-300">
+                        <Loader className="w-12 h-12 animate-spin mb-4 text-blue-500" />
+                        <h3 className="text-slate-100 font-bold text-xl mb-2">Loading AI Models</h3>
+                        <p className="text-slate-400 text-sm font-medium">Downloading neural network assets...</p>
+                      </div>
+                    ) : !cameraActive ? (
+                      <div className="text-center p-6 max-w-sm flex flex-col items-center justify-center h-full">
+                        <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-6 shadow-inner">
+                          <Camera className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-slate-200 font-bold text-lg mb-2">Camera is inactive</h3>
+                        <p className="text-slate-400 text-sm mb-8 font-medium">Select an intern and action in the configuration panel, then start the camera.</p>
+                        <button
+                          onClick={startCamera}
+                          disabled={!selectedIntern || loading}
+                          className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+                        >
+                          Start Camera
+                        </button>
                       </div>
                     ) : (
-                      <button
-                        onClick={handleMarkAttendance}
-                        disabled={!faceGuide.ready}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-bold shadow-lg transition"
-                      >
-                        Mark Attendance
-                      </button>
+                      <>
+                        <video
+                          ref={videoRef}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          style={{ transform: "scaleX(-1)" }}
+                          playsInline
+                          muted
+                          onLoadedMetadata={(e) => {
+                            setVideoDims({
+                              width: e.target.videoWidth || 640,
+                              height: e.target.videoHeight || 480
+                            });
+                          }}
+                        />
+                        <canvas
+                          ref={canvasRef}
+                          width={videoDims.width}
+                          height={videoDims.height}
+                          className="hidden"
+                        />
+                        <canvas
+                          ref={meshCanvasRef}
+                          width={videoDims.width}
+                          height={videoDims.height}
+                          className="absolute inset-0 w-full h-full object-cover z-10"
+                          style={{ transform: "scaleX(-1)" }}
+                        />
+                        
+                        {/* Overlay Guides */}
+                        <div className="absolute top-4 inset-x-4 sm:top-6 sm:inset-x-6 z-20 flex justify-between items-start">
+                          <div className={`px-4 py-2 rounded-xl text-sm font-bold shadow-lg backdrop-blur-md border ${
+                            faceGuide.ready ? "bg-emerald-500/80 text-white border-emerald-400" : "bg-slate-900/80 text-white border-slate-700"
+                          }`}>
+                            {faceGuide.message}
+                          </div>
+                          
+                          <button onClick={stopCamera} className="w-10 h-10 rounded-full bg-slate-900/80 text-white flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors backdrop-blur-md border border-slate-700 shadow-lg">
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
+
+                        {/* Mode specific controls overlay */}
+                        <div className="absolute bottom-6 inset-x-6 z-20">
+                          {mode === "enroll" ? (
+                            <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl p-5 border border-slate-700 shadow-2xl">
+                              <div className="flex justify-between text-sm text-slate-200 font-bold mb-3">
+                                <span>Enrollment Progress</span>
+                                <span className="text-blue-400">{enrollmentFrames.length} / {REQUIRED_ENROLLMENT_SAMPLES}</span>
+                              </div>
+                              <div className="h-3 w-full bg-slate-800 rounded-full overflow-hidden shadow-inner">
+                                <div 
+                                  className="h-full bg-gradient-to-r from-[#f59e0b] to-[#d97706] transition-all duration-300"
+                                  style={{ width: `${(enrollmentFrames.length / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={handleMarkAttendance}
+                              disabled={!faceGuide.ready}
+                              className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-700 disabled:to-slate-800 disabled:text-slate-400 text-white rounded-2xl font-bold text-lg shadow-xl shadow-blue-500/20 transition-all active:scale-[0.98]"
+                            >
+                              Mark Attendance
+                            </button>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
-                </>
-              )}
+                </div>
+              </motion.div>
+
             </div>
-          </div>
-        </div>
+          </main>
         </div>
       </div>
     </AdminNavigation>

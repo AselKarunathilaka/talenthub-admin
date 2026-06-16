@@ -27,7 +27,7 @@ import {
   seatBookingCsvUtils,
   seatNotificationUtils,
 } from "../api/adminSeatApi";
-import { leftSection, rightSection, useMapScale } from "./useSeatManagement";
+import { leftSection, rightSection, useMapScale, getLocalISODate } from "./useSeatManagement";
 
 const TOTAL_SEATS = 88;
 
@@ -89,15 +89,15 @@ const AdminSeatManagement = () => {
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
   const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
-  const getTodayDate = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0');
-    const day = String(today.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const now = new Date();
+    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return getLocalISODate(tomorrow);
+    }
+    return getLocalISODate(now);
+  });
 
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -380,6 +380,14 @@ const AdminSeatManagement = () => {
     );
   }
 
+  const todayStr = getLocalISODate();
+  const tomorrowDate = new Date();
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrowStr = getLocalISODate(tomorrowDate);
+
+  const isToday = selectedDate === todayStr;
+  const isTomorrow = selectedDate === tomorrowStr;
+
   return (
     <AdminNavigation>
       <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
@@ -408,6 +416,21 @@ const AdminSeatManagement = () => {
                   View, monitor, and manage intern seat bookings.
                 </motion.p>
               </div>
+
+              {/* Today/Tomorrow Indicator */}
+              {!showHistory && (isToday || isTomorrow) && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  className={`flex flex-1 md:flex-none mx-auto md:mx-0 items-center justify-center px-8 py-3 rounded-2xl border-2 font-black tracking-[0.2em] uppercase text-lg shadow-sm ${
+                    isToday 
+                      ? "bg-[#00b4eb]/10 border-[#00b4eb]/30 text-[#0056a2]" 
+                      : "bg-[#50b748]/10 border-[#50b748]/30 text-[#15803d]"
+                  }`}
+                >
+                  {isToday ? "TODAY" : "TOMORROW"}
+                </motion.div>
+              )}
 
               {/* Stats & Date Filter */}
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
