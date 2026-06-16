@@ -405,7 +405,7 @@ const AdminSeatManagement = () => {
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                     <Armchair className="text-[#0056a2] h-8 w-8" />
                   </div>
-                  Seat Booking Monitor
+                  Seat Reservations
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -416,21 +416,6 @@ const AdminSeatManagement = () => {
                   View, monitor, and manage intern seat bookings.
                 </motion.p>
               </div>
-
-              {/* Today/Tomorrow Indicator */}
-              {!showHistory && (isToday || isTomorrow) && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }} 
-                  animate={{ opacity: 1, scale: 1 }} 
-                  className={`flex flex-1 md:flex-none mx-auto md:mx-0 items-center justify-center px-8 py-3 rounded-2xl border-2 font-black tracking-[0.2em] uppercase text-lg shadow-sm ${
-                    isToday 
-                      ? "bg-[#00b4eb]/10 border-[#00b4eb]/30 text-[#0056a2]" 
-                      : "bg-[#50b748]/10 border-[#50b748]/30 text-[#15803d]"
-                  }`}
-                >
-                  {isToday ? "TODAY" : "TOMORROW"}
-                </motion.div>
-              )}
 
               {/* Stats & Date Filter */}
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">

@@ -616,12 +616,6 @@ const LogbookRestrictions = () => {
                             >
                               <FaLockOpen style={{ marginRight: 4 }} /> Lift
                             </button>
-                            <button
-                              className="logres-btn logres-btn--ghost logres-btn--sm"
-                              onClick={() => setHistoryTarget(intern)}
-                            >
-                              <FaHistory style={{ marginRight: 4 }} /> History
-                            </button>
                           </div>
                         </td>
                       </motion.tr>
@@ -676,12 +670,6 @@ const LogbookRestrictions = () => {
                       >
                         <FaLockOpen style={{ marginRight: 4 }} /> Lift
                         Restriction
-                      </button>
-                      <button
-                        className="logres-btn logres-btn--ghost logres-btn--sm"
-                        onClick={() => setHistoryTarget(intern)}
-                      >
-                        <FaHistory style={{ marginRight: 4 }} /> History
                       </button>
                     </div>
                   </motion.div>

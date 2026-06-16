@@ -19,7 +19,7 @@ class LeaveRequestRepository {
       status: { $in: ["Pending", "Approved"] },
       leaveDate: { $lte: endDate },
       studyEndDate: { $gte: startDate },
-    }).sort({ submittedAt: -1 });
+    }).select("_id").sort({ submittedAt: -1 });
   }
 
   async findByInternId(internId, options = {}) {
@@ -57,7 +57,7 @@ class LeaveRequestRepository {
       });
     }
 
-    let query = LeaveRequest.find(filter);
+    let query = LeaveRequest.find(filter).select("-proofDocument.data");
 
     if (skip) {
       query = query.skip(skip);
@@ -120,7 +120,7 @@ class LeaveRequestRepository {
       };
     }
 
-    let query = LeaveRequest.find(filter);
+    let query = LeaveRequest.find(filter).select("-proofDocument.data");
 
     if (skip) {
       query = query.skip(skip);
@@ -147,6 +147,7 @@ class LeaveRequestRepository {
       },
       { new: true },
     )
+      .select("-proofDocument.data")
       .populate("intern", "Trainee_Name Trainee_ID Trainee_Email")
       .populate("reviewedBy", "name email");
   }
