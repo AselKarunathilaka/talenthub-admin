@@ -12,23 +12,25 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Function to send an email
-const sendEmail = (to, subject, text) => {
-  const mailOptions = {
-    from: process.env.GMAIL_USER, // From address
-    to: to, // Recipient email (intern's email)
-    subject: subject, // Email subject
-    text: text, // Email body content
-  };
 
-  // Send email
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      console.log("Error sending email:", error);
-    } else {
-      console.log("Email sent:", info.response);
-    }
-  });
+// Function to send an email (returns a Promise)
+// If sending fails, logs error and resolves with { success: false, error }, never throws
+const sendEmail = async (to, subject, text) => {
+  const mailOptions = {
+    from: process.env.GMAIL_USER,
+    to,
+    subject,
+    text,
+  };
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log("Email sent:", info.response);
+    return { success: true, info };
+  } catch (error) {
+    console.error("Error sending email:", error.message);
+    // Optionally: log error to a file or monitoring system here
+    return { success: false, error };
+  }
 };
 
 module.exports = sendEmail;

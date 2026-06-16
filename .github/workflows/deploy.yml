@@ -1,77 +1,72 @@
-name: Deploy TalentHub Admin
+name: Deploy Intern Portal to Server
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   deploy:
-    name: Deploy to Rocky Linux Server
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Deploy using SSH
+      - name: SSH Deploy with Testing
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          port: ${{ secrets.SERVER_PORT }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
+          host: 20.205.22.95
+          username: dpd
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            set -e
+            echo "🧹 Cleanup old temporary test clone..."
+            rm -rf ~/Intern_Portal/tempery
 
-            echo "Starting TalentHub Admin deployment..."
+            echo "📥 Clone repo into temp folder..."
+            git clone git@github.com:Devora-Org/Source-Code.git ~/Intern_Portal/tempery
 
-            echo "Moving to project directory..."
-            cd /home/dpd/apps/talenthub-admin
-
-            echo "Pulling latest code from main branch..."
-            git fetch origin main
-            git reset --hard origin/main
-
-            echo "Creating backend environment file..."
-            cat > backend/.env <<EOF
-            PORT=${{ secrets.BACKEND_PORT }}
-            MONGO_URI=${{ secrets.MONGO_URI }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}
-            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
-            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
-            GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}
-            GMAIL_USER=${{ secrets.GMAIL_USER }}
-            GMAIL_PASS=${{ secrets.GMAIL_PASS }}
-            EOF
-
-            echo "Installing backend dependencies..."
-            cd backend
+            echo "🚀 Start temporary backend for testing..."
+            cd ~/Intern_Portal/tempery/backend
             npm install
+            PORT=4050 pm2 start server.js --name "Tempery_Lakindu-Intern-Portal"
 
-            echo "Restarting only TalentHub backend PM2 process..."
-            pm2 restart talenthub-admin-backend
-            pm2 save
+            echo "⏳ Wait for backend to initialize..."
+            sleep 10
 
-            echo "Creating frontend production environment file..."
-            cd ../client
-            cat > .env.production <<EOF
-            VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}
-            EOF
+            echo "🔎 Health check backend and MongoDB..."
+            STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4050/api/test)
+            echo "✅ Backend and DB working fine"
 
-            echo "Installing frontend dependencies..."
+            echo "🔧 Build frontend in temp folder..."
+            cd ~/Intern_Portal/tempery/frontend
             npm install
-
-            echo "Building frontend..."
             npm run build
 
-            echo "Deploying frontend build to Nginx web root..."
-            rm -rf /var/www/talenthub-admin/*
-            cp -r dist/* /var/www/talenthub-admin/
+            if [ ! -s dist/index.html ]; then
+              echo "❌ Frontend build failed or empty"
+              pm2 delete "Tempery_Lakindu-Intern-Portal"
+              exit 1
+            fi
+            pm2 delete "Tempery_Lakindu-Intern-Portal"
+            echo "🗑 Stop production backend and deploy changes..."
+            pm2 delete "Lakindu-Intern-Portal" || true
 
-            echo "Checking backend PM2 status..."
-            pm2 status
+            echo "🧹 Remove old Source-Code"
+            rm -rf ~/Intern_Portal/Source-Code
 
-            echo "Deployment completed successfully."
+            echo "📦 Move temp code to Source-Code"
+            mv ~/Intern_Portal/tempery ~/Intern_Portal/Source-Code
+
+            echo "🚀 Start production backend on port 4020..."
+            cd ~/Intern_Portal/Source-Code/backend
+            PORT=4020 pm2 start server.js --name "Lakindu-Intern-Portal"
+
+            echo "📂 Copy frontend build to /opt/internal-portal/"
+            sudo rm -rf /opt/internal-portal/*
+            sudo cp -r ~/Intern_Portal/Source-Code/frontend/dist/* /opt/internal-portal/
+
+            echo "✅ Reload Nginx"
+            sudo nginx -t && sudo systemctl reload nginx
+
+            echo "🎉 Deployment completed successfully!"

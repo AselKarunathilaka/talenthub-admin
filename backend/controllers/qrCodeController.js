@@ -3,116 +3,91 @@ const InternService = require("../services/internService");
 const attendanceService = require("../services/attendanceService");
 const InternRepository = require("../repositories/internRepository");  
 const sendEmail = require("../utils/emailSender");  
+const AttendanceSettingsService = require("../services/attendanceSettingsService");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
+const Intern = require("../models/Intern");
 
-const moment = require("moment");
+const moment = require("moment-timezone");
 
 const QRCode = require("qrcode");
 
+const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+const getProjectKey = (value) => normalizeProjectName(value);
+
+const saveQrAttendanceAudit = async ({
+  internId,
+  attendanceType,
+  locationValidation,
+  deviceTime,
+  deviceTimeZone,
+  deviceUtcOffsetMinutes,
+  projectName,
+}) => {
+  try {
+    const intern = await Intern.findById(internId);
+    if (!intern) return;
+
+    const attendanceTime = new Date();
+    await FaceAttendanceLog.create({
+      internId: intern._id,
+      traineeId: intern.Trainee_ID,
+      traineeName: intern.Trainee_Name,
+      attendanceDate: moment.tz(attendanceTime, "Asia/Colombo").format("YYYY-MM-DD"),
+      attendanceTime,
+      status: "present",
+      method: "qr",
+      qrBackupUsed: false,
+      source: "browser-qr",
+      metadata: {
+        attendanceType,
+        projectName: projectName || undefined,
+        deviceTime,
+        deviceTimeZone,
+        deviceUtcOffsetMinutes,
+        locationValidation,
+      },
+    });
+  } catch (error) {
+    console.warn("Failed to save QR attendance audit:", error.message);
+  }
+};
 
 
 const generateQRCode = async (req, res) => {
   try {
-    const sessionId = `attendance_session_${new Date().getTime()}`; 
+    const { internId, type, projectName, meetingTitle } = req.query;
+    const normalizedProjectName = normalizeProjectName(projectName || meetingTitle || "General Meeting");
+    
+    let sessionId;
+    if (type === 'daily') {
+      // Generate QR for daily attendance
+      if (internId) {
+        sessionId = `daily_attendance_${internId}_${Date.now()}`;
+      } else {
+        sessionId = `daily_attendance_${Date.now()}`;
+      }
+    } else {
+      // Generate QR for meeting attendance (JSON format expected by scanner)
+      // Keep meetingTitle for backward compatibility with older scanners.
+      const meetingData = {
+        type: 'meeting_attendance',
+        projectName: normalizedProjectName,
+        meetingTitle: normalizedProjectName,
+        timestamp: Date.now()
+      };
+
+      if (internId) {
+        meetingData.internId = internId;
+      }
+
+      sessionId = JSON.stringify(meetingData);
+    }
+    
     const qrCode = await QRCode.toDataURL(sessionId); 
 
-    res.status(200).json({ qrCode });  
+    res.status(200).json({ qrCode, sessionId, type });  
   } catch (error) {
     res.status(500).json({ message: "Error generating QR Code", error: error.message });
-  }
-};
-
-// Generate Daily Attendance QR Code
-const generateDailyAttendanceQR = async (req, res) => {
-  try {
-    const qrResult = await qrCodeService.generateDailyAttendanceQR();
-    
-    res.status(200).json({
-      message: "Daily attendance QR Code generated successfully",
-      qrCode: qrResult.qrCode,
-      sessionId: qrResult.sessionId,
-      expiresAt: qrResult.expiresAt
-    });
-  } catch (error) {
-    console.error("Error generating daily attendance QR Code:", error);
-    res.status(500).json({ 
-      message: "Error generating daily attendance QR Code", 
-      error: error.message 
-    });
-  }
-};
-
-// Generate Meeting QR Code (with meetingTitle)
-const generateMeetingQR = async (req, res) => {
-  try {
-    const meetingTitle = req.query.meetingTitle || "";
-    const qrResult = await qrCodeService.generateMeetingQR(meetingTitle);
-    res.status(200).json({
-      message: "Meeting QR Code generated successfully",
-      qrCode: qrResult.qrCode,
-      sessionId: qrResult.sessionId,
-      expiresAt: qrResult.expiresAt,
-      meetingTitle: qrResult.meetingTitle
-    });
-  } catch (error) {
-    console.error("Error generating meeting QR Code:", error);
-    res.status(500).json({ 
-      message: "Error generating meeting QR Code", 
-      error: error.message 
-    });
-  }
-};
-
-// Get current QR code info
-const getCurrentQRInfo = async (req, res) => {
-  try {
-    const qrInfo = qrCodeService.getCurrentQRInfo();
-    
-    if (!qrInfo) {
-      // No active QR code found, auto-generate a new one
-      const newQR = await qrCodeService.generateDailyAttendanceQR();
-      
-      return res.status(200).json({
-        success: true,
-        sessionId: newQR.sessionId,
-        expiresAt: newQR.expiresAt,
-        usedCount: 0,
-        timeLeft: Math.max(0, newQR.expiresAt - new Date().getTime()),
-        qrCode: newQR.qrCode,
-        autoGenerated: true
-      });
-    }
-    
-    const timeLeft = Math.max(0, qrInfo.expiresAt - new Date().getTime());
-    
-    // If current QR is expired, generate new one
-    if (timeLeft <= 0) {
-      const newQR = await qrCodeService.generateDailyAttendanceQR();
-      
-      return res.status(200).json({
-        success: true,
-        sessionId: newQR.sessionId,
-        expiresAt: newQR.expiresAt,
-        usedCount: 0,
-        timeLeft: Math.max(0, newQR.expiresAt - new Date().getTime()),
-        qrCode: newQR.qrCode,
-        autoGenerated: true
-      });
-    }
-    
-    res.status(200).json({
-      success: true,
-      sessionId: qrInfo.sessionId,
-      expiresAt: qrInfo.expiresAt,
-      usedCount: qrInfo.usedBy.length,
-      timeLeft: timeLeft
-    });
-  } catch (error) {
-    console.error("Error getting current QR info:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Error getting QR info", 
-      error: error.message 
-    });
   }
 };
 
@@ -131,328 +106,240 @@ const markAttendance = async (req, res) => {
 
 
 const scanQRCode = async (req, res) => {
-  const { qrCode, internId } = req.body;
+  const {
+    qrCode,
+    internId: bodyInternId,
+    scanType = 'daily',
+    lat,
+    lng,
+    accuracy,
+    capturedAt,
+    deviceTime,
+    deviceTimeZone,
+    deviceUtcOffsetMinutes,
+  } = req.body;
+
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
 
   try {
-    // This is the legacy meeting QR scan - keeping for backward compatibility
+    // Validate QR code format based on scan type
+    if (scanType === 'daily') {
+      // Accept both daily_attendance_ and attendance_session_ for backward compatibility
+      if (!qrCode.includes('daily_attendance_') && !qrCode.includes('attendance_session_')) {
+        return res.status(400).json({ message: "Invalid QR code format. This QR code is not for daily attendance." });
+      }
+      var locationValidation = await AttendanceSettingsService.validateSltLocationIfRequired({
+        lat,
+        lng,
+        accuracy,
+        capturedAt,
+        label: "Attendance",
+      });
+    }
     const isValid = await qrCodeService.verifyQRCode(qrCode);
     if (!isValid) {
       return res.status(400).json({ message: "QR code is expired or invalid." });
     }
 
-    const status = "Present";
-    const type = "qr"; // Meeting QR attendance
-    const timeMarked = new Date();
-    const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status, null, type, timeMarked);
-
-    res.status(200).json({ message: "Attendance marked successfully and email sent!" });
-  } catch (error) {
-    res.status(500).json({ message: "Error processing QR code", error: error.message });
-  }
-};
-
-// Scan Meeting QR Code (New system)
-const scanMeetingQR = async (req, res) => {
-  const { sessionId, qrContent, internId } = req.body;
-
-  try {
-    // Accept either sessionId (old format) or qrContent (new format)
-    const qrData = qrContent || sessionId;
-    
-    if (!qrData || !internId) {
-      return res.status(400).json({ 
-        message: "QR data and Intern ID are required" 
+    // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
+    // DO NOT create a new logbook entry or set its task from QR scans.
+    if (scanType === 'daily') {
+      await qrCodeService.markInternDailyAttendance(internId, qrCode);
+      await saveQrAttendanceAudit({
+        internId,
+        attendanceType: "daily",
+        locationValidation,
+        deviceTime,
+        deviceTimeZone,
+        deviceUtcOffsetMinutes,
       });
-    }
+      // Get intern info for email notification
+      const intern = await InternService.getInternById(internId);
+      // Send email notification for daily attendance
+      const emailAddress = intern?.Trainee_Email || intern?.email;
+      if (intern && emailAddress) {
+        const moment = require("moment-timezone");
+        const attendanceDate = moment.tz("Asia/Colombo").format("MMMM Do YYYY");
+        const attendanceTime = moment.tz("Asia/Colombo").format("HH:mm");
+        const emailSubject = "Daily Attendance Marked - SLT Mobitel";
+        const emailBody = `
+          Hello ${intern.traineeName},
 
-    const result = await qrCodeService.markMeetingAttendanceQR(qrData, internId);
+          This is to inform you that your daily attendance has been successfully marked.
+          
+          📅 Date: ${attendanceDate}
+          ⏰ Time: ${attendanceTime}
+          ✅ Status: Present
+          🆔 Intern ID: ${intern.traineeId}
 
-    res.status(200).json({
-      message: "Meeting attendance marked successfully and email sent!",
-      intern: {
-        traineeId: result.intern.traineeId,
-        traineeName: result.intern.traineeName
-      },
-      timeMarked: result.timeMarked
-    });
-  } catch (error) {
-    console.error("Error scanning meeting QR code:", error);
-    res.status(400).json({ 
-      message: error.message || "Error scanning meeting QR code",
-      error: error.message 
-    });
-  }
-};
+          Your attendance has been recorded via QR code scan for daily attendance tracking.
 
-// Scan Daily Attendance QR Code
-const scanDailyAttendanceQR = async (req, res) => {
-  const { sessionId, internId } = req.body;
+          If you have any issues or concerns, please do not hesitate to contact your supervisor.
 
-  try {
-    if (!sessionId || !internId) {
-      return res.status(400).json({
-        success: false,
-        message: "Session ID and Intern ID are required"
-      });
-    }
+          Please do not reply to this email. This is an auto-generated message.
 
-    const result = await qrCodeService.markDailyAttendanceQR(sessionId, internId);
-    
-    res.status(200).json({
-      success: true,
-      message: result.message,
-      intern: {
-        traineeId: result.intern.traineeId,
-        name: result.intern.traineeName,
-        timeMarked: result.timeMarked
-      },
-      timeMarked: result.timeMarked
-    });
-  } catch (error) {
-    console.error("Error scanning daily attendance QR code:", error);
-    
-    // Handle specific error cases
-    let statusCode = 500;
-    if (error.message.includes("not found") || error.message.includes("expired")) {
-      statusCode = 400;
-    } else if (error.message.includes("already marked")) {
-      statusCode = 409; // Conflict
-    }
-    
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-      error: error.message
-    });
-  }
-};
-
-// External API for TalentHub system to scan QR codes
-const scanDailyAttendanceExternal = async (req, res) => {
-  const { qrSessionId, traineeId } = req.body;
-
-  try {
-    // Validate input
-    if (!qrSessionId || !traineeId) {
-      return res.status(400).json({
-        success: false,
-        message: "QR Session ID and Trainee ID are required",
-        code: "MISSING_PARAMS"
-      });
-    }
-
-    // Find intern by traineeId
-    const intern = await InternRepository.findByTraineeId(traineeId);
-    if (!intern) {
-      return res.status(404).json({
-        success: false,
-        message: "Trainee not found in the system",
-        code: "TRAINEE_NOT_FOUND"
-      });
-    }
-
-    // Use the intern's MongoDB _id for the external system sync
-    const result = await qrCodeService.markExternalDailyAttendance(intern._id.toString(), qrSessionId);
-    
-    res.status(200).json({
-      success: true,
-      message: "Attendance marked successfully",
-      data: {
-        traineeId: result.intern.traineeId,
-        traineeName: result.intern.traineeName,
-        timeMarked: result.timeMarked,
-        date: new Date().toDateString()
+          Best regards,
+          SLT Mobitel
+          Digital Platforms Development Section
+        `;
+        // --- TEMPORARILY DISABLED EMAIL NOTIFICATION ---
+        // sendEmail(emailAddress, emailSubject, emailBody);
       }
-    });
-
-  } catch (error) {
-    console.error("Error in external QR scan:", error);
-    
-    let statusCode = 500;
-    let errorCode = "INTERNAL_ERROR";
-    
-    if (error.message.includes("not found") || error.message.includes("expired")) {
-      statusCode = 400;
-      errorCode = "QR_EXPIRED";
-    } else if (error.message.includes("already marked")) {
-      statusCode = 409;
-      errorCode = "ALREADY_MARKED";
-    }
-    
-    res.status(statusCode).json({
-      success: false,
-      message: error.message,
-      code: errorCode
-    });
-  }
-};
-
-// Get current active meeting QR code info
-const getCurrentMeetingQRInfo = async (req, res) => {
-  try {
-    const qrInfo = qrCodeService.getCurrentMeetingQRInfo();
-    
-    if (!qrInfo) {
-      // No active meeting QR code found, generate a new one
-      const newQR = await qrCodeService.generateMeetingQR();
-      
-      return res.status(200).json({
-        success: true,
-        sessionId: newQR.sessionId,
-        expiresAt: newQR.expiresAt,
-        usedCount: 0,
-        timeLeft: Math.max(0, newQR.expiresAt - new Date().getTime()),
-        qrCode: newQR.qrCode,
-        autoGenerated: true
+      res.status(200).json({ 
+        message: "Daily attendance marked successfully",
+        dailyAttendanceUpdated: true
       });
-    }
-    
-    const timeLeft = Math.max(0, qrInfo.expiresAt - new Date().getTime());
-    
-    // If current QR is expired, generate new one
-    if (timeLeft <= 0) {
-      const newQR = await qrCodeService.generateMeetingQR();
-      
-      return res.status(200).json({
-        success: true,
-        sessionId: newQR.sessionId,
-        expiresAt: newQR.expiresAt,
-        usedCount: 0,
-        timeLeft: Math.max(0, newQR.expiresAt - new Date().getTime()),
-        qrCode: newQR.qrCode,
-        autoGenerated: true
-      });
-    }
-    
-    res.status(200).json({
-      success: true,
-      sessionId: qrInfo.sessionId,
-      expiresAt: qrInfo.expiresAt,
-      usedCount: qrInfo.usedBy.length,
-      timeLeft: timeLeft
-    });
-  } catch (error) {
-    console.error("Error getting current meeting QR info:", error);
-    res.status(500).json({ 
-      success: false,
-      message: "Error getting meeting QR code information",
-      error: error.message 
-    });
-  }
-};
+    } else {
+      // For meeting/general attendance scans, use the old system (intern.attendance)
+      const status = "Present";
+      const updatedIntern = await attendanceService.markAttendanceAndNotify(internId, status);
 
-// External API for TalentHub system to scan Meeting QR codes
-const scanMeetingAttendanceExternal = async (req, res) => {
-  const { qrSessionId, qrContent, traineeId } = req.body;
-
-  try {
-    // Validate input
-    const qrData = qrSessionId || qrContent;
-    if (!qrData || !traineeId) {
-      return res.status(400).json({
-        success: false,
-        message: "QR Session ID/Content and Trainee ID are required",
-        code: "MISSING_PARAMS"
-      });
-    }
-
-    // Find intern by traineeId
-    const intern = await InternRepository.findByTraineeId(traineeId);
-    if (!intern) {
-      return res.status(404).json({
-        success: false,
-        message: "Trainee not found in the system",
-        code: "TRAINEE_NOT_FOUND"
-      });
-    }
-
-    // Mark meeting attendance as coming from an external system
-    const result = await qrCodeService.markExternalMeetingAttendance(intern._id.toString(), qrData);
-
-    return res.status(200).json({
-      success: true,
-      message: "Meeting attendance marked successfully",
-      data: {
-        traineeId: result.intern.traineeId,
-        traineeName: result.intern.traineeName,
-        timeMarked: result.timeMarked,
-        date: new Date().toDateString()
+      // Also attempt to mark daily attendance
+      let dailyAttendanceUpdated = false;
+      try {
+        await qrCodeService.markInternDailyAttendance(internId, qrCode);
+        dailyAttendanceUpdated = true;
+      } catch (e) {
+        // Ignore errors (like duplicates) for the automatic part
       }
-    });
-  } catch (error) {
-    console.error("Error in external Meeting QR scan:", error);
 
-    let statusCode = 500;
-    let errorCode = "INTERNAL_ERROR";
-
-    if (error.message && (error.message.includes("not found") || error.message.includes("expired"))) {
-      statusCode = 400;
-      errorCode = "QR_EXPIRED";
-    } else if (error.message && error.message.includes("already marked")) {
-      statusCode = 409;
-      errorCode = "ALREADY_MARKED";
+      res.status(200).json({ 
+        message: "Attendance marked successfully",
+        dailyAttendanceUpdated: dailyAttendanceUpdated
+      });
     }
+  } catch (error) {
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Invalid QR code") ||
+      rawMessage.includes("Meeting title") ||
+      rawMessage.includes("Project name") ||
+      rawMessage.includes("expired");
 
-    return res.status(statusCode).json({
-      success: false,
-      message: error.message,
-      code: errorCode
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: shouldShowSpecificMessage ? error.message : "Error processing QR code",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
     });
   }
 };
 
-// Verify QR status for external applications
-const verifyQRStatus = async (req, res) => {
-  const { sessionId } = req.params;
+// Intern scans QR code to mark meeting attendance
+const scanMeetingQRCode = async (req, res) => {
+  const {
+    qrCode,
+    internId: bodyInternId,
+    projectName,
+    meetingTitle,
+    lat,
+    lng,
+    accuracy,
+    capturedAt,
+    deviceTime,
+    deviceTimeZone,
+    deviceUtcOffsetMinutes,
+  } = req.body;
+  const submittedProjectName = normalizeProjectName(projectName || meetingTitle || "");
 
+  // Identity verification: use token identity, reject mismatches
+  const tokenInternId = req.user?.id;
+  const internId = bodyInternId || tokenInternId;
+
+  if (!internId) {
+    return res.status(400).json({ message: "Intern ID is required." });
+  }
+
+  if (bodyInternId && bodyInternId !== tokenInternId) {
+    return res.status(403).json({ message: "You can only mark your own attendance." });
+  }
   try {
-    const qrInfo = qrCodeService.getCurrentQRInfo();
-    const currentTime = new Date().getTime();
-    
-    if (!qrInfo || qrInfo.sessionId !== sessionId) {
-      return res.status(404).json({
-        success: false,
-        message: "QR code not found or no longer active",
-        code: "QR_NOT_FOUND"
-      });
+    const locationValidation = await AttendanceSettingsService.validateSltLocationIfRequired({
+      lat,
+      lng,
+      accuracy,
+      capturedAt,
+      label: "Meeting attendance",
+    });
+
+    if (!submittedProjectName) {
+      return res.status(400).json({ message: "Project name is required." });
     }
-    
-    if (currentTime > qrInfo.expiresAt) {
-      return res.status(400).json({
-        success: false,
-        message: "QR code has expired",
-        code: "QR_EXPIRED"
-      });
+    // Try to parse QR code as JSON
+    let qrPayload;
+    try {
+      qrPayload = JSON.parse(qrCode);
+    } catch (e) {
+      return res.status(400).json({ message: "Invalid QR code format. Please scan a valid meeting attendance QR code." });
     }
-    
-    res.status(200).json({
-      success: true,
-      sessionId: qrInfo.sessionId,
-      expiresAt: qrInfo.expiresAt,
-      timeLeft: Math.max(0, qrInfo.expiresAt - currentTime),
-      isValid: true
+    // Validate QR code type
+    if (qrPayload.type !== "meeting_attendance") {
+      return res.status(400).json({ message: "Invalid QR code type. Please scan a valid meeting attendance QR code." });
+    }
+    const qrProjectName = normalizeProjectName(qrPayload.projectName || qrPayload.meetingTitle || "");
+    if (getProjectKey(qrProjectName) !== getProjectKey(submittedProjectName)) {
+      return res.status(400).json({ message: `Project name mismatch. QR code is for '${qrProjectName}', but you entered '${submittedProjectName}'.` });
+    }
+    // Optionally, check expiry (1 hour)
+    const now = Date.now();
+    if (qrPayload.timestamp && now - qrPayload.timestamp > 60 * 60 * 1000) {
+      return res.status(400).json({ message: "QR code is expired." });
+    }
+    // Mark meeting attendance in TalentHub system
+    const result = await qrCodeService.markMeetingAttendance(internId, submittedProjectName, qrCode);
+    await saveQrAttendanceAudit({
+      internId,
+      attendanceType: "meeting",
+      locationValidation,
+      deviceTime,
+      deviceTimeZone,
+      deviceUtcOffsetMinutes,
+      projectName: submittedProjectName,
+    });
+    const message = result.dailyAttendanceMarked
+      ? "Meeting attendance marked successfully. Daily attendance also recorded."
+      : "Meeting attendance marked successfully.";
+    res.status(200).json({ 
+      message,
+      intern: result.intern,
+      meeting: result.meeting,
+      dailyAttendanceMarked: result.dailyAttendanceMarked
     });
   } catch (error) {
-    console.error("Error verifying QR status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Error verifying QR code status",
-      error: error.message
+    const rawMessage = error.message || "";
+    const shouldShowSpecificMessage =
+      Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
+      rawMessage.includes("Duplicate") ||
+      rawMessage.includes("already marked") ||
+      rawMessage.includes("Project name");
+
+    res.status(error.statusCode || (error.message?.includes("Duplicate") ? 400 : 500)).json({
+      message: shouldShowSpecificMessage
+        ? error.message
+        : "Error processing meeting attendance",
+      error: error.message,
+      locationRequired: Boolean(error.locationRequired),
     });
   }
 };
+
 
 module.exports = { 
   generateQRCode, 
   markAttendance, 
   scanQRCode, 
-  generateDailyAttendanceQR,
-  generateMeetingQR,
-  scanDailyAttendanceQR,
-  scanMeetingQR,
-  getCurrentQRInfo,
-  getCurrentMeetingQRInfo,
-  scanDailyAttendanceExternal,
-  scanMeetingAttendanceExternal,
-  verifyQRStatus
+  scanMeetingQRCode
 };
