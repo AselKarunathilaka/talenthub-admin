@@ -194,15 +194,17 @@ export const generateCertificatePDF = async (data) => {
       let commitsInfo = "";
       if (gitCommitsData && gitCommitsData.projectCommits) {
         const match = gitCommitsData.projectCommits.find(
-          (gc) => gc.projectName === (p.projectName || p.name)
+          (gc) => 
+            gc.projectName?.trim().toLowerCase() === 
+            (p.projectName || p.name)?.trim().toLowerCase()
         );
-        if (match && match.totalCommits !== undefined) {
-          commitsInfo = ` with ${match.totalCommits} commits`;
+        if (match && match.totalCommits > 0) {
+          commitsInfo = `, contributing ${match.totalCommits} code commit${match.totalCommits === 1 ? '' : 's'}`;
         }
       }
       let desc = projName;
-      if (supervisor) desc += ` (supervised by ${supervisor})`;
       if (commitsInfo) desc += commitsInfo;
+      if (supervisor) desc += ` (supervised by ${supervisor})`;
       return desc;
     });
 

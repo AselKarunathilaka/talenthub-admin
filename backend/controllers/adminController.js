@@ -1428,15 +1428,31 @@ const getInternGitCommits = async (req, res) => {
     const projectCommits = await Promise.all(
       relevantProjects.map(async (proj) => {
         try {
-          const params = { per_page: 50 };
+          const params = { per_page: 100 };
           if (githubUsername) params.author = githubUsername;
 
-          const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
-            headers: { Authorization: `token ${proj.repoAccessToken}` },
-            params,
-          });
+          let allCommits = [];
+          let page = 1;
+          let hasMore = true;
 
-          const commits = (Array.isArray(ghRes.data) ? ghRes.data : []).map(
+          while (hasMore) {
+            const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
+              headers: { Authorization: `token ${proj.repoAccessToken}` },
+              params: { ...params, page },
+            });
+
+            const pageCommits = Array.isArray(ghRes.data) ? ghRes.data : [];
+            allCommits = allCommits.concat(pageCommits);
+
+            // Stop if we got less than 100 commits (end of list) or reached 10 pages (safety cap of 1000 commits)
+            if (pageCommits.length < 100 || page >= 10) {
+              hasMore = false;
+            } else {
+              page++;
+            }
+          }
+
+          const commits = allCommits.map(
             (c) => ({
               sha: c.sha,
               shortSha: c.sha.slice(0, 7),
