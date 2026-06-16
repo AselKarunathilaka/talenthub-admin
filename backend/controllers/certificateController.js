@@ -62,6 +62,14 @@ const getCertificateData = async (req, res) => {
       ? localIntern.attendance.filter((a) => a.status === "Present").length
       : 0;
 
+    // Fetch approved extended leaves (study_leave)
+    const LeaveRequest = require("../models/LeaveRequest");
+    const extendedLeaves = await LeaveRequest.find({
+      intern: localIntern._id,
+      requestType: "study_leave",
+      status: "Approved"
+    }).select("leaveDate studyEndDate reason").lean();
+
     const certificateData = {
       intern: {
         name: ttIntern?.name || localIntern.Trainee_Name || "N/A",
@@ -88,6 +96,7 @@ const getCertificateData = async (req, res) => {
         status: p.status || "N/A",
         description: p.description || "",
       })),
+      extendedLeaves: extendedLeaves || [],
       attendanceCount: ttData.attendanceCount || localAttendanceCount,
       source: {
         talentTrailConnected: !!ttIntern,

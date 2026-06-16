@@ -49,6 +49,7 @@ export const generateCertificatePDF = async (data) => {
     logoBase64,
     gitCommitsData,
     verificationUrl,
+    extendedLeaves = [],
   } = data;
 
   // ── Landscape A4 — standard certificate format ─────────────────────
@@ -170,11 +171,29 @@ export const generateCertificatePDF = async (data) => {
   doc.setTextColor(...COLORS.black);
 
   const maxTextWidth = W - M * 2 - 60;
+
+  let extendedLeaveStr = "";
+  if (extendedLeaves && extendedLeaves.length > 0) {
+    let totalLeaveDays = 0;
+    extendedLeaves.forEach(l => {
+      if (l.leaveDate) {
+        if (l.studyEndDate) {
+          totalLeaveDays += Math.max(1, Math.ceil((new Date(l.studyEndDate) - new Date(l.leaveDate)) / 864e5) + 1);
+        } else {
+          totalLeaveDays += 1; // Single day leave
+        }
+      }
+    });
+    if (totalLeaveDays > 0) {
+      extendedLeaveStr = ` [excluding ${totalLeaveDays} day${totalLeaveDays !== 1 ? 's' : ''} of approved extended leave]`;
+    }
+  }
+
   const paragraph =
     `bearing Trainee ID ${traineeId}, from ${institute}, ` +
     `specializing in ${field}, has successfully completed the internship ` +
     `training program at Sri Lanka Telecom PLC during the period ` +
-    `${fmt(startDate)} to ${fmt(endDate)} (${duration}). ` +
+    `${fmt(startDate)} to ${fmt(endDate)} (${duration})${extendedLeaveStr}. ` +
     `Throughout the training period, the intern demonstrated outstanding ` +
     `dedication and commitment, attending ${attendDays} of scheduled meetings. ` +
     `We acknowledge and appreciate the valuable contributions made during this internship.`;
