@@ -1,22 +1,45 @@
 const Intern = require("../models/Intern");
-const mongoose = require("mongoose");
-const moment = require("moment-timezone");
+const InactiveIntern = require("../models/InactiveIntern");
 
-const getColomboDayRange = () => {
-  const start = moment().tz("Asia/Colombo").startOf("day").toDate();
-  const end = moment().tz("Asia/Colombo").endOf("day").toDate();
-  return { start, end };
-};
+// Normalize incoming data (camelCase from services) to API-style keys stored in DB
+function normalizeToApiFields(data = {}) {
+  const normalized = {};
 
-const isWithinRange = (value, start, end) => {
-  if (!value) return false;
-  const date = new Date(value);
-  return !Number.isNaN(date.getTime()) && date >= start && date <= end;
-};
+  // Canonical API-style fields
+  if (data.Trainee_ID || data.traineeId)
+    normalized.Trainee_ID = (data.Trainee_ID || data.traineeId)?.toString();
+  if (data.Trainee_Name || data.traineeName)
+    normalized.Trainee_Name = data.Trainee_Name || data.traineeName;
+  if (data.Trainee_HomeAddress || data.homeAddress)
+    normalized.Trainee_HomeAddress =
+      data.Trainee_HomeAddress || data.homeAddress;
+  if (data.Training_StartDate || data.trainingStartDate)
+    normalized.Training_StartDate =
+      data.Training_StartDate || data.trainingStartDate;
+  if (data.Training_EndDate || data.trainingEndDate)
+    normalized.Training_EndDate = data.Training_EndDate || data.trainingEndDate;
+  if (data.Trainee_Email || data.email)
+    normalized.Trainee_Email = (data.Trainee_Email || data.email || "")
+      .toString()
+      .trim();
+  if (data.Institute || data.institute)
+    normalized.Institute = data.Institute || data.institute;
+  if (data.field_of_spec_name || data.fieldOfSpecialization)
+    normalized.field_of_spec_name =
+      data.field_of_spec_name || data.fieldOfSpecialization;
+
+  // App-specific fields (keep as-is)
+  if (data.team !== undefined) normalized.team = data.team;
+  if (data.attendance !== undefined) normalized.attendance = data.attendance;
+  if (data.availableDays !== undefined)
+    normalized.availableDays = data.availableDays;
+
+  return normalized;
+}
 
 class InternRepository {
   static async addIntern(data) {
-    const intern = new Intern(data);
+    const intern = new Intern(normalizeToApiFields(data));
     return await intern.save();
   }
 
@@ -38,89 +61,51 @@ class InternRepository {
     });
   }
 
-  static async findByTraineeId(traineeId) {
-    return await Intern.findOne({ Trainee_ID: traineeId });
-  }
-
   static async getAttendanceStats() {
     const interns = await Intern.find();
     const stats = { present: 0, absent: 0 };
 
     interns.forEach((intern) => {
-      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      if (attendance.length > 0) {
-        const latestAttendance = attendance[attendance.length - 1];
-        if (latestAttendance.status === "Present") stats.present++;
-        else if (latestAttendance.status === "Absent") stats.absent++;
+      if (intern.attendance.length > 0) {
+        const latestAttendance =
+          intern.attendance[intern.attendance.length - 1];
+        if (latestAttendance.status === "Present") {
+          stats.present++;
+        } else {
+          stats.absent++;
+        }
       }
     });
 
     return stats;
   }
 
-  static async markAttendance(
-    internId,
-    status,
-    date,
-    type = "manual",
-    timeMarked = null
-  ) {
-    try {
-      if (!internId) throw new Error("Intern ID is required");
+  static async markAttendance(internId, status, date) {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
 
-      if (!mongoose.Types.ObjectId.isValid(internId)) {
-        throw new Error("Invalid intern ID format");
-      }
+    const existingAttendance = intern.attendance.find(
+      (entry) =>
+        new Date(entry.date).setHours(0, 0, 0, 0) === date.setHours(0, 0, 0, 0),
+    );
 
-      const intern = await Intern.findById(internId);
-      if (!intern) throw new Error("Intern not found");
-
-      if (!Array.isArray(intern.attendance)) {
-        intern.attendance = [];
-      }
-
-      const attendanceDate = new Date(date).setHours(0, 0, 0, 0);
-      const actualTimeMarked = timeMarked || new Date();
-
-      const existingAttendanceIndex = intern.attendance.findIndex((entry) => {
-        const sameDate =
-          new Date(entry.date).setHours(0, 0, 0, 0) === attendanceDate;
-        const sameType = (entry.type || "manual") === type;
-        return sameDate && sameType;
-      });
-
-      if (existingAttendanceIndex !== -1) {
-        intern.attendance[existingAttendanceIndex].status = status;
-        intern.attendance[existingAttendanceIndex].timeMarked =
-          actualTimeMarked;
-        intern.attendance[existingAttendanceIndex].type = type;
-      } else {
-        intern.attendance.push({
-          date,
-          status,
-          type,
-          timeMarked: actualTimeMarked,
-        });
-      }
-
-      return await intern.save({ validateBeforeSave: false });
-    } catch (error) {
-      throw error;
+    if (existingAttendance) {
+      existingAttendance.status = status;
+    } else {
+      intern.attendance.push({ date: date, status });
     }
+
+    return await intern.save();
   }
 
   static async updateAttendance(internId, date, status) {
     const intern = await Intern.findById(internId);
     if (!intern) throw new Error("Intern not found");
 
-    if (!Array.isArray(intern.attendance)) {
-      intern.attendance = [];
-    }
-
     const attendanceIndex = intern.attendance.findIndex(
       (entry) =>
         new Date(entry.date).setHours(0, 0, 0, 0) ===
-        new Date(date).setHours(0, 0, 0, 0)
+        new Date(date).setHours(0, 0, 0, 0),
     );
 
     if (attendanceIndex !== -1) {
@@ -129,87 +114,7 @@ class InternRepository {
       intern.attendance.push({ date: new Date(date), status });
     }
 
-    return await intern.save({ validateBeforeSave: false });
-  }
-
-  static async clearAttendance(internId, date, type = "manual") {
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found");
-
-    if (!Array.isArray(intern.attendance)) {
-      intern.attendance = [];
-    }
-
-    const targetDate = new Date(date).setHours(0, 0, 0, 0);
-
-    const originalLength = intern.attendance.length;
-
-    intern.attendance = intern.attendance.filter((entry) => {
-      const sameDate =
-        new Date(entry.date).setHours(0, 0, 0, 0) === targetDate;
-      const sameType = (entry.type || "manual") === type;
-      return !(sameDate && sameType);
-    });
-
-    if (intern.attendance.length === originalLength) {
-      return intern;
-    }
-
-    return await intern.save({ validateBeforeSave: false });
-  }
-
-  static async updateAttendanceForSpecificDate(
-    internId,
-    date,
-    status,
-    type = null,
-    clear = false
-  ) {
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found");
-
-    if (!Array.isArray(intern.attendance)) {
-      intern.attendance = [];
-    }
-
-    const targetDate = new Date(date).setHours(0, 0, 0, 0);
-
-    if (clear) {
-      const originalLength = intern.attendance.length;
-
-      intern.attendance = intern.attendance.filter((entry) => {
-        const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
-        const sameDate = entryDate === targetDate;
-        const sameType = type ? (entry.type || "manual") === type : true;
-        return !(sameDate && sameType);
-      });
-
-      if (intern.attendance.length === originalLength) {
-        return intern;
-      }
-
-      return await intern.save({ validateBeforeSave: false });
-    }
-
-    const existingAttendance = intern.attendance.find((entry) => {
-      const entryDate = new Date(entry.date).setHours(0, 0, 0, 0);
-      const sameDate = entryDate === targetDate;
-      const sameType = type ? (entry.type || "manual") === type : true;
-      return sameDate && sameType;
-    });
-
-    if (existingAttendance) {
-      existingAttendance.status = status;
-      if (type) existingAttendance.type = type;
-    } else {
-      intern.attendance.push({
-        date: new Date(date),
-        status,
-        ...(type ? { type } : {}),
-      });
-    }
-
-    return await intern.save({ validateBeforeSave: false });
+    return await intern.save();
   }
 
   static async getAllInternsForDate(startDate, endDate) {
@@ -224,29 +129,109 @@ class InternRepository {
   static async assignToTeam(internIds, teamName) {
     return await Intern.updateMany(
       { _id: { $in: internIds } },
-      { $set: { team: teamName } }
+      { $set: { team: teamName } },
     );
   }
 
   static async removeFromTeam(internId) {
-    return await Intern.findByIdAndUpdate(
+    const updatedIntern = await Intern.findByIdAndUpdate(
       internId,
       { $set: { team: "" } },
-      { new: true }
+      { new: true },
     );
+    return updatedIntern;
   }
 
-  static async removeIntern(internId) {
+  /**
+   * Archive a single intern to InactiveInterns using the native MongoDB driver,
+   * bypassing Mongoose schema validation and 2dsphere index checks entirely.
+   * The document is stored exactly as-is, plus archival metadata.
+   */
+  static async removeIntern(internId, reason = "not_in_api") {
+    const intern = await Intern.findById(internId);
+    if (!intern) return null;
+
+    if (intern.isTestAccount) {
+      console.log(
+        `🛡️ Skipping removal of test account: ${intern.Trainee_Name} (${intern.Trainee_ID})`,
+      );
+      return null;
+    }
+
+    const doc = intern.toObject();
+
+    // Use native collection driver — skips Mongoose validation, middleware,
+    // and 2dsphere index enforcement (fixes "Can't extract geo keys" error)
+    await InactiveIntern.collection.findOneAndReplace(
+      { _id: doc._id },
+      {
+        ...doc,
+        archiveReason: reason,
+        archivedAt: new Date(),
+        originalCreatedAt: doc.createdAt,
+        originalUpdatedAt: doc.updatedAt,
+      },
+      { upsert: true },
+    );
+
     return await Intern.findByIdAndDelete(internId);
   }
 
+  /**
+   * Archive multiple interns to InactiveInterns using the native MongoDB driver,
+   * bypassing Mongoose schema validation and 2dsphere index checks entirely.
+   */
+  static async removeMultipleInterns(internIds, reason = "not_in_api") {
+    const interns = await Intern.find({
+      _id: { $in: internIds },
+      isTestAccount: { $ne: true },
+    });
+
+    if (interns.length === 0) {
+      return { deletedCount: 0, acknowledged: true };
+    }
+
+    const archiveDocs = interns.map((intern) => {
+      const doc = intern.toObject();
+      return {
+        replaceOne: {
+          filter: { _id: doc._id },
+          replacement: {
+            ...doc,
+            archiveReason: reason,
+            archivedAt: new Date(),
+            originalCreatedAt: doc.createdAt,
+            originalUpdatedAt: doc.updatedAt,
+          },
+          upsert: true,
+        },
+      };
+    });
+
+    // Native bulkWrite — bypasses Mongoose schema validation and index checks
+    await InactiveIntern.collection.bulkWrite(archiveDocs);
+
+    const result = await Intern.deleteMany({ _id: { $in: internIds } });
+
+    return {
+      deletedCount: result.deletedCount,
+      acknowledged: result.acknowledged,
+      archivedCount: interns.length,
+    };
+  }
+
   static async updateIntern(internId, data) {
-    return await Intern.findByIdAndUpdate(internId, data, { new: true });
+    const normalized = normalizeToApiFields(data);
+    return await Intern.findByIdAndUpdate(
+      internId,
+      { $set: normalized },
+      { new: true },
+    );
   }
 
   static async getAllTeams() {
     try {
-      return await Intern.aggregate([
+      const teams = await Intern.aggregate([
         { $match: { team: { $ne: "" } } },
         { $group: { _id: "$team", members: { $push: "$$ROOT" } } },
         {
@@ -257,6 +242,7 @@ class InternRepository {
           },
         },
       ]);
+      return teams;
     } catch (error) {
       throw new Error("Error fetching teams: " + error.message);
     }
@@ -265,9 +251,8 @@ class InternRepository {
   static async updateTeamName(oldTeamName, newTeamName) {
     const result = await Intern.updateMany(
       { team: oldTeamName },
-      { $set: { team: newTeamName } }
+      { $set: { team: newTeamName } },
     );
-
     return {
       modifiedCount: result.modifiedCount,
       message: `Successfully updated ${result.modifiedCount} interns from ${oldTeamName} to ${newTeamName}`,
@@ -277,9 +262,8 @@ class InternRepository {
   static async deleteTeam(teamName) {
     const result = await Intern.updateMany(
       { team: teamName },
-      { $set: { team: "" } }
+      { $set: { team: "" } },
     );
-
     return {
       deletedCount: result.modifiedCount,
       message: `Team "${teamName}" deleted - ${result.modifiedCount} interns removed`,
@@ -287,274 +271,173 @@ class InternRepository {
   }
 
   static async assignSingleToTeam(internId, teamName) {
-    return await Intern.findByIdAndUpdate(
+    const updatedIntern = await Intern.findByIdAndUpdate(
       internId,
       { $set: { team: teamName } },
-      { new: true }
+      { new: true },
     );
+    return updatedIntern;
   }
 
   static async getAttendanceStatsForToday() {
-    const { start, end } = getColomboDayRange();
+    const today = new Date().setHours(0, 0, 0, 0);
     const interns = await Intern.find();
     const stats = { present: 0, absent: 0 };
 
     interns.forEach((intern) => {
-      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance)
-        ? intern.onlineAttendance
-        : [];
-
-      const todayPhysicalAttendance = attendance.find((entry) =>
-        isWithinRange(entry?.date, start, end)
+      const todayAttendance = intern.attendance.find(
+        (entry) => new Date(entry.date).setHours(0, 0, 0, 0) === today,
       );
-      const todayOnlineAttendance = onlineAttendance.find((entry) =>
-        isWithinRange(entry?.date, start, end)
-      );
-
-      const isPresent =
-        todayPhysicalAttendance?.status === "Present" ||
-        todayOnlineAttendance?.status === "Present";
-      const isAbsent =
-        todayPhysicalAttendance?.status === "Absent" ||
-        todayOnlineAttendance?.status === "Absent";
-
-      if (isPresent) stats.present++;
-      else if (isAbsent) stats.absent++;
+      if (todayAttendance) {
+        if (todayAttendance.status === "Present") {
+          stats.present++;
+        } else {
+          stats.absent++;
+        }
+      }
     });
 
     return stats;
   }
 
-  static async getAttendanceStatsByType(attendanceType = null) {
-    const { start, end } = getColomboDayRange();
-    const interns = await Intern.find();
-    const stats = {
-      dailyAttendance: { present: 0, absent: 0 },
-      meetingAttendance: { present: 0, absent: 0 },
-      total: { present: 0, absent: 0 },
-    };
+  static async updateAttendanceForSpecificDate(internId, date, status) {
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found");
 
-    interns.forEach((intern) => {
-      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance)
-        ? intern.onlineAttendance
-        : [];
+    const existingAttendance = intern.attendance.find(
+      (entry) =>
+        new Date(entry.date).setHours(0, 0, 0, 0) ===
+        new Date(date).setHours(0, 0, 0, 0),
+    );
 
-      const todayPhysicalAttendance = attendance.filter((entry) =>
-        isWithinRange(entry?.date, start, end)
-      );
-      const todayOnlineAttendance = onlineAttendance.filter((entry) =>
-        isWithinRange(entry?.date, start, end)
-      );
+    if (existingAttendance) {
+      existingAttendance.status = status;
+    } else {
+      intern.attendance.push({ date: new Date(date), status });
+    }
 
-      const dailyAttendance = todayPhysicalAttendance.find(
-        (entry) => entry?.type === "daily_qr"
-      );
-
-      if (dailyAttendance?.status === "Present") stats.dailyAttendance.present++;
-      else if (dailyAttendance?.status === "Absent") stats.dailyAttendance.absent++;
-
-      const physicalMeetingAttendance = todayPhysicalAttendance.find(
-        (entry) => entry?.type === "qr" || entry?.type === "manual"
-      );
-      const onlineMeetingAttendance = todayOnlineAttendance.find(
-        (entry) => entry?.type === "online_attendance"
-      );
-
-      const hasMeetingPresent =
-        physicalMeetingAttendance?.status === "Present" ||
-        onlineMeetingAttendance?.status === "Present";
-      const hasMeetingAbsent =
-        physicalMeetingAttendance?.status === "Absent" ||
-        onlineMeetingAttendance?.status === "Absent";
-
-      if (hasMeetingPresent) stats.meetingAttendance.present++;
-      else if (hasMeetingAbsent) stats.meetingAttendance.absent++;
-
-      const hasAnyAttendance =
-        todayPhysicalAttendance.some((entry) => entry?.status === "Present") ||
-        todayOnlineAttendance.some((entry) => entry?.status === "Present");
-      const hasAnyAbsent =
-        todayPhysicalAttendance.length > 0 || todayOnlineAttendance.length > 0;
-
-      if (hasAnyAttendance) stats.total.present++;
-      else if (hasAnyAbsent) stats.total.absent++;
-    });
-
-    if (attendanceType === "daily") return stats.dailyAttendance;
-    if (attendanceType === "meeting") return stats.meetingAttendance;
-    return stats;
-  }
-
-  static async getTodayAttendanceByType(attendanceType = null) {
-    const { start, end } = getColomboDayRange();
-    const interns = await Intern.find();
-    const attendedInterns = [];
-
-    interns.forEach((intern) => {
-      const attendance = Array.isArray(intern.attendance) ? intern.attendance : [];
-      const onlineAttendance = Array.isArray(intern.onlineAttendance)
-        ? intern.onlineAttendance
-        : [];
-
-      const todayPhysicalAttendance = attendance.filter((entry) =>
-        isWithinRange(entry?.date, start, end)
-      );
-      const todayOnlineAttendance = onlineAttendance.filter((entry) =>
-        isWithinRange(entry?.date, start, end)
-      );
-
-      let hasRelevantAttendance = false;
-      let attendanceInfo = null;
-
-      if (attendanceType === "daily") {
-        const dailyAttendance = todayPhysicalAttendance.find(
-          (entry) => entry?.type === "daily_qr" && entry?.status === "Present"
-        );
-
-        if (dailyAttendance) {
-          hasRelevantAttendance = true;
-          attendanceInfo = {
-            type: "Daily",
-            rawType: "daily_qr",
-            time: dailyAttendance.timeMarked || dailyAttendance.date,
-            method:
-              dailyAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Entry",
-          };
-        }
-      } else if (attendanceType === "meeting") {
-        const physicalMeetingAttendance = todayPhysicalAttendance.find(
-          (entry) =>
-            (entry?.type === "qr" || entry?.type === "manual") &&
-            entry?.status === "Present"
-        );
-
-        const onlineMeetingAttendances = todayOnlineAttendance.filter(
-          (entry) =>
-            entry?.type === "online_attendance" &&
-            entry?.status === "Present"
-        );
-
-        const infoList = [];
-
-        if (physicalMeetingAttendance) {
-          infoList.push({
-            type: physicalMeetingAttendance.type === "manual" ? "Manual" : "Meeting",
-            rawType: physicalMeetingAttendance.type,
-            time:
-              physicalMeetingAttendance.timeMarked || physicalMeetingAttendance.date,
-            method:
-              physicalMeetingAttendance.markedBy === "external_system"
-                ? "QR Code Scan"
-                : "Manual Method",
-          });
-        }
-
-        onlineMeetingAttendances.forEach((entry) => {
-          infoList.push({
-            type: "Online Meeting",
-            rawType: "online_attendance",
-            time: entry.timeMarked || entry.date,
-            method:
-              entry.markedBy === "csv_upload_system"
-                ? "CSV Upload"
-                : "Manual Entry",
-            meetingName: entry.meetingName || "N/A",
-          });
-        });
-
-        if (infoList.length > 0) {
-          hasRelevantAttendance = true;
-          attendanceInfo = infoList.length === 1 ? infoList[0] : infoList;
-        }
-      } else {
-        const infoList = [];
-
-        todayPhysicalAttendance
-          .filter((entry) => entry?.status === "Present")
-          .forEach((entry) => {
-            infoList.push({
-              type:
-                entry.type === "daily_qr"
-                  ? "Daily"
-                  : entry.type === "manual"
-                  ? "Manual"
-                  : "Meeting",
-              rawType: entry.type,
-              time: entry.timeMarked || entry.date,
-              method:
-                entry.markedBy === "external_system"
-                  ? "QR Code Scan"
-                  : entry.type === "manual"
-                  ? "Manual Method"
-                  : "Manual Entry",
-            });
-          });
-
-        todayOnlineAttendance
-          .filter((entry) => entry?.status === "Present")
-          .forEach((entry) => {
-            infoList.push({
-              type: "Online Meeting",
-              rawType: "online_attendance",
-              time: entry.timeMarked || entry.date,
-              method:
-                entry.markedBy === "csv_upload_system"
-                  ? "CSV Upload"
-                  : "Manual Entry",
-              meetingName: entry.meetingName || "N/A",
-            });
-          });
-
-        if (infoList.length > 0) {
-          hasRelevantAttendance = true;
-          attendanceInfo = infoList.length === 1 ? infoList[0] : infoList;
-        }
-      }
-
-      if (hasRelevantAttendance) {
-        const traineeId = String(intern.Trainee_ID || intern.traineeId || "");
-        const traineeName = intern.Trainee_Name || intern.traineeName || "";
-        const fieldOfSpecialization =
-          intern.field_of_spec_name || intern.fieldOfSpecialization || "";
-        const institute = intern.Institute || intern.institute || "";
-
-        attendedInterns.push({
-          _id: intern._id,
-          internId: String(intern._id),
-          traineeId,
-          Trainee_ID: traineeId,
-          traineeName,
-          Trainee_Name: traineeName,
-          fieldOfSpecialization,
-          field_of_spec_name: fieldOfSpecialization,
-          institute,
-          Institute: institute,
-          attendanceInfo,
-        });
-      }
-    });
-
-    return attendedInterns;
+    return await intern.save();
   }
 
   static async addAvailableDay(id, day) {
-    return await Intern.findByIdAndUpdate(
-      id,
-      { $addToSet: { availableDays: day } },
-      { new: true }
-    );
+    const intern = await this.getInternById(id);
+    if (!intern) throw new Error("Intern not found");
+
+    if (!intern.availableDays.includes(day)) {
+      intern.availableDays.push(day);
+      await intern.save();
+    }
+
+    return intern;
   }
 
   static async removeAvailableDay(id, day) {
-    return await Intern.findByIdAndUpdate(
-      id,
-      { $pull: { availableDays: day } },
-      { new: true }
-    );
+    const intern = await this.getInternById(id);
+    if (!intern) throw new Error("Intern not found");
+
+    intern.availableDays = intern.availableDays.filter((d) => d !== day);
+    await intern.save();
+
+    return intern;
+  }
+
+  static async findByTraineeId(traineeId) {
+    return await Intern.findOne({ Trainee_ID: traineeId?.toString() });
+  }
+
+  // ==================== INACTIVE INTERN METHODS ====================
+
+  static async getAllInactiveInterns() {
+    return await InactiveIntern.find().sort({ archivedAt: -1 });
+  }
+
+  /**
+   * Get inactive interns with server-side pagination and optional text search.
+   * Searched fields: Trainee_Name, Trainee_ID, Trainee_Email
+   *
+   * @param {{ skip: number, limit: number, search: string }} options
+   * @returns {{ interns: Document[], total: number }}
+   */
+  static async getAllInactiveInternsPaginated({
+    skip = 0,
+    limit = 15,
+    search = "",
+  } = {}) {
+    // Build the filter — if there's a search term, apply a case-insensitive
+    // regex across the three most useful identifier fields.
+    const filter = search
+      ? {
+          $or: [
+            { Trainee_Name: { $regex: search, $options: "i" } },
+            { Trainee_ID: { $regex: search, $options: "i" } },
+            { Trainee_Email: { $regex: search, $options: "i" } },
+          ],
+        }
+      : {};
+
+    // Run count and page fetch in parallel to keep latency low
+    const [total, interns] = await Promise.all([
+      InactiveIntern.countDocuments(filter),
+      InactiveIntern.find(filter)
+        .sort({ archivedAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        // Only project the fields needed for the list card — avoids pulling
+        // the full attendance array (potentially huge) for every list item.
+        .select(
+          "_id Trainee_ID Trainee_Name Trainee_Email Institute field_of_spec_name " +
+            "Training_StartDate Training_EndDate archiveReason archivedAt originalCreatedAt",
+        ),
+    ]);
+
+    return { interns, total };
+  }
+
+  static async getInactiveInternById(internId) {
+    return await InactiveIntern.findById(internId);
+  }
+
+  static async restoreInactiveIntern(internId) {
+    const archived = await InactiveIntern.findById(internId);
+    if (!archived) throw new Error("Archived intern not found");
+
+    const doc = archived.toObject();
+
+    // Strip archive-specific metadata
+    delete doc.archivedAt;
+    delete doc.archiveReason;
+    delete doc.originalCreatedAt;
+    delete doc.originalUpdatedAt;
+
+    // ✅ FIX 1: Strip location if coordinates are empty/invalid
+    // This is the most common cause of "Can't extract geo keys" on restore
+    if (
+      !doc.location?.coordinates ||
+      doc.location.coordinates.length === 0 ||
+      doc.location.coordinates.some((c) => c == null || isNaN(c))
+    ) {
+      delete doc.location;
+    }
+
+    // ✅ FIX 2: Strip __v added by Mongoose to avoid conflicts
+    delete doc.__v;
+
+    // Delete any shell doc with same Trainee_ID but different _id
+    await Intern.deleteMany({
+      Trainee_ID: doc.Trainee_ID,
+      _id: { $ne: doc._id },
+    });
+
+    // ✅ FIX 3: Use native collection driver (same approach as archiving)
+    // This bypasses Mongoose schema validation and 2dsphere index checks entirely
+    await Intern.collection.findOneAndReplace({ _id: doc._id }, doc, {
+      upsert: true,
+    });
+
+    await InactiveIntern.findByIdAndDelete(internId);
+
+    // Return the restored document
+    return await Intern.findById(doc._id);
   }
 }
 

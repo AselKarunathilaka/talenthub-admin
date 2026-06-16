@@ -88,7 +88,9 @@ const addInternsFromXLSX = async (interns) => {
       !intern.traineeName ||
       !intern.fieldOfSpecialization
     ) {
-
+      console.log(
+        `⚠ Skipping intern with missing details: ${JSON.stringify(intern)}`
+      );
       skippedCount++;
       continue;
     }
@@ -128,7 +130,9 @@ const addInternsFromXLSX = async (interns) => {
     }
   }
 
-
+  console.log(
+    `✅ ${addedCount} added, 🔄 ${updatedCount} updated, ⚠ ${skippedCount} skipped, 🗑 ${deletedCount} deleted`
+  );
   return { addedCount, updatedCount, skippedCount, deletedCount };
 };
 
