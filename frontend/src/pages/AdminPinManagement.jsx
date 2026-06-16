@@ -194,9 +194,6 @@ const AdminPinManagement = () => {
                 transition={{ duration: 0.2 }}
               >
                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                    <FaKey className="w-24 h-24" />
-                  </div>
 
                   <div className="relative z-10 flex-1 flex flex-col">
                     <h3 className="text-xl font-extrabold text-gray-900 mb-8">Configuration</h3>

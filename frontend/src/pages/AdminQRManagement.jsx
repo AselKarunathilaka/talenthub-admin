@@ -121,9 +121,6 @@ const AdminQRManagement = () => {
                 transition={{ duration: 0.2 }}
               >
                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                    <FaQrcode className="w-24 h-24" />
-                  </div>
 
                   <div className="relative z-10 flex-1 flex flex-col">
                     <h3 className="text-xl font-extrabold text-gray-900 mb-8">Configuration</h3>
@@ -165,10 +162,10 @@ const AdminQRManagement = () => {
                       />
                     </div>
 
-                    <div className="flex-1 flex flex-col justify-center space-y-8">
+                    <div className="flex-1 relative">
                       <AnimatePresence mode="wait">
                         {activeTab === 'meeting' && (
-                          <motion.div key="meeting-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-8">
+                          <motion.div key="meeting-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 flex flex-col justify-center space-y-8">
                             <label className="block">
                               <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Project Name</span>
                               <input
@@ -189,7 +186,7 @@ const AdminQRManagement = () => {
                           </motion.div>
                         )}
                         {activeTab === 'daily' && (
-                          <motion.div key="daily-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}>
+                          <motion.div key="daily-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 flex flex-col justify-center">
                             <div className="p-5 bg-cyan-50/60 text-cyan-800 rounded-2xl text-sm font-medium border border-cyan-100/60 leading-relaxed shadow-sm">
                               <div className="flex items-start gap-3">
                                 <FaCalendarDay className="w-5 h-5 flex-shrink-0 mt-0.5 opacity-80" />

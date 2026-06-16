@@ -158,7 +158,7 @@ const AdminFaceAttendance = () => {
   // States
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState("daily"); // "enroll", "daily", "meeting"
+  const [mode, setMode] = useState("meeting"); // "enroll", "daily", "meeting"
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -467,17 +467,7 @@ const AdminFaceAttendance = () => {
     }
   };
 
-  if (!modelsLoaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
-          <Loader className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900">Loading AI Models</h2>
-          <p className="text-sm text-slate-500 mt-2">Preparing face recognition...</p>
-        </div>
-      </div>
-    );
-  }
+
 
   return (
     <AdminNavigation>
@@ -520,9 +510,6 @@ const AdminFaceAttendance = () => {
                 transition={{ duration: 0.2 }}
               >
                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 relative overflow-hidden h-full flex flex-col">
-                  <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
-                    <Camera className="w-24 h-24" />
-                  </div>
 
                   <div className="relative z-10 flex-1 flex flex-col">
                     <h3 className="text-xl font-extrabold text-gray-900 mb-8">Configuration</h3>
@@ -531,30 +518,27 @@ const AdminFaceAttendance = () => {
                     <div className="flex mb-8 bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full relative">
                       <button
                         onClick={() => { setMode("meeting"); stopCamera(); }}
-                        className={`relative z-10 flex-1 py-3 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
                           mode === "meeting" ? "text-white" : "text-gray-500 hover:text-gray-700"
                         }`}
                       >
-                        <Video className={`w-4 h-4 ${mode === "meeting" ? "text-white/90" : ""}`} />
-                        <span className="hidden xs:inline">Meeting</span>
+                        <span>Meeting</span>
                       </button>
                       <button
                         onClick={() => { setMode("daily"); stopCamera(); }}
-                        className={`relative z-10 flex-1 py-3 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
                           mode === "daily" ? "text-white" : "text-gray-500 hover:text-gray-700"
                         }`}
                       >
-                        <UserCheck className={`w-4 h-4 ${mode === "daily" ? "text-white/90" : ""}`} />
-                        <span className="hidden xs:inline">Daily</span>
+                        <span>Daily</span>
                       </button>
                       <button
                         onClick={() => { setMode("enroll"); stopCamera(); }}
-                        className={`relative z-10 flex-1 py-3 px-1 text-xs sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-1.5 ${
+                        className={`relative z-10 flex-1 py-3 px-1 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center ${
                           mode === "enroll" ? "text-white" : "text-gray-500 hover:text-gray-700"
                         }`}
                       >
-                        <Camera className={`w-4 h-4 ${mode === "enroll" ? "text-white/90" : ""}`} />
-                        <span className="hidden xs:inline">Enrol</span>
+                        <span>Enrol</span>
                       </button>
 
                       <div
@@ -579,23 +563,6 @@ const AdminFaceAttendance = () => {
 
                     <div className="flex-1 flex flex-col space-y-6">
                       
-                      <AnimatePresence mode="wait">
-                        {mode === 'meeting' && (
-                          <motion.div key="meeting-form" initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -10, height: 0 }} className="space-y-4">
-                            <label className="block">
-                              <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Meeting Title</span>
-                              <input
-                                type="text"
-                                placeholder="e.g. Weekly Standup"
-                                value={meetingTitle}
-                                onChange={(e) => setMeetingTitle(e.target.value)}
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#00b4eb] transition-all font-semibold text-gray-800 outline-none text-sm"
-                              />
-                            </label>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
                       <div>
                         <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
                           Select Intern
@@ -642,6 +609,23 @@ const AdminFaceAttendance = () => {
                         )}
                       </div>
 
+                      <AnimatePresence mode="wait">
+                        {mode === 'meeting' && (
+                          <motion.div key="meeting-form" initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: "auto" }} exit={{ opacity: 0, y: -10, height: 0 }} className="space-y-4">
+                            <label className="block">
+                              <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Meeting Title</span>
+                              <input
+                                type="text"
+                                placeholder="e.g. Weekly Standup"
+                                value={meetingTitle}
+                                onChange={(e) => setMeetingTitle(e.target.value)}
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#00b4eb] transition-all font-semibold text-gray-800 outline-none text-sm"
+                              />
+                            </label>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
                     </div>
                   </div>
                 </div>
@@ -655,7 +639,6 @@ const AdminFaceAttendance = () => {
                 transition={{ duration: 0.2, delay: 0.1 }}
               >
                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 min-h-[400px] lg:min-h-[500px] flex flex-col relative overflow-hidden h-full">
-                  <h3 className="text-xl font-extrabold text-gray-900 mb-6 hidden lg:block">Camera View</h3>
                   
                   <div className="relative flex-1 bg-slate-950 rounded-2xl overflow-hidden min-h-[300px] flex items-center justify-center border-4 border-slate-900 shadow-inner">
                     {loading && (
@@ -665,8 +648,14 @@ const AdminFaceAttendance = () => {
                       </div>
                     )}
 
-                    {!cameraActive ? (
-                      <div className="text-center p-6 max-w-sm">
+                    {!modelsLoaded ? (
+                      <div className="text-center p-6 max-w-sm flex flex-col items-center justify-center h-full text-slate-300">
+                        <Loader className="w-12 h-12 animate-spin mb-4 text-blue-500" />
+                        <h3 className="text-slate-100 font-bold text-xl mb-2">Loading AI Models</h3>
+                        <p className="text-slate-400 text-sm font-medium">Downloading neural network assets...</p>
+                      </div>
+                    ) : !cameraActive ? (
+                      <div className="text-center p-6 max-w-sm flex flex-col items-center justify-center h-full">
                         <div className="w-20 h-20 rounded-full bg-slate-800/50 flex items-center justify-center mx-auto mb-6 shadow-inner">
                           <Camera className="w-8 h-8 text-slate-400" />
                         </div>
