@@ -386,7 +386,7 @@ const AdminLogin = () => {
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
                         }}
-                        placeholder="admin@slt.lk"
+                        placeholder="Email"
                         onFocus={(e) => {
                           e.currentTarget.style.background = "rgba(255,255,255,0.08)";
                           e.currentTarget.style.borderColor = "rgba(0,180,235,0.4)";
@@ -416,7 +416,7 @@ const AdminLogin = () => {
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
                         }}
-                        placeholder="••••••••"
+                        placeholder="Password"
                         onFocus={(e) => {
                           e.currentTarget.style.background = "rgba(255,255,255,0.08)";
                           e.currentTarget.style.borderColor = "rgba(0,180,235,0.4)";
