@@ -42,6 +42,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import logo from "../assets/sltlogo.jpg";
 import AdminNavigation from "../components/AdminNavigation";
 import { Home } from "lucide-react";
@@ -995,8 +996,19 @@ const AdminDashboard = () => {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: idx * 0.02, duration: 0.2 }}
                           >
-                            <div className="admin-dash-sidebar-intern__avatar">
-                              {(intern.traineeName || "?")[0].toUpperCase()}
+                            <div className="admin-dash-sidebar-intern__avatar" style={{ padding: 0, overflow: 'hidden' }}>
+                              <img 
+                                src={`${API_BASE_URL}/api/interns/${intern._id}/profile-picture`} 
+                                alt={intern.traineeName}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                {(intern.traineeName || "?")[0].toUpperCase()}
+                              </div>
                             </div>
                             <div className="admin-dash-sidebar-intern__info">
                               <div className="admin-dash-sidebar-intern__name">
