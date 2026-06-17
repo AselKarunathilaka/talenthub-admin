@@ -35,9 +35,17 @@ const getDashboardStats = async (req, res) => {
       return res.status(200).json(dashboardStatsCache);
     }
 
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    threeDaysAgo.setHours(0, 0, 0, 0);
+    // Calculate 5 working days ago
+    let workingDaysCount = 0;
+    let fiveWorkingDaysAgo = new Date();
+    while (workingDaysCount < 5) {
+      fiveWorkingDaysAgo.setDate(fiveWorkingDaysAgo.getDate() - 1);
+      const dayOfWeek = fiveWorkingDaysAgo.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysCount++;
+      }
+    }
+    fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
 
     // Run both queries in parallel
     const [interns, submissionSummary] = await Promise.all([
@@ -82,9 +90,9 @@ const getDashboardStats = async (req, res) => {
       const internTotalRec = summary?.totalRecords ?? 0;
       totalRecords += internTotalRec;
 
-      // Overdue = never submitted, OR latest submission older than 3 days
+      // Overdue = never submitted, OR latest submission older than 5 working days
       const isOverdue =
-        !latestSubmission || new Date(latestSubmission) < threeDaysAgo;
+        !latestSubmission || new Date(latestSubmission) < fiveWorkingDaysAgo;
 
       if (isOverdue) {
         const daysSince = latestSubmission

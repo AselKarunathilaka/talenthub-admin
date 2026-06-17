@@ -98,7 +98,7 @@ const AdminQRManagement = () => {
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                     <QrCode className="text-[#0056a2] h-8 w-8" />
                   </div>
-                  QR Management
+                  Generate QR
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}

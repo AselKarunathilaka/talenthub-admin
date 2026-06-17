@@ -158,7 +158,7 @@ const AdminPinManagement = () => {
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                     <KeyRound className="text-[#0056a2] h-8 w-8" />
                   </div>
-                  PIN Management
+                  Generate PIN
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}

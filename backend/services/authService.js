@@ -24,7 +24,7 @@ class AuthService {
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, message: "User registered successfully!" };
@@ -48,7 +48,7 @@ class AuthService {
     const token = jwt.sign(
       { id: user._id, email: user.email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, message: "Login successful!" };
