@@ -725,29 +725,31 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     Request{selectedRequests.size > 1 ? "s" : ""} Selected
                   </span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                   <button
                     onClick={() => handleBulkAction("approve")}
                     disabled={processing}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-green-700 transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:bg-green-700 transition-all disabled:opacity-50 w-full"
                   >
-                    <FiCheckCircle /> Approve Selected
+                    <FiCheckCircle className="text-base sm:text-lg shrink-0" /> 
+                    <span className="truncate">Approve <span className="hidden sm:inline">Selected</span></span>
                   </button>
                   <button
                     onClick={() => handleBulkAction("deny")}
                     disabled={processing}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50"
+                    className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50 w-full"
                   >
-                    <FiX /> Deny Selected
+                    <FiX className="text-base sm:text-lg shrink-0" /> 
+                    <span className="truncate">Deny <span className="hidden sm:inline">Selected</span></span>
                   </button>
                   <button
                     onClick={() => {
                       setSelectedRequests(new Set());
                       setIsSelectAll(false);
                     }}
-                    className="px-4 py-2 text-gray-500 hover:text-gray-800 font-bold text-sm transition-colors"
+                    className="col-span-2 sm:col-span-1 px-4 py-2.5 bg-gray-200/50 sm:bg-transparent text-gray-600 sm:text-gray-500 hover:bg-gray-200 sm:hover:bg-transparent hover:text-gray-800 rounded-xl sm:rounded-none font-bold text-xs sm:text-sm transition-colors text-center w-full sm:w-auto"
                   >
-                    Clear
+                    Clear <span className="sm:hidden">Selection</span>
                   </button>
                 </div>
               </motion.div>
