@@ -162,10 +162,10 @@ const AdminQRManagement = () => {
                       />
                     </div>
 
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative flex flex-col justify-center min-h-[220px]">
                       <AnimatePresence mode="wait">
                         {activeTab === 'meeting' && (
-                          <motion.div key="meeting-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 flex flex-col justify-center space-y-8">
+                          <motion.div key="meeting-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col justify-center space-y-6 w-full">
                             <label className="block">
                               <span className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Project Name</span>
                               <input
@@ -186,7 +186,7 @@ const AdminQRManagement = () => {
                           </motion.div>
                         )}
                         {activeTab === 'daily' && (
-                          <motion.div key="daily-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="absolute inset-0 flex flex-col justify-center">
+                          <motion.div key="daily-form" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col justify-center w-full">
                             <div className="p-5 bg-cyan-50/60 text-cyan-800 rounded-2xl text-sm font-medium border border-cyan-100/60 leading-relaxed shadow-sm">
                               <div className="flex items-start gap-3">
                                 <FaCalendarDay className="w-5 h-5 flex-shrink-0 mt-0.5 opacity-80" />

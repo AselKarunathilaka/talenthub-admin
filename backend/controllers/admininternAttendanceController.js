@@ -169,7 +169,17 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
-  const interns = await Intern.find({});
+  const typeArray = Array.from(attendanceTypeSet);
+  const interns = await Intern.find({
+    attendance: {
+      $elemMatch: {
+        date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
+        status: "Present",
+        type: { $in: typeArray }
+      }
+    }
+  }).lean();
+  
   const presentInterns = [];
 
   for (const intern of interns) {
@@ -243,7 +253,30 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
 async function getDailyPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
-  const interns = await Intern.find({});
+  // Also check DailyRecord for logbook-backed attendance first
+  const dailyRecords = await DailyRecord.find({
+    date: dateStr,
+    attendance: { $in: ["present", "late"] },
+  }).lean();
+
+  const dailyRecordInternIds = dailyRecords.map(r => r.internId);
+
+  const typeArray = Array.from(DAILY_ATTENDANCE_TYPES);
+  const interns = await Intern.find({
+    $or: [
+      {
+        attendance: {
+          $elemMatch: {
+            date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
+            status: "Present",
+            type: { $in: typeArray }
+          }
+        }
+      },
+      { _id: { $in: dailyRecordInternIds } }
+    ]
+  }).lean();
+
   const internById = new Map(
     interns.map((intern) => [String(intern._id), intern]),
   );
@@ -281,11 +314,7 @@ async function getDailyPresentsOnDate(dateStr) {
     });
   }
 
-  // Also check DailyRecord for logbook-backed attendance
-  const dailyRecords = await DailyRecord.find({
-    date: dateStr,
-    attendance: { $in: ["present", "late"] },
-  });
+  // dailyRecords are already fetched at the start of the function
 
   for (const record of dailyRecords) {
     const key = String(record.internId);
