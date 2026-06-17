@@ -489,15 +489,13 @@ const AdminDashboard = () => {
                   ].map((stat, idx) => (
                     <motion.div
                       key={stat.label}
-                      className="admin-dash-stat-card !bg-white/20 backdrop-blur-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] !border !border-white/40"
+                      className="admin-dash-stat-card !bg-white/20 backdrop-blur-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] !border !border-white/40 transition-all"
                       style={{ borderLeftColor: stat.accent }}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
-                      whileHover={{
-                        y: -3,
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       <div
                         className="admin-dash-stat-card__icon"
@@ -524,7 +522,10 @@ const AdminDashboard = () => {
 
             {/* ══════════════ SPOTLIGHT SEARCH ══════════════ */}
             <div className="mt-12 mb-8 relative w-full z-20">
-              <div className={`relative bg-white/20 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] border transition-colors duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10' : 'border-white/40 hover:border-white/60'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}>
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className={`relative bg-white/20 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10' : 'border-white/40 hover:border-white/60'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
+              >
                 <FaSearch className="text-gray-400 text-xl sm:text-3xl mr-3 sm:mr-6 flex-shrink-0" />
                 <input
                   type="text"
@@ -545,7 +546,7 @@ const AdminDashboard = () => {
                     <FaTimesCircle className="text-xl sm:text-2xl" />
                   </button>
                 )}
-              </div>
+              </motion.div>
 
               {/* Search Results Dropdown */}
               <AnimatePresence>
@@ -666,7 +667,10 @@ const AdminDashboard = () => {
               </div>
               
               {/* Custom Date Non-Submissions */}
-              <div className="mt-8 bg-white/20 backdrop-blur-3xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col md:flex-row items-center gap-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all">
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className="mt-8 bg-white/20 backdrop-blur-3xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col md:flex-row items-center gap-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all"
+              >
                 <div className="flex-1">
                   <h4 className="text-lg font-bold text-gray-900">Custom Date Range Non-Submissions</h4>
                   <p className="text-sm font-medium text-gray-500 mt-1">Export non-submission data between specific dates.</p>
@@ -697,7 +701,7 @@ const AdminDashboard = () => {
                     <span>Download</span>
                   </motion.button>
                 </div>
-              </div>
+              </motion.div>
             </div>
           </main>
         </div>

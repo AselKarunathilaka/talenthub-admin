@@ -803,6 +803,24 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             </motion.div>
           ) : (
             <>
+              {/* Mobile Select All */}
+              {filter === "Pending" && filteredRequests.length > 0 && (
+                <div className="md:hidden flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
+                  <span className="text-sm font-bold text-gray-700">Select All Requests</span>
+                  <button
+                    onClick={handleSelectAll}
+                    className="flex items-center justify-center transition-transform hover:scale-110"
+                    title={isSelectAll ? "Deselect all" : "Select all"}
+                  >
+                    {isSelectAll ? (
+                      <FiCheckSquare className="w-6 h-6 text-[#0056a2]" />
+                    ) : (
+                      <FiSquare className="w-6 h-6 text-gray-300 hover:text-gray-400" />
+                    )}
+                  </button>
+                </div>
+              )}
+
               {/* Premium Data Table */}
               <div className="bg-transparent md:bg-white md:rounded-3xl shadow-none md:shadow-sm border-none md:border md:border-gray-100 mb-6">
                 <div className="overflow-visible md:overflow-x-auto">

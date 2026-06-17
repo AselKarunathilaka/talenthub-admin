@@ -152,26 +152,55 @@ const getInternReport = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get all interns with their records
-    const interns = await Intern.find({});
-    const records = await DailyRecord.find({})
-      .populate("internId", "traineeName traineeId email")
-      .sort({ createdAt: -1 });
+    // Calculate 5 working days ago for accurate overdue status (matching getDashboardStats)
+    let workingDaysCount = 0;
+    let fiveWorkingDaysAgo = new Date();
+    while (workingDaysCount < 5) {
+      fiveWorkingDaysAgo.setDate(fiveWorkingDaysAgo.getDate() - 1);
+      const dayOfWeek = fiveWorkingDaysAgo.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysCount++;
+      }
+    }
+    fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
 
+    // 1. Fetch all interns
+    const interns = await Intern.find({}).lean();
+
+    // 2. Fetch record summaries using aggregation (optimized: no $push to avoid memory bloat)
+    const submissionSummary = await DailyRecord.aggregate([
+      {
+        $group: {
+          _id: "$internId",
+          lastSubmission: { $max: "$createdAt" },
+          totalRecords: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Build O(1) lookup map
+    const submissionMap = new Map();
+    for (const s of submissionSummary) {
+      if (s._id) {
+        submissionMap.set(s._id.toString(), s);
+      }
+    }
+
+    // 3. Construct the report
     const report = interns.map((intern) => {
-      const internRecords = records.filter(
-        (record) =>
-          record.internId &&
-          record.internId._id.toString() === intern._id.toString(),
-      );
+      const summary = submissionMap.get(intern._id.toString());
+      const lastSubmission = summary?.lastSubmission || null;
 
-      const lastSubmission = internRecords.length > 0 ? internRecords[0] : null;
       const daysSinceLastSubmission = lastSubmission
         ? Math.floor(
-            (new Date() - new Date(lastSubmission.createdAt)) /
+            (new Date() - new Date(lastSubmission)) /
               (1000 * 60 * 60 * 24),
           )
         : null;
+
+      // Overdue = never submitted, OR latest submission older than 5 working days ago
+      const isOverdue =
+        !lastSubmission || new Date(lastSubmission) < fiveWorkingDaysAgo;
 
       return {
         _id: intern._id,
@@ -182,12 +211,10 @@ const getInternReport = async (req, res) => {
         team: intern.team || "Unassigned",
         trainingStartDate: intern.Training_StartDate,
         trainingEndDate: intern.Training_EndDate,
-        totalRecords: internRecords.length,
-        lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
+        totalRecords: summary?.totalRecords || 0,
+        lastSubmission: lastSubmission,
         daysSinceLastSubmission,
-        isOverdue:
-          daysSinceLastSubmission === null || daysSinceLastSubmission >= 3,
-        recentRecords: internRecords.slice(0, 5), // Last 5 records
+        isOverdue: isOverdue,
       };
     });
 

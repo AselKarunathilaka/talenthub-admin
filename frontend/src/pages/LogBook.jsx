@@ -605,12 +605,12 @@ const Logbook = () => {
         setProjectAccessBlocked(true);
         setStatusMessage({
           type: "project_error",
-          text: data.error,
+          text: data.error || data.message,
         });
       } else {
         setStatusMessage({
           type: "error",
-          text: data.error || "Submission failed.",
+          text: data.error || data.message || "Submission failed.",
         });
       }
     } catch (error) {
@@ -738,6 +738,7 @@ const Logbook = () => {
           try {
             const errBody = await validationResponse.json();
             if (errBody.error) errorText = errBody.error;
+            else if (errBody.message) errorText = errBody.message;
           } catch {
             /* use default */
           }
