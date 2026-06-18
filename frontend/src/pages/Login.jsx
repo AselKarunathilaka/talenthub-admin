@@ -17,6 +17,7 @@ import {
 import { api } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
+import transzentLogo from "../assets/transzent.jpeg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
 
@@ -371,13 +372,20 @@ const Login = () => {
             </motion.div>
 
             {/* Footer */}
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
+            <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-center text-white/30 text-xs"
             >
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
+                <img 
+                  src={transzentLogo} 
+                  alt="Transzent" 
+                  className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
+                />
+              </div>
               <div className="flex justify-center gap-4 mb-2">
                 <a
                   href="#"
