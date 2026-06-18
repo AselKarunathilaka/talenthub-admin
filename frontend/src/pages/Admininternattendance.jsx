@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { ScanLine } from "lucide-react";
@@ -14,6 +14,7 @@ import {
   FaFilter,
   FaTimes,
   FaClock,
+  FaCalendarAlt,
   FaChartBar,
   FaMapMarkerAlt,
   FaChevronDown,
@@ -24,6 +25,11 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaEnvelope,
+  FaCheckCircle,
+  FaTimesCircle,
+  FaClipboardList,
+  FaVideo,
+  FaLayerGroup,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -124,6 +130,41 @@ const attendanceApi = {
     });
     if (!res.ok)
       throw new Error((await res.json()).message || "Settings update failed");
+    return res.json();
+  },
+};
+
+const manualAttendanceApi = {
+  searchIntern: async (query) => {
+    const res = await fetch(
+      `${API_BASE_URL}/admin/manual-attendance/search?q=${encodeURIComponent(query)}`,
+      { headers: getAuthHeaders() },
+    );
+    if (!res.ok) throw new Error((await res.json()).error || "Search failed");
+    return res.json();
+  },
+
+  markAttendance: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/admin/manual-attendance/mark`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).error || "Mark failed");
+    return res.json();
+  },
+
+  bulkMarkAttendance: async (payload) => {
+    const res = await fetch(
+      `${API_BASE_URL}/admin/manual-attendance/bulk-mark`,
+      {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+      },
+    );
+    if (!res.ok)
+      throw new Error((await res.json()).error || "Bulk mark failed");
     return res.json();
   },
 };
@@ -552,6 +593,40 @@ const AttendanceTable = ({
   );
 };
 
+// ── Intern Search Result Card ─────────────────────────────────────────────────
+const InternCard = ({ intern, onSelect, selected }) => (
+  <motion.button
+    onClick={() => onSelect(intern)}
+    className={`w-full text-left px-4 py-3 rounded-xl border transition-all ${
+      selected
+        ? "border-blue-400 bg-blue-50 shadow-sm"
+        : "border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/40"
+    }`}
+    whileHover={{ y: -1 }}
+    whileTap={{ scale: 0.99 }}
+  >
+    <div className="flex items-center gap-3">
+      <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0">
+        <FaUser className="text-indigo-500 text-xs" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 truncate">
+          {intern.Trainee_Name}
+        </p>
+        <p className="text-xs text-gray-500 truncate">
+          {intern.Trainee_ID} · {intern.Institute || "—"} ·{" "}
+          {intern.field_of_spec_name || "—"}
+        </p>
+      </div>
+      {selected && (
+        <FaCheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+      )}
+    </div>
+  </motion.button>
+);
+
+
+
 // ── Main Component ─────────────────────────────────────────────────────────────
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
@@ -574,6 +649,189 @@ const AdminInternAttendance = () => {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
   const [expandedInterns, setExpandedInterns] = useState({});
+
+  // ── Manual Attendance State ──
+  const searchDebounce = useRef(null);
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualInputMode, setManualInputMode] = useState("single");
+  const [manualMode, setManualMode] = useState("daily");
+  const [manualSelectedDate, setManualSelectedDate] = useState(today);
+  const [manualSearchQuery, setManualSearchQuery] = useState("");
+  const [manualSearchResults, setManualSearchResults] = useState([]);
+  const [manualSearchLoading, setManualSearchLoading] = useState(false);
+  const [manualSelectedIntern, setManualSelectedIntern] = useState(null);
+  const [manualStatus, setManualStatus] = useState("Present");
+  const [manualMeetingName, setManualMeetingName] = useState("");
+  const [manualMarking, setManualMarking] = useState(false);
+  const [manualRecentMarks, setManualRecentMarks] = useState([]);
+  const [manualBulkInternIds, setManualBulkInternIds] = useState("");
+  const [manualBulkResults, setManualBulkResults] = useState(null);
+
+  const handleManualSearch = useCallback((query) => {
+    setManualSearchQuery(query);
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (!query.trim()) {
+      setManualSearchResults([]);
+      return;
+    }
+    searchDebounce.current = setTimeout(async () => {
+      setManualSearchLoading(true);
+      try {
+        const data = await manualAttendanceApi.searchIntern(query);
+        setManualSearchResults(data.interns || []);
+      } catch (err) {
+        showToast(err.message || "Search failed", "error");
+        setManualSearchResults([]);
+      } finally {
+        setManualSearchLoading(false);
+      }
+    }, 350);
+  }, []);
+
+  const handleSelectIntern = (intern) => {
+    setManualSelectedIntern(intern);
+    setManualSearchQuery(intern.Trainee_Name);
+    setManualSearchResults([]);
+  };
+
+  const handleMark = async () => {
+    if (!manualSelectedIntern) {
+      showToast("Please select an intern first", "error");
+      return;
+    }
+    if (manualMode === "meeting" && !manualMeetingName.trim()) {
+      showToast("Please enter a meeting name", "error");
+      return;
+    }
+
+    setManualMarking(true);
+    try {
+      const payload = {
+        internId: manualSelectedIntern._id,
+        date: manualSelectedDate,
+        status: manualStatus,
+        mode: manualMode,
+        ...(manualMode === "meeting" && { meetingName: manualMeetingName.trim() }),
+      };
+
+      await manualAttendanceApi.markAttendance(payload);
+
+      showToast(
+        `${manualStatus} marked for ${manualSelectedIntern.Trainee_Name} (${manualMode === "daily" ? "daily" : "meeting"})`,
+        "success",
+      );
+
+      setManualRecentMarks((prev) => [
+        {
+          id: Date.now(),
+          internName: manualSelectedIntern.Trainee_Name,
+          internId: manualSelectedIntern.Trainee_ID,
+          mode: manualMode,
+          status: manualStatus,
+          date: manualSelectedDate,
+          meetingName: manualMode === "meeting" ? manualMeetingName.trim() : null,
+          timestamp: new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+        ...prev.slice(0, 9),
+      ]);
+
+      setManualSelectedIntern(null);
+      setManualSearchQuery("");
+      setManualMeetingName("");
+    } catch (err) {
+      showToast(err.message || "Failed to mark attendance", "error");
+    } finally {
+      setManualMarking(false);
+    }
+  };
+
+  const handleBulkMark = async () => {
+    const ids = manualBulkInternIds
+      .split(/[\n,]+/)
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
+
+    if (ids.length === 0) {
+      showToast("Please enter at least one intern ID", "error");
+      return;
+    }
+
+    if (manualMode === "meeting" && !manualMeetingName.trim()) {
+      showToast("Please enter a meeting name", "error");
+      return;
+    }
+
+    setManualMarking(true);
+    try {
+      const payload = {
+        internIds: ids,
+        date: manualSelectedDate,
+        status: manualStatus,
+        mode: manualMode,
+        ...(manualMode === "meeting" && { meetingName: manualMeetingName.trim() }),
+      };
+
+      const result = await manualAttendanceApi.bulkMarkAttendance(payload);
+
+      setManualBulkResults(result);
+
+      const successCount = result.results.filter((r) => r.success).length;
+      const failureCount = result.results.filter((r) => !r.success).length;
+
+      showToast(
+        `${successCount} marked successfully${failureCount > 0 ? `, ${failureCount} failed` : ""}`,
+        failureCount === 0 ? "success" : "info",
+      );
+
+      const successfulMarks = result.results
+        .filter((r) => r.success)
+        .map((r) => ({
+          id: Date.now() + Math.random(),
+          internName: r.internName,
+          internId: r.internId,
+          mode: manualMode,
+          status: manualStatus,
+          date: manualSelectedDate,
+          meetingName: manualMode === "meeting" ? manualMeetingName.trim() : null,
+          timestamp: new Date().toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        }));
+
+      setManualRecentMarks((prev) => [
+        ...successfulMarks,
+        ...prev.slice(0, 10 - successfulMarks.length),
+      ]);
+
+      setManualBulkInternIds("");
+    } catch (err) {
+      showToast(err.message || "Failed to mark bulk attendance", "error");
+      setManualBulkResults(null);
+    } finally {
+      setManualMarking(false);
+    }
+  };
+
+  const canSubmitSingle =
+    manualSelectedIntern &&
+    manualSelectedDate &&
+    (manualMode === "daily" || (manualMode === "meeting" && manualMeetingName.trim()));
+
+  const canSubmitBulk =
+    manualBulkInternIds.trim().length > 0 &&
+    manualSelectedDate &&
+    (manualMode === "daily" || (manualMode === "meeting" && manualMeetingName.trim()));
+
+  const canSubmit = manualInputMode === "single" ? canSubmitSingle : canSubmitBulk;
+
+  const submitGradient =
+    manualMode === "daily"
+      ? "linear-gradient(135deg, #06b6d4, #3b82f6)"
+      : "linear-gradient(135deg, #6366f1, #8b5cf6)";
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
@@ -898,7 +1156,7 @@ const AdminInternAttendance = () => {
 
 
                 <button
-                  onClick={() => navigate("/admin/manual-attendance")}
+                  onClick={() => setShowManualModal(true)}
                   className="flex-1 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
                 >
                   <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1181,6 +1439,530 @@ const AdminInternAttendance = () => {
         </div>
       </main>
       </div>
+
+      <AnimatePresence>
+        {showManualModal && (
+          <motion.div
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(event) => event.target === event.currentTarget && setShowManualModal(false)}
+          >
+            <motion.section
+              className="max-h-[95vh] sm:max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-100 bg-white shadow-2xl flex flex-col"
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            >
+              <div className="flex flex-col gap-4 border-b border-gray-100 p-4 sm:px-6 sm:py-5 sm:flex-row sm:items-center sm:justify-between bg-white z-10 relative shadow-sm shrink-0">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900">Manual Attendance</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Mark daily or meeting attendance for individual interns
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowManualModal(false)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
+                    aria-label="Close modal"
+                    title="Close"
+                  >
+                    <FaTimes className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto overflow-y-auto flex-1 bg-slate-50 min-h-0 min-w-0 p-4 sm:p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_400px] gap-5 sm:gap-6">
+                  {/* ── Left: Form ── */}
+                  <div className="space-y-5 lg:col-span-2 xl:col-span-2">
+                    {/* Configuration Section (Type & Mode & Date) */}
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6 space-y-6">
+                      
+                      {/* Attendance Type Tab Switcher */}
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                          Attendance Type
+                        </label>
+                        <div className="relative flex p-1.5 bg-gray-100/80 rounded-2xl border border-gray-200/60 shadow-inner">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualMode("meeting");
+                              setManualMeetingName("");
+                            }}
+                            className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-all duration-300 rounded-xl ${
+                              manualMode === "meeting"
+                                ? "text-white shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            <FaVideo className="h-4 w-4" />
+                            <span>Meeting</span>
+                          </button>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setManualMode("daily");
+                              setManualMeetingName("");
+                            }}
+                            className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 text-sm font-bold transition-all duration-300 rounded-xl ${
+                              manualMode === "daily"
+                                ? "text-white shadow-sm"
+                                : "text-gray-500 hover:text-gray-700"
+                            }`}
+                          >
+                            <FaClipboardList className="h-4 w-4" />
+                            <span>Daily</span>
+                          </button>
+
+                          <div
+                            className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm pointer-events-none"
+                            style={{
+                              background:
+                                manualMode === "meeting"
+                                  ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
+                                  : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                              left: manualMode === "meeting" ? "6px" : "calc(50%)",
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        {/* Input Mode (Single/Bulk) Tab Switcher */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                            Input Mode
+                          </label>
+                          <div className="relative flex p-1 bg-gray-100/50 rounded-2xl border border-gray-200 h-[68px] items-center">
+                            <button
+                              onClick={() => setManualInputMode("single")}
+                              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all h-full flex items-center justify-center ${
+                                manualInputMode === "single"
+                                  ? "bg-white text-blue-600 shadow-sm border border-gray-200/50"
+                                  : "text-gray-500 hover:text-gray-700"
+                              }`}
+                            >
+                              <FaUser className="mr-2" /> Single
+                            </button>
+                            <button
+                              onClick={() => setManualInputMode("bulk")}
+                              className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all h-full flex items-center justify-center ${
+                                manualInputMode === "bulk"
+                                  ? "bg-white text-blue-600 shadow-sm border border-gray-200/50"
+                                  : "text-gray-500 hover:text-gray-700"
+                              }`}
+                            >
+                              <FaLayerGroup className="mr-2" /> Bulk
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Date Selector */}
+                        <div>
+                          <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                            Date
+                          </label>
+                          <div className="flex-1 bg-slate-50 rounded-2xl p-2.5 flex items-center gap-3 border border-slate-200 transition-all hover:border-blue-200 h-[68px]">
+                            <div className="bg-white p-2.5 rounded-xl shadow-sm border border-slate-100 shrink-0">
+                              <FaCalendarAlt className="text-[#00b4eb] h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                                Select Date
+                              </label>
+                              <input
+                                type="date"
+                                value={manualSelectedDate}
+                                max={today}
+                                onChange={(e) => setManualSelectedDate(e.target.value)}
+                                className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer p-0 border-none"
+                              />
+                            </div>
+                            {manualSelectedDate !== today && (
+                              <motion.button
+                                onClick={() => setManualSelectedDate(today)}
+                                className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-[10px] font-bold transition-colors hover:bg-blue-100 uppercase tracking-wider shrink-0"
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                              >
+                                Today
+                              </motion.button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Intern Search (SINGLE mode) */}
+                    {manualInputMode === "single" && (
+                      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                          Search Intern
+                        </label>
+                        <div className="relative">
+                          <FaSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={manualSearchQuery}
+                            onChange={(e) => {
+                              handleManualSearch(e.target.value);
+                              if (manualSelectedIntern) setManualSelectedIntern(null);
+                            }}
+                            placeholder="Type ID, name or email…"
+                            className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all"
+                          />
+                          {manualSearchLoading && (
+                            <FaSpinner className="absolute right-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-blue-400 animate-spin" />
+                          )}
+                          {manualSearchQuery && !manualSearchLoading && (
+                            <button
+                              onClick={() => {
+                                setManualSearchQuery("");
+                                setManualSearchResults([]);
+                                setManualSelectedIntern(null);
+                              }}
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                            >
+                              <FaTimes className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Search Results */}
+                        <AnimatePresence>
+                          {manualSearchResults.length > 0 && (
+                            <motion.div
+                              className="mt-2 space-y-1.5 max-h-56 overflow-y-auto pr-1"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                            >
+                              {manualSearchResults.map((intern) => (
+                                <InternCard
+                                  key={intern._id}
+                                  intern={intern}
+                                  onSelect={handleSelectIntern}
+                                  selected={manualSelectedIntern?._id === intern._id}
+                                />
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {/* Selected intern display */}
+                        <AnimatePresence>
+                          {manualSelectedIntern && (
+                            <motion.div
+                              className="mt-3 flex items-center gap-3 p-3 bg-blue-50 border border-blue-200 rounded-xl"
+                              initial={{ opacity: 0, scale: 0.97 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.97 }}
+                            >
+                              <div className="h-9 w-9 rounded-full bg-gradient-to-br from-indigo-200 to-blue-200 flex items-center justify-center flex-shrink-0">
+                                <FaUser className="text-indigo-600 text-xs" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-semibold text-blue-900 truncate">
+                                  {manualSelectedIntern.Trainee_Name}
+                                </p>
+                                <p className="text-xs text-blue-600 truncate">
+                                  {manualSelectedIntern.Trainee_ID} ·{" "}
+                                  {manualSelectedIntern.team || "No team"}
+                                </p>
+                              </div>
+                              <FaCheckCircle className="text-blue-500 h-4 w-4 flex-shrink-0" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {manualSearchQuery &&
+                          !manualSearchLoading &&
+                          manualSearchResults.length === 0 &&
+                          !manualSelectedIntern && (
+                            <p className="text-xs text-gray-400 mt-2 text-center py-2">
+                              No interns found matching "{manualSearchQuery}"
+                            </p>
+                          )}
+                      </div>
+                    )}
+
+                    {/* Bulk Input (BULK mode) */}
+                    {manualInputMode === "bulk" && (
+                      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                          Intern IDs <span className="text-red-400">*</span>
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Enter IDs separated by comma or newline
+                        </p>
+                        <textarea
+                          value={manualBulkInternIds}
+                          onChange={(e) => setManualBulkInternIds(e.target.value)}
+                          placeholder={`ID001, ID002, ID003\nor\nID001\nID002\nID003`}
+                          className="w-full h-32 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-400 focus:border-transparent focus:bg-white transition-all resize-none font-mono"
+                        />
+                        {manualBulkInternIds.trim().length > 0 && (
+                          <p className="text-xs text-blue-600 mt-2">
+                            {
+                              manualBulkInternIds
+                                .split(/[\n,]+/)
+                                .filter((id) => id.trim().length > 0).length
+                            }{" "}
+                            IDs detected
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Meeting Name (only for meeting mode) */}
+                    <AnimatePresence>
+                      {manualMode === "meeting" && (
+                        <motion.div
+                          className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6"
+                          initial={{ opacity: 0, height: 0, y: -10 }}
+                          animate={{ opacity: 1, height: "auto", y: 0 }}
+                          exit={{ opacity: 0, height: 0, y: -10 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                            Meeting Name <span className="text-red-400">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={manualMeetingName}
+                            onChange={(e) => setManualMeetingName(e.target.value)}
+                            placeholder="e.g. Weekly Standup, Project Review…"
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent focus:bg-white transition-all"
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {/* Status */}
+                    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-5 sm:p-6">
+                      <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
+                        Status
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          {
+                            val: "Present",
+                            icon: FaCheckCircle,
+                            activeClass:
+                              "bg-emerald-500 text-white border-transparent shadow-lg shadow-emerald-200",
+                            inactiveClass:
+                              "bg-emerald-50 text-emerald-700 border-emerald-200 hover:border-emerald-300",
+                          },
+                          {
+                            val: "Absent",
+                            icon: FaTimesCircle,
+                            activeClass:
+                              "bg-red-500 text-white border-transparent shadow-lg shadow-red-200",
+                            inactiveClass:
+                              "bg-red-50 text-red-700 border-red-200 hover:border-red-300",
+                          },
+                        ].map(({ val, icon: Icon, activeClass, inactiveClass }) => (
+                          <motion.button
+                            key={val}
+                            onClick={() => setManualStatus(val)}
+                            whileHover={{ y: -2 }}
+                            whileTap={{ scale: 0.97 }}
+                            className={`flex items-center justify-center gap-2.5 py-3 rounded-xl border-2 text-sm font-semibold transition-all ${manualStatus === val ? activeClass : inactiveClass}`}
+                          >
+                            <Icon className="h-4 w-4" />
+                            {val}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Submit */}
+                    <motion.button
+                      onClick={manualInputMode === "single" ? handleMark : handleBulkMark}
+                      disabled={!canSubmit || manualMarking}
+                      whileHover={{ scale: canSubmit && !manualMarking ? 1.02 : 1 }}
+                      whileTap={{ scale: canSubmit && !manualMarking ? 0.98 : 1 }}
+                      className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl text-white text-sm font-bold transition-all shadow-md disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{
+                        background: canSubmit && !manualMarking ? submitGradient : "#d1d5db",
+                      }}
+                    >
+                      {manualMarking ? (
+                        <>
+                          <FaSpinner className="h-4 w-4 animate-spin" />
+                          Marking…
+                        </>
+                      ) : (
+                        <>
+                          {manualMode === "daily" ? (
+                            <FaClipboardList className="h-4 w-4" />
+                          ) : (
+                            <FaVideo className="h-4 w-4" />
+                          )}
+                          {manualInputMode === "single" ? "Mark" : "Bulk Mark"} {manualStatus} ·{" "}
+                          {manualMode === "daily" ? "Daily" : "Meeting"}
+                        </>
+                      )}
+                    </motion.button>
+
+                    {/* Bulk Results */}
+                    <AnimatePresence>
+                      {manualBulkResults && (
+                        <motion.div
+                          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-5"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -10 }}
+                        >
+                          <h3 className="text-sm font-semibold text-gray-800 mb-3">
+                            Bulk Mark Results
+                          </h3>
+                          <div className="space-y-2">
+                            {manualBulkResults.results.map((result, idx) => (
+                              <div
+                                key={idx}
+                                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm ${
+                                  result.success
+                                    ? "bg-emerald-50 border border-emerald-200"
+                                    : "bg-red-50 border border-red-200"
+                                }`}
+                              >
+                                {result.success ? (
+                                  <FaCheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                ) : (
+                                  <FaTimesCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                )}
+                                <div className="flex-1 min-w-0">
+                                  <p
+                                    className={`text-xs font-semibold truncate ${
+                                      result.success
+                                        ? "text-emerald-800"
+                                        : "text-red-800"
+                                    }`}
+                                  >
+                                    {result.internId}
+                                  </p>
+                                  {result.internName && (
+                                    <p
+                                      className={`text-[11px] truncate ${
+                                        result.success
+                                          ? "text-emerald-600"
+                                          : "text-red-600"
+                                      }`}
+                                    >
+                                      {result.internName}
+                                    </p>
+                                  )}
+                                </div>
+                                {!result.success && result.error && (
+                                  <span className="text-[10px] text-red-600 flex-shrink-0 max-w-[100px] text-right">
+                                    {result.error}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* ── Right: Recent Activity ── */}
+                  <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden h-fit">
+                    <div className="px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-slate-50">
+                      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <FaCalendarCheck className="h-3.5 w-3.5 text-blue-500" />
+                        Recent Marks
+                      </h3>
+                      <p className="text-xs text-gray-400 mt-0.5">This session only</p>
+                    </div>
+
+                    {manualRecentMarks.length === 0 ? (
+                      <div className="px-5 py-12 text-center text-gray-400">
+                        <FaClipboardList className="h-8 w-8 mx-auto mb-3 opacity-30" />
+                        <p className="text-xs">No marks yet in this session</p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-gray-50 max-h-[520px] overflow-y-auto">
+                        <AnimatePresence initial={false}>
+                          {manualRecentMarks.map((mark) => (
+                            <motion.div
+                              key={mark.id}
+                              className="px-5 py-3.5"
+                              initial={{ opacity: 0, x: -12 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0 }}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div
+                                  className={`mt-0.5 h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                                    mark.status === "Present"
+                                      ? "bg-emerald-100"
+                                      : "bg-red-100"
+                                  }`}
+                                >
+                                  {mark.status === "Present" ? (
+                                    <FaCheckCircle className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <FaTimesCircle className="h-3.5 w-3.5 text-red-500" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-semibold text-gray-900 truncate">
+                                    {mark.internName}
+                                  </p>
+                                  <p className="text-[11px] text-gray-500">
+                                    {mark.internId} · {mark.date}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                        mark.mode === "daily"
+                                          ? "bg-cyan-100 text-cyan-700"
+                                          : "bg-indigo-100 text-indigo-700"
+                                      }`}
+                                    >
+                                      {mark.mode === "daily" ? "Daily" : "Meeting"}
+                                    </span>
+                                    <span
+                                      className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                        mark.status === "Present"
+                                          ? "bg-emerald-100 text-emerald-700"
+                                          : "bg-red-100 text-red-700"
+                                      }`}
+                                    >
+                                      {mark.status}
+                                    </span>
+                                    {mark.meetingName && (
+                                      <span className="text-[10px] text-gray-400 truncate max-w-[100px]">
+                                        "{mark.meetingName}"
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span className="text-[10px] text-gray-400 flex-shrink-0 mt-0.5">
+                                  {mark.timestamp}
+                                </span>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
     </AdminNavigation>
   );

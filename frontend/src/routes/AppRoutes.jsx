@@ -28,7 +28,6 @@ import InternAnnouncements from "../pages/InternAnnouncements";
 import AdminQRManagement from "../pages/AdminQRManagement";
 import AdminPinManagement from "../pages/AdminPinManagement";
 import AdminInternCertificate from "../pages/AdminInternCertificate";
-import AdminManualAttendance from "../pages/AdminManualAttendanceMarking";
 import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
@@ -176,10 +175,7 @@ const AppRoutes = () => {
         path="/admin/intern/:internId/certificate"
         element={<AdminInternCertificate />}
       />
-      <Route
-        path="/admin/manual-attendance"
-        element={<AdminManualAttendance />}
-      />
+
       <Route
         path="/admin/inactive-interns"
         element={<AdminInactiveInterns />}

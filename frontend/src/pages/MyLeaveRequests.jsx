@@ -21,6 +21,7 @@ import {
 } from "react-icons/fi";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { Bike, GraduationCap } from "lucide-react";
 
 const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
@@ -247,7 +248,11 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                 className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
               >
                 <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <FiFileText className="text-[#0056a2] h-8 w-8" />
+                  {isStudyLeave ? (
+                    <GraduationCap className="text-[#0056a2] h-8 w-8" />
+                  ) : (
+                    <Bike className="text-[#0056a2] h-8 w-8" />
+                  )}
                 </div> 
                 {pageCopy.title}
               </motion.h1>

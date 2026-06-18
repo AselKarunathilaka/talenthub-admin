@@ -19,6 +19,7 @@ import {
   Bell,
   ScanLine,
   GraduationCap,
+  Bike,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -197,7 +198,7 @@ const Navigation = ({ children }) => {
     { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
     { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
     { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
-    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#a486fcff" },
+    { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" />, hoverColor: "#a486fcff" },
     { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, hoverColor: "#f19e63ff" },
     { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
   ];

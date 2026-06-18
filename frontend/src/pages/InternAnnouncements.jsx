@@ -239,12 +239,12 @@ const InternAnnouncements = () => {
           </div>
 
           {/* Filter tabs */}
-          <div className="flex flex-wrap gap-2 sm:gap-3 mb-6 bg-white p-2 rounded-2xl border border-gray-100 shadow-sm w-fit">
+          <div className="flex w-full sm:w-fit overflow-x-auto scrollbar-hide gap-1 sm:gap-3 mb-6 bg-white p-1.5 sm:p-2 rounded-2xl border border-gray-100 shadow-sm">
             {["all", "urgent", "important", "normal"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilterPriority(f)}
-                className={`px-4 py-2 text-xs font-bold uppercase tracking-widest rounded-xl transition-all ${
+                className={`flex-1 sm:flex-none whitespace-nowrap text-center px-2 sm:px-4 py-2 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-widest rounded-xl transition-all ${
                   filterPriority === f
                     ? f === "urgent"
                       ? "bg-rose-100 text-rose-800"

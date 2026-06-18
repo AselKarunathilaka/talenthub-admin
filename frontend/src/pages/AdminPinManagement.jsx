@@ -26,30 +26,7 @@ const AdminPinManagement = () => {
   const [stopLoading, setStopLoading] = useState(false);
   const [facePinData, setFacePinData] = useState(null);
   const [pinCountdown, setPinCountdown] = useState(0);
-  const [enrollmentData, setEnrollmentData] = useState({ stats: {}, profiles: [] });
-  const [profilesLoading, setProfilesLoading] = useState(false);
-  const [profileSearch, setProfileSearch] = useState('');
-  const [profileFilter, setProfileFilter] = useState('all');
-  const [showProfilesModal, setShowProfilesModal] = useState(false);
 
-  const fetchEnrollmentProfiles = useCallback(async () => {
-    try {
-      setProfilesLoading(true);
-      setEnrollmentData(await adminApi.getFaceEnrollmentProfiles());
-    } catch (error) {
-      toast.error(error.message || 'Failed to load face enrollment profiles', {
-        id: 'face-enrollment-profiles-load',
-      });
-      console.error(error);
-    } finally {
-      setProfilesLoading(false);
-    }
-  }, []);
-
-  const openProfilesModal = () => {
-    setShowProfilesModal(true);
-    fetchEnrollmentProfiles();
-  };
 
   const fetchFacePin = useCallback(async (rotate = false) => {
     if (!projectName.trim()) {
@@ -113,32 +90,6 @@ const AdminPinManagement = () => {
   };
 
   const generateButtonLabel = facePinData ? 'Generate Fresh PIN' : 'Generate PIN';
-  const filteredProfiles = enrollmentData.profiles.filter((profile) => {
-    const query = profileSearch.trim().toLowerCase();
-    const matchesSearch = !query || [
-      profile.traineeName,
-      profile.traineeId,
-      profile.email,
-      profile.team,
-      profile.institute,
-    ].some((value) => String(value || '').toLowerCase().includes(query));
-    const matchesFilter =
-      profileFilter === 'all' ||
-      (profileFilter === 'complete' && profile.isComplete) ||
-      (profileFilter === 'incomplete' && profile.isActive && !profile.isComplete) ||
-      (profileFilter === 'inactive' && !profile.isActive);
-    return matchesSearch && matchesFilter;
-  });
-
-  const formatDateTime = (value) => value
-    ? new Date(value).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    })
-    : 'Never';
 
   return (
     <AdminNavigation>
@@ -170,18 +121,6 @@ const AdminPinManagement = () => {
                 </motion.p>
               </div>
 
-              <div>
-                <motion.button
-                  type="button"
-                  onClick={openProfilesModal}
-                  className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaUsers className="h-4 w-4 text-[#0056a2]" />
-                  <span>Face Enrollment Profiles</span>
-                </motion.button>
-              </div>
             </div>
 
             <div className="grid gap-6 lg:grid-cols-3 lg:gap-8 items-stretch">
@@ -286,148 +225,7 @@ const AdminPinManagement = () => {
             </div>
           </main>
         </div>
-
-      <AnimatePresence>
-        {showProfilesModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/40 p-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(event) => event.target === event.currentTarget && setShowProfilesModal(false)}
-          >
-            <motion.section
-              className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl flex flex-col"
-              initial={{ opacity: 0, y: 18, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 18, scale: 0.98 }}
-            >
-              <div className="flex flex-col gap-4 border-b border-gray-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between bg-white z-10 relative shadow-sm">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">Face Enrollment Profiles</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Interns registered for face daily and meeting attendance.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={fetchEnrollmentProfiles}
-                    disabled={profilesLoading}
-                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <FaRedo className={`h-3.5 w-3.5 text-[#00b4eb] ${profilesLoading ? 'animate-spin' : ''}`} />
-                    Refresh
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowProfilesModal(false)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-500 transition hover:bg-gray-50 hover:text-gray-800"
-                    aria-label="Close face enrollment profiles"
-                    title="Close"
-                  >
-                    <FaTimes className="h-5 w-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-px bg-gray-100 sm:grid-cols-3 z-0">
-                {[
-                  { label: 'Total Interns', value: enrollmentData.stats.totalInterns || 0, icon: FaUsers, color: 'text-[#0056a2] bg-[#00b4eb]/10' },
-                  { label: 'Enrolled Interns', value: enrollmentData.stats.enrolled || 0, icon: FaUserCheck, color: 'text-[#15803d] bg-[#50b748]/10' },
-                  { label: 'Not Enrolled Interns', value: enrollmentData.stats.notEnrolled || 0, icon: FaUserClock, color: 'text-rose-700 bg-rose-50' },
-                ].map(({ label, value, icon: Icon, color }) => (
-                  <div key={label} className="bg-white px-6 py-5">
-                    <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <div className="mt-4 text-3xl font-black text-gray-900">{value}</div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mt-1">{label}</div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 sm:flex-row bg-slate-50 z-0">
-                <div className="relative flex-1">
-                  <FaSearch className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="search"
-                    value={profileSearch}
-                    onChange={(event) => setProfileSearch(event.target.value)}
-                    placeholder="Search intern name, ID, email or team"
-                    className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition focus:border-[#00b4eb] focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-                <select
-                  value={profileFilter}
-                  onChange={(event) => setProfileFilter(event.target.value)}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium outline-none transition focus:border-[#00b4eb] focus:ring-2 focus:ring-blue-100"
-                >
-                  <option value="all">All profiles</option>
-                  <option value="complete">Ready for attendance</option>
-                  <option value="incomplete">Incomplete profiles</option>
-                  <option value="inactive">Inactive profiles</option>
-                </select>
-              </div>
-
-              {profilesLoading ? (
-                <div className="flex items-center justify-center gap-3 py-20 text-sm font-medium text-gray-500 bg-white flex-1">
-                  <FaSpinner className="h-5 w-5 animate-spin text-[#00b4eb]" />
-                  Loading enrollment profiles...
-                </div>
-              ) : filteredProfiles.length === 0 ? (
-                <div className="py-20 text-center text-sm font-medium text-gray-500 bg-white flex-1">
-                  No face enrollment profiles found.
-                </div>
-              ) : (
-                <div className="overflow-auto flex-1 bg-white">
-                  <table className="w-full min-w-[58rem] divide-y divide-gray-100">
-                    <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                      <tr>
-                        {['Intern', 'Team / Institute', 'Enrollment', 'Samples', 'Last Face Match', 'Status'].map((label) => (
-                          <th key={label} className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                            {label}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {filteredProfiles.map((profile) => (
-                        <tr key={profile._id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-bold text-gray-900">{profile.traineeName}</div>
-                            <div className="text-xs font-medium text-gray-500 mt-0.5">{profile.traineeId} · {profile.email || 'No email'}</div>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="text-sm font-semibold text-gray-800">{profile.team || 'Not assigned'}</div>
-                            <div className="text-xs font-medium text-gray-500 mt-0.5">{profile.institute || 'Not specified'}</div>
-                          </td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-600">{formatDateTime(profile.enrolledAt)}</td>
-                          <td className="px-6 py-4 text-sm font-black text-gray-800">{profile.sampleCount}</td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-600">{formatDateTime(profile.lastMatchedAt)}</td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold ${
-                              profile.isComplete
-                                ? 'bg-[#50b748]/10 text-[#15803d]'
-                                : profile.isActive
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-gray-100 text-gray-600'
-                            }`}>
-                              {profile.isComplete && <FaCheckCircle className="h-3 w-3" />}
-                              {profile.isComplete ? 'Ready' : profile.isActive ? 'Incomplete' : 'Inactive'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </motion.section>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      </div>
   </AdminNavigation>
   );
 };
