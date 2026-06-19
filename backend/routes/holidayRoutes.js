@@ -8,6 +8,10 @@ router.get("/:year", async (req, res) => {
   try {
     const { year } = req.params;
 
+    if (!process.env.HOLIDAY_API_URL) {
+      return res.status(500).json({ error: "HOLIDAY_API_URL is not configured in .env" });
+    }
+
     //validate year 
     const response = await axios.get(
       `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
