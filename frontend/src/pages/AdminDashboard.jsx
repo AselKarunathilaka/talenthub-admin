@@ -458,6 +458,10 @@ const AdminDashboard = () => {
                       icon: FaUsers,
                       accent: BRAND.primary,
                       bg: BRAND.primaryLight,
+                      borderColor: "!border-blue-400/30",
+                      hoverBorderColor: "hover:!border-blue-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,86,162,0.35)]"
                     },
                     {
                       label: "Total Records",
@@ -467,6 +471,10 @@ const AdminDashboard = () => {
                       icon: FaTasks,
                       accent: BRAND.accent,
                       bg: BRAND.accentLight,
+                      borderColor: "!border-cyan-400/30",
+                      hoverBorderColor: "hover:!border-cyan-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
                     },
                     {
                       label: "Submitted",
@@ -476,6 +484,10 @@ const AdminDashboard = () => {
                       icon: FaCheckCircle,
                       accent: BRAND.success,
                       bg: BRAND.successLight,
+                      borderColor: "!border-emerald-400/30",
+                      hoverBorderColor: "hover:!border-emerald-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
                     },
                     {
                       label: "Overdue",
@@ -485,12 +497,15 @@ const AdminDashboard = () => {
                       icon: FaExclamationTriangle,
                       accent: BRAND.danger,
                       bg: BRAND.dangerLight,
+                      borderColor: "!border-red-400/30",
+                      hoverBorderColor: "hover:!border-red-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
                     },
                   ].map((stat, idx) => (
                     <motion.div
                       key={stat.label}
-                      className="admin-dash-stat-card !bg-white/20 backdrop-blur-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] !border !border-white/40 transition-all"
-                      style={{ borderLeftColor: stat.accent }}
+                      className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
@@ -524,7 +539,7 @@ const AdminDashboard = () => {
             <div className="mt-12 mb-8 relative w-full z-20">
               <motion.div 
                 whileHover={{ scale: 1.02 }}
-                className={`relative bg-white/20 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10' : 'border-white/40 hover:border-white/60'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
+                className={`relative bg-white/80 md:bg-white/20 md:backdrop-blur-3xl rounded-3xl border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10 shadow-[0_0_25px_rgba(0,180,235,0.35)]' : 'border-[#00b4eb]/20 hover:border-[#00b4eb]/60 shadow-[0_0_15px_rgba(0,180,235,0.15)] hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
               >
                 <FaSearch className="text-gray-400 text-xl sm:text-3xl mr-3 sm:mr-6 flex-shrink-0" />
                 <input
@@ -555,7 +570,7 @@ const AdminDashboard = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/30 backdrop-blur-3xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.15)] border border-white/40 max-h-[60vh] overflow-y-auto z-50 p-2 sm:p-3"
+                    className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/90 md:bg-white/30 md:backdrop-blur-3xl rounded-3xl shadow-[0_0_25px_rgba(0,180,235,0.25)] border border-[#00b4eb]/40 max-h-[60vh] overflow-y-auto z-50 p-2 sm:p-3"
                   >
                     {!hasSearched ? (
                        <div className="p-6 sm:p-10 text-center text-gray-400">
@@ -577,7 +592,7 @@ const AdminDashboard = () => {
                           <div
                             key={intern._id}
                             onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                            className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-colors border border-transparent hover:border-white/50 hover:shadow-sm group"
+                            className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-all duration-300 border border-transparent hover:border-[#00b4eb]/30 hover:shadow-[0_0_15px_rgba(0,180,235,0.1)] group"
                           >
                             <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform">
                               {(intern.traineeName || "?")[0].toUpperCase()}
@@ -621,7 +636,7 @@ const AdminDashboard = () => {
                   onClick={handleExportSubmittedCSV}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="bg-white/20 backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all group w-full"
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(80,183,72,0.15)] border border-[#50b748]/20 hover:shadow-[0_0_25px_rgba(80,183,72,0.35)] hover:border-[#50b748]/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
                 >
                   <div className="p-3 sm:p-4 bg-[#50b748]/10 text-[#50b748] rounded-xl sm:rounded-2xl group-hover:bg-[#50b748] group-hover:text-white transition-colors">
                     <FaRegFileExcel className="text-2xl sm:text-3xl" />
@@ -637,7 +652,7 @@ const AdminDashboard = () => {
                   onClick={handleDownloadOnLeaveExcel}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="bg-white/20 backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all group w-full"
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(147,51,234,0.15)] border border-purple-400/20 hover:shadow-[0_0_25px_rgba(147,51,234,0.35)] hover:border-purple-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
                 >
                   <div className="p-3 sm:p-4 bg-purple-100 text-purple-600 rounded-xl sm:rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
                     <FaRegFileExcel className="text-2xl sm:text-3xl" />
@@ -653,7 +668,7 @@ const AdminDashboard = () => {
                   onClick={handleExportWeeklyNonSubmissionsWithinWeek}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  className="bg-white/20 backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all group w-full"
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(239,68,68,0.15)] border border-red-400/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:border-red-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
                 >
                   <div className="p-3 sm:p-4 bg-red-50 text-red-500 rounded-xl sm:rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors">
                     <FaExclamationTriangle className="text-2xl sm:text-3xl" />
@@ -669,7 +684,7 @@ const AdminDashboard = () => {
               {/* Custom Date Non-Submissions */}
               <motion.div 
                 whileHover={{ scale: 1.02 }}
-                className="mt-8 bg-white/20 backdrop-blur-3xl p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-white/40 flex flex-col md:flex-row items-center gap-6 hover:shadow-[0_8px_30px_rgb(0,0,0,0.15)] transition-all"
+                className="mt-8 bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-6 rounded-3xl shadow-[0_0_15px_rgba(100,116,139,0.15)] border border-slate-400/20 hover:shadow-[0_0_25px_rgba(100,116,139,0.35)] hover:border-slate-400/60 flex flex-col md:flex-row items-center gap-6 transition-all duration-300"
               >
                 <div className="flex-1">
                   <h4 className="text-lg font-bold text-gray-900">Custom Date Range Non-Submissions</h4>
