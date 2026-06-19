@@ -1,11 +1,65 @@
 import React, { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
-import { FaShieldAlt, FaTasks, FaBook, FaChartLine } from "react-icons/fa";
+import {
+  FaShieldAlt,
+} from "react-icons/fa";
+import {
+  Home,
+  ScanLine,
+  BookOpen,
+  FileText,
+  GraduationCap,
+  Armchair,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
 import { api } from "../utils/api";
-import logo from "../assets/sltlogo.jpg";
+import sltLogo from "../assets/sltlogoOnly.png";
+import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
+import transzentLogo from "../assets/transzent.jpeg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
+
+/* ─── Nav-link feature items (mirrors Navigation.jsx navLinks) ─── */
+const features = [
+  {
+    icon: <Home className="h-4 w-4" />,
+    title: "Dashboard",
+    description: "Overview of your internship at a glance",
+    color: "#48cef7",
+  },
+  {
+    icon: <ScanLine className="h-4 w-4" />,
+    title: "Attendance",
+    description: "Mark daily & meeting attendance seamlessly",
+    color: "#f9f116",
+  },
+  {
+    icon: <BookOpen className="h-4 w-4" />,
+    title: "Log Book",
+    description: "Track daily progress, tasks & achievements",
+    color: "#68de5f",
+  },
+  {
+    icon: <FileText className="h-4 w-4" />,
+    title: "Short Leave",
+    description: "Request and manage short leave applications",
+    color: "#a486fc",
+  },
+  {
+    icon: <GraduationCap className="h-4 w-4" />,
+    title: "Extended Leave",
+    description: "Apply for study or extended leave periods",
+    color: "#f19e63",
+  },
+  {
+    icon: <Armchair className="h-4 w-4" />,
+    title: "Seat Reservation",
+    description: "Reserve your preferred workspace seat",
+    color: "#ff81c0",
+  },
+];
 
 const Login = () => {
   const navigate = useNavigate();
@@ -39,207 +93,135 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-blue-950 text-gray-100 overflow-hidden">
-      {/* Floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div
-          className="absolute w-80 h-80 rounded-full bg-green-500/10 -top-20 -left-20 animate-float"
-          style={{ animationDelay: "0s" }}
-        ></div>
-        <div
-          className="absolute w-96 h-96 rounded-full bg-blue-600/10 top-1/4 right-0 animate-float"
-          style={{ animationDelay: "3s" }}
-        ></div>
-        <div
-          className="absolute w-64 h-64 rounded-full bg-purple-500/10 bottom-20 left-1/4 animate-float"
-          style={{ animationDelay: "6s" }}
-        ></div>
-        <div
-          className="absolute w-72 h-72 rounded-full bg-cyan-500/10 bottom-0 right-20 animate-float"
-          style={{ animationDelay: "9s" }}
-        ></div>
-      </div>
+    <div
+      className="min-h-screen text-white overflow-hidden relative"
+      style={{
+        background: "linear-gradient(135deg, #006600 0%, #000066 100%)",
+      }}
+    >
+      {/* Subtle animated grain / mesh overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "32px 32px",
+        }}
+      />
 
-      {/* Main content */}
+      {/* Glow accents */}
+      <div
+        className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full pointer-events-none opacity-20"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(0,180,235,0.4) 0%, transparent 70%)",
+        }}
+      />
+      <div
+        className="fixed bottom-[-20%] right-[-10%] w-[50vw] h-[50vw] rounded-full pointer-events-none opacity-20"
+        style={{
+          background:
+            "radial-gradient(circle, rgba(80,183,72,0.4) 0%, transparent 70%)",
+        }}
+      />
+
+      {/* ─── Main content ─── */}
       <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
-        {/* Left panel - brand showcase (hidden on mobile) */}
+        {/* ─── LEFT PANEL: Login card ─── */}
         <motion.div
-          initial={{ opacity: 0, x: -50 }}
+          initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8 }}
-          className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+          transition={{ duration: 0.7 }}
+          className="w-full lg:w-[48%] xl:w-[44%] flex items-center justify-center min-h-screen lg:min-h-0 p-6 sm:p-8 lg:p-8 xl:p-10"
         >
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/70 to-gray-900/80 backdrop-blur-sm"></div>
-
-          <div className="relative z-10 flex flex-col items-center justify-center w-full h-full p-12">
+          <div className="w-full max-w-sm lg:max-w-md">
+            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
+            {/* Brand header */}
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="mb-12"
+              className="flex items-center gap-3 mb-4"
             >
-              <img
-                src={logo}
-                alt="SLT Mobitel Logo"
-                className="w-48 h-48 object-contain rounded-full border-4 border-white/10 shadow-xl hover:shadow-2xl transition-all duration-300 hover:border-green-400/30"
-              />
-            </motion.div>
-
-            <motion.h1
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.5 }}
-              className="text-5xl font-bold text-white mb-6 text-center leading-tight"
-            >
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-cyan-400">
-                Internship Portal
-              </span>
-            </motion.h1>
-
-            <motion.p
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.6, duration: 0.5 }}
-              className="text-xl text-white/80 text-center max-w-md leading-relaxed mb-12"
-            >
-              Comprehensive platform for attendance, tasks, and daily progress
-              tracking
-            </motion.p>
-
-            {/* Feature cards */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.8, duration: 0.5 }}
-              className="w-full max-w-md space-y-6"
-            >
-              {[
-                {
-                  icon: <FaBook className="h-6 w-6" />,
-                  title: "Daily Logbook",
-                  description:
-                    "Track your daily progress, completed tasks, and achievements",
-                },
-                {
-                  icon: <FaTasks className="h-6 w-6" />,
-                  title: "Task Management",
-                  description:
-                    "Log and monitor your daily tasks and accomplishments",
-                },
-                {
-                  icon: (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-6 w-6"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  ),
-                  title: "Real-time Tracking",
-                  description: "Monitor your attendance with instant updates",
-                },
-                {
-                  icon: <FaChartLine className="h-6 w-6" />,
-                  title: "Progress Analytics",
-                  description:
-                    "View detailed reports of your internship progress",
-                },
-              ].map((feature, index) => (
-                <motion.div
-                  key={index}
-                  whileHover={{ y: -5 }}
-                  className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 hover:border-green-400/30 hover:shadow-lg transition-all duration-300"
-                >
-                  <div className="flex items-start">
-                    <div className="bg-gradient-to-br from-green-500/20 to-blue-500/20 p-3 rounded-lg mr-4">
-                      {feature.icon}
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        {feature.title}
-                      </h3>
-                      <p className="text-white/70">{feature.description}</p>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* Right panel - login form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.8 }}
-          className="w-full lg:w-1/2 flex items-center justify-center p-6"
-        >
-          <div className="w-full max-w-md">
-            {/* Mobile header */}
-            <div className="lg:hidden flex flex-col items-center mb-8">
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="relative mb-6"
-              >
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-[#00b4eb] to-[#50b748] rounded-2xl opacity-40 blur-sm group-hover:opacity-70 transition-opacity duration-500" />
                 <img
-                  src={logo}
+                  src={sltLogo}
                   alt="SLT Mobitel Logo"
-                  className="w-20 h-20 object-contain mx-auto rounded-full border-4 border-white/10 shadow-lg"
+                  className="relative w-12 h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg"
                 />
-              </motion.div>
-
-              <motion.h1
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6, duration: 0.5 }}
-                className="text-3xl font-bold text-center mb-2"
-              >
-                <span className="bg-clip-text text-transparent bg-gradient-to-r from-green-400 to-cyan-400">
-                  Welcome Back
-                </span>
-              </motion.h1>
-
-              <motion.p
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.8, duration: 0.5 }}
-                className="text-white/70 text-center max-w-xs"
-              >
-                Sign in to manage your attendance, tasks, and daily logs
-              </motion.p>
-            </div>
-
-            {/* Login card */}
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ delay: 1, duration: 0.5 }}
-              className="bg-white/5 backdrop-blur-lg border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
-            >
-              <div className="bg-gradient-to-r from-green-600/80 to-blue-600/80 p-6">
-                <h2 className="text-center text-2xl font-bold text-white">
-                  Intern Login
-                </h2>
-                <p className="text-center text-white/90 mt-1 text-sm">
-                  Access your daily logbook and task tracker
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <img
+                    src={talentHubLogo}
+                    alt="TalentHub"
+                    className="h-6 w-auto rounded-md"
+                  />
+                  <h1 className="text-xl font-extrabold tracking-tight text-white">
+                    TalentHub
+                  </h1>
+                </div>
+                <p className="text-sm text-white/50 font-medium mt-0.5">
+                  Internship Management Portal
                 </p>
               </div>
+            </motion.div>
 
-              <div className="p-6 space-y-6">
+            {/* Welcome text */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.35, duration: 0.5 }}
+              className="mb-2"
+            >
+              <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight tracking-tight flex items-center gap-2">
+                <span className="text-white">Welcome</span>
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(135deg, #00b4eb, #50b748)",
+                  }}
+                >
+                  Back
+                </span>
+              </h2>
+              <p className="text-white/60 mt-2 text-sm leading-relaxed max-w-sm">
+                Sign in with your organization Google account to manage
+                attendance, tasks, and daily logs.
+              </p>
+            </motion.div>
+            </div>
+
+            {/* ─── Login card ─── */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center h-[380px]"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(255,255,255,0.1)",
+                boxShadow:
+                  "0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.1)",
+              }}
+            >
+              {/* Card accent bar */}
+              <div
+                className="absolute top-0 left-0 right-0 h-1.5"
+                style={{
+                  background:
+                    "linear-gradient(90deg, #00b4eb, #0056a2, #50b748)",
+                }}
+              />
+
+              <div className="p-5 sm:p-5 flex flex-col h-full">
+                {/* Session message */}
                 {sessionMsg && (
-                  <div className="bg-yellow-500/10 border-l-4 border-yellow-400 text-yellow-100 p-4 rounded-md text-sm flex items-start mb-2">
+                  <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/20">
                     <svg
-                      className="h-5 w-5 mr-2 flex-shrink-0"
+                      className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -249,17 +231,21 @@ const Login = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <div>{sessionMsg}</div>
+                    <span className="text-sm text-amber-200 font-medium">
+                      {sessionMsg}
+                    </span>
                   </div>
                 )}
+
+                {/* Error message */}
                 {error && (
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="bg-red-500/10 border-l-4 border-red-400 text-red-100 p-4 rounded-md text-sm flex items-start"
+                    className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-400/20"
                   >
                     <svg
-                      className="h-5 w-5 mr-2 flex-shrink-0"
+                      className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -269,131 +255,154 @@ const Login = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <div>{error}</div>
+                    <span className="text-sm text-red-200 font-medium">
+                      {error}
+                    </span>
                   </motion.div>
                 )}
 
-                <div className="space-y-6">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-6">
-                    <div className="flex flex-col items-center text-center">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-600/20 to-green-600/20 rounded-full flex items-center justify-center mb-4">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-8 w-8 text-blue-300"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                          />
-                        </svg>
+                {/* Top Section */}
+                <div className="text-center mb-1 flex-shrink-0">
+                  <div
+                    className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-1"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(0,180,235,0.15), rgba(0,86,162,0.15))",
+                      border: "1px solid rgba(0,180,235,0.2)",
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-6 w-6 text-[#00b4eb]"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                      />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold text-white mb-0.5">
+                    Intern Login
+                  </h3>
+                  <p className="text-white/50 text-sm">
+                    Use your registered organization email
+                  </p>
+                </div>
+
+                {/* Middle Section */}
+                <div className="flex-1 flex flex-col justify-center mb-1">
+                  {/* Google Login Button */}
+                  <div className="flex justify-center scale-[1.14] sm:scale-[1.2] origin-center">
+                    {isLoading ? (
+                      <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/5 border border-white/10">
+                        <div className="w-5 h-5 border-t-2 border-b-2 border-[#00b4eb] rounded-full animate-spin mr-3" />
+                        <span className="text-white/80 text-sm font-medium">
+                          Authenticating...
+                        </span>
                       </div>
-                      <h3 className="text-lg font-medium text-white mb-1">
-                        Google Authentication
-                      </h3>
-                      <p className="text-white/60 text-sm">
-                        Use your registered organization email
-                      </p>
-                    </div>
+                    ) : (
+                      <GoogleLogin
+                        onSuccess={handleGoogleLogin}
+                        onError={() =>
+                          setError(
+                            "Google authentication failed. Please try again.",
+                          )
+                        }
+                        useOneTap
+                        theme="filled_blue"
+                        shape="pill"
+                        size="large"
+                        text="continue_with"
+                        locale="en"
+                        width="300"
+                      />
+                    )}
+                  </div>
+                </div>
 
-                    <div className="mt-6 flex justify-center">
-                      {isLoading ? (
-                        <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/5 border border-white/10">
-                          <div className="w-5 h-5 border-t-2 border-b-2 border-green-400 rounded-full animate-spin mr-2"></div>
-                          <span className="text-white/80 text-sm font-medium">
-                            Authenticating...
-                          </span>
-                        </div>
-                      ) : (
-                        <GoogleLogin
-                          onSuccess={handleGoogleLogin}
-                          onError={() =>
-                            setError(
-                              "Google authentication failed. Please try again.",
-                            )
-                          }
-                          useOneTap
-                          theme="filled_blue"
-                          shape="pill"
-                          size="large"
-                          text="continue_with"
-                          locale="en"
-                          width="300"
-                        />
-                      )}
-                    </div>
+                {/* Bottom Section */}
+                <div className="mt-auto flex-shrink-0">
+                  {/* Divider */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span className="text-xs text-white/30 font-medium uppercase tracking-wider">
+                      or
+                    </span>
+                    <div className="flex-1 h-px bg-white/10" />
                   </div>
 
-                  <div className="text-center space-y-3">
-                    <div className="text-white/60 text-sm">
-                      Having trouble?{" "}
-                      <a
-                        href="#"
-                        className="text-green-400 hover:text-green-300 transition-colors font-medium"
-                      >
-                        Contact support
-                      </a>
-                    </div>
+                  {/* Admin Login */}
+                  <button
+                    onClick={() => navigate("/admin-login")}
+                    className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(0,86,162,0.15)";
+                      e.currentTarget.style.borderColor =
+                        "rgba(0,86,162,0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.04)";
+                      e.currentTarget.style.borderColor =
+                        "rgba(255,255,255,0.08)";
+                    }}
+                  >
+                    <FaShieldAlt className="text-[#00b4eb] group-hover:text-[#00b4eb]" />
+                    <span className="text-white/70 group-hover:text-white">
+                      Login as Admin
+                    </span>
+                    <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
+                  </button>
 
-                    {/* Admin and Gate Staff Login Links */}
-                    <div className="border-t border-white/10 pt-4 space-y-2">
-                      <button
-                        onClick={() => navigate("/admin-login")}
-                        className="w-full inline-flex items-center justify-center px-4 py-2 text-sm font-medium text-white/80 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-lg transition-all duration-200 group cursor-pointer"
-                      >
-                        <FaShieldAlt className="mr-2 text-blue-400 group-hover:text-blue-300 transition-colors" />
-                        Login as Admin
-                      </button>
-
-                      {/* <button
-                        onClick={() => navigate("/gate-staff-login")}
-                        className="w-full inline-flex items-center justify-center px-3 py-1.5 text-xs text-white/60 hover:text-white/80 bg-white/0 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded transition-all duration-200 cursor-pointer"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-3.5 w-3.5 mr-1.5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                          />
-                        </svg>
-                        Gate Staff Access
-                      </button> */}
-
-                      <p className="text-xs text-white/50 mt-2">
-                        For administrators and supervisors only
-                      </p>
-                    </div>
-                  </div>
+                  <p className="text-center text-xs text-white/30 mt-1">
+                    For administrators and supervisors only
+                  </p>
                 </div>
               </div>
             </motion.div>
 
             {/* Footer */}
+            <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 1.2, duration: 0.5 }}
-              className="mt-8 text-center text-white/50 text-sm"
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="text-center text-white/30 text-xs"
             >
-              <div className="flex justify-center space-x-4 mb-2">
-                <a href="#" className="hover:text-green-400 transition-colors">
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
+                <img 
+                  src={transzentLogo} 
+                  alt="Transzent" 
+                  className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
+                />
+              </div>
+              <div className="flex justify-center gap-4 mb-2">
+                <a
+                  href="#"
+                  className="hover:text-[#00b4eb] transition-colors"
+                >
                   Privacy
                 </a>
-                <a href="#" className="hover:text-green-400 transition-colors">
+                <a
+                  href="#"
+                  className="hover:text-[#00b4eb] transition-colors"
+                >
                   Terms
                 </a>
-                <a href="#" className="hover:text-green-400 transition-colors">
+                <a
+                  href="#"
+                  className="hover:text-[#00b4eb] transition-colors"
+                >
                   Help
                 </a>
               </div>
@@ -401,29 +410,153 @@ const Login = () => {
                 © {new Date().getFullYear()} SLT Mobitel. All rights reserved.
               </p>
             </motion.div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* ─── RIGHT PANEL: Feature showcase (hidden on mobile) ─── */}
+        <motion.div
+          initial={{ opacity: 0, x: 40 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, delay: 0.15 }}
+          className="hidden lg:flex lg:w-[52%] xl:w-[56%] relative items-center justify-center p-6 xl:p-8"
+        >
+          {/* Glass panel background */}
+          <div
+            className="absolute inset-4 rounded-[2rem]"
+            style={{
+              background: "rgba(255,255,255,0.03)",
+              border: "1px solid rgba(255,255,255,0.06)",
+              backdropFilter: "blur(20px)",
+            }}
+          />
+
+          <div className="relative z-10 w-full max-w-xl">
+            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
+            {/* Section header */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="text-center"
+            >
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-3">
+                <Sparkles className="h-4 w-4 text-[#50b748]" />
+                <span className="text-xs font-semibold text-white/70 tracking-wider uppercase">
+                  Everything you need
+                </span>
+              </div>
+              <h2 className="text-2xl xl:text-3xl font-extrabold text-white leading-tight tracking-tight">
+                Your Internship,
+                <br />
+                <span
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(135deg, #00b4eb, #50b748)",
+                  }}
+                >
+                  Simplified
+                </span>
+              </h2>
+              <p className="text-white/50 mt-2 text-xs max-w-sm mx-auto leading-relaxed">
+                Comprehensive platform for attendance, tasks, daily progress
+                tracking and more.
+              </p>
+            </motion.div>
+            </div>
+
+            {/* Feature grid */}
+            <div className="grid grid-cols-2 gap-3 lg:h-[380px]">
+              {features.map((feature, index) => (
+                <motion.div
+                  key={index}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{
+                    delay: 0.5 + index * 0.08,
+                    duration: 0.4,
+                  }}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  className="group rounded-xl p-3.5 cursor-default transition-all duration-300 flex flex-col justify-center"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = `rgba(255,255,255,0.07)`;
+                    e.currentTarget.style.borderColor = `${feature.color}30`;
+                    e.currentTarget.style.boxShadow = `0 8px 30px ${feature.color}15`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background =
+                      "rgba(255,255,255,0.04)";
+                    e.currentTarget.style.borderColor =
+                      "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div
+                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-all duration-300"
+                    style={{
+                      background: `${feature.color}15`,
+                      color: feature.color,
+                    }}
+                  >
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xs font-bold text-white mb-0.5 tracking-tight">
+                    {feature.title}
+                  </h3>
+                  <p className="text-[11px] text-white/45 leading-snug">
+                    {feature.description}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Bottom stats */}
+            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 1, duration: 0.5 }}
+              className="flex items-center justify-center gap-8"
+            >
+              {[
+                { value: "24/7", label: "Access" },
+                { value: "Real-time", label: "Tracking" },
+                { value: "Secure", label: "Platform" },
+              ].map((stat, i) => (
+                <div key={i} className="text-center">
+                  <div
+                    className="text-base font-extrabold bg-clip-text text-transparent"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(135deg, #00b4eb, #50b748)",
+                    }}
+                  >
+                    {stat.value}
+                  </div>
+                  <div className="text-xs text-white/35 font-medium mt-0.5">
+                    {stat.label}
+                  </div>
+                </div>
+              ))}
+            </motion.div>
+            </div>
           </div>
         </motion.div>
       </div>
 
-      {/* Global styles for animations */}
+      {/* Hide scrollbar for mobile carousel */}
       <style jsx="true" global="true">{`
-        @keyframes float {
-          0%,
-          100% {
-            transform: translateY(0) translateX(0) rotate(0deg);
-          }
-          25% {
-            transform: translateY(-20px) translateX(10px) rotate(2deg);
-          }
-          50% {
-            transform: translateY(10px) translateX(-10px) rotate(-2deg);
-          }
-          75% {
-            transform: translateY(-10px) translateX(15px) rotate(1deg);
-          }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
         }
-        .animate-float {
-          animation: float 12s ease-in-out infinite;
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
     </div>

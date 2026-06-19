@@ -8,6 +8,7 @@ const moment = require("moment");
 const fs = require("fs");
 const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
+const ProfilePicture = require("../models/ProfilePicture");
 
 // Doc 3 sets (more complete — includes manual_daily and manual_meeting)
 const DAILY_ATTENDANCE_TYPES = new Set([
@@ -529,8 +530,8 @@ const getAttendanceByInternId = async (req, res) => {
           meetingName: legacyMeetingName || "General Meeting",
           type: "Meeting",
           attendanceMethod: normalizeAttendanceMethod(type),
-          time: entry.date ? formatColomboTime(entry.date) : null,
-          isMeeting: true
+          checkInTime: entry.date ? formatColomboTime(entry.date) : null,
+          isMeeting: true,
         });
       });
     }
@@ -560,12 +561,17 @@ const getAttendanceByInternId = async (req, res) => {
                 ? "Late"
                 : "Absent",
           type: "Daily",
-          recordStatus: record.status, // working | leave | wfh — used for Study Leave / WFH colour coding (from doc4)
+          recordStatus: record.status, // working | leave | wfh — used for Extended Leave / WFH colour coding (from doc4)
           attendanceMethod:
             dailyMethodByDate.get(getDateKey(record.date))?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
-          time: attendanceTime ? formatColomboTime(attendanceTime) : null,
+          checkInTime: attendanceTime
+            ? formatColomboTime(attendanceTime)
+            : null,
+          checkOutTime: record.checkOutTime
+            ? formatColomboTime(record.checkOutTime)
+            : null,
           attendanceTime: record.attendanceTime,
         });
       }
@@ -585,8 +591,8 @@ const getAttendanceByInternId = async (req, res) => {
               meeting.method ||
                 meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
             ),
-            time: formatColomboTime(attendanceTime),
-            isMeeting: true
+            checkInTime: formatColomboTime(attendanceTime),
+            isMeeting: true,
           });
         });
       }
@@ -626,7 +632,7 @@ const getAttendanceByInternId = async (req, res) => {
               projectName: projectName,
               type: "Meeting",
               attendanceMethod: "talenttrail", // Mark source as external
-              time: attendanceTime.toLocaleTimeString("en-US", {
+              checkInTime: attendanceTime.toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
               }),
@@ -668,7 +674,10 @@ const getAttendanceByInternId = async (req, res) => {
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: normalizeAttendanceMethod(type),
-            time: formatColomboTime(entry.timeMarked || entryDate),
+            checkInTime: formatColomboTime(entry.timeMarked || entryDate),
+            checkOutTime: entry.checkOutTime
+              ? formatColomboTime(entry.checkOutTime)
+              : null,
             attendanceTime: entry.timeMarked || entry.date,
           });
           datesWithDailyRecord.add(dayKey);
@@ -1067,6 +1076,132 @@ const checkInternProjects = async (req, res) => {
   }
 };
 
+// =========================== PROFILE PICTURE MANAGEMENT ===========================
+
+// Upload or update profile picture
+const uploadProfilePicture = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let imageBuffer = null;
+    let contentType = "image/jpeg";
+
+    if (req.file) {
+      imageBuffer = fs.readFileSync(req.file.path);
+      contentType = req.file.mimetype;
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (err) {
+        console.error("Failed to delete temp file:", err);
+      }
+    } else if (req.body.imageBase64) {
+      let base64Data = req.body.imageBase64;
+      if (base64Data.includes("base64,")) {
+        const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+        if (matches && matches.length === 3) {
+          contentType = matches[1];
+          base64Data = matches[2];
+        }
+      }
+      imageBuffer = Buffer.from(base64Data, "base64");
+    } else {
+      return res
+        .status(400)
+        .json({ error: "No image file or base64 data provided" });
+    }
+
+    await ProfilePicture.findOneAndUpdate(
+      { internId: id },
+      { internId: id, imageBuffer, contentType },
+      { upsert: true, new: true },
+    );
+
+    res.status(200).json({ message: "Profile picture uploaded successfully" });
+  } catch (error) {
+    console.error("Error uploading profile picture:", error);
+    res.status(500).json({ error: "Failed to upload profile picture" });
+  }
+};
+
+// Retrieve profile picture (streams directly to browser)
+const getProfilePicture = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let internId = id;
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      const mongoose = require("mongoose");
+      const Intern = mongoose.model("Intern");
+      const intern = await Intern.findOne({ Trainee_ID: id });
+      if (!intern) {
+        return res.status(404).json({ error: "Intern not found" });
+      }
+      internId = intern._id;
+    }
+
+    // 1. Check for custom upload first
+    const profilePic = await ProfilePicture.findOne({ internId });
+    if (profilePic && profilePic.imageBuffer) {
+      res.writeHead(200, {
+        "Content-Type": profilePic.contentType,
+        "Content-Length": profilePic.imageBuffer.length,
+        "Cache-Control": "public, max-age=86400",
+      });
+      return res.end(profilePic.imageBuffer);
+    }
+
+    // 2. Check for Google profile picture fallback
+    const mongoose = require("mongoose");
+    const Intern = mongoose.model("Intern");
+    const internDoc = await Intern.findById(internId);
+    if (internDoc && internDoc.googlePictureUrl) {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.redirect(302, internDoc.googlePictureUrl);
+    }
+
+    // 3. Fallback to 404
+    res.status(404).json({ error: "Profile picture not found" });
+  } catch (error) {
+    console.error("Error fetching profile picture:", error);
+    res.status(500).json({ error: "Failed to fetch profile picture" });
+  }
+};
+
+// =========================== TOUR / ONBOARDING ===========================
+
+/**
+ * PATCH /interns/:id/tour-seen
+ * Body: { version: "v1.0-initial" }
+ * Saves the tour version the intern has seen so the tour is not shown again.
+ */
+const markTourSeen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { version } = req.body;
+
+    if (!version) {
+      return res.status(400).json({ message: "version is required" });
+    }
+
+    const Intern = require("../models/Intern");
+
+    const intern = await Intern.findByIdAndUpdate(
+      id,
+      { $set: { tourSeenVersion: version } },
+      { new: true },
+    );
+
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found" });
+    }
+
+    res.status(200).json({ ok: true, tourSeenVersion: intern.tourSeenVersion });
+  } catch (error) {
+    console.error("Error marking tour as seen:", error);
+    res
+      .status(500)
+      .json({ message: "Error marking tour as seen", error: error.message });
+  }
+};
 
 module.exports = {
   addIntern,
@@ -1103,4 +1238,7 @@ module.exports = {
   triggerComprehensiveUpdate,
   acceptAgreement,
   checkInternProjects,
+  uploadProfilePicture,
+  getProfilePicture,
+  markTourSeen,
 };

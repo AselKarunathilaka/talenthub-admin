@@ -110,6 +110,16 @@ export const api = {
     return res.json();
   },
 
+  patch: async (endpoint, data) => {
+    const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+      method: "PATCH",
+      headers: createHeaders(),
+      body: JSON.stringify(data),
+    });
+    await checkAuth(res);
+    return res.json();
+  },
+
   delete: async (endpoint) => {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: "DELETE",

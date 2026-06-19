@@ -37,7 +37,7 @@ const DailyRecordSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["working", "leave", "wfh"],
+      enum: ["working", "leave", "wfh", "study_leave"],
       default: "working",
     },
     attendance: {
@@ -46,6 +46,10 @@ const DailyRecordSchema = new mongoose.Schema(
       default: "absent",
     },
     attendanceTime: {
+      type: Date,
+      default: null,
+    },
+    checkOutTime: {
       type: Date,
       default: null,
     },
@@ -92,5 +96,6 @@ const DailyRecordSchema = new mongoose.Schema(
 // Create compound index for intern and date to prevent duplicates per day
 DailyRecordSchema.index({ internId: 1, date: 1 }, { unique: true });
 DailyRecordSchema.index({ internId: 1, createdAt: -1 });
+DailyRecordSchema.index({ createdAt: -1 }); // Standalone index for fast date range queries
 
 module.exports = mongoose.model("DailyRecord", DailyRecordSchema);

@@ -1,19 +1,23 @@
 import { API_BASE_URL } from "./apiConfig";
 import { handleUnauthorized } from "../utils/sessionUtils";
 
-
 const checkAuth = async (res) => {
   if (res.status === 401) {
     let code = "";
-    try { const b = await res.clone().json(); code = b.code || ""; } catch { /* ignore */ }
-    const msg = code === "TOKEN_EXPIRED"
-      ? "Your session has expired. Please log in again."
-      : "Your session is invalid. Please log in again.";
+    try {
+      const b = await res.clone().json();
+      code = b.code || "";
+    } catch {
+      /* ignore */
+    }
+    const msg =
+      code === "TOKEN_EXPIRED"
+        ? "Your session has expired. Please log in again."
+        : "Your session is invalid. Please log in again.";
     handleUnauthorized(msg);
     throw new Error(msg);
   }
 };
-
 
 // Get auth token from localStorage
 const getAuthToken = () => {
@@ -139,14 +143,19 @@ export const adminApi = {
   // Get individual intern's attendance (daily + meeting) separated
   getInternAttendance: async (internId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}/attendance`, {
-        method: "GET",
-        headers: getHeaders(),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/admin/intern/${internId}/attendance`,
+        {
+          method: "GET",
+          headers: getHeaders(),
+        },
+      );
 
       await checkAuth(response);
       if (!response.ok) {
-        throw new Error(`Failed to fetch intern attendance: ${response.status}`);
+        throw new Error(
+          `Failed to fetch intern attendance: ${response.status}`,
+        );
       }
 
       return await response.json();
@@ -159,19 +168,55 @@ export const adminApi = {
   // Get individual intern's real GitHub commits per TalentTrail project
   getInternGitCommits: async (internId) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/admin/intern/${internId}/git-commits`, {
-        method: "GET",
-        headers: getHeaders(),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/admin/intern/${internId}/git-commits`,
+        {
+          method: "GET",
+          headers: getHeaders(),
+        },
+      );
 
       await checkAuth(response);
       if (!response.ok) {
-        throw new Error(`Failed to fetch intern git commits: ${response.status}`);
+        throw new Error(
+          `Failed to fetch intern git commits: ${response.status}`,
+        );
       }
 
       return await response.json();
     } catch (error) {
       console.error("Error fetching intern git commits:", error);
+      throw error;
+    }
+  },
+
+  // Issue a certificate — generates/reuses a unique verification token
+  issueCertificate: async (internId) => {
+    try {
+      // Normalize: force http:// for localhost (Safari upgrades to https which breaks local dev)
+      let origin = window.location.origin;
+      origin = origin.replace(
+        /^https:\/\/(localhost|127\.0\.0\.1)/,
+        "http://$1",
+      );
+
+      const response = await fetch(
+        `${API_BASE_URL}/admin/intern/${internId}/issue-certificate`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ frontendOrigin: origin }),
+        },
+      );
+
+      await checkAuth(response);
+      if (!response.ok) {
+        throw new Error(`Failed to issue certificate: ${response.status}`);
+      }
+
+      return await response.json(); // { token, verificationUrl }
+    } catch (error) {
+      console.error("Error issuing certificate:", error);
       throw error;
     }
   },
@@ -307,30 +352,6 @@ export const adminApi = {
     }
   },
 
-  // Send notifications to overdue interns
-  sendOverdueNotifications: async (overdueInterns) => {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/admin/notifications/overdue`,
-        {
-          method: "POST",
-          headers: getHeaders(),
-          body: JSON.stringify({ overdueInterns }),
-        },
-      );
-      await checkAuth(response);
-
-      if (!response.ok) {
-        throw new Error(`Failed to send notifications: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error("Error sending notifications:", error);
-      throw error;
-    }
-  },
-
   // Manually trigger approved short leave email (1:30 PM report)
   triggerApprovedShortLeaveEmail: async () => {
     try {
@@ -359,13 +380,13 @@ export const adminApi = {
   },
 
   // Generate QR Code
-  generateQRCode: async (type = 'meeting', projectName = '') => {
+  generateQRCode: async (type = "meeting", projectName = "") => {
     try {
       let url = `${API_BASE_URL}/qrcode/generate-qrcode?type=${type}`;
-      if (type === 'meeting' && projectName) {
+      if (type === "meeting" && projectName) {
         url += `&projectName=${encodeURIComponent(projectName)}`;
       }
-      
+
       const response = await fetch(url, {
         method: "GET",
         headers: getHeaders(),
@@ -382,7 +403,7 @@ export const adminApi = {
     }
   },
 
-  getFaceMeetingPin: async (projectName = '', options = {}) => {
+  getFaceMeetingPin: async (projectName = "", options = {}) => {
     try {
       const query = new URLSearchParams({
         projectName,
@@ -393,16 +414,25 @@ export const adminApi = {
         headers: getHeaders(),
       };
 
-      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin?${query}`, requestOptions);
+      let response = await fetch(
+        `${API_BASE_URL}/admin/face-attendance/meeting-pin?${query}`,
+        requestOptions,
+      );
 
       if (response.status === 404) {
-        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin?${query}`, requestOptions);
+        response = await fetch(
+          `${API_BASE_URL}/face-attendance/meeting-pin?${query}`,
+          requestOptions,
+        );
       }
 
       await checkAuth(response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to generate face attendance PIN: ${response.status}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to generate face attendance PIN: ${response.status}`,
+        );
       }
       return await response.json();
     } catch (error) {
@@ -411,7 +441,7 @@ export const adminApi = {
     }
   },
 
-  stopFaceMeetingPin: async (projectName = '') => {
+  stopFaceMeetingPin: async (projectName = "") => {
     try {
       const requestOptions = {
         method: "POST",
@@ -419,16 +449,25 @@ export const adminApi = {
         body: JSON.stringify({ projectName }),
       };
 
-      let response = await fetch(`${API_BASE_URL}/admin/face-attendance/meeting-pin/stop`, requestOptions);
+      let response = await fetch(
+        `${API_BASE_URL}/admin/face-attendance/meeting-pin/stop`,
+        requestOptions,
+      );
 
       if (response.status === 404) {
-        response = await fetch(`${API_BASE_URL}/face-attendance/meeting-pin/stop`, requestOptions);
+        response = await fetch(
+          `${API_BASE_URL}/face-attendance/meeting-pin/stop`,
+          requestOptions,
+        );
       }
 
       await checkAuth(response);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to stop face attendance PIN: ${response.status}`);
+        throw new Error(
+          errorData.message ||
+            `Failed to stop face attendance PIN: ${response.status}`,
+        );
       }
       return await response.json();
     } catch (error) {
@@ -438,15 +477,21 @@ export const adminApi = {
   },
 
   getFaceEnrollmentProfiles: async () => {
-    const response = await fetch(`${API_BASE_URL}/admin/face-attendance/profiles`, {
-      method: "GET",
-      headers: getHeaders(),
-    });
+    const response = await fetch(
+      `${API_BASE_URL}/admin/face-attendance/profiles`,
+      {
+        method: "GET",
+        headers: getHeaders(),
+      },
+    );
 
     await checkAuth(response);
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `Failed to load face enrollment profiles: ${response.status}`);
+      throw new Error(
+        errorData.message ||
+          `Failed to load face enrollment profiles: ${response.status}`,
+      );
     }
 
     return response.json();
@@ -873,6 +918,55 @@ export const announcementApi = {
     await checkAuth(res);
     if (!res.ok)
       throw new Error(`Failed to delete announcement: ${res.status}`);
+    return res.json();
+  },
+};
+
+// Feature Tip API (Admin)
+export const featureTipAdminApi = {
+  getAll: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to fetch feature tips: ${res.status}`);
+    return res.json();
+  },
+
+  create: async (payload) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+    await checkAuth(res);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(
+        err.message || `Failed to create feature tip: ${res.status}`,
+      );
+    }
+    return res.json();
+  },
+
+  toggle: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips/${id}/toggle`, {
+      method: "PATCH",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to toggle feature tip: ${res.status}`);
+    return res.json();
+  },
+
+  delete: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/feature-tips/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(res);
+    if (!res.ok) throw new Error(`Failed to delete feature tip: ${res.status}`);
     return res.json();
   },
 };

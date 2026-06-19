@@ -24,7 +24,7 @@ class AuthService {
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, message: "User registered successfully!" };
@@ -48,7 +48,7 @@ class AuthService {
     const token = jwt.sign(
       { id: user._id, email: user.email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, message: "Login successful!" };
@@ -63,16 +63,22 @@ class AuthService {
 
     const payload = ticket.getPayload();
     const email = payload.email;
+    const googlePictureUrl = payload.picture;
 
     const intern = await InternRepository.findByEmail(email);
     if (!intern) {
       throw new Error("This email is not registered as an intern.");
     }
 
+    if (googlePictureUrl && intern.googlePictureUrl !== googlePictureUrl) {
+      intern.googlePictureUrl = googlePictureUrl;
+      await intern.save();
+    }
+
     const token = jwt.sign(
       { id: intern._id, email: intern.Trainee_Email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, internId: intern._id, message: "Login successful!" }; // Return internId
@@ -102,7 +108,7 @@ class AuthService {
     const token = jwt.sign(
       { id: intern._id, email: intern.Trainee_Email },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return { token, internId: intern._id, message: "Login successful!" };
@@ -131,7 +137,7 @@ class AuthService {
     const token = jwt.sign(
       { id: gateStaff._id, email: gateStaff.email, role: "gatestaff" },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return {
@@ -159,7 +165,7 @@ class AuthService {
     const token = jwt.sign(
       { id: newStaff._id, email: newStaff.email, role: "gatestaff" },
       dotenv.jwtSecret,
-      { expiresIn: "1h" },
+      { expiresIn: "24h" },
     );
 
     return {

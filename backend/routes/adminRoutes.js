@@ -7,7 +7,6 @@ const path = require("path");
 const {
   getDashboardStats,
   getInternReport,
-  sendOverdueNotifications,
   getInternDetails,
   searchInterns,
   getAllDailyRecords,
@@ -53,9 +52,14 @@ const {
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
   getFaceProfileEnrollmentSummary,
+  scanInternFaceByAdmin,
+  registerFaceProfileByAdmin,
 } = require("../controllers/faceAttendanceController");
 
-const { getCertificateData } = require("../controllers/certificateController");
+const {
+  getCertificateData,
+  issueCertificate,
+} = require("../controllers/certificateController");
 
 const { syncTalentTrailData } = require("../services/talentTrailSyncService");
 
@@ -96,9 +100,6 @@ router.get("/non-submissions-within-week", getNonSubmissionsWithinAWeek);
 // Get weekly non-submissions (Monday to Friday of current week)
 router.get("/weekly-non-submissions", getWeeklyNonSubmissions);
 
-// Send notifications to overdue interns
-router.post("/notifications/overdue", sendOverdueNotifications);
-
 // Get individual intern details
 router.get("/intern/:internId", getInternDetails);
 
@@ -116,6 +117,9 @@ router.get("/intern/:internId/git-commits", getInternGitCommits);
 
 // Get certificate data (enriched from TalentTrail)
 router.get("/intern/:internId/certificate-data", getCertificateData);
+
+// Issue a certificate — generates a unique verification token and saves a record
+router.post("/intern/:internId/issue-certificate", issueCertificate);
 
 // Manually trigger SLT API sync
 router.post("/sync/slt-api", syncWithSLTAPI);
@@ -182,6 +186,8 @@ router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/face-attendance/meeting-pin/stop", stopCurrentMeetingPin);
 router.get("/face-attendance/profiles", getFaceProfileEnrollmentSummary);
+router.post("/face-attendance/scan-intern", scanInternFaceByAdmin);
+router.post("/face-attendance/enroll-intern", registerFaceProfileByAdmin);
 
 // Manual attendance ────────────────────────────────────────────────────
 router.get("/manual-attendance/search", searchInternForAttendance);

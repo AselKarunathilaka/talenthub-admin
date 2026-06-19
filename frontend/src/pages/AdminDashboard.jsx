@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUsers,
   FaSearch,
   FaDownload,
-  FaBell,
   FaExclamationTriangle,
   FaCheckCircle,
   FaTimesCircle,
@@ -27,18 +26,24 @@ import {
   FaRegFileExcel,
   FaSlidersH,
   FaCalendarCheck,
-  FaRegPaperPlane,
   FaMapMarkedAlt,
   FaBullhorn,
   FaChevronDown,
   FaQrcode,
   FaKey,
   FaChevronRight,
+  FaTimes,
+  FaGraduationCap,
+  FaCamera,
+  FaLock,
+  FaChartLine,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import logo from "../assets/sltlogo.jpg";
-
+import AdminNavigation from "../components/AdminNavigation";
+import { Home } from "lucide-react";
+/* ── Chart.js imports removed as per user request ── */
 /* ═══════════════════════════════════════════════════════════════
    Brand Colors
    ═══════════════════════════════════════════════════════════════ */
@@ -115,6 +120,9 @@ const parseDateForComparison = (dateString) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
+   Generate submission trend data (Removed)
+   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
    Component
    ═══════════════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
@@ -130,16 +138,12 @@ const AdminDashboard = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
   const [showNotifications, setShowNotifications] = useState(false);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [showExports, setShowExports] = useState(false);
   const [activeExport, setActiveExport] = useState(null);
-
-  /* ── New UI state ── */
-  const [activeTab, setActiveTab] = useState("actions"); // "actions" | "exports" | "alerts"
+  const [showLeaveRequestPicker, setShowLeaveRequestPicker] = useState(false);
 
   /* ── Data fetching (unchanged) ── */
   const fetchData = useCallback(async () => {
@@ -171,22 +175,8 @@ const AdminDashboard = () => {
   const searchInterns = useCallback(
     async (searchQuery) => {
       if (!searchQuery || searchQuery.trim().length < 2) {
-        if (filterStatus !== "all") {
-          try {
-            setSearchLoading(true);
-            const reportData = await adminApi.searchInterns("*");
-            setInternReport(reportData);
-            setHasSearched(true);
-          } catch (error) {
-            console.error("Error loading all interns:", error);
-            setInternReport([]);
-          } finally {
-            setSearchLoading(false);
-          }
-        } else {
-          setInternReport([]);
-          setHasSearched(false);
-        }
+        setInternReport([]);
+        setHasSearched(false);
         return;
       }
       try {
@@ -201,7 +191,7 @@ const AdminDashboard = () => {
         setSearchLoading(false);
       }
     },
-    [filterStatus],
+    [],
   );
 
   useEffect(() => {
@@ -212,71 +202,10 @@ const AdminDashboard = () => {
   }, [searchTerm, searchInterns]);
 
   useEffect(() => {
-    if (
-      filterStatus !== "all" &&
-      (!searchTerm || searchTerm.trim().length < 2)
-    ) {
-      searchInterns("");
-    }
-  }, [filterStatus, searchInterns, searchTerm]);
-
-  useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  /* ── Handlers (unchanged) ── */
-  const handleSendNotifications = async () => {
-    if (
-      !dashboardStats?.overdueList ||
-      dashboardStats.overdueList.length === 0
-    ) {
-      notificationUtils.showInfo("No overdue interns to notify");
-      return;
-    }
-    try {
-      setSendingNotifications(true);
-      const notifications = dashboardStats.overdueList.map((intern) => ({
-        id: intern._id,
-        name: intern.traineeName,
-        traineeId: intern.traineeId,
-        email: intern.email,
-        body: `Dear ${intern.traineeName},\n\nYou are overdue in submitting your logbook. Please submit it as soon as possible.\n\nThank you.`,
-      }));
-      await adminApi.sendOverdueNotifications(notifications);
-      notificationUtils.showSuccess(
-        "Notifications sent to all overdue interns.",
-      );
-    } catch (error) {
-      console.error("Error sending notifications:", error);
-      notificationUtils.showError("Failed to send notifications");
-    } finally {
-      setSendingNotifications(false);
-    }
-  };
-
-  const handleExportOverdueCSV = async () => {
-    try {
-      if (
-        !dashboardStats?.overdueList ||
-        dashboardStats.overdueList.length === 0
-      ) {
-        notificationUtils.showInfo("No overdue interns to export.");
-        return;
-      }
-      await csvUtils.downloadInternReport(
-        dashboardStats.overdueList,
-        "overdue_interns",
-      );
-      notificationUtils.showSuccess(
-        `Overdue interns CSV report with ${dashboardStats.overdueList.length} interns downloaded successfully`,
-      );
-    } catch (error) {
-      console.error("Error exporting overdue interns CSV:", error);
-      notificationUtils.showError(
-        "Failed to export overdue interns CSV report",
-      );
-    }
-  };
+  /* ── Chart data removed ── */
 
   const handleExportSubmittedCSV = async () => {
     try {
@@ -427,42 +356,8 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ── Filtering & sorting (unchanged) ── */
-  const getFilteredInterns = () => {
-    if (!internReport || internReport.length === 0) return [];
-    const filtered = internReport
-      .filter((intern) => {
-        switch (filterStatus) {
-          case "submitted":
-            return !intern.isOverdue && intern.totalRecords > 0;
-          case "notsubmitted":
-            return intern.totalRecords === 0;
-          case "overdue":
-            return intern.isOverdue;
-          default:
-            return true;
-        }
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case "name":
-            return (a.traineeName || "").localeCompare(b.traineeName || "");
-          case "id":
-            return (a.traineeId || "").localeCompare(b.traineeId || "");
-          case "records":
-            return (b.totalRecords || 0) - (a.totalRecords || 0);
-          case "lastSubmitted":
-            const aDays = a.daysSinceLastSubmission || 999;
-            const bDays = b.daysSinceLastSubmission || 999;
-            return aDays - bDays;
-          default:
-            return 0;
-        }
-      });
-    return filtered;
-  };
-
-  const filteredInterns = getFilteredInterns();
+  /* ── Filtering & sorting removed, using internReport directly ── */
+  const filteredInterns = internReport || [];
 
   const getStatusBadge = (intern) => {
     if (intern.isOverdue) {
@@ -489,53 +384,7 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ── Quick-action items config ── */
-  const quickActions = [
-    { label: "Daily Records", icon: FaCalendarAlt, route: "/admin/daily-records", color: BRAND.success },
-    { label: "Leave Requests", icon: FaRunning, route: "/admin/leave-requests", color: "#8b5cf6" },
-    { label: "Seat Layout", icon: FaChair, route: "/admin/seat-management", color: "#ec4899" },
-    { label: "Announce", icon: FaBullhorn, route: "/admin/announcements", color: BRAND.accent },
-    { label: "Locations", icon: FaMapMarkedAlt, route: "/admin/intern-locations", color: BRAND.primary },
-    { label: "Attendance", icon: FaCalendarCheck, route: "/admin/intern-attendance", color: "#6366f1" },
-    { label: "QR Code", icon: FaQrcode, route: "/admin/qr-management", color: "#14b8a6" },
-    { label: "PIN Gen", icon: FaKey, route: "/admin/pin-management", color: BRAND.success },
-  ];
-
-  /* ── Tab definitions ── */
-  const tabs = [
-    { id: "actions", label: "Actions", icon: FaTasks },
-    { id: "exports", label: "Exports", icon: FaFileExport },
-    {
-      id: "alerts",
-      label: "Alerts",
-      icon: FaBell,
-      badge: dashboardStats?.overdueInterns || 0,
-    },
-  ];
-
-  /* ── Filter pill options ── */
-  const filterPills = [
-    { value: "all", label: "All" },
-    { value: "submitted", label: "Submitted" },
-    { value: "notsubmitted", label: "Not Submitted" },
-    { value: "overdue", label: "Overdue" },
-  ];
-
-  /* ══════════════════════════════════════════════════════════
-     Loading state
-     ══════════════════════════════════════════════════════════ */
-  if (loading) {
-    return (
-      <div className="admin-dash-loader">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="admin-dash-loader__spinner"
-        />
-        <p className="admin-dash-loader__text">Loading dashboard…</p>
-      </div>
-    );
-  }
+  /* ── Filter pills removed ── */
 
   /* ══════════════════════════════════════════════════════════
      Error state
@@ -544,9 +393,14 @@ const AdminDashboard = () => {
     return (
       <div className="admin-dash-loader">
         <div className="admin-dash-error-card">
-          <FaExclamationTriangle style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }} />
+          <FaExclamationTriangle
+            style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }}
+          />
           <p style={{ color: BRAND.danger, marginBottom: 20 }}>{error}</p>
-          <button onClick={fetchData} className="admin-dash-btn admin-dash-btn--primary">
+          <button
+            onClick={fetchData}
+            className="admin-dash-btn admin-dash-btn--primary"
+          >
             Retry
           </button>
         </div>
@@ -555,655 +409,403 @@ const AdminDashboard = () => {
   }
 
   /* ══════════════════════════════════════════════════════════
-     Main render
+     Main render — Two-Column Grid Layout
      ══════════════════════════════════════════════════════════ */
   return (
-    <div className="admin-dash-root">
-      {/* ── Ambient background ── */}
-      <div className="admin-dash-ambient">
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--1" />
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--2" />
-        <div className="admin-dash-ambient__orb admin-dash-ambient__orb--3" />
-      </div>
-
-      {/* ══════════════ HEADER ══════════════ */}
-      <motion.header
-        className="admin-dash-header"
-        initial={{ y: -80 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 120, damping: 20 }}
-      >
-        <div className="admin-dash-header__inner">
-          {/* Left: Logo + title */}
-          <motion.div
-            className="admin-dash-header__brand"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              localStorage.clear();
-              navigate("/admin-login");
-            }}
-          >
-            <img src={logo} alt="SLT Logo" className="admin-dash-header__logo" />
-            <div className="admin-dash-header__titles">
-              <span className="admin-dash-header__title">TalentHub</span>
-              <span className="admin-dash-header__subtitle">Admin Portal</span>
-            </div>
-          </motion.div>
-
-          {/* Right: User + Logout */}
-          <div className="admin-dash-header__actions">
-            <div className="admin-dash-header__user">
-              <div className="admin-dash-header__avatar">
-                <FaShieldAlt />
-              </div>
-              <span className="admin-dash-header__username">Admin</span>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-              className="admin-dash-header__logout"
-            >
-              <FaSignOutAlt />
-              <span>Logout</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* ══════════════ MAIN CONTENT ══════════════ */}
-      <div className="admin-dash-content">
-        <main className="admin-dash-main">
-          <div className="admin-dash-container">
-
+    <AdminNavigation>
+      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50/60 via-slate-50 to-indigo-50/60 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             {/* ── Page title ── */}
-            <motion.div
-              className="admin-dash-page-title"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-            >
-              <h1>
-                Intern Management
-              </h1>
-              <p>Monitor and manage intern logbook submissions</p>
-            </motion.div>
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <Home className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Dashboard
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  Overview of intern attendance, logbook submissions, and
+                  statistics
+                </motion.p>
+              </div>
+            </div>
 
             {/* ══════════════ KPI STAT CARDS ══════════════ */}
-            <motion.div
-              className="admin-dash-stats"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.4 }}
-            >
-              {[
-                {
-                  label: "Total Interns",
-                  value: dashboardStats?.totalInterns || 0,
-                  icon: FaUsers,
-                  accent: BRAND.primary,
-                  bg: BRAND.primaryLight,
-                },
-                {
-                  label: "Submitted",
-                  value: dashboardStats?.submittedInterns || 0,
-                  icon: FaCheckCircle,
-                  accent: BRAND.success,
-                  bg: BRAND.successLight,
-                },
-                {
-                  label: "Overdue",
-                  value: dashboardStats?.overdueInterns || 0,
-                  icon: FaExclamationTriangle,
-                  accent: BRAND.danger,
-                  bg: BRAND.dangerLight,
-                },
-                {
-                  label: "Total Records",
-                  value: dashboardStats?.totalRecords || 0,
-                  icon: FaTasks,
-                  accent: BRAND.accent,
-                  bg: BRAND.accentLight,
-                },
-              ].map((stat, idx) => (
                 <motion.div
-                  key={stat.label}
-                  className="admin-dash-stat-card"
-                  style={{ borderLeftColor: stat.accent }}
-                  initial={{ opacity: 0, y: 20 }}
+                  className="admin-dash-stats"
+                  initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 + idx * 0.08, duration: 0.35 }}
-                  whileHover={{ y: -3, boxShadow: "0 8px 30px rgba(0,0,0,0.08)" }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
                 >
-                  <div className="admin-dash-stat-card__icon" style={{ background: stat.bg }}>
-                    <stat.icon style={{ color: stat.accent, fontSize: 18 }} />
-                  </div>
-                  <div className="admin-dash-stat-card__text">
-                    <span className="admin-dash-stat-card__value" style={{ color: stat.accent }}>
-                      {stat.value}
-                    </span>
-                    <span className="admin-dash-stat-card__label">{stat.label}</span>
-                  </div>
+                  {[
+                    {
+                      label: "Total Interns",
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.totalInterns || 0,
+                      icon: FaUsers,
+                      accent: BRAND.primary,
+                      bg: BRAND.primaryLight,
+                      borderColor: "!border-blue-400/30",
+                      hoverBorderColor: "hover:!border-blue-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,86,162,0.35)]"
+                    },
+                    {
+                      label: "Total Records",
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.totalRecords || 0,
+                      icon: FaTasks,
+                      accent: BRAND.accent,
+                      bg: BRAND.accentLight,
+                      borderColor: "!border-cyan-400/30",
+                      hoverBorderColor: "hover:!border-cyan-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
+                    },
+                    {
+                      label: "Submitted",
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.submittedInterns || 0,
+                      icon: FaCheckCircle,
+                      accent: BRAND.success,
+                      bg: BRAND.successLight,
+                      borderColor: "!border-emerald-400/30",
+                      hoverBorderColor: "hover:!border-emerald-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
+                    },
+                    {
+                      label: "Overdue",
+                      value: loading
+                        ? "..."
+                        : dashboardStats?.overdueInterns || 0,
+                      icon: FaExclamationTriangle,
+                      accent: BRAND.danger,
+                      bg: BRAND.dangerLight,
+                      borderColor: "!border-red-400/30",
+                      hoverBorderColor: "hover:!border-red-400/60",
+                      shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
+                    },
+                  ].map((stat, idx) => (
+                    <motion.div
+                      key={stat.label}
+                      className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div
+                        className="admin-dash-stat-card__icon"
+                        style={{ background: stat.bg }}
+                      >
+                        <stat.icon
+                          style={{ color: stat.accent, fontSize: 18 }}
+                        />
+                      </div>
+                      <div className="admin-dash-stat-card__text">
+                        <span
+                          className="admin-dash-stat-card__value"
+                          style={{ color: stat.accent }}
+                        >
+                          {stat.value}
+                        </span>
+                        <span className="admin-dash-stat-card__label">
+                          {stat.label}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
                 </motion.div>
-              ))}
-            </motion.div>
 
-            {/* ══════════════ COMMAND CENTER (Tabs) ══════════════ */}
-            <motion.div
-              className="admin-dash-command"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.35, duration: 0.35 }}
-            >
-              {/* Tab bar */}
-              <div className="admin-dash-tabs">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    className={`admin-dash-tab ${activeTab === tab.id ? "admin-dash-tab--active" : ""}`}
-                    onClick={() => setActiveTab(tab.id)}
-                  >
-                    <tab.icon className="admin-dash-tab__icon" />
-                    <span>{tab.label}</span>
-                    {tab.badge > 0 && (
-                      <span className="admin-dash-tab__badge">{tab.badge}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab panels */}
-              <div className="admin-dash-tab-panels">
-                <AnimatePresence mode="wait">
-                  {/* ── TAB: Actions ── */}
-                  {activeTab === "actions" && (
-                    <motion.div
-                      key="tab-actions"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="admin-dash-tab-panel"
-                    >
-                      <div className="admin-dash-actions-grid">
-                        {quickActions.map((action) => (
-                          <motion.button
-                            key={action.label}
-                            onClick={() => navigate(action.route)}
-                            whileHover={{ scale: 1.04, y: -2 }}
-                            whileTap={{ scale: 0.96 }}
-                            className="admin-dash-action-btn"
-                          >
-                            <div
-                              className="admin-dash-action-btn__icon"
-                              style={{ background: `${action.color}14`, color: action.color }}
-                            >
-                              <action.icon />
-                            </div>
-                            <span className="admin-dash-action-btn__label">{action.label}</span>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* ── TAB: Exports ── */}
-                  {activeTab === "exports" && (
-                    <motion.div
-                      key="tab-exports"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="admin-dash-tab-panel"
-                    >
-                      <div className="admin-dash-exports">
-                        {/* Quick export buttons */}
-                        <div className="admin-dash-exports__row">
-                          <motion.button
-                            onClick={handleExportSubmittedCSV}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="admin-dash-export-btn"
-                            style={{ borderColor: `${BRAND.success}40` }}
-                          >
-                            <FaRegFileExcel style={{ color: BRAND.success }} />
-                            <div>
-                              <strong>Submissions List</strong>
-                              <small>Export submitted interns CSV</small>
-                            </div>
-                            <FaChevronRight className="admin-dash-export-btn__arrow" />
-                          </motion.button>
-
-                          <motion.button
-                            onClick={handleDownloadOnLeaveExcel}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="admin-dash-export-btn"
-                            style={{ borderColor: "#8b5cf640" }}
-                          >
-                            <FaRegFileExcel style={{ color: "#8b5cf6" }} />
-                            <div>
-                              <strong>On-Leave List</strong>
-                              <small>Download on-leave Excel</small>
-                            </div>
-                            <FaChevronRight className="admin-dash-export-btn__arrow" />
-                          </motion.button>
-                        </div>
-
-                        {/* Non-submissions section */}
-                        <div className="admin-dash-exports__nonsub">
-                          <p className="admin-dash-exports__section-title">Non-Submissions Report</p>
-
-                          <motion.button
-                            onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
-                            className="admin-dash-export-btn admin-dash-export-btn--highlight"
-                          >
-                            <FaFileExport style={{ color: BRAND.danger }} />
-                            <div>
-                              <strong>Current Week</strong>
-                              <small>Last 5 working days non-submissions</small>
-                            </div>
-                            <FaChevronRight className="admin-dash-export-btn__arrow" />
-                          </motion.button>
-
-                          {/* Custom date range */}
-                          <div className="admin-dash-exports__date-range">
-                            <div className="admin-dash-exports__dates">
-                              <div className="admin-dash-date-field">
-                                <label>From</label>
-                                <input
-                                  type="date"
-                                  value={customStartDate}
-                                  onChange={(e) => setCustomStartDate(e.target.value)}
-                                />
-                              </div>
-                              <div className="admin-dash-date-field">
-                                <label>To</label>
-                                <input
-                                  type="date"
-                                  value={customEndDate}
-                                  onChange={(e) => setCustomEndDate(e.target.value)}
-                                />
-                              </div>
-                            </div>
-                            <motion.button
-                              onClick={handleExportWeeklyNonSubmissionsCSV}
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.97 }}
-                              className="admin-dash-btn admin-dash-btn--danger"
-                            >
-                              <FaDownload style={{ marginRight: 6 }} />
-                              Download CSV
-                            </motion.button>
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {/* ── TAB: Alerts ── */}
-                  {activeTab === "alerts" && (
-                    <motion.div
-                      key="tab-alerts"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 10 }}
-                      transition={{ duration: 0.2 }}
-                      className="admin-dash-tab-panel"
-                    >
-                      {/* Alerts header actions */}
-                      <div className="admin-dash-alerts-header">
-                        <h3>
-                          Overdue Interns
-                          <span className="admin-dash-alerts-header__count">
-                            {dashboardStats?.overdueList?.length || 0}
-                          </span>
-                        </h3>
-                        <div className="admin-dash-alerts-header__actions">
-                          <motion.button
-                            onClick={handleExportOverdueCSV}
-                            disabled={!dashboardStats?.overdueList?.length}
-                            whileHover={{ scale: !dashboardStats?.overdueList?.length ? 1 : 1.03 }}
-                            whileTap={{ scale: !dashboardStats?.overdueList?.length ? 1 : 0.97 }}
-                            className="admin-dash-btn admin-dash-btn--warning"
-                          >
-                            <FaFileExport style={{ marginRight: 6 }} />
-                            Export List
-                          </motion.button>
-                          <motion.button
-                            onClick={handleSendNotifications}
-                            disabled={sendingNotifications || !dashboardStats?.overdueList?.length}
-                            whileHover={{
-                              scale:
-                                sendingNotifications || !dashboardStats?.overdueList?.length
-                                  ? 1
-                                  : 1.03,
-                            }}
-                            whileTap={{
-                              scale:
-                                sendingNotifications || !dashboardStats?.overdueList?.length
-                                  ? 1
-                                  : 0.97,
-                            }}
-                            className="admin-dash-btn admin-dash-btn--danger"
-                          >
-                            {sendingNotifications ? (
-                              <FaSpinner className="animate-spin" style={{ marginRight: 6 }} />
-                            ) : (
-                              <FaRegPaperPlane style={{ marginRight: 6 }} />
-                            )}
-                            Remind All
-                          </motion.button>
-                        </div>
-                      </div>
-
-                      {/* Overdue list */}
-                      {dashboardStats?.overdueList?.length > 0 ? (
-                        <div className="admin-dash-overdue-list">
-                          {dashboardStats.overdueList.map((intern) => (
-                            <motion.div
-                              key={intern._id}
-                              className="admin-dash-overdue-item"
-                              whileHover={{ scale: 1.005 }}
-                              transition={{ duration: 0.15 }}
-                            >
-                              <div className="admin-dash-overdue-item__info">
-                                <p className="admin-dash-overdue-item__name">{intern.traineeName}</p>
-                                <p className="admin-dash-overdue-item__meta">
-                                  {intern.traineeId} · {intern.email}
-                                </p>
-                              </div>
-                              <div className="admin-dash-overdue-item__date">
-                                <FaClock style={{ fontSize: 11, marginRight: 4, opacity: 0.6 }} />
-                                {intern.lastSubmission
-                                  ? formatDateDisplay(intern.lastSubmission)
-                                  : "Never submitted"}
-                              </div>
-                            </motion.div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="admin-dash-empty admin-dash-empty--sm">
-                          <FaCheckCircle style={{ fontSize: 28, color: BRAND.success, marginBottom: 8 }} />
-                          <p>No overdue interns — all caught up!</p>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </motion.div>
-
-            {/* ══════════════ SEARCH & FILTER ══════════════ */}
-            <motion.div
-              className="admin-dash-search-section"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.45, duration: 0.3 }}
-            >
-              {/* Search input */}
-              <div className="admin-dash-search-bar">
-                <FaSearch className="admin-dash-search-bar__icon" />
+            {/* ══════════════ SPOTLIGHT SEARCH ══════════════ */}
+            <div className="mt-12 mb-8 relative w-full z-20">
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className={`relative bg-white/80 md:bg-white/20 md:backdrop-blur-3xl rounded-3xl border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10 shadow-[0_0_25px_rgba(0,180,235,0.35)]' : 'border-[#00b4eb]/20 hover:border-[#00b4eb]/60 shadow-[0_0_15px_rgba(0,180,235,0.15)] hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
+              >
+                <FaSearch className="text-gray-400 text-xl sm:text-3xl mr-3 sm:mr-6 flex-shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search by name, trainee ID, or email…"
+                  placeholder="Search interns by name, ID, or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="admin-dash-search-bar__input"
+                  className="w-full text-sm sm:text-2xl font-semibold text-gray-800 placeholder-gray-400 sm:placeholder-gray-300 outline-none bg-transparent"
+                  autoFocus
                 />
                 {searchLoading && (
-                  <FaSpinner className="admin-dash-search-bar__spinner animate-spin" />
+                  <FaSpinner className="text-[#00b4eb] text-xl sm:text-2xl animate-spin ml-2 sm:ml-4 flex-shrink-0" />
                 )}
-              </div>
-              {searchTerm.length > 0 && searchTerm.length < 2 && (
-                <p className="admin-dash-search-hint">Type at least 2 characters to search</p>
-              )}
-
-              {/* Filter pills + sort */}
-              <div className="admin-dash-filters">
-                <div className="admin-dash-filter-pills">
-                  {filterPills.map((pill) => (
-                    <button
-                      key={pill.value}
-                      className={`admin-dash-pill ${filterStatus === pill.value ? "admin-dash-pill--active" : ""}`}
-                      onClick={() => setFilterStatus(pill.value)}
-                    >
-                      {pill.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="admin-dash-sort">
-                  <FaSort style={{ color: "#9ca3af", flexShrink: 0 }} />
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="admin-dash-sort__select"
+                {searchTerm && !searchLoading && (
+                  <button 
+                    onClick={() => { setSearchTerm(""); setHasSearched(false); setInternReport([]); }}
+                    className="ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors"
                   >
-                    <option value="name">Name</option>
-                    <option value="id">Trainee ID</option>
-                    <option value="records">Records</option>
-                    <option value="lastSubmitted">Last Submitted</option>
-                  </select>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* ══════════════ INTERN RESULTS ══════════════ */}
-            <motion.div
-              className="admin-dash-results"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55, duration: 0.3 }}
-            >
-              {/* Results header */}
-              <div className="admin-dash-results__header">
-                <h2>
-                  {!hasSearched && filterStatus === "all"
-                    ? "Search for Interns"
-                    : `Results (${filteredInterns.length})`}
-                </h2>
-                {!hasSearched && filterStatus === "all" && (
-                  <p>Use the search bar or filters above to find interns</p>
+                    <FaTimesCircle className="text-xl sm:text-2xl" />
+                  </button>
                 )}
+              </motion.div>
+
+              {/* Search Results Dropdown */}
+              <AnimatePresence>
+                {searchTerm.length >= 2 && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/90 md:bg-white/30 md:backdrop-blur-3xl rounded-3xl shadow-[0_0_25px_rgba(0,180,235,0.25)] border border-[#00b4eb]/40 max-h-[60vh] overflow-y-auto z-50 p-2 sm:p-3"
+                  >
+                    {!hasSearched ? (
+                       <div className="p-6 sm:p-10 text-center text-gray-400">
+                         <FaSpinner className="text-3xl animate-spin mx-auto mb-4 text-[#00b4eb]" />
+                         <p className="font-medium text-base sm:text-lg">Searching...</p>
+                       </div>
+                    ) : filteredInterns.length === 0 ? (
+                       <div className="p-6 sm:p-10 text-center text-gray-400">
+                         <FaUser className="text-4xl mx-auto mb-4 opacity-50" />
+                         <p className="font-medium text-base sm:text-lg">No interns found</p>
+                         <p className="text-xs sm:text-sm mt-2">Try adjusting your search query.</p>
+                       </div>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        <div className="px-4 py-2 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-50 mb-2">
+                          {filteredInterns.length} Results
+                        </div>
+                        {filteredInterns.map((intern, idx) => (
+                          <div
+                            key={intern._id}
+                            onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                            className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-all duration-300 border border-transparent hover:border-[#00b4eb]/30 hover:shadow-[0_0_15px_rgba(0,180,235,0.1)] group"
+                          >
+                            <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform">
+                              {(intern.traineeName || "?")[0].toUpperCase()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-base sm:text-lg font-bold text-gray-900 truncate">
+                                {intern.traineeName || "N/A"}
+                              </h4>
+                              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate mt-0.5">
+                                {intern.traineeId || "N/A"} <span className="hidden sm:inline">· {intern.email || "No Email"}</span>
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 sm:gap-2 flex-shrink-0">
+                              {getStatusBadge(intern)}
+                              <span className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-1">
+                                {intern.totalRecords || 0} Records
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* ══════════════ EXPORTS SECTION ══════════════ */}
+            <div className="mt-16 w-full">
+              <div className="flex items-center gap-3 mb-6 px-2">
+                <div className="p-2 bg-purple-100 text-purple-700 rounded-xl flex-shrink-0">
+                  <FaFileExport className="text-lg" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-gray-900">Reports & Exports</h3>
+              </div>
+              
+              <div className="grid grid-cols-3 gap-3 sm:gap-6">
+                
+                {/* Submissions List */}
+                <motion.button
+                  onClick={handleExportSubmittedCSV}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(80,183,72,0.15)] border border-[#50b748]/20 hover:shadow-[0_0_25px_rgba(80,183,72,0.35)] hover:border-[#50b748]/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
+                >
+                  <div className="p-3 sm:p-4 bg-[#50b748]/10 text-[#50b748] rounded-xl sm:rounded-2xl group-hover:bg-[#50b748] group-hover:text-white transition-colors">
+                    <FaRegFileExcel className="text-2xl sm:text-3xl" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Submissions</h4>
+                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Export a complete CSV of all currently submitted interns.</p>
+                  </div>
+                </motion.button>
+
+                {/* On-Leave List */}
+                <motion.button
+                  onClick={handleDownloadOnLeaveExcel}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(147,51,234,0.15)] border border-purple-400/20 hover:shadow-[0_0_25px_rgba(147,51,234,0.35)] hover:border-purple-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
+                >
+                  <div className="p-3 sm:p-4 bg-purple-100 text-purple-600 rounded-xl sm:rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                    <FaRegFileExcel className="text-2xl sm:text-3xl" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">On-Leave</h4>
+                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Download Excel report of interns currently on leave.</p>
+                  </div>
+                </motion.button>
+
+                {/* Current Week Non-Submissions */}
+                <motion.button
+                  onClick={handleExportWeeklyNonSubmissionsWithinWeek}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(239,68,68,0.15)] border border-red-400/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:border-red-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
+                >
+                  <div className="p-3 sm:p-4 bg-red-50 text-red-500 rounded-xl sm:rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors">
+                    <FaExclamationTriangle className="text-2xl sm:text-3xl" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Non-Submissions</h4>
+                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Last 5 working days non-submissions report.</p>
+                  </div>
+                </motion.button>
+
+              </div>
+              
+              {/* Custom Date Non-Submissions */}
+              <motion.div 
+                whileHover={{ scale: 1.02 }}
+                className="mt-8 bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-6 rounded-3xl shadow-[0_0_15px_rgba(100,116,139,0.15)] border border-slate-400/20 hover:shadow-[0_0_25px_rgba(100,116,139,0.35)] hover:border-slate-400/60 flex flex-col md:flex-row items-center gap-6 transition-all duration-300"
+              >
+                <div className="flex-1">
+                  <h4 className="text-lg font-bold text-gray-900">Custom Date Range Non-Submissions</h4>
+                  <p className="text-sm font-medium text-gray-500 mt-1">Export non-submission data between specific dates.</p>
+                </div>
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                  <div className="flex items-center gap-3 w-full sm:w-auto">
+                    <input
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 w-full sm:w-auto"
+                    />
+                    <span className="text-gray-400 font-bold">to</span>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 w-full sm:w-auto"
+                    />
+                  </div>
+                  <motion.button
+                    onClick={handleExportWeeklyNonSubmissionsCSV}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors w-full sm:w-auto flex-shrink-0 shadow-md"
+                  >
+                    <FaDownload />
+                    <span>Download</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            </div>
+          </main>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showLeaveRequestPicker && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLeaveRequestPicker(false)}
+          >
+            <motion.div
+              className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-100"
+              initial={{ y: 24, scale: 0.98, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              exit={{ y: 24, scale: 0.98, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">
+                    Leave Requests Management
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Select which request type you want to manage
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowLeaveRequestPicker(false)}
+                  className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+                  aria-label="Close leave request selection"
+                >
+                  <FaTimesCircle className="h-5 w-5" />
+                </button>
               </div>
 
-              {/* Empty / Placeholder states */}
-              {!hasSearched && filterStatus === "all" ? (
-                <div className="admin-dash-empty">
-                  <div className="admin-dash-empty__icon-wrapper">
-                    <FaSearch style={{ fontSize: 28, color: BRAND.accent }} />
-                  </div>
-                  <h3>Find Interns Instantly</h3>
-                  <p>
-                    Type a name, trainee ID, or email above to search — or pick a
-                    filter to browse by status.
-                  </p>
-                  <div className="admin-dash-empty__tip">
-                    💡 <strong>Tip:</strong> Select "Overdue" filter to quickly see
-                    who needs attention.
-                  </div>
-                </div>
-              ) : filteredInterns.length === 0 ? (
-                <div className="admin-dash-empty">
-                  <FaUser style={{ fontSize: 32, color: "#d1d5db", marginBottom: 8 }} />
-                  <h3>No interns found</h3>
-                  <p>Try adjusting your search or filters.</p>
-                </div>
-              ) : (
-                <>
-                  {/* ── Mobile Card View ── */}
-                  <div className="admin-dash-cards-mobile">
-                    {filteredInterns.map((intern, idx) => (
-                      <motion.div
-                        key={intern._id}
-                        className={`admin-dash-intern-card ${
-                          intern.isOverdue
-                            ? "admin-dash-intern-card--danger"
-                            : intern.totalRecords > 0
-                            ? "admin-dash-intern-card--success"
-                            : "admin-dash-intern-card--neutral"
-                        }`}
-                        onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.03, duration: 0.25 }}
-                        whileHover={{ y: -2 }}
-                      >
-                        <div className="admin-dash-intern-card__top">
-                          <div className="admin-dash-intern-card__avatar">
-                            {(intern.traineeName || "?")[0].toUpperCase()}
-                          </div>
-                          <div className="admin-dash-intern-card__identity">
-                            <span className="admin-dash-intern-card__name">
-                              {intern.traineeName || "N/A"}
-                            </span>
-                            <span className="admin-dash-intern-card__id">
-                              {intern.traineeId || "N/A"}
-                            </span>
-                          </div>
-                          {getStatusBadge(intern)}
-                        </div>
+              <div className="grid gap-3 p-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeaveRequestPicker(false);
+                    navigate("/admin/leave-requests");
+                  }}
+                  className="flex items-center gap-4 rounded-xl border border-purple-100 bg-purple-50 px-5 py-4 text-left hover:border-purple-200 hover:bg-purple-100 transition-colors"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100">
+                    <FaRunning className="h-5 w-5 text-purple-600" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-gray-900">
+                      Short Leave Request Management
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Review early-exit permission requests
+                    </span>
+                  </span>
+                </button>
 
-                        <div className="admin-dash-intern-card__details">
-                          <div className="admin-dash-intern-card__detail">
-                            <span>📧</span>
-                            <span>{intern.email || "N/A"}</span>
-                          </div>
-                          <div className="admin-dash-intern-card__detail">
-                            <span>🎯</span>
-                            <span>{intern.fieldOfSpecialization || "N/A"}</span>
-                          </div>
-                          <div className="admin-dash-intern-card__detail">
-                            <span>🗓️</span>
-                            <span>
-                              {intern.trainingStartDate
-                                ? formatDateDisplay(intern.trainingStartDate)
-                                : "N/A"}{" "}
-                              –{" "}
-                              {intern.trainingEndDate
-                                ? formatDateDisplay(intern.trainingEndDate)
-                                : "N/A"}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="admin-dash-intern-card__footer">
-                          <span>
-                            <strong>{intern.totalRecords || 0}</strong> records
-                          </span>
-                          <span>
-                            Last:{" "}
-                            {intern.lastSubmission
-                              ? formatDateDisplay(intern.lastSubmission)
-                              : "Never"}
-                          </span>
-                          {intern.daysSinceLastSubmission !== null &&
-                            intern.daysSinceLastSubmission !== undefined && (
-                              <span className="admin-dash-intern-card__days-ago">
-                                {intern.daysSinceLastSubmission}d ago
-                              </span>
-                            )}
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-
-                  {/* ── Desktop Table View ── */}
-                  <div className="admin-dash-table-wrapper">
-                    <table className="admin-dash-table">
-                      <thead>
-                        <tr>
-                          <th>Intern</th>
-                          <th>Contact</th>
-                          <th>Training Period</th>
-                          <th>Records</th>
-                          <th>Last Submission</th>
-                          <th>Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredInterns.map((intern) => (
-                          <motion.tr
-                            key={intern._id}
-                            className="admin-dash-table__row"
-                            onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                            whileHover={{ backgroundColor: `${BRAND.accent}08` }}
-                            transition={{ duration: 0.15 }}
-                          >
-                            <td>
-                              <div className="admin-dash-table__intern-cell">
-                                <div className="admin-dash-table__avatar">
-                                  {(intern.traineeName || "?")[0].toUpperCase()}
-                                </div>
-                                <div>
-                                  <div className="admin-dash-table__name">
-                                    {intern.traineeName || "N/A"}
-                                  </div>
-                                  <div className="admin-dash-table__sub">
-                                    {intern.traineeId || "N/A"}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="admin-dash-table__name" title={intern.email}>
-                                {intern.email || "N/A"}
-                              </div>
-                              <div className="admin-dash-table__sub" title={intern.fieldOfSpecialization}>
-                                {intern.fieldOfSpecialization || "N/A"}
-                              </div>
-                            </td>
-                            <td>
-                              <div className="admin-dash-table__name">
-                                {intern.trainingStartDate
-                                  ? formatDateDisplay(intern.trainingStartDate)
-                                  : "N/A"}
-                              </div>
-                              <div className="admin-dash-table__sub">
-                                to{" "}
-                                {intern.trainingEndDate
-                                  ? formatDateDisplay(intern.trainingEndDate)
-                                  : "N/A"}
-                              </div>
-                            </td>
-                            <td>
-                              <span className="admin-dash-table__records-badge">
-                                {intern.totalRecords || 0}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="admin-dash-table__name">
-                                {intern.lastSubmission
-                                  ? formatDateDisplay(intern.lastSubmission)
-                                  : "Never"}
-                              </div>
-                              <div className="admin-dash-table__sub">
-                                {intern.daysSinceLastSubmission !== null &&
-                                intern.daysSinceLastSubmission !== undefined
-                                  ? `${intern.daysSinceLastSubmission} days ago`
-                                  : "—"}
-                              </div>
-                            </td>
-                            <td>{getStatusBadge(intern)}</td>
-                          </motion.tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLeaveRequestPicker(false);
+                    navigate("/admin/study-leave-requests");
+                  }}
+                  className="flex items-center gap-4 rounded-xl border border-sky-100 bg-sky-50 px-5 py-4 text-left hover:border-sky-200 hover:bg-sky-100 transition-colors"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100">
+                    <FaFileAlt className="h-5 w-5 text-sky-600" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-bold text-gray-900">
+                      Extended Leave Requests Management
+                    </span>
+                    <span className="block text-xs text-gray-500 mt-0.5">
+                      Review extended leave requests
+                    </span>
+                  </span>
+                </button>
+              </div>
             </motion.div>
-          </div>
-        </main>
-      </div>
-    </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </AdminNavigation>
   );
 };
 

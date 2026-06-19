@@ -343,7 +343,7 @@ class WeeklyNonSubmissionExcelService {
 
   static async sendNonSubmissionEmailWithExcel(
     nonSubmittedInterns,
-    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
+    recipients,
   ) {
     let excelFilePath = null;
 
@@ -499,7 +499,7 @@ class WeeklyNonSubmissionExcelService {
   // ── Main entry point ──────────────────────────────────────────────────────
 
   static async performWeeklyNonSubmissionCheckWithExcel(
-    recipients = "dimalshacooray@gmail.com", //"mgiri@slt.com.lk",
+    recipients,
     triggerType = "scheduled",
   ) {
     const startTime = new Date();

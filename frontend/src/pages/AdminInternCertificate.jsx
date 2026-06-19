@@ -20,8 +20,8 @@ const fmt = (d) => {
 
 const dur = (s, e) => {
   if (!s || !e) return 'N/A';
-  const m = Math.round((new Date(e) - new Date(s)) / (1000*60*60*24*30.44));
-  return m < 1 ? `${Math.ceil((new Date(e)-new Date(s))/864e5)} days` : `${m} month${m!==1?'s':''}`;
+  const m = Math.round((new Date(e) - new Date(s)) / (1000 * 60 * 60 * 24 * 30.44));
+  return m < 1 ? `${Math.ceil((new Date(e) - new Date(s)) / 864e5)} days` : `${m} month${m !== 1 ? 's' : ''}`;
 };
 
 const Toast = ({ toast, onClose }) => {
@@ -29,7 +29,7 @@ const Toast = ({ toast, onClose }) => {
   const c = toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
   return (
     <motion.div className={`fixed bottom-6 right-6 z-50 flex items-center space-x-3 px-4 py-3 rounded-xl border shadow-lg max-w-sm ${c}`}
-      initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:20 }}>
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}>
       <span className="text-sm font-medium">{toast.text}</span>
       <button onClick={onClose} className="opacity-60 hover:opacity-100"><FaTimes className="h-3 w-3" /></button>
     </motion.div>
@@ -45,17 +45,17 @@ const AdminInternCertificate = () => {
   const [toast, setToast] = useState(null);
   const [certData, setCertData] = useState(null);
   const [logoBase64, setLogoBase64] = useState(null);
-  
+
   // Custom manual project state
   const [showAddProject, setShowAddProject] = useState(false);
   const [newProject, setNewProject] = useState({ projectName: '', supervisorName: '', status: 'COMPLETED', commits: '' });
 
   const handleAddCustomProject = () => {
     if (!newProject.projectName) return;
-    
+
     const updatedCertData = { ...certData };
     if (!updatedCertData.projects) updatedCertData.projects = [];
-    
+
     if (newProject.commits) {
       if (!updatedCertData.gitCommitsData) {
         updatedCertData.gitCommitsData = { projectCommits: [] };
@@ -65,13 +65,13 @@ const AdminInternCertificate = () => {
         totalCommits: parseInt(newProject.commits) || 0
       });
     }
-    
+
     updatedCertData.projects.push({
       projectName: newProject.projectName,
       supervisorName: newProject.supervisorName || 'N/A',
       status: newProject.status
     });
-    
+
     setCertData(updatedCertData);
     setNewProject({ projectName: '', supervisorName: '', status: 'COMPLETED', commits: '' });
     setShowAddProject(false);
@@ -101,14 +101,14 @@ const AdminInternCertificate = () => {
         const res = await fetch(`${API_BASE_URL}/admin/intern/${internId}/certificate-data`, { headers: getAuthHeaders() });
         if (!res.ok) throw new Error(`Failed: ${res.status}`);
         const data = await res.json();
-        
+
         let gitCommitsData = null;
         try {
           gitCommitsData = await adminApi.getInternGitCommits(internId);
         } catch (err) {
           console.warn("Failed to fetch git commits for certificate:", err);
         }
-        
+
         setCertData({ ...data, gitCommitsData });
       } catch (err) {
         console.error(err);
@@ -121,12 +121,22 @@ const AdminInternCertificate = () => {
     })();
   }, [internId, navigate]);
 
-  const handleGeneratePDF = () => {
+  const handleGeneratePDF = async () => {
     if (!certData?.intern) return;
     setGenerating(true);
     try {
       const { intern, projects, attendanceCount, gitCommitsData } = certData;
-      generateCertificatePDF({
+
+      // Issue a certificate record to get a unique verification URL
+      let verificationUrl = null;
+      try {
+        const issued = await adminApi.issueCertificate(internId);
+        verificationUrl = issued.verificationUrl;
+      } catch (err) {
+        console.warn("Could not issue certificate token, QR will be omitted:", err);
+      }
+
+      await generateCertificatePDF({
         intern,
         startDate: intern.trainingStartDate,
         endDate: intern.trainingEndDate,
@@ -135,6 +145,7 @@ const AdminInternCertificate = () => {
         specialization: intern.fieldOfSpecialization,
         logoBase64,
         gitCommitsData,
+        verificationUrl,
       });
       setToast({ text: 'Certificate PDF downloaded!', type: 'success' });
     } catch (err) {
@@ -142,6 +153,7 @@ const AdminInternCertificate = () => {
       setToast({ text: `Failed to generate PDF: ${err.message}`, type: 'error' });
     } finally { setGenerating(false); }
   };
+
 
   if (loading) {
     return (
@@ -176,27 +188,27 @@ const AdminInternCertificate = () => {
       {/* Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <motion.div className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{ y:[0,-30,0], x:[0,20,0] }} transition={{ duration:15, repeat:Infinity, ease:'easeInOut' }} />
+          animate={{ y: [0, -30, 0], x: [0, 20, 0] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} />
         <motion.div className="absolute w-96 h-96 rounded-full bg-amber-100/20 top-1/3 right-0"
-          animate={{ y:[0,20,0] }} transition={{ duration:18, repeat:Infinity, ease:'easeInOut', delay:2 }} />
+          animate={{ y: [0, 20, 0] }} transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut', delay: 2 }} />
       </div>
 
       <AnimatePresence>{toast && <Toast toast={toast} onClose={() => setToast(null)} />}</AnimatePresence>
 
       {/* Navbar */}
       <motion.header className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
-        initial={{ y:-100 }} animate={{ y:0 }} transition={{ type:'spring', stiffness:100 }}>
+        initial={{ y: -100 }} animate={{ y: 0 }} transition={{ type: 'spring', stiffness: 100 }}>
         <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
           <motion.div className="flex items-center space-x-3 cursor-pointer"
             onClick={() => { localStorage.clear(); navigate('/admin-login'); }}
-            whileHover={{ scale:1.02 }} whileTap={{ scale:0.98 }}>
+            whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <img src={logo} alt="SLT" className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 shadow-sm" />
             <div className="hidden sm:flex flex-col">
               <span className="text-lg font-semibold text-gray-900">SLT Admin Portal</span>
               <span className="text-sm text-gray-600">Internship Certificate</span>
             </div>
           </motion.div>
-          <motion.button whileHover={{ scale:1.05 }} whileTap={{ scale:0.95 }}
+          <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
             onClick={() => { localStorage.removeItem('adminInfo'); navigate('/admin-login'); }}
             className="flex items-center space-x-2 px-4 py-2 text-sm text-red-600 hover:text-white hover:bg-red-500 rounded-xl border border-red-200 hover:border-red-500 transition-all shadow-sm">
             <FaShieldAlt className="h-4 w-4" /><span className="hidden sm:inline">Logout</span>
@@ -211,10 +223,10 @@ const AdminInternCertificate = () => {
 
             {/* Header */}
             <motion.div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4"
-              initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }}>
+              initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}>
               <motion.button onClick={() => navigate(`/admin/intern/${internId}`)}
                 className="flex items-center px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl border border-gray-200 shadow-sm"
-                whileHover={{ x:-3 }}>
+                whileHover={{ x: -3 }}>
                 <FaArrowLeft className="mr-2" />Back to Profile
               </motion.button>
               <div>
@@ -229,7 +241,7 @@ const AdminInternCertificate = () => {
 
             {/* Data source indicator — only show green badge when TalentTrail is connected */}
             {source?.talentTrailConnected && (
-              <motion.div className="mb-4 flex flex-wrap gap-2" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.1 }}>
+              <motion.div className="mb-4 flex flex-wrap gap-2" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                   ✓ TalentTrail Connected
                 </span>
@@ -243,11 +255,11 @@ const AdminInternCertificate = () => {
 
             {/* Certificate Preview */}
             <motion.div className="bg-white border border-gray-200 shadow-2xl relative mb-12"
-              initial={{ opacity:0, y:10 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}>
+              initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
 
               {/* Minimalist Top Accent */}
               <div className="h-1.5 bg-slate-900 w-full" />
-              
+
               <div className="p-8 sm:p-12">
                 {/* Certificate header */}
                 <div className="text-center mb-10">
@@ -291,27 +303,27 @@ const AdminInternCertificate = () => {
                 </div>
 
                 {/* Projects Section */}
-                <motion.div className="mb-10 max-w-2xl mx-auto" initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.5 }}>
+                <motion.div className="mb-10 max-w-2xl mx-auto" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
                   <div className="flex items-center justify-between mb-4 pb-2 border-b-2 border-slate-900">
                     <h4 className="text-sm font-bold uppercase tracking-widest text-slate-900">
                       Project Assignments ({projects?.length || 0})
                     </h4>
-                    <button 
+                    <button
                       onClick={() => setShowAddProject(!showAddProject)}
                       className="text-xs px-3 py-1.5 bg-slate-100 text-slate-600 rounded font-medium hover:bg-slate-200 transition-colors"
                     >
                       + Add Custom
                     </button>
                   </div>
-                  
+
                   {showAddProject && (
                     <div className="mb-4 p-5 bg-slate-50 border border-slate-200 rounded-lg shadow-inner">
                       <h5 className="text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-4">Add Custom Project Record</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                        <input type="text" placeholder="Project Name" value={newProject.projectName} onChange={e => setNewProject({...newProject, projectName: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
-                        <input type="text" placeholder="Supervisor Name" value={newProject.supervisorName} onChange={e => setNewProject({...newProject, supervisorName: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
-                        <input type="number" placeholder="Total Commits (Optional)" value={newProject.commits} onChange={e => setNewProject({...newProject, commits: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
-                        <select value={newProject.status} onChange={e => setNewProject({...newProject, status: e.target.value})} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 bg-white">
+                        <input type="text" placeholder="Project Name" value={newProject.projectName} onChange={e => setNewProject({ ...newProject, projectName: e.target.value })} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <input type="text" placeholder="Supervisor Name" value={newProject.supervisorName} onChange={e => setNewProject({ ...newProject, supervisorName: e.target.value })} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <input type="number" placeholder="Total Commits (Optional)" value={newProject.commits} onChange={e => setNewProject({ ...newProject, commits: e.target.value })} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500" />
+                        <select value={newProject.status} onChange={e => setNewProject({ ...newProject, status: e.target.value })} className="text-sm px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 bg-white">
                           <option value="COMPLETED">COMPLETED</option>
                           <option value="IN_PROGRESS">IN_PROGRESS</option>
                           <option value="PLANNING">PLANNING</option>
@@ -349,10 +361,9 @@ const AdminInternCertificate = () => {
                                   {commitsCount} Commits
                                 </span>
                               )}
-                              <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded font-semibold border ${
-                                p.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              <span className={`text-[10px] uppercase tracking-wider px-2.5 py-1 rounded font-semibold border ${p.status === 'COMPLETED' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                 p.status === 'IN_PROGRESS' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-slate-50 text-slate-700 border-slate-200'
-                              }`}>{p.status}</span>
+                                }`}>{p.status}</span>
                             </div>
                           </div>
                         );

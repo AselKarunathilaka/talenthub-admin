@@ -41,6 +41,5 @@ const internFaceProfileSchema = new mongoose.Schema(
   },
 );
 
-internFaceProfileSchema.index({ internId: 1 });
 
 module.exports = mongoose.model("InternFaceProfile", internFaceProfileSchema);

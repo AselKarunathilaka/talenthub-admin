@@ -10,6 +10,11 @@ const axios = require("axios");
 const https = require("https");
 const talentTrailSyncSvc = require("../services/talentTrailSyncService");
 
+// In-memory cache for dashboard stats (60 seconds TTL)
+let dashboardStatsCache = null;
+let dashboardStatsCacheTime = 0;
+const STATS_CACHE_TTL = 60 * 1000;
+
 // Get admin dashboard statistics
 const getDashboardStats = async (req, res) => {
   try {
@@ -21,9 +26,26 @@ const getDashboardStats = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    const threeDaysAgo = new Date();
-    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    threeDaysAgo.setHours(0, 0, 0, 0);
+    // Check cache
+    const now = Date.now();
+    if (
+      dashboardStatsCache &&
+      now - dashboardStatsCacheTime < STATS_CACHE_TTL
+    ) {
+      return res.status(200).json(dashboardStatsCache);
+    }
+
+    // Calculate 5 working days ago
+    let workingDaysCount = 0;
+    let fiveWorkingDaysAgo = new Date();
+    while (workingDaysCount < 5) {
+      fiveWorkingDaysAgo.setDate(fiveWorkingDaysAgo.getDate() - 1);
+      const dayOfWeek = fiveWorkingDaysAgo.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysCount++;
+      }
+    }
+    fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
 
     // Run both queries in parallel
     const [interns, submissionSummary] = await Promise.all([
@@ -68,9 +90,9 @@ const getDashboardStats = async (req, res) => {
       const internTotalRec = summary?.totalRecords ?? 0;
       totalRecords += internTotalRec;
 
-      // Overdue = never submitted, OR latest submission older than 3 days
+      // Overdue = never submitted, OR latest submission older than 5 working days
       const isOverdue =
-        !latestSubmission || new Date(latestSubmission) < threeDaysAgo;
+        !latestSubmission || new Date(latestSubmission) < fiveWorkingDaysAgo;
 
       if (isOverdue) {
         const daysSince = latestSubmission
@@ -100,13 +122,19 @@ const getDashboardStats = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
+    const responseData = {
       totalInterns: interns.length,
       totalRecords,
       submittedInterns: submittedCount,
       overdueInterns: overdueList.length,
       overdueList,
-    });
+    };
+
+    // Update cache
+    dashboardStatsCache = responseData;
+    dashboardStatsCacheTime = now;
+
+    return res.status(200).json(responseData);
   } catch (error) {
     console.error("Error getting dashboard stats:", error);
     res.status(500).json({ error: "Failed to get dashboard statistics" });
@@ -124,26 +152,55 @@ const getInternReport = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get all interns with their records
-    const interns = await Intern.find({});
-    const records = await DailyRecord.find({})
-      .populate("internId", "traineeName traineeId email")
-      .sort({ createdAt: -1 });
+    // Calculate 5 working days ago for accurate overdue status (matching getDashboardStats)
+    let workingDaysCount = 0;
+    let fiveWorkingDaysAgo = new Date();
+    while (workingDaysCount < 5) {
+      fiveWorkingDaysAgo.setDate(fiveWorkingDaysAgo.getDate() - 1);
+      const dayOfWeek = fiveWorkingDaysAgo.getDay();
+      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+        workingDaysCount++;
+      }
+    }
+    fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
 
+    // 1. Fetch all interns
+    const interns = await Intern.find({}).lean();
+
+    // 2. Fetch record summaries using aggregation (optimized: no $push to avoid memory bloat)
+    const submissionSummary = await DailyRecord.aggregate([
+      {
+        $group: {
+          _id: "$internId",
+          lastSubmission: { $max: "$createdAt" },
+          totalRecords: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Build O(1) lookup map
+    const submissionMap = new Map();
+    for (const s of submissionSummary) {
+      if (s._id) {
+        submissionMap.set(s._id.toString(), s);
+      }
+    }
+
+    // 3. Construct the report
     const report = interns.map((intern) => {
-      const internRecords = records.filter(
-        (record) =>
-          record.internId &&
-          record.internId._id.toString() === intern._id.toString(),
-      );
+      const summary = submissionMap.get(intern._id.toString());
+      const lastSubmission = summary?.lastSubmission || null;
 
-      const lastSubmission = internRecords.length > 0 ? internRecords[0] : null;
       const daysSinceLastSubmission = lastSubmission
         ? Math.floor(
-            (new Date() - new Date(lastSubmission.createdAt)) /
+            (new Date() - new Date(lastSubmission)) /
               (1000 * 60 * 60 * 24),
           )
         : null;
+
+      // Overdue = never submitted, OR latest submission older than 5 working days ago
+      const isOverdue =
+        !lastSubmission || new Date(lastSubmission) < fiveWorkingDaysAgo;
 
       return {
         _id: intern._id,
@@ -154,12 +211,10 @@ const getInternReport = async (req, res) => {
         team: intern.team || "Unassigned",
         trainingStartDate: intern.Training_StartDate,
         trainingEndDate: intern.Training_EndDate,
-        totalRecords: internRecords.length,
-        lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
+        totalRecords: summary?.totalRecords || 0,
+        lastSubmission: lastSubmission,
         daysSinceLastSubmission,
-        isOverdue:
-          daysSinceLastSubmission === null || daysSinceLastSubmission >= 3,
-        recentRecords: internRecords.slice(0, 5), // Last 5 records
+        isOverdue: isOverdue,
       };
     });
 
@@ -167,84 +222,6 @@ const getInternReport = async (req, res) => {
   } catch (error) {
     console.error("Error getting intern report:", error);
     res.status(500).json({ error: "Failed to generate intern report" });
-  }
-};
-
-// Send notifications to overdue interns
-const sendOverdueNotifications = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { overdueInterns } = req.body;
-
-    // Verify admin user
-    const adminUser = await User.findById(userId);
-    if (!adminUser) {
-      return res.status(403).json({ error: "Admin access required" });
-    }
-
-    if (!overdueInterns || !Array.isArray(overdueInterns)) {
-      return res.status(400).json({ error: "Invalid overdue interns data" });
-    }
-
-    const notifications = [];
-    const errors = [];
-
-    for (const intern of overdueInterns) {
-      try {
-        if (intern.email) {
-          const emailSubject = "Daily Logbook Submission Reminder";
-          const emailContent = `
-            Dear ${intern.name},
-
-            This is a friendly reminder that you haven't submitted your daily logbook in the past 3 days.
-
-            Please make sure to fill out your daily logbook regularly to track your progress and maintain good communication with your supervisors.
-
-            You can submit your logbook at: [https://talenthub.slt.lk/]
-
-            Trainee ID: ${intern.traineeId}
-
-            If you have any questions or technical issues, please contact your supervisor immediately.
-
-            Best regards,
-            SLT Mobitel
-            Digital Platforms Development Section
-          `;
-
-          await emailSender(intern.email, emailSubject, emailContent);
-          notifications.push({
-            internId: intern.id,
-            name: intern.name,
-            email: intern.email,
-            status: "sent",
-          });
-        } else {
-          errors.push({
-            internId: intern.id,
-            name: intern.name,
-            error: "No email address",
-          });
-        }
-      } catch (error) {
-        console.error(`Error sending notification to ${intern.name}:`, error);
-        errors.push({
-          internId: intern.id,
-          name: intern.name,
-          error: error.message,
-        });
-      }
-    }
-
-    res.status(200).json({
-      message: `Notifications sent to ${notifications.length} interns`,
-      successful: notifications,
-      failed: errors,
-      totalSent: notifications.length,
-      totalFailed: errors.length,
-    });
-  } catch (error) {
-    console.error("Error sending overdue notifications:", error);
-    res.status(500).json({ error: "Failed to send notifications" });
   }
 };
 
@@ -1387,12 +1364,10 @@ const getInternGitCommits = async (req, res) => {
       !syncRecord.projects ||
       syncRecord.projects.length === 0
     ) {
-      return res
-        .status(200)
-        .json({
-          commits: [],
-          message: "No TalentTrail projects found for this intern",
-        });
+      return res.status(200).json({
+        commits: [],
+        message: "No TalentTrail projects found for this intern",
+      });
     }
 
     // Authenticate with TalentTrail to get project repo details (including tokens)
@@ -1488,15 +1463,31 @@ const getInternGitCommits = async (req, res) => {
     const projectCommits = await Promise.all(
       relevantProjects.map(async (proj) => {
         try {
-          const params = { per_page: 50 };
+          const params = { per_page: 100 };
           if (githubUsername) params.author = githubUsername;
 
-          const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
-            headers: { Authorization: `token ${proj.repoAccessToken}` },
-            params,
-          });
+          let allCommits = [];
+          let page = 1;
+          let hasMore = true;
 
-          const commits = (Array.isArray(ghRes.data) ? ghRes.data : []).map(
+          while (hasMore) {
+            const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
+              headers: { Authorization: `token ${proj.repoAccessToken}` },
+              params: { ...params, page },
+            });
+
+            const pageCommits = Array.isArray(ghRes.data) ? ghRes.data : [];
+            allCommits = allCommits.concat(pageCommits);
+
+            // Stop if we got less than 100 commits (end of list) or reached 10 pages (safety cap of 1000 commits)
+            if (pageCommits.length < 100 || page >= 10) {
+              hasMore = false;
+            } else {
+              page++;
+            }
+          }
+
+          const commits = allCommits.map(
             (c) => ({
               sha: c.sha,
               shortSha: c.sha.slice(0, 7),
@@ -1585,7 +1576,6 @@ const getInternGitCommits = async (req, res) => {
 module.exports = {
   getDashboardStats,
   getInternReport,
-  sendOverdueNotifications,
   getInternDetails,
   searchInterns,
   getAllDailyRecords,

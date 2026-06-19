@@ -1,6 +1,54 @@
 import { useState, useCallback, useEffect } from "react";
 import { API_BASE_URL } from "../api/apiConfig";
 
+// Custom hook for scale to fit height or width
+export const useMapScale = (mapWidth, mapHeight, viewportRef, trigger) => {
+  const [scale, setScale] = useState(1);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let observer;
+    
+    const updateScale = () => {
+      if (!viewportRef.current) return;
+      const rect = viewportRef.current.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+
+      const isMobile = window.innerWidth < 768;
+      let fitScale;
+
+      if (isMobile) {
+        fitScale = (rect.height / mapHeight) * 0.98;
+      } else {
+        const scaleX = (rect.width / mapWidth) * 0.98;
+        const scaleY = (rect.height / mapHeight) * 0.98;
+        fitScale = Math.min(scaleX, scaleY, 1);
+      }
+
+      setScale(fitScale);
+      setReady(true);
+    };
+
+    updateScale();
+    
+    if (viewportRef.current) {
+      observer = new ResizeObserver(() => updateScale());
+      observer.observe(viewportRef.current);
+    }
+    
+    window.addEventListener('resize', updateScale);
+
+    return () => {
+      if (observer) {
+        observer.disconnect();
+      }
+      window.removeEventListener('resize', updateScale);
+    };
+  }, [mapWidth, mapHeight, viewportRef, trigger]);
+
+  return { scale, ready };
+};
+
 // Left section seats configuration
 export const leftSection = {
   topRow: [
@@ -133,14 +181,27 @@ const ALL_SEATS = [
 
 const TOTAL_SEATS = ALL_SEATS.length;
 
+// Helper to get local YYYY-MM-DD
+export const getLocalISODate = (date = new Date()) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const useSeatManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [currentSeat, setCurrentSeat] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [selectedDate, setSelectedDate] = useState(() => {
-    const today = new Date();
-    return today.toISOString().split("T")[0];
+    const now = new Date();
+    if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      return getLocalISODate(tomorrow);
+    }
+    return getLocalISODate(now);
   });
   const [dailyBookings, setDailyBookings] = useState({});
   const [minBookingDate, setMinBookingDate] = useState("");
@@ -159,12 +220,24 @@ export const useSeatManagement = () => {
 
   const formatDisplayDate = useCallback((dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    const formatted = date.toLocaleDateString("en-US", {
       weekday: "long",
       year: "numeric",
       month: "long",
       day: "numeric",
     });
+
+    const todayStr = getLocalISODate();
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = getLocalISODate(tomorrow);
+
+    if (dateString === todayStr) {
+      return `${formatted} (TODAY)`;
+    } else if (dateString === tomorrowStr) {
+      return `${formatted} (TOMORROW)`;
+    }
+    return formatted;
   }, []);
 
   const getThreeDayRange = useCallback(() => {
@@ -172,8 +245,8 @@ export const useSeatManagement = () => {
     const threeDaysLater = new Date();
     threeDaysLater.setDate(today.getDate() + 3);
     return {
-      minDate: today.toISOString().split("T")[0],
-      maxDate: threeDaysLater.toISOString().split("T")[0],
+      minDate: getLocalISODate(today),
+      maxDate: getLocalISODate(threeDaysLater),
     };
   }, []);
 
@@ -533,20 +606,51 @@ export const useSeatManagement = () => {
   useEffect(() => {
     const initializeDates = async () => {
       const today = new Date();
-      const formatDate = (date) => date.toISOString().split("T")[0];
+      const formatDate = (date) => getLocalISODate(date);
       const threeDayRange = getThreeDayRange();
 
       setMinBookingDate(threeDayRange.minDate);
       setMaxBookingDate(threeDayRange.maxDate);
-      setSelectedDate(formatDate(today));
+      
+      const now = new Date();
+      let defaultDate = today;
+      if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
+        defaultDate = new Date(now);
+        defaultDate.setDate(defaultDate.getDate() + 1);
+      }
+      
+      const initialDateStr = formatDate(defaultDate);
+      setSelectedDate(initialDateStr);
 
       await fetchLockedSeats();
-      await loadBookingsForDate(formatDate(today));
+      await loadBookingsForDate(initialDateStr);
     };
 
     initializeDates();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — one-time init
+
+  // Auto-update date on window focus if day changed
+  useEffect(() => {
+    const checkAndRefreshDate = () => {
+      const todayStr = getLocalISODate();
+      if (todayStr !== minBookingDate && minBookingDate !== "") {
+        const range = getThreeDayRange();
+        setMinBookingDate(range.minDate);
+        setMaxBookingDate(range.maxDate);
+        if (selectedDate < range.minDate) {
+          setSelectedDate(range.minDate);
+        }
+      }
+    };
+    
+    window.addEventListener("focus", checkAndRefreshDate);
+    const interval = setInterval(checkAndRefreshDate, 60000); // Also check every minute
+    return () => {
+      window.removeEventListener("focus", checkAndRefreshDate);
+      clearInterval(interval);
+    };
+  }, [minBookingDate, selectedDate, getThreeDayRange]);
 
   //Polling effect — separate from init so it never resets the date
   useEffect(() => {

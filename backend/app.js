@@ -19,6 +19,9 @@ const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
+const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
+const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
+const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 
 require("./scheduler");
 
@@ -67,6 +70,9 @@ app.use("/api/seat-reservation", seatBookingRoutes);
 app.use("/api/gate-staff", gateStaffRoutes);
 app.use("/api/admin", adminSeatRoutes);
 app.use("/api/announcements", internAnnouncementRoutes);
+app.use("/api/inactive-interns", inactiveInternRoutes);
+app.use("/api/verify", certificateVerifyRoutes);
+app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 
 //Sri Lanka Holidays
 app.use("/api/holidays", holidayRoutes);

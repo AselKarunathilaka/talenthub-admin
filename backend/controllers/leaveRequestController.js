@@ -9,7 +9,15 @@ class LeaveRequestController {
       const internId = req.user.internId || req.user.id;
       console.log("[Create] req.user:", JSON.stringify(req.user));
       console.log("[Create] Using internId:", internId);
-      const { leaveDate, leaveTime, purpose, reason, nationalId } = req.body;
+      const {
+        leaveDate,
+        studyEndDate,
+        leaveTime,
+        purpose,
+        reason,
+        nationalId,
+        requestType = "short_leave",
+      } = req.body;
 
       // Validate required fields
       if (!leaveDate || !leaveTime || !purpose || !reason || !nationalId) {
@@ -17,6 +25,13 @@ class LeaveRequestController {
           success: false,
           message:
             "All fields are required: leaveDate, leaveTime, purpose, reason, National ID",
+        });
+      }
+
+      if (requestType === "study_leave" && !req.file) {
+        return res.status(400).json({
+          success: false,
+          message: "Proof document is required for formal extended leave requests",
         });
       }
 
@@ -41,11 +56,13 @@ class LeaveRequestController {
         internId,
         {
           leaveDate,
+          studyEndDate,
           leaveTime,
           nationalId,
           purpose,
           reason,
           proofDocument,
+          requestType,
         },
       );
 
@@ -94,11 +111,12 @@ class LeaveRequestController {
     try {
       const internId = req.user.internId || req.user.id;
       // Accept `date` param in addition to `status` and pagination
-      const { status, date, page = 1, limit = 10 } = req.query;
+      const { status, date, requestType, page = 1, limit = 10 } = req.query;
 
       const options = {
         status,
         date, // pass date through to service → repository
+        requestType,
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
       };
@@ -145,11 +163,20 @@ class LeaveRequestController {
         });
       }
 
-      const { status, page = 1, limit = 10, date } = req.query;
+      const {
+        status,
+        requestType,
+        page = 1,
+        limit = 10,
+        date,
+        submittedDate,
+      } = req.query;
 
       const options = {
         status,
-        date: req.query.date,
+        date,
+        submittedDate,
+        requestType,
         limit: parseInt(limit),
         skip: (parseInt(page) - 1) * parseInt(limit),
       };
@@ -251,28 +278,31 @@ class LeaveRequestController {
         });
       }
 
-      const { date } = req.query;
-
-      if (!date) {
-        return res.status(400).json({
-          success: false,
-          message: "date query parameter is required",
-        });
-      }
+      const { date, submittedDate, requestType } = req.query;
 
       const [total, pending, approved, denied] = await Promise.all([
-        leaveRequestService.getAllLeaveRequests({ date }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
+          requestType,
+        }),
+        leaveRequestService.getAllLeaveRequests({
+          date,
+          submittedDate,
           status: "Pending",
+          requestType,
         }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
           status: "Approved",
+          requestType,
         }),
         leaveRequestService.getAllLeaveRequests({
           date,
+          submittedDate,
           status: "Denied",
+          requestType,
         }),
       ]);
 
@@ -412,11 +442,15 @@ class LeaveRequestController {
       const fileBuffer = Buffer.from(leaveRequest.proofDocument.data, "base64");
 
       // Set appropriate headers
+      const safeFilename = String(
+        leaveRequest.proofDocument.filename || "proof-document",
+      ).replace(/["\r\n]/g, "");
+
       res.setHeader("Content-Type", leaveRequest.proofDocument.contentType);
       res.setHeader("Content-Length", fileBuffer.length);
       res.setHeader(
         "Content-Disposition",
-        `inline; filename="${leaveRequest.proofDocument.filename}"`,
+        `inline; filename="${safeFilename}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`,
       );
 
       // Send the file
