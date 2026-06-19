@@ -270,16 +270,42 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setSelectedRequests(newSelected);
   };
 
-  const handleSelectAll = () => {
+  const handleSelectAll = async () => {
     if (isSelectAll) {
       setSelectedRequests(new Set());
+      setIsSelectAll(false);
     } else {
-      const allIds = filteredRequests
-        .filter((request) => request.status === "Pending")
-        .map((request) => request._id);
-      setSelectedRequests(new Set(allIds));
+      setProcessing(true);
+      const toastId = toast.loading("Selecting all pending requests...");
+      try {
+        const params = {
+          limit: 10000,
+          requestType,
+          status: "Pending",
+        };
+        
+        if (selectedDate && isStudyLeave) {
+          params.submittedDate = selectedDate;
+        } else if (selectedDate) {
+          params.date = selectedDate;
+        }
+
+        const response = await getAllLeaveRequests(params);
+        
+        const allIds = response.data
+          .filter((request) => request.status === "Pending")
+          .map((request) => request._id);
+          
+        setSelectedRequests(new Set(allIds));
+        setIsSelectAll(true);
+        toast.success(`Selected ${allIds.length} pending requests`, { id: toastId });
+      } catch (error) {
+        console.error("Error fetching all pending requests for selection:", error);
+        toast.error("Failed to select all requests", { id: toastId });
+      } finally {
+        setProcessing(false);
+      }
     }
-    setIsSelectAll(!isSelectAll);
   };
 
   const handleBulkAction = (action) => {
