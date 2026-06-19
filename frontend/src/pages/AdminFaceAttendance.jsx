@@ -866,18 +866,18 @@ const AdminFaceAttendance = () => {
                 </div>
               </div>
 
-              <div className="grid gap-px bg-gray-100 sm:grid-cols-3 z-0 shrink-0">
+              <div className="grid grid-cols-3 gap-px bg-gray-100 z-0 shrink-0">
                 {[
                   { label: 'Total Interns', value: enrollmentData.stats.totalInterns || 0, icon: FaUsers, color: 'text-[#0056a2] bg-[#00b4eb]/10' },
                   { label: 'Enrolled Interns', value: enrollmentData.stats.enrolled || 0, icon: FaUserCheck, color: 'text-[#15803d] bg-[#50b748]/10' },
                   { label: 'Not Enrolled Interns', value: enrollmentData.stats.notEnrolled || 0, icon: FaUserClock, color: 'text-rose-700 bg-rose-50' },
                 ].map(({ label, value, icon: Icon, color }) => (
-                  <div key={label} className="bg-white p-4 sm:px-6 sm:py-5">
-                    <div className={`inline-flex h-10 w-10 items-center justify-center rounded-xl ${color}`}>
+                  <div key={label} className="bg-white p-3 sm:px-6 sm:py-5 flex flex-col items-center sm:items-start text-center sm:text-left">
+                    <div className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg sm:rounded-xl ${color}`}>
                       <Icon className="h-4 w-4" />
                     </div>
-                    <div className="mt-4 text-3xl font-black text-gray-900">{value}</div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-gray-500 mt-1">{label}</div>
+                    <div className="mt-2 sm:mt-4 text-xl sm:text-3xl font-black text-gray-900 leading-none">{value}</div>
+                    <div className="text-[9px] sm:text-xs font-bold uppercase tracking-tight sm:tracking-wider text-gray-500 mt-1 sm:mt-1">{label}</div>
                   </div>
                 ))}
               </div>
