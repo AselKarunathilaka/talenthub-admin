@@ -257,6 +257,38 @@ export const adminSeatApi = {
       throw error;
     }
   },
+
+  /**
+   * Get interns who booked a seat but haven't scanned daily attendance
+   * @param {string} date - Date filter (YYYY-MM-DD)
+   * @returns {Promise<Object>} - { success, date, pendingCheckIns, count }
+   */
+  getPendingCheckIns: async (date) => {
+    try {
+      let url = `${API_BASE_URL}/admin/seat-bookings/pending-checkins`;
+      if (date) {
+        url += `?date=${encodeURIComponent(date)}`;
+      }
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: getHeaders(),
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          throw new Error("Authentication failed. Please login again.");
+        }
+        throw new Error(`Failed to fetch pending check-ins: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching pending check-ins:", error);
+      throw error;
+    }
+  },
 };
 
 // CSV export utility for seat bookings
@@ -342,6 +374,44 @@ export const seatBookingCsvUtils = {
       return { success: true, filename };
     } catch (error) {
       console.error("Error generating CSV report:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Generate and download pending check-ins CSV
+   * @param {Array} pendingCheckIns - Array of { seatNumber, traineeId, name, email }
+   * @param {string} date - Optional date for filename
+   */
+  downloadPendingCheckInsReport: (pendingCheckIns, date = null) => {
+    try {
+      if (!pendingCheckIns || pendingCheckIns.length === 0) {
+        return { success: false, message: "No pending check-ins to export" };
+      }
+
+      const headers = ["Seat Number", "Trainee ID", "Name", "Email"];
+      const rows = [
+        headers.join(","),
+        ...pendingCheckIns.map((item) =>
+          [
+            item.seatNumber || "",
+            item.traineeId || "",
+            `"${(item.name || "").replace(/"/g, '""')}"`,
+            item.email || "",
+          ].join(",")
+        ),
+      ];
+
+      const csvContent = rows.join("\n");
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = date
+        ? `pending_checkins_${date}.csv`
+        : `pending_checkins_${timestamp}.csv`;
+
+      seatBookingCsvUtils.downloadCSV(csvContent, filename);
+      return { success: true, filename };
+    } catch (error) {
+      console.error("Error generating pending check-ins CSV:", error);
       throw error;
     }
   },

@@ -340,6 +340,31 @@ const AdminSeatManagement = () => {
     }
   };
 
+  const [exportingPendingCheckIns, setExportingPendingCheckIns] = useState(false);
+
+  const handleExportPendingCheckIns = async () => {
+    setExportingPendingCheckIns(true);
+    try {
+      const data = await adminSeatApi.getPendingCheckIns(selectedDate);
+      if (!data.pendingCheckIns || data.pendingCheckIns.length === 0) {
+        seatNotificationUtils.showInfo("No pending check-ins found for this date");
+        return;
+      }
+      seatBookingCsvUtils.downloadPendingCheckInsReport(
+        data.pendingCheckIns,
+        selectedDate,
+      );
+      seatNotificationUtils.showSuccess(
+        `Exported ${data.pendingCheckIns.length} pending check-in${data.pendingCheckIns.length !== 1 ? "s" : ""} to CSV`,
+      );
+    } catch (error) {
+      console.error("Error exporting pending check-ins:", error);
+      seatNotificationUtils.showError(error.message || "Failed to export pending check-ins");
+    } finally {
+      setExportingPendingCheckIns(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -697,18 +722,38 @@ const AdminSeatManagement = () => {
                       : `Seat Bookings${selectedDate ? ` - ${formatDate(selectedDate)}` : ""}`}
                   </h3>
                </div>
-               <div className="flex items-center gap-3">
+               <div className="flex w-full md:w-auto items-center gap-2 sm:gap-3">
+                  {/* Export Pending Check-ins */}
+                  {!showHistory && (
+                    <motion.button
+                      onClick={handleExportPendingCheckIns}
+                      disabled={exportingPendingCheckIns}
+                      className="flex-1 md:flex-none w-full md:w-auto flex items-center justify-center space-x-1.5 sm:space-x-2 px-2 sm:px-5 py-2.5 bg-[#ff4444] hover:bg-[#ff1111] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#ff1a1a]/20 disabled:shadow-none"
+                      whileHover={{ scale: exportingPendingCheckIns ? 1 : 1.05 }}
+                      whileTap={{ scale: exportingPendingCheckIns ? 1 : 0.95 }}
+                      title="Export interns who booked a seat but haven't scanned daily attendance"
+                    >
+                      {exportingPendingCheckIns ? (
+                        <FaSpinner className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="whitespace-nowrap">Pending Check-ins</span>
+                    </motion.button>
+                  )}
+
+                  {/* Export Bookings */}
                   <motion.button
                     onClick={handleExportCSV}
                     disabled={displayBookings.length === 0}
-                    className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none"
+                    className="flex-1 md:flex-none w-full md:w-auto flex items-center justify-center space-x-1.5 sm:space-x-2 px-2 sm:px-5 py-2.5 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none"
                     whileHover={{ scale: displayBookings.length === 0 ? 1 : 1.05 }}
                     whileTap={{ scale: displayBookings.length === 0 ? 1 : 0.95 }}
                   >
-                    <FaDownload className="h-4 w-4" />
-                    <span>Export to CSV</span>
+                    <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="whitespace-nowrap">Export Bookings</span>
                     {displayBookings.length > 0 && (
-                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{displayBookings.length}</span>
+                      <span className="bg-white/20 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs">{displayBookings.length}</span>
                     )}
                   </motion.button>
                </div>
