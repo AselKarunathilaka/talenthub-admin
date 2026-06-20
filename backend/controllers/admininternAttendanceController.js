@@ -179,7 +179,7 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
       }
     }
   }).lean();
-  
+
   const presentInterns = [];
 
   for (const intern of interns) {
@@ -516,15 +516,25 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       projectsByEmail[email].push(...projectNames);
     }
 
+    const workingDays = getWorkingDaysInTwoWeekRange(startDate, endDate);
+    const workingDayStrings = workingDays.map((d) => d.format("YYYY-MM-DD"));
+
     const nonAttendees = [];
     for (const intern of activeInterns) {
       if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
+
+      const hasExtendedLeave = await WeeklyMeetingAttendanceService.hasApprovedExtendedLeaveForPeriod(
+        intern._id,
+        workingDayStrings,
+      );
+      if (hasExtendedLeave) continue;
+
       if (hasAttendedMeeting(intern)) continue;
 
       const lastRecord =
         WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
       const lastMeetingDate = lastRecord
-        ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+        ? moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")
         : "No record found";
 
       const internEmail = String(
@@ -628,7 +638,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       if (err) console.error("Non-attendance Excel download error:", err);
       try {
         fs.unlinkSync(filePath);
-      } catch (_) {}
+      } catch (_) { }
     });
   } catch (err) {
     console.error("exportNonAttendanceExcel error:", err);

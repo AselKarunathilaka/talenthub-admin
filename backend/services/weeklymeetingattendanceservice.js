@@ -1,5 +1,6 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
+const DailyRecord = require("../models/DailyRecord");
 const nodemailer = require("nodemailer");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
@@ -136,6 +137,39 @@ class WeeklyMeetingAttendanceService {
       .tz(TZ)
       .startOf("day");
     return trainingStart.isSameOrAfter(startDate);
+  }
+
+  // ── Approved extended leave check ─────────────────────────────────────────
+
+  /**
+   * Checks if the intern has approved extended leave for the entire two-week period.
+   * Returns true if for all working days in the range, the intern has a daily record
+   * with status "study_leave".
+   */
+  static async hasApprovedExtendedLeaveForPeriod(internId, workingDayStrings) {
+    try {
+      if (!workingDayStrings || workingDayStrings.length === 0) return false;
+
+      const records = await DailyRecord.find({
+        internId,
+        date: { $in: workingDayStrings },
+      });
+
+      const recordsMap = new Map();
+      records.forEach((r) => {
+        recordsMap.set(r.date, r.status);
+      });
+
+      return workingDayStrings.every((dateStr) => {
+        return recordsMap.get(dateStr) === "study_leave";
+      });
+    } catch (error) {
+      console.error(
+        `Error checking extended leave for intern ${internId}:`,
+        error,
+      );
+      return false;
+    }
   }
 
   // ── Attendance check ──────────────────────────────────────────────────────
@@ -309,7 +343,7 @@ class WeeklyMeetingAttendanceService {
       excelData.push(["Immediate follow-up action is recommended."]);
       excelData.push([]);
       excelData.push([
-        "Note: Interns whose training started within the review period are excluded.",
+        "Note: Interns whose training started within the review period or who have approved extended leaves are excluded.",
       ]);
 
       const workbook = XLSX.utils.book_new();
@@ -416,7 +450,7 @@ class WeeklyMeetingAttendanceService {
       </div>
       <p>
         The attached Excel file contains the complete list of interns who have <strong>NOT</strong> attended
-        any meetings during the above two-week review period. Interns whose training commenced within this period are excluded from the report.
+        any meetings during the above two-week review period. Interns whose training commenced within this period or who have approved extended leaves are excluded from the report.
       </p>
       <div class="attachment-notice">
         <p style="margin: 0;"><strong>📎 Attachment:</strong> ${path.basename(excelFilePath)}</p>
@@ -520,11 +554,14 @@ class WeeklyMeetingAttendanceService {
       const activeInterns = await this.getActiveInterns();
       console.log(`👥 Found ${activeInterns.length} active interns to check`);
 
+      const workingDayStrings = workingDays.map((d) => d.format("YYYY-MM-DD"));
+
       const results = {
         total: activeInterns.length,
         attended: 0,
         notAttended: 0,
         skippedNewInterns: 0,
+        skippedExtendedLeave: 0,
         emailSent: false,
         emailMessageId: null,
         emailError: null,
@@ -546,6 +583,18 @@ class WeeklyMeetingAttendanceService {
             continue;
           }
 
+          const hasExtendedLeave = await this.hasApprovedExtendedLeaveForPeriod(
+            intern._id,
+            workingDayStrings,
+          );
+          if (hasExtendedLeave) {
+            results.skippedExtendedLeave++;
+            console.log(
+              `🏝️  ${internName} (${internId}) - SKIPPED (on approved extended leave for the review period)`,
+            );
+            continue;
+          }
+
           const hasAttended = this.hasAttendedMeetingInPastTwoWeeks(intern);
 
           if (hasAttended) {
@@ -558,7 +607,7 @@ class WeeklyMeetingAttendanceService {
 
             const lastRecord = this.getLastAttendedMeeting(intern);
             const lastAttendedLabel = lastRecord
-              ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+              ? moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")
               : "No record found";
 
             results.nonAttendingList.push({
@@ -571,8 +620,8 @@ class WeeklyMeetingAttendanceService {
               institute: intern.Institute || "Not specified",
               trainingStartDate: intern.Training_StartDate
                 ? moment(intern.Training_StartDate)
-                    .tz(TZ)
-                    .format("MMM DD, YYYY")
+                  .tz(TZ)
+                  .format("MMM DD, YYYY")
                 : "Not specified",
               trainingEndDate: intern.Training_EndDate
                 ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
@@ -636,6 +685,9 @@ class WeeklyMeetingAttendanceService {
       console.log(`📋 Total interns checked:          ${results.total}`);
       console.log(
         `🆕 New interns skipped:            ${results.skippedNewInterns}`,
+      );
+      console.log(
+        `🏝️  Extended leave skipped:        ${results.skippedExtendedLeave}`,
       );
       console.log(`✅ Attended (past 2 weeks):        ${results.attended}`);
       console.log(`❌ Did NOT attend:                 ${results.notAttended}`);
