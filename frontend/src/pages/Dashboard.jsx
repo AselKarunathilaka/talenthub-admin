@@ -88,8 +88,23 @@ const Dashboard = () => {
           const notification = calculateInternshipEndNotification(
             response.Training_EndDate,
           );
-          console.log("End date notification:", notification); // Debug log
-          setEndDateNotification(notification);
+          
+          let shouldShow = notification.shouldNotify;
+          const lastDismissedStr = localStorage.getItem("internshipEndDismissedDate");
+          if (shouldShow && lastDismissedStr) {
+            const lastDismissed = new Date(lastDismissedStr);
+            const today = new Date();
+            if (lastDismissed.toDateString() === today.toDateString()) {
+              shouldShow = false;
+            }
+          }
+          
+          if (shouldShow) {
+            console.log("End date notification:", notification); // Debug log
+            setEndDateNotification(notification);
+          } else {
+            setEndDateNotification(null);
+          }
         }
         return response; // Return data so loadAllData can use it directly
       } else {
@@ -487,7 +502,10 @@ const Dashboard = () => {
       <div className="max-w-6xl mx-auto">
         <InternshipEndNotification
           notification={endDateNotification}
-          onDismiss={() => setEndDateNotification(null)}
+          onDismiss={() => {
+            setEndDateNotification(null);
+            localStorage.setItem("internshipEndDismissedDate", new Date().toISOString());
+          }}
         />
 
         {/* ── Intern Profile Card (Refactored) ── */}
