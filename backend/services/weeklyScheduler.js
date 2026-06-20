@@ -6,7 +6,7 @@ const LogbookRestrictionService = require("./logbookRestrictionService");
 // ── Single source of truth for recipients ────────────────────────────────
 const DEFAULT_RECIPIENTS = [
   "dimalshacooray@gmail.com", // Developer
-  //"mgiri@slt.com.lk", // Supervisor
+  "mgiri@slt.com.lk", // Supervisor
 ];
 
 class WeeklyScheduler {
@@ -35,7 +35,7 @@ class WeeklyScheduler {
 
     // ── 9:45 AM — Meeting attendance report ──────────────────────────────
     cron.schedule(
-      "40 22 * * *",
+      "45 9 * * 0",
       async () => {
         console.log(
           "\n⏰ Weekly meeting attendance check triggered by scheduler",
