@@ -24,6 +24,17 @@ const dur = (s, e) => {
   return m < 1 ? `${Math.ceil((new Date(e) - new Date(s)) / 864e5)} days` : `${m} month${m !== 1 ? 's' : ''}`;
 };
 
+const calcAttendancePercentage = (startDate, endDate, attendanceCount) => {
+  if (!startDate || !endDate || typeof attendanceCount !== 'number') return null;
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  if (isNaN(start) || isNaN(end) || end <= start) return null;
+  
+  const ms = end - start;
+  const expectedMeetings = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 7)));
+  return Math.min(100, Math.round((attendanceCount / expectedMeetings) * 100));
+};
+
 const Toast = ({ toast, onClose }) => {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
   const c = toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
@@ -297,7 +308,12 @@ const AdminInternCertificate = () => {
                     </div>
                     <div className="border-b border-gray-100 pb-3">
                       <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Meeting Attendance</p>
-                      <p className="text-base font-semibold text-slate-900">{attendanceCount} day{attendanceCount !== 1 ? 's' : ''}</p>
+                      <p className="text-base font-semibold text-slate-900">
+                        {attendanceCount} meeting{attendanceCount !== 1 ? 's' : ''}
+                        {calcAttendancePercentage(intern.trainingStartDate, intern.trainingEndDate, attendanceCount) !== null && (
+                          <span className="text-slate-500 text-sm ml-1 font-medium">({calcAttendancePercentage(intern.trainingStartDate, intern.trainingEndDate, attendanceCount)}%)</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>

@@ -164,7 +164,18 @@ export const generateCertificatePDF = async (data) => {
   const institute = intern.institute || intern.university || "N/A";
   const duration = dur(startDate, endDate);
   const traineeId = intern.traineeId || "N/A";
-  const attendDays = `${attendanceCount} day${attendanceCount !== 1 ? "s" : ""}`;
+
+  let attendanceStr = `${attendanceCount} meeting${attendanceCount !== 1 ? "s" : ""}`;
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (!isNaN(start) && !isNaN(end) && end > start) {
+      const ms = end - start;
+      const expectedMeetings = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 7)));
+      const percentage = Math.min(100, Math.round((attendanceCount / expectedMeetings) * 100));
+      attendanceStr += ` (achieving an attendance rate of ${percentage}%)`;
+    }
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
@@ -195,7 +206,7 @@ export const generateCertificatePDF = async (data) => {
     `training program at Sri Lanka Telecom PLC during the period ` +
     `${fmt(startDate)} to ${fmt(endDate)} (${duration})${extendedLeaveStr}. ` +
     `Throughout the training period, the intern demonstrated outstanding ` +
-    `dedication and commitment, attending ${attendDays} of scheduled meetings. ` +
+    `dedication and commitment, attending ${attendanceStr}. ` +
     `We acknowledge and appreciate the valuable contributions made during this internship.`;
 
   const wrappedLines = doc.splitTextToSize(paragraph, maxTextWidth);
