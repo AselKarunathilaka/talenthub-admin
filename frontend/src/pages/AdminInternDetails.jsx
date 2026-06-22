@@ -147,11 +147,14 @@ const AdminInternDetails = () => {
 
   const [gitCommitsData, setGitCommitsData] = useState(null);
   const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
+  // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
+  const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
     fetchGitCommits();
+    fetchCertAttendanceCount();
   }, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
@@ -181,6 +184,24 @@ const AdminInternDetails = () => {
       setAttendanceLoading(false);
     }
   }, [internId, attendanceData]);
+
+  // Fetch the same certificate-data endpoint used by the certificate page
+  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
+  const fetchCertAttendanceCount = useCallback(async () => {
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (!adminInfo.token) return;
+      const res = await fetch(
+        `${(await import("../api/apiConfig")).API_BASE_URL}/admin/intern/${internId}/certificate-data`,
+        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` } }
+      );
+      if (!res.ok) return;
+      const certData = await res.json();
+      setCertAttendanceCount(certData.attendanceCount ?? null);
+    } catch (err) {
+      console.warn("Could not fetch cert attendance count:", err);
+    }
+  }, [internId]);
 
   const fetchInternDetails = async () => {
     try {
@@ -570,6 +591,40 @@ const AdminInternDetails = () => {
                               {intern.endDate ? formatDate(intern.endDate) : "N/A"}
                             </div>
                           </div>
+
+                          {/* Meeting Attendance % = attended ÷ meetings held so far */}
+                          {attendanceData && intern.startDate && (() => {
+                            const present = attendanceData?.stats?.present ?? 0;
+                            const start = new Date(intern.startDate);
+                            const end = intern.endDate ? new Date(intern.endDate) : null;
+                            const now = new Date();
+                            // Meetings held so far = weeks elapsed (1 meeting per week), capped at training end
+                            const measureTo = end && end < now ? end : now;
+                            if (isNaN(start) || measureTo <= start) return null;
+                            const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+                            const pct = Math.min(100, Math.round((present / weeksHeld) * 100));
+                            const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                            const textColor = pct >= 80 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
+                            return (
+                              <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                    <FaChartPie className="text-slate-400" /> Meeting Attendance Rate
+                                  </p>
+                                  <span className={`text-sm font-black ${textColor}`}>{pct}%</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="h-2 rounded-full transition-all duration-700"
+                                    style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                  {present} attended out of {weeksHeld} meetings held so far (1 per week)
+                                </p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </motion.div>
