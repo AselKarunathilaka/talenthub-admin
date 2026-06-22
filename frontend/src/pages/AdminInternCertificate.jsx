@@ -24,15 +24,17 @@ const dur = (s, e) => {
   return m < 1 ? `${Math.ceil((new Date(e) - new Date(s)) / 864e5)} days` : `${m} month${m !== 1 ? 's' : ''}`;
 };
 
+// Formula: attended meetings ÷ meetings held so far (1 per week, capped at endDate or today)
 const calcAttendancePercentage = (startDate, endDate, attendanceCount) => {
-  if (!startDate || !endDate || typeof attendanceCount !== 'number') return null;
+  if (!startDate || typeof attendanceCount !== 'number') return null;
   const start = new Date(startDate);
-  const end = new Date(endDate);
-  if (isNaN(start) || isNaN(end) || end <= start) return null;
-  
-  const ms = end - start;
-  const expectedMeetings = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 7)));
-  return Math.min(100, Math.round((attendanceCount / expectedMeetings) * 100));
+  const end = endDate ? new Date(endDate) : null;
+  if (isNaN(start)) return null;
+  const now = new Date();
+  const measureTo = end && end < now ? end : now;
+  if (measureTo <= start) return null;
+  const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+  return Math.min(100, Math.round((attendanceCount / weeksHeld) * 100));
 };
 
 const Toast = ({ toast, onClose }) => {
@@ -56,6 +58,8 @@ const AdminInternCertificate = () => {
   const [toast, setToast] = useState(null);
   const [certData, setCertData] = useState(null);
   const [logoBase64, setLogoBase64] = useState(null);
+  // Local DB meeting attendance count (attended / weeks elapsed formula)
+  const [localMeetingPresent, setLocalMeetingPresent] = useState(null);
 
   // Custom manual project state
   const [showAddProject, setShowAddProject] = useState(false);
@@ -120,6 +124,17 @@ const AdminInternCertificate = () => {
           console.warn("Failed to fetch git commits for certificate:", err);
         }
 
+        // Fetch local DB attendance to get accurate meeting present count
+        try {
+          const attRes = await fetch(`${API_BASE_URL}/admin/intern/${internId}/attendance`, { headers: getAuthHeaders() });
+          if (attRes.ok) {
+            const attData = await attRes.json();
+            setLocalMeetingPresent(attData?.stats?.present ?? null);
+          }
+        } catch (err) {
+          console.warn('Could not fetch local attendance:', err);
+        }
+
         setCertData({ ...data, gitCommitsData });
       } catch (err) {
         console.error(err);
@@ -136,7 +151,9 @@ const AdminInternCertificate = () => {
     if (!certData?.intern) return;
     setGenerating(true);
     try {
-      const { intern, projects, attendanceCount, gitCommitsData } = certData;
+      const { intern, projects, gitCommitsData } = certData;
+      // Use local DB present count for accuracy (attended / weeks elapsed formula)
+      const effectiveAttendanceCount = localMeetingPresent ?? certData.attendanceCount ?? 0;
 
       // Issue a certificate record to get a unique verification URL
       let verificationUrl = null;
@@ -151,7 +168,7 @@ const AdminInternCertificate = () => {
         intern,
         startDate: intern.trainingStartDate,
         endDate: intern.trainingEndDate,
-        attendanceCount: attendanceCount || 0,
+        attendanceCount: effectiveAttendanceCount,
         projects: projects || [],
         specialization: intern.fieldOfSpecialization,
         logoBase64,
@@ -192,7 +209,9 @@ const AdminInternCertificate = () => {
     );
   }
 
-  const { intern, projects, attendanceCount, source, gitCommitsData } = certData;
+  const { intern, projects, source, gitCommitsData } = certData;
+  // Use local DB present count (attended / weeks elapsed); fallback to TalentTrail count
+  const attendanceCount = localMeetingPresent ?? certData.attendanceCount ?? 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">

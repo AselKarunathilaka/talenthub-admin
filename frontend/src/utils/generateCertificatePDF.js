@@ -166,13 +166,15 @@ export const generateCertificatePDF = async (data) => {
   const traineeId = intern.traineeId || "N/A";
 
   let attendanceStr = `${attendanceCount} meeting${attendanceCount !== 1 ? "s" : ""}`;
-  if (startDate && endDate) {
+  if (startDate) {
     const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (!isNaN(start) && !isNaN(end) && end > start) {
-      const ms = end - start;
-      const expectedMeetings = Math.max(1, Math.ceil(ms / (1000 * 60 * 60 * 24 * 7)));
-      const percentage = Math.min(100, Math.round((attendanceCount / expectedMeetings) * 100));
+    const end = endDate ? new Date(endDate) : null;
+    const now = new Date();
+    // attended / weeks held so far (capped at endDate if completed)
+    const measureTo = end && end < now ? end : now;
+    if (!isNaN(start) && measureTo > start) {
+      const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+      const percentage = Math.min(100, Math.round((attendanceCount / weeksHeld) * 100));
       attendanceStr += ` (achieving an attendance rate of ${percentage}%)`;
     }
   }
