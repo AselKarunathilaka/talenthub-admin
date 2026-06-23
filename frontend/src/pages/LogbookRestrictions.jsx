@@ -513,6 +513,7 @@ const LogbookRestrictions = () => {
                   className="logres-loader__spinner"
                 />
                 <p>Loading restricted interns…</p>
+              </div>
             ) : error ? (
               <div className="logres-error">
                 <FaExclamationTriangle
