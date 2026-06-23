@@ -38,6 +38,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import logo from "../assets/sltlogo.jpg";
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
@@ -519,8 +520,19 @@ const AdminInternDetails = () => {
                           {/* Overlapping Avatar */}
                           <div className="relative inline-block z-10">
                             <div className="h-20 w-20 sm:h-24 sm:w-24 bg-white p-1 rounded-2xl shadow-md border border-gray-100">
-                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200">
-                                <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
+                                <img
+                                  src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                                  alt={intern.traineeName}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                  <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+                                </div>
                               </div>
                             </div>
                             <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-0.5 shadow-sm border border-gray-100">

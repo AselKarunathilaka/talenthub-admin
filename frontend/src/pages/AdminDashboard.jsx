@@ -40,6 +40,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import logo from "../assets/sltlogo.jpg";
 import AdminNavigation from "../components/AdminNavigation";
 import { Home } from "lucide-react";
@@ -594,8 +595,19 @@ const AdminDashboard = () => {
                             onClick={() => navigate(`/admin/intern/${intern._id}`)}
                             className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-all duration-300 border border-transparent hover:border-[#00b4eb]/30 hover:shadow-[0_0_15px_rgba(0,180,235,0.1)] group"
                           >
-                            <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform">
-                              {(intern.traineeName || "?")[0].toUpperCase()}
+                            <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
+                              <img 
+                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`} 
+                                alt={intern.traineeName}
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                }}
+                              />
+                              <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                {(intern.traineeName || "?")[0].toUpperCase()}
+                              </div>
                             </div>
                             <div className="flex-1 min-w-0">
                               <h4 className="text-base sm:text-lg font-bold text-gray-900 truncate">
