@@ -1,6 +1,7 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -254,10 +255,29 @@ async function getDailyPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
   // Also check DailyRecord for logbook-backed attendance first
-  const dailyRecords = await DailyRecord.find({
-    date: dateStr,
-    attendance: { $in: ["present", "late"] },
-  }).lean();
+  const [dailyRecords, successfulFaceLogs] = await Promise.all([
+    DailyRecord.find({
+      date: dateStr,
+      attendance: { $in: ["present", "late"] },
+    }).lean(),
+    FaceAttendanceLog.find({
+      attendanceDate: dateStr,
+      status: "present",
+      method: "face",
+    }).lean(),
+  ]);
+
+  // FaceAttendanceLog is the authoritative audit trail for the scanner used.
+  // It also repairs report labels for older records that were successfully
+  // scanned by face recognition but remained tagged as daily_qr.
+  const dailyFaceInternIds = new Set(
+    successfulFaceLogs
+      .filter((log) => {
+        const attendanceType = String(log.metadata?.attendanceType || "daily").toLowerCase();
+        return attendanceType === "daily" || log.metadata?.dailyAttendanceMarked === true;
+      })
+      .map((log) => String(log.internId)),
+  );
 
   const dailyRecordInternIds = dailyRecords.map(r => r.internId);
 
@@ -333,6 +353,13 @@ async function getDailyPresentsOnDate(dateStr) {
       status: record.attendance === "late" ? "Late" : "Present",
       attendanceType: "daily",
     });
+  }
+
+  for (const internId of dailyFaceInternIds) {
+    const attendance = dailyByIntern.get(internId);
+    if (attendance) {
+      dailyByIntern.set(internId, { ...attendance, type: "face" });
+    }
   }
 
   return sortByInternId([...dailyByIntern.values()]);

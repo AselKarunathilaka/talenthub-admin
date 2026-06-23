@@ -47,6 +47,12 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -135,6 +141,7 @@ const FaceAttendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
+  const stableFaceChecksRef = useRef(0);
   const enrollmentSubmitStartedRef = useRef(false);
 
   const distanceKm = getDistanceKm(location, officeLocation);
@@ -235,6 +242,7 @@ const FaceAttendance = () => {
 
     setCameraActive(false);
     liveDescriptorRef.current = null;
+    stableFaceChecksRef.current = 0;
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
@@ -342,8 +350,8 @@ const FaceAttendance = () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          width: { ideal: 720 },
-          height: { ideal: 540 },
+          width: { ideal: 640 },
+          height: { ideal: 480 },
           aspectRatio: { ideal: 4 / 3 },
           facingMode: "user",
         },
@@ -410,6 +418,64 @@ const FaceAttendance = () => {
     }
   };
 
+  const inspectFacePosition = async () => {
+    if (!videoRef.current || !canvasRef.current) return null;
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    try {
+      const detections = await faceapi.detectAllFaces(
+        canvasRef.current,
+        FACE_GUIDE_DETECTOR_OPTIONS,
+      );
+
+      if (detections.length !== 1) {
+        return {
+          error:
+            detections.length === 0
+              ? "No face detected. Center your face in the frame."
+              : "More than one face detected. Only one person should be in frame.",
+        };
+      }
+
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
+    } catch (error) {
+      console.error("Error inspecting face position:", error);
+      return { error: "Could not read the camera frame." };
+    }
+  };
+
+  const updateFaceGuide = (nextGuide) => {
+    setFaceGuide((currentGuide) =>
+      currentGuide.ready === nextGuide.ready && currentGuide.message === nextGuide.message
+        ? currentGuide
+        : nextGuide,
+    );
+  };
+
+  const captureFreshDescriptorForVerification = async () => {
+    while (inspectBusyRef.current) {
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+    }
+
+    inspectBusyRef.current = true;
+    try {
+      return await captureFrameForDescriptor();
+    } finally {
+      inspectBusyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -433,30 +499,45 @@ const FaceAttendance = () => {
       inspectBusyRef.current = true;
 
       try {
-        const frameData = await captureFrameForDescriptor();
+        const positionData = await inspectFacePosition();
         if (cancelled) return;
 
-        if (!frameData || frameData.error) {
+        if (!positionData || positionData.error) {
+          stableFaceChecksRef.current = 0;
           liveDescriptorRef.current = null;
-          setFaceGuide({ ready: false, message: frameData?.error || "Center your face inside the oval" });
+          clearFaceMesh(meshCanvasRef.current);
+          updateFaceGuide({
+            ready: false,
+            message: positionData?.error || "Center your face inside the oval",
+          });
           return;
         }
 
-        liveDescriptorRef.current = frameData.descriptor;
-        setFaceGuide({
-          ready: true,
+        stableFaceChecksRef.current = Math.min(
+          stableFaceChecksRef.current + 1,
+          REQUIRED_STABLE_FACE_CHECKS,
+        );
+        const faceIsStable = stableFaceChecksRef.current >= REQUIRED_STABLE_FACE_CHECKS;
+        updateFaceGuide({
+          ready: faceIsStable,
           message:
-            mode === "enroll"
+            !faceIsStable
+              ? "Hold still for a moment..."
+              : mode === "enroll"
               ? enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
                 ? "Face samples are ready. Complete enrollment."
                 : ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length]
               : "Face is ready. You can mark attendance.",
         });
 
-        if (mode !== "enroll") return;
+        if (!faceIsStable || mode !== "enroll") return;
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled || !frameData || frameData.error) return;
+        liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct =
@@ -488,7 +569,7 @@ const FaceAttendance = () => {
     };
 
     inspectFace();
-    const timer = window.setInterval(inspectFace, 700);
+    const timer = window.setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -574,9 +655,9 @@ const FaceAttendance = () => {
       return;
     }
 
-    const frameData = liveDescriptorRef.current
-      ? { descriptor: liveDescriptorRef.current }
-      : await captureFrameForDescriptor();
+    // Always use a fresh, full-quality descriptor for verification. The live
+    // loop only checks positioning so it cannot submit an old camera frame.
+    const frameData = await captureFreshDescriptorForVerification();
 
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");

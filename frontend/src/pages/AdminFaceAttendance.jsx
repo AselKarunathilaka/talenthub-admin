@@ -20,6 +20,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 import { adminApi } from "../api/adminApi";
 import {
+  getDeviceTimeEvidence,
+  requestFreshLocation,
+} from "../utils/attendanceEvidence";
+import {
   FaCheckCircle,
   FaRedo,
   FaSearch,
@@ -46,6 +50,12 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 
 const getAuthHeaders = () => {
   const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -187,6 +197,7 @@ const AdminFaceAttendance = () => {
   const [faceGuide, setFaceGuide] = useState({ ready: false, message: "Center face in the oval" });
   const [meetingTitle, setMeetingTitle] = useState("");
   const [videoDims, setVideoDims] = useState({ width: 640, height: 480 });
+  const [sltLocationRequired, setSltLocationRequired] = useState(true);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -196,6 +207,7 @@ const AdminFaceAttendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
+  const stableFaceChecksRef = useRef(0);
   const submitStartedRef = useRef(false);
 
   const fetchEnrollmentProfiles = useCallback(async () => {
@@ -262,6 +274,25 @@ const AdminFaceAttendance = () => {
   }, []);
 
   useEffect(() => {
+    const loadAttendanceSettings = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
+          headers: getAuthHeaders(),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Failed to load attendance settings.");
+        setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      } catch (error) {
+        // Keep the secure default when settings cannot be loaded. The backend
+        // remains the authority and will return a useful location error.
+        console.error("Failed to load attendance settings:", error);
+      }
+    };
+
+    loadAttendanceSettings();
+  }, []);
+
+  useEffect(() => {
     return () => stopCamera();
   }, []);
 
@@ -303,6 +334,7 @@ const AdminFaceAttendance = () => {
     }
     setCameraActive(false);
     liveDescriptorRef.current = null;
+    stableFaceChecksRef.current = 0;
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center face in the oval" });
   };
@@ -336,11 +368,12 @@ const AdminFaceAttendance = () => {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 720 }, height: { ideal: 540 }, aspectRatio: { ideal: 4 / 3 }, facingMode: "user" },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 4 / 3 }, facingMode: "user" },
         audio: false,
       });
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
+      stableFaceChecksRef.current = 0;
       submitStartedRef.current = false;
       setEnrollmentFrames([]);
       setCameraActive(true);
@@ -400,6 +433,71 @@ const AdminFaceAttendance = () => {
     }
   };
 
+  const inspectFacePosition = async () => {
+    if (!videoRef.current || !canvasRef.current) return null;
+
+    const ctx = canvasRef.current.getContext("2d");
+    const vWidth = videoRef.current.videoWidth || 640;
+    const vHeight = videoRef.current.videoHeight || 480;
+
+    if (canvasRef.current.width !== vWidth) canvasRef.current.width = vWidth;
+    if (canvasRef.current.height !== vHeight) canvasRef.current.height = vHeight;
+    ctx.drawImage(videoRef.current, 0, 0, vWidth, vHeight);
+
+    try {
+      const detections = await faceapi.detectAllFaces(
+        canvasRef.current,
+        FACE_GUIDE_DETECTOR_OPTIONS,
+      );
+
+      if (detections.length !== 1) {
+        return {
+          error:
+            detections.length === 0
+              ? "No face detected."
+              : "More than one face detected.",
+        };
+      }
+
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - vWidth / 2) <= vWidth * 0.2 &&
+        Math.abs(centerY - vHeight / 2) <= vHeight * 0.2;
+      const largeEnough = box.width >= vWidth * 0.2 && box.height >= vHeight * 0.2;
+
+      if (!centered) return { error: "Move face into the center." };
+      if (!largeEnough) return { error: "Move closer to the camera." };
+
+      return { ready: true };
+    } catch (error) {
+      console.error("Error inspecting face position:", error);
+      return { error: "Could not read the camera frame." };
+    }
+  };
+
+  const updateFaceGuide = (nextGuide) => {
+    setFaceGuide((currentGuide) =>
+      currentGuide.ready === nextGuide.ready && currentGuide.message === nextGuide.message
+        ? currentGuide
+        : nextGuide,
+    );
+  };
+
+  const captureFreshDescriptorForVerification = async () => {
+    while (inspectBusyRef.current) {
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+    }
+
+    inspectBusyRef.current = true;
+    try {
+      return await captureFrameForDescriptor();
+    } finally {
+      inspectBusyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -417,24 +515,43 @@ const AdminFaceAttendance = () => {
       
       inspectBusyRef.current = true;
       try {
-        const frameData = await captureFrameForDescriptor();
+        const positionData = await inspectFacePosition();
         if (cancelled) return;
-        if (!frameData || frameData.error) {
+        if (!positionData || positionData.error) {
+          stableFaceChecksRef.current = 0;
           liveDescriptorRef.current = null;
-          setFaceGuide({ ready: false, message: frameData?.error || "Center face in oval" });
+          clearFaceMesh(meshCanvasRef.current);
+          updateFaceGuide({
+            ready: false,
+            message: positionData?.error || "Center face in oval",
+          });
           return;
         }
 
-        liveDescriptorRef.current = frameData.descriptor;
-        
-        if (mode !== "enroll") {
-          setFaceGuide({ ready: true, message: "Face is ready. You can mark attendance." });
-          return;
-        }
+        stableFaceChecksRef.current = Math.min(
+          stableFaceChecksRef.current + 1,
+          REQUIRED_STABLE_FACE_CHECKS,
+        );
+        const faceIsStable = stableFaceChecksRef.current >= REQUIRED_STABLE_FACE_CHECKS;
+        updateFaceGuide({
+          ready: faceIsStable,
+          message:
+            !faceIsStable
+              ? "Hold still for a moment..."
+              : mode === "enroll"
+                ? ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length] || "Face samples ready. Submitting..."
+                : "Face is ready. You can mark attendance.",
+        });
+
+        if (!faceIsStable || mode !== "enroll") return;
 
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled || !frameData || frameData.error) return;
+        liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct = !previousFrame || Math.sqrt(
@@ -458,7 +575,7 @@ const AdminFaceAttendance = () => {
     };
 
     inspectFace();
-    const timer = setInterval(inspectFace, 700);
+    const timer = setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -496,7 +613,21 @@ const AdminFaceAttendance = () => {
 
   const handleMarkAttendance = async () => {
     setLoading(true);
-    const frameData = liveDescriptorRef.current ? { descriptor: liveDescriptorRef.current } : await captureFrameForDescriptor();
+
+    let attendanceLocation = null;
+    if (sltLocationRequired) {
+      try {
+        attendanceLocation = await requestFreshLocation();
+      } catch (error) {
+        toast.error(error.message || "A fresh location is required to mark attendance.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    // Verify the person currently in front of the camera, not a descriptor
+    // cached by an earlier preview scan.
+    const frameData = await captureFreshDescriptorForVerification();
     
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -510,6 +641,11 @@ const AdminFaceAttendance = () => {
         descriptor: frameData.descriptor,
         attendanceType: mode,
         meetingTitle: mode === "meeting" ? meetingTitle.trim() : undefined,
+        metadata: {
+          location: attendanceLocation,
+          source: "admin-browser-camera",
+          ...getDeviceTimeEvidence(),
+        },
       });
       
       const successMessage = response.checkedOut
