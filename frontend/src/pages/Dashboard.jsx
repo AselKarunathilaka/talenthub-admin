@@ -574,6 +574,37 @@ const Dashboard = () => {
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Specialization</p>
                     <p className="text-sm font-medium text-gray-800">{internData.field_of_spec_name || "Not specified"}</p>
                   </div>
+
+                  {/* Meeting Attendance Rate */}
+                  {internData.Training_StartDate && attendanceStats.present + attendanceStats.absent > 0 && (() => {
+                    const start = new Date(internData.Training_StartDate);
+                    const end = internData.Training_EndDate ? new Date(internData.Training_EndDate) : null;
+                    const now = new Date();
+                    const measureTo = end && end < now ? end : now;
+                    if (isNaN(start) || measureTo <= start) return null;
+                    const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+                    const present = attendanceStats.present;
+                    const pct = Math.min(100, Math.round((present / weeksHeld) * 100));
+                    const color = pct >= 80 ? "#22c55e" : pct >= 50 ? "#f59e0b" : "#ef4444";
+                    const textColor = pct >= 80 ? "text-emerald-600" : pct >= 50 ? "text-amber-500" : "text-red-500";
+                    return (
+                      <div className="pt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Meeting Attendance</p>
+                          <span className={`text-sm font-black ${textColor}`}>{pct}%</span>
+                        </div>
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-1.5">
+                          <div
+                            className="h-2 rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, ${color}bb)` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-gray-400">
+                          {present} attended out of {weeksHeld} meetings held so far (1 per week)
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
