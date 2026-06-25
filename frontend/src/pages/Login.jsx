@@ -20,6 +20,9 @@ import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
 import transzentLogo from "../assets/transzent.jpeg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
+import WhatsAppSupportButton, {
+  WHATSAPP_SUPPORT_LINK,
+} from "../components/WhatsAppSupportButton";
 
 /* ─── Nav-link feature items (mirrors Navigation.jsx navLinks) ─── */
 const features = [
@@ -371,6 +374,21 @@ const Login = () => {
               </div>
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.45 }}
+              className="mt-4 rounded-2xl border border-[#25D366]/20 bg-[#25D366]/10 p-4 text-center"
+            >
+              <p className="mb-3 text-sm font-medium text-white/70">
+                Having trouble logging in or joining TalentHub?
+              </p>
+              <WhatsAppSupportButton
+                className="w-full"
+                variant="solid"
+              />
+            </motion.div>
+
             {/* Footer */}
             <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
             <motion.div
@@ -400,7 +418,9 @@ const Login = () => {
                   Terms
                 </a>
                 <a
-                  href="#"
+                  href={WHATSAPP_SUPPORT_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-[#00b4eb] transition-colors"
                 >
                   Help

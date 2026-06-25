@@ -6,6 +6,7 @@ import { AlertCircle, Camera, Scan, XCircle, Info, CheckCircle, ChevronRight, Ma
 import Navigation from '../components/Navigation';
 import { motion } from 'framer-motion';
 import { requestFreshLocation, toAttendanceEvidence } from '../utils/attendanceEvidence';
+import WhatsAppSupportButton from '../components/WhatsAppSupportButton';
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -717,13 +718,11 @@ const ScanQRCode = () => {
                 <p className="text-gray-600 text-sm mb-3 animate-text-slide-up" style={{ transitionDelay: '0.1s' }}>
                   If you're experiencing issues with the scanner, our support team is here to help.
                 </p>
-                <motion.button
-                  className="w-full py-2 px-4 bg-white border border-blue-200 text-blue-500 rounded-lg text-sm font-medium hover:bg-blue-50 transition-colors animate-button-bounce"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Contact Support
-                </motion.button>
+                <WhatsAppSupportButton
+                  className="w-full animate-button-bounce"
+                  size="sm"
+                  variant="light"
+                />
               </motion.div>
             </motion.div>
           </div>

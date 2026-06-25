@@ -154,7 +154,7 @@ const scanQRCode = async (req, res) => {
     // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
     // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
-      await qrCodeService.markInternDailyAttendance(internId, qrCode);
+      const attendanceResult = await qrCodeService.markInternDailyAttendance(internId, qrCode);
       await saveQrAttendanceAudit({
         internId,
         attendanceType: "daily",
@@ -196,8 +196,10 @@ const scanQRCode = async (req, res) => {
         // sendEmail(emailAddress, emailSubject, emailBody);
       }
       res.status(200).json({ 
-        message: "Daily attendance marked successfully",
-        dailyAttendanceUpdated: true
+        message: attendanceResult.message,
+        dailyAttendanceUpdated: true,
+        checkedOut: attendanceResult.checkedOut,
+        timeMarked: attendanceResult.timeMarked
       });
     } else {
       // For meeting/general attendance scans, use the old system (intern.attendance)
@@ -207,8 +209,10 @@ const scanQRCode = async (req, res) => {
       // Also attempt to mark daily attendance
       let dailyAttendanceUpdated = false;
       try {
-        await qrCodeService.markInternDailyAttendance(internId, qrCode);
-        dailyAttendanceUpdated = true;
+        const attendanceResult = await qrCodeService.markInternDailyAttendance(internId, qrCode, {
+          allowCheckout: false,
+        });
+        dailyAttendanceUpdated = Boolean(attendanceResult.dailyAttendanceMarked);
       } catch (e) {
         // Ignore errors (like duplicates) for the automatic part
       }

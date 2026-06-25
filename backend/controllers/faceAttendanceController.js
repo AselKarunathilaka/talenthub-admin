@@ -111,7 +111,9 @@ const verifyFaceAttendance = async (req, res) => {
           ? result.dailyAttendanceMarked
             ? "Face meeting attendance marked successfully. Daily attendance also recorded."
             : "Face meeting attendance marked successfully."
-          : "Face attendance marked successfully.",
+          : result.checkedOut
+            ? "Checked out successfully."
+            : "Checked in successfully.",
       matched: true,
       alreadyMarked: false,
       confidence: result.confidence,
@@ -400,7 +402,9 @@ const scanInternFaceByAdmin = async (req, res) => {
           ? result.dailyAttendanceMarked
             ? "Face meeting attendance marked successfully. Daily attendance also recorded."
             : "Face meeting attendance marked successfully."
-          : "Face attendance marked successfully.",
+          : result.checkedOut
+            ? "Checked out successfully."
+            : "Checked in successfully.",
       matched: true,
       alreadyMarked: false,
       confidence: result.confidence,

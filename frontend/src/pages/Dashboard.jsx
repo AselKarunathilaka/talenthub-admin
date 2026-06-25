@@ -7,6 +7,7 @@ import NoProjectNotification from "../components/NoProjectNotification";
 import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import OnboardingTour from "../components/OnboardingTour";
 import FeatureTipModal from "../components/FeatureTipModal";
+import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import {
   Users,
   User,
@@ -516,6 +517,28 @@ const Dashboard = () => {
             localStorage.setItem("internshipEndDismissedDate", new Date().toISOString());
           }}
         />
+
+        <motion.div
+          className="mb-6 rounded-3xl border border-[#25D366]/20 bg-gradient-to-r from-[#25D366]/10 via-white to-[#00b4eb]/10 p-5 shadow-[0_0_18px_rgba(37,211,102,0.12)]"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#128C7E]">
+                TalentHub Support
+              </p>
+              <h2 className="mt-1 text-xl font-extrabold text-gray-900">
+                Need help with onboarding, attendance, projects, or system access?
+              </h2>
+              <p className="mt-1 text-sm font-medium text-gray-600">
+                Join the official support WhatsApp group and get help faster.
+              </p>
+            </div>
+            <WhatsAppSupportButton className="w-full sm:w-auto" />
+          </div>
+        </motion.div>
 
         {/* ── Intern Profile Card (Refactored) ── */}
         {internData && (

@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
 import FaceScanGuide from "../components/FaceScanGuide";
+import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import { apiFetch } from "../utils/api";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
@@ -710,11 +711,19 @@ const Attendance = () => {
 
       if (response.ok) {
         const traineeName = result.intern?.traineeName || "you";
-        toast.success(`Attendance marked for ${traineeName}.`);
+        toast.success(
+          result.checkedOut
+            ? `Check-out recorded for ${traineeName}.`
+            : activeTab === "daily"
+              ? `Check-in recorded for ${traineeName}.`
+              : `Attendance marked for ${traineeName}.`,
+        );
         showSuccess(
           activeTab === "meeting"
             ? "Daily and meeting attendance marked."
-            : "Daily attendance marked.",
+            : result.checkedOut
+              ? "Check-out recorded successfully."
+              : "Check-in recorded successfully.",
         );
         stopCamera();
         setCooldown(true);
@@ -804,7 +813,9 @@ const Attendance = () => {
           showSuccess(
             activeTab === "meeting"
               ? "Meeting attendance marked using QR backup."
-              : "Daily attendance marked using QR backup.",
+              : data.checkedOut
+                ? "Check-out recorded using QR backup."
+                : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
         } catch (error) {
@@ -1283,11 +1294,10 @@ const Attendance = () => {
                 <p className="text-[#0056a2]/80 text-sm mb-4 font-medium">
                   If you're experiencing persistent issues with {activeMethod === "face" ? "face recognition" : "the QR scanner"}, contact IT support.
                 </p>
-                <button
-                  className="w-full py-3 bg-white text-[#0056a2] rounded-xl font-bold shadow-sm hover:shadow-md border border-[#0056a2]/10 transition-all active:scale-95"
-                >
-                  Contact Support
-                </button>
+                <WhatsAppSupportButton
+                  className="w-full"
+                  variant="light"
+                />
               </div>
             </motion.div>
           </div>

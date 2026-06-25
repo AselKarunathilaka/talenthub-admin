@@ -58,6 +58,7 @@ const markDailyAttendance = async ({
   attendanceDate = null,
   duplicateMessage = "Duplicate daily attendance detected. Please wait before scanning again.",
   syncEndpoint = null,
+  allowCheckout = true,
 }) => {
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -71,6 +72,7 @@ const markDailyAttendance = async ({
 
   const session = await mongoose.startSession();
   let checkedOut = false;
+  let dailyAttendanceMarked = false;
   try {
     await session.withTransaction(async () => {
       if (existingDailyRecord) {
@@ -148,6 +150,7 @@ const markDailyAttendance = async ({
             },
           );
 
+          dailyAttendanceMarked = true;
           return;
         }
 
@@ -158,7 +161,13 @@ const markDailyAttendance = async ({
           throw err;
         }
 
-        // Treat subsequent scans as check-out
+        if (!allowCheckout) {
+          return;
+        }
+
+        // Treat subsequent daily attendance scans as check-out. Meeting scans
+        // call this helper only to ensure daily attendance exists, so they pass
+        // allowCheckout=false to avoid checking out interns by accident.
         await DailyRecord.updateOne(
           { internId, date: today },
           { $set: { checkOutTime: attendanceTime } },
@@ -181,6 +190,7 @@ const markDailyAttendance = async ({
         );
 
         checkedOut = true;
+        dailyAttendanceMarked = true;
         return;
       }
 
@@ -200,16 +210,19 @@ const markDailyAttendance = async ({
         },
         { session },
       );
+      dailyAttendanceMarked = true;
     });
   } finally {
     await session.endSession();
   }
 
-  await syncExternalAttendance({
-    endpoint: syncEndpoint,
-    sessionId,
-    traineeId: intern.Trainee_ID,
-  });
+  if (dailyAttendanceMarked) {
+    await syncExternalAttendance({
+      endpoint: syncEndpoint,
+      sessionId,
+      traineeId: intern.Trainee_ID,
+    });
+  }
 
   return {
     success: true,
@@ -217,6 +230,7 @@ const markDailyAttendance = async ({
     timeMarked: attendanceTime,
     type: method,
     checkedOut,
+    dailyAttendanceMarked,
   };
 };
 
@@ -428,8 +442,9 @@ const markMeetingAttendance = async ({
         method: dailyMethod,
         attendanceDate: attendanceTime,
         syncEndpoint: dailySyncEndpoint,
+        allowCheckout: false,
       });
-      dailyAttendanceMarked = true;
+      dailyAttendanceMarked = Boolean(result.dailyAttendanceMarked);
     } catch (error) {
       // Meeting attendance stays successful if daily attendance is already marked.
     }
