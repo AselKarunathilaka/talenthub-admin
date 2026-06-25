@@ -23,6 +23,7 @@ import {
   getDeviceTimeEvidence,
   requestFreshLocation,
 } from "../utils/attendanceEvidence";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 import {
   FaCheckCircle,
   FaRedo,
@@ -367,10 +368,7 @@ const AdminFaceAttendance = () => {
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, aspectRatio: { ideal: 4 / 3 }, facingMode: "user" },
-        audio: false,
-      });
+      const stream = await requestFaceCameraStream();
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
       stableFaceChecksRef.current = 0;
@@ -379,7 +377,8 @@ const AdminFaceAttendance = () => {
       setCameraActive(true);
       await attachStreamToVideo();
     } catch (error) {
-      toast.error("Camera access failed. Please check permissions.");
+      console.error("Camera access error:", error);
+      toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
     }
   };

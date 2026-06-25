@@ -9,6 +9,22 @@ const resolveInternId = (req) => {
   return req.user?.id || req.body.internId || req.params.internId || null;
 };
 
+const sanitizeFaceProfile = (profile) => {
+  if (!profile) return null;
+  const profileObject = typeof profile.toObject === "function" ? profile.toObject() : profile;
+  return {
+    _id: profileObject._id,
+    internId: profileObject.internId,
+    traineeId: profileObject.traineeId,
+    traineeName: profileObject.traineeName,
+    sampleCount: Number(profileObject.sampleCount || profileObject.embeddings?.length || 0),
+    isActive: profileObject.isActive,
+    lastMatchedAt: profileObject.lastMatchedAt,
+    createdAt: profileObject.createdAt,
+    updatedAt: profileObject.updatedAt,
+  };
+};
+
 const registerFaceProfile = async (req, res) => {
   try {
     const internId = resolveInternId(req);
@@ -27,7 +43,7 @@ const registerFaceProfile = async (req, res) => {
 
     return res.status(201).json({
       message: "Face profile saved successfully.",
-      profile: result.profile,
+      profile: sanitizeFaceProfile(result.profile),
     });
   } catch (error) {
     return res.status(400).json({
@@ -155,7 +171,7 @@ const getFaceProfile = async (req, res) => {
     }
 
     const profile = await FaceAttendanceService.getProfileByInternId(internId);
-    return res.status(200).json({ profile });
+    return res.status(200).json({ profile: sanitizeFaceProfile(profile) });
   } catch (error) {
     return res.status(500).json({
       message: "Failed to load face profile.",
@@ -194,7 +210,7 @@ const getFaceProfileByIdentifier = async (req, res) => {
     }
 
     const faceProfile = await FaceAttendanceService.getProfileByInternId(intern._id);
-    return res.status(200).json({ profile: faceProfile });
+    return res.status(200).json({ profile: sanitizeFaceProfile(faceProfile) });
   } catch (error) {
     return res.status(500).json({
       message: "Failed to load face profile.",
@@ -464,7 +480,7 @@ const registerFaceProfileByAdmin = async (req, res) => {
 
     return res.status(201).json({
       message: "Face profile saved successfully by admin.",
-      profile: result.profile,
+      profile: sanitizeFaceProfile(result.profile),
     });
   } catch (error) {
     return res.status(400).json({

@@ -32,6 +32,7 @@ import {
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -366,21 +367,8 @@ const Attendance = () => {
       }
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Camera access requires a supported browser on HTTPS or localhost.");
-      return;
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          aspectRatio: { ideal: 4 / 3 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+      const stream = await requestFaceCameraStream();
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -389,7 +377,7 @@ const Attendance = () => {
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera access error:", error);
-      toast.error("Camera access failed. Allow camera permission and use HTTPS or localhost.");
+      toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
     }
   };

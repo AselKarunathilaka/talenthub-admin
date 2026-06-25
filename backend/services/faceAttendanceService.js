@@ -8,6 +8,7 @@ const AttendanceWorkflowService = require("./attendanceWorkflowService");
 const externalConfig = require("../config/externalSystems");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
+const FACE_DESCRIPTOR_LENGTH = 128;
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
@@ -24,7 +25,7 @@ function normalizeDescriptor(descriptorInput) {
     (value) => Number.isFinite(value),
   );
 
-  return descriptor.length > 0 ? descriptor : null;
+  return descriptor.length === FACE_DESCRIPTOR_LENGTH ? descriptor : null;
 }
 
 function euclideanDistance(left, right) {
