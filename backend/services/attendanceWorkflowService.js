@@ -121,7 +121,7 @@ const markDailyAttendance = async ({
       if (currentDailyEntry) {
         const currentType = String(currentDailyEntry.type || "");
 
-        if (method === "face" && currentType === "daily_qr") {
+        if (!allowCheckout && method === "face" && currentType === "daily_qr") {
           await Intern.updateOne(
             {
               _id: internId,
@@ -165,9 +165,10 @@ const markDailyAttendance = async ({
           return;
         }
 
-        // Treat subsequent daily attendance scans as check-out. Meeting scans
-        // call this helper only to ensure daily attendance exists, so they pass
-        // allowCheckout=false to avoid checking out interns by accident.
+        // Treat subsequent daily attendance scans as check-out, even if the
+        // intern checked in with QR and checks out with Face ID (or vice versa).
+        // Meeting scans call this helper only to ensure daily attendance exists,
+        // so they pass allowCheckout=false to avoid checking out interns by accident.
         await DailyRecord.updateOne(
           { internId, date: today },
           { $set: { checkOutTime: attendanceTime } },
@@ -176,7 +177,17 @@ const markDailyAttendance = async ({
 
         await Intern.updateOne(
           { _id: internId },
-          { $set: { "attendance.$[record].checkOutTime": attendanceTime } },
+          {
+            $set: {
+              "attendance.$[record].checkOutTime": attendanceTime,
+              ...(method === "face" && currentType === "daily_qr"
+                ? { "attendance.$[record].type": "face" }
+                : {}),
+            },
+            ...(method === "face" && currentType === "daily_qr"
+              ? { $unset: { "attendance.$[record].qrCode": "" } }
+              : {}),
+          },
           {
             session,
             arrayFilters: [

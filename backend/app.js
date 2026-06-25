@@ -77,4 +77,13 @@ app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 //Sri Lanka Holidays
 app.use("/api/holidays", holidayRoutes);
 
+app.get("/api/version", (_req, res) => {
+  res.json({
+    app: "TalentHub",
+    commit: process.env.DEPLOY_COMMIT || "unknown",
+    deployedAt: process.env.DEPLOYED_AT || null,
+    nodeEnv: process.env.NODE_ENV || "development",
+  });
+});
+
 module.exports = app;
