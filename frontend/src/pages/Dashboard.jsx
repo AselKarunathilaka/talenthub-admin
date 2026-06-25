@@ -315,11 +315,17 @@ const Dashboard = () => {
     }
   };
 
-  const totalAttendance = attendanceStats.present + attendanceStats.absent;
-  const presentPercentage =
-    totalAttendance > 0
-      ? Math.round((attendanceStats.present / totalAttendance) * 100)
-      : 0;
+  // Meeting attendance rate: attended ÷ meetings held so far (1 per week since training started)
+  const presentPercentage = (() => {
+    if (!internData?.Training_StartDate || attendanceStats.present === 0) return 0;
+    const start = new Date(internData.Training_StartDate);
+    const end = internData?.Training_EndDate ? new Date(internData.Training_EndDate) : null;
+    const now = new Date();
+    const measureTo = end && end < now ? end : now;
+    if (isNaN(start) || measureTo <= start) return 0;
+    const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+    return Math.min(100, Math.round((attendanceStats.present / weeksHeld) * 100));
+  })();
 
   const handleDateSelection = (date) => {
     setSelectedDate(date);
