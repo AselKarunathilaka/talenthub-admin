@@ -601,8 +601,8 @@ const getAttendanceByInternId = async (req, res) => {
     // --- TALENTTRAIL EXTERNAL API INTEGRATION (from doc4) ---
     try {
       const ttData = await TalentTrailService.getCertificateData(
-        intern.internCode,
-        intern.email,
+        intern.Trainee_ID,
+        intern.Trainee_Email,
       );
       if (
         ttData &&
