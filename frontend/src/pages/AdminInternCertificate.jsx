@@ -129,7 +129,25 @@ const AdminInternCertificate = () => {
           const attRes = await fetch(`${API_BASE_URL}/admin/intern/${internId}/attendance`, { headers: getAuthHeaders() });
           if (attRes.ok) {
             const attData = await attRes.json();
-            setLocalMeetingPresent(attData?.stats?.present ?? null);
+            let presentCount = 0;
+            if (attData.meetingAttendance && Array.isArray(attData.meetingAttendance)) {
+              const weeks = new Set();
+              attData.meetingAttendance.forEach(entry => {
+                if (entry.status === 'Present' && entry.date) {
+                  const d = new Date(entry.date);
+                  if (!isNaN(d.getTime())) {
+                    const day = d.getDay();
+                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(new Date(d).setDate(diff));
+                    weeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
+                  }
+                }
+              });
+              presentCount = weeks.size;
+            } else {
+              presentCount = attData?.stats?.present ?? 0;
+            }
+            setLocalMeetingPresent(presentCount);
           }
         } catch (err) {
           console.warn('Could not fetch local attendance:', err);

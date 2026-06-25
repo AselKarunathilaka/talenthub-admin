@@ -606,7 +606,24 @@ const AdminInternDetails = () => {
 
                           {/* Meeting Attendance % = attended ÷ meetings held so far */}
                           {attendanceData && intern.startDate && (() => {
-                            const present = attendanceData?.stats?.present ?? 0;
+                            let present = 0;
+                            if (attendanceData.meetingAttendance && Array.isArray(attendanceData.meetingAttendance)) {
+                              const weeks = new Set();
+                              attendanceData.meetingAttendance.forEach(entry => {
+                                if (entry.status === 'Present' && entry.date) {
+                                  const d = new Date(entry.date);
+                                  if (!isNaN(d.getTime())) {
+                                    const day = d.getDay();
+                                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                                    const monday = new Date(new Date(d).setDate(diff));
+                                    weeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
+                                  }
+                                }
+                              });
+                              present = weeks.size;
+                            } else {
+                              present = attendanceData?.stats?.present ?? 0;
+                            }
                             const start = new Date(intern.startDate);
                             const end = intern.endDate ? new Date(intern.endDate) : null;
                             const now = new Date();

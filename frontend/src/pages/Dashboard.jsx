@@ -150,9 +150,12 @@ const Dashboard = () => {
 
         const meetingDateKey = (entry) => {
           const date = entry.date ? new Date(entry.date) : null;
-          return date && !Number.isNaN(date.getTime())
-            ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
-            : String(entry.date || "");
+          if (!date || Number.isNaN(date.getTime())) return String(entry.date || "");
+          const d = new Date(date);
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
+          const monday = new Date(d.setDate(diff));
+          return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
         };
         const meetingPresentDays = new Set(
           meetingAttendanceData
