@@ -31,7 +31,7 @@ const registerFaceProfile = async (req, res) => {
     });
   } catch (error) {
     return res.status(400).json({
-      message: "Failed to save face profile.",
+      message: error.message || "Failed to save face profile.",
       error: error.message,
     });
   }
@@ -468,7 +468,7 @@ const registerFaceProfileByAdmin = async (req, res) => {
     });
   } catch (error) {
     return res.status(400).json({
-      message: "Failed to save face profile.",
+      message: error.message || "Failed to save face profile.",
       error: error.message,
     });
   }

@@ -65,7 +65,9 @@ class FaceAttendanceService {
       throw new Error("Intern not found.");
     }
 
-    let profile = await InternFaceProfile.findOne({ internId });
+    let profile = await InternFaceProfile.findOne({
+      $or: [{ internId }, { traineeId: intern.Trainee_ID }],
+    });
     if (!profile) {
       profile = new InternFaceProfile({
         internId,
@@ -90,6 +92,10 @@ class FaceAttendanceService {
         profile.sampleCount = profile.embeddings.length;
       }
 
+      // Intern records can be re-imported from SLT, changing the Mongo _id
+      // while keeping the same Trainee_ID. Re-link the old face profile instead
+      // of creating a duplicate traineeId profile and failing with E11000.
+      profile.internId = intern._id;
       profile.traineeId = intern.Trainee_ID;
       profile.traineeName = intern.Trainee_Name;
       profile.isActive = true;
