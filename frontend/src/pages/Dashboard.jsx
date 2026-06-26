@@ -153,13 +153,9 @@ const Dashboard = () => {
 
         const meetingDateKey = (entry) => {
           const date = entry.date ? new Date(entry.date) : null;
-          if (!date || Number.isNaN(date.getTime()))
-            return String(entry.date || "");
-          const d = new Date(date);
-          const day = d.getDay();
-          const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Adjust when day is sunday
-          const monday = new Date(d.setDate(diff));
-          return `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+          return date && !Number.isNaN(date.getTime())
+            ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+            : String(entry.date || "");
         };
         const meetingPresentCount = meetingAttendanceData.filter(
           (entry) => entry.status === "Present",
@@ -334,8 +330,15 @@ const Dashboard = () => {
 
     const weeksPresent = new Set(
       meetingAttendance
-        .filter((e) => e.status === "Present")
-        .map(meetingDateKey)
+        .filter((e) => e.status === "Present" && e.date)
+        .map(entry => {
+          const d = new Date(entry.date);
+          if (isNaN(d.getTime())) return null;
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+          const monday = new Date(new Date(d).setDate(diff));
+          return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
+        })
         .filter(Boolean),
     ).size;
 
