@@ -54,6 +54,7 @@ const PRIORITY_META = {
 
 const AnnouncementPopup = () => {
   const [popups, setPopups] = useState([]);
+  const [totalPopups, setTotalPopups] = useState(0);
 
   useEffect(() => {
     const fetchPopups = async () => {
@@ -78,6 +79,7 @@ const AnnouncementPopup = () => {
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           
         setPopups(unreadPopups);
+        setTotalPopups(unreadPopups.length);
       } catch (err) {
         console.error("Error fetching popup announcements:", err);
       }
@@ -148,17 +150,19 @@ const AnnouncementPopup = () => {
           </div>
 
           {/* Footer */}
-          <div className="p-5 border-t border-gray-100 bg-slate-50 flex justify-end gap-3">
-            {popups.length > 1 && (
-              <span className="text-xs font-bold text-gray-400 self-center mr-auto">
-                {popups.length - 1} more announcement{popups.length - 1 > 1 ? 's' : ''}
+          <div className="p-5 border-t border-gray-100 bg-slate-50 flex justify-between items-center gap-3">
+            {totalPopups > 1 ? (
+              <span className="text-xs font-bold text-gray-400">
+                Announcement {totalPopups - popups.length + 1} of {totalPopups}
               </span>
+            ) : (
+              <span />
             )}
             <button
               onClick={() => handleDismiss(currentPopup._id)}
               className="px-6 py-2.5 bg-[#0056a2] hover:bg-[#00488a] text-white rounded-xl text-sm font-bold shadow-sm shadow-blue-500/20 transition-all"
             >
-              Dismiss
+              {popups.length > 1 ? "Next" : "Dismiss"}
             </button>
           </div>
         </motion.div>
