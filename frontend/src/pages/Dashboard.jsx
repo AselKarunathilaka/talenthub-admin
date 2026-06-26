@@ -8,6 +8,7 @@ import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import OnboardingTour from "../components/OnboardingTour";
 import FeatureTipModal from "../components/FeatureTipModal";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
+import AnnouncementPopup from "../components/AnnouncementPopup";
 import {
   Users,
   User,
@@ -1324,6 +1325,7 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation onLogout={handleLogout} />
+      <AnnouncementPopup />
       {showFaceModal && (
         <FaceRegistrationModal
           isOpen={showFaceModal}

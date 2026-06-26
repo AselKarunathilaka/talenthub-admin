@@ -23,6 +23,10 @@ const announcementSchema = new mongoose.Schema(
       type: String,
       default: "Admin",
     },
+    showAsPopup: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,
