@@ -1,3 +1,4 @@
+import React from 'react'
 import StarrySky from './StarrySky'
 import Particles from './Particles'
 import VesakLanterns from './VesakLanterns'
@@ -10,11 +11,15 @@ import './PosonBackground.css'
  */
 export default function PosonBackground() {
   return (
-    <div className="poson-background">
-      <StarrySky />
-      <Particles />
+    <>
+      <div className="poson-background">
+        <StarrySky />
+        <Particles />
+        <MihinthaleSilhouette />
+      </div>
+      {/* VesakLanterns rendered outside the fixed container so its
+          z-index is relative to the page root, not the background layer */}
       <VesakLanterns />
-      <MihinthaleSilhouette />
-    </div>
+    </>
   )
 }

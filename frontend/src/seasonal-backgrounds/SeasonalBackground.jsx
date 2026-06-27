@@ -82,9 +82,7 @@ export default function SeasonalBackground({ onSeasonResolved }) {
 
   return (
     <Suspense fallback={null}>
-      <div className="seasonal-background-layer">
-        <SeasonComponent />
-      </div>
+      <SeasonComponent />
     </Suspense>
   );
 }

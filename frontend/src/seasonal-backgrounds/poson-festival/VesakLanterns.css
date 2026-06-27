@@ -7,7 +7,7 @@
   top: -15px;
   right: -25px;
   width: 600px;
-  z-index: 10;
+  z-index: 50 !important;
   pointer-events: none;
 }
 
