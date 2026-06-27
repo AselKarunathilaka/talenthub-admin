@@ -110,8 +110,6 @@ const Login = () => {
           : "linear-gradient(135deg, #006600 0%, #000066 100%)",
       }}
     >
-      {/* Seasonal background layer (renders behind all content when active) */}
-      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
       {/* Subtle animated grain / mesh overlay */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.035]"
@@ -578,6 +576,9 @@ const Login = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Seasonal background layer (renders behind all content, except specific foreground decorations) */}
+      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
       {/* Hide scrollbar for mobile carousel */}
       <style jsx="true" global="true">{`
