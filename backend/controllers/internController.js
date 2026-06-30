@@ -9,6 +9,10 @@ const fs = require("fs");
 const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
 const ProfilePicture = require("../models/ProfilePicture");
+const {
+  buildDailyAttendanceByDate,
+  getColomboDateKey,
+} = require("../utils/attendanceHistory");
 
 // Doc 3 sets (more complete — includes manual_daily and manual_meeting)
 const DAILY_ATTENDANCE_TYPES = new Set([
@@ -27,10 +31,7 @@ const MEETING_ATTENDANCE_TYPES = new Set([
 ]);
 
 const getDateKey = (date) => {
-  const parsedDate = date ? new Date(date) : null;
-  return parsedDate && !Number.isNaN(parsedDate.getTime())
-    ? parsedDate.toISOString().slice(0, 10)
-    : String(date || "");
+  return getColomboDateKey(date);
 };
 
 const getMeetingKey = (date, meetingName) =>
@@ -457,24 +458,18 @@ const getAttendanceByInternId = async (req, res) => {
     const meetingAttendance = [];
 
     const meetingMethodByKey = new Map();
-    const dailyMethodByDate = new Map();
+    const dailyAttendanceByDate = buildDailyAttendanceByDate(
+      intern.attendance,
+      DAILY_ATTENDANCE_TYPES,
+    );
+    dailyAttendanceByDate.forEach((attendance) => {
+      attendance.method = normalizeAttendanceMethod(attendance.entry.type);
+    });
     const dailyRecordMeetingKeys = new Set();
 
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach((entry) => {
         const type = (entry.type || "").toLowerCase();
-        if (DAILY_ATTENDANCE_TYPES.has(type)) {
-          const markedAt = entry.timeMarked || entry.date;
-          const dateKey = getDateKey(entry.date);
-          const current = dailyMethodByDate.get(dateKey);
-          if (!current || new Date(markedAt) > new Date(current.markedAt)) {
-            dailyMethodByDate.set(dateKey, {
-              method: normalizeAttendanceMethod(type),
-              markedAt,
-            });
-          }
-        }
-
         if (!MEETING_ATTENDANCE_TYPES.has(type)) return;
 
         const meetingName =
@@ -540,9 +535,19 @@ const getAttendanceByInternId = async (req, res) => {
     dailyRecords.forEach((record) => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== "absent") {
-        const attendanceTime = record.attendanceTime
-          ? new Date(record.attendanceTime)
+        const matchingInternAttendance = dailyAttendanceByDate.get(
+          getDateKey(record.date),
+        );
+        const attendanceTimeValue =
+          record.attendanceTime ||
+          matchingInternAttendance?.markedAt ||
+          matchingInternAttendance?.entry?.date;
+        const attendanceTime = attendanceTimeValue
+          ? new Date(attendanceTimeValue)
           : null;
+        const checkOutTime =
+          record.checkOutTime ||
+          matchingInternAttendance?.checkOutTime;
         const meetingDerivedMethod = record.meetingAttendance
           ?.map((meeting) => {
             const projectName = meeting.projectName || meeting.meetingTitle;
@@ -563,16 +568,16 @@ const getAttendanceByInternId = async (req, res) => {
           type: "Daily",
           recordStatus: record.status, // working | leave | wfh — used for Extended Leave / WFH colour coding (from doc4)
           attendanceMethod:
-            dailyMethodByDate.get(getDateKey(record.date))?.method ||
+            matchingInternAttendance?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
           checkInTime: attendanceTime
             ? formatColomboTime(attendanceTime)
             : null,
-          checkOutTime: record.checkOutTime
-            ? formatColomboTime(record.checkOutTime)
+          checkOutTime: checkOutTime
+            ? formatColomboTime(checkOutTime)
             : null,
-          attendanceTime: record.attendanceTime,
+          attendanceTime: attendanceTimeValue,
         });
       }
 
@@ -654,35 +659,29 @@ const getAttendanceByInternId = async (req, res) => {
     // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {
       const datesWithDailyRecord = new Set(
-        dailyAttendance.map((d) => new Date(d.date).toDateString()),
+        dailyAttendance.map((d) => getDateKey(d.date)),
       );
 
-      if (intern.attendance && intern.attendance.length > 0) {
-        intern.attendance.forEach((entry) => {
-          const type = (entry.type || "").toLowerCase();
-          const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
-          if (!isDaily) return; // only consider daily scans here
-
+      dailyAttendanceByDate.forEach(
+        ({ entry, markedAt, method, checkOutTime }, dayKey) => {
           const entryDate = entry.date ? new Date(entry.date) : null;
           if (!entryDate || isNaN(entryDate.getTime())) return;
-
-          const dayKey = entryDate.toDateString();
           if (datesWithDailyRecord.has(dayKey)) return; // already covered by DailyRecord
 
           dailyAttendance.push({
             date: entryDate,
             status: entry.status || "Present",
             type: "Daily",
-            attendanceMethod: normalizeAttendanceMethod(type),
-            checkInTime: formatColomboTime(entry.timeMarked || entryDate),
-            checkOutTime: entry.checkOutTime
-              ? formatColomboTime(entry.checkOutTime)
+            attendanceMethod: method || normalizeAttendanceMethod(entry.type),
+            checkInTime: formatColomboTime(markedAt || entryDate),
+            checkOutTime: checkOutTime
+              ? formatColomboTime(checkOutTime)
               : null,
-            attendanceTime: entry.timeMarked || entry.date,
+            attendanceTime: markedAt || entry.date,
           });
           datesWithDailyRecord.add(dayKey);
-        });
-      }
+        },
+      );
     } catch (e) {
       // Non-fatal: if fallback merge fails, continue with what we have
     }
