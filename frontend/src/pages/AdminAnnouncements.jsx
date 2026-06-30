@@ -93,6 +93,7 @@ const AdminAnnouncements = () => {
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState("normal");
+  const [showAsPopup, setShowAsPopup] = useState(false);
   const [sending, setSending] = useState(false);
 
   // List state
@@ -162,11 +163,13 @@ const AdminAnnouncements = () => {
         title: title.trim(),
         message: message.trim(),
         priority,
+        showAsPopup,
       });
       showToast("Announcement sent successfully!", "success");
       setTitle("");
       setMessage("");
       setPriority("normal");
+      setShowAsPopup(false);
       setCurrentPage(1);
       fetchAnnouncements();
     } catch (err) {
@@ -373,6 +376,34 @@ const AdminAnnouncements = () => {
                     </div>
                   </div>
 
+                  {/* Show as Popup Toggle */}
+                  <div className="flex items-center space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowAsPopup(!showAsPopup)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:ring-offset-2 ${
+                        showAsPopup ? "bg-[#0056a2]" : "bg-gray-200"
+                      }`}
+                      role="switch"
+                      aria-checked={showAsPopup}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          showAsPopup ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">
+                        Show as Popup
+                      </span>
+                      <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+                        Display this announcement as a popup to interns when they login
+                      </span>
+                    </span>
+                  </div>
+
                   {/* Send button */}
                   <motion.button
                     onClick={handleSend}
@@ -499,6 +530,11 @@ const AdminAnnouncements = () => {
                                       >
                                         {a.priority}
                                       </span>
+                                      {a.showAsPopup && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                          Popup
+                                        </span>
+                                      )}
                                     </div>
 
                                     <p

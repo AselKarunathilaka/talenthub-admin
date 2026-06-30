@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
 import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import {
@@ -69,6 +70,11 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [error, setError] = useState(null);
+  const [seasonActive, setSeasonActive] = useState(false);
+
+  const handleSeasonResolved = useCallback((seasonKey) => {
+    setSeasonActive(!!seasonKey);
+  }, []);
   const handleGoogleLogin = async (response) => {
     try {
       setIsLoading(true);
@@ -99,7 +105,9 @@ const Login = () => {
     <div
       className="min-h-screen text-white overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, #006600 0%, #000066 100%)",
+        background: seasonActive
+          ? "#02020a"
+          : "linear-gradient(135deg, #006600 0%, #000066 100%)",
       }}
     >
       {/* Subtle animated grain / mesh overlay */}
@@ -568,6 +576,9 @@ const Login = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Seasonal background layer (renders behind all content, except specific foreground decorations) */}
+      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
       {/* Hide scrollbar for mobile carousel */}
       <style jsx="true" global="true">{`

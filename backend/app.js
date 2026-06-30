@@ -22,6 +22,7 @@ const holidayRoutes = require("./routes/holidayRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
+const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 
 require("./scheduler");
 
@@ -76,6 +77,9 @@ app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 
 //Sri Lanka Holidays
 app.use("/api/holidays", holidayRoutes);
+
+// Seasonal Login Background Override (admin-only write, public read)
+app.use("/api/login-season", seasonOverrideRoutes);
 
 app.get("/api/version", (_req, res) => {
   res.json({
