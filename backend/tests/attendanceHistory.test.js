@@ -4,6 +4,7 @@ const {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
+  selectCanonicalDailyEntry,
 } = require("../utils/attendanceHistory");
 
 const DAILY_TYPES = new Set(["daily_qr", "face"]);
@@ -96,4 +97,57 @@ test("does not replace a checkout already stored in attendance", () => {
     attendance.get("2026-06-25").checkOutTime,
     "2026-06-25T09:30:00.000Z",
   );
+});
+
+test("keeps the local face entry when external sync creates a QR duplicate", () => {
+  const reconciliation = selectCanonicalDailyEntry(
+    [
+      {
+        _id: "local-face",
+        type: "face",
+        date: "2026-06-29T18:30:00.000Z",
+        timeMarked: "2026-06-30T03:47:15.239Z",
+      },
+      {
+        _id: "external-qr",
+        type: "daily_qr",
+        markedBy: "external_system",
+        date: "2026-06-29T18:30:00.000Z",
+        timeMarked: "2026-06-30T03:47:16.034Z",
+      },
+    ],
+    "face",
+  );
+
+  assert.equal(reconciliation.canonical._id, "local-face");
+  assert.equal(reconciliation.canonicalType, "face");
+  assert.deepEqual(
+    reconciliation.duplicates.map((entry) => entry._id),
+    ["external-qr"],
+  );
+});
+
+test("preserves checkout while consolidating duplicate daily entries", () => {
+  const reconciliation = selectCanonicalDailyEntry(
+    [
+      {
+        _id: "local-qr",
+        type: "daily_qr",
+        date: "2026-06-29T18:30:00.000Z",
+        timeMarked: "2026-06-30T03:47:15.239Z",
+      },
+      {
+        _id: "external-qr",
+        type: "daily_qr",
+        markedBy: "external_system",
+        date: "2026-06-29T18:30:00.000Z",
+        timeMarked: "2026-06-30T03:47:16.034Z",
+        checkOutTime: "2026-06-30T11:30:00.000Z",
+      },
+    ],
+    "daily_qr",
+  );
+
+  assert.equal(reconciliation.canonical._id, "local-qr");
+  assert.equal(reconciliation.checkOutTime, "2026-06-30T11:30:00.000Z");
 });

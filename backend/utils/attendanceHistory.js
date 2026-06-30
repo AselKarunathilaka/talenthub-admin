@@ -105,8 +105,40 @@ const addAuditCheckoutTimes = (entriesByDate, auditLogs) => {
   return entriesByDate;
 };
 
+const selectCanonicalDailyEntry = (entries, preferredMethod) => {
+  if (!entries?.length) return null;
+
+  const sortedEntries = [...entries].sort(
+    (a, b) =>
+      new Date(a.timeMarked || a.date).getTime() -
+      new Date(b.timeMarked || b.date).getTime(),
+  );
+  const localEntries = sortedEntries.filter(
+    (entry) => entry.markedBy !== "external_system",
+  );
+  const canonical =
+    localEntries.find((entry) => entry.type === preferredMethod) ||
+    localEntries[0] ||
+    sortedEntries[0];
+  const checkOutTime = sortedEntries
+    .map((entry) => entry.checkOutTime)
+    .filter(Boolean)
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
+
+  return {
+    canonical,
+    canonicalType:
+      preferredMethod === "face" ? "face" : canonical.type,
+    checkOutTime: checkOutTime || canonical.checkOutTime || null,
+    duplicates: sortedEntries.filter(
+      (entry) => String(entry._id) !== String(canonical._id),
+    ),
+  };
+};
+
 module.exports = {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
+  selectCanonicalDailyEntry,
 };

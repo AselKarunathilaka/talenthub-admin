@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const externalConfig = require("../config/externalSystems");
+const { selectCanonicalDailyEntry } = require("../utils/attendanceHistory");
 
 const DAILY_ATTENDANCE_TYPES = ["daily_qr", "face"];
 const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting"];
@@ -37,6 +38,69 @@ const syncExternalAttendance = async ({ endpoint, sessionId, traineeId }) => {
   } catch (error) {
     // Attendance is saved locally even when the external system is unavailable.
   }
+};
+
+const reconcileDailyAttendanceDuplicates = async ({
+  internId,
+  todayStart,
+  todayEnd,
+  preferredMethod,
+}) => {
+  const intern = await Intern.findById(internId).select("attendance").lean();
+  if (!intern) return;
+
+  const dailyEntries = (intern.attendance || []).filter((entry) => {
+    const entryDate = new Date(entry.date);
+    return (
+      DAILY_ATTENDANCE_TYPES.includes(String(entry.type || "")) &&
+      entry.status === "Present" &&
+      entryDate >= todayStart.toDate() &&
+      entryDate <= todayEnd.toDate()
+    );
+  });
+  if (dailyEntries.length < 2) return;
+
+  const reconciliation = selectCanonicalDailyEntry(
+    dailyEntries,
+    preferredMethod,
+  );
+  if (!reconciliation?.duplicates.length) return;
+
+  const setFields = {
+    "attendance.$[record].type": reconciliation.canonicalType,
+  };
+  if (reconciliation.checkOutTime) {
+    setFields["attendance.$[record].checkOutTime"] =
+      reconciliation.checkOutTime;
+  }
+
+  await Intern.updateOne(
+    { _id: internId },
+    {
+      $set: setFields,
+      ...(reconciliation.canonicalType === "face"
+        ? { $unset: { "attendance.$[record].qrCode": "" } }
+        : {}),
+    },
+    {
+      arrayFilters: [
+        { "record._id": reconciliation.canonical._id },
+      ],
+    },
+  );
+
+  await Intern.updateOne(
+    { _id: internId },
+    {
+      $pull: {
+        attendance: {
+          _id: {
+            $in: reconciliation.duplicates.map((entry) => entry._id),
+          },
+        },
+      },
+    },
+  );
 };
 
 const throwDailyAlreadyMarked = () => {
@@ -233,6 +297,20 @@ const markDailyAttendance = async ({
       sessionId,
       traineeId: intern.Trainee_ID,
     });
+
+    try {
+      await reconcileDailyAttendanceDuplicates({
+        internId,
+        todayStart,
+        todayEnd,
+        preferredMethod: method,
+      });
+    } catch (error) {
+      console.warn(
+        "Failed to reconcile duplicate daily attendance:",
+        error.message,
+      );
+    }
   }
 
   return {
@@ -477,4 +555,5 @@ const markMeetingAttendance = async ({
 module.exports = {
   markDailyAttendance,
   markMeetingAttendance,
+  reconcileDailyAttendanceDuplicates,
 };
