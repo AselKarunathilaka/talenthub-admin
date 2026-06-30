@@ -71,7 +71,42 @@ const buildDailyAttendanceByDate = (attendance, dailyTypes) => {
   return entriesByDate;
 };
 
+const addAuditCheckoutTimes = (entriesByDate, auditLogs) => {
+  (auditLogs || []).forEach((log) => {
+    const dateKey = getColomboDateKey(log.attendanceDate || log.attendanceTime);
+    const attendance = entriesByDate.get(dateKey);
+    if (!attendance || attendance.checkOutTime) return;
+
+    const checkInMs = new Date(attendance.markedAt).getTime();
+    const auditTimeMs = new Date(log.attendanceTime).getTime();
+    if (
+      Number.isNaN(checkInMs) ||
+      Number.isNaN(auditTimeMs) ||
+      auditTimeMs <= checkInMs
+    ) {
+      return;
+    }
+
+    const currentCheckoutMs = attendance.auditCheckOutTime
+      ? new Date(attendance.auditCheckOutTime).getTime()
+      : 0;
+    if (auditTimeMs > currentCheckoutMs) {
+      attendance.auditCheckOutTime = log.attendanceTime;
+    }
+  });
+
+  entriesByDate.forEach((attendance) => {
+    if (!attendance.checkOutTime && attendance.auditCheckOutTime) {
+      attendance.checkOutTime = attendance.auditCheckOutTime;
+    }
+    delete attendance.auditCheckOutTime;
+  });
+
+  return entriesByDate;
+};
+
 module.exports = {
+  addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
 };

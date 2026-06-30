@@ -4,12 +4,14 @@ const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const moment = require("moment");
 const fs = require("fs");
 const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
 const ProfilePicture = require("../models/ProfilePicture");
 const {
+  addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
 } = require("../utils/attendanceHistory");
@@ -449,9 +451,17 @@ const getAttendanceByInternId = async (req, res) => {
     }
 
     // Get daily records for this intern to include meeting attendance
-    const dailyRecords = await DailyRecord.find({ internId }).sort({
-      date: -1,
-    });
+    const [dailyRecords, successfulDailyFaceLogs] = await Promise.all([
+      DailyRecord.find({ internId }).sort({ date: -1 }),
+      FaceAttendanceLog.find({
+        internId,
+        status: "present",
+        "metadata.attendanceType": "daily",
+      })
+        .sort({ attendanceTime: 1 })
+        .select("attendanceDate attendanceTime method qrBackupUsed")
+        .lean(),
+    ]);
 
     // Prepare daily attendance from BOTH sources (DailyRecord first, then fallback to intern.attendance)
     const dailyAttendance = [];
@@ -462,8 +472,16 @@ const getAttendanceByInternId = async (req, res) => {
       intern.attendance,
       DAILY_ATTENDANCE_TYPES,
     );
-    dailyAttendanceByDate.forEach((attendance) => {
-      attendance.method = normalizeAttendanceMethod(attendance.entry.type);
+    addAuditCheckoutTimes(dailyAttendanceByDate, successfulDailyFaceLogs);
+    const directFaceDates = new Set(
+      successfulDailyFaceLogs
+        .filter((log) => log.method === "face" && !log.qrBackupUsed)
+        .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
+    );
+    dailyAttendanceByDate.forEach((attendance, dateKey) => {
+      attendance.method = directFaceDates.has(dateKey)
+        ? "face recognition"
+        : normalizeAttendanceMethod(attendance.entry.type);
     });
     const dailyRecordMeetingKeys = new Set();
 

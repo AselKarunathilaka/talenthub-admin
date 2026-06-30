@@ -11,6 +11,10 @@ const {
   generateMeetingAttendancePdf,
 } = require("./meetingAttendancePdfTemplate");
 const { generateDailyAttendancePdf } = require("./dailyAttendancePdfTemplate");
+const {
+  addAuditCheckoutTimes,
+  buildDailyAttendanceByDate,
+} = require("../utils/attendanceHistory");
 
 const TZ = "Asia/Colombo";
 
@@ -278,6 +282,18 @@ async function getDailyPresentsOnDate(dateStr) {
       })
       .map((log) => String(log.internId)),
   );
+  const dailyFaceLogsByIntern = new Map();
+  successfulFaceLogs.forEach((log) => {
+    const attendanceType = String(
+      log.metadata?.attendanceType || "daily",
+    ).toLowerCase();
+    if (attendanceType !== "daily") return;
+
+    const internId = String(log.internId);
+    const internLogs = dailyFaceLogsByIntern.get(internId) || [];
+    internLogs.push(log);
+    dailyFaceLogsByIntern.set(internId, internLogs);
+  });
 
   const dailyRecordInternIds = dailyRecords.map(r => r.internId);
 
@@ -315,18 +331,26 @@ async function getDailyPresentsOnDate(dateStr) {
     });
 
     if (records.length === 0) continue;
-    const latest = records.sort(
-      (a, b) =>
-        new Date(b.timeMarked || b.date).getTime() -
-        new Date(a.timeMarked || a.date).getTime(),
-    )[0];
-    dailyByIntern.set(String(intern._id), {
+    const internId = String(intern._id);
+    const attendanceByDate = buildDailyAttendanceByDate(
+      records,
+      DAILY_ATTENDANCE_TYPES,
+    );
+    addAuditCheckoutTimes(
+      attendanceByDate,
+      dailyFaceLogsByIntern.get(internId),
+    );
+    const reconciledAttendance = attendanceByDate.get(dateStr);
+    if (!reconciledAttendance) continue;
+
+    const latest = reconciledAttendance.entry;
+    dailyByIntern.set(internId, {
       ...getInternDetails(intern),
-      timeMarked: moment(latest.timeMarked || latest.date)
+      timeMarked: moment(reconciledAttendance.markedAt || latest.date)
         .tz(TZ)
         .format("hh:mm A"),
-      checkOutTime: latest.checkOutTime
-        ? moment(latest.checkOutTime).tz(TZ).format("hh:mm A")
+      checkOutTime: reconciledAttendance.checkOutTime
+        ? moment(reconciledAttendance.checkOutTime).tz(TZ).format("hh:mm A")
         : null,
       type: latest.type || "daily",
       status: "Present",
