@@ -2,11 +2,13 @@ const axios = require("axios");
 const moment = require("moment-timezone");
 const mongoose = require("mongoose");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const Intern = require("../models/Intern");
 const externalConfig = require("../config/externalSystems");
 const { selectCanonicalDailyEntry } = require("../utils/attendanceHistory");
 const {
   evaluateDailyAttendanceAction,
+  findExplicitAuditCheckout,
   normalizeAttendanceAction,
 } = require("../utils/attendancePolicy");
 
@@ -152,6 +154,15 @@ const markDailyAttendance = async ({
   const today = todayStart.format("YYYY-MM-DD");
   const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
   const normalizedAttendanceAction = normalizeAttendanceAction(attendanceAction);
+  const explicitCheckoutLogs = await FaceAttendanceLog.find({
+    internId,
+    attendanceDate: today,
+    status: "present",
+    "metadata.attendanceType": "daily",
+    "metadata.attendanceAction": "check_out",
+  })
+    .select("attendanceTime metadata.attendanceAction")
+    .lean();
 
   const session = await mongoose.startSession();
   let checkedOut = false;
@@ -203,6 +214,31 @@ const markDailyAttendance = async ({
 
       if (currentDailyEntry) {
         const currentType = String(currentDailyEntry.type || "");
+        const recoveredCheckout = findExplicitAuditCheckout(
+          explicitCheckoutLogs,
+          currentDailyEntry.timeMarked || currentDailyEntry.date,
+          MINIMUM_CHECKOUT_MINUTES,
+        );
+        if (!currentDailyEntry.checkOutTime && recoveredCheckout) {
+          await Intern.updateOne(
+            { _id: internId },
+            { $set: { "attendance.$[record].checkOutTime": recoveredCheckout } },
+            {
+              session,
+              arrayFilters: [
+                {
+                  "record.type": { $in: DAILY_ATTENDANCE_TYPES },
+                  "record.status": "Present",
+                  "record.date": {
+                    $gte: todayStart.toDate(),
+                    $lte: todayEnd.toDate(),
+                  },
+                },
+              ],
+            },
+          );
+          currentDailyEntry.checkOutTime = recoveredCheckout;
+        }
 
         if (!allowCheckout && method === "face" && currentType === "daily_qr") {
           await Intern.updateOne(
@@ -366,7 +402,26 @@ const getDailyAttendanceStatus = async (internId, attendanceDate = null) => {
   });
   const reconciliation = selectCanonicalDailyEntry(entries, "face");
   const entry = reconciliation?.canonical || null;
-  const checkOutTime = reconciliation?.checkOutTime || null;
+  const explicitCheckoutLogs = entry
+    ? await FaceAttendanceLog.find({
+        internId,
+        attendanceDate: todayStart.format("YYYY-MM-DD"),
+        status: "present",
+        "metadata.attendanceType": "daily",
+        "metadata.attendanceAction": "check_out",
+      })
+        .select("attendanceTime metadata.attendanceAction")
+        .lean()
+    : [];
+  const recoveredCheckout = entry
+    ? findExplicitAuditCheckout(
+        explicitCheckoutLogs,
+        entry.timeMarked || entry.date,
+        MINIMUM_CHECKOUT_MINUTES,
+      )
+    : null;
+  const checkOutTime =
+    reconciliation?.checkOutTime || recoveredCheckout || null;
   const state = !entry
     ? "not_checked_in"
     : checkOutTime

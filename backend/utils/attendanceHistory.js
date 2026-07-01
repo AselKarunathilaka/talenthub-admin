@@ -75,6 +75,7 @@ const addAuditCheckoutTimes = (
   entriesByDate,
   auditLogs,
   minimumCheckoutMinutes = 15,
+  legacyMinimumCheckoutMinutes = 60,
 ) => {
   (auditLogs || []).forEach((log) => {
     const dateKey = getColomboDateKey(log.attendanceDate || log.attendanceTime);
@@ -83,27 +84,41 @@ const addAuditCheckoutTimes = (
 
     const checkInMs = new Date(attendance.markedAt).getTime();
     const auditTimeMs = new Date(log.attendanceTime).getTime();
+    const isExplicitCheckout =
+      log.metadata?.attendanceAction === "check_out";
+    const requiredMinutes = isExplicitCheckout
+      ? minimumCheckoutMinutes
+      : legacyMinimumCheckoutMinutes;
     if (
       Number.isNaN(checkInMs) ||
       Number.isNaN(auditTimeMs) ||
-      auditTimeMs < checkInMs + minimumCheckoutMinutes * 60000
+      auditTimeMs < checkInMs + requiredMinutes * 60000
     ) {
       return;
     }
 
-    const currentCheckoutMs = attendance.auditCheckOutTime
-      ? new Date(attendance.auditCheckOutTime).getTime()
+    const candidateField = isExplicitCheckout
+      ? "explicitAuditCheckOutTime"
+      : "legacyAuditCheckOutTime";
+    const currentCheckoutMs = attendance[candidateField]
+      ? new Date(attendance[candidateField]).getTime()
       : 0;
-    if (auditTimeMs > currentCheckoutMs) {
-      attendance.auditCheckOutTime = log.attendanceTime;
+    const shouldUseCandidate =
+      currentCheckoutMs === 0 || auditTimeMs < currentCheckoutMs;
+    if (shouldUseCandidate) {
+      attendance[candidateField] = log.attendanceTime;
     }
   });
 
   entriesByDate.forEach((attendance) => {
-    if (!attendance.checkOutTime && attendance.auditCheckOutTime) {
-      attendance.checkOutTime = attendance.auditCheckOutTime;
+    const recoveredCheckout =
+      attendance.explicitAuditCheckOutTime ||
+      attendance.legacyAuditCheckOutTime;
+    if (!attendance.checkOutTime && recoveredCheckout) {
+      attendance.checkOutTime = recoveredCheckout;
     }
-    delete attendance.auditCheckOutTime;
+    delete attendance.explicitAuditCheckOutTime;
+    delete attendance.legacyAuditCheckOutTime;
   });
 
   return entriesByDate;

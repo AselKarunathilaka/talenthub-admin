@@ -40,7 +40,7 @@ test("keeps checkout data when the latest same-day entry lacks it", () => {
   assert.equal(june25.checkOutTime, "2026-06-25T11:30:00.000Z");
 });
 
-test("recovers a missing checkout from the latest later audit scan", () => {
+test("recovers the first plausible legacy checkout and ignores short repeats", () => {
   const attendance = buildDailyAttendanceByDate(
     [
       {
