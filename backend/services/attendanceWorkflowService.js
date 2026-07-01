@@ -5,9 +5,17 @@ const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const externalConfig = require("../config/externalSystems");
 const { selectCanonicalDailyEntry } = require("../utils/attendanceHistory");
+const {
+  evaluateDailyAttendanceAction,
+  normalizeAttendanceAction,
+} = require("../utils/attendancePolicy");
 
 const DAILY_ATTENDANCE_TYPES = ["daily_qr", "face"];
 const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting"];
+const MINIMUM_CHECKOUT_MINUTES = Math.max(
+  1,
+  Number.parseInt(process.env.ATTENDANCE_MIN_CHECKOUT_MINUTES || "15", 10) || 15,
+);
 
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -115,6 +123,15 @@ const throwAttendanceError = (message, statusCode = 400) => {
   throw error;
 };
 
+const throwPolicyError = (policy) => {
+  const error = new Error(policy.message);
+  error.statusCode = 400;
+  error.code = policy.code;
+  error.alreadyMarked = Boolean(policy.alreadyMarked);
+  error.retryAfterMinutes = policy.retryAfterMinutes;
+  throw error;
+};
+
 const markDailyAttendance = async ({
   internId,
   sessionId = null,
@@ -123,6 +140,7 @@ const markDailyAttendance = async ({
   duplicateMessage = "Duplicate daily attendance detected. Please wait before scanning again.",
   syncEndpoint = null,
   allowCheckout = true,
+  attendanceAction = "auto",
 }) => {
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -133,6 +151,7 @@ const markDailyAttendance = async ({
   const todayEnd = now.clone().endOf("day");
   const today = todayStart.format("YYYY-MM-DD");
   const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
+  const normalizedAttendanceAction = normalizeAttendanceAction(attendanceAction);
 
   const session = await mongoose.startSession();
   let checkedOut = false;
@@ -218,21 +237,18 @@ const markDailyAttendance = async ({
           return;
         }
 
-        if (currentDailyEntry.checkOutTime) {
-          const err = new Error("You are already out of office, please come tomorrow. Thank you!");
-          err.statusCode = 400;
-          err.alreadyMarked = true;
-          throw err;
-        }
+        const policy = evaluateDailyAttendanceAction({
+          action: normalizedAttendanceAction,
+          currentEntry: currentDailyEntry,
+          attendanceTime,
+          allowCheckout,
+          minimumCheckoutMinutes: MINIMUM_CHECKOUT_MINUTES,
+        });
+        if (policy.operation === "reject") throwPolicyError(policy);
+        if (policy.operation === "noop") return;
 
-        if (!allowCheckout) {
-          return;
-        }
-
-        // Treat subsequent daily attendance scans as check-out, even if the
-        // intern checked in with QR and checks out with Face ID (or vice versa).
-        // Meeting scans call this helper only to ensure daily attendance exists,
-        // so they pass allowCheckout=false to avoid checking out interns by accident.
+        // Checkout is explicit at public Face/QR entry points. Meeting scans
+        // pass allowCheckout=false so their automatic daily mark stays a no-op.
         await DailyRecord.updateOne(
           { internId, date: today },
           { $set: { checkOutTime: attendanceTime } },
@@ -268,6 +284,15 @@ const markDailyAttendance = async ({
         dailyAttendanceMarked = true;
         return;
       }
+
+      const policy = evaluateDailyAttendanceAction({
+        action: normalizedAttendanceAction,
+        currentEntry: null,
+        attendanceTime,
+        allowCheckout,
+        minimumCheckoutMinutes: MINIMUM_CHECKOUT_MINUTES,
+      });
+      if (policy.operation === "reject") throwPolicyError(policy);
 
       await Intern.updateOne(
         { _id: internId },
@@ -320,6 +345,46 @@ const markDailyAttendance = async ({
     type: method,
     checkedOut,
     dailyAttendanceMarked,
+  };
+};
+
+const getDailyAttendanceStatus = async (internId, attendanceDate = null) => {
+  const now = getAttendanceMoment(attendanceDate);
+  const todayStart = now.clone().startOf("day");
+  const todayEnd = now.clone().endOf("day");
+  const intern = await Intern.findById(internId).select("attendance").lean();
+  if (!intern) throwAttendanceError("Intern not found", 404);
+
+  const entries = (intern.attendance || []).filter((entry) => {
+    const entryDate = new Date(entry.date);
+    return (
+      DAILY_ATTENDANCE_TYPES.includes(String(entry.type || "")) &&
+      entry.status === "Present" &&
+      entryDate >= todayStart.toDate() &&
+      entryDate <= todayEnd.toDate()
+    );
+  });
+  const reconciliation = selectCanonicalDailyEntry(entries, "face");
+  const entry = reconciliation?.canonical || null;
+  const checkOutTime = reconciliation?.checkOutTime || null;
+  const state = !entry
+    ? "not_checked_in"
+    : checkOutTime
+      ? "checked_out"
+      : "checked_in";
+  const checkInTime = entry?.timeMarked || entry?.date || null;
+  const checkoutAvailableAt = checkInTime
+    ? new Date(
+        new Date(checkInTime).getTime() + MINIMUM_CHECKOUT_MINUTES * 60000,
+      )
+    : null;
+
+  return {
+    state,
+    checkInTime,
+    checkOutTime,
+    checkoutAvailableAt,
+    minimumCheckoutMinutes: MINIMUM_CHECKOUT_MINUTES,
   };
 };
 
@@ -556,4 +621,5 @@ module.exports = {
   markDailyAttendance,
   markMeetingAttendance,
   reconcileDailyAttendanceDuplicates,
+  getDailyAttendanceStatus,
 };

@@ -188,6 +188,7 @@ class FaceAttendanceService {
     meetingTitle = "",
     meetingPin = "",
     expectedInternId = null,
+    attendanceAction = "check_in",
   }) {
     const normalizedAttendanceType = VALID_FACE_ATTENDANCE_TYPES.has(String(attendanceType).toLowerCase())
       ? String(attendanceType).toLowerCase()
@@ -287,6 +288,7 @@ class FaceAttendanceService {
         attendanceDate,
         duplicateMessage: "Duplicate face attendance detected. Please wait before scanning again.",
         syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+        attendanceAction,
       });
       dailyAttendanceMarked = true;
       checkedOut = result.checkedOut || false;
