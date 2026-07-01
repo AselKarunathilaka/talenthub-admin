@@ -310,6 +310,10 @@ class FaceAttendanceService {
       metadata: {
         ...metadata,
         attendanceType: normalizedAttendanceType,
+        attendanceAction:
+          normalizedAttendanceType === "daily"
+            ? attendanceAction
+            : undefined,
         projectName: normalizedProjectName || undefined,
         meetingTitle: normalizedProjectName || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,

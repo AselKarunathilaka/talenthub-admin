@@ -64,7 +64,29 @@ const evaluateDailyAttendanceAction = ({
   return { operation: "check_out" };
 };
 
+const findExplicitAuditCheckout = (
+  auditLogs,
+  checkInTime,
+  minimumCheckoutMinutes = 15,
+) => {
+  const earliestCheckoutMs =
+    new Date(checkInTime).getTime() + minimumCheckoutMinutes * 60000;
+
+  return (auditLogs || [])
+    .filter(
+      (log) =>
+        log.metadata?.attendanceAction === "check_out" &&
+        new Date(log.attendanceTime).getTime() >= earliestCheckoutMs,
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.attendanceTime).getTime() -
+        new Date(b.attendanceTime).getTime(),
+    )[0]?.attendanceTime || null;
+};
+
 module.exports = {
   evaluateDailyAttendanceAction,
+  findExplicitAuditCheckout,
   normalizeAttendanceAction,
 };

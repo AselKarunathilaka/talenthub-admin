@@ -22,6 +22,7 @@ const saveQrAttendanceAudit = async ({
   deviceTimeZone,
   deviceUtcOffsetMinutes,
   projectName,
+  attendanceAction,
 }) => {
   try {
     const intern = await Intern.findById(internId);
@@ -40,6 +41,7 @@ const saveQrAttendanceAudit = async ({
       source: "browser-qr",
       metadata: {
         attendanceType,
+        attendanceAction,
         projectName: projectName || undefined,
         deviceTime,
         deviceTimeZone,
@@ -167,6 +169,7 @@ const scanQRCode = async (req, res) => {
         deviceTime,
         deviceTimeZone,
         deviceUtcOffsetMinutes,
+        attendanceAction,
       });
       // Get intern info for email notification
       const intern = await InternService.getInternById(internId);

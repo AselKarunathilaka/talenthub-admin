@@ -459,7 +459,7 @@ const getAttendanceByInternId = async (req, res) => {
         "metadata.attendanceType": "daily",
       })
         .sort({ attendanceTime: 1 })
-        .select("attendanceDate attendanceTime method qrBackupUsed")
+        .select("attendanceDate attendanceTime method qrBackupUsed metadata.attendanceAction")
         .lean(),
     ]);
 

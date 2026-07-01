@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   evaluateDailyAttendanceAction,
+  findExplicitAuditCheckout,
 } = require("../utils/attendancePolicy");
 
 const checkInTime = "2026-07-01T03:14:00.000Z";
@@ -65,4 +66,22 @@ test("allows checkout after the guard interval regardless of arrival time", () =
     minimumCheckoutMinutes: 15,
   });
   assert.equal(result.operation, "check_out");
+});
+
+test("recovers the first explicit checkout and ignores later scans", () => {
+  const checkout = findExplicitAuditCheckout(
+    [
+      {
+        attendanceTime: "2026-07-01T04:00:00.000Z",
+        metadata: { attendanceAction: "check_out" },
+      },
+      {
+        attendanceTime: "2026-07-01T05:00:00.000Z",
+        metadata: { attendanceAction: "check_out" },
+      },
+    ],
+    checkInTime,
+    15,
+  );
+  assert.equal(checkout, "2026-07-01T04:00:00.000Z");
 });
