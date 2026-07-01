@@ -99,6 +99,28 @@ test("does not replace a checkout already stored in attendance", () => {
   );
 });
 
+test("does not infer checkout from a short repeated face scan", () => {
+  const attendance = buildDailyAttendanceByDate(
+    [
+      {
+        date: "2026-07-01T03:14:00.000Z",
+        timeMarked: "2026-07-01T03:14:00.000Z",
+        type: "face",
+      },
+    ],
+    DAILY_TYPES,
+  );
+
+  addAuditCheckoutTimes(attendance, [
+    {
+      attendanceDate: "2026-07-01",
+      attendanceTime: "2026-07-01T03:17:00.000Z",
+    },
+  ]);
+
+  assert.equal(attendance.get("2026-07-01").checkOutTime, null);
+});
+
 test("keeps the local face entry when external sync creates a QR duplicate", () => {
   const reconciliation = selectCanonicalDailyEntry(
     [

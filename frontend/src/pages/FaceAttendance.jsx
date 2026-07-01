@@ -18,7 +18,9 @@ import { BrowserMultiFormatReader } from "@zxing/library";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import FaceScanGuide from "../components/FaceScanGuide";
+import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
 import { apiFetch } from "../utils/api";
+import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
   getDeviceTimeEvidence,
@@ -130,6 +132,13 @@ const FaceAttendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const {
+    attendanceAction,
+    setAttendanceAction,
+    status: dailyAttendanceStatus,
+    statusLoading: dailyStatusLoading,
+    refreshDailyStatus,
+  } = useDailyAttendanceStatus();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -150,9 +159,13 @@ const FaceAttendance = () => {
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReady = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const attendanceLocationReady = locationValid;
+  const dailyAttendanceCompleted =
+    attendanceType === "daily" && dailyAttendanceStatus.state === "checked_out";
   const canStartCamera =
     mode === "enroll" ||
-    (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
+    (attendanceLocationReady &&
+      !dailyAttendanceCompleted &&
+      (attendanceType !== "meeting" || meetingDetailsReady));
   const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
   const attachStreamToVideo = async () => {
@@ -659,6 +672,8 @@ const FaceAttendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType,
+          attendanceAction:
+            attendanceType === "daily" ? attendanceAction : undefined,
           projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
           meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
@@ -689,6 +704,7 @@ const FaceAttendance = () => {
         );
         stopCamera();
         setCooldown(true);
+        if (attendanceType === "daily") await refreshDailyStatus();
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -757,7 +773,7 @@ const FaceAttendance = () => {
               method: "POST",
               body: JSON.stringify(
                 qrMode === "daily"
-                  ? { ...payload, scanType: "daily" }
+                  ? { ...payload, scanType: "daily", attendanceAction }
                   : { ...payload, projectName: projectName.trim() },
               ),
             },
@@ -775,9 +791,12 @@ const FaceAttendance = () => {
           showSuccess(
             qrMode === "meeting"
               ? "Meeting attendance marked using QR backup."
-              : "Daily attendance marked using QR backup.",
+              : data.checkedOut
+                ? "Check-out recorded using QR backup."
+                : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
+          if (qrMode === "daily") await refreshDailyStatus();
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -957,6 +976,15 @@ const FaceAttendance = () => {
                         </button>
                       </div>
 
+                      {attendanceType === "daily" && (
+                        <DailyAttendanceActionControl
+                          action={attendanceAction}
+                          onActionChange={setAttendanceAction}
+                          status={dailyAttendanceStatus}
+                          loading={dailyStatusLoading}
+                        />
+                      )}
+
                       {attendanceType === "meeting" && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <label className="block">
@@ -1122,7 +1150,11 @@ const FaceAttendance = () => {
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
                       >
                         {loading ? <Loader className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        Mark Attendance
+                        {attendanceType === "daily"
+                          ? attendanceAction === "check_out"
+                            ? "Check Out"
+                            : "Check In"
+                          : "Mark Attendance"}
                       </button>
                     )}
                     <button
@@ -1172,6 +1204,15 @@ const FaceAttendance = () => {
                   </button>
                 </div>
 
+                {qrMode === "daily" && (
+                  <DailyAttendanceActionControl
+                    action={attendanceAction}
+                    onActionChange={setAttendanceAction}
+                    status={dailyAttendanceStatus}
+                    loading={dailyStatusLoading}
+                  />
+                )}
+
                 {qrMode === "meeting" && (
                   <label className="block">
                     <span className="text-sm font-medium text-slate-700">Project Name</span>
@@ -1213,7 +1254,12 @@ const FaceAttendance = () => {
                   <button
                     type="button"
                     onClick={qrScanning ? stopQRScanner : startQRScanner}
-                    disabled={qrProcessing || !locationValid}
+                    disabled={
+                      qrProcessing ||
+                      !locationValid ||
+                      (qrMode === "daily" &&
+                        dailyAttendanceStatus.state === "checked_out")
+                    }
                     className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold text-white disabled:bg-slate-300 ${
                       qrScanning ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
                     }`}

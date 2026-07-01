@@ -71,7 +71,11 @@ const buildDailyAttendanceByDate = (attendance, dailyTypes) => {
   return entriesByDate;
 };
 
-const addAuditCheckoutTimes = (entriesByDate, auditLogs) => {
+const addAuditCheckoutTimes = (
+  entriesByDate,
+  auditLogs,
+  minimumCheckoutMinutes = 15,
+) => {
   (auditLogs || []).forEach((log) => {
     const dateKey = getColomboDateKey(log.attendanceDate || log.attendanceTime);
     const attendance = entriesByDate.get(dateKey);
@@ -82,7 +86,7 @@ const addAuditCheckoutTimes = (entriesByDate, auditLogs) => {
     if (
       Number.isNaN(checkInMs) ||
       Number.isNaN(auditTimeMs) ||
-      auditTimeMs <= checkInMs
+      auditTimeMs < checkInMs + minimumCheckoutMinutes * 60000
     ) {
       return;
     }

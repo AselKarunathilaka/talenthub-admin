@@ -110,6 +110,7 @@ const scanQRCode = async (req, res) => {
     qrCode,
     internId: bodyInternId,
     scanType = 'daily',
+    attendanceAction,
     lat,
     lng,
     accuracy,
@@ -154,7 +155,11 @@ const scanQRCode = async (req, res) => {
     // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
     // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
-      const attendanceResult = await qrCodeService.markInternDailyAttendance(internId, qrCode);
+      const attendanceResult = await qrCodeService.markInternDailyAttendance(
+        internId,
+        qrCode,
+        { attendanceAction },
+      );
       await saveQrAttendanceAudit({
         internId,
         attendanceType: "daily",
@@ -226,6 +231,7 @@ const scanQRCode = async (req, res) => {
     const rawMessage = error.message || "";
     const shouldShowSpecificMessage =
       Boolean(error.locationRequired) ||
+      Boolean(error.statusCode) ||
       rawMessage.includes("Duplicate") ||
       rawMessage.includes("already marked") ||
       rawMessage.includes("Invalid QR code") ||
@@ -237,6 +243,8 @@ const scanQRCode = async (req, res) => {
       message: shouldShowSpecificMessage ? error.message : "Error processing QR code",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
+      code: error.code,
+      retryAfterMinutes: error.retryAfterMinutes,
     });
   }
 };

@@ -4,9 +4,10 @@ const mongoose = require("mongoose");
 const AttendanceSettingsService = require("../services/attendanceSettingsService");
 const FaceMeetingPinService = require("../services/faceMeetingPinService");
 const InternFaceProfile = require("../models/InternFaceProfile");
+const AttendanceWorkflowService = require("../services/attendanceWorkflowService");
 
 const resolveInternId = (req) => {
-  return req.user?.id || req.body.internId || req.params.internId || null;
+  return req.user?.id || req.body?.internId || req.params?.internId || null;
 };
 
 const sanitizeFaceProfile = (profile) => {
@@ -63,6 +64,7 @@ const verifyFaceAttendance = async (req, res) => {
         projectName,
         meetingTitle,
         meetingPin,
+        attendanceAction = "check_in",
       } = req.body;
 
       // Allow `internId` to be provided from body/params when the mobile client
@@ -91,6 +93,7 @@ const verifyFaceAttendance = async (req, res) => {
         meetingTitle,
         meetingPin,
         expectedInternId,
+        attendanceAction,
       });
 
     if (!result.matched) {
@@ -140,6 +143,7 @@ const verifyFaceAttendance = async (req, res) => {
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
       checkedOut: result.checkedOut,
+      attendanceAction,
     });
   } catch (error) {
     console.error("DEBUG CATCH ERROR:", error);
@@ -159,6 +163,26 @@ const verifyFaceAttendance = async (req, res) => {
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
       alreadyMarked: Boolean(error.alreadyMarked),
+      code: error.code,
+      retryAfterMinutes: error.retryAfterMinutes,
+    });
+  }
+};
+
+const getDailyAttendanceStatus = async (req, res) => {
+  try {
+    const internId = resolveInternId(req);
+    if (!internId) {
+      return res.status(400).json({ message: "Intern ID is required." });
+    }
+
+    const status =
+      await AttendanceWorkflowService.getDailyAttendanceStatus(internId);
+    return res.status(200).json(status);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to load daily attendance status.",
+      code: error.code,
     });
   }
 };
@@ -353,6 +377,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       projectName,
       meetingTitle,
       meetingPin,
+      attendanceAction = "check_in",
     } = req.body;
 
     if (!internId) {
@@ -382,6 +407,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       meetingTitle,
       meetingPin,
       expectedInternId,
+      attendanceAction,
     });
 
     if (!result.matched) {
@@ -431,6 +457,7 @@ const scanInternFaceByAdmin = async (req, res) => {
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
       checkedOut: result.checkedOut,
+      attendanceAction,
     });
   } catch (error) {
     const rawMessage = error.message || "";
@@ -446,6 +473,8 @@ const scanInternFaceByAdmin = async (req, res) => {
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
       alreadyMarked: Boolean(error.alreadyMarked),
+      code: error.code,
+      retryAfterMinutes: error.retryAfterMinutes,
     });
   }
 };
@@ -503,4 +532,5 @@ module.exports = {
   stopCurrentMeetingPin,
   scanInternFaceByAdmin,
   registerFaceProfileByAdmin,
+  getDailyAttendanceStatus,
 };

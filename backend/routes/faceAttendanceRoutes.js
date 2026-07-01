@@ -10,6 +10,7 @@ const {
   getCurrentMeetingPin,
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
+  getDailyAttendanceStatus,
 } = require("../controllers/faceAttendanceController");
 
 const router = express.Router();
@@ -20,6 +21,7 @@ router.use(authenticateUser);
 router.get("/profile", getFaceProfile);
 router.get("/logs", getFaceLogs);
 router.get("/settings", getAttendanceSettings);
+router.get("/daily-status", getDailyAttendanceStatus);
 router.get("/meeting-pin", getCurrentMeetingPin);
 router.post("/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/meeting-pin/stop", stopCurrentMeetingPin);

@@ -208,6 +208,7 @@ const markInternDailyAttendance = async (internId, qrCode, options = {}) => {
     duplicateMessage: "Duplicate daily QR scan detected. Please wait before scanning again.",
     syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
     allowCheckout: options.allowCheckout !== false,
+    attendanceAction: options.attendanceAction || "check_in",
   });
   const { intern } = result;
 

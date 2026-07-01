@@ -25,7 +25,9 @@ import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
 import FaceScanGuide from "../components/FaceScanGuide";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
+import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
 import { apiFetch } from "../utils/api";
+import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
   getDeviceTimeEvidence,
@@ -135,6 +137,13 @@ const Attendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const {
+    attendanceAction,
+    setAttendanceAction,
+    status: dailyAttendanceStatus,
+    statusLoading: dailyStatusLoading,
+    refreshDailyStatus,
+  } = useDailyAttendanceStatus();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -156,13 +165,20 @@ const Attendance = () => {
   const meetingDetailsReadyFace = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const meetingDetailsReadyQr = projectName.trim().length > 0;
   const attendanceLocationReady = locationValid;
+  const dailyAttendanceCompleted =
+    activeTab === "daily" && dailyAttendanceStatus.state === "checked_out";
   
   const canStartCamera =
     modelsLoaded &&
     (mode === "enroll" ||
-    (attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyFace)));
+    (attendanceLocationReady &&
+      !dailyAttendanceCompleted &&
+      (activeTab !== "meeting" || meetingDetailsReadyFace)));
   
-  const canStartQr = attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyQr);
+  const canStartQr =
+    attendanceLocationReady &&
+    !dailyAttendanceCompleted &&
+    (activeTab !== "meeting" || meetingDetailsReadyQr);
 
   const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
@@ -683,6 +699,8 @@ const Attendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType: activeTab,
+          attendanceAction:
+            activeTab === "daily" ? attendanceAction : undefined,
           projectName: activeTab === "meeting" ? projectName.trim() : undefined,
           meetingPin: activeTab === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
@@ -715,6 +733,7 @@ const Attendance = () => {
         );
         stopCamera();
         setCooldown(true);
+        if (activeTab === "daily") await refreshDailyStatus();
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -783,7 +802,7 @@ const Attendance = () => {
               method: "POST",
               body: JSON.stringify(
                 activeTab === "daily"
-                  ? { ...payload, scanType: "daily" }
+                  ? { ...payload, scanType: "daily", attendanceAction }
                   : { ...payload, projectName: projectName.trim() },
               ),
             },
@@ -806,6 +825,7 @@ const Attendance = () => {
                 : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
+          if (activeTab === "daily") await refreshDailyStatus();
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -957,6 +977,17 @@ const Attendance = () => {
                 </div>
 
                 <div className="p-6">
+                  {activeTab === "daily" && mode === "recognize" && (
+                    <div className="mb-4">
+                      <DailyAttendanceActionControl
+                        action={attendanceAction}
+                        onActionChange={setAttendanceAction}
+                        status={dailyAttendanceStatus}
+                        loading={dailyStatusLoading}
+                      />
+                    </div>
+                  )}
+
                   {/* FACE ID VIEW */}
                   {activeMethod === "face" && (
                     <div className="space-y-4">
@@ -1034,7 +1065,15 @@ const Attendance = () => {
                                     : "bg-gradient-to-r from-[#00b4eb] to-[#0056a2] hover:shadow-blue-500/30 active:scale-95"
                                 }`}
                               >
-                                {loading ? "Verifying..." : cooldown ? "Wait 60s" : "Verify & Mark Attendance"}
+                                {loading
+                                  ? "Verifying..."
+                                  : cooldown
+                                    ? "Wait 60s"
+                                    : activeTab === "daily"
+                                      ? attendanceAction === "check_out"
+                                        ? "Verify & Check Out"
+                                        : "Verify & Check In"
+                                      : "Verify & Mark Attendance"}
                               </button>
                             )}
                             <button
