@@ -24,6 +24,19 @@ const dur = (s, e) => {
   return m < 1 ? `${Math.ceil((new Date(e) - new Date(s)) / 864e5)} days` : `${m} month${m !== 1 ? 's' : ''}`;
 };
 
+// Formula: attended meetings ÷ meetings held so far (1 per week, capped at endDate or today)
+const calcAttendancePercentage = (startDate, endDate, attendanceCount) => {
+  if (!startDate || typeof attendanceCount !== 'number') return null;
+  const start = new Date(startDate);
+  const end = endDate ? new Date(endDate) : null;
+  if (isNaN(start)) return null;
+  const now = new Date();
+  const measureTo = end && end < now ? end : now;
+  if (measureTo <= start) return null;
+  const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+  return Math.min(100, Math.round((attendanceCount / weeksHeld) * 100));
+};
+
 const Toast = ({ toast, onClose }) => {
   useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t); }, [onClose]);
   const c = toast.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800';
@@ -45,6 +58,8 @@ const AdminInternCertificate = () => {
   const [toast, setToast] = useState(null);
   const [certData, setCertData] = useState(null);
   const [logoBase64, setLogoBase64] = useState(null);
+  // Local DB meeting attendance count (attended / weeks elapsed formula)
+  const [localMeetingPresent, setLocalMeetingPresent] = useState(null);
 
   // Custom manual project state
   const [showAddProject, setShowAddProject] = useState(false);
@@ -109,6 +124,35 @@ const AdminInternCertificate = () => {
           console.warn("Failed to fetch git commits for certificate:", err);
         }
 
+        // Fetch local DB attendance to get accurate meeting present count
+        try {
+          const attRes = await fetch(`${API_BASE_URL}/admin/intern/${internId}/attendance`, { headers: getAuthHeaders() });
+          if (attRes.ok) {
+            const attData = await attRes.json();
+            let presentCount = 0;
+            if (attData.meetingAttendance && Array.isArray(attData.meetingAttendance)) {
+              const weeks = new Set();
+              attData.meetingAttendance.forEach(entry => {
+                if (entry.status === 'Present' && entry.date) {
+                  const d = new Date(entry.date);
+                  if (!isNaN(d.getTime())) {
+                    const day = d.getDay();
+                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(new Date(d).setDate(diff));
+                    weeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
+                  }
+                }
+              });
+              presentCount = weeks.size;
+            } else {
+              presentCount = attData?.stats?.present ?? 0;
+            }
+            setLocalMeetingPresent(presentCount);
+          }
+        } catch (err) {
+          console.warn('Could not fetch local attendance:', err);
+        }
+
         setCertData({ ...data, gitCommitsData });
       } catch (err) {
         console.error(err);
@@ -125,7 +169,9 @@ const AdminInternCertificate = () => {
     if (!certData?.intern) return;
     setGenerating(true);
     try {
-      const { intern, projects, attendanceCount, gitCommitsData } = certData;
+      const { intern, projects, gitCommitsData } = certData;
+      // Use local DB present count for accuracy (attended / weeks elapsed formula)
+      const effectiveAttendanceCount = localMeetingPresent ?? certData.attendanceCount ?? 0;
 
       // Issue a certificate record to get a unique verification URL
       let verificationUrl = null;
@@ -140,7 +186,7 @@ const AdminInternCertificate = () => {
         intern,
         startDate: intern.trainingStartDate,
         endDate: intern.trainingEndDate,
-        attendanceCount: attendanceCount || 0,
+        attendanceCount: effectiveAttendanceCount,
         projects: projects || [],
         specialization: intern.fieldOfSpecialization,
         logoBase64,
@@ -181,7 +227,9 @@ const AdminInternCertificate = () => {
     );
   }
 
-  const { intern, projects, attendanceCount, source, gitCommitsData } = certData;
+  const { intern, projects, source, gitCommitsData } = certData;
+  // Use local DB present count (attended / weeks elapsed); fallback to TalentTrail count
+  const attendanceCount = localMeetingPresent ?? certData.attendanceCount ?? 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
@@ -297,7 +345,12 @@ const AdminInternCertificate = () => {
                     </div>
                     <div className="border-b border-gray-100 pb-3">
                       <p className="text-[11px] uppercase tracking-widest font-semibold text-slate-400 mb-1">Meeting Attendance</p>
-                      <p className="text-base font-semibold text-slate-900">{attendanceCount} day{attendanceCount !== 1 ? 's' : ''}</p>
+                      <p className="text-base font-semibold text-slate-900">
+                        {attendanceCount} meeting{attendanceCount !== 1 ? 's' : ''}
+                        {calcAttendancePercentage(intern.trainingStartDate, intern.trainingEndDate, attendanceCount) !== null && (
+                          <span className="text-slate-500 text-sm ml-1 font-medium">({calcAttendancePercentage(intern.trainingStartDate, intern.trainingEndDate, attendanceCount)}%)</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                 </div>

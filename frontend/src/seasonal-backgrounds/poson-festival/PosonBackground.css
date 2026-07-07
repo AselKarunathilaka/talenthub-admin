@@ -1,0 +1,26 @@
+/* ─────────────────────────────────────────────
+   Poson Background — Container Layer
+   Scoped version of the Poson App.css for use
+   as a background layer inside the Login page.
+   ───────────────────────────────────────────── */
+.poson-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(circle at 15% 10%, #151a3a 0%, #0a0d24 35%, #050614 70%, #02020a 100%);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .poson-background {
+    background: radial-gradient(circle at 20% 8%, #151a3a 0%, #0a0d24 40%, #050614 75%, #02020a 100%);
+  }
+}
+
+@media (max-width: 480px) {
+  .poson-background {
+    background: radial-gradient(circle at 25% 6%, #151a3a 0%, #0a0d24 45%, #050614 80%, #02020a 100%);
+  }
+}

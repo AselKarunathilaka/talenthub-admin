@@ -8,6 +8,7 @@ const AttendanceWorkflowService = require("./attendanceWorkflowService");
 const externalConfig = require("../config/externalSystems");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
+const FACE_DESCRIPTOR_LENGTH = 128;
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
@@ -24,7 +25,7 @@ function normalizeDescriptor(descriptorInput) {
     (value) => Number.isFinite(value),
   );
 
-  return descriptor.length > 0 ? descriptor : null;
+  return descriptor.length === FACE_DESCRIPTOR_LENGTH ? descriptor : null;
 }
 
 function euclideanDistance(left, right) {
@@ -65,7 +66,9 @@ class FaceAttendanceService {
       throw new Error("Intern not found.");
     }
 
-    let profile = await InternFaceProfile.findOne({ internId });
+    let profile = await InternFaceProfile.findOne({
+      $or: [{ internId }, { traineeId: intern.Trainee_ID }],
+    });
     if (!profile) {
       profile = new InternFaceProfile({
         internId,
@@ -90,6 +93,10 @@ class FaceAttendanceService {
         profile.sampleCount = profile.embeddings.length;
       }
 
+      // Intern records can be re-imported from SLT, changing the Mongo _id
+      // while keeping the same Trainee_ID. Re-link the old face profile instead
+      // of creating a duplicate traineeId profile and failing with E11000.
+      profile.internId = intern._id;
       profile.traineeId = intern.Trainee_ID;
       profile.traineeName = intern.Trainee_Name;
       profile.isActive = true;
@@ -181,6 +188,7 @@ class FaceAttendanceService {
     meetingTitle = "",
     meetingPin = "",
     expectedInternId = null,
+    attendanceAction = "check_in",
   }) {
     const normalizedAttendanceType = VALID_FACE_ATTENDANCE_TYPES.has(String(attendanceType).toLowerCase())
       ? String(attendanceType).toLowerCase()
@@ -280,6 +288,7 @@ class FaceAttendanceService {
         attendanceDate,
         duplicateMessage: "Duplicate face attendance detected. Please wait before scanning again.",
         syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+        attendanceAction,
       });
       dailyAttendanceMarked = true;
       checkedOut = result.checkedOut || false;
@@ -301,6 +310,10 @@ class FaceAttendanceService {
       metadata: {
         ...metadata,
         attendanceType: normalizedAttendanceType,
+        attendanceAction:
+          normalizedAttendanceType === "daily"
+            ? attendanceAction
+            : undefined,
         projectName: normalizedProjectName || undefined,
         meetingTitle: normalizedProjectName || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,

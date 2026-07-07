@@ -18,9 +18,11 @@ const seatBookingRoutes = require("./routes/seatBookingRoutes");
 const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
+const holidayRoutes = require("./routes/holidayRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
+const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 
 require("./scheduler");
 
@@ -72,5 +74,20 @@ app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
+
+//Sri Lanka Holidays
+app.use("/api/holidays", holidayRoutes);
+
+// Seasonal Login Background Override (admin-only write, public read)
+app.use("/api/login-season", seasonOverrideRoutes);
+
+app.get("/api/version", (_req, res) => {
+  res.json({
+    app: "TalentHub",
+    commit: process.env.DEPLOY_COMMIT || "unknown",
+    deployedAt: process.env.DEPLOYED_AT || null,
+    nodeEnv: process.env.NODE_ENV || "development",
+  });
+});
 
 module.exports = app;

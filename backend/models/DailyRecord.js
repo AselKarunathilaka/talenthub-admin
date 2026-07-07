@@ -40,53 +40,6 @@ const DailyRecordSchema = new mongoose.Schema(
       enum: ["working", "leave", "wfh", "study_leave"],
       default: "working",
     },
-    attendance: {
-      type: String,
-      enum: ["present", "absent", "late"],
-      default: "absent",
-    },
-    attendanceTime: {
-      type: Date,
-      default: null,
-    },
-    checkOutTime: {
-      type: Date,
-      default: null,
-    },
-    meetingAttendance: [
-      {
-        projectName: {
-          type: String,
-          default: "",
-        },
-        projectKey: {
-          type: String,
-          default: "",
-        },
-        meetingTitle: {
-          type: String,
-          required: true,
-        },
-        meetingSessionId: {
-          type: String,
-          default: "",
-        },
-        method: {
-          type: String,
-          enum: ["qr", "face_meeting", "meeting", "manual"],
-          default: "qr",
-        },
-        attendanceStatus: {
-          type: String,
-          enum: ["present", "absent"],
-          default: "absent",
-        },
-        attendanceTime: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
   },
   {
     timestamps: true,
@@ -96,5 +49,6 @@ const DailyRecordSchema = new mongoose.Schema(
 // Create compound index for intern and date to prevent duplicates per day
 DailyRecordSchema.index({ internId: 1, date: 1 }, { unique: true });
 DailyRecordSchema.index({ internId: 1, createdAt: -1 });
+DailyRecordSchema.index({ createdAt: -1 }); // Standalone index for fast date range queries
 
 module.exports = mongoose.model("DailyRecord", DailyRecordSchema);

@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
+import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
 import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import {
@@ -17,8 +18,12 @@ import {
 import { api } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
+import transzentLogo from "../assets/transzent.jpeg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
+import WhatsAppSupportButton, {
+  WHATSAPP_SUPPORT_LINK,
+} from "../components/WhatsAppSupportButton";
 
 /* ─── Nav-link feature items (mirrors Navigation.jsx navLinks) ─── */
 const features = [
@@ -65,6 +70,11 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [error, setError] = useState(null);
+  const [seasonActive, setSeasonActive] = useState(false);
+
+  const handleSeasonResolved = useCallback((seasonKey) => {
+    setSeasonActive(!!seasonKey);
+  }, []);
   const handleGoogleLogin = async (response) => {
     try {
       setIsLoading(true);
@@ -95,7 +105,9 @@ const Login = () => {
     <div
       className="min-h-screen text-white overflow-hidden relative"
       style={{
-        background: "linear-gradient(135deg, #006600 0%, #000066 100%)",
+        background: seasonActive
+          ? "#02020a"
+          : "linear-gradient(135deg, #006600 0%, #000066 100%)",
       }}
     >
       {/* Subtle animated grain / mesh overlay */}
@@ -296,7 +308,7 @@ const Login = () => {
                 {/* Middle Section */}
                 <div className="flex-1 flex flex-col justify-center mb-1">
                   {/* Google Login Button */}
-                  <div className="flex justify-center scale-95 sm:scale-[1.2] origin-center">
+                  <div className="flex justify-center scale-[1.14] sm:scale-[1.2] origin-center">
                     {isLoading ? (
                       <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/5 border border-white/10">
                         <div className="w-5 h-5 border-t-2 border-b-2 border-[#00b4eb] rounded-full animate-spin mr-3" />
@@ -370,14 +382,36 @@ const Login = () => {
               </div>
             </motion.div>
 
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.45 }}
+              className="mt-4 rounded-2xl border border-[#25D366]/20 bg-[#25D366]/10 p-4 text-center"
+            >
+              <p className="mb-3 text-sm font-medium text-white/70">
+                Having trouble logging in or joining TalentHub?
+              </p>
+              <WhatsAppSupportButton
+                className="w-full"
+                variant="solid"
+              />
+            </motion.div>
+
             {/* Footer */}
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
+            <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-center text-white/30 text-xs"
             >
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
+                <img 
+                  src={transzentLogo} 
+                  alt="Transzent" 
+                  className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
+                />
+              </div>
               <div className="flex justify-center gap-4 mb-2">
                 <a
                   href="#"
@@ -392,7 +426,9 @@ const Login = () => {
                   Terms
                 </a>
                 <a
-                  href="#"
+                  href={WHATSAPP_SUPPORT_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="hover:text-[#00b4eb] transition-colors"
                 >
                   Help
@@ -540,6 +576,9 @@ const Login = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Seasonal background layer (renders behind all content, except specific foreground decorations) */}
+      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
       {/* Hide scrollbar for mobile carousel */}
       <style jsx="true" global="true">{`

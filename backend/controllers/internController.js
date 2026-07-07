@@ -4,11 +4,17 @@ const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
 const SLTApiScheduler = require("../services/sltApiScheduler");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const moment = require("moment");
 const fs = require("fs");
 const path = require("path");
 const TalentTrailService = require("../services/talentTrailService");
 const ProfilePicture = require("../models/ProfilePicture");
+const {
+  addAuditCheckoutTimes,
+  buildDailyAttendanceByDate,
+  getColomboDateKey,
+} = require("../utils/attendanceHistory");
 
 // Doc 3 sets (more complete — includes manual_daily and manual_meeting)
 const DAILY_ATTENDANCE_TYPES = new Set([
@@ -27,10 +33,7 @@ const MEETING_ATTENDANCE_TYPES = new Set([
 ]);
 
 const getDateKey = (date) => {
-  const parsedDate = date ? new Date(date) : null;
-  return parsedDate && !Number.isNaN(parsedDate.getTime())
-    ? parsedDate.toISOString().slice(0, 10)
-    : String(date || "");
+  return getColomboDateKey(date);
 };
 
 const getMeetingKey = (date, meetingName) =>
@@ -448,33 +451,43 @@ const getAttendanceByInternId = async (req, res) => {
     }
 
     // Get daily records for this intern to include meeting attendance
-    const dailyRecords = await DailyRecord.find({ internId }).sort({
-      date: -1,
-    });
+    const [dailyRecords, successfulDailyFaceLogs] = await Promise.all([
+      DailyRecord.find({ internId }).sort({ date: -1 }),
+      FaceAttendanceLog.find({
+        internId,
+        status: "present",
+        "metadata.attendanceType": "daily",
+      })
+        .sort({ attendanceTime: 1 })
+        .select("attendanceDate attendanceTime method qrBackupUsed metadata.attendanceAction")
+        .lean(),
+    ]);
 
     // Prepare daily attendance from BOTH sources (DailyRecord first, then fallback to intern.attendance)
     const dailyAttendance = [];
     const meetingAttendance = [];
 
     const meetingMethodByKey = new Map();
-    const dailyMethodByDate = new Map();
+    const dailyAttendanceByDate = buildDailyAttendanceByDate(
+      intern.attendance,
+      DAILY_ATTENDANCE_TYPES,
+    );
+    addAuditCheckoutTimes(dailyAttendanceByDate, successfulDailyFaceLogs);
+    const directFaceDates = new Set(
+      successfulDailyFaceLogs
+        .filter((log) => log.method === "face" && !log.qrBackupUsed)
+        .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
+    );
+    dailyAttendanceByDate.forEach((attendance, dateKey) => {
+      attendance.method = directFaceDates.has(dateKey)
+        ? "face recognition"
+        : normalizeAttendanceMethod(attendance.entry.type);
+    });
     const dailyRecordMeetingKeys = new Set();
 
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach((entry) => {
         const type = (entry.type || "").toLowerCase();
-        if (DAILY_ATTENDANCE_TYPES.has(type)) {
-          const markedAt = entry.timeMarked || entry.date;
-          const dateKey = getDateKey(entry.date);
-          const current = dailyMethodByDate.get(dateKey);
-          if (!current || new Date(markedAt) > new Date(current.markedAt)) {
-            dailyMethodByDate.set(dateKey, {
-              method: normalizeAttendanceMethod(type),
-              markedAt,
-            });
-          }
-        }
-
         if (!MEETING_ATTENDANCE_TYPES.has(type)) return;
 
         const meetingName =
@@ -540,9 +553,19 @@ const getAttendanceByInternId = async (req, res) => {
     dailyRecords.forEach((record) => {
       // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
       if (record.attendance && record.attendance !== "absent") {
-        const attendanceTime = record.attendanceTime
-          ? new Date(record.attendanceTime)
+        const matchingInternAttendance = dailyAttendanceByDate.get(
+          getDateKey(record.date),
+        );
+        const attendanceTimeValue =
+          record.attendanceTime ||
+          matchingInternAttendance?.markedAt ||
+          matchingInternAttendance?.entry?.date;
+        const attendanceTime = attendanceTimeValue
+          ? new Date(attendanceTimeValue)
           : null;
+        const checkOutTime =
+          record.checkOutTime ||
+          matchingInternAttendance?.checkOutTime;
         const meetingDerivedMethod = record.meetingAttendance
           ?.map((meeting) => {
             const projectName = meeting.projectName || meeting.meetingTitle;
@@ -563,16 +586,16 @@ const getAttendanceByInternId = async (req, res) => {
           type: "Daily",
           recordStatus: record.status, // working | leave | wfh — used for Extended Leave / WFH colour coding (from doc4)
           attendanceMethod:
-            dailyMethodByDate.get(getDateKey(record.date))?.method ||
+            matchingInternAttendance?.method ||
             normalizeAttendanceMethod(meetingDerivedMethod) ||
             "unknown",
           checkInTime: attendanceTime
             ? formatColomboTime(attendanceTime)
             : null,
-          checkOutTime: record.checkOutTime
-            ? formatColomboTime(record.checkOutTime)
+          checkOutTime: checkOutTime
+            ? formatColomboTime(checkOutTime)
             : null,
-          attendanceTime: record.attendanceTime,
+          attendanceTime: attendanceTimeValue,
         });
       }
 
@@ -601,8 +624,8 @@ const getAttendanceByInternId = async (req, res) => {
     // --- TALENTTRAIL EXTERNAL API INTEGRATION (from doc4) ---
     try {
       const ttData = await TalentTrailService.getCertificateData(
-        intern.internCode,
-        intern.email,
+        intern.Trainee_ID,
+        intern.Trainee_Email,
       );
       if (
         ttData &&
@@ -654,35 +677,29 @@ const getAttendanceByInternId = async (req, res) => {
     // Fallback: include daily/face scans from intern.attendance if DailyRecord doesn't exist for that date
     try {
       const datesWithDailyRecord = new Set(
-        dailyAttendance.map((d) => new Date(d.date).toDateString()),
+        dailyAttendance.map((d) => getDateKey(d.date)),
       );
 
-      if (intern.attendance && intern.attendance.length > 0) {
-        intern.attendance.forEach((entry) => {
-          const type = (entry.type || "").toLowerCase();
-          const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
-          if (!isDaily) return; // only consider daily scans here
-
+      dailyAttendanceByDate.forEach(
+        ({ entry, markedAt, method, checkOutTime }, dayKey) => {
           const entryDate = entry.date ? new Date(entry.date) : null;
           if (!entryDate || isNaN(entryDate.getTime())) return;
-
-          const dayKey = entryDate.toDateString();
           if (datesWithDailyRecord.has(dayKey)) return; // already covered by DailyRecord
 
           dailyAttendance.push({
             date: entryDate,
             status: entry.status || "Present",
             type: "Daily",
-            attendanceMethod: normalizeAttendanceMethod(type),
-            checkInTime: formatColomboTime(entry.timeMarked || entryDate),
-            checkOutTime: entry.checkOutTime
-              ? formatColomboTime(entry.checkOutTime)
+            attendanceMethod: method || normalizeAttendanceMethod(entry.type),
+            checkInTime: formatColomboTime(markedAt || entryDate),
+            checkOutTime: checkOutTime
+              ? formatColomboTime(checkOutTime)
               : null,
-            attendanceTime: entry.timeMarked || entry.date,
+            attendanceTime: markedAt || entry.date,
           });
           datesWithDailyRecord.add(dayKey);
-        });
-      }
+        },
+      );
     } catch (e) {
       // Non-fatal: if fallback merge fails, continue with what we have
     }

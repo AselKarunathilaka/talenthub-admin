@@ -1,6 +1,7 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -10,6 +11,10 @@ const {
   generateMeetingAttendancePdf,
 } = require("./meetingAttendancePdfTemplate");
 const { generateDailyAttendancePdf } = require("./dailyAttendancePdfTemplate");
+const {
+  addAuditCheckoutTimes,
+  buildDailyAttendanceByDate,
+} = require("../utils/attendanceHistory");
 
 const TZ = "Asia/Colombo";
 
@@ -169,7 +174,17 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
-  const interns = await Intern.find({});
+  const typeArray = Array.from(attendanceTypeSet);
+  const interns = await Intern.find({
+    attendance: {
+      $elemMatch: {
+        date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
+        status: "Present",
+        type: { $in: typeArray }
+      }
+    }
+  }).lean();
+
   const presentInterns = [];
 
   for (const intern of interns) {
@@ -243,7 +258,61 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
 async function getDailyPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
-  const interns = await Intern.find({});
+  // Also check DailyRecord for logbook-backed attendance first
+  const [dailyRecords, successfulFaceLogs] = await Promise.all([
+    DailyRecord.find({
+      date: dateStr,
+      attendance: { $in: ["present", "late"] },
+    }).lean(),
+    FaceAttendanceLog.find({
+      attendanceDate: dateStr,
+      status: "present",
+      method: "face",
+    }).lean(),
+  ]);
+
+  // FaceAttendanceLog is the authoritative audit trail for the scanner used.
+  // It also repairs report labels for older records that were successfully
+  // scanned by face recognition but remained tagged as daily_qr.
+  const dailyFaceInternIds = new Set(
+    successfulFaceLogs
+      .filter((log) => {
+        const attendanceType = String(log.metadata?.attendanceType || "daily").toLowerCase();
+        return attendanceType === "daily" || log.metadata?.dailyAttendanceMarked === true;
+      })
+      .map((log) => String(log.internId)),
+  );
+  const dailyFaceLogsByIntern = new Map();
+  successfulFaceLogs.forEach((log) => {
+    const attendanceType = String(
+      log.metadata?.attendanceType || "daily",
+    ).toLowerCase();
+    if (attendanceType !== "daily") return;
+
+    const internId = String(log.internId);
+    const internLogs = dailyFaceLogsByIntern.get(internId) || [];
+    internLogs.push(log);
+    dailyFaceLogsByIntern.set(internId, internLogs);
+  });
+
+  const dailyRecordInternIds = dailyRecords.map(r => r.internId);
+
+  const typeArray = Array.from(DAILY_ATTENDANCE_TYPES);
+  const interns = await Intern.find({
+    $or: [
+      {
+        attendance: {
+          $elemMatch: {
+            date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
+            status: "Present",
+            type: { $in: typeArray }
+          }
+        }
+      },
+      { _id: { $in: dailyRecordInternIds } }
+    ]
+  }).lean();
+
   const internById = new Map(
     interns.map((intern) => [String(intern._id), intern]),
   );
@@ -262,18 +331,26 @@ async function getDailyPresentsOnDate(dateStr) {
     });
 
     if (records.length === 0) continue;
-    const latest = records.sort(
-      (a, b) =>
-        new Date(b.timeMarked || b.date).getTime() -
-        new Date(a.timeMarked || a.date).getTime(),
-    )[0];
-    dailyByIntern.set(String(intern._id), {
+    const internId = String(intern._id);
+    const attendanceByDate = buildDailyAttendanceByDate(
+      records,
+      DAILY_ATTENDANCE_TYPES,
+    );
+    addAuditCheckoutTimes(
+      attendanceByDate,
+      dailyFaceLogsByIntern.get(internId),
+    );
+    const reconciledAttendance = attendanceByDate.get(dateStr);
+    if (!reconciledAttendance) continue;
+
+    const latest = reconciledAttendance.entry;
+    dailyByIntern.set(internId, {
       ...getInternDetails(intern),
-      timeMarked: moment(latest.timeMarked || latest.date)
+      timeMarked: moment(reconciledAttendance.markedAt || latest.date)
         .tz(TZ)
         .format("hh:mm A"),
-      checkOutTime: latest.checkOutTime
-        ? moment(latest.checkOutTime).tz(TZ).format("hh:mm A")
+      checkOutTime: reconciledAttendance.checkOutTime
+        ? moment(reconciledAttendance.checkOutTime).tz(TZ).format("hh:mm A")
         : null,
       type: latest.type || "daily",
       status: "Present",
@@ -281,11 +358,7 @@ async function getDailyPresentsOnDate(dateStr) {
     });
   }
 
-  // Also check DailyRecord for logbook-backed attendance
-  const dailyRecords = await DailyRecord.find({
-    date: dateStr,
-    attendance: { $in: ["present", "late"] },
-  });
+  // dailyRecords are already fetched at the start of the function
 
   for (const record of dailyRecords) {
     const key = String(record.internId);
@@ -304,6 +377,13 @@ async function getDailyPresentsOnDate(dateStr) {
       status: record.attendance === "late" ? "Late" : "Present",
       attendanceType: "daily",
     });
+  }
+
+  for (const internId of dailyFaceInternIds) {
+    const attendance = dailyByIntern.get(internId);
+    if (attendance) {
+      dailyByIntern.set(internId, { ...attendance, type: "face" });
+    }
   }
 
   return sortByInternId([...dailyByIntern.values()]);
@@ -487,15 +567,25 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       projectsByEmail[email].push(...projectNames);
     }
 
+    const workingDays = getWorkingDaysInTwoWeekRange(startDate, endDate);
+    const workingDayStrings = workingDays.map((d) => d.format("YYYY-MM-DD"));
+
     const nonAttendees = [];
     for (const intern of activeInterns) {
       if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
+
+      const hasExtendedLeave = await WeeklyMeetingAttendanceService.hasApprovedExtendedLeaveForPeriod(
+        intern._id,
+        workingDayStrings,
+      );
+      if (hasExtendedLeave) continue;
+
       if (hasAttendedMeeting(intern)) continue;
 
       const lastRecord =
         WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
       const lastMeetingDate = lastRecord
-        ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+        ? moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")
         : "No record found";
 
       const internEmail = String(
@@ -599,7 +689,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       if (err) console.error("Non-attendance Excel download error:", err);
       try {
         fs.unlinkSync(filePath);
-      } catch (_) {}
+      } catch (_) { }
     });
   } catch (err) {
     console.error("exportNonAttendanceExcel error:", err);
