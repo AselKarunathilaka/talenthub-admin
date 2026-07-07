@@ -180,10 +180,7 @@ const AppRoutes = () => {
         path="/admin/manual-attendance"
         element={<AdminManualAttendance />}
       />
-<<<<<<< HEAD
 
-=======
->>>>>>> talenthub/main
       <Route
         path="/admin/inactive-interns"
         element={<AdminInactiveInterns />}

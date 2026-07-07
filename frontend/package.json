@@ -38,12 +38,8 @@
     "react-router-dom": "^7.4.1",
     "react-toastify": "^11.0.5",
     "sweetalert2": "^11.17.2",
-<<<<<<< HEAD
     "tailwindcss": "^4.0.17",
     "xlsx": "^0.18.5"
-=======
-    "tailwindcss": "^4.0.17"
->>>>>>> talenthub/main
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",

@@ -18,7 +18,6 @@ import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
-<<<<<<< HEAD
 import { adminApi } from "../api/adminApi";
 import {
   getDeviceTimeEvidence,
@@ -35,8 +34,6 @@ import {
   FaUserClock,
   FaUsers,
 } from "react-icons/fa";
-=======
->>>>>>> talenthub/main
 
 // ── Shared Utils & Constants ──────────────────────────────────────────────────
 const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
@@ -54,15 +51,12 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
-<<<<<<< HEAD
 const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 160,
   scoreThreshold: 0.45,
 });
 const FACE_GUIDE_INTERVAL_MS = 500;
 const REQUIRED_STABLE_FACE_CHECKS = 2;
-=======
->>>>>>> talenthub/main
 
 const getAuthHeaders = () => {
   const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -186,24 +180,17 @@ const AdminFaceAttendance = () => {
   // States
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
-<<<<<<< HEAD
   const [mode, setMode] = useState("meeting"); // "enroll", "daily", "meeting"
-=======
-  const [mode, setMode] = useState("daily"); // "enroll", "daily", "meeting"
->>>>>>> talenthub/main
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [selectedIntern, setSelectedIntern] = useState(null);
-<<<<<<< HEAD
 
   const [enrollmentData, setEnrollmentData] = useState({ stats: {}, profiles: [] });
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profileSearch, setProfileSearch] = useState('');
   const [profileFilter, setProfileFilter] = useState('all');
   const [showProfilesModal, setShowProfilesModal] = useState(false);
-=======
->>>>>>> talenthub/main
   
   // Camera & Face logic
   const [cameraActive, setCameraActive] = useState(false);
@@ -211,10 +198,7 @@ const AdminFaceAttendance = () => {
   const [faceGuide, setFaceGuide] = useState({ ready: false, message: "Center face in the oval" });
   const [meetingTitle, setMeetingTitle] = useState("");
   const [videoDims, setVideoDims] = useState({ width: 640, height: 480 });
-<<<<<<< HEAD
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
-=======
->>>>>>> talenthub/main
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -224,7 +208,6 @@ const AdminFaceAttendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
-<<<<<<< HEAD
   const stableFaceChecksRef = useRef(0);
   const submitStartedRef = useRef(false);
 
@@ -274,10 +257,6 @@ const AdminFaceAttendance = () => {
     })
     : 'Never';
 
-=======
-  const submitStartedRef = useRef(false);
-
->>>>>>> talenthub/main
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -296,7 +275,6 @@ const AdminFaceAttendance = () => {
   }, []);
 
   useEffect(() => {
-<<<<<<< HEAD
     const loadAttendanceSettings = async () => {
       try {
         const response = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
@@ -316,8 +294,6 @@ const AdminFaceAttendance = () => {
   }, []);
 
   useEffect(() => {
-=======
->>>>>>> talenthub/main
     return () => stopCamera();
   }, []);
 
@@ -359,10 +335,7 @@ const AdminFaceAttendance = () => {
     }
     setCameraActive(false);
     liveDescriptorRef.current = null;
-<<<<<<< HEAD
     stableFaceChecksRef.current = 0;
-=======
->>>>>>> talenthub/main
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center face in the oval" });
   };
@@ -395,30 +368,17 @@ const AdminFaceAttendance = () => {
     }
 
     try {
-<<<<<<< HEAD
       const stream = await requestFaceCameraStream();
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
       stableFaceChecksRef.current = 0;
-=======
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 720 }, height: { ideal: 540 }, aspectRatio: { ideal: 4 / 3 }, facingMode: "user" },
-        audio: false,
-      });
-      streamRef.current = stream;
-      lastAutoCaptureRef.current = Date.now();
->>>>>>> talenthub/main
       submitStartedRef.current = false;
       setEnrollmentFrames([]);
       setCameraActive(true);
       await attachStreamToVideo();
     } catch (error) {
-<<<<<<< HEAD
       console.error("Camera access error:", error);
       toast.error(getCameraErrorMessage(error));
-=======
-      toast.error("Camera access failed. Please check permissions.");
->>>>>>> talenthub/main
       setCameraActive(false);
     }
   };
@@ -472,7 +432,6 @@ const AdminFaceAttendance = () => {
     }
   };
 
-<<<<<<< HEAD
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
 
@@ -538,8 +497,6 @@ const AdminFaceAttendance = () => {
     }
   };
 
-=======
->>>>>>> talenthub/main
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -557,7 +514,6 @@ const AdminFaceAttendance = () => {
       
       inspectBusyRef.current = true;
       try {
-<<<<<<< HEAD
         const positionData = await inspectFacePosition();
         if (cancelled) return;
         if (!positionData || positionData.error) {
@@ -587,34 +543,15 @@ const AdminFaceAttendance = () => {
         });
 
         if (!faceIsStable || mode !== "enroll") return;
-=======
-        const frameData = await captureFrameForDescriptor();
-        if (cancelled) return;
-        if (!frameData || frameData.error) {
-          liveDescriptorRef.current = null;
-          setFaceGuide({ ready: false, message: frameData?.error || "Center face in oval" });
-          return;
-        }
-
-        liveDescriptorRef.current = frameData.descriptor;
-        
-        if (mode !== "enroll") {
-          setFaceGuide({ ready: true, message: "Face is ready. You can mark attendance." });
-          return;
-        }
->>>>>>> talenthub/main
 
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
 
-<<<<<<< HEAD
         const frameData = await captureFrameForDescriptor();
         if (cancelled || !frameData || frameData.error) return;
         liveDescriptorRef.current = frameData.descriptor;
 
-=======
->>>>>>> talenthub/main
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct = !previousFrame || Math.sqrt(
           previousFrame.reduce((sum, val, idx) => {
@@ -637,11 +574,7 @@ const AdminFaceAttendance = () => {
     };
 
     inspectFace();
-<<<<<<< HEAD
     const timer = setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
-=======
-    const timer = setInterval(inspectFace, 700);
->>>>>>> talenthub/main
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -679,7 +612,6 @@ const AdminFaceAttendance = () => {
 
   const handleMarkAttendance = async () => {
     setLoading(true);
-<<<<<<< HEAD
 
     let attendanceLocation = null;
     if (sltLocationRequired) {
@@ -695,9 +627,6 @@ const AdminFaceAttendance = () => {
     // Verify the person currently in front of the camera, not a descriptor
     // cached by an earlier preview scan.
     const frameData = await captureFreshDescriptorForVerification();
-=======
-    const frameData = liveDescriptorRef.current ? { descriptor: liveDescriptorRef.current } : await captureFrameForDescriptor();
->>>>>>> talenthub/main
     
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -711,14 +640,11 @@ const AdminFaceAttendance = () => {
         descriptor: frameData.descriptor,
         attendanceType: mode,
         meetingTitle: mode === "meeting" ? meetingTitle.trim() : undefined,
-<<<<<<< HEAD
         metadata: {
           location: attendanceLocation,
           source: "admin-browser-camera",
           ...getDeviceTimeEvidence(),
         },
-=======
->>>>>>> talenthub/main
       });
       
       const successMessage = response.checkedOut
@@ -739,7 +665,6 @@ const AdminFaceAttendance = () => {
     }
   };
 
-<<<<<<< HEAD
 
 
   return (
@@ -1173,239 +1098,6 @@ const AdminFaceAttendance = () => {
         )}
         </AnimatePresence>
 
-=======
-  if (!modelsLoaded) {
-    return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
-          <Loader className="w-10 h-10 animate-spin mx-auto text-blue-600 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900">Loading AI Models</h2>
-          <p className="text-sm text-slate-500 mt-2">Preparing face recognition...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <AdminNavigation>
-      <div className="min-h-screen bg-slate-50/50 p-4 md:p-8 relative">
-      <div className="max-w-4xl mx-auto">
-        
-
-        {/* ── Header ── */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div>
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-            >
-              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                <ScanFace className="text-[#0056a2] h-8 w-8" />
-              </div>
-              Face ID
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-            >
-              Enroll faces or mark camera attendance on behalf of interns.
-            </motion.p>
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-[340px_1fr] gap-6">
-          {/* Sidebar Controls */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                1. Select Intern
-              </label>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => {
-                    handleSearch(e.target.value);
-                    if (selectedIntern) setSelectedIntern(null);
-                  }}
-                  placeholder="Search by name or ID..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                {searchQuery && (
-                  <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSelectedIntern(null); }} className="absolute right-3 top-1/2 -translate-y-1/2">
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
-                )}
-              </div>
-              
-              <AnimatePresence>
-                {searchResults.length > 0 && (
-                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-2 max-h-48 overflow-y-auto">
-                    {searchResults.map((intern) => (
-                      <InternCard key={intern._id} intern={intern} onSelect={handleSelectIntern} selected={selectedIntern?._id === intern._id} />
-                    ))}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              
-              {selectedIntern && (
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                    <CheckCircle className="w-4 h-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-blue-900">{selectedIntern.Trainee_Name}</p>
-                    <p className="text-xs text-blue-700">{selectedIntern.Trainee_ID}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className={`bg-white rounded-xl shadow-sm border border-slate-200 p-5 transition-opacity ${!selectedIntern ? 'opacity-50 pointer-events-none' : ''}`}>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-                2. Select Action
-              </label>
-              <div className="space-y-2">
-                {[
-                  { id: "enroll", label: "Face Enrollment", icon: Camera },
-                  { id: "daily", label: "Daily Attendance", icon: UserCheck },
-                  { id: "meeting", label: "Meeting Attendance", icon: Video }
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    onClick={() => { setMode(opt.id); stopCamera(); }}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg border text-left transition ${
-                      mode === opt.id ? "bg-slate-900 border-slate-900 text-white" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    <opt.icon className="w-4 h-4" />
-                    <span className="text-sm font-medium">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {mode === "meeting" && (
-                <div className="mt-4 space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-200">
-                  <input
-                    type="text"
-                    placeholder="Meeting Title"
-                    value={meetingTitle}
-                    onChange={(e) => setMeetingTitle(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-slate-900 outline-none"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Camera Feed Area */}
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 overflow-hidden flex flex-col">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
-              3. Camera View
-            </label>
-            
-            <div className="relative flex-1 bg-slate-950 rounded-lg overflow-hidden min-h-[300px] flex items-center justify-center border border-slate-800">
-              {loading && (
-                <div className="absolute inset-0 z-50 bg-slate-950/80 flex flex-col items-center justify-center text-white backdrop-blur-sm">
-                  <Loader className="w-8 h-8 animate-spin mb-3 text-blue-500" />
-                  <p className="text-sm font-medium">Processing...</p>
-                </div>
-              )}
-
-              {!cameraActive ? (
-                <div className="text-center p-6">
-                  <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center mx-auto mb-4">
-                    <Camera className="w-6 h-6 text-slate-400" />
-                  </div>
-                  <h3 className="text-slate-200 font-medium mb-2">Camera is inactive</h3>
-                  <p className="text-slate-400 text-sm mb-6">Select an intern and action, then start the camera.</p>
-                  <button
-                    onClick={startCamera}
-                    disabled={!selectedIntern || loading}
-                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition disabled:opacity-50"
-                  >
-                    Start Camera
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <video
-                    ref={videoRef}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    style={{ transform: "scaleX(-1)" }}
-                    playsInline
-                    muted
-                    onLoadedMetadata={(e) => {
-                      setVideoDims({
-                        width: e.target.videoWidth || 640,
-                        height: e.target.videoHeight || 480
-                      });
-                    }}
-                  />
-                  <canvas
-                    ref={canvasRef}
-                    width={videoDims.width}
-                    height={videoDims.height}
-                    className="hidden"
-                  />
-                  <canvas
-                    ref={meshCanvasRef}
-                    width={videoDims.width}
-                    height={videoDims.height}
-                    className="absolute inset-0 w-full h-full object-cover z-10"
-                    style={{ transform: "scaleX(-1)" }}
-                  />
-                  
-                  {/* Overlay Guides */}
-                  <div className="absolute top-4 inset-x-4 z-20 flex justify-between items-start">
-                    <div className={`px-3 py-1.5 rounded-full text-xs font-semibold shadow-md backdrop-blur-md border ${
-                      faceGuide.ready ? "bg-emerald-500/20 text-emerald-100 border-emerald-500/50" : "bg-red-500/20 text-red-100 border-red-500/50"
-                    }`}>
-                      {faceGuide.message}
-                    </div>
-                    
-                    <button onClick={stopCamera} className="w-8 h-8 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 backdrop-blur-sm">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  {/* Mode specific controls overlay */}
-                  <div className="absolute bottom-6 inset-x-6 z-20">
-                    {mode === "enroll" ? (
-                      <div className="bg-black/60 backdrop-blur-md rounded-xl p-4 border border-white/10">
-                        <div className="flex justify-between text-xs text-slate-300 font-medium mb-2">
-                          <span>Enrollment Progress</span>
-                          <span>{enrollmentFrames.length} / {REQUIRED_ENROLLMENT_SAMPLES}</span>
-                        </div>
-                        <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-500 transition-all duration-300"
-                            style={{ width: `${(enrollmentFrames.length / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleMarkAttendance}
-                        disabled={!faceGuide.ready}
-                        className="w-full py-3 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white rounded-xl font-bold shadow-lg transition"
-                      >
-                        Mark Attendance
-                      </button>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        </div>
->>>>>>> talenthub/main
       </div>
     </AdminNavigation>
   );

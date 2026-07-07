@@ -1,10 +1,7 @@
 const SeatBooking = require("../models/SeatReserve");
 const Intern = require("../models/Intern");
 const LockedSeat = require("../models/LockedSeat");
-<<<<<<< HEAD
 const DailyRecord = require("../models/DailyRecord");
-=======
->>>>>>> talenthub/main
 
 /**
  * Get all seat bookings with optional date filter
@@ -472,7 +469,6 @@ const unlockSeat = async (req, res) => {
   }
 };
 
-<<<<<<< HEAD
 /**
  * Get interns who booked a seat but haven't scanned daily attendance
  * @route GET /api/admin/seat-bookings/pending-checkins
@@ -568,8 +564,6 @@ const getPendingCheckIns = async (req, res) => {
   }
 };
 
-=======
->>>>>>> talenthub/main
 module.exports = {
   getSeatBookings,
   getBookingStats,
@@ -578,8 +572,5 @@ module.exports = {
   getLockedSeats,
   lockSeat,
   unlockSeat,
-<<<<<<< HEAD
   getPendingCheckIns,
-=======
->>>>>>> talenthub/main
 };

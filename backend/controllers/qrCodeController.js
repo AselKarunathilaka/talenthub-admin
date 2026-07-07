@@ -22,10 +22,7 @@ const saveQrAttendanceAudit = async ({
   deviceTimeZone,
   deviceUtcOffsetMinutes,
   projectName,
-<<<<<<< HEAD
   attendanceAction,
-=======
->>>>>>> talenthub/main
 }) => {
   try {
     const intern = await Intern.findById(internId);
@@ -44,10 +41,7 @@ const saveQrAttendanceAudit = async ({
       source: "browser-qr",
       metadata: {
         attendanceType,
-<<<<<<< HEAD
         attendanceAction,
-=======
->>>>>>> talenthub/main
         projectName: projectName || undefined,
         deviceTime,
         deviceTimeZone,
@@ -118,10 +112,7 @@ const scanQRCode = async (req, res) => {
     qrCode,
     internId: bodyInternId,
     scanType = 'daily',
-<<<<<<< HEAD
     attendanceAction,
-=======
->>>>>>> talenthub/main
     lat,
     lng,
     accuracy,
@@ -166,15 +157,11 @@ const scanQRCode = async (req, res) => {
     // For daily attendance scans, only update existing DailyRecord attendance fields (if any).
     // DO NOT create a new logbook entry or set its task from QR scans.
     if (scanType === 'daily') {
-<<<<<<< HEAD
       const attendanceResult = await qrCodeService.markInternDailyAttendance(
         internId,
         qrCode,
         { attendanceAction },
       );
-=======
-      await qrCodeService.markInternDailyAttendance(internId, qrCode);
->>>>>>> talenthub/main
       await saveQrAttendanceAudit({
         internId,
         attendanceType: "daily",
@@ -182,10 +169,7 @@ const scanQRCode = async (req, res) => {
         deviceTime,
         deviceTimeZone,
         deviceUtcOffsetMinutes,
-<<<<<<< HEAD
         attendanceAction,
-=======
->>>>>>> talenthub/main
       });
       // Get intern info for email notification
       const intern = await InternService.getInternById(internId);
@@ -220,15 +204,10 @@ const scanQRCode = async (req, res) => {
         // sendEmail(emailAddress, emailSubject, emailBody);
       }
       res.status(200).json({ 
-<<<<<<< HEAD
         message: attendanceResult.message,
         dailyAttendanceUpdated: true,
         checkedOut: attendanceResult.checkedOut,
         timeMarked: attendanceResult.timeMarked
-=======
-        message: "Daily attendance marked successfully",
-        dailyAttendanceUpdated: true
->>>>>>> talenthub/main
       });
     } else {
       // For meeting/general attendance scans, use the old system (intern.attendance)
@@ -238,15 +217,10 @@ const scanQRCode = async (req, res) => {
       // Also attempt to mark daily attendance
       let dailyAttendanceUpdated = false;
       try {
-<<<<<<< HEAD
         const attendanceResult = await qrCodeService.markInternDailyAttendance(internId, qrCode, {
           allowCheckout: false,
         });
         dailyAttendanceUpdated = Boolean(attendanceResult.dailyAttendanceMarked);
-=======
-        await qrCodeService.markInternDailyAttendance(internId, qrCode);
-        dailyAttendanceUpdated = true;
->>>>>>> talenthub/main
       } catch (e) {
         // Ignore errors (like duplicates) for the automatic part
       }
@@ -260,10 +234,7 @@ const scanQRCode = async (req, res) => {
     const rawMessage = error.message || "";
     const shouldShowSpecificMessage =
       Boolean(error.locationRequired) ||
-<<<<<<< HEAD
       Boolean(error.statusCode) ||
-=======
->>>>>>> talenthub/main
       rawMessage.includes("Duplicate") ||
       rawMessage.includes("already marked") ||
       rawMessage.includes("Invalid QR code") ||
@@ -275,11 +246,8 @@ const scanQRCode = async (req, res) => {
       message: shouldShowSpecificMessage ? error.message : "Error processing QR code",
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
-<<<<<<< HEAD
       code: error.code,
       retryAfterMinutes: error.retryAfterMinutes,
-=======
->>>>>>> talenthub/main
     });
   }
 };

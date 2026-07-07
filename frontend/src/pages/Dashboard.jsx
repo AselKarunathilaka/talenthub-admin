@@ -7,11 +7,8 @@ import NoProjectNotification from "../components/NoProjectNotification";
 import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import OnboardingTour from "../components/OnboardingTour";
 import FeatureTipModal from "../components/FeatureTipModal";
-<<<<<<< HEAD
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import AnnouncementPopup from "../components/AnnouncementPopup";
-=======
->>>>>>> talenthub/main
 import {
   Users,
   User,
@@ -27,11 +24,7 @@ import {
   Bell,
   Mail,
   Building,
-<<<<<<< HEAD
   GraduationCap,
-=======
-  GraduationCap
->>>>>>> talenthub/main
 } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
@@ -97,7 +90,6 @@ const Dashboard = () => {
           const notification = calculateInternshipEndNotification(
             response.Training_EndDate,
           );
-<<<<<<< HEAD
 
           let shouldShow = notification.shouldNotify;
           const lastDismissedStr = localStorage.getItem(
@@ -117,10 +109,6 @@ const Dashboard = () => {
           } else {
             setEndDateNotification(null);
           }
-=======
-          console.log("End date notification:", notification); // Debug log
-          setEndDateNotification(notification);
->>>>>>> talenthub/main
         }
         return response; // Return data so loadAllData can use it directly
       } else {
@@ -170,7 +158,6 @@ const Dashboard = () => {
             ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
             : String(entry.date || "");
         };
-<<<<<<< HEAD
         const meetingPresentCount = meetingAttendanceData.filter(
           (entry) => entry.status === "Present",
         ).length;
@@ -182,24 +169,6 @@ const Dashboard = () => {
           present: meetingPresentCount,
           absent: meetingAbsentCount,
         });
-=======
-        const meetingPresentDays = new Set(
-          meetingAttendanceData
-            .filter((entry) => entry.status === "Present")
-            .map(meetingDateKey),
-        ).size;
-        const meetingAbsentDays = new Set(
-          meetingAttendanceData
-            .filter((entry) => entry.status === "Absent")
-            .map(meetingDateKey),
-        ).size;
-
-        setAttendanceStats({
-          present: meetingPresentDays,
-          absent: meetingAbsentDays,
-        });
-
->>>>>>> talenthub/main
         // Set daily attendance stats based on the daily attendance data
         setDailyAttendanceStats({
           present: dailyAttendanceData.filter(
@@ -345,7 +314,6 @@ const Dashboard = () => {
     }
   };
 
-<<<<<<< HEAD
   // Meeting attendance rate: attended ÷ meetings held so far (1 per week since training started)
   const presentPercentage = (() => {
     if (!internData?.Training_StartDate) return 0;
@@ -388,13 +356,6 @@ const Dashboard = () => {
     );
     return Math.min(100, Math.round((weeksPresent / weeksHeld) * 100));
   })();
-=======
-  const totalAttendance = attendanceStats.present + attendanceStats.absent;
-  const presentPercentage =
-    totalAttendance > 0
-      ? Math.round((attendanceStats.present / totalAttendance) * 100)
-      : 0;
->>>>>>> talenthub/main
 
   const handleDateSelection = (date) => {
     setSelectedDate(date);
@@ -577,7 +538,6 @@ const Dashboard = () => {
       <div className="max-w-6xl mx-auto">
         <InternshipEndNotification
           notification={endDateNotification}
-<<<<<<< HEAD
           onDismiss={() => {
             setEndDateNotification(null);
             localStorage.setItem(
@@ -610,11 +570,6 @@ const Dashboard = () => {
           </div>
         </motion.div>
 
-=======
-          onDismiss={() => setEndDateNotification(null)}
-        />
-
->>>>>>> talenthub/main
         {/* ── Intern Profile Card (Refactored) ── */}
         {internData && (
           <motion.div
@@ -633,7 +588,6 @@ const Dashboard = () => {
                   <p className="text-sm font-medium text-gray-500 mt-1 flex items-center gap-2">
                     {internData.Trainee_ID || "—"}
                   </p>
-<<<<<<< HEAD
 
                   {internData.Training_EndDate &&
                     (() => {
@@ -677,29 +631,6 @@ const Dashboard = () => {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}
-=======
-                  
-                  {internData.Training_EndDate && (() => {
-                    const daysLeft = Math.ceil(
-                      (new Date(internData.Training_EndDate) - new Date()) / (1000 * 60 * 60 * 24)
-                    );
-                    return daysLeft > 0 ? (
-                      <div className="mt-4 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold text-white shadow-sm" style={{ background: daysLeft <= 14 ? "linear-gradient(135deg, #ef4444, #dc2626)" : daysLeft <= 30 ? "linear-gradient(135deg, #f59e0b, #d97706)" : "linear-gradient(135deg, #50b748, #2e7d32)" }}>
-                        {daysLeft} DAYS REMAINING
-                      </div>
-                    ) : (
-                      <div className="mt-4 inline-flex items-center px-4 py-1.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
-                        TRAINING ENDED
-                      </div>
-                    );
-                  })()}
-                </div>
-                
-                {internData.lastSeen && (
-                  <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-100/50 text-blue-700 rounded-full text-xs font-semibold shadow-sm border border-blue-200/50">
-                    <Clock className="w-3.5 h-3.5" />
-                    Last seen: {new Date(internData.lastSeen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(internData.lastSeen).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
->>>>>>> talenthub/main
                   </div>
                 )}
               </div>
@@ -707,10 +638,6 @@ const Dashboard = () => {
 
             {/* Grid Content */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6 sm:p-8 bg-gray-50/30">
-<<<<<<< HEAD
-=======
-              
->>>>>>> talenthub/main
               {/* Personal Information */}
               <div className="bg-white rounded-2xl p-6 shadow-[0_0_15px_rgba(99,102,241,0.15)] border border-indigo-400/20 hover:shadow-[0_0_25px_rgba(99,102,241,0.35)] hover:border-indigo-400/60 transition-all duration-300">
                 <h3 className="text-base font-bold text-gray-900 mb-5 flex items-center gap-2">
@@ -719,7 +646,6 @@ const Dashboard = () => {
                 </h3>
                 <div className="space-y-4">
                   <div>
-<<<<<<< HEAD
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                       Email
                     </p>
@@ -819,19 +745,6 @@ const Dashboard = () => {
                         </div>
                       );
                     })()}
-=======
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Email</p>
-                    <p className="text-sm font-medium text-gray-800 break-all">{internData.Trainee_Email || "Not specified"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Institute</p>
-                    <p className="text-sm font-medium text-gray-800">{internData.Institute || "Not specified"}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Specialization</p>
-                    <p className="text-sm font-medium text-gray-800">{internData.field_of_spec_name || "Not specified"}</p>
-                  </div>
->>>>>>> talenthub/main
                 </div>
               </div>
 
@@ -844,7 +757,6 @@ const Dashboard = () => {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-<<<<<<< HEAD
                       <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">
                         Start Date
                       </p>
@@ -902,37 +814,6 @@ const Dashboard = () => {
                           </>
                         );
                       })()}
-=======
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Start Date</p>
-                      <p className="text-sm font-medium text-gray-800">{internData.Training_StartDate ? formatDate(internData.Training_StartDate) : "N/A"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">End Date</p>
-                      <p className="text-sm font-medium text-gray-800">{internData.Training_EndDate ? formatDate(internData.Training_EndDate) : "N/A"}</p>
-                    </div>
-                    {internData.Training_StartDate && internData.Training_EndDate && (() => {
-                      const start = new Date(internData.Training_StartDate);
-                      const end = new Date(internData.Training_EndDate);
-                      const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                      const weeks = Math.floor(totalDays / 7);
-                      const remainingDays = totalDays % 7;
-                      const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
-                      return (
-                        <>
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Duration</p>
-                            <p className="text-sm font-medium text-gray-800">{weeks} weeks, {remainingDays} days</p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-1">Status</p>
-                            <p className={`text-sm font-bold ${daysLeft > 0 ? "text-emerald-600" : "text-red-600"}`}>
-                              {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
-                            </p>
-                          </div>
-                        </>
-                      );
-                    })()}
->>>>>>> talenthub/main
                   </div>
                 </div>
 
@@ -947,29 +828,20 @@ const Dashboard = () => {
                   {internProjects && internProjects.length > 0 ? (
                     <div className="space-y-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
                       {internProjects.map((proj, pi) => (
-<<<<<<< HEAD
                         <div
                           key={pi}
                           className="flex items-center gap-4 p-3.5 bg-white rounded-xl shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-300/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:border-blue-300/60 transition-all duration-300"
                         >
-=======
-                        <div key={pi} className="flex items-center gap-4 p-3.5 bg-white rounded-xl shadow-[0_0_10px_rgba(59,130,246,0.1)] border border-blue-300/30 hover:shadow-[0_0_20px_rgba(59,130,246,0.25)] hover:border-blue-300/60 transition-all duration-300">
->>>>>>> talenthub/main
                           <div className="w-10 h-10 rounded-xl bg-blue-100/50 flex items-center justify-center flex-shrink-0 text-blue-600">
                             <Folder className="w-5 h-5" />
                           </div>
                           <div className="min-w-0 flex-1">
-<<<<<<< HEAD
                             <p className="text-sm font-bold text-gray-800 truncate">
                               {proj.projectName}
                             </p>
                             <p className="text-xs font-medium text-gray-500 mt-0.5">
                               Status: {proj.status || "N/A"}
                             </p>
-=======
-                            <p className="text-sm font-bold text-gray-800 truncate">{proj.projectName}</p>
-                            <p className="text-xs font-medium text-gray-500 mt-0.5">Status: {proj.status || "N/A"}</p>
->>>>>>> talenthub/main
                           </div>
                         </div>
                       ))}
@@ -977,13 +849,9 @@ const Dashboard = () => {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-6 bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
                       <Folder className="w-8 h-8 text-gray-300 mb-2" />
-<<<<<<< HEAD
                       <p className="text-sm font-medium text-gray-500 text-center">
                         No projects assigned
                       </p>
-=======
-                      <p className="text-sm font-medium text-gray-500 text-center">No projects assigned</p>
->>>>>>> talenthub/main
                     </div>
                   )}
                 </div>
@@ -1261,11 +1129,7 @@ const Dashboard = () => {
               >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-[#50b748]"></div>
                 <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
-<<<<<<< HEAD
                   Present Days
-=======
-                  Present
->>>>>>> talenthub/main
                 </span>
                 <div className="flex items-center mt-2">
                   <span className="text-3xl font-black text-gray-800">
@@ -1283,11 +1147,7 @@ const Dashboard = () => {
               >
                 <div className="absolute top-0 left-0 w-1.5 h-full bg-red-400"></div>
                 <span className="text-xs font-bold tracking-wider text-gray-400 uppercase mb-1 block">
-<<<<<<< HEAD
                   Absent Days
-=======
-                  Absent
->>>>>>> talenthub/main
                 </span>
                 <div className="flex items-center mt-2">
                   <span className="text-3xl font-black text-gray-800">
@@ -1320,11 +1180,6 @@ const Dashboard = () => {
               </motion.div>
             </div>
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> talenthub/main
             {/* Meeting History Accordion */}
             {filteredMeetingAttendance.length > 0 ? (
               <div className="space-y-3">
@@ -1418,13 +1273,9 @@ const Dashboard = () => {
                                         <div className="flex items-center gap-3 mt-1.5 text-xs">
                                           <span className="flex items-center text-gray-500 font-medium">
                                             <Clock className="h-3 w-3 mr-1" />{" "}
-<<<<<<< HEAD
                                             {entry.checkInTime ||
                                               entry.time ||
                                               "N/A"}
-=======
-                                            {entry.checkInTime || entry.time || "N/A"}
->>>>>>> talenthub/main
                                           </span>
                                           <span
                                             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold ${methodMeta.className}`}
@@ -1474,10 +1325,7 @@ const Dashboard = () => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation onLogout={handleLogout} />
-<<<<<<< HEAD
       <AnnouncementPopup />
-=======
->>>>>>> talenthub/main
       {showFaceModal && (
         <FaceRegistrationModal
           isOpen={showFaceModal}

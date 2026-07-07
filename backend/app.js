@@ -18,17 +18,11 @@ const seatBookingRoutes = require("./routes/seatBookingRoutes");
 const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
-<<<<<<< HEAD
 const holidayRoutes = require("./routes/holidayRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
-=======
-const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
-const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
-const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
->>>>>>> talenthub/main
 
 require("./scheduler");
 
@@ -81,7 +75,6 @@ app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 
-<<<<<<< HEAD
 //Sri Lanka Holidays
 app.use("/api/holidays", holidayRoutes);
 
@@ -97,6 +90,4 @@ app.get("/api/version", (_req, res) => {
   });
 });
 
-=======
->>>>>>> talenthub/main
 module.exports = app;

@@ -5,10 +5,7 @@ import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
 import FaceScanGuide from "./FaceScanGuide";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-<<<<<<< HEAD
 import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
-=======
->>>>>>> talenthub/main
 
 const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
@@ -86,26 +83,8 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   }, [step]);
 
   const startCamera = async () => {
-<<<<<<< HEAD
     try {
       const stream = await requestFaceCameraStream();
-=======
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Camera access requires a supported browser on HTTPS or localhost.");
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 720 },
-          height: { ideal: 540 },
-          aspectRatio: { ideal: 4 / 3 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
->>>>>>> talenthub/main
       streamRef.current = stream;
       lastCaptureRef.current = Date.now();
       submitStartedRef.current = false;
@@ -114,11 +93,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera error:", error);
-<<<<<<< HEAD
       toast.error(getCameraErrorMessage(error));
-=======
-      toast.error("Cannot access camera. Allow camera permission and use HTTPS or localhost.");
->>>>>>> talenthub/main
     }
   };
 

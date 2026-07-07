@@ -4,24 +4,16 @@ const FeatureTip = require("./models/FeatureTip");
 const Intern = require("./models/Intern");
 
 const runTest = async () => {
-<<<<<<< HEAD
   let savedTip = null;
   let intern = null;
   
   try {
     console.log("🔄 Connecting to Database...");
-=======
-  try {
->>>>>>> talenthub/main
     await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-<<<<<<< HEAD
     console.log("✅ Connected to DB.");
-=======
-    console.log("Connected to DB.");
->>>>>>> talenthub/main
 
     // 1. Create a test feature tip
     const newTip = new FeatureTip({
@@ -31,7 +23,6 @@ const runTest = async () => {
       emoji: "🚀",
       color: "#ec4899"
     });
-<<<<<<< HEAD
     savedTip = await newTip.save();
     console.log(`\n1️⃣ Created Feature Tip: "${savedTip.title}"`);
 
@@ -96,40 +87,6 @@ const runTest = async () => {
     }
     
     process.exit(0);
-=======
-    const savedTip = await newTip.save();
-    console.log("✅ Created Feature Tip:", savedTip.title);
-
-    // 2. Pick an intern (any intern)
-    const intern = await Intern.findOne();
-    if (!intern) {
-      console.log("No intern found in DB to test with.");
-      process.exit(0);
-    }
-    console.log("✅ Selected Intern:", intern.email || intern.traineeName);
-
-    // 3. Check unseen feature tips for this intern
-    const unseenTips = await FeatureTip.find({
-      isActive: true,
-      _id: { $nin: intern.seenFeatureTipIds || [] }
-    }).sort({ createdAt: -1 });
-
-    const seesTestTip = unseenTips.some(t => t._id.toString() === savedTip._id.toString());
-    if (seesTestTip) {
-      console.log("✅ Intern CAN see the new feature tip in the 'unseen' list!");
-    } else {
-      console.log("❌ Intern CANNOT see the feature tip.");
-    }
-
-    // 4. Clean up the test tip
-    await FeatureTip.findByIdAndDelete(savedTip._id);
-    console.log("🧹 Cleaned up test tip.");
-
-    process.exit(0);
-  } catch (err) {
-    console.error("Test failed:", err);
-    process.exit(1);
->>>>>>> talenthub/main
   }
 };
 

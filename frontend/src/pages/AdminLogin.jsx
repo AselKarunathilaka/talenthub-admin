@@ -29,10 +29,7 @@ import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import { getSessionMessage } from "../utils/sessionUtils";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
-<<<<<<< HEAD
 import transzentLogo from "../assets/transzent.jpeg";
-=======
->>>>>>> talenthub/main
 
 /* ─── Admin nav-link feature items (mirrors AdminNavigation.jsx navLinks) ─── */
 const features = [
@@ -390,11 +387,7 @@ const AdminLogin = () => {
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
                         }}
-<<<<<<< HEAD
                         placeholder="Email"
-=======
-                        placeholder="admin@slt.lk"
->>>>>>> talenthub/main
                         onFocus={(e) => {
                           e.currentTarget.style.background = "rgba(255,255,255,0.08)";
                           e.currentTarget.style.borderColor = "rgba(0,180,235,0.4)";
@@ -424,11 +417,7 @@ const AdminLogin = () => {
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
                         }}
-<<<<<<< HEAD
                         placeholder="Password"
-=======
-                        placeholder="••••••••"
->>>>>>> talenthub/main
                         onFocus={(e) => {
                           e.currentTarget.style.background = "rgba(255,255,255,0.08)";
                           e.currentTarget.style.borderColor = "rgba(0,180,235,0.4)";
@@ -532,18 +521,13 @@ const AdminLogin = () => {
             </motion.div>
 
             {/* Footer */}
-<<<<<<< HEAD
             <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
-=======
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
->>>>>>> talenthub/main
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-center text-white/30 text-xs"
             >
-<<<<<<< HEAD
               <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
                 <img 
                   src={transzentLogo} 
@@ -551,8 +535,6 @@ const AdminLogin = () => {
                   className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
                 />
               </div>
-=======
->>>>>>> talenthub/main
               <div className="flex justify-center gap-4 mb-2">
                 <a
                   href="#"

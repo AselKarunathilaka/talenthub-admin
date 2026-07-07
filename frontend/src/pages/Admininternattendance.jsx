@@ -14,10 +14,7 @@ import {
   FaFilter,
   FaTimes,
   FaClock,
-<<<<<<< HEAD
   FaCalendarAlt,
-=======
->>>>>>> talenthub/main
   FaChartBar,
   FaMapMarkerAlt,
   FaChevronDown,
@@ -27,12 +24,9 @@ import {
   FaUsers,
   FaChevronLeft,
   FaChevronRight,
-<<<<<<< HEAD
   FaEnvelope,
   FaCheckCircle,
   FaTimesCircle,
-=======
->>>>>>> talenthub/main
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -137,11 +131,8 @@ const attendanceApi = {
   },
 };
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> talenthub/main
 const getLocalToday = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -409,19 +400,11 @@ const AttendanceTable = ({
           <colgroup>
             <col style={{ width: "4%" }} />
             <col style={{ width: "10%" }} />
-<<<<<<< HEAD
             <col style={{ width: "22%" }} />
             <col style={{ width: "18%" }} />
             <col style={{ width: "18%" }} />
             <col style={{ width: "14%" }} />
             <col style={{ width: "14%" }} />
-=======
-            <col style={{ width: "24%" }} />
-            <col style={{ width: "20%" }} />
-            <col style={{ width: "24%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "8%" }} />
->>>>>>> talenthub/main
           </colgroup>
           <thead className="bg-slate-50/80 border-b border-gray-100">
             <tr>
@@ -574,11 +557,8 @@ const AttendanceTable = ({
   );
 };
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> talenthub/main
 // ── Main Component ─────────────────────────────────────────────────────────────
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
@@ -602,11 +582,8 @@ const AdminInternAttendance = () => {
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
   const [expandedInterns, setExpandedInterns] = useState({});
 
-<<<<<<< HEAD
 
 
-=======
->>>>>>> talenthub/main
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
   const [recipients, setRecipients] = useState(["mgiri@slt.com.lk"]);
@@ -661,15 +638,9 @@ const AdminInternAttendance = () => {
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
       showToast(
         nextValue
-<<<<<<< HEAD
           ? "SLT Location Requirement ON"
           : "SLT Location Requirement OFF",
         nextValue ? "success" : "error"
-=======
-          ? "SLT location requirement enabled"
-          : "SLT location requirement disabled",
-        "success",
->>>>>>> talenthub/main
       );
     } catch (err) {
       setSltLocationRequired(!nextValue);
@@ -894,7 +865,6 @@ const AdminInternAttendance = () => {
                   </div>
                   Attendance
                 </motion.h1>
-<<<<<<< HEAD
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -903,15 +873,12 @@ const AdminInternAttendance = () => {
                 >
                   Browse intern attendance and absentees
                 </motion.p>
-=======
->>>>>>> talenthub/main
               </div>
 
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.1, duration: 0.2 }}
-<<<<<<< HEAD
                 className="flex flex-row items-center gap-2 sm:gap-3 w-full md:w-auto"
               >
                 {/* SLT Location Toggle */}
@@ -922,43 +889,22 @@ const AdminInternAttendance = () => {
                     />
                     <span className="text-[11px] sm:text-xs font-semibold text-gray-700 whitespace-nowrap">
                       Location
-=======
-                className="flex flex-wrap items-center gap-3"
-              >
-                {/* SLT Location Toggle */}
-                <div className="inline-flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm">
-                  <div className="inline-flex items-center gap-2">
-                    <FaMapMarkerAlt
-                      className={`h-3.5 w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
-                    />
-                    <span className="text-xs font-semibold text-gray-700">
-                      SLT Location
->>>>>>> talenthub/main
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={handleToggleLocationRequirement}
                     disabled={settingsLoading || settingsSaving}
-<<<<<<< HEAD
                     className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
-=======
-                    className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
->>>>>>> talenthub/main
                     aria-pressed={sltLocationRequired}
                     aria-label="Toggle SLT location requirement"
                   >
                     <span
-<<<<<<< HEAD
                       className={`inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-4 sm:translate-x-5" : "translate-x-0.5"}`}
-=======
-                      className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-5" : "translate-x-0.5"}`}
->>>>>>> talenthub/main
                     />
                   </button>
                 </div>
 
-<<<<<<< HEAD
 
                 <button
                   onClick={() => navigate("/admin/manual-attendance")}
@@ -966,14 +912,6 @@ const AdminInternAttendance = () => {
                 >
                   <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   <span className="whitespace-nowrap">Mark Attendance</span>
-=======
-                <button
-                  onClick={() => navigate("/admin/manual-attendance")}
-                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-4 py-2 rounded-xl font-bold text-sm shadow-sm hover:opacity-90 transition-all flex items-center gap-2"
-                >
-                  <FaEdit className="h-4 w-4" />
-                  Manual Attendance
->>>>>>> talenthub/main
                 </button>
               </motion.div>
             </div>
@@ -988,18 +926,13 @@ const AdminInternAttendance = () => {
               {/* Top Toolbar Row: Tabs & Reports */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
                 {/* Tabs */}
-<<<<<<< HEAD
                 <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
-=======
-                <div className="flex bg-slate-50 p-1 rounded-xl border border-gray-100 max-w-fit">
->>>>>>> talenthub/main
                   <button
                     onClick={() => {
                       setActiveTab("meeting");
                       setSearchTerm("");
                       setExpandedInterns({});
                     }}
-<<<<<<< HEAD
                     className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                       activeTab === "meeting"
                         ? "text-white"
@@ -1009,17 +942,6 @@ const AdminInternAttendance = () => {
                     <span>Meeting</span>
                     {meetingData?.count != null && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "meeting" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}>
-=======
-                    className={`py-2 px-5 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
-                      activeTab === "meeting"
-                        ? "bg-white text-blue-700 shadow-sm border border-gray-100"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    Meeting
-                    {meetingData?.count != null && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === "meeting" ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-500"}`}>
->>>>>>> talenthub/main
                         {meetingData.count}
                       </span>
                     )}
@@ -1030,7 +952,6 @@ const AdminInternAttendance = () => {
                       setSearchTerm("");
                       setExpandedInterns({});
                     }}
-<<<<<<< HEAD
                     className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                       activeTab === "daily"
                         ? "text-white"
@@ -1040,22 +961,10 @@ const AdminInternAttendance = () => {
                     <span>Daily</span>
                     {dailyData?.count != null && (
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "daily" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}>
-=======
-                    className={`py-2 px-5 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
-                      activeTab === "daily"
-                        ? "bg-white text-green-700 shadow-sm border border-gray-100"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-                    }`}
-                  >
-                    Daily
-                    {dailyData?.count != null && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === "daily" ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}>
->>>>>>> talenthub/main
                         {dailyData.count}
                       </span>
                     )}
                   </button>
-<<<<<<< HEAD
 
                   <div
                     className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
@@ -1117,103 +1026,6 @@ const AdminInternAttendance = () => {
                       </motion.button>
                     </div>
                   </div>
-=======
-                </div>
-
-                {/* Reports Actions */}
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-2 bg-slate-50 p-1 rounded-xl border border-gray-100">
-                    <div className="flex items-center gap-1.5 px-2">
-                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                        Missed Meetings
-                      </span>
-                    </div>
-                    
-                    <motion.button
-                      onClick={async () => {
-                        setExportingNonAttendance(true);
-                        try {
-                          await attendanceApi.exportNonAttendanceExcel();
-                          showToast("Non-attendance Excel downloaded", "success");
-                        } catch (err) {
-                          showToast(err.message || "Export failed", "error");
-                        } finally {
-                          setExportingNonAttendance(false);
-                        }
-                      }}
-                      disabled={exportingNonAttendance}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                      title="Export non-attendance report (last 14 days)"
-                    >
-                      {exportingNonAttendance ? (
-                        <FaSpinner className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <FaFileExcel className="h-3 w-3" />
-                      )}
-                      <span>Excel</span>
-                    </motion.button>
-                    
-                    <motion.button
-                      onClick={() => setShowTriggerModal(true)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
-                      title="Email non-attendance report to managers"
-                    >
-                      <FaRegPaperPlane className="h-3 w-3" />
-                      <span>Share</span>
-                    </motion.button>
-                  </div>
-
-                  <div className="h-6 w-px bg-gray-200 hidden sm:block"></div>
-
-                  <motion.button
-                    onClick={async () => {
-                      if (activeTab === "meeting") {
-                        if (!meetingData || meetingData.count === 0) {
-                          showToast("No records to export", "info");
-                          return;
-                        }
-                        setExportingMeetingPdf(true);
-                        try {
-                          await attendanceApi.exportMeetingPdf(selectedDate);
-                          showToast("Meeting PDF downloaded", "success");
-                        } catch (err) {
-                          showToast(err.message || "PDF export failed", "error");
-                        } finally {
-                          setExportingMeetingPdf(false);
-                        }
-                      } else {
-                        if (!dailyData || dailyData.count === 0) {
-                          showToast("No records to export", "info");
-                          return;
-                        }
-                        setExportingDailyPdf(true);
-                        try {
-                          await attendanceApi.exportDailyPdf(selectedDate);
-                          showToast("Daily PDF downloaded", "success");
-                        } catch (err) {
-                          showToast(err.message || "PDF export failed", "error");
-                        } finally {
-                          setExportingDailyPdf(false);
-                        }
-                      }
-                    }}
-                    disabled={(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) || ((activeTab === "meeting" ? meetingData?.count : dailyData?.count) === 0)}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center space-x-1.5 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-xl text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-red-100"
-                  >
-                    {(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) ? (
-                      <FaSpinner className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <FaFilePdf className="h-3.5 w-3.5" />
-                    )}
-                    <span>Export PDF</span>
-                  </motion.button>
->>>>>>> talenthub/main
                 </div>
               </div>
 
@@ -1271,7 +1083,6 @@ const AdminInternAttendance = () => {
             >
               <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
                 <div>
-<<<<<<< HEAD
                   <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-snug">
                     {loading
                       ? "Loading…"
@@ -1282,13 +1093,6 @@ const AdminInternAttendance = () => {
                             {formatDateLabel(selectedDate)}
                           </>
                         )
-=======
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                    {loading
-                      ? "Loading…"
-                      : activeData
-                        ? `${activeTab === "meeting" ? "Meeting" : "Daily"} Attendance — ${formatDateLabel(selectedDate)}`
->>>>>>> talenthub/main
                         : "Attendance Records"}
                   </h2>
                   {!loading && activeData && (
@@ -1299,7 +1103,6 @@ const AdminInternAttendance = () => {
                     </p>
                   )}
                 </div>
-<<<<<<< HEAD
                 <div className="flex items-center gap-4">
                   {loading && (
                     <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
@@ -1349,11 +1152,6 @@ const AdminInternAttendance = () => {
                     <span className="hidden sm:inline">Export PDF</span>
                   </motion.button>
                 </div>
-=======
-                {loading && (
-                  <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
-                )}
->>>>>>> talenthub/main
               </div>
 
               {loading ? (
@@ -1392,12 +1190,9 @@ const AdminInternAttendance = () => {
         </div>
       </main>
       </div>
-<<<<<<< HEAD
 
 
 
-=======
->>>>>>> talenthub/main
     </div>
     </AdminNavigation>
   );

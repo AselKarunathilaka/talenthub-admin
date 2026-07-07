@@ -19,11 +19,7 @@ class LeaveRequestRepository {
       status: { $in: ["Pending", "Approved"] },
       leaveDate: { $lte: endDate },
       studyEndDate: { $gte: startDate },
-<<<<<<< HEAD
     }).select("_id").sort({ submittedAt: -1 });
-=======
-    }).sort({ submittedAt: -1 });
->>>>>>> talenthub/main
   }
 
   async findByInternId(internId, options = {}) {
@@ -61,11 +57,7 @@ class LeaveRequestRepository {
       });
     }
 
-<<<<<<< HEAD
     let query = LeaveRequest.find(filter).select("-proofDocument.data");
-=======
-    let query = LeaveRequest.find(filter);
->>>>>>> talenthub/main
 
     if (skip) {
       query = query.skip(skip);
@@ -128,11 +120,7 @@ class LeaveRequestRepository {
       };
     }
 
-<<<<<<< HEAD
     let query = LeaveRequest.find(filter).select("-proofDocument.data");
-=======
-    let query = LeaveRequest.find(filter);
->>>>>>> talenthub/main
 
     if (skip) {
       query = query.skip(skip);
@@ -159,10 +147,7 @@ class LeaveRequestRepository {
       },
       { new: true },
     )
-<<<<<<< HEAD
       .select("-proofDocument.data")
-=======
->>>>>>> talenthub/main
       .populate("intern", "Trainee_Name Trainee_ID Trainee_Email")
       .populate("reviewedBy", "name email");
   }

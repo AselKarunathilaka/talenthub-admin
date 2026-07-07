@@ -40,44 +40,11 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
-<<<<<<< HEAD
 import { API_BASE_URL } from "../api/apiConfig";
 import logo from "../assets/sltlogo.jpg";
 import AdminNavigation from "../components/AdminNavigation";
 import { Home } from "lucide-react";
 /* ── Chart.js imports removed as per user request ── */
-=======
-import logo from "../assets/sltlogo.jpg";
-import AdminNavigation from "../components/AdminNavigation";
-import { Home } from "lucide-react";
-
-/* ── Chart.js imports ── */
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-} from "chart.js";
-import { Line } from "react-chartjs-2";
-
-/* Register Chart.js components */
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler,
-);
-
->>>>>>> talenthub/main
 /* ═══════════════════════════════════════════════════════════════
    Brand Colors
    ═══════════════════════════════════════════════════════════════ */
@@ -154,50 +121,8 @@ const parseDateForComparison = (dateString) => {
 };
 
 /* ═══════════════════════════════════════════════════════════════
-<<<<<<< HEAD
    Generate submission trend data (Removed)
    ═══════════════════════════════════════════════════════════════ */
-=======
-   Generate submission trend data (client-side approximation)
-   ═══════════════════════════════════════════════════════════════ */
-const generateTrendData = (dashboardStats) => {
-  const labels = [];
-  const today = new Date();
-
-  // Generate last 7 days labels
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today);
-    d.setDate(today.getDate() - i);
-    labels.push(
-      d.toLocaleDateString("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      }),
-    );
-  }
-
-  // Use dashboard stats to generate approximate trend data
-  const totalInterns = dashboardStats?.totalInterns || 0;
-  const submittedToday = dashboardStats?.submittedInterns || 0;
-  const overdueCount = dashboardStats?.overdueInterns || 0;
-
-  // Generate realistic-looking data points based on current stats
-  const baseRate = totalInterns > 0 ? submittedToday / totalInterns : 0.7;
-  const data = labels.map((_, idx) => {
-    if (idx === labels.length - 1) return submittedToday; // Today is real data
-    // Past days: fluctuate around the base rate
-    const dayOfWeek = new Date(today.getTime() - (6 - idx) * 86400000).getDay();
-    // Weekends have lower submissions
-    const weekendFactor = dayOfWeek === 0 || dayOfWeek === 6 ? 0.15 : 1;
-    const variation = 0.85 + Math.random() * 0.3; // 85% to 115% variation
-    return Math.round(totalInterns * baseRate * variation * weekendFactor);
-  });
-
-  return { labels, data };
-};
-
->>>>>>> talenthub/main
 /* ═══════════════════════════════════════════════════════════════
    Component
    ═══════════════════════════════════════════════════════════════ */
@@ -214,11 +139,6 @@ const AdminDashboard = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-<<<<<<< HEAD
-=======
-  const [filterStatus, setFilterStatus] = useState("all");
-  const [sortBy, setSortBy] = useState("name");
->>>>>>> talenthub/main
   const [showNotifications, setShowNotifications] = useState(false);
   const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -256,27 +176,8 @@ const AdminDashboard = () => {
   const searchInterns = useCallback(
     async (searchQuery) => {
       if (!searchQuery || searchQuery.trim().length < 2) {
-<<<<<<< HEAD
         setInternReport([]);
         setHasSearched(false);
-=======
-        if (filterStatus !== "all") {
-          try {
-            setSearchLoading(true);
-            const reportData = await adminApi.searchInterns("*");
-            setInternReport(reportData);
-            setHasSearched(true);
-          } catch (error) {
-            console.error("Error loading all interns:", error);
-            setInternReport([]);
-          } finally {
-            setSearchLoading(false);
-          }
-        } else {
-          setInternReport([]);
-          setHasSearched(false);
-        }
->>>>>>> talenthub/main
         return;
       }
       try {
@@ -291,11 +192,7 @@ const AdminDashboard = () => {
         setSearchLoading(false);
       }
     },
-<<<<<<< HEAD
     [],
-=======
-    [filterStatus],
->>>>>>> talenthub/main
   );
 
   useEffect(() => {
@@ -306,100 +203,10 @@ const AdminDashboard = () => {
   }, [searchTerm, searchInterns]);
 
   useEffect(() => {
-<<<<<<< HEAD
     fetchData();
   }, [fetchData]);
 
   /* ── Chart data removed ── */
-=======
-    if (
-      filterStatus !== "all" &&
-      (!searchTerm || searchTerm.trim().length < 2)
-    ) {
-      searchInterns("");
-    }
-  }, [filterStatus, searchInterns, searchTerm]);
-
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  /* ── Chart data (memoized) ── */
-  const trendData = useMemo(
-    () => generateTrendData(dashboardStats),
-    [dashboardStats],
-  );
-
-  const chartData = useMemo(
-    () => ({
-      labels: trendData.labels,
-      datasets: [
-        {
-          label: "Submissions",
-          data: trendData.data,
-          borderColor: BRAND.accent,
-          backgroundColor: "rgba(0, 180, 235, 0.08)",
-          fill: true,
-          tension: 0.4,
-          pointBackgroundColor: BRAND.accent,
-          pointBorderColor: "#fff",
-          pointBorderWidth: 2,
-          pointRadius: 5,
-          pointHoverRadius: 7,
-          borderWidth: 2.5,
-        },
-      ],
-    }),
-    [trendData],
-  );
-
-  const chartOptions = useMemo(
-    () => ({
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: "rgba(30, 41, 59, 0.92)",
-          titleFont: { family: "'Inter', sans-serif", size: 12 },
-          bodyFont: { family: "'Inter', sans-serif", size: 13, weight: "600" },
-          padding: 10,
-          cornerRadius: 8,
-          displayColors: false,
-          callbacks: {
-            label: (ctx) => `${ctx.parsed.y} submissions`,
-          },
-        },
-      },
-      scales: {
-        x: {
-          grid: { display: false },
-          ticks: {
-            font: { family: "'Inter', sans-serif", size: 11 },
-            color: "#94a3b8",
-            maxRotation: 0,
-          },
-          border: { display: false },
-        },
-        y: {
-          beginAtZero: true,
-          grid: { color: "rgba(226, 232, 240, 0.5)", drawBorder: false },
-          ticks: {
-            font: { family: "'Inter', sans-serif", size: 11 },
-            color: "#94a3b8",
-            stepSize: Math.max(
-              1,
-              Math.ceil((dashboardStats?.totalInterns || 10) / 5),
-            ),
-          },
-          border: { display: false },
-        },
-      },
-      interaction: { intersect: false, mode: "index" },
-    }),
-    [dashboardStats],
-  );
->>>>>>> talenthub/main
 
   const handleExportSubmittedCSV = async () => {
     try {
@@ -550,47 +357,8 @@ const AdminDashboard = () => {
     }
   };
 
-<<<<<<< HEAD
   /* ── Filtering & sorting removed, using internReport directly ── */
   const filteredInterns = internReport || [];
-=======
-  /* ── Filtering & sorting (unchanged) ── */
-  const getFilteredInterns = () => {
-    if (!internReport || internReport.length === 0) return [];
-    const filtered = internReport
-      .filter((intern) => {
-        switch (filterStatus) {
-          case "submitted":
-            return !intern.isOverdue && intern.totalRecords > 0;
-          case "notsubmitted":
-            return intern.totalRecords === 0;
-          case "overdue":
-            return intern.isOverdue;
-          default:
-            return true;
-        }
-      })
-      .sort((a, b) => {
-        switch (sortBy) {
-          case "name":
-            return (a.traineeName || "").localeCompare(b.traineeName || "");
-          case "id":
-            return (a.traineeId || "").localeCompare(b.traineeId || "");
-          case "records":
-            return (b.totalRecords || 0) - (a.totalRecords || 0);
-          case "lastSubmitted":
-            const aDays = a.daysSinceLastSubmission || 999;
-            const bDays = b.daysSinceLastSubmission || 999;
-            return aDays - bDays;
-          default:
-            return 0;
-        }
-      });
-    return filtered;
-  };
-
-  const filteredInterns = getFilteredInterns();
->>>>>>> talenthub/main
 
   const getStatusBadge = (intern) => {
     if (intern.isOverdue) {
@@ -617,17 +385,7 @@ const AdminDashboard = () => {
     }
   };
 
-<<<<<<< HEAD
   /* ── Filter pills removed ── */
-=======
-  /* ── Filter pill options ── */
-  const filterPills = [
-    { value: "all", label: "All" },
-    { value: "submitted", label: "Submitted" },
-    { value: "notsubmitted", label: "Not Submitted" },
-    { value: "overdue", label: "Overdue" },
-  ];
->>>>>>> talenthub/main
 
   /* ══════════════════════════════════════════════════════════
      Error state
@@ -656,11 +414,7 @@ const AdminDashboard = () => {
      ══════════════════════════════════════════════════════════ */
   return (
     <AdminNavigation>
-<<<<<<< HEAD
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50/60 via-slate-50 to-indigo-50/60 font-sans text-gray-800 pb-10 flex flex-col">
-=======
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
->>>>>>> talenthub/main
         <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             {/* ── Page title ── */}
@@ -689,52 +443,7 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-<<<<<<< HEAD
             {/* ══════════════ KPI STAT CARDS ══════════════ */}
-=======
-            {/* ══════════════ TWO-COLUMN GRID ══════════════ */}
-            <div className="admin-dash-grid">
-              {/* ── LEFT COLUMN ── */}
-              <div className="admin-dash-grid__left">
-                {/* ── Submission Trend Line Chart ── */}
-                <motion.div
-                  className="admin-dash-chart-card"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1, duration: 0.4 }}
-                >
-                  <div className="admin-dash-chart-card__header">
-                    <h2 className="admin-dash-chart-card__title">
-                      <FaChartLine style={{ color: BRAND.accent }} />
-                      Submission Trend
-                    </h2>
-                    <span className="admin-dash-chart-card__subtitle">
-                      Last 7 days
-                    </span>
-                  </div>
-                  <div className="admin-dash-chart-card__body">
-                    {loading ? (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          height: "100%",
-                        }}
-                      >
-                        <FaSpinner
-                          className="animate-spin"
-                          style={{ fontSize: 24, color: BRAND.accent }}
-                        />
-                      </div>
-                    ) : (
-                      <Line data={chartData} options={chartOptions} />
-                    )}
-                  </div>
-                </motion.div>
-
-                {/* ══════════════ KPI STAT CARDS ══════════════ */}
->>>>>>> talenthub/main
                 <motion.div
                   className="admin-dash-stats"
                   initial={{ opacity: 0, y: 15 }}
@@ -750,7 +459,6 @@ const AdminDashboard = () => {
                       icon: FaUsers,
                       accent: BRAND.primary,
                       bg: BRAND.primaryLight,
-<<<<<<< HEAD
                       borderColor: "!border-blue-400/30",
                       hoverBorderColor: "hover:!border-blue-400/60",
                       shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
@@ -768,8 +476,6 @@ const AdminDashboard = () => {
                       hoverBorderColor: "hover:!border-cyan-400/60",
                       shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
                       hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
-=======
->>>>>>> talenthub/main
                     },
                     {
                       label: "Submitted",
@@ -779,13 +485,10 @@ const AdminDashboard = () => {
                       icon: FaCheckCircle,
                       accent: BRAND.success,
                       bg: BRAND.successLight,
-<<<<<<< HEAD
                       borderColor: "!border-emerald-400/30",
                       hoverBorderColor: "hover:!border-emerald-400/60",
                       shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
                       hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
-=======
->>>>>>> talenthub/main
                     },
                     {
                       label: "Overdue",
@@ -795,44 +498,20 @@ const AdminDashboard = () => {
                       icon: FaExclamationTriangle,
                       accent: BRAND.danger,
                       bg: BRAND.dangerLight,
-<<<<<<< HEAD
                       borderColor: "!border-red-400/30",
                       hoverBorderColor: "hover:!border-red-400/60",
                       shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
                       hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
-=======
-                    },
-                    {
-                      label: "Total Records",
-                      value: loading
-                        ? "..."
-                        : dashboardStats?.totalRecords || 0,
-                      icon: FaTasks,
-                      accent: BRAND.accent,
-                      bg: BRAND.accentLight,
->>>>>>> talenthub/main
                     },
                   ].map((stat, idx) => (
                     <motion.div
                       key={stat.label}
-<<<<<<< HEAD
                       className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-=======
-                      className="admin-dash-stat-card"
-                      style={{ borderLeftColor: stat.accent }}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
-                      whileHover={{
-                        y: -3,
-                        boxShadow: "0 8px 30px rgba(0,0,0,0.08)",
-                      }}
->>>>>>> talenthub/main
                     >
                       <div
                         className="admin-dash-stat-card__icon"
@@ -857,7 +536,6 @@ const AdminDashboard = () => {
                   ))}
                 </motion.div>
 
-<<<<<<< HEAD
             {/* ══════════════ SPOTLIGHT SEARCH ══════════════ */}
             <div className="mt-12 mb-8 relative w-full z-20">
               <motion.div 
@@ -1051,263 +729,6 @@ const AdminDashboard = () => {
                   </motion.button>
                 </div>
               </motion.div>
-=======
-                {/* ══════════════ EXPORTS SECTION ══════════════ */}
-                <motion.div
-                  className="admin-dash-exports-card"
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.35, duration: 0.4 }}
-                >
-                  <div className="admin-dash-exports-card__header">
-                    <FaFileExport
-                      style={{ color: BRAND.primary, fontSize: 16 }}
-                    />
-                    <h3 className="admin-dash-exports-card__title">Exports</h3>
-                  </div>
-
-                  <div className="admin-dash-exports">
-                    {/* Quick export buttons */}
-                    <div className="admin-dash-exports__row">
-                      <motion.button
-                        onClick={handleExportSubmittedCSV}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="admin-dash-export-btn"
-                        style={{ borderColor: `${BRAND.success}40` }}
-                      >
-                        <FaRegFileExcel style={{ color: BRAND.success }} />
-                        <div>
-                          <strong>Submissions List</strong>
-                          <small>Export submitted interns CSV</small>
-                        </div>
-                        <FaChevronRight className="admin-dash-export-btn__arrow" />
-                      </motion.button>
-
-                      <motion.button
-                        onClick={handleDownloadOnLeaveExcel}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="admin-dash-export-btn"
-                        style={{ borderColor: "#8b5cf640" }}
-                      >
-                        <FaRegFileExcel style={{ color: "#8b5cf6" }} />
-                        <div>
-                          <strong>On-Leave List</strong>
-                          <small>Download on-leave Excel</small>
-                        </div>
-                        <FaChevronRight className="admin-dash-export-btn__arrow" />
-                      </motion.button>
-                    </div>
-
-                    {/* Non-submissions section */}
-                    <div className="admin-dash-exports__nonsub">
-                      <p className="admin-dash-exports__section-title">
-                        Non-Submissions Report
-                      </p>
-
-                      <motion.button
-                        onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="admin-dash-export-btn admin-dash-export-btn--highlight"
-                      >
-                        <FaFileExport style={{ color: BRAND.danger }} />
-                        <div>
-                          <strong>Current Week</strong>
-                          <small>Last 5 working days non-submissions</small>
-                        </div>
-                        <FaChevronRight className="admin-dash-export-btn__arrow" />
-                      </motion.button>
-
-                      {/* Custom date range */}
-                      <div className="admin-dash-exports__date-range">
-                        <div className="admin-dash-exports__dates">
-                          <div className="admin-dash-date-field">
-                            <label>From</label>
-                            <input
-                              type="date"
-                              value={customStartDate}
-                              onChange={(e) =>
-                                setCustomStartDate(e.target.value)
-                              }
-                            />
-                          </div>
-                          <div className="admin-dash-date-field">
-                            <label>To</label>
-                            <input
-                              type="date"
-                              value={customEndDate}
-                              onChange={(e) => setCustomEndDate(e.target.value)}
-                            />
-                          </div>
-                        </div>
-                        <motion.button
-                          onClick={handleExportWeeklyNonSubmissionsCSV}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.97 }}
-                          className="admin-dash-btn admin-dash-btn--danger"
-                        >
-                          <FaDownload style={{ marginRight: 6 }} />
-                          Download CSV
-                        </motion.button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* ── RIGHT COLUMN ── */}
-              <div className="admin-dash-grid__right">
-                {/* ══════════════ INTERN SEARCH ══════════════ */}
-                <motion.div
-                  className="admin-dash-sidebar-card admin-dash-sidebar-card--search"
-                  initial={{ opacity: 0, x: 15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.15, duration: 0.4 }}
-                >
-                  <div className="admin-dash-sidebar-card__header">
-                    <h3 className="admin-dash-sidebar-card__title">
-                      <FaSearch style={{ color: BRAND.accent, fontSize: 14 }} />
-                      Intern Search
-                    </h3>
-                  </div>
-
-                  {/* Search input */}
-                  <div className="admin-dash-search-bar">
-                    <FaSearch className="admin-dash-search-bar__icon" />
-                    <input
-                      type="text"
-                      placeholder="Name, ID, or email…"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="admin-dash-search-bar__input"
-                    />
-                    {searchLoading && (
-                      <FaSpinner className="admin-dash-search-bar__spinner animate-spin" />
-                    )}
-                  </div>
-                  {searchTerm.length > 0 && searchTerm.length < 2 && (
-                    <p className="admin-dash-search-hint">
-                      Type at least 2 characters to search
-                    </p>
-                  )}
-
-                  {/* Filter pills + sort */}
-                  <div className="admin-dash-filters">
-                    <div className="admin-dash-filter-pills">
-                      {filterPills.map((pill) => (
-                        <button
-                          key={pill.value}
-                          className={`admin-dash-pill ${filterStatus === pill.value ? "admin-dash-pill--active" : ""}`}
-                          onClick={() => setFilterStatus(pill.value)}
-                        >
-                          {pill.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="admin-dash-sort">
-                      <FaSort style={{ color: "#9ca3af", flexShrink: 0 }} />
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value)}
-                        className="admin-dash-sort__select"
-                      >
-                        <option value="name">Name</option>
-                        <option value="id">Trainee ID</option>
-                        <option value="records">Records</option>
-                        <option value="lastSubmitted">Last Submitted</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Search Results */}
-                  <div className="admin-dash-sidebar-card__results">
-                    {!hasSearched && filterStatus === "all" ? (
-                      <div className="admin-dash-empty admin-dash-empty--sm">
-                        <FaSearch
-                          style={{
-                            fontSize: 22,
-                            color: BRAND.accent,
-                            marginBottom: 8,
-                          }}
-                        />
-                        <h3 style={{ fontSize: 14 }}>Find Interns</h3>
-                        <p style={{ fontSize: 12, maxWidth: 240 }}>
-                          Search by name, ID, or email — or pick a filter to
-                          browse by status.
-                        </p>
-                      </div>
-                    ) : filteredInterns.length === 0 ? (
-                      <div className="admin-dash-empty admin-dash-empty--sm">
-                        <FaUser
-                          style={{
-                            fontSize: 24,
-                            color: "#d1d5db",
-                            marginBottom: 8,
-                          }}
-                        />
-                        <h3 style={{ fontSize: 14 }}>No interns found</h3>
-                        <p style={{ fontSize: 12 }}>
-                          Try adjusting your search or filters.
-                        </p>
-                      </div>
-                    ) : (
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 6,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "#64748b",
-                            marginBottom: 4,
-                          }}
-                        >
-                          Results ({filteredInterns.length})
-                        </div>
-                        {filteredInterns.map((intern, idx) => (
-                          <motion.div
-                            key={intern._id}
-                            className={`admin-dash-sidebar-intern ${
-                              intern.isOverdue
-                                ? "admin-dash-sidebar-intern--danger"
-                                : intern.totalRecords > 0
-                                  ? "admin-dash-sidebar-intern--success"
-                                  : "admin-dash-sidebar-intern--neutral"
-                            }`}
-                            onClick={() =>
-                              navigate(`/admin/intern/${intern._id}`)
-                            }
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.02, duration: 0.2 }}
-                          >
-                            <div className="admin-dash-sidebar-intern__avatar">
-                              {(intern.traineeName || "?")[0].toUpperCase()}
-                            </div>
-                            <div className="admin-dash-sidebar-intern__info">
-                              <div className="admin-dash-sidebar-intern__name">
-                                {intern.traineeName || "N/A"}
-                              </div>
-                              <div className="admin-dash-sidebar-intern__meta">
-                                {intern.traineeId || "N/A"} ·{" "}
-                                {intern.totalRecords || 0} records
-                              </div>
-                            </div>
-                            {getStatusBadge(intern)}
-                          </motion.div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </motion.div>
-              </div>
->>>>>>> talenthub/main
             </div>
           </main>
         </div>

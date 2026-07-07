@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import React, { useState, useCallback } from "react";
 import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
-=======
-import React, { useState } from "react";
->>>>>>> talenthub/main
 import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import {
@@ -22,17 +18,12 @@ import {
 import { api } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
-<<<<<<< HEAD
 import transzentLogo from "../assets/transzent.jpeg";
 import { motion } from "framer-motion";
 import { getSessionMessage } from "../utils/sessionUtils";
 import WhatsAppSupportButton, {
   WHATSAPP_SUPPORT_LINK,
 } from "../components/WhatsAppSupportButton";
-=======
-import { motion } from "framer-motion";
-import { getSessionMessage } from "../utils/sessionUtils";
->>>>>>> talenthub/main
 
 /* ─── Nav-link feature items (mirrors Navigation.jsx navLinks) ─── */
 const features = [
@@ -79,14 +70,11 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [error, setError] = useState(null);
-<<<<<<< HEAD
   const [seasonActive, setSeasonActive] = useState(false);
 
   const handleSeasonResolved = useCallback((seasonKey) => {
     setSeasonActive(!!seasonKey);
   }, []);
-=======
->>>>>>> talenthub/main
   const handleGoogleLogin = async (response) => {
     try {
       setIsLoading(true);
@@ -117,13 +105,9 @@ const Login = () => {
     <div
       className="min-h-screen text-white overflow-hidden relative"
       style={{
-<<<<<<< HEAD
         background: seasonActive
           ? "#02020a"
           : "linear-gradient(135deg, #006600 0%, #000066 100%)",
-=======
-        background: "linear-gradient(135deg, #006600 0%, #000066 100%)",
->>>>>>> talenthub/main
       }}
     >
       {/* Subtle animated grain / mesh overlay */}
@@ -324,11 +308,7 @@ const Login = () => {
                 {/* Middle Section */}
                 <div className="flex-1 flex flex-col justify-center mb-1">
                   {/* Google Login Button */}
-<<<<<<< HEAD
                   <div className="flex justify-center scale-[1.14] sm:scale-[1.2] origin-center">
-=======
-                  <div className="flex justify-center scale-95 sm:scale-[1.2] origin-center">
->>>>>>> talenthub/main
                     {isLoading ? (
                       <div className="inline-flex items-center px-6 py-3 rounded-full bg-white/5 border border-white/10">
                         <div className="w-5 h-5 border-t-2 border-b-2 border-[#00b4eb] rounded-full animate-spin mr-3" />
@@ -402,7 +382,6 @@ const Login = () => {
               </div>
             </motion.div>
 
-<<<<<<< HEAD
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -420,17 +399,12 @@ const Login = () => {
 
             {/* Footer */}
             <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
-=======
-            {/* Footer */}
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
->>>>>>> talenthub/main
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-center text-white/30 text-xs"
             >
-<<<<<<< HEAD
               <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
                 <img 
                   src={transzentLogo} 
@@ -438,8 +412,6 @@ const Login = () => {
                   className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
                 />
               </div>
-=======
->>>>>>> talenthub/main
               <div className="flex justify-center gap-4 mb-2">
                 <a
                   href="#"
@@ -454,13 +426,9 @@ const Login = () => {
                   Terms
                 </a>
                 <a
-<<<<<<< HEAD
                   href={WHATSAPP_SUPPORT_LINK}
                   target="_blank"
                   rel="noopener noreferrer"
-=======
-                  href="#"
->>>>>>> talenthub/main
                   className="hover:text-[#00b4eb] transition-colors"
                 >
                   Help
@@ -609,12 +577,9 @@ const Login = () => {
         </motion.div>
       </div>
 
-<<<<<<< HEAD
       {/* Seasonal background layer (renders behind all content, except specific foreground decorations) */}
       <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
-=======
->>>>>>> talenthub/main
       {/* Hide scrollbar for mobile carousel */}
       <style jsx="true" global="true">{`
         .scrollbar-hide::-webkit-scrollbar {

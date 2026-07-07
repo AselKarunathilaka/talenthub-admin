@@ -23,10 +23,7 @@ const DailyRecords = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [records, setRecords] = useState([]);
-<<<<<<< HEAD
   const [holidays, setHolidays] = useState([]);
-=======
->>>>>>> talenthub/main
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -147,7 +144,6 @@ const DailyRecords = () => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
 
-<<<<<<< HEAD
   //──Fetch Holidays From Backend──────────────────────────────────────────────
   const fetchHolidays = useCallback(async () => {
   try {
@@ -173,8 +169,6 @@ useEffect(() => {
   fetchHolidays();
 }, [fetchHolidays]);
 
-=======
->>>>>>> talenthub/main
   // ── Export PDF ──────────────────────────────────────────────
   const handleExportPDF = async (params) => {
     setIsExporting(true);
@@ -301,7 +295,6 @@ useEffect(() => {
 
   const selectedDateRecords = getRecordsForDate(selectedDate);
 
-<<<<<<< HEAD
   //Holiday Helper
   const getHolidayForDate = (date) => {
   if (!date) return null;
@@ -323,11 +316,6 @@ useEffect(() => {
 
     const holiday = getHolidayForDate(day);
 
-=======
-  const getDayClass = (day) => {
-    if (!day) return "";
-    const hasRecords = getRecordsForDate(day).length > 0;
->>>>>>> talenthub/main
     const isSelected =
       selectedDate &&
       day.getDate() === selectedDate.getDate() &&
@@ -336,14 +324,11 @@ useEffect(() => {
     const isToday = day.toDateString() === new Date().toDateString();
     let classes =
       "min-h-[60px] md:min-h-[80px] p-1 md:p-2 border border-gray-100 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-50 flex flex-col justify-between";
-<<<<<<< HEAD
     
   //Holiday Styling
       if (holiday && !isSelected) {
     classes += " bg-red-60 border-red-300"; 
   }
-=======
->>>>>>> talenthub/main
     if (isToday) classes += " bg-blue-50 border-blue-200";
     if (isSelected) classes += " bg-indigo-100 border-indigo-300 shadow-md";
     if (hasRecords) classes += " relative";
@@ -573,7 +558,6 @@ useEffect(() => {
                               <div className="text-xs md:text-sm font-medium text-gray-900">
                                 {day.getDate()}
                               </div>
-<<<<<<< HEAD
 
                               {getHolidayForDate(day) && (
                                 <div
@@ -586,8 +570,6 @@ useEffect(() => {
                                 </div>
                               )}
 
-=======
->>>>>>> talenthub/main
                               {getRecordsForDate(day).length > 0 && (
                                 <div className="absolute bottom-1 w-full flex justify-center left-1/2 transform -translate-x-1/2">
                                   {getRecordsForDate(day).some(r => r.status === "study_leave") ? (
@@ -626,7 +608,6 @@ useEffect(() => {
                         })}
                       </span>
                     </h3>
-<<<<<<< HEAD
                     {/* Holidays Data GET*/}
                     {getHolidayForDate(selectedDate) && (
                       <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -639,8 +620,6 @@ useEffect(() => {
                         </div>
                       </div>
                     )}
-=======
->>>>>>> talenthub/main
 
                     {selectedDateRecords.length > 0 ? (
                       <div className="space-y-3 md:space-y-4 max-h-80 md:max-h-96 overflow-y-auto">

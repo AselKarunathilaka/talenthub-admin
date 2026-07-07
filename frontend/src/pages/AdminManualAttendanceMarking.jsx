@@ -1,17 +1,11 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
 import * as XLSX from "xlsx";
-=======
->>>>>>> talenthub/main
 import {
   FaArrowLeft,
   FaSearch,
   FaCalendarCheck,
-<<<<<<< HEAD
   FaUpload,
-=======
->>>>>>> talenthub/main
   FaUsers,
   FaSpinner,
   FaCheckCircle,
@@ -25,11 +19,8 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
-<<<<<<< HEAD
 import AdminNavigation from "../components/AdminNavigation";
 
-=======
->>>>>>> talenthub/main
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 const getAuthHeaders = () => {
@@ -371,11 +362,8 @@ const AdminManualAttendance = () => {
   const [recentMarks, setRecentMarks] = useState([]);
   const [bulkInternIds, setBulkInternIds] = useState("");
   const [bulkResults, setBulkResults] = useState(null);
-<<<<<<< HEAD
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [uploadedExcelFileName, setUploadedExcelFileName] = useState("");
-=======
->>>>>>> talenthub/main
 
   const showToast = (text, type = "info") => setToast({ text, type });
 
@@ -531,7 +519,6 @@ const AdminManualAttendance = () => {
     }
   };
 
-<<<<<<< HEAD
   const handleTxtUpload = async (event) => {
   const file = event.target.files?.[0];
 
@@ -636,8 +623,6 @@ const handleExcelUpload = async (event) => {
 };
 
 
-=======
->>>>>>> talenthub/main
   const canSubmitSingle =
     selectedIntern &&
     selectedDate &&
@@ -656,7 +641,6 @@ const handleExcelUpload = async (event) => {
       ? "linear-gradient(135deg, #06b6d4, #3b82f6)"
       : "linear-gradient(135deg, #6366f1, #8b5cf6)";
 
-<<<<<<< HEAD
   return (
     <AdminNavigation>
       <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
@@ -686,85 +670,6 @@ const handleExcelUpload = async (event) => {
             <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-[1fr_1fr_400px] gap-5 sm:gap-6">
               {/* ── Left: Form ── */}
               <div className="space-y-5 lg:col-span-2 xl:col-span-2">
-=======
-  const bgBlobs = [
-    {
-      cls: "w-72 h-72 bg-blue-100/50 -top-16 -left-16",
-      dy: -20,
-      dx: 15,
-      dur: 14,
-    },
-    {
-      cls: "w-96 h-96 bg-indigo-100/30 top-1/3 -right-20",
-      dy: 25,
-      dx: -15,
-      dur: 18,
-      delay: 2,
-    },
-    {
-      cls: "w-56 h-56 bg-cyan-100/40 bottom-20 left-1/3",
-      dy: -15,
-      dx: 20,
-      dur: 16,
-      delay: 1,
-    },
-  ];
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 text-gray-800 overflow-x-hidden">
-      {/* Animated blobs */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        {bgBlobs.map((b, i) => (
-          <motion.div
-            key={i}
-            className={`absolute rounded-full blur-3xl ${b.cls}`}
-            animate={{ y: [0, b.dy, 0], x: [0, b.dx, 0] }}
-            transition={{
-              duration: b.dur,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: b.delay || 0,
-            }}
-          />
-        ))}
-      </div>
-
-      <AnimatePresence>
-        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
-      </AnimatePresence>
-
-      <div className="relative z-10 max-w-5xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        {/* ── Header ── */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-6"
-        >
-          <motion.button
-            onClick={() => navigate("/admin/intern-attendance")}
-            className="inline-flex items-center gap-2 px-3 py-2 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl shadow-sm text-sm font-medium text-gray-600 hover:bg-white transition-all mb-4"
-            whileHover={{ x: -4, scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-          >
-            <FaArrowLeft className="h-3.5 w-3.5" />
-            Back to Attendance
-          </motion.button>
-
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-              Manual Attendance
-            </span>
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Mark daily or meeting attendance for individual interns
-          </p>
-        </motion.div>
-
-        <div className="grid lg:grid-cols-[1fr_360px] gap-5">
-          {/* ── Left: Form ── */}
-          <div className="space-y-5">
->>>>>>> talenthub/main
             {/* Input mode selector */}
             <motion.div
               className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-5"
@@ -958,7 +863,6 @@ const handleExcelUpload = async (event) => {
                     IDs detected
                   </p>
                 )}
-<<<<<<< HEAD
                 
                 <div className="mt-3">
                   <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
@@ -1006,8 +910,6 @@ const handleExcelUpload = async (event) => {
                     )}
                   </div>             
                 
-=======
->>>>>>> talenthub/main
               </motion.div>
             )}
 
@@ -1259,19 +1161,12 @@ const handleExcelUpload = async (event) => {
                 </AnimatePresence>
               </div>
             )}
-<<<<<<< HEAD
             </motion.div>
           </div>
         </main>
       </div>
     </div>
   </AdminNavigation>
-=======
-          </motion.div>
-        </div>
-      </div>
-    </div>
->>>>>>> talenthub/main
   );
 };
 

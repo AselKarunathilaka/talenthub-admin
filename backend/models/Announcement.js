@@ -23,13 +23,10 @@ const announcementSchema = new mongoose.Schema(
       type: String,
       default: "Admin",
     },
-<<<<<<< HEAD
     showAsPopup: {
       type: Boolean,
       default: false,
     },
-=======
->>>>>>> talenthub/main
   },
   {
     timestamps: true,
