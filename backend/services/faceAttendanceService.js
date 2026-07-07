@@ -8,7 +8,10 @@ const AttendanceWorkflowService = require("./attendanceWorkflowService");
 const externalConfig = require("../config/externalSystems");
 
 const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
+<<<<<<< HEAD
 const FACE_DESCRIPTOR_LENGTH = 128;
+=======
+>>>>>>> talenthub/main
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
@@ -25,7 +28,11 @@ function normalizeDescriptor(descriptorInput) {
     (value) => Number.isFinite(value),
   );
 
+<<<<<<< HEAD
   return descriptor.length === FACE_DESCRIPTOR_LENGTH ? descriptor : null;
+=======
+  return descriptor.length > 0 ? descriptor : null;
+>>>>>>> talenthub/main
 }
 
 function euclideanDistance(left, right) {
@@ -66,9 +73,13 @@ class FaceAttendanceService {
       throw new Error("Intern not found.");
     }
 
+<<<<<<< HEAD
     let profile = await InternFaceProfile.findOne({
       $or: [{ internId }, { traineeId: intern.Trainee_ID }],
     });
+=======
+    let profile = await InternFaceProfile.findOne({ internId });
+>>>>>>> talenthub/main
     if (!profile) {
       profile = new InternFaceProfile({
         internId,
@@ -93,10 +104,13 @@ class FaceAttendanceService {
         profile.sampleCount = profile.embeddings.length;
       }
 
+<<<<<<< HEAD
       // Intern records can be re-imported from SLT, changing the Mongo _id
       // while keeping the same Trainee_ID. Re-link the old face profile instead
       // of creating a duplicate traineeId profile and failing with E11000.
       profile.internId = intern._id;
+=======
+>>>>>>> talenthub/main
       profile.traineeId = intern.Trainee_ID;
       profile.traineeName = intern.Trainee_Name;
       profile.isActive = true;
@@ -188,7 +202,10 @@ class FaceAttendanceService {
     meetingTitle = "",
     meetingPin = "",
     expectedInternId = null,
+<<<<<<< HEAD
     attendanceAction = "check_in",
+=======
+>>>>>>> talenthub/main
   }) {
     const normalizedAttendanceType = VALID_FACE_ATTENDANCE_TYPES.has(String(attendanceType).toLowerCase())
       ? String(attendanceType).toLowerCase()
@@ -288,7 +305,10 @@ class FaceAttendanceService {
         attendanceDate,
         duplicateMessage: "Duplicate face attendance detected. Please wait before scanning again.",
         syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+<<<<<<< HEAD
         attendanceAction,
+=======
+>>>>>>> talenthub/main
       });
       dailyAttendanceMarked = true;
       checkedOut = result.checkedOut || false;
@@ -310,10 +330,13 @@ class FaceAttendanceService {
       metadata: {
         ...metadata,
         attendanceType: normalizedAttendanceType,
+<<<<<<< HEAD
         attendanceAction:
           normalizedAttendanceType === "daily"
             ? attendanceAction
             : undefined,
+=======
+>>>>>>> talenthub/main
         projectName: normalizedProjectName || undefined,
         meetingTitle: normalizedProjectName || undefined,
         meetingSessionId: meetingPinData?.meetingSessionId,

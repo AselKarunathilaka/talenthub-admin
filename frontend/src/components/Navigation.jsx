@@ -16,10 +16,16 @@ import {
   CalendarCheck,
   Youtube,
   Armchair,
+<<<<<<< HEAD
   Bell,
   ScanLine,
   GraduationCap,
   Bike,
+=======
+  Megaphone,
+  ScanLine,
+  GraduationCap,
+>>>>>>> talenthub/main
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -198,7 +204,11 @@ const Navigation = ({ children }) => {
     { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
     { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, hoverColor: "#f9f116ff" },
     { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, hoverColor: "#68de5fff" },
+<<<<<<< HEAD
     { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" />, hoverColor: "#a486fcff" },
+=======
+    { to: "/leave-requests", label: "Short Leave", icon: <FileText className="h-5 w-5" />, hoverColor: "#a486fcff" },
+>>>>>>> talenthub/main
     { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, hoverColor: "#f19e63ff" },
     { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, hoverColor: "#ff81c0ff" },
   ];
@@ -263,7 +273,11 @@ const Navigation = ({ children }) => {
                 className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
                 aria-label="Toggle Announcements"
               >
+<<<<<<< HEAD
                 <Bell className="h-5 w-5" />
+=======
+                <Megaphone className="h-5 w-5" />
+>>>>>>> talenthub/main
                 {unreadCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
                     {unreadCount > 9 ? "9+" : unreadCount}
@@ -317,7 +331,11 @@ const Navigation = ({ children }) => {
               className={`relative p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white hover:text-[#00b4eb] hover:bg-white/10"}`}
               aria-label="Toggle Announcements"
             >
+<<<<<<< HEAD
               <Bell className="h-5 w-5" />
+=======
+              <Megaphone className="h-5 w-5" />
+>>>>>>> talenthub/main
               {unreadCount > 0 && (
                 <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
                   {unreadCount > 9 ? "9+" : unreadCount}

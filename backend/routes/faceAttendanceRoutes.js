@@ -10,7 +10,10 @@ const {
   getCurrentMeetingPin,
   validateCurrentMeetingPin,
   stopCurrentMeetingPin,
+<<<<<<< HEAD
   getDailyAttendanceStatus,
+=======
+>>>>>>> talenthub/main
 } = require("../controllers/faceAttendanceController");
 
 const router = express.Router();
@@ -21,7 +24,10 @@ router.use(authenticateUser);
 router.get("/profile", getFaceProfile);
 router.get("/logs", getFaceLogs);
 router.get("/settings", getAttendanceSettings);
+<<<<<<< HEAD
 router.get("/daily-status", getDailyAttendanceStatus);
+=======
+>>>>>>> talenthub/main
 router.get("/meeting-pin", getCurrentMeetingPin);
 router.post("/meeting-pin/validate", validateCurrentMeetingPin);
 router.post("/meeting-pin/stop", stopCurrentMeetingPin);

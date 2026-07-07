@@ -257,6 +257,7 @@ export const adminSeatApi = {
       throw error;
     }
   },
+<<<<<<< HEAD
 
   /**
    * Get interns who booked a seat but haven't scanned daily attendance
@@ -289,6 +290,8 @@ export const adminSeatApi = {
       throw error;
     }
   },
+=======
+>>>>>>> talenthub/main
 };
 
 // CSV export utility for seat bookings
@@ -377,6 +380,7 @@ export const seatBookingCsvUtils = {
       throw error;
     }
   },
+<<<<<<< HEAD
 
   /**
    * Generate and download pending check-ins CSV
@@ -415,6 +419,8 @@ export const seatBookingCsvUtils = {
       throw error;
     }
   },
+=======
+>>>>>>> talenthub/main
 };
 
 // Notification utilities

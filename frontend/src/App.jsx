@@ -19,9 +19,12 @@ const App = () => {
               color: '#fff',
             },
           }}
+<<<<<<< HEAD
           containerStyle={{
             zIndex: 9999999,
           }}
+=======
+>>>>>>> talenthub/main
         />
         <AppRoutes />
       </Router>

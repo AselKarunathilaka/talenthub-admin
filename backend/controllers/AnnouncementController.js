@@ -3,7 +3,11 @@ const Announcement = require("../models/Announcement");
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
   try {
+<<<<<<< HEAD
     const { title, message, priority, showAsPopup } = req.body;
+=======
+    const { title, message, priority } = req.body;
+>>>>>>> talenthub/main
 
     if (!title || !message) {
       return res
@@ -22,7 +26,10 @@ const createAnnouncement = async (req, res) => {
       title,
       message,
       priority: priority || "normal",
+<<<<<<< HEAD
       showAsPopup: Boolean(showAsPopup),
+=======
+>>>>>>> talenthub/main
       createdBy,
     });
 

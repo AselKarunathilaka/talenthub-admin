@@ -762,12 +762,31 @@ export default function AdminInactiveInterns() {
                   />
                 </div>
                 
+<<<<<<< HEAD
                 <div className="px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-[11px] font-bold text-[#0056a2] uppercase tracking-wider flex items-center justify-center shadow-sm w-full sm:w-auto whitespace-nowrap">
+=======
+                <div className="px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-[11px] font-bold text-gray-500 uppercase tracking-wider flex items-center justify-center shadow-sm w-full sm:w-auto whitespace-nowrap">
+>>>>>>> talenthub/main
                   <span>
                     {totalInterns} intern{totalInterns !== 1 ? "s" : ""}
                     {searchTerm && " found"}
                   </span>
                 </div>
+<<<<<<< HEAD
+=======
+
+                <motion.button
+                  onClick={() => {
+                    setCurrentPage(1);
+                    fetchInactiveInterns();
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center justify-center px-4 py-2.5 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:text-[#0056a2] rounded-xl text-sm font-bold shadow-sm transition-all w-full sm:w-auto whitespace-nowrap"
+                >
+                  <FaSync className="mr-2" /> Refresh
+                </motion.button>
+>>>>>>> talenthub/main
               </div>
             </motion.div>
 

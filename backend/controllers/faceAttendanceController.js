@@ -4,6 +4,7 @@ const mongoose = require("mongoose");
 const AttendanceSettingsService = require("../services/attendanceSettingsService");
 const FaceMeetingPinService = require("../services/faceMeetingPinService");
 const InternFaceProfile = require("../models/InternFaceProfile");
+<<<<<<< HEAD
 const AttendanceWorkflowService = require("../services/attendanceWorkflowService");
 
 const resolveInternId = (req) => {
@@ -24,6 +25,11 @@ const sanitizeFaceProfile = (profile) => {
     createdAt: profileObject.createdAt,
     updatedAt: profileObject.updatedAt,
   };
+=======
+
+const resolveInternId = (req) => {
+  return req.user?.id || req.body.internId || req.params.internId || null;
+>>>>>>> talenthub/main
 };
 
 const registerFaceProfile = async (req, res) => {
@@ -44,11 +50,19 @@ const registerFaceProfile = async (req, res) => {
 
     return res.status(201).json({
       message: "Face profile saved successfully.",
+<<<<<<< HEAD
       profile: sanitizeFaceProfile(result.profile),
     });
   } catch (error) {
     return res.status(400).json({
       message: error.message || "Failed to save face profile.",
+=======
+      profile: result.profile,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Failed to save face profile.",
+>>>>>>> talenthub/main
       error: error.message,
     });
   }
@@ -64,7 +78,10 @@ const verifyFaceAttendance = async (req, res) => {
         projectName,
         meetingTitle,
         meetingPin,
+<<<<<<< HEAD
         attendanceAction = "check_in",
+=======
+>>>>>>> talenthub/main
       } = req.body;
 
       // Allow `internId` to be provided from body/params when the mobile client
@@ -93,7 +110,10 @@ const verifyFaceAttendance = async (req, res) => {
         meetingTitle,
         meetingPin,
         expectedInternId,
+<<<<<<< HEAD
         attendanceAction,
+=======
+>>>>>>> talenthub/main
       });
 
     if (!result.matched) {
@@ -130,9 +150,13 @@ const verifyFaceAttendance = async (req, res) => {
           ? result.dailyAttendanceMarked
             ? "Face meeting attendance marked successfully. Daily attendance also recorded."
             : "Face meeting attendance marked successfully."
+<<<<<<< HEAD
           : result.checkedOut
             ? "Checked out successfully."
             : "Checked in successfully.",
+=======
+          : "Face attendance marked successfully.",
+>>>>>>> talenthub/main
       matched: true,
       alreadyMarked: false,
       confidence: result.confidence,
@@ -143,7 +167,10 @@ const verifyFaceAttendance = async (req, res) => {
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
       checkedOut: result.checkedOut,
+<<<<<<< HEAD
       attendanceAction,
+=======
+>>>>>>> talenthub/main
     });
   } catch (error) {
     console.error("DEBUG CATCH ERROR:", error);
@@ -163,6 +190,7 @@ const verifyFaceAttendance = async (req, res) => {
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
       alreadyMarked: Boolean(error.alreadyMarked),
+<<<<<<< HEAD
       code: error.code,
       retryAfterMinutes: error.retryAfterMinutes,
     });
@@ -183,6 +211,8 @@ const getDailyAttendanceStatus = async (req, res) => {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Failed to load daily attendance status.",
       code: error.code,
+=======
+>>>>>>> talenthub/main
     });
   }
 };
@@ -195,7 +225,11 @@ const getFaceProfile = async (req, res) => {
     }
 
     const profile = await FaceAttendanceService.getProfileByInternId(internId);
+<<<<<<< HEAD
     return res.status(200).json({ profile: sanitizeFaceProfile(profile) });
+=======
+    return res.status(200).json({ profile });
+>>>>>>> talenthub/main
   } catch (error) {
     return res.status(500).json({
       message: "Failed to load face profile.",
@@ -234,7 +268,11 @@ const getFaceProfileByIdentifier = async (req, res) => {
     }
 
     const faceProfile = await FaceAttendanceService.getProfileByInternId(intern._id);
+<<<<<<< HEAD
     return res.status(200).json({ profile: sanitizeFaceProfile(faceProfile) });
+=======
+    return res.status(200).json({ profile: faceProfile });
+>>>>>>> talenthub/main
   } catch (error) {
     return res.status(500).json({
       message: "Failed to load face profile.",
@@ -377,7 +415,10 @@ const scanInternFaceByAdmin = async (req, res) => {
       projectName,
       meetingTitle,
       meetingPin,
+<<<<<<< HEAD
       attendanceAction = "check_in",
+=======
+>>>>>>> talenthub/main
     } = req.body;
 
     if (!internId) {
@@ -407,7 +448,10 @@ const scanInternFaceByAdmin = async (req, res) => {
       meetingTitle,
       meetingPin,
       expectedInternId,
+<<<<<<< HEAD
       attendanceAction,
+=======
+>>>>>>> talenthub/main
     });
 
     if (!result.matched) {
@@ -444,9 +488,13 @@ const scanInternFaceByAdmin = async (req, res) => {
           ? result.dailyAttendanceMarked
             ? "Face meeting attendance marked successfully. Daily attendance also recorded."
             : "Face meeting attendance marked successfully."
+<<<<<<< HEAD
           : result.checkedOut
             ? "Checked out successfully."
             : "Checked in successfully.",
+=======
+          : "Face attendance marked successfully.",
+>>>>>>> talenthub/main
       matched: true,
       alreadyMarked: false,
       confidence: result.confidence,
@@ -457,7 +505,10 @@ const scanInternFaceByAdmin = async (req, res) => {
       attendanceDate: result.attendanceDateKey,
       dailyAttendanceMarked: result.dailyAttendanceMarked,
       checkedOut: result.checkedOut,
+<<<<<<< HEAD
       attendanceAction,
+=======
+>>>>>>> talenthub/main
     });
   } catch (error) {
     const rawMessage = error.message || "";
@@ -473,8 +524,11 @@ const scanInternFaceByAdmin = async (req, res) => {
       error: error.message,
       locationRequired: Boolean(error.locationRequired),
       alreadyMarked: Boolean(error.alreadyMarked),
+<<<<<<< HEAD
       code: error.code,
       retryAfterMinutes: error.retryAfterMinutes,
+=======
+>>>>>>> talenthub/main
     });
   }
 };
@@ -509,11 +563,19 @@ const registerFaceProfileByAdmin = async (req, res) => {
 
     return res.status(201).json({
       message: "Face profile saved successfully by admin.",
+<<<<<<< HEAD
       profile: sanitizeFaceProfile(result.profile),
     });
   } catch (error) {
     return res.status(400).json({
       message: error.message || "Failed to save face profile.",
+=======
+      profile: result.profile,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      message: "Failed to save face profile.",
+>>>>>>> talenthub/main
       error: error.message,
     });
   }
@@ -532,5 +594,8 @@ module.exports = {
   stopCurrentMeetingPin,
   scanInternFaceByAdmin,
   registerFaceProfileByAdmin,
+<<<<<<< HEAD
   getDailyAttendanceStatus,
+=======
+>>>>>>> talenthub/main
 };

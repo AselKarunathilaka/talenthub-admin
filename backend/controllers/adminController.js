@@ -35,6 +35,7 @@ const getDashboardStats = async (req, res) => {
       return res.status(200).json(dashboardStatsCache);
     }
 
+<<<<<<< HEAD
     // Calculate 5 working days ago
     let workingDaysCount = 0;
     let fiveWorkingDaysAgo = new Date();
@@ -46,6 +47,11 @@ const getDashboardStats = async (req, res) => {
       }
     }
     fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
+=======
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    threeDaysAgo.setHours(0, 0, 0, 0);
+>>>>>>> talenthub/main
 
     // Run both queries in parallel
     const [interns, submissionSummary] = await Promise.all([
@@ -90,9 +96,15 @@ const getDashboardStats = async (req, res) => {
       const internTotalRec = summary?.totalRecords ?? 0;
       totalRecords += internTotalRec;
 
+<<<<<<< HEAD
       // Overdue = never submitted, OR latest submission older than 5 working days
       const isOverdue =
         !latestSubmission || new Date(latestSubmission) < fiveWorkingDaysAgo;
+=======
+      // Overdue = never submitted, OR latest submission older than 3 days
+      const isOverdue =
+        !latestSubmission || new Date(latestSubmission) < threeDaysAgo;
+>>>>>>> talenthub/main
 
       if (isOverdue) {
         const daysSince = latestSubmission
@@ -152,6 +164,7 @@ const getInternReport = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
+<<<<<<< HEAD
     // Calculate 5 working days ago for accurate overdue status (matching getDashboardStats)
     let workingDaysCount = 0;
     let fiveWorkingDaysAgo = new Date();
@@ -194,14 +207,36 @@ const getInternReport = async (req, res) => {
       const daysSinceLastSubmission = lastSubmission
         ? Math.floor(
             (new Date() - new Date(lastSubmission)) /
+=======
+    // Get all interns with their records
+    const interns = await Intern.find({});
+    const records = await DailyRecord.find({})
+      .populate("internId", "traineeName traineeId email")
+      .sort({ createdAt: -1 });
+
+    const report = interns.map((intern) => {
+      const internRecords = records.filter(
+        (record) =>
+          record.internId &&
+          record.internId._id.toString() === intern._id.toString(),
+      );
+
+      const lastSubmission = internRecords.length > 0 ? internRecords[0] : null;
+      const daysSinceLastSubmission = lastSubmission
+        ? Math.floor(
+            (new Date() - new Date(lastSubmission.createdAt)) /
+>>>>>>> talenthub/main
               (1000 * 60 * 60 * 24),
           )
         : null;
 
+<<<<<<< HEAD
       // Overdue = never submitted, OR latest submission older than 5 working days ago
       const isOverdue =
         !lastSubmission || new Date(lastSubmission) < fiveWorkingDaysAgo;
 
+=======
+>>>>>>> talenthub/main
       return {
         _id: intern._id,
         traineeId: intern.Trainee_ID,
@@ -211,10 +246,19 @@ const getInternReport = async (req, res) => {
         team: intern.team || "Unassigned",
         trainingStartDate: intern.Training_StartDate,
         trainingEndDate: intern.Training_EndDate,
+<<<<<<< HEAD
         totalRecords: summary?.totalRecords || 0,
         lastSubmission: lastSubmission,
         daysSinceLastSubmission,
         isOverdue: isOverdue,
+=======
+        totalRecords: internRecords.length,
+        lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
+        daysSinceLastSubmission,
+        isOverdue:
+          daysSinceLastSubmission === null || daysSinceLastSubmission >= 3,
+        recentRecords: internRecords.slice(0, 5), // Last 5 records
+>>>>>>> talenthub/main
       };
     });
 
@@ -1463,6 +1507,7 @@ const getInternGitCommits = async (req, res) => {
     const projectCommits = await Promise.all(
       relevantProjects.map(async (proj) => {
         try {
+<<<<<<< HEAD
           const params = { per_page: 100 };
           if (githubUsername) params.author = githubUsername;
 
@@ -1488,6 +1533,17 @@ const getInternGitCommits = async (req, res) => {
           }
 
           const commits = allCommits.map(
+=======
+          const params = { per_page: 50 };
+          if (githubUsername) params.author = githubUsername;
+
+          const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
+            headers: { Authorization: `token ${proj.repoAccessToken}` },
+            params,
+          });
+
+          const commits = (Array.isArray(ghRes.data) ? ghRes.data : []).map(
+>>>>>>> talenthub/main
             (c) => ({
               sha: c.sha,
               shortSha: c.sha.slice(0, 7),

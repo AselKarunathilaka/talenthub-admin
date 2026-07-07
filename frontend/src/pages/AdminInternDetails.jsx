@@ -38,7 +38,10 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
+<<<<<<< HEAD
 import { API_BASE_URL } from "../api/apiConfig";
+=======
+>>>>>>> talenthub/main
 import logo from "../assets/sltlogo.jpg";
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
@@ -148,14 +151,20 @@ const AdminInternDetails = () => {
 
   const [gitCommitsData, setGitCommitsData] = useState(null);
   const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
+<<<<<<< HEAD
   // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
+=======
+>>>>>>> talenthub/main
 
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
     fetchGitCommits();
+<<<<<<< HEAD
     fetchCertAttendanceCount();
+=======
+>>>>>>> talenthub/main
   }, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
@@ -186,6 +195,7 @@ const AdminInternDetails = () => {
     }
   }, [internId, attendanceData]);
 
+<<<<<<< HEAD
   // Fetch the same certificate-data endpoint used by the certificate page
   // so the attendance count matches what the certificate shows (TalentTrail-enriched)
   const fetchCertAttendanceCount = useCallback(async () => {
@@ -204,6 +214,8 @@ const AdminInternDetails = () => {
     }
   }, [internId]);
 
+=======
+>>>>>>> talenthub/main
   const fetchInternDetails = async () => {
     try {
       setLoading(true);
@@ -520,6 +532,7 @@ const AdminInternDetails = () => {
                           {/* Overlapping Avatar */}
                           <div className="relative inline-block z-10">
                             <div className="h-20 w-20 sm:h-24 sm:w-24 bg-white p-1 rounded-2xl shadow-md border border-gray-100">
+<<<<<<< HEAD
                               <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
                                 <img
                                   src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
@@ -533,6 +546,10 @@ const AdminInternDetails = () => {
                                 <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                                   <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
                                 </div>
+=======
+                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200">
+                                <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+>>>>>>> talenthub/main
                               </div>
                             </div>
                             <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-0.5 shadow-sm border border-gray-100">
@@ -603,6 +620,7 @@ const AdminInternDetails = () => {
                               {intern.endDate ? formatDate(intern.endDate) : "N/A"}
                             </div>
                           </div>
+<<<<<<< HEAD
 
                           {/* Meeting Attendance % = attended ÷ meetings held so far */}
                           {attendanceData && intern.startDate && (() => {
@@ -654,6 +672,8 @@ const AdminInternDetails = () => {
                               </div>
                             );
                           })()}
+=======
+>>>>>>> talenthub/main
                         </div>
                       </div>
                     </motion.div>

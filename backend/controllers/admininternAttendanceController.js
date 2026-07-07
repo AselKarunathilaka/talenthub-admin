@@ -1,7 +1,10 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const DailyRecord = require("../models/DailyRecord");
+<<<<<<< HEAD
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
+=======
+>>>>>>> talenthub/main
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
 const fs = require("fs");
@@ -11,10 +14,13 @@ const {
   generateMeetingAttendancePdf,
 } = require("./meetingAttendancePdfTemplate");
 const { generateDailyAttendancePdf } = require("./dailyAttendancePdfTemplate");
+<<<<<<< HEAD
 const {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
 } = require("../utils/attendanceHistory");
+=======
+>>>>>>> talenthub/main
 
 const TZ = "Asia/Colombo";
 
@@ -174,6 +180,7 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
 
+<<<<<<< HEAD
   const typeArray = Array.from(attendanceTypeSet);
   const interns = await Intern.find({
     attendance: {
@@ -185,6 +192,9 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
     }
   }).lean();
 
+=======
+  const interns = await Intern.find({});
+>>>>>>> talenthub/main
   const presentInterns = [];
 
   for (const intern of interns) {
@@ -258,6 +268,7 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
 async function getDailyPresentsOnDate(dateStr) {
   const targetDate = moment.tz(dateStr, "YYYY-MM-DD", TZ).startOf("day");
   const nextDate = targetDate.clone().add(1, "day");
+<<<<<<< HEAD
   // Also check DailyRecord for logbook-backed attendance first
   const [dailyRecords, successfulFaceLogs] = await Promise.all([
     DailyRecord.find({
@@ -313,6 +324,9 @@ async function getDailyPresentsOnDate(dateStr) {
     ]
   }).lean();
 
+=======
+  const interns = await Intern.find({});
+>>>>>>> talenthub/main
   const internById = new Map(
     interns.map((intern) => [String(intern._id), intern]),
   );
@@ -331,6 +345,7 @@ async function getDailyPresentsOnDate(dateStr) {
     });
 
     if (records.length === 0) continue;
+<<<<<<< HEAD
     const internId = String(intern._id);
     const attendanceByDate = buildDailyAttendanceByDate(
       records,
@@ -351,6 +366,20 @@ async function getDailyPresentsOnDate(dateStr) {
         .format("hh:mm A"),
       checkOutTime: reconciledAttendance.checkOutTime
         ? moment(reconciledAttendance.checkOutTime).tz(TZ).format("hh:mm A")
+=======
+    const latest = records.sort(
+      (a, b) =>
+        new Date(b.timeMarked || b.date).getTime() -
+        new Date(a.timeMarked || a.date).getTime(),
+    )[0];
+    dailyByIntern.set(String(intern._id), {
+      ...getInternDetails(intern),
+      timeMarked: moment(latest.timeMarked || latest.date)
+        .tz(TZ)
+        .format("hh:mm A"),
+      checkOutTime: latest.checkOutTime
+        ? moment(latest.checkOutTime).tz(TZ).format("hh:mm A")
+>>>>>>> talenthub/main
         : null,
       type: latest.type || "daily",
       status: "Present",
@@ -358,7 +387,15 @@ async function getDailyPresentsOnDate(dateStr) {
     });
   }
 
+<<<<<<< HEAD
   // dailyRecords are already fetched at the start of the function
+=======
+  // Also check DailyRecord for logbook-backed attendance
+  const dailyRecords = await DailyRecord.find({
+    date: dateStr,
+    attendance: { $in: ["present", "late"] },
+  });
+>>>>>>> talenthub/main
 
   for (const record of dailyRecords) {
     const key = String(record.internId);
@@ -379,6 +416,7 @@ async function getDailyPresentsOnDate(dateStr) {
     });
   }
 
+<<<<<<< HEAD
   for (const internId of dailyFaceInternIds) {
     const attendance = dailyByIntern.get(internId);
     if (attendance) {
@@ -386,6 +424,8 @@ async function getDailyPresentsOnDate(dateStr) {
     }
   }
 
+=======
+>>>>>>> talenthub/main
   return sortByInternId([...dailyByIntern.values()]);
 }
 
@@ -567,6 +607,7 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       projectsByEmail[email].push(...projectNames);
     }
 
+<<<<<<< HEAD
     const workingDays = getWorkingDaysInTwoWeekRange(startDate, endDate);
     const workingDayStrings = workingDays.map((d) => d.format("YYYY-MM-DD"));
 
@@ -580,12 +621,21 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       );
       if (hasExtendedLeave) continue;
 
+=======
+    const nonAttendees = [];
+    for (const intern of activeInterns) {
+      if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
+>>>>>>> talenthub/main
       if (hasAttendedMeeting(intern)) continue;
 
       const lastRecord =
         WeeklyMeetingAttendanceService.getLastAttendedMeeting(intern);
       const lastMeetingDate = lastRecord
+<<<<<<< HEAD
         ? moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")
+=======
+        ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+>>>>>>> talenthub/main
         : "No record found";
 
       const internEmail = String(
@@ -689,7 +739,11 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       if (err) console.error("Non-attendance Excel download error:", err);
       try {
         fs.unlinkSync(filePath);
+<<<<<<< HEAD
       } catch (_) { }
+=======
+      } catch (_) {}
+>>>>>>> talenthub/main
     });
   } catch (err) {
     console.error("exportNonAttendanceExcel error:", err);

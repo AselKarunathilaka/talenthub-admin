@@ -315,6 +315,7 @@ const AdminDailyRecords = () => {
   };
 
   // Loading / error screens
+<<<<<<< HEAD
   if (error)
     return (
       <AdminNavigation>
@@ -337,6 +338,43 @@ const AdminDailyRecords = () => {
           </div>
         </div>
       </AdminNavigation>
+=======
+  if (loading)
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
+          />
+          <p className="text-gray-600 font-medium">Loading today's records…</p>
+        </div>
+      </div>
+    );
+
+  if (error)
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
+          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
+          <p className="text-gray-700 mb-6">{error}</p>
+          <div className="flex justify-center space-x-4">
+            <motion.button
+              onClick={() =>
+                fetchRecords({ isInitial: true, date: selectedDate })
+              }
+              className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl shadow-md"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Retry
+            </motion.button>
+            
+          </div>
+        </div>
+      </div>
+>>>>>>> talenthub/main
     );
 
   // Main render
@@ -380,7 +418,11 @@ const AdminDailyRecords = () => {
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                   <div className="flex-1 sm:w-32 text-center p-3 bg-blue-50/80 rounded-2xl border border-blue-100">
+<<<<<<< HEAD
                     <div className="text-2xl font-black text-cyan-600 leading-none mb-1">{loading ? "-" : pagination.total}</div>
+=======
+                    <div className="text-2xl font-black text-cyan-600 leading-none mb-1">{pagination.total}</div>
+>>>>>>> talenthub/main
                     <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-wider">Submissions</div>
                   </div>
                 </div>
@@ -436,12 +478,19 @@ const AdminDailyRecords = () => {
               </div>
 
               <p className="text-xs text-gray-400 mt-3 font-medium">
+<<<<<<< HEAD
                 {loading
                   ? "Loading records..."
                   : pagination.total === 0
                   ? `No submissions found for ${prettyDate(selectedDate)}`
                   : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
                 {searchTerm && !loading && " · filtered by search"}
+=======
+                {pagination.total === 0
+                  ? `No submissions found for ${prettyDate(selectedDate)}`
+                  : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
+                {searchTerm && " · filtered by search"}
+>>>>>>> talenthub/main
               </p>
             </motion.div>
 
@@ -465,10 +514,18 @@ const AdminDailyRecords = () => {
                     </span>
                   </h2>
                   <p className="text-sm text-gray-500 font-medium mt-0.5">
+<<<<<<< HEAD
                     {loading ? "Loading..." : `${pagination.total} record${pagination.total !== 1 ? "s" : ""} total`}
                   </p>
                 </div>
                 {(loading || pageLoading) && (
+=======
+                    {pagination.total} record{pagination.total !== 1 ? "s" : ""}{" "}
+                    total
+                  </p>
+                </div>
+                {pageLoading && (
+>>>>>>> talenthub/main
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{
@@ -483,9 +540,15 @@ const AdminDailyRecords = () => {
               </div>
 
               {/* Body */}
+<<<<<<< HEAD
               <div className="relative min-h-[300px]">
                 {/* Page-change overlay */}
                 {(loading || pageLoading) && (
+=======
+              <div className="relative">
+                {/* Page-change overlay */}
+                {pageLoading && (
+>>>>>>> talenthub/main
                   <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
                     <motion.div
                       animate={{ rotate: 360 }}
@@ -499,7 +562,11 @@ const AdminDailyRecords = () => {
                   </div>
                 )}
 
+<<<<<<< HEAD
                 {!loading && !pageLoading && displayedRecords.length === 0 ? (
+=======
+                {!pageLoading && displayedRecords.length === 0 ? (
+>>>>>>> talenthub/main
                   /* Empty state */
                   <motion.div
                     className="text-center py-16 px-4"

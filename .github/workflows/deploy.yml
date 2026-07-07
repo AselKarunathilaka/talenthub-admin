@@ -1,0 +1,141 @@
+name: Deploy TalentHub Admin to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Rocky Linux Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Show deployment details
+        run: |
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+
+      - name: Deploy using SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+
+            echo "Starting TalentHub Admin deployment from main..."
+
+            cd /home/dpd/apps/talenthub-admin
+
+            echo "Fetching latest main..."
+            git fetch origin main
+
+            echo "Resetting server code to origin/main..."
+            git reset --hard origin/main
+
+            echo "Current deployed commit:"
+            git log -1 --oneline
+
+            echo "Creating backend environment file..."
+            rm -f backend/.env
+
+            printf '%s\n' \
+              'PORT=${{ secrets.BACKEND_PORT }}' \
+              'NODE_ENV=${{ secrets.NODE_ENV }}' \
+              'MONGO_URI=${{ secrets.MONGO_URI }}' \
+              'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
+              'CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}' \
+              'TALENTHUB_FEDERATION_SECRET=${{ secrets.TALENTHUB_FEDERATION_SECRET }}' \
+              'GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}' \
+              'GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}' \
+              'GOOGLE_REDIRECT_URI=${{ secrets.GOOGLE_REDIRECT_URI }}' \
+              'GMAIL_USER=${{ secrets.GMAIL_USER }}' \
+              'GMAIL_PASS=${{ secrets.GMAIL_PASS }}' \
+              'TRAINEES_API_SECRET_KEY=${{ secrets.TRAINEES_API_SECRET_KEY }}' \
+              'BYPASS_TIME_CHECK=${{ secrets.BYPASS_TIME_CHECK }}' \
+              'ATTENDANCE_SYSTEM_URL=${{ secrets.ATTENDANCE_SYSTEM_URL }}' \
+              'ATTENDANCE_SYSTEM_SYNC_ENABLED=${{ secrets.ATTENDANCE_SYSTEM_SYNC_ENABLED }}' \
+              'SHORT_LEAVE_EMAIL=${{ secrets.SHORT_LEAVE_EMAIL }}' \
+              'SHORT_LEAVE_SMTP_HOST=${{ secrets.SHORT_LEAVE_SMTP_HOST }}' \
+              'SHORT_LEAVE_SMTP_PORT=${{ secrets.SHORT_LEAVE_SMTP_PORT }}' \
+              'SHORT_LEAVE_RECIPIENT=${{ secrets.SHORT_LEAVE_RECIPIENT }}' \
+              'AUTO_CLEANUP_INACTIVE_INTERNS=${{ secrets.AUTO_CLEANUP_INACTIVE_INTERNS }}' \
+              'GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}' \
+              'GEMINI_BASE_URL=${{ secrets.GEMINI_BASE_URL }}' \
+              'TZ=${{ secrets.TZ }}' \
+              'ATTENDANCE_SLT_LAT=${{ secrets.ATTENDANCE_SLT_LAT }}' \
+              'ATTENDANCE_SLT_LNG=${{ secrets.ATTENDANCE_SLT_LNG }}' \
+              'ATTENDANCE_MAX_DISTANCE_METERS=${{ secrets.ATTENDANCE_MAX_DISTANCE_METERS }}' \
+              'ATTENDANCE_MAX_LOCATION_ACCURACY_METERS=${{ secrets.ATTENDANCE_MAX_LOCATION_ACCURACY_METERS }}' \
+              'ATTENDANCE_MAX_LOCATION_AGE_MS=${{ secrets.ATTENDANCE_MAX_LOCATION_AGE_MS }}' \
+              > backend/.env
+
+            echo "Installing backend dependencies..."
+            cd backend
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+
+            echo "Restarting TalentHub backend..."
+            pm2 restart talenthub-admin-backend
+            pm2 save
+
+            echo "Detecting frontend folder..."
+            cd ..
+
+            if [ -f frontend/package.json ]; then
+              FRONTEND_DIR="frontend"
+            elif [ -f client/package.json ]; then
+              FRONTEND_DIR="client"
+            else
+              echo "ERROR: No frontend package.json found in frontend/ or client/"
+              echo "Project folders:"
+              ls -la
+              echo "Client folder:"
+              ls -la client || true
+              echo "Frontend folder:"
+              ls -la frontend || true
+              exit 1
+            fi
+
+            echo "Frontend directory found: $FRONTEND_DIR"
+            cd "$FRONTEND_DIR"
+
+            echo "Creating frontend production environment file..."
+            rm -f .env.production
+
+            printf '%s\n' \
+              'VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}' \
+              'VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}' \
+              > .env.production
+
+            echo "Installing frontend dependencies..."
+
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+
+            echo "Building frontend..."
+            npm run build
+
+            echo "Deploying frontend build to Nginx web root..."
+            rm -rf /var/www/talenthub-admin/*
+            cp -r dist/* /var/www/talenthub-admin/
+
+            echo "Checking PM2 status..."
+            pm2 status
+
+            echo "Testing backend locally..."
+            curl -I http://localhost:${{ secrets.BACKEND_PORT }}/api || true
+
+            echo "Deployment completed successfully."

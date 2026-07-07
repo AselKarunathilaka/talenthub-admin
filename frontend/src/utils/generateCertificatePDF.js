@@ -49,7 +49,10 @@ export const generateCertificatePDF = async (data) => {
     logoBase64,
     gitCommitsData,
     verificationUrl,
+<<<<<<< HEAD
     extendedLeaves = [],
+=======
+>>>>>>> talenthub/main
   } = data;
 
   // ── Landscape A4 — standard certificate format ─────────────────────
@@ -164,6 +167,7 @@ export const generateCertificatePDF = async (data) => {
   const institute = intern.institute || intern.university || "N/A";
   const duration = dur(startDate, endDate);
   const traineeId = intern.traineeId || "N/A";
+<<<<<<< HEAD
 
   let attendanceStr = `${attendanceCount} meeting${attendanceCount !== 1 ? "s" : ""}`;
   if (startDate) {
@@ -178,12 +182,16 @@ export const generateCertificatePDF = async (data) => {
       attendanceStr += ` (achieving an attendance rate of ${percentage}%)`;
     }
   }
+=======
+  const attendDays = `${attendanceCount} day${attendanceCount !== 1 ? "s" : ""}`;
+>>>>>>> talenthub/main
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.black);
 
   const maxTextWidth = W - M * 2 - 60;
+<<<<<<< HEAD
 
   let extendedLeaveStr = "";
   if (extendedLeaves && extendedLeaves.length > 0) {
@@ -202,13 +210,21 @@ export const generateCertificatePDF = async (data) => {
     }
   }
 
+=======
+>>>>>>> talenthub/main
   const paragraph =
     `bearing Trainee ID ${traineeId}, from ${institute}, ` +
     `specializing in ${field}, has successfully completed the internship ` +
     `training program at Sri Lanka Telecom PLC during the period ` +
+<<<<<<< HEAD
     `${fmt(startDate)} to ${fmt(endDate)} (${duration})${extendedLeaveStr}. ` +
     `Throughout the training period, the intern demonstrated outstanding ` +
     `dedication and commitment, attending ${attendanceStr}. ` +
+=======
+    `${fmt(startDate)} to ${fmt(endDate)} (${duration}). ` +
+    `Throughout the training period, the intern demonstrated outstanding ` +
+    `dedication and commitment, attending ${attendDays} of scheduled meetings. ` +
+>>>>>>> talenthub/main
     `We acknowledge and appreciate the valuable contributions made during this internship.`;
 
   const wrappedLines = doc.splitTextToSize(paragraph, maxTextWidth);
@@ -226,6 +242,7 @@ export const generateCertificatePDF = async (data) => {
       let commitsInfo = "";
       if (gitCommitsData && gitCommitsData.projectCommits) {
         const match = gitCommitsData.projectCommits.find(
+<<<<<<< HEAD
           (gc) => 
             gc.projectName?.trim().toLowerCase() === 
             (p.projectName || p.name)?.trim().toLowerCase()
@@ -237,6 +254,17 @@ export const generateCertificatePDF = async (data) => {
       let desc = projName;
       if (commitsInfo) desc += commitsInfo;
       if (supervisor) desc += ` (supervised by ${supervisor})`;
+=======
+          (gc) => gc.projectName === (p.projectName || p.name)
+        );
+        if (match && match.totalCommits !== undefined) {
+          commitsInfo = ` with ${match.totalCommits} commits`;
+        }
+      }
+      let desc = projName;
+      if (supervisor) desc += ` (supervised by ${supervisor})`;
+      if (commitsInfo) desc += commitsInfo;
+>>>>>>> talenthub/main
       return desc;
     });
 

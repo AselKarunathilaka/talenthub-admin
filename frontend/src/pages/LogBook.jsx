@@ -605,12 +605,20 @@ const Logbook = () => {
         setProjectAccessBlocked(true);
         setStatusMessage({
           type: "project_error",
+<<<<<<< HEAD
           text: data.error || data.message,
+=======
+          text: data.error,
+>>>>>>> talenthub/main
         });
       } else {
         setStatusMessage({
           type: "error",
+<<<<<<< HEAD
           text: data.error || data.message || "Submission failed.",
+=======
+          text: data.error || "Submission failed.",
+>>>>>>> talenthub/main
         });
       }
     } catch (error) {
@@ -738,7 +746,10 @@ const Logbook = () => {
           try {
             const errBody = await validationResponse.json();
             if (errBody.error) errorText = errBody.error;
+<<<<<<< HEAD
             else if (errBody.message) errorText = errBody.message;
+=======
+>>>>>>> talenthub/main
           } catch {
             /* use default */
           }

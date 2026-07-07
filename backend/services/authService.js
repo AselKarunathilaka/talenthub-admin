@@ -24,7 +24,11 @@ class AuthService {
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return { token, message: "User registered successfully!" };
@@ -48,7 +52,11 @@ class AuthService {
     const token = jwt.sign(
       { id: user._id, email: user.email },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return { token, message: "Login successful!" };
@@ -78,7 +86,11 @@ class AuthService {
     const token = jwt.sign(
       { id: intern._id, email: intern.Trainee_Email },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return { token, internId: intern._id, message: "Login successful!" }; // Return internId
@@ -108,7 +120,11 @@ class AuthService {
     const token = jwt.sign(
       { id: intern._id, email: intern.Trainee_Email },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return { token, internId: intern._id, message: "Login successful!" };
@@ -137,7 +153,11 @@ class AuthService {
     const token = jwt.sign(
       { id: gateStaff._id, email: gateStaff.email, role: "gatestaff" },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return {
@@ -165,7 +185,11 @@ class AuthService {
     const token = jwt.sign(
       { id: newStaff._id, email: newStaff.email, role: "gatestaff" },
       dotenv.jwtSecret,
+<<<<<<< HEAD
       { expiresIn: "24h" },
+=======
+      { expiresIn: "1h" },
+>>>>>>> talenthub/main
     );
 
     return {

@@ -8,7 +8,10 @@ const {
   getLockedSeats,
   lockSeat,
   unlockSeat,
+<<<<<<< HEAD
   getPendingCheckIns,
+=======
+>>>>>>> talenthub/main
 } = require("../controllers/adminSeatController");
 const authenticateUser = require("../middleware/authMiddleware");
 
@@ -63,6 +66,7 @@ router.post("/seat-bookings/lock", lockSeat);
 router.post("/seat-bookings/unlock", unlockSeat);
 
 /**
+<<<<<<< HEAD
  * @route   GET /api/admin/seat-bookings/pending-checkins
  * @desc    Get interns who booked a seat but haven't scanned daily attendance
  * @access  Private (Admin)
@@ -71,6 +75,8 @@ router.post("/seat-bookings/unlock", unlockSeat);
 router.get("/seat-bookings/pending-checkins", getPendingCheckIns);
 
 /**
+=======
+>>>>>>> talenthub/main
  * @route   GET /api/admin/seat-bookings/seat/:seatNumber
  * @desc    Get booking details for a specific seat
  * @access  Private (Admin)

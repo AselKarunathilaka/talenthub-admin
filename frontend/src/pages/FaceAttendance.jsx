@@ -18,16 +18,23 @@ import { BrowserMultiFormatReader } from "@zxing/library";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import FaceScanGuide from "../components/FaceScanGuide";
+<<<<<<< HEAD
 import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
 import { apiFetch } from "../utils/api";
 import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
+=======
+import { apiFetch } from "../utils/api";
+>>>>>>> talenthub/main
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
   getDeviceTimeEvidence,
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
+<<<<<<< HEAD
 import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+=======
+>>>>>>> talenthub/main
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -50,12 +57,15 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
+<<<<<<< HEAD
 const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 160,
   scoreThreshold: 0.45,
 });
 const FACE_GUIDE_INTERVAL_MS = 500;
 const REQUIRED_STABLE_FACE_CHECKS = 2;
+=======
+>>>>>>> talenthub/main
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -132,6 +142,7 @@ const FaceAttendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+<<<<<<< HEAD
   const {
     attendanceAction,
     setAttendanceAction,
@@ -139,6 +150,8 @@ const FaceAttendance = () => {
     statusLoading: dailyStatusLoading,
     refreshDailyStatus,
   } = useDailyAttendanceStatus();
+=======
+>>>>>>> talenthub/main
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -151,7 +164,10 @@ const FaceAttendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
+<<<<<<< HEAD
   const stableFaceChecksRef = useRef(0);
+=======
+>>>>>>> talenthub/main
   const enrollmentSubmitStartedRef = useRef(false);
 
   const distanceKm = getDistanceKm(location, officeLocation);
@@ -159,6 +175,7 @@ const FaceAttendance = () => {
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReady = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const attendanceLocationReady = locationValid;
+<<<<<<< HEAD
   const dailyAttendanceCompleted =
     attendanceType === "daily" && dailyAttendanceStatus.state === "checked_out";
   const canStartCamera =
@@ -166,6 +183,11 @@ const FaceAttendance = () => {
     (attendanceLocationReady &&
       !dailyAttendanceCompleted &&
       (attendanceType !== "meeting" || meetingDetailsReady));
+=======
+  const canStartCamera =
+    mode === "enroll" ||
+    (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
+>>>>>>> talenthub/main
   const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
   const attachStreamToVideo = async () => {
@@ -256,7 +278,10 @@ const FaceAttendance = () => {
 
     setCameraActive(false);
     liveDescriptorRef.current = null;
+<<<<<<< HEAD
     stableFaceChecksRef.current = 0;
+=======
+>>>>>>> talenthub/main
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
@@ -356,8 +381,26 @@ const FaceAttendance = () => {
       }
     }
 
+<<<<<<< HEAD
     try {
       const stream = await requestFaceCameraStream();
+=======
+    if (!navigator.mediaDevices?.getUserMedia) {
+      toast.error("Camera access requires a supported browser on HTTPS or localhost.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 720 },
+          height: { ideal: 540 },
+          aspectRatio: { ideal: 4 / 3 },
+          facingMode: "user",
+        },
+        audio: false,
+      });
+>>>>>>> talenthub/main
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -366,7 +409,11 @@ const FaceAttendance = () => {
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera access error:", error);
+<<<<<<< HEAD
       toast.error(getCameraErrorMessage(error));
+=======
+      toast.error("Camera access failed. Allow camera permission and use HTTPS or localhost.");
+>>>>>>> talenthub/main
       setCameraActive(false);
     }
   };
@@ -419,6 +466,7 @@ const FaceAttendance = () => {
     }
   };
 
+<<<<<<< HEAD
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
 
@@ -477,6 +525,8 @@ const FaceAttendance = () => {
     }
   };
 
+=======
+>>>>>>> talenthub/main
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -500,6 +550,7 @@ const FaceAttendance = () => {
       inspectBusyRef.current = true;
 
       try {
+<<<<<<< HEAD
         const positionData = await inspectFacePosition();
         if (cancelled) return;
 
@@ -525,21 +576,44 @@ const FaceAttendance = () => {
             !faceIsStable
               ? "Hold still for a moment..."
               : mode === "enroll"
+=======
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled) return;
+
+        if (!frameData || frameData.error) {
+          liveDescriptorRef.current = null;
+          setFaceGuide({ ready: false, message: frameData?.error || "Center your face inside the oval" });
+          return;
+        }
+
+        liveDescriptorRef.current = frameData.descriptor;
+        setFaceGuide({
+          ready: true,
+          message:
+            mode === "enroll"
+>>>>>>> talenthub/main
               ? enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
                 ? "Face samples are ready. Complete enrollment."
                 : ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length]
               : "Face is ready. You can mark attendance.",
         });
 
+<<<<<<< HEAD
         if (!faceIsStable || mode !== "enroll") return;
+=======
+        if (mode !== "enroll") return;
+>>>>>>> talenthub/main
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
 
+<<<<<<< HEAD
         const frameData = await captureFrameForDescriptor();
         if (cancelled || !frameData || frameData.error) return;
         liveDescriptorRef.current = frameData.descriptor;
 
+=======
+>>>>>>> talenthub/main
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct =
           !previousFrame ||
@@ -570,7 +644,11 @@ const FaceAttendance = () => {
     };
 
     inspectFace();
+<<<<<<< HEAD
     const timer = window.setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
+=======
+    const timer = window.setInterval(inspectFace, 700);
+>>>>>>> talenthub/main
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -656,9 +734,15 @@ const FaceAttendance = () => {
       return;
     }
 
+<<<<<<< HEAD
     // Always use a fresh, full-quality descriptor for verification. The live
     // loop only checks positioning so it cannot submit an old camera frame.
     const frameData = await captureFreshDescriptorForVerification();
+=======
+    const frameData = liveDescriptorRef.current
+      ? { descriptor: liveDescriptorRef.current }
+      : await captureFrameForDescriptor();
+>>>>>>> talenthub/main
 
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -672,8 +756,11 @@ const FaceAttendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType,
+<<<<<<< HEAD
           attendanceAction:
             attendanceType === "daily" ? attendanceAction : undefined,
+=======
+>>>>>>> talenthub/main
           projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
           meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
@@ -704,7 +791,10 @@ const FaceAttendance = () => {
         );
         stopCamera();
         setCooldown(true);
+<<<<<<< HEAD
         if (attendanceType === "daily") await refreshDailyStatus();
+=======
+>>>>>>> talenthub/main
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -773,7 +863,11 @@ const FaceAttendance = () => {
               method: "POST",
               body: JSON.stringify(
                 qrMode === "daily"
+<<<<<<< HEAD
                   ? { ...payload, scanType: "daily", attendanceAction }
+=======
+                  ? { ...payload, scanType: "daily" }
+>>>>>>> talenthub/main
                   : { ...payload, projectName: projectName.trim() },
               ),
             },
@@ -791,12 +885,18 @@ const FaceAttendance = () => {
           showSuccess(
             qrMode === "meeting"
               ? "Meeting attendance marked using QR backup."
+<<<<<<< HEAD
               : data.checkedOut
                 ? "Check-out recorded using QR backup."
                 : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
           if (qrMode === "daily") await refreshDailyStatus();
+=======
+              : "Daily attendance marked using QR backup.",
+          );
+          stopQRScanner();
+>>>>>>> talenthub/main
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -976,6 +1076,7 @@ const FaceAttendance = () => {
                         </button>
                       </div>
 
+<<<<<<< HEAD
                       {attendanceType === "daily" && (
                         <DailyAttendanceActionControl
                           action={attendanceAction}
@@ -985,6 +1086,8 @@ const FaceAttendance = () => {
                         />
                       )}
 
+=======
+>>>>>>> talenthub/main
                       {attendanceType === "meeting" && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <label className="block">
@@ -1150,11 +1253,15 @@ const FaceAttendance = () => {
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
                       >
                         {loading ? <Loader className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+<<<<<<< HEAD
                         {attendanceType === "daily"
                           ? attendanceAction === "check_out"
                             ? "Check Out"
                             : "Check In"
                           : "Mark Attendance"}
+=======
+                        Mark Attendance
+>>>>>>> talenthub/main
                       </button>
                     )}
                     <button
@@ -1204,6 +1311,7 @@ const FaceAttendance = () => {
                   </button>
                 </div>
 
+<<<<<<< HEAD
                 {qrMode === "daily" && (
                   <DailyAttendanceActionControl
                     action={attendanceAction}
@@ -1213,6 +1321,8 @@ const FaceAttendance = () => {
                   />
                 )}
 
+=======
+>>>>>>> talenthub/main
                 {qrMode === "meeting" && (
                   <label className="block">
                     <span className="text-sm font-medium text-slate-700">Project Name</span>
@@ -1254,12 +1364,16 @@ const FaceAttendance = () => {
                   <button
                     type="button"
                     onClick={qrScanning ? stopQRScanner : startQRScanner}
+<<<<<<< HEAD
                     disabled={
                       qrProcessing ||
                       !locationValid ||
                       (qrMode === "daily" &&
                         dailyAttendanceStatus.state === "checked_out")
                     }
+=======
+                    disabled={qrProcessing || !locationValid}
+>>>>>>> talenthub/main
                     className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold text-white disabled:bg-slate-300 ${
                       qrScanning ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
                     }`}

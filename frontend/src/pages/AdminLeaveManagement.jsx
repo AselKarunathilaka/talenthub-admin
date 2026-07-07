@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useRef } from "react";
+=======
+import React, { useState, useEffect } from "react";
+>>>>>>> talenthub/main
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import {
@@ -16,13 +20,24 @@ import {
   FiUser,
   FiX,
   FiCheck,
+<<<<<<< HEAD
+=======
+  FiAlertCircle,
+  FiArrowLeft,
+>>>>>>> talenthub/main
   FiEye,
   FiCheckSquare,
   FiSquare,
   FiCheckCircle,
+<<<<<<< HEAD
   FiSend,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
+=======
+  FiFilter,
+  FiSend,
+} from "react-icons/fi";
+>>>>>>> talenthub/main
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 
@@ -49,10 +64,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     show: false,
     url: "",
     type: "",
+<<<<<<< HEAD
     loading: false,
   });
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+=======
+  });
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("Pending");
+>>>>>>> talenthub/main
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -69,15 +90,25 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [adminResponse, setAdminResponse] = useState("");
   const [processing, setProcessing] = useState(false);
   const [selectedDate, setSelectedDate] = useState(() => {
+<<<<<<< HEAD
     return requestType === "study_leave" ? "" : new Date().toISOString().split("T")[0];
   });
 
+=======
+    return isStudyLeave ? "" : new Date().toISOString().split("T")[0];
+  });
+
+  // Intern ID filter
+  const [internIdFilter, setInternIdFilter] = useState("");
+
+>>>>>>> talenthub/main
   // Bulk operations
   const [selectedRequests, setSelectedRequests] = useState(new Set());
   const [bulkAction, setBulkAction] = useState("");
   const [bulkAdminResponse, setBulkAdminResponse] = useState("");
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isSelectAll, setIsSelectAll] = useState(false);
+<<<<<<< HEAD
   const [triggeringEmail, setTriggeringEmail] = useState(false);
 
   const [prevRequestType, setPrevRequestType] = useState(requestType);
@@ -94,6 +125,12 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
   const fetchIdRef = useRef(0);
 
+=======
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  const [triggeringEmail, setTriggeringEmail] = useState(false);
+
+>>>>>>> talenthub/main
   useEffect(() => {
     const adminInfo = localStorage.getItem("adminInfo");
     if (!adminInfo) {
@@ -105,8 +142,24 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     fetchStats();
   }, [filter, pagination.page, selectedDate, requestType]);
 
+<<<<<<< HEAD
   const fetchLeaveRequests = async () => {
     const currentFetchId = ++fetchIdRef.current;
+=======
+  // Auto-refresh every 30 seconds if enabled
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      fetchLeaveRequests();
+      fetchStats();
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, filter, pagination.page, selectedDate, requestType]);
+
+  const fetchLeaveRequests = async () => {
+>>>>>>> talenthub/main
     setLoading(true);
     try {
       const params = {
@@ -126,6 +179,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       }
       const response = await getAllLeaveRequests(params);
 
+<<<<<<< HEAD
       if (currentFetchId !== fetchIdRef.current) return;
 
       // Sort requests
@@ -133,13 +187,38 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       sortedRequests.sort(
         (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
       );
+=======
+      // Sort requests based on sortBy
+      let sortedRequests = [...response.data];
+      if (sortBy === "urgent") {
+        const today = new Date().toISOString().split("T")[0];
+        sortedRequests.sort((a, b) => {
+          const aIsUrgent = a.leaveDate.split("T")[0] === today;
+          const bIsUrgent = b.leaveDate.split("T")[0] === today;
+          if (aIsUrgent && !bIsUrgent) return -1;
+          if (!aIsUrgent && bIsUrgent) return 1;
+          return new Date(b.submittedAt) - new Date(a.submittedAt);
+        });
+      } else if (sortBy === "oldest") {
+        sortedRequests.sort(
+          (a, b) => new Date(a.submittedAt) - new Date(b.submittedAt),
+        );
+      } else {
+        sortedRequests.sort(
+          (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+        );
+      }
+>>>>>>> talenthub/main
 
       setLeaveRequests(sortedRequests);
       setPagination(response.pagination);
       setSelectedRequests(new Set());
       setIsSelectAll(false);
     } catch (error) {
+<<<<<<< HEAD
       if (currentFetchId !== fetchIdRef.current) return;
+=======
+>>>>>>> talenthub/main
       console.error("Error fetching leave requests:", error);
 
       if (error.message === "Admin access required") {
@@ -150,14 +229,21 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
       toast.error("Failed to load leave requests");
     } finally {
+<<<<<<< HEAD
       if (currentFetchId === fetchIdRef.current) {
         setLoading(false);
       }
+=======
+      setLoading(false);
+>>>>>>> talenthub/main
     }
   };
 
   const fetchStats = async () => {
+<<<<<<< HEAD
     const currentFetchId = fetchIdRef.current;
+=======
+>>>>>>> talenthub/main
     try {
       const params = {};
       if (isStudyLeave && selectedDate) {
@@ -167,19 +253,27 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       }
       params.requestType = requestType;
       const response = await getLeaveRequestStats(params);
+<<<<<<< HEAD
 
       if (currentFetchId !== fetchIdRef.current) return;
 
       setStats(response.data);
     } catch (error) {
       if (currentFetchId !== fetchIdRef.current) return;
+=======
+      setStats(response.data);
+    } catch (error) {
+>>>>>>> talenthub/main
       console.error("Error fetching stats:", error);
     }
   };
 
   const handleViewDocument = async (leaveRequestId) => {
     try {
+<<<<<<< HEAD
       setDocumentViewer({ show: true, url: "", type: "", loading: true });
+=======
+>>>>>>> talenthub/main
       const authToken = localStorage.getItem("authToken");
       const adminInfo = localStorage.getItem("adminInfo");
       const token =
@@ -213,11 +307,18 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           ? "image"
           : "other";
 
+<<<<<<< HEAD
       setDocumentViewer({ show: true, url: fileUrl, type: fileType, loading: false });
     } catch (error) {
       console.error("Error loading document:", error);
       toast.error(error.message || "Failed to load document");
       setDocumentViewer({ show: false, url: "", type: "", loading: false });
+=======
+      setDocumentViewer({ show: true, url: fileUrl, type: fileType });
+    } catch (error) {
+      console.error("Error loading document:", error);
+      toast.error(error.message || "Failed to load document");
+>>>>>>> talenthub/main
     }
   };
 
@@ -225,7 +326,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     if (documentViewer.url && documentViewer.url.startsWith("blob:")) {
       URL.revokeObjectURL(documentViewer.url);
     }
+<<<<<<< HEAD
     setDocumentViewer({ show: false, url: "", type: "", loading: false });
+=======
+    setDocumentViewer({ show: false, url: "", type: "" });
+>>>>>>> talenthub/main
   };
 
   const handleStatusUpdate = async (requestId, status, response = "") => {
@@ -270,6 +375,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setSelectedRequests(newSelected);
   };
 
+<<<<<<< HEAD
   const handleSelectAll = async () => {
     if (isSelectAll) {
       setSelectedRequests(new Set());
@@ -306,6 +412,18 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         setProcessing(false);
       }
     }
+=======
+  const handleSelectAll = () => {
+    if (isSelectAll) {
+      setSelectedRequests(new Set());
+    } else {
+      const allIds = filteredRequests
+        .filter((request) => request.status === "Pending")
+        .map((request) => request._id);
+      setSelectedRequests(new Set(allIds));
+    }
+    setIsSelectAll(!isSelectAll);
+>>>>>>> talenthub/main
   };
 
   const handleBulkAction = (action) => {
@@ -508,7 +626,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     );
   };
 
+<<<<<<< HEAD
   const filteredRequests = leaveRequests;
+=======
+  // ── UPDATED: filter by internTraineeId instead of nationalId ──
+  const filteredRequests = internIdFilter
+    ? leaveRequests.filter((r) =>
+        r.internTraineeId?.toString().includes(internIdFilter),
+      )
+    : leaveRequests;
+>>>>>>> talenthub/main
 
   const displayedStats = (() => {
     if (!isStudyLeave || stats.total > 0 || pagination.total === 0) {
@@ -575,11 +702,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
               >
                 <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+<<<<<<< HEAD
                   {isStudyLeave ? (
                     <GraduationCap className="text-[#0056a2] h-8 w-8" />
                   ) : (
                     <Bike className="text-[#0056a2] h-8 w-8" />
                   )}
+=======
+                  <FiFileText className="text-[#0056a2] h-8 w-8" />
+>>>>>>> talenthub/main
                 </div>
                 {pageCopy.title}
               </motion.h1>
@@ -597,13 +728,21 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.1, duration: 0.2 }}
+<<<<<<< HEAD
               className="flex gap-3 flex-col sm:flex-row flex-wrap sm:justify-end sm:items-center w-full md:w-auto"
+=======
+              className="flex gap-3 flex-wrap justify-end"
+>>>>>>> talenthub/main
             >
               {!isStudyLeave && (
                 <button
                   onClick={handleTriggerApprovedShortLeaveEmail}
                   disabled={triggeringEmail}
+<<<<<<< HEAD
                   className={`bg-white text-[#15803d] border border-[#15803d]/30 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-green-50 transition-all flex items-center justify-center gap-2 w-full sm:w-auto ${
+=======
+                  className={`bg-white text-[#15803d] border border-[#15803d]/30 px-5 py-2.5 rounded-xl font-bold text-sm shadow-sm hover:bg-green-50 transition-all flex items-center gap-2 ${
+>>>>>>> talenthub/main
                     triggeringEmail ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                   title="Manually send approved short leave email to gate staff"
@@ -612,6 +751,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   {triggeringEmail ? "Sending..." : "Send Gate Email"}
                 </button>
               )}
+<<<<<<< HEAD
 
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center gap-3 w-full sm:w-auto min-w-0 sm:min-w-[280px]">
                 <div className="flex-1 bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
@@ -649,6 +789,17 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   </div>
                 </div>
               </div>
+=======
+              {!isStudyLeave && (
+                <button
+                  onClick={handleDownloadApprovedReport}
+                  className="bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50 hover:opacity-90 transition-all flex items-center gap-2"
+                >
+                  <FiFileText />
+                  Download PDF Report
+                </button>
+              )}
+>>>>>>> talenthub/main
             </motion.div>
           </div>
 
@@ -657,6 +808,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.3 }}
+<<<<<<< HEAD
             className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6"
           >
             <div 
@@ -673,10 +825,33 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </div>
                 <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5 leading-tight truncate">
                   Total
+=======
+            className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6"
+          >
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-[#0056a2]/30 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 z-10 text-gray-500 group-hover:text-[#0056a2] transition-colors">
+                <FiFileText size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                  {displayedStats.total}
+                </div>
+                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5">
+                  Total Requests
+                </div>
+                <div className="text-[10px] text-gray-400 mt-0.5">
+                  {selectedDate
+                    ? formatSelectedDate().replace(" (Today)", "")
+                    : isStudyLeave
+                      ? "all dates"
+                      : ""}
+>>>>>>> talenthub/main
                 </div>
               </div>
             </div>
 
+<<<<<<< HEAD
             <div 
               onClick={() => { setFilter("Pending"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
               className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "Pending" ? "bg-amber-100/40 border-amber-500 shadow-md shadow-amber-500/10 ring-2 ring-amber-500/20" : "bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm border-amber-100 hover:border-amber-300"}`}
@@ -708,11 +883,45 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   {displayedStats.approved}
                 </div>
                 <div className="text-[10px] sm:text-xs font-bold text-green-700 uppercase tracking-wider mt-0.5 leading-tight truncate">
+=======
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl shadow-sm border border-amber-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-amber-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-amber-100 z-10 text-amber-500 shadow-sm">
+                <FiClock size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-amber-600 tracking-tight">
+                  {displayedStats.pending}
+                </div>
+                <div className="text-xs font-bold text-amber-700 uppercase tracking-wider mt-0.5">
+                  Pending Review
+                </div>
+              </div>
+              {displayedStats.pending > 0 && (
+                <div className="absolute top-4 right-4 flex h-3 w-3">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl shadow-sm border border-green-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-green-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-green-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-green-100 z-10 text-green-500 shadow-sm">
+                <FiCheckCircle size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-green-600 tracking-tight">
+                  {displayedStats.approved}
+                </div>
+                <div className="text-xs font-bold text-green-700 uppercase tracking-wider mt-0.5">
+>>>>>>> talenthub/main
                   Approved
                 </div>
               </div>
             </div>
 
+<<<<<<< HEAD
             <div 
               onClick={() => { setFilter("Denied"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
               className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "Denied" ? "bg-rose-100/40 border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20" : "bg-gradient-to-br from-rose-50 to-red-50 shadow-sm border-rose-100 hover:border-rose-300"}`}
@@ -726,13 +935,207 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   {displayedStats.denied}
                 </div>
                 <div className="text-[10px] sm:text-xs font-bold text-rose-700 uppercase tracking-wider mt-0.5 leading-tight truncate">
+=======
+            <div className="bg-gradient-to-br from-rose-50 to-red-50 rounded-3xl shadow-sm border border-rose-100 p-5 flex items-center gap-4 relative overflow-hidden group hover:border-rose-300 transition-colors">
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-rose-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
+              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center border border-rose-100 z-10 text-rose-500 shadow-sm">
+                <FiX size={24} />
+              </div>
+              <div className="z-10">
+                <div className="text-3xl font-extrabold text-rose-600 tracking-tight">
+                  {displayedStats.denied}
+                </div>
+                <div className="text-xs font-bold text-rose-700 uppercase tracking-wider mt-0.5">
+>>>>>>> talenthub/main
                   Denied
                 </div>
               </div>
             </div>
           </motion.div>
 
+<<<<<<< HEAD
 
+=======
+          {/* Filters & Controls */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.3 }}
+            className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 mb-6"
+          >
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              {/* Filter Tabs */}
+              <div className="flex flex-wrap gap-2">
+                {[
+                  {
+                    key: "Pending",
+                    count: displayedStats.pending,
+                    label: "Pending",
+                  },
+                  {
+                    key: "Approved",
+                    count: displayedStats.approved,
+                    label: "Approved",
+                  },
+                  {
+                    key: "Denied",
+                    count: displayedStats.denied,
+                    label: "Denied",
+                  },
+                  {
+                    key: "all",
+                    count: displayedStats.total,
+                    label: "All Requests",
+                  },
+                ].map(({ key, count, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setFilter(key);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                      setSelectedRequests(new Set());
+                      setIsSelectAll(false);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 flex items-center gap-2 ${
+                      filter === key
+                        ? "bg-slate-800 text-white shadow-md shadow-slate-200"
+                        : "bg-white text-gray-500 hover:text-gray-800 hover:bg-slate-50 border border-gray-200"
+                    }`}
+                  >
+                    {label}
+                    <span
+                      className={`px-2 py-0.5 rounded-md text-[10px] ${filter === key ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600"}`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Controls */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Date Filter */}
+                <div className="bg-slate-50 rounded-xl p-1.5 flex items-center border border-slate-200">
+                  <div className="bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm mr-2 ml-1">
+                    <FiCalendar className="text-[#0056a2] w-4 h-4" />
+                  </div>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setPagination((prev) => ({ ...prev, page: 1 }));
+                    }}
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer w-32"
+                    title={
+                      isStudyLeave
+                        ? "Filter by Submitted Date"
+                        : "Filter by Leave Date"
+                    }
+                  />
+                  {selectedDate && (
+                    <button
+                      onClick={() => {
+                        setSelectedDate("");
+                        setPagination((prev) => ({ ...prev, page: 1 }));
+                      }}
+                      className="ml-1 mr-2 text-gray-400 hover:text-rose-500"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
+                </div>
+
+                {/* ID Filter */}
+                <div className="bg-slate-50 rounded-xl p-1.5 flex items-center border border-slate-200">
+                  <div className="bg-white p-1.5 rounded-lg border border-slate-100 shadow-sm mr-2 ml-1">
+                    <FiUser className="text-[#0056a2] w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={internIdFilter}
+                    onChange={(e) =>
+                      setInternIdFilter(
+                        e.target.value.replace(/\D/g, "").slice(0, 4),
+                      )
+                    }
+                    placeholder="Intern ID"
+                    maxLength={4}
+                    className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none w-20 placeholder-gray-400"
+                  />
+                  {internIdFilter && (
+                    <button
+                      onClick={() => setInternIdFilter("")}
+                      className="ml-1 mr-2 text-gray-400 hover:text-rose-500"
+                    >
+                      <FiX size={14} />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    fetchLeaveRequests();
+                  }}
+                  className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm font-bold text-gray-700 focus:outline-none hover:bg-slate-50 transition-colors"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="urgent">Urgent First</option>
+                </select>
+
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer ml-1">
+                  <input
+                    type="checkbox"
+                    checked={autoRefresh}
+                    onChange={(e) => setAutoRefresh(e.target.checked)}
+                    className="w-4 h-4 text-[#0056a2] rounded focus:ring-[#0056a2] border-gray-300"
+                  />
+                  Auto-refresh
+                </label>
+
+                <button
+                  onClick={() => {
+                    fetchLeaveRequests();
+                    fetchStats();
+                    toast.success("Refreshed!");
+                  }}
+                  className="p-2.5 bg-slate-100 text-gray-600 rounded-xl hover:bg-slate-200 transition-colors ml-1"
+                  title="Refresh manually"
+                >
+                  🔄
+                </button>
+              </div>
+            </div>
+
+            {/* Context hints under filters */}
+            {(selectedDate || internIdFilter) && (
+              <div className="mt-3 flex gap-4 border-t border-slate-100 pt-3">
+                {selectedDate && (
+                  <p className="text-xs text-gray-500 font-medium">
+                    Showing date:{" "}
+                    <span className="font-bold text-[#0056a2]">
+                      {formatSelectedDate()}
+                    </span>
+                  </p>
+                )}
+                {internIdFilter && (
+                  <p className="text-xs text-gray-500 font-medium">
+                    Searching ID:{" "}
+                    <span className="font-bold text-[#0056a2]">
+                      {internIdFilter}
+                    </span>
+                    <span className="ml-2 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                      {filteredRequests.length} results
+                    </span>
+                  </p>
+                )}
+              </div>
+            )}
+          </motion.div>
+>>>>>>> talenthub/main
 
           {/* Bulk Actions Bar */}
           <AnimatePresence>
@@ -751,6 +1154,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     Request{selectedRequests.size > 1 ? "s" : ""} Selected
                   </span>
                 </div>
+<<<<<<< HEAD
                 <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
                   <button
                     onClick={() => handleBulkAction("approve")}
@@ -759,23 +1163,44 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   >
                     <FiCheckCircle className="text-base sm:text-lg shrink-0" /> 
                     <span className="truncate">Approve <span className="hidden sm:inline">Selected</span></span>
+=======
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => handleBulkAction("approve")}
+                    disabled={processing}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-green-700 transition-all disabled:opacity-50"
+                  >
+                    <FiCheckCircle /> Approve Selected
+>>>>>>> talenthub/main
                   </button>
                   <button
                     onClick={() => handleBulkAction("deny")}
                     disabled={processing}
+<<<<<<< HEAD
                     className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50 w-full"
                   >
                     <FiX className="text-base sm:text-lg shrink-0" /> 
                     <span className="truncate">Deny <span className="hidden sm:inline">Selected</span></span>
+=======
+                    className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50"
+                  >
+                    <FiX /> Deny Selected
+>>>>>>> talenthub/main
                   </button>
                   <button
                     onClick={() => {
                       setSelectedRequests(new Set());
                       setIsSelectAll(false);
                     }}
+<<<<<<< HEAD
                     className="col-span-2 sm:col-span-1 px-4 py-2.5 bg-gray-200/50 sm:bg-transparent text-gray-600 sm:text-gray-500 hover:bg-gray-200 sm:hover:bg-transparent hover:text-gray-800 rounded-xl sm:rounded-none font-bold text-xs sm:text-sm transition-colors text-center w-full sm:w-auto"
                   >
                     Clear <span className="sm:hidden">Selection</span>
+=======
+                    className="px-4 py-2 text-gray-500 hover:text-gray-800 font-bold text-sm transition-colors"
+                  >
+                    Clear
+>>>>>>> talenthub/main
                   </button>
                 </div>
               </motion.div>
@@ -797,17 +1222,33 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 <FiFileText className="h-10 w-10 text-slate-300" />
               </div>
               <h4 className="text-xl font-bold text-gray-700 mb-2">
+<<<<<<< HEAD
                 {pageCopy.empty}
               </h4>
               <p className="text-gray-500">
                 {selectedDate
+=======
+                {internIdFilter
+                  ? `No requests found for intern ID "${internIdFilter}"`
+                  : pageCopy.empty}
+              </h4>
+              <p className="text-gray-500">
+                {selectedDate && !internIdFilter
+>>>>>>> talenthub/main
                   ? `No requests found for ${formatSelectedDate()}.`
                   : "Try adjusting your filters."}
               </p>
               <div className="mt-8 flex justify-center gap-4">
+<<<<<<< HEAD
                 {(selectedDate || filter !== "all") && (
                   <button
                     onClick={() => {
+=======
+                {(internIdFilter || selectedDate || filter !== "all") && (
+                  <button
+                    onClick={() => {
+                      setInternIdFilter("");
+>>>>>>> talenthub/main
                       setSelectedDate("");
                       setFilter("all");
                     }}
@@ -829,6 +1270,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             </motion.div>
           ) : (
             <>
+<<<<<<< HEAD
               {/* Mobile Select All */}
               {filter === "Pending" && filteredRequests.length > 0 && (
                 <div className="md:hidden flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
@@ -852,6 +1294,13 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 <div className="overflow-visible md:overflow-x-auto">
                   <table className="min-w-full block md:table divide-y divide-gray-100">
                     <thead className="hidden md:table-header-group bg-slate-50/50">
+=======
+              {/* Premium Data Table */}
+              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-100">
+                    <thead className="bg-slate-50/50">
+>>>>>>> talenthub/main
                       <tr>
                         {filter === "Pending" && (
                           <th className="px-6 py-4 text-center w-12">
@@ -892,7 +1341,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                         </th>
                       </tr>
                     </thead>
+<<<<<<< HEAD
                     <tbody className="block md:table-row-group divide-y-0 md:divide-y divide-gray-50 bg-transparent md:bg-white">
+=======
+                    <tbody className="divide-y divide-gray-50 bg-white">
+>>>>>>> talenthub/main
                       <AnimatePresence>
                         {filteredRequests.map((request) => {
                           const urgent = isUrgentRequest(request.leaveDate);
@@ -904,7 +1357,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
                               key={request._id}
+<<<<<<< HEAD
                               className={`grid grid-cols-2 md:table-row mb-4 md:mb-0 bg-white rounded-2xl md:rounded-none shadow-sm md:shadow-none border border-gray-100 md:border-none transition-colors hover:bg-slate-50/50 overflow-hidden ${
+=======
+                              className={`transition-colors hover:bg-slate-50/50 ${
+>>>>>>> talenthub/main
                                 urgent && request.status === "Pending"
                                   ? "bg-rose-50/30"
                                   : todayRequest
@@ -913,6 +1370,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                               }`}
                             >
                               {filter === "Pending" && (
+<<<<<<< HEAD
                                 <td className="col-span-2 md:table-cell px-4 py-3 md:px-6 md:py-6 text-left md:text-center border-b border-gray-50 md:border-none">
                                   <div className="flex items-center gap-3 md:block">
                                     <input
@@ -975,21 +1433,88 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                         ? `Until ${formatDate(request.studyEndDate)}`
                                         : request.leaveTime}
                                     </span>
+=======
+                                <td className="px-6 py-4 text-center whitespace-nowrap">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRequests.has(request._id)}
+                                    onChange={() =>
+                                      handleSelectRequest(request._id)
+                                    }
+                                    className="w-4 h-4 text-[#0056a2] border-gray-300 rounded focus:ring-[#0056a2] cursor-pointer"
+                                    disabled={request.status !== "Pending"}
+                                  />
+                                </td>
+                              )}
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2">
+                                  <div className="font-bold text-gray-900 text-sm">
+                                    {request.internName}
+                                  </div>
+                                  {urgent && request.status === "Pending" && (
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-rose-500 text-white rounded uppercase tracking-wider font-bold animate-pulse">
+                                      Urgent
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-3 mt-1">
+                                  <div className="text-xs font-bold text-[#0056a2] bg-blue-50 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                    <FiUser size={10} /> ID:{" "}
+                                    {request.internTraineeId
+                                      ? internIdFilter
+                                        ? highlightMatch(
+                                            request.internTraineeId,
+                                            internIdFilter,
+                                          )
+                                        : request.internTraineeId
+                                      : "N/A"}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    NIC: {request.nationalId}
+>>>>>>> talenthub/main
                                   </div>
                                 </div>
                               </td>
 
+<<<<<<< HEAD
                               <td className="col-span-1 md:table-cell px-4 py-4 md:px-6 md:py-6 min-w-0 md:min-w-[150px] md:max-w-[200px] border-b border-gray-50 md:border-none">
                                 <div className="md:hidden text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Purpose</div>
                                 <span
                                   className={`${getPurposeBadgeClass(
                                     request.purpose,
                                   )} whitespace-normal inline-block text-center leading-snug`}
+=======
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                                  <FiCalendar className="text-gray-400" />
+                                  {formatDate(request.leaveDate)}
+                                  {todayRequest && (
+                                    <span className="text-[9px] px-1.5 py-0.5 bg-[#00b4eb] text-white rounded uppercase tracking-wider font-bold">
+                                      Today
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-medium text-gray-500 mt-1">
+                                  <FiClock className="text-gray-400" />
+                                  {isStudyLeave && request.studyEndDate
+                                    ? `Until ${formatDate(request.studyEndDate)}`
+                                    : request.leaveTime}
+                                </div>
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={getPurposeBadgeClass(
+                                    request.purpose,
+                                  )}
+>>>>>>> talenthub/main
                                 >
                                   {request.purpose}
                                 </span>
                               </td>
 
+<<<<<<< HEAD
                               <td className="col-span-1 md:table-cell px-4 py-4 md:px-6 md:py-6 min-w-0 md:min-w-[120px] text-sm font-medium text-gray-500 whitespace-normal border-b border-r border-gray-50 md:border-none">
                                 <div className="md:hidden text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Submitted</div>
                                 {formatDate(request.submittedAt)}
@@ -1001,11 +1526,23 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                   className={`${getStatusBadgeClass(
                                     request.status,
                                   )} inline-block whitespace-normal text-center`}
+=======
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">
+                                {formatDate(request.submittedAt)}
+                              </td>
+
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <span
+                                  className={getStatusBadgeClass(
+                                    request.status,
+                                  )}
+>>>>>>> talenthub/main
                                 >
                                   {request.status}
                                 </span>
                               </td>
 
+<<<<<<< HEAD
                               <td className="col-span-2 md:table-cell px-4 py-4 md:px-6 md:py-6 min-w-0 md:min-w-[160px] text-left md:text-right md:border-none bg-slate-50/30 md:bg-transparent">
                                 <div className="flex flex-col md:items-end gap-2">
                                   {request.status === "Pending" ? (
@@ -1038,15 +1575,55 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                       <button
                                         onClick={() => openReviewModal(request)}
                                         className="px-3 py-2 w-full bg-white text-[#0056a2] hover:bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-sm"
+=======
+                              <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <div className="flex items-center justify-end gap-2">
+                                  {request.status === "Pending" ? (
+                                    <>
+                                      <button
+                                        onClick={() =>
+                                          handleQuickAction(
+                                            request._id,
+                                            "approve",
+                                          )
+                                        }
+                                        disabled={processing}
+                                        className="p-2 bg-green-50 text-green-600 hover:bg-green-600 hover:text-white rounded-xl transition-all disabled:opacity-50 border border-green-200 hover:border-transparent"
+                                        title="Quick Approve"
+                                      >
+                                        <FiCheck size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleQuickAction(request._id, "deny")
+                                        }
+                                        disabled={processing}
+                                        className="p-2 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all disabled:opacity-50 border border-rose-200 hover:border-transparent"
+                                        title="Quick Deny"
+                                      >
+                                        <FiX size={16} />
+                                      </button>
+                                      <button
+                                        onClick={() => openReviewModal(request)}
+                                        className="px-3 py-1.5 bg-white text-[#0056a2] hover:bg-blue-50 border border-blue-200 rounded-xl text-xs font-bold transition-all shadow-sm"
+>>>>>>> talenthub/main
                                         title="Review Details"
                                       >
                                         Review
                                       </button>
+<<<<<<< HEAD
                                     </div>
                                   ) : (
                                     <button
                                       onClick={() => openReviewModal(request)}
                                       className="px-3 py-2 w-full md:w-auto bg-white md:bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm md:shadow-none"
+=======
+                                    </>
+                                  ) : (
+                                    <button
+                                      onClick={() => openReviewModal(request)}
+                                      className="px-3 py-1.5 bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all"
+>>>>>>> talenthub/main
                                     >
                                       Details
                                     </button>
@@ -1107,14 +1684,22 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+<<<<<<< HEAD
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+=======
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+>>>>>>> talenthub/main
             onClick={closeReviewModal}
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
+<<<<<<< HEAD
               className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto flex flex-col relative"
+=======
+              className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto flex flex-col relative"
+>>>>>>> talenthub/main
               onClick={(e) => e.stopPropagation()}
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] to-[#0056a2]"></div>
@@ -1168,7 +1753,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </div>
 
                 {/* Dates Grid */}
+<<<<<<< HEAD
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+=======
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+>>>>>>> talenthub/main
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1 flex items-center gap-1">
                       <FiCalendar /> Leave Date
@@ -1227,7 +1816,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </div>
 
                 {/* Proof Document */}
+<<<<<<< HEAD
                 {selectedRequest.proofDocument?.filename && (
+=======
+                {selectedRequest.proofDocument?.data && (
+>>>>>>> talenthub/main
                   <div className="flex items-center justify-between bg-blue-50 rounded-2xl p-4 border border-blue-100">
                     <div>
                       <span className="text-[10px] font-black text-[#0056a2] uppercase tracking-widest block mb-1">
@@ -1354,7 +1947,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+<<<<<<< HEAD
             className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+=======
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]"
+>>>>>>> talenthub/main
             onClick={() => !processing && setIsBulkModalOpen(false)}
           >
             <motion.div
@@ -1451,7 +2048,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+<<<<<<< HEAD
             className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+=======
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
+>>>>>>> talenthub/main
           >
             <motion.div
               initial={{ scale: 0.95, y: 20 }}
@@ -1474,12 +2075,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               </div>
 
               <div className="flex-1 overflow-auto p-4 bg-slate-100/50">
+<<<<<<< HEAD
                 {documentViewer.loading ? (
                   <div className="flex flex-col items-center justify-center min-h-[60vh] bg-white rounded-xl shadow-sm p-4">
                     <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0056a2] mb-4"></div>
                     <p className="text-gray-500 font-bold animate-pulse">Opening Document...</p>
                   </div>
                 ) : documentViewer.type === "pdf" ? (
+=======
+                {documentViewer.type === "pdf" ? (
+>>>>>>> talenthub/main
                   <iframe
                     src={documentViewer.url}
                     className="w-full h-full min-h-[60vh] border-0 rounded-xl bg-white shadow-sm"

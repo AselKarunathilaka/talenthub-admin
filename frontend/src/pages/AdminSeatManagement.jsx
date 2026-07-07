@@ -27,7 +27,11 @@ import {
   seatBookingCsvUtils,
   seatNotificationUtils,
 } from "../api/adminSeatApi";
+<<<<<<< HEAD
 import { leftSection, rightSection, useMapScale, getLocalISODate } from "./useSeatManagement";
+=======
+import { leftSection, rightSection, useMapScale } from "./useSeatManagement";
+>>>>>>> talenthub/main
 
 const TOTAL_SEATS = 88;
 
@@ -89,6 +93,7 @@ const AdminSeatManagement = () => {
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
   const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
+<<<<<<< HEAD
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
@@ -98,6 +103,17 @@ const AdminSeatManagement = () => {
     }
     return getLocalISODate(now);
   });
+=======
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getTodayDate());
+>>>>>>> talenthub/main
 
   const [stats, setStats] = useState({
     totalBookings: 0,
@@ -340,6 +356,7 @@ const AdminSeatManagement = () => {
     }
   };
 
+<<<<<<< HEAD
   const [exportingPendingCheckIns, setExportingPendingCheckIns] = useState(false);
 
   const handleExportPendingCheckIns = async () => {
@@ -365,6 +382,8 @@ const AdminSeatManagement = () => {
     }
   };
 
+=======
+>>>>>>> talenthub/main
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -390,6 +409,7 @@ const AdminSeatManagement = () => {
       ? searchResults.bookings
       : filteredBookings;
 
+<<<<<<< HEAD
   // Removed blocking loading screen to allow immediate render
 
   const todayStr = getLocalISODate();
@@ -399,6 +419,22 @@ const AdminSeatManagement = () => {
 
   const isToday = selectedDate === todayStr;
   const isTomorrow = selectedDate === tomorrowStr;
+=======
+  if (loading && bookings.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
+          />
+          <p className="text-gray-600 font-medium">Loading seat bookings...</p>
+        </div>
+      </div>
+    );
+  }
+>>>>>>> talenthub/main
 
   return (
     <AdminNavigation>
@@ -417,7 +453,11 @@ const AdminSeatManagement = () => {
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                     <Armchair className="text-[#0056a2] h-8 w-8" />
                   </div>
+<<<<<<< HEAD
                   Seat Reservations
+=======
+                  Seat Booking Monitor
+>>>>>>> talenthub/main
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}
@@ -443,6 +483,7 @@ const AdminSeatManagement = () => {
                 {!showHistory && (
                   <div className="flex gap-2 w-full sm:w-auto">
                     <div className="flex-1 sm:w-28 text-center p-3 bg-gray-50/80 rounded-2xl border border-gray-200">
+<<<<<<< HEAD
                       <div className="text-2xl font-black text-gray-600 leading-none mb-1">{loading ? "-" : lockedSeatsCount}</div>
                       <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Locked</div>
                     </div>
@@ -452,6 +493,17 @@ const AdminSeatManagement = () => {
                     </div>
                     <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100">
                       <div className="text-2xl font-black text-[#50b748] leading-none mb-1">{loading ? "-" : TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}</div>
+=======
+                      <div className="text-2xl font-black text-gray-600 leading-none mb-1">{lockedSeatsCount}</div>
+                      <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Locked</div>
+                    </div>
+                    <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100">
+                      <div className="text-2xl font-black text-rose-600 leading-none mb-1">{stats.occupiedSeats}</div>
+                      <div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Occupied</div>
+                    </div>
+                    <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100">
+                      <div className="text-2xl font-black text-[#50b748] leading-none mb-1">{TOTAL_SEATS - (stats.occupiedSeats + lockedSeatsCount)}</div>
+>>>>>>> talenthub/main
                       <div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div>
                     </div>
                   </div>
@@ -546,7 +598,11 @@ const AdminSeatManagement = () => {
                 <div>
                   <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                     <div className="p-1.5 bg-blue-50 rounded-lg text-[#0056a2]"><Armchair size={18} /></div>
+<<<<<<< HEAD
                     Seat Layout
+=======
+                    Seat Map Manager
+>>>>>>> talenthub/main
                   </h3>
                   <p className="text-sm text-gray-500 mt-1 font-medium">
                     Click a seat to lock or unlock it. Locked seats cannot be booked by interns.
@@ -561,7 +617,11 @@ const AdminSeatManagement = () => {
               
               <div 
                 ref={setMapElement}
+<<<<<<< HEAD
                 className="w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar border border-gray-100 shadow-inner relative"
+=======
+                className="w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar border border-gray-100 shadow-inner"
+>>>>>>> talenthub/main
                 style={{ height: "75vh", minHeight: "550px", maxHeight: "900px" }}
               >
                 <div className={`relative shrink-0 overflow-hidden transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
@@ -722,6 +782,7 @@ const AdminSeatManagement = () => {
                       : `Seat Bookings${selectedDate ? ` - ${formatDate(selectedDate)}` : ""}`}
                   </h3>
                </div>
+<<<<<<< HEAD
                <div className="flex w-full md:w-auto items-center gap-2 sm:gap-3">
                   {/* Export Pending Check-ins */}
                   {!showHistory && (
@@ -754,6 +815,20 @@ const AdminSeatManagement = () => {
                     <span className="whitespace-nowrap">Export Bookings</span>
                     {displayBookings.length > 0 && (
                       <span className="bg-white/20 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs">{displayBookings.length}</span>
+=======
+               <div className="flex items-center gap-3">
+                  <motion.button
+                    onClick={handleExportCSV}
+                    disabled={displayBookings.length === 0}
+                    className="flex items-center justify-center space-x-2 px-5 py-2.5 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none"
+                    whileHover={{ scale: displayBookings.length === 0 ? 1 : 1.05 }}
+                    whileTap={{ scale: displayBookings.length === 0 ? 1 : 0.95 }}
+                  >
+                    <FaDownload className="h-4 w-4" />
+                    <span>Export to CSV</span>
+                    {displayBookings.length > 0 && (
+                      <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs">{displayBookings.length}</span>
+>>>>>>> talenthub/main
                     )}
                   </motion.button>
                </div>
@@ -761,12 +836,20 @@ const AdminSeatManagement = () => {
 
             {/* Bookings Table */}
             <motion.div
+<<<<<<< HEAD
               className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative min-h-[300px]"
+=======
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+>>>>>>> talenthub/main
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.3 }}
             >
+<<<<<<< HEAD
               {!loading && displayBookings.length === 0 ? (
+=======
+              {displayBookings.length === 0 ? (
+>>>>>>> talenthub/main
                 <div className="text-center py-16 bg-gray-50 px-4">
                   <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100"><FaChair className="h-8 w-8 text-gray-300" /></div>
                   <h3 className="text-lg font-bold text-gray-700 mb-2">No bookings found</h3>

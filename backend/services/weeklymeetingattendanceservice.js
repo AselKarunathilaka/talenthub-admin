@@ -1,6 +1,9 @@
 const Intern = require("../models/Intern");
 const InternTalentTrailSync = require("../models/InternTalentTrailSync");
+<<<<<<< HEAD
 const DailyRecord = require("../models/DailyRecord");
+=======
+>>>>>>> talenthub/main
 const nodemailer = require("nodemailer");
 const moment = require("moment-timezone");
 const XLSX = require("xlsx");
@@ -139,6 +142,7 @@ class WeeklyMeetingAttendanceService {
     return trainingStart.isSameOrAfter(startDate);
   }
 
+<<<<<<< HEAD
   // ── Approved extended leave check ─────────────────────────────────────────
 
   /**
@@ -172,6 +176,8 @@ class WeeklyMeetingAttendanceService {
     }
   }
 
+=======
+>>>>>>> talenthub/main
   // ── Attendance check ──────────────────────────────────────────────────────
 
   /**
@@ -343,7 +349,11 @@ class WeeklyMeetingAttendanceService {
       excelData.push(["Immediate follow-up action is recommended."]);
       excelData.push([]);
       excelData.push([
+<<<<<<< HEAD
         "Note: Interns whose training started within the review period or who have approved extended leaves are excluded.",
+=======
+        "Note: Interns whose training started within the review period are excluded.",
+>>>>>>> talenthub/main
       ]);
 
       const workbook = XLSX.utils.book_new();
@@ -450,7 +460,11 @@ class WeeklyMeetingAttendanceService {
       </div>
       <p>
         The attached Excel file contains the complete list of interns who have <strong>NOT</strong> attended
+<<<<<<< HEAD
         any meetings during the above two-week review period. Interns whose training commenced within this period or who have approved extended leaves are excluded from the report.
+=======
+        any meetings during the above two-week review period. Interns whose training commenced within this period are excluded from the report.
+>>>>>>> talenthub/main
       </p>
       <div class="attachment-notice">
         <p style="margin: 0;"><strong>📎 Attachment:</strong> ${path.basename(excelFilePath)}</p>
@@ -554,14 +568,20 @@ class WeeklyMeetingAttendanceService {
       const activeInterns = await this.getActiveInterns();
       console.log(`👥 Found ${activeInterns.length} active interns to check`);
 
+<<<<<<< HEAD
       const workingDayStrings = workingDays.map((d) => d.format("YYYY-MM-DD"));
 
+=======
+>>>>>>> talenthub/main
       const results = {
         total: activeInterns.length,
         attended: 0,
         notAttended: 0,
         skippedNewInterns: 0,
+<<<<<<< HEAD
         skippedExtendedLeave: 0,
+=======
+>>>>>>> talenthub/main
         emailSent: false,
         emailMessageId: null,
         emailError: null,
@@ -583,6 +603,7 @@ class WeeklyMeetingAttendanceService {
             continue;
           }
 
+<<<<<<< HEAD
           const hasExtendedLeave = await this.hasApprovedExtendedLeaveForPeriod(
             intern._id,
             workingDayStrings,
@@ -595,6 +616,8 @@ class WeeklyMeetingAttendanceService {
             continue;
           }
 
+=======
+>>>>>>> talenthub/main
           const hasAttended = this.hasAttendedMeetingInPastTwoWeeks(intern);
 
           if (hasAttended) {
@@ -607,7 +630,11 @@ class WeeklyMeetingAttendanceService {
 
             const lastRecord = this.getLastAttendedMeeting(intern);
             const lastAttendedLabel = lastRecord
+<<<<<<< HEAD
               ? moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")
+=======
+              ? `${moment(lastRecord.date).tz(TZ).format("MMM DD, YYYY")}${lastRecord.meetingName ? ` — ${lastRecord.meetingName}` : ""}`
+>>>>>>> talenthub/main
               : "No record found";
 
             results.nonAttendingList.push({
@@ -620,8 +647,13 @@ class WeeklyMeetingAttendanceService {
               institute: intern.Institute || "Not specified",
               trainingStartDate: intern.Training_StartDate
                 ? moment(intern.Training_StartDate)
+<<<<<<< HEAD
                   .tz(TZ)
                   .format("MMM DD, YYYY")
+=======
+                    .tz(TZ)
+                    .format("MMM DD, YYYY")
+>>>>>>> talenthub/main
                 : "Not specified",
               trainingEndDate: intern.Training_EndDate
                 ? moment(intern.Training_EndDate).tz(TZ).format("MMM DD, YYYY")
@@ -686,9 +718,12 @@ class WeeklyMeetingAttendanceService {
       console.log(
         `🆕 New interns skipped:            ${results.skippedNewInterns}`,
       );
+<<<<<<< HEAD
       console.log(
         `🏝️  Extended leave skipped:        ${results.skippedExtendedLeave}`,
       );
+=======
+>>>>>>> talenthub/main
       console.log(`✅ Attended (past 2 weeks):        ${results.attended}`);
       console.log(`❌ Did NOT attend:                 ${results.notAttended}`);
       console.log(`📆 Working days in window:         ${workingDays.length}`);

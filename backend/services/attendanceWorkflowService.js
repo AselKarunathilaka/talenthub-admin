@@ -2,6 +2,7 @@ const axios = require("axios");
 const moment = require("moment-timezone");
 const mongoose = require("mongoose");
 const DailyRecord = require("../models/DailyRecord");
+<<<<<<< HEAD
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const Intern = require("../models/Intern");
 const externalConfig = require("../config/externalSystems");
@@ -18,6 +19,13 @@ const MINIMUM_CHECKOUT_MINUTES = Math.max(
   1,
   Number.parseInt(process.env.ATTENDANCE_MIN_CHECKOUT_MINUTES || "15", 10) || 15,
 );
+=======
+const Intern = require("../models/Intern");
+const externalConfig = require("../config/externalSystems");
+
+const DAILY_ATTENDANCE_TYPES = ["daily_qr", "face"];
+const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting"];
+>>>>>>> talenthub/main
 
 const escapeRegExp = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -50,6 +58,7 @@ const syncExternalAttendance = async ({ endpoint, sessionId, traineeId }) => {
   }
 };
 
+<<<<<<< HEAD
 const reconcileDailyAttendanceDuplicates = async ({
   internId,
   todayStart,
@@ -113,6 +122,8 @@ const reconcileDailyAttendanceDuplicates = async ({
   );
 };
 
+=======
+>>>>>>> talenthub/main
 const throwDailyAlreadyMarked = () => {
   const error = new Error("Daily attendance already marked today.");
   error.statusCode = 400;
@@ -125,6 +136,7 @@ const throwAttendanceError = (message, statusCode = 400) => {
   throw error;
 };
 
+<<<<<<< HEAD
 const throwPolicyError = (policy) => {
   const error = new Error(policy.message);
   error.statusCode = 400;
@@ -134,6 +146,8 @@ const throwPolicyError = (policy) => {
   throw error;
 };
 
+=======
+>>>>>>> talenthub/main
 const markDailyAttendance = async ({
   internId,
   sessionId = null,
@@ -141,8 +155,11 @@ const markDailyAttendance = async ({
   attendanceDate = null,
   duplicateMessage = "Duplicate daily attendance detected. Please wait before scanning again.",
   syncEndpoint = null,
+<<<<<<< HEAD
   allowCheckout = true,
   attendanceAction = "auto",
+=======
+>>>>>>> talenthub/main
 }) => {
   const intern = await Intern.findById(internId);
   if (!intern) throw new Error("Intern not found");
@@ -153,6 +170,7 @@ const markDailyAttendance = async ({
   const todayEnd = now.clone().endOf("day");
   const today = todayStart.format("YYYY-MM-DD");
   const existingDailyRecord = await DailyRecord.findOne({ internId, date: today });
+<<<<<<< HEAD
   const normalizedAttendanceAction = normalizeAttendanceAction(attendanceAction);
   const explicitCheckoutLogs = await FaceAttendanceLog.find({
     internId,
@@ -167,6 +185,11 @@ const markDailyAttendance = async ({
   const session = await mongoose.startSession();
   let checkedOut = false;
   let dailyAttendanceMarked = false;
+=======
+
+  const session = await mongoose.startSession();
+  let checkedOut = false;
+>>>>>>> talenthub/main
   try {
     await session.withTransaction(async () => {
       if (existingDailyRecord) {
@@ -214,6 +237,7 @@ const markDailyAttendance = async ({
 
       if (currentDailyEntry) {
         const currentType = String(currentDailyEntry.type || "");
+<<<<<<< HEAD
         const recoveredCheckout = findExplicitAuditCheckout(
           explicitCheckoutLogs,
           currentDailyEntry.timeMarked || currentDailyEntry.date,
@@ -241,6 +265,10 @@ const markDailyAttendance = async ({
         }
 
         if (!allowCheckout && method === "face" && currentType === "daily_qr") {
+=======
+
+        if (method === "face" && currentType === "daily_qr") {
+>>>>>>> talenthub/main
           await Intern.updateOne(
             {
               _id: internId,
@@ -269,6 +297,7 @@ const markDailyAttendance = async ({
             },
           );
 
+<<<<<<< HEAD
           dailyAttendanceMarked = true;
           return;
         }
@@ -285,6 +314,19 @@ const markDailyAttendance = async ({
 
         // Checkout is explicit at public Face/QR entry points. Meeting scans
         // pass allowCheckout=false so their automatic daily mark stays a no-op.
+=======
+          return;
+        }
+
+        if (currentDailyEntry.checkOutTime) {
+          const err = new Error("You are already out of office, please come tomorrow. Thank you!");
+          err.statusCode = 400;
+          err.alreadyMarked = true;
+          throw err;
+        }
+
+        // Treat subsequent scans as check-out
+>>>>>>> talenthub/main
         await DailyRecord.updateOne(
           { internId, date: today },
           { $set: { checkOutTime: attendanceTime } },
@@ -293,6 +335,7 @@ const markDailyAttendance = async ({
 
         await Intern.updateOne(
           { _id: internId },
+<<<<<<< HEAD
           {
             $set: {
               "attendance.$[record].checkOutTime": attendanceTime,
@@ -304,6 +347,9 @@ const markDailyAttendance = async ({
               ? { $unset: { "attendance.$[record].qrCode": "" } }
               : {}),
           },
+=======
+          { $set: { "attendance.$[record].checkOutTime": attendanceTime } },
+>>>>>>> talenthub/main
           {
             session,
             arrayFilters: [
@@ -317,6 +363,7 @@ const markDailyAttendance = async ({
         );
 
         checkedOut = true;
+<<<<<<< HEAD
         dailyAttendanceMarked = true;
         return;
       }
@@ -330,6 +377,11 @@ const markDailyAttendance = async ({
       });
       if (policy.operation === "reject") throwPolicyError(policy);
 
+=======
+        return;
+      }
+
+>>>>>>> talenthub/main
       await Intern.updateOne(
         { _id: internId },
         {
@@ -346,12 +398,16 @@ const markDailyAttendance = async ({
         },
         { session },
       );
+<<<<<<< HEAD
       dailyAttendanceMarked = true;
+=======
+>>>>>>> talenthub/main
     });
   } finally {
     await session.endSession();
   }
 
+<<<<<<< HEAD
   if (dailyAttendanceMarked) {
     await syncExternalAttendance({
       endpoint: syncEndpoint,
@@ -373,6 +429,13 @@ const markDailyAttendance = async ({
       );
     }
   }
+=======
+  await syncExternalAttendance({
+    endpoint: syncEndpoint,
+    sessionId,
+    traineeId: intern.Trainee_ID,
+  });
+>>>>>>> talenthub/main
 
   return {
     success: true,
@@ -380,6 +443,7 @@ const markDailyAttendance = async ({
     timeMarked: attendanceTime,
     type: method,
     checkedOut,
+<<<<<<< HEAD
     dailyAttendanceMarked,
   };
 };
@@ -440,6 +504,8 @@ const getDailyAttendanceStatus = async (internId, attendanceDate = null) => {
     checkOutTime,
     checkoutAvailableAt,
     minimumCheckoutMinutes: MINIMUM_CHECKOUT_MINUTES,
+=======
+>>>>>>> talenthub/main
   };
 };
 
@@ -651,9 +717,14 @@ const markMeetingAttendance = async ({
         method: dailyMethod,
         attendanceDate: attendanceTime,
         syncEndpoint: dailySyncEndpoint,
+<<<<<<< HEAD
         allowCheckout: false,
       });
       dailyAttendanceMarked = Boolean(result.dailyAttendanceMarked);
+=======
+      });
+      dailyAttendanceMarked = true;
+>>>>>>> talenthub/main
     } catch (error) {
       // Meeting attendance stays successful if daily attendance is already marked.
     }
@@ -675,6 +746,9 @@ const markMeetingAttendance = async ({
 module.exports = {
   markDailyAttendance,
   markMeetingAttendance,
+<<<<<<< HEAD
   reconcileDailyAttendanceDuplicates,
   getDailyAttendanceStatus,
+=======
+>>>>>>> talenthub/main
 };

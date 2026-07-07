@@ -240,6 +240,7 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
 
           {/* Intern summary */}
           <div className="logres-lift-summary">
+<<<<<<< HEAD
             <div className="logres-lift-summary__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
               <img
                 src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
@@ -253,6 +254,10 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
               <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
                 {(intern.traineeName || "?")[0].toUpperCase()}
               </div>
+=======
+            <div className="logres-lift-summary__avatar">
+              {(intern.traineeName || "?")[0].toUpperCase()}
+>>>>>>> talenthub/main
             </div>
             <div>
               <p className="logres-lift-summary__name">{intern.traineeName}</p>
@@ -407,6 +412,7 @@ const LogbookRestrictions = () => {
 
         {/* Main */}
         <div className="logres-content relative z-10 pt-4">
+<<<<<<< HEAD
           <main className="logres-main">
             {/* Back + title */}
             <div className="mb-8">
@@ -733,6 +739,339 @@ const LogbookRestrictions = () => {
         </AnimatePresence>
 
         <style>{`
+=======
+        <main className="logres-main">
+          {/* Back + title */}
+          <div className="mb-8">
+            <motion.h1
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            >
+              <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                <Lock className="text-[#0056a2] h-8 w-8" />
+              </div>
+              Logbook Restrictions
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+              className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+            >
+              Interns restricted due to missing weekly submissions. Lift access after supervisor approval.
+            </motion.p>
+          </div>
+
+          {/* Stats bar */}
+          <motion.div
+            className="logres-stats-bar"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+          >
+            <div className="logres-stat">
+              <span
+                className="logres-stat__value"
+                style={{ color: BRAND.danger }}
+              >
+                {loading ? "—" : interns.length}
+              </span>
+              <span className="logres-stat__label">Currently Restricted</span>
+            </div>
+            <div className="logres-stat logres-stat--divider" />
+            <div className="logres-stat">
+              <span
+                className="logres-stat__value"
+                style={{ color: BRAND.warn }}
+              >
+                {loading ? "—" : filtered.length}
+              </span>
+              <span className="logres-stat__label">Shown (filtered)</span>
+            </div>
+          </motion.div>
+
+          {/* Info banner */}
+          <motion.div
+            className="logres-info-banner"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+          >
+            <FaInfoCircle
+              style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }}
+            />
+            <p>
+              Interns listed below have been automatically restricted by the
+              system after missing logbook submissions for an entire
+              5-working-day period. To restore access, click
+              <strong> Lift Restriction</strong> and record the reason provided
+              during the supervisor meeting.
+            </p>
+          </motion.div>
+
+          {/* Search */}
+          <motion.div
+            className="logres-search-bar"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <FaSearch className="logres-search-bar__icon" />
+            <input
+              type="text"
+              placeholder="Search by name, trainee ID, or email…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="logres-search-bar__input"
+            />
+            {search && (
+              <button
+                className="logres-search-bar__clear"
+                onClick={() => setSearch("")}
+              >
+                <FaTimes />
+              </button>
+            )}
+          </motion.div>
+
+          {/* Content */}
+          {loading ? (
+            <div className="logres-loader">
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                className="logres-loader__spinner"
+              />
+              <p>Loading restricted interns…</p>
+            </div>
+          ) : error ? (
+            <div className="logres-error">
+              <FaExclamationTriangle
+                style={{ fontSize: 36, color: BRAND.danger }}
+              />
+              <p>{error}</p>
+              <button
+                className="logres-btn logres-btn--primary"
+                onClick={fetchRestricted}
+              >
+                Retry
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <motion.div
+              className="logres-empty"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="logres-empty__icon">
+                <FaCheckCircle style={{ color: BRAND.success, fontSize: 40 }} />
+              </div>
+              <h3>
+                {interns.length === 0 ? "No Restricted Interns" : "No Results"}
+              </h3>
+              <p>
+                {interns.length === 0
+                  ? "All interns currently have full logbook access. Restrictions are applied automatically at the end of each weekly check."
+                  : "Try adjusting your search."}
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              className="logres-list"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.25 }}
+            >
+              {/* Desktop table */}
+              <div className="logres-table-wrapper">
+                <table className="logres-table">
+                  <thead>
+                    <tr>
+                      <th>Intern</th>
+                      <th>Contact / Field</th>
+                      <th>Restricted Since</th>
+                      <th>Reason</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((intern, idx) => (
+                      <motion.tr
+                        key={intern._id}
+                        className="logres-table__row"
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.04 }}
+                      >
+                        <td>
+                          <div className="logres-table__intern-cell">
+                            <div className="logres-table__avatar">
+                              {(intern.traineeName || "?")[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="logres-table__name">
+                                {intern.traineeName}
+                              </div>
+                              <div className="logres-table__sub">
+                                {intern.traineeId}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="logres-table__name">
+                            {intern.email || "—"}
+                          </div>
+                          <div className="logres-table__sub">
+                            {intern.fieldOfSpecialization || "—"}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="logres-table__name">
+                            {fmtDate(intern.logbookRestrictedAt)}
+                          </div>
+                          <div className="logres-table__sub">
+                            {intern.logbookRestrictedAt
+                              ? `${Math.floor(
+                                  (Date.now() -
+                                    new Date(
+                                      intern.logbookRestrictedAt,
+                                    ).getTime()) /
+                                    86400000,
+                                )} days ago`
+                              : "—"}
+                          </div>
+                        </td>
+                        <td>
+                          <div
+                            className="logres-reason-cell"
+                            title={intern.logbookRestrictionReason}
+                          >
+                            {intern.logbookRestrictionReason || "—"}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="logres-action-btns">
+                            <button
+                              className="logres-btn logres-btn--lift logres-btn--sm"
+                              onClick={() => setLiftTarget(intern)}
+                            >
+                              <FaLockOpen style={{ marginRight: 4 }} /> Lift
+                            </button>
+                            <button
+                              className="logres-btn logres-btn--ghost logres-btn--sm"
+                              onClick={() => setHistoryTarget(intern)}
+                            >
+                              <FaHistory style={{ marginRight: 4 }} /> History
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="logres-cards-mobile">
+                {filtered.map((intern, idx) => (
+                  <motion.div
+                    key={intern._id}
+                    className="logres-card"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.04 }}
+                  >
+                    <div className="logres-card__top">
+                      <div className="logres-card__avatar">
+                        {(intern.traineeName || "?")[0].toUpperCase()}
+                      </div>
+                      <div className="logres-card__identity">
+                        <span className="logres-card__name">
+                          {intern.traineeName}
+                        </span>
+                        <span className="logres-card__id">
+                          {intern.traineeId}
+                        </span>
+                      </div>
+                      <div className="logres-card__badge">
+                        <FaLock style={{ marginRight: 4, fontSize: 10 }} />{" "}
+                        Restricted
+                      </div>
+                    </div>
+                    <div className="logres-card__meta">
+                      <span>📧 {intern.email}</span>
+                      <span>🎯 {intern.fieldOfSpecialization}</span>
+                      <span>
+                        🔒 Since {fmtDate(intern.logbookRestrictedAt)}
+                      </span>
+                    </div>
+                    {intern.logbookRestrictionReason && (
+                      <p className="logres-card__reason">
+                        {intern.logbookRestrictionReason}
+                      </p>
+                    )}
+                    <div className="logres-card__actions">
+                      <button
+                        className="logres-btn logres-btn--lift logres-btn--sm"
+                        onClick={() => setLiftTarget(intern)}
+                      >
+                        <FaLockOpen style={{ marginRight: 4 }} /> Lift
+                        Restriction
+                      </button>
+                      <button
+                        className="logres-btn logres-btn--ghost logres-btn--sm"
+                        onClick={() => setHistoryTarget(intern)}
+                      >
+                        <FaHistory style={{ marginRight: 4 }} /> History
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </main>
+      </div>
+
+      {/* Modals */}
+      {liftTarget && (
+        <LiftModal
+          intern={liftTarget}
+          onClose={() => setLiftTarget(null)}
+          onSuccess={handleLiftSuccess}
+        />
+      )}
+      {historyTarget && (
+        <HistoryModal
+          intern={historyTarget}
+          onClose={() => setHistoryTarget(null)}
+        />
+      )}
+
+      {/* Toast */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className={`logres-toast logres-toast--${toast.type}`}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 40 }}
+          >
+            {toast.type === "success" ? (
+              <FaCheckCircle style={{ marginRight: 8 }} />
+            ) : (
+              <FaExclamationTriangle style={{ marginRight: 8 }} />
+            )}
+            {toast.msg}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <style>{`
+>>>>>>> talenthub/main
         /* ── Root ── */
         .logres-root {
           min-height: 100vh;
@@ -1089,8 +1428,13 @@ const LogbookRestrictions = () => {
         @keyframes logres-spin { to { transform: rotate(360deg); } }
         .logres-spin { animation: logres-spin 0.8s linear infinite; }
       `}</style>
+<<<<<<< HEAD
       </div>
     </AdminNavigation>
+=======
+    </div>
+  </AdminNavigation>
+>>>>>>> talenthub/main
   );
 };
 
