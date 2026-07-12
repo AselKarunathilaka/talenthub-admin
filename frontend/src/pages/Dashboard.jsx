@@ -348,7 +348,7 @@ const Dashboard = () => {
       ? new Date(internData.Training_EndDate)
       : null;
     const now = new Date();
-    const measureTo = end || now;
+    const measureTo = now;
     if (isNaN(start) || measureTo <= start) return 0;
     const weeksHeld = Math.max(
       1,
@@ -696,7 +696,7 @@ const Dashboard = () => {
                         ? new Date(internData.Training_EndDate)
                         : null;
                       const now = new Date();
-                      const measureTo = end || now;
+                      const measureTo = now;
                       if (isNaN(start) || measureTo <= start) return null;
                       const weeksHeld = Math.max(
                         1,
@@ -740,7 +740,8 @@ const Dashboard = () => {
                             />
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            Attended {weeksPresent} out of {weeksHeld} weeks
+                            Attended {weeksPresent} out of {weeksHeld} weeks so
+                            far
                           </p>
                         </div>
                       );

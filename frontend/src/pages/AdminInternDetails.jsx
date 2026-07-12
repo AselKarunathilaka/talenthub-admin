@@ -692,7 +692,7 @@ const AdminInternDetails = () => {
                                 : null;
                               const now = new Date();
                               // Total weeks across the full internship duration (start date to end date)
-                              const measureTo = end || now;
+                              const measureTo = now;
                               if (isNaN(start) || measureTo <= start)
                                 return null;
                               const weeksHeld = Math.max(
@@ -742,7 +742,7 @@ const AdminInternDetails = () => {
                                   </div>
                                   <p className="text-[10px] text-slate-400 mt-1">
                                     {present} weeks attended out of {weeksHeld}{" "}
-                                    total weeks (1 meeting per week)
+                                    weeks so far (1 meeting per week)
                                   </p>
                                 </div>
                               );
