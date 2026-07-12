@@ -110,6 +110,14 @@ const attendanceApi = {
     await downloadBlob(res, `Non_Attendance_Report_${localToday}.xlsx`);
   },
 
+  exportMeetingWithoutDailyExcel: (date) =>
+    fetch(
+      `${API_BASE_URL}/admin/attendance/export-meeting-without-daily?date=${date}`,
+      { headers: getAuthHeaders() },
+    ).then((res) =>
+      downloadBlob(res, `Meeting_Without_Daily_Report_${date}.xlsx`),
+    ),
+
   getSettings: async () => {
     const res = await fetch(`${API_BASE_URL}/admin/attendance/settings`, {
       headers: getAuthHeaders(),
@@ -130,8 +138,6 @@ const attendanceApi = {
     return res.json();
   },
 };
-
-
 
 const getLocalToday = () => {
   const d = new Date();
@@ -345,9 +351,13 @@ const AttendanceTable = ({
               <p className="text-xs text-gray-500">🏛️ {intern.institute}</p>
               {!isMeeting && intern.timeMarked !== "—" && (
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-xs text-gray-500">🕐 {intern.timeMarked} (In)</p>
+                  <p className="text-xs text-gray-500">
+                    🕐 {intern.timeMarked} (In)
+                  </p>
                   {intern.checkOutTime && (
-                    <p className="text-xs text-gray-500">🕐 {intern.checkOutTime} (Out)</p>
+                    <p className="text-xs text-gray-500">
+                      🕐 {intern.checkOutTime} (Out)
+                    </p>
                   )}
                 </div>
               )}
@@ -434,9 +444,7 @@ const AttendanceTable = ({
           <tbody className="divide-y divide-gray-50">
             {paginated.map((intern, idx) => (
               <React.Fragment key={intern._id}>
-                <motion.tr
-                  className="hover:bg-slate-50/50 transition-colors group"
-                >
+                <motion.tr className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-3 py-3 text-xs text-gray-400 font-mono">
                     {(page - 1) * PAGE_SIZE + idx + 1}
                   </td>
@@ -491,7 +499,9 @@ const AttendanceTable = ({
                         {intern.checkOutTime && (
                           <div className="flex items-center gap-1">
                             <FaClock className="h-3 w-3 text-amber-500 flex-shrink-0" />
-                            <span className="truncate text-gray-500">{intern.checkOutTime}</span>
+                            <span className="truncate text-gray-500">
+                              {intern.checkOutTime}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -557,8 +567,6 @@ const AttendanceTable = ({
   );
 };
 
-
-
 // ── Main Component ─────────────────────────────────────────────────────────────
 const AdminInternAttendance = () => {
   const navigate = useNavigate();
@@ -573,6 +581,7 @@ const AdminInternAttendance = () => {
   const [exportingMeetingPdf, setExportingMeetingPdf] = useState(false);
   const [exportingDailyPdf, setExportingDailyPdf] = useState(false);
   const [exportingNonAttendance, setExportingNonAttendance] = useState(false);
+  const [exportingMissingDaily, setExportingMissingDaily] = useState(false);
   const [triggering, setTriggering] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -581,8 +590,6 @@ const AdminInternAttendance = () => {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
   const [expandedInterns, setExpandedInterns] = useState({});
-
-
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
   const [recipientInput, setRecipientInput] = useState("");
@@ -640,7 +647,7 @@ const AdminInternAttendance = () => {
         nextValue
           ? "SLT Location Requirement ON"
           : "SLT Location Requirement OFF",
-        nextValue ? "success" : "error"
+        nextValue ? "success" : "error",
       );
     } catch (err) {
       setSltLocationRequired(!nextValue);
@@ -712,488 +719,564 @@ const AdminInternAttendance = () => {
       day: "numeric",
     });
 
-
-
   return (
     <AdminNavigation>
       <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
         <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <AnimatePresence>
+            {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
+          </AnimatePresence>
 
-      <AnimatePresence>
-        {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
-      </AnimatePresence>
-
-      {/* ── Send Report Modal ── */}
-      <AnimatePresence>
-        {showTriggerModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) =>
-              e.target === e.currentTarget && setShowTriggerModal(false)
-            }
-          >
-            <motion.div
-              className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6"
-              initial={{ scale: 0.92, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.92, opacity: 0, y: 20 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            >
-              <div className="flex items-center justify-between mb-5">
-                <div className="flex items-center space-x-3">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
-                    <FaBell className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-semibold text-gray-900">
-                      Send Non-Attendance Report
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      Triggers the weekly email + Excel attachment
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowTriggerModal(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <FaTimes className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
-                This will check all active interns for meeting attendance over
-                the <strong>past 14 days</strong> and email a non-attendance
-                report to the recipients below.
-              </div>
-
-              <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
-                Recipients
-              </label>
-              <div className="flex flex-wrap gap-2 mb-3 min-h-[36px]">
-                {recipients.map((email) => (
-                  <span
-                    key={email}
-                    className="inline-flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-full text-xs text-indigo-700 font-medium"
-                  >
-                    <span>{email}</span>
-                    <button
-                      onClick={() => removeRecipient(email)}
-                      className="opacity-60 hover:opacity-100 transition-opacity"
-                    >
-                      <FaTimes className="h-2.5 w-2.5" />
-                    </button>
-                  </span>
-                ))}
-                {recipients.length === 0 && (
-                  <span className="text-xs text-gray-400 italic">
-                    No recipients added
-                  </span>
-                )}
-              </div>
-
-              <div className="flex space-x-2 mb-5">
-                <input
-                  type="email"
-                  value={recipientInput}
-                  onChange={(e) => setRecipientInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && addRecipient()}
-                  placeholder="Add email address..."
-                  className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
-                />
-                <motion.button
-                  onClick={addRecipient}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl text-sm font-medium transition-colors"
-                >
-                  Add
-                </motion.button>
-              </div>
-
-              <div className="flex space-x-3">
-                <motion.button
-                  onClick={() => setShowTriggerModal(false)}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  onClick={handleTriggerReport}
-                  disabled={triggering || recipients.length === 0}
-                  whileHover={{ scale: triggering ? 1 : 1.02 }}
-                  whileTap={{ scale: triggering ? 1 : 0.98 }}
-                  className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
-                >
-                  {triggering ? (
-                    <>
-                      <FaSpinner className="h-3.5 w-3.5 animate-spin" />
-                      <span>Sending…</span>
-                    </>
-                  ) : (
-                    <>
-                      <FaRegPaperPlane className="h-3.5 w-3.5" />
-                      <span>Send Report</span>
-                    </>
-                  )}
-                </motion.button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Page ── */}
-      <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-        <div className="space-y-4 md:space-y-5">
-            {/* ── Header Row ── */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <ScanLine className="text-[#0056a2] h-7 w-7" />
-                  </div>
-                  Attendance
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1, duration: 0.2 }}
-                  className="mt-2 text-sm text-gray-500 font-medium"
-                >
-                  Browse intern attendance and absentees
-                </motion.p>
-              </div>
-
+          {/* ── Send Report Modal ── */}
+          <AnimatePresence>
+            {showTriggerModal && (
               <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1, duration: 0.2 }}
-                className="flex flex-row items-center gap-2 sm:gap-3 w-full md:w-auto"
+                className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={(e) =>
+                  e.target === e.currentTarget && setShowTriggerModal(false)
+                }
               >
-                {/* SLT Location Toggle */}
-                <div className="flex-1 flex items-center justify-between gap-1 sm:gap-3 rounded-xl border border-gray-200 bg-white px-2.5 sm:px-3 py-2 shadow-sm">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <FaMapMarkerAlt
-                      className={`h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
-                    />
-                    <span className="text-[11px] sm:text-xs font-semibold text-gray-700 whitespace-nowrap">
-                      Location
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleToggleLocationRequirement}
-                    disabled={settingsLoading || settingsSaving}
-                    className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
-                    aria-pressed={sltLocationRequired}
-                    aria-label="Toggle SLT location requirement"
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-4 sm:translate-x-5" : "translate-x-0.5"}`}
-                    />
-                  </button>
-                </div>
-
-
-                <button
-                  onClick={() => navigate("/admin/manual-attendance")}
-                  className="flex-1 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                <motion.div
+                  className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md p-6"
+                  initial={{ scale: 0.92, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.92, opacity: 0, y: 20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  <span className="whitespace-nowrap">Mark Attendance</span>
-                </button>
-              </motion.div>
-            </div>
-
-            {/* ── Unified Toolbar ── */}
-            <motion.div
-              className="bg-white p-2.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-2.5"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
-            >
-              {/* Top Toolbar Row: Tabs & Reports */}
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
-                {/* Tabs */}
-                <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
-                  <button
-                    onClick={() => {
-                      setActiveTab("meeting");
-                      setSearchTerm("");
-                      setExpandedInterns({});
-                    }}
-                    className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
-                      activeTab === "meeting"
-                        ? "text-white"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <span>Meeting</span>
-                    {meetingData?.count != null && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "meeting" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}>
-                        {meetingData.count}
-                      </span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setActiveTab("daily");
-                      setSearchTerm("");
-                      setExpandedInterns({});
-                    }}
-                    className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
-                      activeTab === "daily"
-                        ? "text-white"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    <span>Daily</span>
-                    {dailyData?.count != null && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "daily" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}>
-                        {dailyData.count}
-                      </span>
-                    )}
-                  </button>
-
-                  <div
-                    className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
-                    style={{
-                      background:
-                        activeTab === "meeting"
-                          ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                          : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
-                      left: activeTab === "meeting" ? "6px" : "calc(50%)",
-                    }}
-                  />
-                </div>
-
-                {/* Reports Actions */}
-                <div className="flex w-full lg:w-auto mt-2 lg:mt-0">
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-auto gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
-                    <div className="flex items-center justify-center px-2 py-1 sm:py-0">
-                      <span className="text-[10px] sm:text-xs font-bold text-red-600 uppercase tracking-wider whitespace-nowrap">
-                        Absentees List
-                      </span>
+                  <div className="flex items-center justify-between mb-5">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
+                        <FaBell className="h-4 w-4 text-indigo-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-semibold text-gray-900">
+                          Send Non-Attendance Report
+                        </h3>
+                        <p className="text-xs text-gray-500">
+                          Triggers the weekly email + Excel attachment
+                        </p>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                      <motion.button
-                        onClick={async () => {
-                          setExportingNonAttendance(true);
-                          try {
-                            await attendanceApi.exportNonAttendanceExcel();
-                            showToast("Non-attendance Excel downloaded", "success");
-                          } catch (err) {
-                            showToast(err.message || "Export failed", "error");
-                          } finally {
-                            setExportingNonAttendance(false);
-                          }
-                        }}
-                        disabled={exportingNonAttendance}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                        title="Export non-attendance report (last 14 days)"
-                      >
-                        {exportingNonAttendance ? (
-                          <FaSpinner className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <FaFileExcel className="h-3 w-3" />
-                        )}
-                        <span>Excel</span>
-                      </motion.button>
-                      
-                      <motion.button
-                        onClick={() => setShowTriggerModal(true)}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
-                        title="Email non-attendance report to managers"
-                      >
-                        <FaEnvelope className="h-3 w-3" />
-                        <span>Email</span>
-                      </motion.button>
-                    </div>
+                    <button
+                      onClick={() => setShowTriggerModal(false)}
+                      className="text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                      <FaTimes className="h-4 w-4" />
+                    </button>
                   </div>
+
+                  <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
+                    This will check all active interns for meeting attendance
+                    over the <strong>past 14 days</strong> and email a
+                    non-attendance report to the recipients below.
+                  </div>
+
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-2">
+                    Recipients
+                  </label>
+                  <div className="flex flex-wrap gap-2 mb-3 min-h-[36px]">
+                    {recipients.map((email) => (
+                      <span
+                        key={email}
+                        className="inline-flex items-center space-x-1.5 px-3 py-1 bg-indigo-50 border border-indigo-200 rounded-full text-xs text-indigo-700 font-medium"
+                      >
+                        <span>{email}</span>
+                        <button
+                          onClick={() => removeRecipient(email)}
+                          className="opacity-60 hover:opacity-100 transition-opacity"
+                        >
+                          <FaTimes className="h-2.5 w-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                    {recipients.length === 0 && (
+                      <span className="text-xs text-gray-400 italic">
+                        No recipients added
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex space-x-2 mb-5">
+                    <input
+                      type="email"
+                      value={recipientInput}
+                      onChange={(e) => setRecipientInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && addRecipient()}
+                      placeholder="Add email address..."
+                      className="flex-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:border-transparent"
+                    />
+                    <motion.button
+                      onClick={addRecipient}
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="px-3 py-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 rounded-xl text-sm font-medium transition-colors"
+                    >
+                      Add
+                    </motion.button>
+                  </div>
+
+                  <div className="flex space-x-3">
+                    <motion.button
+                      onClick={() => setShowTriggerModal(false)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="flex-1 py-2.5 border border-gray-200 text-gray-600 rounded-xl text-sm font-medium hover:bg-gray-50 transition-colors"
+                    >
+                      Cancel
+                    </motion.button>
+                    <motion.button
+                      onClick={handleTriggerReport}
+                      disabled={triggering || recipients.length === 0}
+                      whileHover={{ scale: triggering ? 1 : 1.02 }}
+                      whileTap={{ scale: triggering ? 1 : 0.98 }}
+                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
+                    >
+                      {triggering ? (
+                        <>
+                          <FaSpinner className="h-3.5 w-3.5 animate-spin" />
+                          <span>Sending…</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaRegPaperPlane className="h-3.5 w-3.5" />
+                          <span>Send Report</span>
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ── Page ── */}
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            <div className="space-y-4 md:space-y-5">
+              {/* ── Header Row ── */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <motion.h1
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                  >
+                    <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                      <ScanLine className="text-[#0056a2] h-7 w-7" />
+                    </div>
+                    Attendance
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.2 }}
+                    className="mt-2 text-sm text-gray-500 font-medium"
+                  >
+                    Browse intern attendance and absentees
+                  </motion.p>
                 </div>
+
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1, duration: 0.2 }}
+                  className="flex flex-row items-center gap-2 sm:gap-3 w-full md:w-auto"
+                >
+                  {/* SLT Location Toggle */}
+                  <div className="flex-1 flex items-center justify-between gap-1 sm:gap-3 rounded-xl border border-gray-200 bg-white px-2.5 sm:px-3 py-2 shadow-sm">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <FaMapMarkerAlt
+                        className={`h-3.5 w-3.5 sm:h-3.5 sm:w-3.5 ${sltLocationRequired ? "text-blue-600" : "text-gray-400"}`}
+                      />
+                      <span className="text-[11px] sm:text-xs font-semibold text-gray-700 whitespace-nowrap">
+                        Location
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleLocationRequirement}
+                      disabled={settingsLoading || settingsSaving}
+                      className={`relative inline-flex h-5 w-9 sm:h-6 sm:w-11 flex-shrink-0 items-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${sltLocationRequired ? "bg-blue-600" : "bg-gray-300"}`}
+                      aria-pressed={sltLocationRequired}
+                      aria-label="Toggle SLT location requirement"
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 sm:h-5 sm:w-5 transform rounded-full bg-white shadow transition-transform ${sltLocationRequired ? "translate-x-4 sm:translate-x-5" : "translate-x-0.5"}`}
+                      />
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => navigate("/admin/manual-attendance")}
+                    className="flex-1 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                  >
+                    <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="whitespace-nowrap">Mark Attendance</span>
+                  </button>
+                </motion.div>
               </div>
 
-              <hr className="border-gray-100 m-0" />
-
-              {/* Bottom Toolbar Row: Filters */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 p-1">
-                {/* Date Selector */}
-                <div className="flex items-center gap-2 bg-slate-50 border border-gray-100 rounded-xl px-3 py-2 w-full sm:w-auto">
-                  <FaCalendarDay className="text-[#00b4eb] h-4 w-4" />
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="bg-transparent text-sm font-semibold text-gray-800 w-full focus:outline-none cursor-pointer"
-                  />
-                </div>
-                {selectedDate !== today && (
-                  <button
-                    onClick={() => setSelectedDate(today)}
-                    className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
-                  >
-                    Today
-                  </button>
-                )}
-
-                {/* Search Bar */}
-                <div className="relative w-full flex-1">
-                  <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Search by name, ID, field, or institute..."
-                    className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#00b4eb] text-sm transition-all"
-                  />
-                  {searchTerm && (
+              {/* ── Unified Toolbar ── */}
+              <motion.div
+                className="bg-white p-2.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-2.5"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+              >
+                {/* Top Toolbar Row: Tabs & Reports */}
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
+                  {/* Tabs */}
+                  <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
                     <button
-                      onClick={() => setSearchTerm("")}
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full"
+                      onClick={() => {
+                        setActiveTab("meeting");
+                        setSearchTerm("");
+                        setExpandedInterns({});
+                      }}
+                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                        activeTab === "meeting"
+                          ? "text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
                     >
-                      <FaTimes className="h-3 w-3" />
+                      <span>Meeting</span>
+                      {meetingData?.count != null && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "meeting" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
+                        >
+                          {meetingData.count}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab("daily");
+                        setSearchTerm("");
+                        setExpandedInterns({});
+                      }}
+                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                        activeTab === "daily"
+                          ? "text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                      }`}
+                    >
+                      <span>Daily</span>
+                      {dailyData?.count != null && (
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "daily" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
+                        >
+                          {dailyData.count}
+                        </span>
+                      )}
+                    </button>
+
+                    <div
+                      className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
+                      style={{
+                        background:
+                          activeTab === "meeting"
+                            ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
+                            : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                        left: activeTab === "meeting" ? "6px" : "calc(50%)",
+                      }}
+                    />
+                  </div>
+
+                  {/* Reports Actions */}
+                  <div className="flex w-full lg:w-auto mt-2 lg:mt-0">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-auto gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
+                      <div className="flex items-center justify-center px-2 py-1 sm:py-0">
+                        <span className="text-[10px] sm:text-xs font-bold text-red-600 uppercase tracking-wider whitespace-nowrap">
+                          Absentees List
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <motion.button
+                          onClick={async () => {
+                            setExportingNonAttendance(true);
+                            try {
+                              await attendanceApi.exportNonAttendanceExcel();
+                              showToast(
+                                "Non-attendance Excel downloaded",
+                                "success",
+                              );
+                            } catch (err) {
+                              showToast(
+                                err.message || "Export failed",
+                                "error",
+                              );
+                            } finally {
+                              setExportingNonAttendance(false);
+                            }
+                          }}
+                          disabled={exportingNonAttendance}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
+                          title="Export non-attendance report (last 14 days)"
+                        >
+                          {exportingNonAttendance ? (
+                            <FaSpinner className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <FaFileExcel className="h-3 w-3" />
+                          )}
+                          <span>Excel</span>
+                        </motion.button>
+
+                        <motion.button
+                          onClick={() => setShowTriggerModal(true)}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
+                          title="Email non-attendance report to managers"
+                        >
+                          <FaEnvelope className="h-3 w-3" />
+                          <span>Email</span>
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-100 m-0" />
+
+                {/* Bottom Toolbar Row: Filters */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 p-1">
+                  {/* Date Selector */}
+                  <div className="flex items-center gap-2 bg-slate-50 border border-gray-100 rounded-xl px-3 py-2 w-full sm:w-auto">
+                    <FaCalendarDay className="text-[#00b4eb] h-4 w-4" />
+                    <input
+                      type="date"
+                      value={selectedDate}
+                      onChange={(e) => setSelectedDate(e.target.value)}
+                      className="bg-transparent text-sm font-semibold text-gray-800 w-full focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                  {selectedDate !== today && (
+                    <button
+                      onClick={() => setSelectedDate(today)}
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
+                    >
+                      Today
                     </button>
                   )}
-                </div>
-              </div>
-            </motion.div>
 
-            {/* ── Attendance Table ── */}
-            <motion.div
-              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.3 }}
-            >
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-snug">
-                    {loading
-                      ? "Loading…"
-                      : activeData
-                        ? (
-                          <>
-                            {activeTab === "meeting" ? "Meeting" : "Daily"} Attendance — <br />
-                            {formatDateLabel(selectedDate)}
-                          </>
-                        )
-                        : "Attendance Records"}
-                  </h2>
-                  {!loading && activeData && (
-                    <p className="text-sm text-gray-500 font-medium mt-0.5">
-                      {searchTerm
-                        ? `${filtered.length} of ${activeData.count} shown`
-                        : `${activeData.count} intern${activeData.count !== 1 ? "s" : ""} marked present`}
-                    </p>
-                  )}
+                  {/* Search Bar */}
+                  <div className="relative w-full flex-1">
+                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search by name, ID, field, or institute..."
+                      className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#00b4eb] text-sm transition-all"
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full"
+                      >
+                        <FaTimes className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  {loading && (
-                    <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
-                  )}
+              </motion.div>
+
+              {/* ── Meeting Without Daily Report ── */}
+              <motion.div
+                className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.25, duration: 0.3 }}
+              >
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-100 rounded-xl flex-shrink-0">
+                      <FaUsers className="text-amber-600 h-4 w-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">
+                        Meeting Attendance Without Daily Check-in
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Interns who attended a meeting but didn't mark daily
+                        attendance on {formatDateLabel(selectedDate)}
+                      </p>
+                    </div>
+                  </div>
+
                   <motion.button
                     onClick={async () => {
-                      if (activeTab === "meeting") {
-                        if (!meetingData || meetingData.count === 0) {
-                          showToast("No records to export", "info");
-                          return;
-                        }
-                        setExportingMeetingPdf(true);
-                        try {
-                          await attendanceApi.exportMeetingPdf(selectedDate);
-                          showToast("Meeting PDF downloaded", "success");
-                        } catch (err) {
-                          showToast(err.message || "PDF export failed", "error");
-                        } finally {
-                          setExportingMeetingPdf(false);
-                        }
-                      } else {
-                        if (!dailyData || dailyData.count === 0) {
-                          showToast("No records to export", "info");
-                          return;
-                        }
-                        setExportingDailyPdf(true);
-                        try {
-                          await attendanceApi.exportDailyPdf(selectedDate);
-                          showToast("Daily PDF downloaded", "success");
-                        } catch (err) {
-                          showToast(err.message || "PDF export failed", "error");
-                        } finally {
-                          setExportingDailyPdf(false);
-                        }
+                      setExportingMissingDaily(true);
+                      try {
+                        await attendanceApi.exportMeetingWithoutDailyExcel(
+                          selectedDate,
+                        );
+                        showToast(
+                          "Meeting-without-daily report downloaded",
+                          "success",
+                        );
+                      } catch (err) {
+                        showToast(err.message || "Export failed", "error");
+                      } finally {
+                        setExportingMissingDaily(false);
                       }
                     }}
-                    disabled={(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) || ((activeTab === "meeting" ? meetingData?.count : dailyData?.count) === 0)}
+                    disabled={exportingMissingDaily}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="flex items-center space-x-1.5 px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-bold shadow-sm border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 whitespace-nowrap w-full sm:w-auto justify-center"
                   >
-                    {(activeTab === "meeting" ? exportingMeetingPdf : exportingDailyPdf) ? (
-                      <FaSpinner className="h-3.5 w-3.5 animate-spin text-[#00b4eb]" />
+                    {exportingMissingDaily ? (
+                      <FaSpinner className="h-3 w-3 animate-spin" />
                     ) : (
-                      <FaFilePdf className="h-3.5 w-3.5 text-red-500" />
+                      <FaFileExcel className="h-3 w-3" />
                     )}
-                    <span className="hidden sm:inline">Export PDF</span>
+                    <span>Download Excel</span>
                   </motion.button>
                 </div>
-              </div>
+              </motion.div>
 
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <motion.div
-                    animate={{ rotate: 360 }}
-                    transition={{
-                      duration: 1,
-                      repeat: Infinity,
-                      ease: "linear",
-                    }}
-                    className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-4"
+              {/* ── Attendance Table ── */}
+              <motion.div
+                className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.3 }}
+              >
+                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-snug">
+                      {loading ? (
+                        "Loading…"
+                      ) : activeData ? (
+                        <>
+                          {activeTab === "meeting" ? "Meeting" : "Daily"}{" "}
+                          Attendance — <br />
+                          {formatDateLabel(selectedDate)}
+                        </>
+                      ) : (
+                        "Attendance Records"
+                      )}
+                    </h2>
+                    {!loading && activeData && (
+                      <p className="text-sm text-gray-500 font-medium mt-0.5">
+                        {searchTerm
+                          ? `${filtered.length} of ${activeData.count} shown`
+                          : `${activeData.count} intern${activeData.count !== 1 ? "s" : ""} marked present`}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-4">
+                    {loading && (
+                      <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
+                    )}
+                    <motion.button
+                      onClick={async () => {
+                        if (activeTab === "meeting") {
+                          if (!meetingData || meetingData.count === 0) {
+                            showToast("No records to export", "info");
+                            return;
+                          }
+                          setExportingMeetingPdf(true);
+                          try {
+                            await attendanceApi.exportMeetingPdf(selectedDate);
+                            showToast("Meeting PDF downloaded", "success");
+                          } catch (err) {
+                            showToast(
+                              err.message || "PDF export failed",
+                              "error",
+                            );
+                          } finally {
+                            setExportingMeetingPdf(false);
+                          }
+                        } else {
+                          if (!dailyData || dailyData.count === 0) {
+                            showToast("No records to export", "info");
+                            return;
+                          }
+                          setExportingDailyPdf(true);
+                          try {
+                            await attendanceApi.exportDailyPdf(selectedDate);
+                            showToast("Daily PDF downloaded", "success");
+                          } catch (err) {
+                            showToast(
+                              err.message || "PDF export failed",
+                              "error",
+                            );
+                          } finally {
+                            setExportingDailyPdf(false);
+                          }
+                        }
+                      }}
+                      disabled={
+                        (activeTab === "meeting"
+                          ? exportingMeetingPdf
+                          : exportingDailyPdf) ||
+                        (activeTab === "meeting"
+                          ? meetingData?.count
+                          : dailyData?.count) === 0
+                      }
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="flex items-center space-x-1.5 px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-bold shadow-sm border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {(
+                        activeTab === "meeting"
+                          ? exportingMeetingPdf
+                          : exportingDailyPdf
+                      ) ? (
+                        <FaSpinner className="h-3.5 w-3.5 animate-spin text-[#00b4eb]" />
+                      ) : (
+                        <FaFilePdf className="h-3.5 w-3.5 text-red-500" />
+                      )}
+                      <span className="hidden sm:inline">Export PDF</span>
+                    </motion.button>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-4"
+                    />
+                    <p className="text-sm">Fetching attendance…</p>
+                  </div>
+                ) : filtered.length === 0 && searchTerm ? (
+                  <div className="text-center py-16 bg-gray-50 px-4">
+                    <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-4" />
+                    <h3 className="text-base font-medium text-gray-600 mb-1">
+                      No results
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      Try a different search term.
+                    </p>
+                  </div>
+                ) : (
+                  <AttendanceTable
+                    filtered={filtered}
+                    selectedDate={selectedDate}
+                    isMeeting={activeTab === "meeting"}
+                    expandedInterns={expandedInterns}
+                    toggleInternMeetings={toggleInternMeetings}
                   />
-                  <p className="text-sm">Fetching attendance…</p>
-                </div>
-              ) : filtered.length === 0 && searchTerm ? (
-                <div className="text-center py-16 bg-gray-50 px-4">
-                  <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-4" />
-                  <h3 className="text-base font-medium text-gray-600 mb-1">
-                    No results
-                  </h3>
-                  <p className="text-sm text-gray-400">
-                    Try a different search term.
-                  </p>
-                </div>
-              ) : (
-                <AttendanceTable
-                  filtered={filtered}
-                  selectedDate={selectedDate}
-                  isMeeting={activeTab === "meeting"}
-                  expandedInterns={expandedInterns}
-                  toggleInternMeetings={toggleInternMeetings}
-                />
-              )}
-            </motion.div>
+                )}
+              </motion.div>
+            </div>
+          </main>
         </div>
-      </main>
       </div>
-
-
-
-    </div>
     </AdminNavigation>
   );
 };
