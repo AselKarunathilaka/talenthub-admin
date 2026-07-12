@@ -194,7 +194,12 @@ const AdminInternDetails = () => {
       if (!adminInfo.token) return;
       const res = await fetch(
         `${(await import("../api/apiConfig")).API_BASE_URL}/admin/intern/${internId}/certificate-data`,
-        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` } }
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${adminInfo.token}`,
+          },
+        },
       );
       if (!res.ok) return;
       const certData = await res.json();
@@ -513,7 +518,7 @@ const AdminInternDetails = () => {
                       <div className="h-24 sm:h-32 bg-slate-900 w-full relative overflow-hidden">
                         <div className="absolute inset-0 bg-[linear-gradient(40deg,transparent_20%,rgba(255,255,255,0.05)_50%,transparent_80%)]"></div>
                       </div>
-                      
+
                       <div className="px-5 sm:px-8 pb-6 sm:pb-8 relative">
                         {/* Avatar & Buttons Row */}
                         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 -mt-10 sm:-mt-12 mb-4">
@@ -524,13 +529,27 @@ const AdminInternDetails = () => {
                                 <img
                                   src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                                   alt={intern.traineeName}
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  }}
                                   onError={(e) => {
-                                    e.target.style.display = 'none';
-                                    if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                    e.target.style.display = "none";
+                                    if (e.target.nextSibling)
+                                      e.target.nextSibling.style.display =
+                                        "flex";
                                   }}
                                 />
-                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                <div
+                                  style={{
+                                    display: "none",
+                                    width: "100%",
+                                    height: "100%",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
                                   <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
                                 </div>
                               </div>
@@ -547,18 +566,26 @@ const AdminInternDetails = () => {
                             <motion.button
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={() => window.open(`mailto:${intern.email}`, "_blank")}
+                              onClick={() =>
+                                window.open(`mailto:${intern.email}`, "_blank")
+                              }
                               className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-white text-slate-700 border border-gray-300 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors shadow-sm"
                             >
-                              <FaEnvelope className="mr-2 text-slate-400" /> Contact
+                              <FaEnvelope className="mr-2 text-slate-400" />{" "}
+                              Contact
                             </motion.button>
                             <motion.button
                               whileHover={{ scale: 1.02 }}
                               whileTap={{ scale: 0.98 }}
-                              onClick={() => navigate(`/admin/intern/${internId}/certificate`)}
+                              onClick={() =>
+                                navigate(
+                                  `/admin/intern/${internId}/certificate`,
+                                )
+                              }
                               className="flex-1 sm:flex-none flex items-center justify-center px-4 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors shadow-sm border border-slate-900"
                             >
-                              <FaCertificate className="mr-2 text-amber-400" /> Certificate
+                              <FaCertificate className="mr-2 text-amber-400" />{" "}
+                              Certificate
                             </motion.button>
                           </div>
                         </div>
@@ -569,91 +596,157 @@ const AdminInternDetails = () => {
                             {intern.traineeName}
                           </h3>
                           <p className="text-sm font-medium text-slate-500 mt-0.5">
-                            Trainee ID: <span className="text-slate-700">{intern.traineeId}</span>
+                            Trainee ID:{" "}
+                            <span className="text-slate-700">
+                              {intern.traineeId}
+                            </span>
                           </p>
                         </div>
 
                         {/* Metadata Strip */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-5 border-t border-gray-100">
                           <div>
-                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Email</p>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+                              Email
+                            </p>
                             <div className="flex items-center text-sm font-medium text-slate-800">
                               <FaEnvelope className="mr-2 text-slate-400" />
                               <span className="truncate">{intern.email}</span>
                             </div>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Specialization</p>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+                              Specialization
+                            </p>
                             <div className="flex items-center text-sm font-medium text-slate-800">
                               <FaBuilding className="mr-2 text-slate-400" />
-                              <span className="truncate">{intern.fieldOfSpecialization || "Not specified"}</span>
+                              <span className="truncate">
+                                {intern.fieldOfSpecialization ||
+                                  "Not specified"}
+                              </span>
                             </div>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">Start Date</p>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+                              Start Date
+                            </p>
                             <div className="flex items-center text-sm font-medium text-slate-800">
                               <FaCalendarAlt className="mr-2 text-slate-400" />
-                              {intern.startDate ? formatDate(intern.startDate) : "N/A"}
+                              {intern.startDate
+                                ? formatDate(intern.startDate)
+                                : "N/A"}
                             </div>
                           </div>
                           <div>
-                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">End Date</p>
+                            <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-1">
+                              End Date
+                            </p>
                             <div className="flex items-center text-sm font-medium text-slate-800">
                               <FaCalendarCheck className="mr-2 text-slate-400" />
-                              {intern.endDate ? formatDate(intern.endDate) : "N/A"}
+                              {intern.endDate
+                                ? formatDate(intern.endDate)
+                                : "N/A"}
                             </div>
                           </div>
 
-                          {/* Meeting Attendance % = attended ÷ meetings held so far */}
-                          {attendanceData && intern.startDate && (() => {
-                            let present = 0;
-                            if (attendanceData.meetingAttendance && Array.isArray(attendanceData.meetingAttendance)) {
-                              const weeks = new Set();
-                              attendanceData.meetingAttendance.forEach(entry => {
-                                if (entry.status === 'Present' && entry.date) {
-                                  const d = new Date(entry.date);
-                                  if (!isNaN(d.getTime())) {
-                                    const day = d.getDay();
-                                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-                                    const monday = new Date(new Date(d).setDate(diff));
-                                    weeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
-                                  }
-                                }
-                              });
-                              present = weeks.size;
-                            } else {
-                              present = attendanceData?.stats?.present ?? 0;
-                            }
-                            const start = new Date(intern.startDate);
-                            const end = intern.endDate ? new Date(intern.endDate) : null;
-                            const now = new Date();
-                            // Meetings held so far = weeks elapsed (1 meeting per week), capped at training end
-                            const measureTo = end && end < now ? end : now;
-                            if (isNaN(start) || measureTo <= start) return null;
-                            const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
-                            const pct = Math.min(100, Math.round((present / weeksHeld) * 100));
-                            const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-                            const textColor = pct >= 80 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
-                            return (
-                              <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
-                                    <FaChartPie className="text-slate-400" /> Meeting Attendance Rate
+                          {/* Meeting Attendance % = weeks attended ÷ total weeks (start date to end date) */}
+                          {attendanceData &&
+                            intern.startDate &&
+                            (() => {
+                              let present = 0;
+                              if (
+                                attendanceData.meetingAttendance &&
+                                Array.isArray(attendanceData.meetingAttendance)
+                              ) {
+                                const weeks = new Set();
+                                attendanceData.meetingAttendance.forEach(
+                                  (entry) => {
+                                    if (
+                                      entry.status === "Present" &&
+                                      entry.date
+                                    ) {
+                                      const d = new Date(entry.date);
+                                      if (!isNaN(d.getTime())) {
+                                        const day = d.getDay();
+                                        const diff =
+                                          d.getDate() -
+                                          day +
+                                          (day === 0 ? -6 : 1);
+                                        const monday = new Date(
+                                          new Date(d).setDate(diff),
+                                        );
+                                        weeks.add(
+                                          `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`,
+                                        );
+                                      }
+                                    }
+                                  },
+                                );
+                                present = weeks.size;
+                              } else {
+                                present = attendanceData?.stats?.present ?? 0;
+                              }
+                              const start = new Date(intern.startDate);
+                              const end = intern.endDate
+                                ? new Date(intern.endDate)
+                                : null;
+                              const now = new Date();
+                              // Total weeks across the full internship duration (start date to end date)
+                              const measureTo = end || now;
+                              if (isNaN(start) || measureTo <= start)
+                                return null;
+                              const weeksHeld = Math.max(
+                                1,
+                                Math.ceil(
+                                  (measureTo - start) /
+                                    (1000 * 60 * 60 * 24 * 7),
+                                ),
+                              );
+                              const pct = Math.min(
+                                100,
+                                Math.round((present / weeksHeld) * 100),
+                              );
+                              const color =
+                                pct >= 80
+                                  ? "#22c55e"
+                                  : pct >= 50
+                                    ? "#f59e0b"
+                                    : "#ef4444";
+                              const textColor =
+                                pct >= 80
+                                  ? "text-emerald-600"
+                                  : pct >= 50
+                                    ? "text-amber-500"
+                                    : "text-red-500";
+                              return (
+                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                      <FaChartPie className="text-slate-400" />{" "}
+                                      Meeting Attendance Rate
+                                    </p>
+                                    <span
+                                      className={`text-sm font-black ${textColor}`}
+                                    >
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-2 rounded-full transition-all duration-700"
+                                      style={{
+                                        width: `${pct}%`,
+                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                                      }}
+                                    />
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 mt-1">
+                                    {present} weeks attended out of {weeksHeld}{" "}
+                                    total weeks (1 meeting per week)
                                   </p>
-                                  <span className={`text-sm font-black ${textColor}`}>{pct}%</span>
                                 </div>
-                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                  <div
-                                    className="h-2 rounded-full transition-all duration-700"
-                                    style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
-                                  />
-                                </div>
-                                <p className="text-[10px] text-slate-400 mt-1">
-                                  {present} attended out of {weeksHeld} meetings held so far (1 per week)
-                                </p>
-                              </div>
-                            );
-                          })()}
+                              );
+                            })()}
                         </div>
                       </div>
                     </motion.div>
@@ -692,46 +785,38 @@ const AdminInternDetails = () => {
                               : "Never",
                           icon: FaClock,
                           width: statistics.daysSinceLastSubmission
-                            ? Math.max(5, 100 - statistics.daysSinceLastSubmission * 5)
+                            ? Math.max(
+                                5,
+                                100 - statistics.daysSinceLastSubmission * 5,
+                              )
                             : 0,
                         },
-                      ].map(
-                        ({
-                          label,
-                          value,
-                          icon: Icon,
-                          width,
-                        }) => (
-                          <div
-                            key={label}
-                            className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden"
-                          >
-                            <div className="flex items-center justify-between mb-4">
-                              <div>
-                                <p className="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">
-                                  {label}
-                                </p>
-                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-                                  {value}
-                                </p>
-                              </div>
-                              <div
-                                className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center"
-                              >
-                                <Icon
-                                  className="h-5 w-5 text-slate-600"
-                                />
-                              </div>
+                      ].map(({ label, value, icon: Icon, width }) => (
+                        <div
+                          key={label}
+                          className="bg-white p-4 sm:p-5 rounded-2xl border border-gray-200 shadow-sm relative overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-wider font-bold text-slate-400 mb-1">
+                                {label}
+                              </p>
+                              <p className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
+                                {value}
+                              </p>
                             </div>
-                            <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                              <div
-                                className="bg-slate-800 h-1.5 rounded-full transition-all duration-1000 ease-out"
-                                style={{ width: `${width}%` }}
-                              />
+                            <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center">
+                              <Icon className="h-5 w-5 text-slate-600" />
                             </div>
                           </div>
-                        ),
-                      )}
+                          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-slate-800 h-1.5 rounded-full transition-all duration-1000 ease-out"
+                              style={{ width: `${width}%` }}
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </motion.div>
 
                     {/* Current Projects */}
@@ -1213,26 +1298,46 @@ const AdminInternDetails = () => {
                           <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 p-5 sm:p-6 border-b border-gray-100">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div>
-                                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{intern.traineeName}</h3>
-                                <p className="text-sm text-gray-500 mt-0.5">{intern.traineeId}</p>
-                                {intern.startDate && intern.endDate && (() => {
-                                  const daysLeft = Math.ceil(
-                                    (new Date(intern.endDate) - new Date()) / (1000 * 60 * 60 * 24)
-                                  );
-                                  return daysLeft > 0 ? (
-                                    <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-sm">
-                                      {daysLeft} DAYS REMAINING
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-red-500 to-red-600 shadow-sm">
-                                      TRAINING ENDED
-                                    </span>
-                                  );
-                                })()}
+                                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
+                                  {intern.traineeName}
+                                </h3>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                  {intern.traineeId}
+                                </p>
+                                {intern.startDate &&
+                                  intern.endDate &&
+                                  (() => {
+                                    const daysLeft = Math.ceil(
+                                      (new Date(intern.endDate) - new Date()) /
+                                        (1000 * 60 * 60 * 24),
+                                    );
+                                    return daysLeft > 0 ? (
+                                      <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-sm">
+                                        {daysLeft} DAYS REMAINING
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-red-500 to-red-600 shadow-sm">
+                                        TRAINING ENDED
+                                      </span>
+                                    );
+                                  })()}
                               </div>
                               {intern.lastSeen && (
                                 <span className="text-xs text-gray-400 bg-white/70 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
-                                  Last seen: {new Date(intern.lastSeen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(intern.lastSeen).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                                  Last seen:{" "}
+                                  {new Date(intern.lastSeen).toLocaleDateString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    },
+                                  )}{" "}
+                                  at{" "}
+                                  {new Date(intern.lastSeen).toLocaleTimeString(
+                                    "en-US",
+                                    { hour: "2-digit", minute: "2-digit" },
+                                  )}
                                 </span>
                               )}
                             </div>
@@ -1242,19 +1347,34 @@ const AdminInternDetails = () => {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
                             {/* Personal Information */}
                             <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm h-full">
-                              <h4 className="text-sm font-bold text-gray-900 mb-3">Personal Information</h4>
+                              <h4 className="text-sm font-bold text-gray-900 mb-3">
+                                Personal Information
+                              </h4>
                               <div className="space-y-3">
                                 <div>
-                                  <p className="text-xs text-gray-400">Email:</p>
-                                  <p className="text-sm font-medium text-gray-800 break-all">{intern.email || "Not specified"}</p>
+                                  <p className="text-xs text-gray-400">
+                                    Email:
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-800 break-all">
+                                    {intern.email || "Not specified"}
+                                  </p>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-gray-400">Institute:</p>
-                                  <p className="text-sm font-medium text-gray-800">{intern.institute || "Not specified"}</p>
+                                  <p className="text-xs text-gray-400">
+                                    Institute:
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-800">
+                                    {intern.institute || "Not specified"}
+                                  </p>
                                 </div>
                                 <div>
-                                  <p className="text-xs text-gray-400">Specialization:</p>
-                                  <p className="text-sm font-medium text-gray-800">{intern.fieldOfSpecialization || "Not specified"}</p>
+                                  <p className="text-xs text-gray-400">
+                                    Specialization:
+                                  </p>
+                                  <p className="text-sm font-medium text-gray-800">
+                                    {intern.fieldOfSpecialization ||
+                                      "Not specified"}
+                                  </p>
                                 </div>
                               </div>
                             </div>
@@ -1262,60 +1382,104 @@ const AdminInternDetails = () => {
                             <div className="space-y-4">
                               {/* Training Period */}
                               <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                                <h4 className="text-sm font-bold text-gray-900 mb-3">Training Period</h4>
+                                <h4 className="text-sm font-bold text-gray-900 mb-3">
+                                  Training Period
+                                </h4>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
-                                    <p className="text-xs text-gray-400">Start Date:</p>
-                                    <p className="text-sm font-semibold text-gray-800">{intern.startDate ? formatDate(intern.startDate) : "N/A"}</p>
+                                    <p className="text-xs text-gray-400">
+                                      Start Date:
+                                    </p>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      {intern.startDate
+                                        ? formatDate(intern.startDate)
+                                        : "N/A"}
+                                    </p>
                                   </div>
                                   <div>
-                                    <p className="text-xs text-gray-400">End Date:</p>
-                                    <p className="text-sm font-semibold text-gray-800">{intern.endDate ? formatDate(intern.endDate) : "N/A"}</p>
+                                    <p className="text-xs text-gray-400">
+                                      End Date:
+                                    </p>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      {intern.endDate
+                                        ? formatDate(intern.endDate)
+                                        : "N/A"}
+                                    </p>
                                   </div>
-                                  {intern.startDate && intern.endDate && (() => {
-                                    const start = new Date(intern.startDate);
-                                    const end = new Date(intern.endDate);
-                                    const totalDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-                                    const weeks = Math.floor(totalDays / 7);
-                                    const remainingDays = totalDays % 7;
-                                    const daysLeft = Math.ceil((end - new Date()) / (1000 * 60 * 60 * 24));
-                                    return (
-                                      <>
-                                        <div>
-                                          <p className="text-xs text-gray-400">Duration:</p>
-                                          <p className="text-sm font-semibold text-gray-800">{weeks} weeks, {remainingDays} days</p>
-                                        </div>
-                                        <div>
-                                          <p className="text-xs text-gray-400">Status:</p>
-                                          <p className={`text-sm font-semibold ${daysLeft > 0 ? "text-green-600" : "text-red-600"}`}>
-                                            {daysLeft > 0 ? `${daysLeft} days remaining` : "Training ended"}
-                                          </p>
-                                        </div>
-                                      </>
-                                    );
-                                  })()}
+                                  {intern.startDate &&
+                                    intern.endDate &&
+                                    (() => {
+                                      const start = new Date(intern.startDate);
+                                      const end = new Date(intern.endDate);
+                                      const totalDays = Math.ceil(
+                                        (end - start) / (1000 * 60 * 60 * 24),
+                                      );
+                                      const weeks = Math.floor(totalDays / 7);
+                                      const remainingDays = totalDays % 7;
+                                      const daysLeft = Math.ceil(
+                                        (end - new Date()) /
+                                          (1000 * 60 * 60 * 24),
+                                      );
+                                      return (
+                                        <>
+                                          <div>
+                                            <p className="text-xs text-gray-400">
+                                              Duration:
+                                            </p>
+                                            <p className="text-sm font-semibold text-gray-800">
+                                              {weeks} weeks, {remainingDays}{" "}
+                                              days
+                                            </p>
+                                          </div>
+                                          <div>
+                                            <p className="text-xs text-gray-400">
+                                              Status:
+                                            </p>
+                                            <p
+                                              className={`text-sm font-semibold ${daysLeft > 0 ? "text-green-600" : "text-red-600"}`}
+                                            >
+                                              {daysLeft > 0
+                                                ? `${daysLeft} days remaining`
+                                                : "Training ended"}
+                                            </p>
+                                          </div>
+                                        </>
+                                      );
+                                    })()}
                                 </div>
                               </div>
 
                               {/* Project Assignments */}
                               <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                                <h4 className="text-sm font-bold text-gray-900 mb-3">Project Assignments</h4>
-                                {intern.projects && intern.projects.length > 0 ? (
+                                <h4 className="text-sm font-bold text-gray-900 mb-3">
+                                  Project Assignments
+                                </h4>
+                                {intern.projects &&
+                                intern.projects.length > 0 ? (
                                   <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
                                     {intern.projects.map((proj, pi) => (
-                                      <div key={pi} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                      <div
+                                        key={pi}
+                                        className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg border border-gray-100"
+                                      >
                                         <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center flex-shrink-0 shadow-sm">
                                           <FaProjectDiagram className="text-white text-xs" />
                                         </div>
                                         <div className="min-w-0">
-                                          <p className="text-sm font-semibold text-gray-800 truncate">{proj.projectName}</p>
-                                          <p className="text-xs text-gray-400">Status: {proj.status || "N/A"}</p>
+                                          <p className="text-sm font-semibold text-gray-800 truncate">
+                                            {proj.projectName}
+                                          </p>
+                                          <p className="text-xs text-gray-400">
+                                            Status: {proj.status || "N/A"}
+                                          </p>
                                         </div>
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-gray-400 italic">No projects assigned</p>
+                                  <p className="text-sm text-gray-400 italic">
+                                    No projects assigned
+                                  </p>
                                 )}
                               </div>
                             </div>
@@ -1339,7 +1503,11 @@ const AdminInternDetails = () => {
                             <div className="flex justify-center items-center py-16">
                               <motion.div
                                 animate={{ rotate: 360 }}
-                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                transition={{
+                                  duration: 1,
+                                  repeat: Infinity,
+                                  ease: "linear",
+                                }}
                                 className="w-8 h-8 border-t-2 border-b-2 border-slate-800 rounded-full"
                               />
                             </div>
@@ -1398,11 +1566,15 @@ const AdminInternDetails = () => {
                                     >
                                       <div className="flex justify-between items-start mb-2">
                                         <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shadow-sm">
-                                          <Icon className={`text-lg ${accentColor}`} />
+                                          <Icon
+                                            className={`text-lg ${accentColor}`}
+                                          />
                                         </div>
                                       </div>
                                       <div className="mt-2">
-                                        <p className={`text-2xl font-bold tracking-tight ${accentColor}`}>
+                                        <p
+                                          className={`text-2xl font-bold tracking-tight ${accentColor}`}
+                                        >
                                           {count}
                                         </p>
                                         <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500 mt-1">
@@ -1852,7 +2024,8 @@ const AdminInternDetails = () => {
                                   {logbookModal.task && (
                                     <div>
                                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
-                                        <FaCheckCircle className="text-blue-500 mr-1.5" /> Tasks Completed
+                                        <FaCheckCircle className="text-blue-500 mr-1.5" />{" "}
+                                        Tasks Completed
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
                                         {logbookModal.task}
@@ -1862,7 +2035,8 @@ const AdminInternDetails = () => {
                                   {logbookModal.progress && (
                                     <div>
                                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
-                                        <FaChartLine className="text-emerald-500 mr-1.5" /> Progress
+                                        <FaChartLine className="text-emerald-500 mr-1.5" />{" "}
+                                        Progress
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
                                         {logbookModal.progress}
@@ -1872,7 +2046,8 @@ const AdminInternDetails = () => {
                                   {logbookModal.blockers && (
                                     <div>
                                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
-                                        <FaExclamationTriangle className="text-amber-500 mr-1.5" /> Challenges / Blockers
+                                        <FaExclamationTriangle className="text-amber-500 mr-1.5" />{" "}
+                                        Challenges / Blockers
                                       </p>
                                       <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">
                                         {logbookModal.blockers}
@@ -1951,7 +2126,9 @@ const AdminInternDetails = () => {
                                     key={label}
                                     className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm"
                                   >
-                                    <p className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 ${color}`}>
+                                    <p
+                                      className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 ${color}`}
+                                    >
                                       {value}
                                     </p>
                                     <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
