@@ -389,7 +389,7 @@ class WeeklyMeetingAttendanceService {
 
   static async sendNonAttendanceEmailWithExcel(
     nonAttendingInterns,
-    recipients = "dimalshacooray@gmail.com",
+    recipients = "send2liyanapathirana@gmail.com",
   ) {
     let excelFilePath = null;
 
@@ -533,7 +533,7 @@ class WeeklyMeetingAttendanceService {
   // ── Main entry point ──────────────────────────────────────────────────────
 
   static async performWeeklyMeetingAttendanceCheck(
-    recipients = "dimalshacooray@gmail.com",
+    recipients = "send2liyanapathirana@gmail.com",
     triggerType = "scheduled",
   ) {
     const startTime = new Date();
