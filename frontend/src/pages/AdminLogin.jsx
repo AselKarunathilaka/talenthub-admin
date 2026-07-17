@@ -302,7 +302,7 @@ const AdminLogin = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center h-[380px]"
+              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center min-h-[470px]"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.1)",

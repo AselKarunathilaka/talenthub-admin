@@ -6,9 +6,9 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   picture: user.picture,
-  role: user.role,
-  permissions: user.permissions,
-  isActive: user.isActive,
+  role: user.role || "supervisor",
+  permissions: user.permissions || [],
+  isActive: user.isActive !== false,
   lastLoginAt: user.lastLoginAt,
   createdAt: user.createdAt,
 });
@@ -46,17 +46,23 @@ exports.updateUser = async (req, res, next) => {
     if (String(user._id) === String(req.admin._id)) return res.status(400).json({ message: "You cannot change your own access." });
 
     const { name, role, permissions, isActive } = req.body;
-    if (name !== undefined) user.name = String(name).trim();
+    const updates = {};
+    if (name !== undefined) updates.name = String(name).trim();
     if (role !== undefined) {
       if (!["admin", "supervisor"].includes(role)) return res.status(400).json({ message: "Invalid role." });
-      user.role = role;
+      updates.role = role;
     }
     if (permissions !== undefined) {
       if (!Array.isArray(permissions)) return res.status(400).json({ message: "Permissions must be an array." });
-      user.permissions = permissions.filter((item) => ALL_PERMISSIONS.includes(item) && item !== "users.manage");
+      updates.permissions = permissions.filter((item) => ALL_PERMISSIONS.includes(item) && item !== "users.manage");
     }
-    if (isActive !== undefined) user.isActive = Boolean(isActive);
-    await user.save();
-    res.json({ user: publicUser(user) });
+    if (isActive !== undefined) updates.isActive = Boolean(isActive);
+
+    // Normalize historical accounts while updating them. Atomic updates avoid
+    // re-validating unrelated legacy fields such as old password records.
+    if (!user.role) updates.role = updates.role || "supervisor";
+    if (!user.permissions) updates.permissions = updates.permissions || permissionsForRole(updates.role || "supervisor");
+    const updatedUser = await User.findByIdAndUpdate(user._id, { $set: updates }, { new: true, runValidators: true });
+    res.json({ user: publicUser(updatedUser) });
   } catch (error) { next(error); }
 };

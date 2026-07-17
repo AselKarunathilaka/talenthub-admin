@@ -54,6 +54,23 @@ const registerFaceProfile = async (req, res) => {
   }
 };
 
+const registerFaceProfileBatch = async (req, res) => {
+  try {
+    const internId = resolveInternId(req);
+    if (!internId) return res.status(400).json({ message: "Intern ID is required." });
+    const { descriptors, metadata = {} } = req.body;
+    const result = await FaceAttendanceService.registerFaceProfileBatch({
+      internId,
+      descriptors,
+      source: metadata.source || "browser-camera",
+      metadata,
+    });
+    return res.status(201).json({ message: "Face profile saved successfully.", profile: sanitizeFaceProfile(result.profile) });
+  } catch (error) {
+    return res.status(400).json({ message: error.message || "Failed to save face profile." });
+  }
+};
+
 const verifyFaceAttendance = async (req, res) => {
   try {
       const {
@@ -521,6 +538,7 @@ const registerFaceProfileByAdmin = async (req, res) => {
 
 module.exports = {
   registerFaceProfile,
+  registerFaceProfileBatch,
   verifyFaceAttendance,
   getFaceProfile,
   getFaceLogs,

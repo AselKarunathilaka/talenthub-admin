@@ -112,6 +112,31 @@ class FaceAttendanceService {
     };
   }
 
+  static async registerFaceProfileBatch({ internId, descriptors, source = "browser-camera", metadata = {} }) {
+    const normalizedDescriptors = (Array.isArray(descriptors) ? descriptors : [])
+      .map(normalizeDescriptor)
+      .filter(Boolean)
+      .filter((descriptor, index, all) =>
+        all.findIndex((sample) => euclideanDistance(sample, descriptor) < 0.01) === index,
+      );
+    if (!normalizedDescriptors.length) throw new Error("At least one valid face descriptor is required.");
+
+    const intern = await Intern.findById(internId);
+    if (!intern) throw new Error("Intern not found.");
+    let profile = await InternFaceProfile.findOne({ $or: [{ internId }, { traineeId: intern.Trainee_ID }] });
+    if (!profile) profile = new InternFaceProfile({ internId, traineeId: intern.Trainee_ID, traineeName: intern.Trainee_Name });
+
+    profile.internId = intern._id;
+    profile.traineeId = intern.Trainee_ID;
+    profile.traineeName = intern.Trainee_Name;
+    profile.embeddings = normalizedDescriptors;
+    profile.sampleCount = normalizedDescriptors.length;
+    profile.isActive = true;
+    profile.lastMatchedAt = new Date();
+    await profile.save();
+    return { profile, source, metadata };
+  }
+
   static async findBestMatch(descriptor, { expectedInternId = null } = {}) {
     const normalizedDescriptor = normalizeDescriptor(descriptor);
     if (!normalizedDescriptor) {

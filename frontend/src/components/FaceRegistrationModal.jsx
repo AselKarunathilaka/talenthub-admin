@@ -5,7 +5,8 @@ import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
 import FaceScanGuide from "./FaceScanGuide";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
+import { loadFaceModels } from "../utils/faceModelLoader";
 
 const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
@@ -27,6 +28,8 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   const [frames, setFrames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelLoadError, setModelLoadError] = useState("");
+  const [modelLoadAttempt, setModelLoadAttempt] = useState(0);
   const [faceGuide, setFaceGuide] = useState("Center your face inside the oval");
 
   const videoRef = useRef(null);
@@ -48,7 +51,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
     videoRef.current.srcObject = streamRef.current;
     try {
-      await videoRef.current.play();
+      await waitForPlayableVideo(videoRef.current);
     } catch (error) {
       console.warn("Camera preview autoplay was blocked:", error);
     }
@@ -56,22 +59,20 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
   // Load face-api models
   useEffect(() => {
+    let active = true;
     const loadModels = async () => {
+      setModelLoadError("");
       try {
-        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-        setModelsLoaded(true);
+        await loadFaceModels();
+        if (active) setModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face-api models:", error);
-        toast.error("Failed to load face recognition. Please refresh.");
+        if (active) setModelLoadError(error.message || "Failed to load face recognition.");
       }
     };
     loadModels();
-  }, []);
+    return () => { active = false; };
+  }, [modelLoadAttempt]);
 
   useEffect(() => {
     if (step === "capturing") {
@@ -197,24 +198,15 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     setStep("uploading");
     setLoading(true);
     try {
-      for (const [index, descriptor] of frames.entries()) {
-        const response = await apiFetch("/face-attendance/enroll", {
-            method: "POST",
-            body: JSON.stringify({
-              descriptor,
-              metadata: {
-                enrollmentMethod: "login-popup-guided",
-                timestamp: new Date().toISOString(),
-                replaceExisting: index === 0,
-              },
-            }),
-          });
-        if (!response.ok) {
-          const error = await response.json();
-          toast.error(error.message || "Enrollment failed. Please try again.");
-          setStep("intro");
-          return;
-        }
+      const response = await apiFetch("/face-attendance/enroll-batch", {
+        method: "POST",
+        body: JSON.stringify({ descriptors: frames, metadata: { enrollmentMethod: "login-popup-guided", timestamp: new Date().toISOString() } }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        toast.error(error.message || "Enrollment failed. Please try again.");
+        setStep("intro");
+        return;
       }
 
         setStep("success");
@@ -261,14 +253,15 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border-t-4 border-orange-500">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center mb-6">
-              <Loader className="w-8 h-8 animate-spin text-orange-600" />
+              {modelLoadError ? <X className="w-8 h-8 text-red-500" /> : <Loader className="w-8 h-8 animate-spin text-orange-600" />}
             </div>
             <p className="text-center text-gray-900 font-semibold text-lg">
-              Initializing face recognition...
+              {modelLoadError ? "Face recognition unavailable" : "Initializing face recognition..."}
             </p>
             <p className="text-center text-gray-500 text-sm mt-2">
-              Loading advanced face detection models
+              {modelLoadError || "Loading advanced face detection models"}
             </p>
+            {modelLoadError && <div className="mt-5 flex gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600">Close</button><button type="button" onClick={() => setModelLoadAttempt((value) => value + 1)} className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white">Retry</button></div>}
           </div>
         </div>
       </div>

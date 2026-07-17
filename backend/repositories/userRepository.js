@@ -9,6 +9,10 @@ class UserRepository {
     return User.findById(id);
   }
 
+  async hasSuperAdmin() {
+    return Boolean(await User.exists({ role: "super_admin" }));
+  }
+
   async createUser(email, hashedPassword) {
     const user = new User({ email, password: hashedPassword });
     return await user.save();

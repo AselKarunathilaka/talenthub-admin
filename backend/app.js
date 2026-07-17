@@ -23,6 +23,7 @@ const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
+const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
 
@@ -89,5 +90,7 @@ app.get("/api/version", (_req, res) => {
     nodeEnv: process.env.NODE_ENV || "development",
   });
 });
+
+app.use(errorHandler);
 
 module.exports = app;

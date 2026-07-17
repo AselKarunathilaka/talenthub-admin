@@ -19,6 +19,7 @@ import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import FaceScanGuide from "../components/FaceScanGuide";
 import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
+import AttendancePermissionGate from "../components/AttendancePermissionGate";
 import { apiFetch } from "../utils/api";
 import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
@@ -27,7 +28,8 @@ import {
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
+import { loadFaceModels } from "../utils/faceModelLoader";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -35,7 +37,6 @@ const SLT_OFFICE = {
   radiusKm: 2,
 };
 
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -54,7 +55,8 @@ const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 160,
   scoreThreshold: 0.45,
 });
-const FACE_GUIDE_INTERVAL_MS = 500;
+const IS_LOW_POWER_DEVICE = (navigator.hardwareConcurrency || 4) <= 4 || window.matchMedia?.("(max-width: 768px)").matches;
+const FACE_GUIDE_INTERVAL_MS = IS_LOW_POWER_DEVICE ? 800 : 500;
 const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
@@ -112,6 +114,8 @@ const FaceAttendance = () => {
   const [mode, setMode] = useState("recognize");
   const [attendanceType, setAttendanceType] = useState("daily");
   const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [modelLoadError, setModelLoadError] = useState("");
+  const [modelLoadAttempt, setModelLoadAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [enrollmentFrames, setEnrollmentFrames] = useState([]);
@@ -173,7 +177,7 @@ const FaceAttendance = () => {
 
     videoRef.current.srcObject = streamRef.current;
     try {
-      await videoRef.current.play();
+      await waitForPlayableVideo(videoRef.current);
     } catch (error) {
       console.warn("Camera preview autoplay was blocked:", error);
     }
@@ -185,22 +189,21 @@ const FaceAttendance = () => {
   };
 
   useEffect(() => {
+    let active = true;
     const loadModels = async () => {
+      setModelLoadError("");
       try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        ]);
-        setModelsLoaded(true);
+        await loadFaceModels();
+        if (active) setModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face-api models:", error);
-        toast.error("Face recognition models could not be loaded.");
+        if (active) setModelLoadError(error.message || "Face recognition could not be loaded.");
       }
     };
 
     loadModels();
-  }, []);
+    return () => { active = false; };
+  }, [modelLoadAttempt]);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -588,24 +591,14 @@ const FaceAttendance = () => {
     stopCamera();
     setLoading(true);
     try {
-      for (const [index, descriptor] of enrollmentFrames.entries()) {
-        const response = await apiFetch("/face-attendance/enroll", {
-          method: "POST",
-          body: JSON.stringify({
-            descriptor,
-            metadata: {
-              location: location || null,
-              enrollmentMethod: "face-attendance-page-guided",
-              replaceExisting: index === 0,
-              ...getDeviceTimeEvidence(),
-            },
-          }),
-        });
-        const result = await response.json();
-        if (!response.ok) {
-          toast.error(result.message || "Face enrollment failed.");
-          return;
-        }
+      const response = await apiFetch("/face-attendance/enroll-batch", {
+        method: "POST",
+        body: JSON.stringify({ descriptors: enrollmentFrames, metadata: { location: location || null, enrollmentMethod: "face-attendance-page-guided", ...getDeviceTimeEvidence() } }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        toast.error(result.message || "Face enrollment failed.");
+        return;
       }
 
       toast.success("Face enrolled successfully.");
@@ -817,9 +810,10 @@ const FaceAttendance = () => {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-8 max-w-sm w-full text-center">
-          <Loader className="w-12 h-12 animate-spin mx-auto text-blue-600 mb-4" />
-          <h2 className="text-lg font-semibold text-slate-900">Loading face recognition</h2>
-          <p className="text-sm text-slate-500 mt-2">This usually takes a few seconds.</p>
+          {modelLoadError ? <AlertCircle className="w-12 h-12 mx-auto text-amber-500 mb-4" /> : <Loader className="w-12 h-12 animate-spin mx-auto text-blue-600 mb-4" />}
+          <h2 className="text-lg font-semibold text-slate-900">{modelLoadError ? "Face recognition unavailable" : "Loading face recognition"}</h2>
+          <p className="text-sm text-slate-500 mt-2">{modelLoadError || "This usually takes a few seconds."}</p>
+          {modelLoadError && <button type="button" onClick={() => setModelLoadAttempt((value) => value + 1)} className="mt-4 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Retry loading</button>}
         </div>
       </div>
     );
@@ -828,6 +822,7 @@ const FaceAttendance = () => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50">
       <Navigation />
+      <AttendancePermissionGate locationRequired={sltLocationRequired} />
 
       <main className="flex-1 w-full lg:mt-20 lg:px-10">
         {enrollmentSuccess && (
