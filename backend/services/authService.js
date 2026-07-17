@@ -6,10 +6,27 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
+const { permissionsForRole } = require("../config/adminPermissions");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
+  createAdminSession(user) {
+    const role = user.role || "super_admin";
+    const permissions = user.permissions?.length
+      ? user.permissions
+      : permissionsForRole(role);
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role, permissions, accountType: "admin" },
+      dotenv.jwtSecret,
+      { expiresIn: "24h" },
+    );
+    return {
+      token,
+      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, permissions },
+      message: "Login successful!",
+    };
+  }
   // Admin Registration
   async register(email, password) {
     console.log("Registering user:", email);
@@ -45,13 +62,32 @@ class AuthService {
       return { error: "Invalid email or password" };
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      dotenv.jwtSecret,
-      { expiresIn: "24h" },
-    );
+    if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
+    // Legacy users predate roles. Promote them once so existing installations are not locked out.
+    if (!user.role) user.role = "super_admin";
+    if (!user.permissions?.length) user.permissions = permissionsForRole(user.role);
+    user.lastLoginAt = new Date();
+    await user.save();
+    return this.createAdminSession(user);
+  }
 
-    return { token, message: "Login successful!" };
+  async adminGoogleLogin(idToken) {
+    const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload.email_verified) throw new Error("Google email is not verified.");
+
+    const user = await UserRepository.findByEmail(payload.email);
+    if (!user) throw new Error("This Google account has not been invited to the admin portal.");
+    if (!user.isActive) throw new Error("Account is inactive. Please contact a super admin.");
+
+    if (!user.role) user.role = "super_admin";
+    user.name = user.name || payload.name || "";
+    user.picture = payload.picture || user.picture;
+    user.googleSubject = payload.sub;
+    user.lastLoginAt = new Date();
+    if (!user.permissions?.length) user.permissions = permissionsForRole(user.role);
+    await user.save();
+    return this.createAdminSession(user);
   }
 
   // Intern Google Login with ID Token
@@ -76,7 +112,7 @@ class AuthService {
     }
 
     const token = jwt.sign(
-      { id: intern._id, email: intern.Trainee_Email },
+      { id: intern._id, email: intern.Trainee_Email, role: "intern", accountType: "intern" },
       dotenv.jwtSecret,
       { expiresIn: "24h" },
     );
@@ -106,7 +142,7 @@ class AuthService {
     }
 
     const token = jwt.sign(
-      { id: intern._id, email: intern.Trainee_Email },
+      { id: intern._id, email: intern.Trainee_Email, role: "intern", accountType: "intern" },
       dotenv.jwtSecret,
       { expiresIn: "24h" },
     );

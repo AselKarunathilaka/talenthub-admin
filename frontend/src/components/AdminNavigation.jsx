@@ -17,10 +17,12 @@ import {
   SquarePlay,
   FileText,
   LogOut,
+  Users,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
+import { getAdminSession, hasAdminPermission } from "../utils/adminAuth";
 
 const AdminNavigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -41,19 +43,20 @@ const AdminNavigation = ({ children }) => {
   }, []);
 
   const navLinks = [
-    { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/daily-records", label: "Daily Logs", icon: <BookOpen className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/intern-attendance", label: "Attendance", icon: <ScanLine className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/face-attendance", label: "Face ID", icon: <ScanFace className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/pin-management", label: "PIN", icon: <KeyRound className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/leave-requests", label: "Short Leave", icon: <Bike className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/intern-locations", label: "Locations", icon: <MapPin className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
-  ];
+    { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
+    { to: "/admin/daily-records", label: "Daily Logs", icon: <BookOpen className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "daily_logs.view" },
+    { to: "/admin/intern-attendance", label: "Attendance", icon: <ScanLine className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.view" },
+    { to: "/admin/face-attendance", label: "Face ID", icon: <ScanFace className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/pin-management", label: "PIN", icon: <KeyRound className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/leave-requests", label: "Short Leave", icon: <Bike className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "leave.view" },
+    { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "leave.view" },
+    { to: "/admin/intern-locations", label: "Locations", icon: <MapPin className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.view" },
+    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "seats.manage" },
+    { to: "/admin/inactive-interns", label: "Terminated", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
+    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/users", label: "Users", icon: <Users className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "users.manage" },
+  ].filter((link) => !link.permission || hasAdminPermission(link.permission));
 
   const isActive = (path) => location.pathname === path;
 
@@ -84,7 +87,7 @@ const AdminNavigation = ({ children }) => {
 
   return (
     <>
-      <AdminNavbar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} activeTitle={activeTitle} />
+      <AdminNavbar isMobileMenuOpen={isMobileMenuOpen} setIsMobileMenuOpen={setIsMobileMenuOpen} activeTitle={activeTitle} user={getAdminSession()?.user} />
 
       {/* Mobile Menu Overlay */}
       <div

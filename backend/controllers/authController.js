@@ -12,6 +12,15 @@ const googleLogin = async (req, res) => {
   }
 };
 
+const adminGoogleLogin = async (req, res) => {
+  try {
+    const result = await authService.adminGoogleLogin(req.body.credential || req.body.code);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({ message: error.message });
+  }
+};
+
 const internLogin = async (req, res) => {
   const { email, password } = req.body;
 
@@ -99,6 +108,7 @@ const registerGateStaff = async (req, res) => {
 
 module.exports = {
   googleLogin,
+  adminGoogleLogin,
   login,
   register,
   getGoogleAuthUrl,

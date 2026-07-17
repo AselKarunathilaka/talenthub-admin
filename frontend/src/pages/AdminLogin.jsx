@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -157,7 +158,7 @@ const AdminLogin = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.message || data.error || "Login failed");
       }
 
       const adminInfo = {
@@ -174,6 +175,24 @@ const AdminLogin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = async (googleResponse) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ADMIN_GOOGLE_LOGIN}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential: googleResponse.credential }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Google login failed");
+      localStorage.setItem("adminInfo", JSON.stringify({ token: data.token, user: data.user, loginTime: new Date().toISOString() }));
+      navigate("/admin/dashboard");
+    } catch (loginError) {
+      setError(loginError.message || "Google login failed.");
+    } finally { setLoading(false); }
   };
 
   return (
@@ -367,6 +386,21 @@ const AdminLogin = () => {
 
                 {/* Middle Section */}
                 <div className="flex-1 flex flex-col justify-center mb-1">
+                  <div className="flex justify-center mb-3">
+                    <GoogleLogin
+                      onSuccess={handleGoogleLogin}
+                      onError={() => setError("Google authentication failed.")}
+                      theme="filled_blue"
+                      shape="pill"
+                      size="large"
+                      text="continue_with"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="flex-1 h-px bg-white/10" />
+                    <span className="text-xs text-white/40">OR SIGN IN WITH EMAIL AND PASSWORD</span>
+                    <div className="flex-1 h-px bg-white/10" />
+                  </div>
                   {/* Login form */}
                   <form onSubmit={handleSubmit} className="space-y-1.5">
                     {/* Email field */}

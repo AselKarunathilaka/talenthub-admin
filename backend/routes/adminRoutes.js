@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const { requireAdmin, requirePermission, enforceRoutePermission } = require("../middleware/adminAuth");
+const { listUsers, createUser, updateUser } = require("../controllers/adminUserController");
 const fs = require("fs");
 const path = require("path");
 
@@ -75,12 +77,17 @@ const {
   getAdminInternAttendance,
 } = require("../controllers/adminInternDetailsController");
 
-// ── Public routes (no auth) ───────────────────────────────────────────────────
-// Export on-leave interns as Excel
-router.get("/on-leave/export", exportOnLeaveExcel);
-
 // ── All routes below require authentication ───────────────────────────────────
 router.use(authMiddleware);
+router.use(requireAdmin);
+router.use(enforceRoutePermission);
+
+router.get("/users", requirePermission("users.manage"), listUsers);
+router.post("/users", requirePermission("users.manage"), createUser);
+router.patch("/users/:id", requirePermission("users.manage"), updateUser);
+
+// Export on-leave interns as Excel
+router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveExcel);
 
 // Dashboard statistics
 router.get("/dashboard/stats", getDashboardStats);

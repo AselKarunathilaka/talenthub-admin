@@ -2,7 +2,11 @@ const User = require("../models/User");
 
 class UserRepository {
   async findByEmail(email) {
-    return await User.findOne({ email: { $regex: new RegExp(`^${email}$`, "i") } }); // Case insensitive search
+    return await User.findOne({ email: String(email).trim().toLowerCase() }).select("+password");
+  }
+
+  async findById(id) {
+    return User.findById(id);
   }
 
   async createUser(email, hashedPassword) {
