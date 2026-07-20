@@ -1,12 +1,12 @@
-const FACE_CAMERA_CONSTRAINTS = {
+const faceCameraConstraints = (facingMode) => ({
   video: {
     width: { ideal: 640 },
     height: { ideal: 480 },
     aspectRatio: { ideal: 4 / 3 },
-    facingMode: { ideal: "user" },
+    facingMode: { ideal: facingMode },
   },
   audio: false,
-};
+});
 
 const FALLBACK_CAMERA_CONSTRAINTS = {
   video: {
@@ -17,14 +17,14 @@ const FALLBACK_CAMERA_CONSTRAINTS = {
   audio: false,
 };
 
-const LOW_POWER_CAMERA_CONSTRAINTS = {
+const lowPowerCameraConstraints = (facingMode) => ({
   video: {
     width: { ideal: 480 },
     height: { ideal: 360 },
-    facingMode: "user",
+    facingMode: { ideal: facingMode },
   },
   audio: false,
-};
+});
 
 const BASIC_CAMERA_CONSTRAINTS = { video: true, audio: false };
 const CAMERA_START_TIMEOUT_MS = 15000;
@@ -77,7 +77,7 @@ export const getCameraErrorMessage = (error) => {
   return "Camera access failed. Please allow camera permission and try again.";
 };
 
-export const requestFaceCameraStream = async () => {
+export const requestFaceCameraStream = async ({ facingMode = "user" } = {}) => {
   if (!navigator.mediaDevices?.getUserMedia) {
     const error = new Error("Camera access requires a supported browser on HTTPS or localhost.");
     error.name = "UnsupportedBrowser";
@@ -85,9 +85,9 @@ export const requestFaceCameraStream = async () => {
   }
 
   const constraintLevels = [
-    FACE_CAMERA_CONSTRAINTS,
+    faceCameraConstraints(facingMode),
     FALLBACK_CAMERA_CONSTRAINTS,
-    LOW_POWER_CAMERA_CONSTRAINTS,
+    lowPowerCameraConstraints(facingMode),
     BASIC_CAMERA_CONSTRAINTS,
   ];
   let lastError;

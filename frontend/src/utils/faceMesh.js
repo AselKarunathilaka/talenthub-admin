@@ -19,6 +19,11 @@ const FACE_MESH_PATHS = [
   [5, 48, 8, 54, 11],
 ];
 
+// Landmark lines are a debugging visualization only. They do not improve
+// recognition and drawing them continuously can make low-power phones feel
+// less smooth while TensorFlow is also using the main rendering thread.
+const FACE_MESH_ENABLED = import.meta.env.VITE_SHOW_FACE_MESH === "true";
+
 export const clearFaceMesh = (canvas) => {
   if (!canvas) return;
   canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
@@ -26,6 +31,10 @@ export const clearFaceMesh = (canvas) => {
 
 export const drawFaceMesh = (canvas, landmarks) => {
   if (!canvas || !landmarks?.positions?.length) return;
+  if (!FACE_MESH_ENABLED) {
+    clearFaceMesh(canvas);
+    return;
+  }
   const context = canvas.getContext("2d");
   if (!context) return;
 

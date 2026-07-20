@@ -11,6 +11,7 @@ import {
   Square,
   Users,
   X,
+  SwitchCamera,
 } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
@@ -30,6 +31,7 @@ import {
 } from "../utils/attendanceEvidence";
 import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
 import { loadFaceModels } from "../utils/faceModelLoader";
+import { enrollFaceSamples } from "../utils/faceEnrollment";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -56,7 +58,7 @@ const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   scoreThreshold: 0.45,
 });
 const IS_LOW_POWER_DEVICE = (navigator.hardwareConcurrency || 4) <= 4 || window.matchMedia?.("(max-width: 768px)").matches;
-const FACE_GUIDE_INTERVAL_MS = IS_LOW_POWER_DEVICE ? 800 : 500;
+const FACE_GUIDE_INTERVAL_MS = IS_LOW_POWER_DEVICE ? 1000 : 600;
 const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
@@ -118,6 +120,8 @@ const FaceAttendance = () => {
   const [modelLoadAttempt, setModelLoadAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState("user");
+  const [cameraSwitching, setCameraSwitching] = useState(false);
   const [enrollmentFrames, setEnrollmentFrames] = useState([]);
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
@@ -360,7 +364,7 @@ const FaceAttendance = () => {
     }
 
     try {
-      const stream = await requestFaceCameraStream();
+      const stream = await requestFaceCameraStream({ facingMode: cameraFacingMode });
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -371,6 +375,27 @@ const FaceAttendance = () => {
       console.error("Camera access error:", error);
       toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
+    }
+  };
+
+  const switchCamera = async () => {
+    if (cameraSwitching || loading || !cameraActive) return;
+    const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user";
+    setCameraSwitching(true);
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    try {
+      const stream = await requestFaceCameraStream({ facingMode: nextFacingMode });
+      streamRef.current = stream;
+      setCameraFacingMode(nextFacingMode);
+      stableFaceChecksRef.current = 0;
+      await attachStreamToVideo();
+    } catch (error) {
+      toast.error(getCameraErrorMessage(error));
+      setCameraActive(false);
+    } finally {
+      setCameraSwitching(false);
     }
   };
 
@@ -591,15 +616,7 @@ const FaceAttendance = () => {
     stopCamera();
     setLoading(true);
     try {
-      const response = await apiFetch("/face-attendance/enroll-batch", {
-        method: "POST",
-        body: JSON.stringify({ descriptors: enrollmentFrames, metadata: { location: location || null, enrollmentMethod: "face-attendance-page-guided", ...getDeviceTimeEvidence() } }),
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        toast.error(result.message || "Face enrollment failed.");
-        return;
-      }
+      await enrollFaceSamples({ descriptors: enrollmentFrames, metadata: { location: location || null, enrollmentMethod: "face-attendance-page-guided", ...getDeviceTimeEvidence() } });
 
       toast.success("Face enrolled successfully.");
       showSuccess("Face profile is ready for attendance.");
@@ -609,7 +626,8 @@ const FaceAttendance = () => {
       window.setTimeout(() => setEnrollmentSuccess(false), 1800);
     } catch (error) {
       console.error("Enrollment error:", error);
-      toast.error("Enrollment failed. Please try again.");
+      enrollmentSubmitStartedRef.current = false;
+      toast.error(error.message || "Enrollment failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -1081,7 +1099,7 @@ const FaceAttendance = () => {
                       muted
                       playsInline
                       className="h-full w-full object-cover"
-                      style={{ transform: "scaleX(-1)" }}
+                      style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }}
                     />
                     <canvas ref={canvasRef} className="hidden" width={640} height={480} />
                     <canvas
@@ -1089,8 +1107,9 @@ const FaceAttendance = () => {
                       className="pointer-events-none absolute inset-0 z-10 h-full w-full"
                       width={640}
                       height={480}
-                      style={{ transform: "scaleX(-1)" }}
+                      style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }}
                     />
+                    <button type="button" onClick={switchCamera} disabled={cameraSwitching || loading} className="absolute right-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-slate-950/65 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm disabled:opacity-60"><SwitchCamera className="h-4 w-4" />{cameraSwitching ? "Switching…" : cameraFacingMode === "user" ? "Rear" : "Front"}</button>
                     <FaceScanGuide
                       ready={faceGuide.ready}
                       enrollment={mode === "enroll"}
