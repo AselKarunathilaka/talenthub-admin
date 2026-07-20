@@ -7,6 +7,9 @@ const DailyRecordSchema = new mongoose.Schema(
       ref: "Intern",
       required: true,
     },
+    traineeId: {
+      type: String,
+    },
     date: {
       type: String,
       required: true,

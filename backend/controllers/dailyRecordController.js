@@ -1,8 +1,14 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
-const { checkLeaveSubmissionAllowed } = require("../utils/timeRestriction");
 const { validateEntry } = require("../utils/heuristics");
-const { validateWithGemini, validateBatchWithGemini } = require("../utils/llmValidator");
+const {
+  checkLeaveSubmissionAllowed,
+  getSriLankanDateString,
+} = require("../utils/timeRestriction");
+const {
+  validateWithGemini,
+  validateBatchWithGemini,
+} = require("../utils/llmValidator");
 
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
 
@@ -13,6 +19,37 @@ function failOpenBatchResult() {
     plans: { valid: true, reason: "" },
   };
 }
+
+const DAILY_ATTENDANCE_TYPES = new Set([
+  "daily",
+  "daily_qr",
+  "face",
+  "manual_daily",
+]);
+
+// Checks whether the intern already has a "daily" attendance entry for this date.
+// `dateStr` is expected in "YYYY-MM-DD" form (same shape as DailyRecord.date).
+function hasDailyAttendanceForDate(intern, dateStr) {
+  return intern.attendance.some((a) => {
+    if (!DAILY_ATTENDANCE_TYPES.has(a.type)) return false;
+    const aDateStr = new Date(a.date).toISOString().split("T")[0];
+    return aDateStr === dateStr;
+  });
+}
+
+// Marks a "daily" attendance entry for the intern if one doesn't already exist.
+async function ensureDailyAttendance(intern, dateStr) {
+  if (hasDailyAttendanceForDate(intern, dateStr)) return;
+
+  intern.attendance.push({
+    date: new Date(dateStr),
+    status: "Present",
+    type: "daily",
+    timeMarked: new Date(),
+  });
+  await intern.save();
+}
+
 // ── Shared helper: resolve internId from request user ────────────────────────
 const resolveIntern = async (userId, userEmail) => {
   let intern = await Intern.findById(userId);
@@ -22,10 +59,14 @@ const resolveIntern = async (userId, userEmail) => {
 };
 
 // ── POST / ────────────────────────────────────────────────────────────────────
+const DAILY_ATTENDANCE_STATUSES = new Set(["working", "wfh"]);
+
 const createDailyRecord = async (req, res) => {
   try {
-    const { date, stack, task, progress, blockers, status } = req.body;
+    const { stack, task, progress, blockers, status } = req.body; // ★ no longer reading `date` from body
     const { id: userId, email: userEmail } = req.user;
+
+    const date = getSriLankanDateString(); // ★ server-authoritative date
 
     if (status === "leave") {
       const leaveCheck = checkLeaveSubmissionAllowed();
@@ -49,14 +90,20 @@ const createDailyRecord = async (req, res) => {
 
     const internId = intern._id;
 
+    // ★ Only mark daily attendance for working / wfh submissions
+    const effectiveStatus = status || "working";
+    if (DAILY_ATTENDANCE_STATUSES.has(effectiveStatus)) {
+      await ensureDailyAttendance(intern, date);
+    }
+
     // Upsert by internId + date
     const existing = await DailyRecord.findOne({ internId, date });
-
     if (existing) {
       existing.stack = stack;
       existing.task = task;
       existing.progress = progress || "No challenges faced";
       existing.blockers = blockers || "No specific plans";
+      existing.traineeId = intern.Trainee_ID; // ★ keep in sync
       if (status) existing.status = status;
       await existing.save();
       await existing.populate(
@@ -68,6 +115,7 @@ const createDailyRecord = async (req, res) => {
 
     const newRecord = new DailyRecord({
       internId,
+      traineeId: intern.Trainee_ID, // ★ New
       date,
       stack,
       task,
@@ -78,7 +126,6 @@ const createDailyRecord = async (req, res) => {
 
     await newRecord.save();
 
-    // Populate the intern details
     await newRecord.populate(
       "internId",
       "Trainee_Name Trainee_ID Trainee_Email",
@@ -284,7 +331,11 @@ const validateLogbookEntry = async (req, res) => {
     const localCheck = validateEntry(text);
     if (!localCheck.isValid) {
       // It failed basic rules (RED)
-      return res.status(200).json({ passes: false, isWorkRelated: null, reason: "Heuristics failed" });
+      return res.status(200).json({
+        passes: false,
+        isWorkRelated: null,
+        reason: "Heuristics failed",
+      });
     }
 
     // Now call Gemini to determine if it's work-related
@@ -293,7 +344,7 @@ const validateLogbookEntry = async (req, res) => {
     return res.status(200).json({
       passes: true,
       isWorkRelated: llmCheck.isWorkRelated,
-      reason: llmCheck.reason
+      reason: llmCheck.reason,
     });
   } catch (error) {
     console.error("Error validating logbook entry:", error);
@@ -342,12 +393,16 @@ const validateBatchEntries = async (req, res) => {
     console.log("[BATCH VALIDATE] Gemini result:", JSON.stringify(result));
     return res.status(200).json(result);
   } catch (error) {
-    console.error("[BATCH VALIDATE] ❌ Gemini validation failed:", error.message);
+    console.error(
+      "[BATCH VALIDATE] ❌ Gemini validation failed:",
+      error.message,
+    );
     // Do NOT fail-open. Return 503 so the frontend blocks submission.
     return res.status(503).json({
-      error: "AI validation is temporarily unavailable. Please try again in a moment.",
+      error:
+        "AI validation is temporarily unavailable. Please try again in a moment.",
       details: error.message,
-      stack: error.stack
+      stack: error.stack,
     });
   }
 };

@@ -44,6 +44,7 @@ const {
   exportNonAttendanceExcel,
   exportMeetingAttendancePdf,
   exportDailyAttendancePdf,
+  exportMeetingWithoutDailyExcel,
 } = require("../controllers/admininternAttendanceController");
 const {
   getAttendanceSettings,
@@ -183,6 +184,13 @@ router.get("/attendance/export-meeting-pdf", exportMeetingAttendancePdf);
 // GET  /admin/attendance/export-daily-pdf?date=YYYY-MM-DD
 //      → Download Daily Attendance PDF (SLTMobitel template)
 router.get("/attendance/export-daily-pdf", exportDailyAttendancePdf);
+
+// GET /admin/attendance/export-meeting-without-daily?date=YYYY-MM-DD
+//     → interns who attended a meeting but have no daily check-in that date
+router.get(
+  "/attendance/export-meeting-without-daily",
+  exportMeetingWithoutDailyExcel,
+);
 
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);
