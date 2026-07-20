@@ -473,6 +473,7 @@ const Dashboard = () => {
     if (
       normalizedMethod === "manual" ||
       normalizedMethod === "manual_meeting" ||
+      normalizedMethod === "daily" ||
       normalizedMethod === "manual_daily"
     ) {
       return {
