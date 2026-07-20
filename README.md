@@ -19,3 +19,16 @@ TalentHub is an internship management platform for SLT Mobitel trainee operation
 - Admin announcements with intern-facing active announcement feed.
 - Weekly compliance, non-submission, and meeting attendance email reports.
 - Excel/PDF exports for attendance, approved leave, on-leave interns, and non-attendance reports.
+
+## Admin invitation email configuration
+
+User Management sends a sign-in email when an Admin or Super Admin creates a Google Admin/Supervisor account. Configure the production admin login URL and SMTP relay as deployment secrets:
+
+```env
+ADMIN_PORTAL_URL=https://your-domain.example/admin-login
+ADMIN_INVITE_EMAIL=talenthub@example.com
+ADMIN_INVITE_SMTP_HOST=mail.example.com
+ADMIN_INVITE_SMTP_PORT=25
+```
+
+For authenticated SMTP, also configure `ADMIN_INVITE_EMAIL_PASS`. When the dedicated invitation settings are omitted, the backend falls back to the existing `SHORT_LEAVE_EMAIL`, `SHORT_LEAVE_SMTP_HOST`, `SHORT_LEAVE_SMTP_PORT`, and `SHORT_LEAVE_EMAIL_PASS` settings. Never commit production credentials to the repository.

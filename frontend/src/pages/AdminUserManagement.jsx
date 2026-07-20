@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
 import {
   UserPlus, ShieldCheck, RefreshCw, Search, Users, UserCheck,
-  UserX, ChevronDown, ChevronUp, Mail, Clock3, SlidersHorizontal,
+  UserX, ChevronDown, ChevronUp, Mail, Clock3, SlidersHorizontal, Send,
 } from "lucide-react";
 import AdminNavigation from "../components/AdminNavigation";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -38,8 +38,10 @@ export default function AdminUserManagement() {
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState(null);
   const [saving, setSaving] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState(null);
+  const [sendingInvitationId, setSendingInvitationId] = useState(null);
   const [expandedUserId, setExpandedUserId] = useState(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -71,12 +73,25 @@ export default function AdminUserManagement() {
   if (!hasAdminPermission("users.manage")) return <Navigate to="/admin/dashboard" replace />;
 
   const createUser = async (event) => {
-    event.preventDefault(); setSaving(true); setError("");
+    event.preventDefault(); setSaving(true); setError(""); setNotice(null);
     try {
-      await request("/admin/users", { method: "POST", body: JSON.stringify(form) });
+      const result = await request("/admin/users", { method: "POST", body: JSON.stringify(form) });
+      setNotice(result.invitation?.sent
+        ? { type: "success", message: `Account created and invitation email sent to ${form.email}.` }
+        : { type: "warning", message: result.invitation?.error || "Account created, but invitation email delivery failed." });
       setForm(emptyForm); await load();
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
+  };
+
+  const resendInvitation = async (user) => {
+    setError(""); setNotice(null); setSendingInvitationId(user.id);
+    try {
+      const result = await request(`/admin/users/${user.id}/resend-invitation`, { method: "POST" });
+      setUsers((current) => current.map((item) => item.id === user.id ? result.user : item));
+      setNotice({ type: "success", message: `Invitation email sent to ${user.email}.` });
+    } catch (e) { setError(e.message); }
+    finally { setSendingInvitationId(null); }
   };
 
   const updateUser = async (id, changes) => {
@@ -107,19 +122,20 @@ export default function AdminUserManagement() {
           </section>
 
           {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
+          {notice && <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${notice.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-amber-200 bg-amber-50 text-amber-800"}`}>{notice.message}</div>}
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
               { label: "Total users", value: stats.total, icon: Users, iconClass: "bg-blue-50 text-blue-600" },
               { label: "Active accounts", value: stats.active, icon: UserCheck, iconClass: "bg-emerald-50 text-emerald-600" },
               { label: "Inactive accounts", value: stats.inactive, icon: UserX, iconClass: "bg-amber-50 text-amber-600" },
-            ].map(({ label, value, icon: Icon, iconClass }) => <div key={label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-3xl font-extrabold text-slate-900">{value}</p></div><div className={`rounded-2xl p-3 ${iconClass}`}><Icon className="h-6 w-6" /></div></div></div>)}
+            ].map(({ label, value, icon, iconClass }) => <div key={label} className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><p className="text-sm font-medium text-slate-500">{label}</p><p className="mt-1 text-3xl font-extrabold text-slate-900">{value}</p></div><div className={`rounded-2xl p-3 ${iconClass}`}>{createElement(icon, { className: "h-6 w-6" })}</div></div></div>)}
           </section>
 
           <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-            <div className="border-b border-slate-100 bg-gradient-to-r from-[#000066] to-[#006600] px-5 py-4"><h2 className="flex items-center gap-2 font-bold text-white"><UserPlus className="h-5 w-5" />Invite a new user</h2><p className="mt-1 text-xs text-white/65">The user signs in with the exact Google email entered here.</p></div>
+            <div className="border-b border-slate-100 bg-gradient-to-r from-[#000066] to-[#006600] px-5 py-4"><h2 className="flex items-center gap-2 font-bold text-white"><UserPlus className="h-5 w-5" />Invite a new user</h2><p className="mt-1 text-xs text-white/65">Creates Google access and emails professional sign-in instructions.</p></div>
             <form onSubmit={createUser} className="grid items-end gap-4 p-5 md:grid-cols-12">
-              <label className="text-sm font-semibold text-slate-700 md:col-span-3">Full name<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" placeholder="e.g. Nimal Perera" /></label>
+              <label className="text-sm font-semibold text-slate-700 md:col-span-3">Full name<input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" placeholder="e.g. Nimal Perera" /></label>
               <label className="text-sm font-semibold text-slate-700 md:col-span-4">Google email<input required type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-normal outline-none transition focus:border-blue-400 focus:bg-white focus:ring-4 focus:ring-blue-50" placeholder="name@company.com" /></label>
               <label className="text-sm font-semibold text-slate-700 md:col-span-2">Role<select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className="mt-1.5 w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 font-normal outline-none"><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></label>
               <button disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:opacity-50 md:col-span-3"><UserPlus className="h-4 w-4" />{saving ? "Inviting…" : "Invite user"}</button>
@@ -147,7 +163,23 @@ export default function AdminUserManagement() {
                     <p className="flex items-center gap-1.5 text-xs text-slate-500"><Clock3 className="h-3.5 w-3.5" />{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString() : "Never logged in"}</p>
                     <div className="flex items-center justify-end gap-2">{isProtected ? <span className="text-xs font-medium text-slate-400">Protected</span> : <button disabled={updatingUserId === user.id} onClick={() => updateUser(user.id, { isActive: !user.isActive })} className={`rounded-lg px-3 py-2 text-xs font-bold transition disabled:opacity-50 ${user.isActive ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"}`}>{updatingUserId === user.id ? "Saving…" : user.isActive ? "Deactivate" : "Activate"}</button>}<button onClick={() => setExpandedUserId(isExpanded ? null : user.id)} className="rounded-lg border border-slate-200 bg-white p-2 text-slate-500 hover:text-blue-600" title="Manage permissions">{isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</button></div>
                   </div>
-                  {isExpanded && <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-4 lg:pl-[72px]"><div className="mb-3"><p className="text-sm font-bold text-slate-800">Access permissions</p><p className="text-xs text-slate-500">Choose which areas this user can view or manage.</p></div>{isProtected ? <p className="text-sm font-medium text-violet-700">Super administrators have full system access.</p> : <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{availablePermissions.filter((permission) => permission !== "users.manage").map((permission) => <label key={permission} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${(user.permissions || []).includes(permission) ? "border-blue-200 bg-blue-50 font-semibold text-blue-800" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"}`}><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={(user.permissions || []).includes(permission)} disabled={updatingUserId === user.id} onChange={() => togglePermission(user, permission)} />{permissionLabels[permission] || permission}</label>)}</div>}</div>}
+                  {isExpanded && <div className="border-t border-slate-100 bg-slate-50/80 px-4 py-4 lg:pl-[72px]">
+                    {!isProtected && user.authProvider === "google" && <div className="mb-4 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-bold text-slate-800">Invitation email</p>
+                        <p className={`mt-0.5 text-xs font-medium ${user.invitationEmailStatus === "sent" ? "text-emerald-700" : user.invitationEmailStatus === "failed" ? "text-red-700" : "text-slate-500"}`}>
+                          {user.invitationEmailStatus === "sent" && user.invitationEmailSentAt
+                            ? `Sent ${new Date(user.invitationEmailSentAt).toLocaleString()}`
+                            : user.invitationEmailStatus === "failed"
+                              ? "Previous delivery failed"
+                              : "No invitation email recorded"}
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => resendInvitation(user)} disabled={sendingInvitationId === user.id || !user.isActive} className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-3.5 w-3.5" />{sendingInvitationId === user.id ? "Sending…" : "Resend invitation"}</button>
+                    </div>}
+                    <div className="mb-3"><p className="text-sm font-bold text-slate-800">Access permissions</p><p className="text-xs text-slate-500">Choose which areas this user can view or manage.</p></div>
+                    {isProtected ? <p className="text-sm font-medium text-violet-700">Super administrators have full system access.</p> : <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{availablePermissions.filter((permission) => permission !== "users.manage" && !(user.role === "supervisor" && permission === "leave.manage")).map((permission) => <label key={permission} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${(user.permissions || []).includes(permission) ? "border-blue-200 bg-blue-50 font-semibold text-blue-800" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"}`}><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={(user.permissions || []).includes(permission)} disabled={updatingUserId === user.id} onChange={() => togglePermission(user, permission)} />{permissionLabels[permission] || permission}</label>)}</div>}
+                  </div>}
                 </article>;
               })}
             </div>}

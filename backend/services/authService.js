@@ -13,9 +13,12 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 class AuthService {
   createAdminSession(user) {
     const role = user.role || "super_admin";
-    const permissions = user.permissions?.length
+    let permissions = user.permissions?.length
       ? user.permissions
       : permissionsForRole(role);
+    if (role === "supervisor") {
+      permissions = permissions.filter((permission) => permission !== "leave.manage");
+    }
     const token = jwt.sign(
       { id: user._id, email: user.email, role, permissions, accountType: "admin" },
       dotenv.jwtSecret,
@@ -50,13 +53,19 @@ class AuthService {
   // Admin Login
   async login(email, password) {
     const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
+    const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (normalizedEmail !== developerEmail) {
-      return { error: "Email/password login is only available for the developer super administrator." };
+    const isDeveloper = normalizedEmail === developerEmail;
+    const isTestingAdmin = Boolean(testingAdminEmail) && normalizedEmail === testingAdminEmail;
+    if (!isDeveloper && !isTestingAdmin) {
+      return { error: "Email/password login is not enabled for this account." };
     }
 
     const user = await UserRepository.findByEmail(normalizedEmail);
     if (!user || !user.password) return { error: "Invalid email or password" };
+    if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
+      return { error: "Testing admin has not been securely provisioned." };
+    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -64,9 +73,9 @@ class AuthService {
     }
 
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
-    user.role = "super_admin";
+    user.role = isDeveloper ? "super_admin" : "admin";
     user.authProvider = "developer_password";
-    user.permissions = permissionsForRole("super_admin");
+    user.permissions = permissionsForRole(user.role);
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);

@@ -12,7 +12,10 @@ const requireAdmin = async (req, res, next) => {
     }
     req.admin = user;
     req.user.role = user.role;
-    req.user.permissions = user.permissions?.length ? user.permissions : permissionsForRole(user.role);
+    const permissions = user.permissions?.length ? [...user.permissions] : permissionsForRole(user.role);
+    req.user.permissions = user.role === "supervisor"
+      ? permissions.filter((permission) => permission !== "leave.manage")
+      : permissions;
     next();
   } catch (error) {
     next(error);

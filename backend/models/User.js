@@ -18,6 +18,15 @@ const userSchema = new mongoose.Schema({
   permissions: [{ type: String }],
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  invitedAt: Date,
+  invitationEmailStatus: {
+    type: String,
+    enum: ["pending", "sent", "failed"],
+  },
+  invitationEmailSentAt: Date,
+  invitationEmailLastAttemptAt: Date,
+  invitationEmailError: { type: String, select: false },
+  invitationEmailAttempts: { type: Number, default: 0 },
   lastLoginAt: Date,
 }, { timestamps: true });
 

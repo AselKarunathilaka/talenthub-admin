@@ -11,7 +11,7 @@ const ROLE_PERMISSIONS = {
   admin: ALL_PERMISSIONS,
   supervisor: [
     "dashboard.view", "interns.view", "daily_logs.view", "attendance.view",
-    "leave.view", "leave.manage",
+    "leave.view",
   ],
 };
 

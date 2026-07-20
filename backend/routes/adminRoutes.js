@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const { requireAdmin, requirePermission, enforceRoutePermission } = require("../middleware/adminAuth");
-const { listUsers, createUser, updateUser } = require("../controllers/adminUserController");
+const { listUsers, createUser, updateUser, resendInvitation } = require("../controllers/adminUserController");
 const fs = require("fs");
 const path = require("path");
 
@@ -86,6 +86,7 @@ router.use(enforceRoutePermission);
 router.get("/users", requirePermission("users.manage"), listUsers);
 router.post("/users", requirePermission("users.manage"), createUser);
 router.patch("/users/:id", requirePermission("users.manage"), updateUser);
+router.post("/users/:id/resend-invitation", requirePermission("users.manage"), resendInvitation);
 
 // Export on-leave interns as Excel
 router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveExcel);
