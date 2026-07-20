@@ -1,11 +1,19 @@
 const User = require("../models/User");
 const { ALL_PERMISSIONS, permissionsForRole } = require("../config/adminPermissions");
 
+const sanitizePermissions = (role, permissions) => {
+  const selected = (Array.isArray(permissions) ? permissions : permissionsForRole(role))
+    .filter((item) => ALL_PERMISSIONS.includes(item));
+  if (role === "admin" && !selected.includes("users.manage")) selected.push("users.manage");
+  return role === "supervisor" ? selected.filter((item) => item !== "users.manage") : selected;
+};
+
 const publicUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
   picture: user.picture,
+  authProvider: user.authProvider,
   role: user.role || "supervisor",
   permissions: user.permissions || [],
   isActive: user.isActive !== false,
@@ -30,10 +38,8 @@ exports.createUser = async (req, res, next) => {
     if (await User.exists({ email: normalizedEmail })) {
       return res.status(409).json({ message: "A user with this email already exists." });
     }
-    const allowed = Array.isArray(permissions)
-      ? permissions.filter((item) => ALL_PERMISSIONS.includes(item) && item !== "users.manage")
-      : permissionsForRole(role);
-    const user = await User.create({ name, email: normalizedEmail, role, permissions: allowed, createdBy: req.admin._id });
+    const allowed = sanitizePermissions(role, permissions);
+    const user = await User.create({ name, email: normalizedEmail, role, permissions: allowed, authProvider: "google", createdBy: req.admin._id });
     res.status(201).json({ user: publicUser(user) });
   } catch (error) { next(error); }
 };
@@ -51,10 +57,11 @@ exports.updateUser = async (req, res, next) => {
     if (role !== undefined) {
       if (!["admin", "supervisor"].includes(role)) return res.status(400).json({ message: "Invalid role." });
       updates.role = role;
+      if (permissions === undefined) updates.permissions = permissionsForRole(role);
     }
     if (permissions !== undefined) {
       if (!Array.isArray(permissions)) return res.status(400).json({ message: "Permissions must be an array." });
-      updates.permissions = permissions.filter((item) => ALL_PERMISSIONS.includes(item) && item !== "users.manage");
+      updates.permissions = sanitizePermissions(role || user.role || "supervisor", permissions);
     }
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
 

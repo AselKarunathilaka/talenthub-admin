@@ -398,7 +398,7 @@ const AdminLogin = () => {
                   </div>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-white/40">OR SIGN IN WITH EMAIL AND PASSWORD</span>
+                    <span className="text-xs text-white/40">DEVELOPER SUPER ADMIN</span>
                     <div className="flex-1 h-px bg-white/10" />
                   </div>
                   {/* Login form */}

@@ -7,6 +7,10 @@ const userSchema = new mongoose.Schema({
   password: { type: String, select: false },
   googleSubject: { type: String, sparse: true },
   picture: String,
+  authProvider: {
+    type: String,
+    enum: ["developer_password", "google"],
+  },
   role: {
     type: String,
     enum: ["super_admin", "admin", "supervisor"],

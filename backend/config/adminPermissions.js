@@ -6,7 +6,9 @@ const ALL_PERMISSIONS = [
 
 const ROLE_PERMISSIONS = {
   super_admin: ALL_PERMISSIONS,
-  admin: ALL_PERMISSIONS.filter((permission) => permission !== "users.manage"),
+  // Operational admins may invite and manage Google staff accounts. Controller
+  // safeguards still prevent them from editing super-admin accounts or self-access.
+  admin: ALL_PERMISSIONS,
   supervisor: [
     "dashboard.view", "interns.view", "daily_logs.view", "attendance.view",
     "leave.view", "leave.manage",

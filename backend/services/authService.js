@@ -11,13 +11,6 @@ const { permissionsForRole } = require("../config/adminPermissions");
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
-  async assignLegacyRole(user) {
-    if (user.role) return;
-    // The first migrated administrator bootstraps the system. Once one exists,
-    // historical accounts receive limited access until explicitly promoted.
-    user.role = (await UserRepository.hasSuperAdmin()) ? "supervisor" : "super_admin";
-  }
-
   createAdminSession(user) {
     const role = user.role || "super_admin";
     const permissions = user.permissions?.length
@@ -56,13 +49,14 @@ class AuthService {
 
   // Admin Login
   async login(email, password) {
-    console.log("Checking user:", email);
-
-    const user = await UserRepository.findByEmail(email);
-    if (!user) {
-      console.log("User not found");
-      return { error: "Invalid email or password" };
+    const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    if (normalizedEmail !== developerEmail) {
+      return { error: "Email/password login is only available for the developer super administrator." };
     }
+
+    const user = await UserRepository.findByEmail(normalizedEmail);
+    if (!user || !user.password) return { error: "Invalid email or password" };
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -70,9 +64,9 @@ class AuthService {
     }
 
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
-    // Legacy users predate roles. Promote them once so existing installations are not locked out.
-    await this.assignLegacyRole(user);
-    if (!user.permissions?.length) user.permissions = permissionsForRole(user.role);
+    user.role = "super_admin";
+    user.authProvider = "developer_password";
+    user.permissions = permissionsForRole("super_admin");
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);
@@ -86,8 +80,10 @@ class AuthService {
     const user = await UserRepository.findByEmail(payload.email);
     if (!user) throw new Error("This Google account has not been invited to the admin portal.");
     if (!user.isActive) throw new Error("Account is inactive. Please contact a super admin.");
+    if (user.authProvider !== "google" || !["admin", "supervisor"].includes(user.role)) {
+      throw new Error("This account is not an active Google staff invitation.");
+    }
 
-    await this.assignLegacyRole(user);
     user.name = user.name || payload.name || "";
     user.picture = payload.picture || user.picture;
     user.googleSubject = payload.sub;
