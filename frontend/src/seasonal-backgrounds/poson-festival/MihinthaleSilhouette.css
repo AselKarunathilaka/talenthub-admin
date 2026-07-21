@@ -1,0 +1,247 @@
+/* ─────────────────────────────────────────────
+   Mihintale Landscape — Cinematic Realism
+   ───────────────────────────────────────────── */
+
+.mihinthale-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 40vh;
+  min-height: 220px;
+  max-height: 400px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.landscape-svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── Realistic Mist / Fog Layers ── */
+.mist {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(15px);
+}
+
+.mist--base {
+  bottom: 0;
+  height: 120px;
+  background: linear-gradient(to top, rgba(140,150,200,0.06), transparent);
+  border-radius: 0;
+}
+
+.mist--1 {
+  bottom: 45%;
+  height: 80px;
+  background: radial-gradient(ellipse at 30% center,
+    rgba(160,180,240,0.08) 0%,
+    rgba(140,160,220,0.03) 40%,
+    transparent 70%
+  );
+  animation: mistFloat 16s ease-in-out infinite;
+}
+
+.mist--2 {
+  bottom: 35%;
+  height: 65px;
+  background: radial-gradient(ellipse at 70% center,
+    rgba(150,170,230,0.09) 0%,
+    rgba(130,150,210,0.04) 50%,
+    transparent 70%
+  );
+  animation: mistFloat 22s ease-in-out infinite reverse;
+  animation-delay: 2s;
+}
+
+.mist--3 {
+  bottom: 20%;
+  height: 75px;
+  background: radial-gradient(ellipse at 45% center,
+    rgba(140,160,220,0.07) 0%,
+    rgba(120,140,200,0.03) 40%,
+    transparent 70%
+  );
+  animation: mistFloat 26s ease-in-out infinite;
+  animation-delay: 5s;
+}
+
+@keyframes mistFloat {
+  0%, 100% {
+    transform: translateX(-35px) scaleX(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateX(35px) scaleX(1.15);
+    opacity: 0.9;
+  }
+}
+
+/* ── Stupa Glow ── */
+.stupa-glow-anim {
+  animation: stupaGlow 5s ease-in-out infinite alternate;
+}
+
+.stupa-tip {
+  animation: stupaGlow 3s ease-in-out infinite alternate;
+}
+
+@keyframes stupaGlow {
+  0%   { opacity: 0.35; }
+  100% { opacity: 0.9; }
+}
+
+/* ── Silhouette Figures (Deer & King) ── */
+.deer-figure {
+  animation: subtleLeap 4s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.king-figure {
+  animation: subtleRun 4.5s ease-in-out infinite;
+  transform-origin: center;
+  animation-delay: 0.5s;
+}
+
+@keyframes subtleLeap {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+@keyframes subtleRun {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+   ═══════════════════════════════════════════════ */
+
+/* Large desktop */
+@media (max-width: 1400px) {
+  .mihinthale-wrapper {
+    height: 38vh;
+    min-height: 210px;
+  }
+}
+
+/* Standard laptops */
+@media (max-width: 1100px) {
+  .mihinthale-wrapper {
+    height: 36vh;
+    min-height: 200px;
+    max-height: 350px;
+  }
+}
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .mihinthale-wrapper {
+    height: 34vh;
+    min-height: 190px;
+    max-height: 320px;
+  }
+
+  @keyframes subtleLeap {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-3px); }
+  }
+
+  @keyframes subtleRun {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+}
+
+/* Small tablets / large phones landscape */
+@media (max-width: 768px) {
+  .mihinthale-wrapper {
+    height: 32vh;
+    min-height: 170px;
+    max-height: 280px;
+  }
+
+  .mist { filter: blur(10px); }
+
+  .mist--1 { height: 55px; }
+  .mist--2 { height: 45px; }
+  .mist--3 { height: 50px; }
+  .mist--base { height: 80px; }
+}
+
+/* Phones */
+@media (max-width: 600px) {
+  .mihinthale-wrapper {
+    height: 30vh;
+    min-height: 150px;
+    max-height: 250px;
+  }
+
+  .mist--1 { height: 40px; }
+  .mist--2 { height: 35px; }
+  .mist--3 { height: 40px; }
+  .mist--base { height: 60px; }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .mihinthale-wrapper {
+    height: 28vh;
+    min-height: 130px;
+    max-height: 220px;
+  }
+
+  .mist { filter: blur(8px); }
+
+  @keyframes subtleLeap {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-2px); }
+  }
+
+  @keyframes subtleRun {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-1px); }
+  }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .mihinthale-wrapper {
+    height: 25vh;
+    min-height: 110px;
+    max-height: 200px;
+  }
+}
+
+/* Landscape mobile — tighter vertical space */
+@media (max-height: 500px) {
+  .mihinthale-wrapper {
+    height: 35vh;
+    min-height: 120px;
+    max-height: 200px;
+  }
+
+  .mist--1 { height: 35px; }
+  .mist--2 { height: 30px; }
+  .mist--3 { height: 35px; }
+  .mist--base { height: 50px; }
+}
+
+/* Landscape mobile very short */
+@media (max-height: 400px) {
+  .mihinthale-wrapper {
+    height: 40vh;
+    min-height: 100px;
+    max-height: 160px;
+  }
+}

@@ -200,24 +200,30 @@ const markMeetingAttendance = async (internId, projectName, qrCode = null) => {
 //
 // Uses a MongoDB transaction when updating both DailyRecord and Intern.attendance
 // to ensure atomic consistency — both writes succeed or both roll back.
-const markInternDailyAttendance = async (internId, qrCode) => {
+const markInternDailyAttendance = async (internId, qrCode, options = {}) => {
   const result = await AttendanceWorkflowService.markDailyAttendance({
     internId,
     sessionId: qrCode,
     method: "daily_qr",
     duplicateMessage: "Duplicate daily QR scan detected. Please wait before scanning again.",
     syncEndpoint: externalConfig.attendanceSystem.endpoints.scanDaily,
+    allowCheckout: options.allowCheckout !== false,
+    attendanceAction: options.attendanceAction || "check_in",
   });
   const { intern } = result;
 
   return {
     success: true,
-    message: "Daily attendance marked successfully",
+    message: result.checkedOut
+      ? "Checked out successfully"
+      : "Checked in successfully",
     intern: {
       traineeId: intern.Trainee_ID,
       traineeName: intern.Trainee_Name
     },
     timeMarked: result.timeMarked,
+    checkedOut: result.checkedOut,
+    dailyAttendanceMarked: result.dailyAttendanceMarked,
     type: "daily_qr"
   };
 };

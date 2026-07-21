@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 
 # Local env files
+.env*

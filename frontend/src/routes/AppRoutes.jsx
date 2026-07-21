@@ -180,6 +180,7 @@ const AppRoutes = () => {
         path="/admin/manual-attendance"
         element={<AdminManualAttendance />}
       />
+
       <Route
         path="/admin/inactive-interns"
         element={<AdminInactiveInterns />}

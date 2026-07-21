@@ -1,0 +1,231 @@
+/* ─────────────────────────────────────────────
+   Starry Sky — Enhanced Realism
+   ───────────────────────────────────────────── */
+.starry-sky {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── Moon ── */
+.moon {
+  position: absolute;
+  top: 8%;
+  left: 15%;
+  width: 70px;
+  height: 70px;
+}
+
+/* Atmospheric mist around moon */
+.moon-atmosphere {
+  position: absolute;
+  inset: -150px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(210,220,255,0.08) 0%,
+    rgba(180,190,240,0.03) 40%,
+    transparent 70%
+  );
+  animation: moonPulse 10s ease-in-out infinite;
+}
+
+/* Triple-layered moon glow */
+.moon-glow--far {
+  position: absolute;
+  inset: -90px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(220,230,255,0.08) 0%,
+    rgba(200,210,245,0.03) 50%,
+    transparent 70%
+  );
+  animation: moonPulse 8s ease-in-out infinite;
+}
+
+.moon-glow--mid {
+  position: absolute;
+  inset: -55px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(230,240,255,0.15) 0%,
+    rgba(210,220,245,0.05) 50%,
+    transparent 70%
+  );
+  animation: moonPulse 6s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+.moon-glow--near {
+  position: absolute;
+  inset: -25px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    rgba(240,250,255,0.25) 0%,
+    rgba(220,230,255,0.1) 50%,
+    transparent 70%
+  );
+  animation: moonPulse 5s ease-in-out infinite;
+  animation-delay: 2s;
+}
+
+.moon-body {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffffff 0%,
+    #f0f4f8 30%,
+    #d8e0e8 70%,
+    #b0b8c0 100%
+  );
+  box-shadow:
+    0 0 20px rgba(220,230,255,0.4),
+    0 0 50px rgba(220,230,255,0.2),
+    0 0 100px rgba(220,230,255,0.1),
+    inset -4px -4px 10px rgba(100,110,130,0.5);
+}
+
+.moon-crater {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(160,170,180,0.4) 0%, rgba(140,150,160,0.1) 100%);
+  box-shadow: inset 1px 1px 2px rgba(100,110,120,0.3);
+}
+
+.moon-crater--1 { width: 12px; height: 12px; top: 20%; left: 50%; }
+.moon-crater--2 { width: 8px; height: 8px; top: 48%; left: 30%; }
+.moon-crater--3 { width: 6px; height: 6px; top: 62%; left: 55%; }
+.moon-crater--4 { width: 10px; height: 8px; top: 35%; left: 70%; transform: rotate(15deg); }
+
+/* ── Stars ── */
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(200,220,255,0.6) 40%, transparent 80%);
+  animation: twinkle 4s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+  0%   { transform: scale(0.8); opacity: 0.1; }
+  50%  { transform: scale(1.6); opacity: 0.9; }
+  100% { transform: scale(0.9); opacity: 0.2; }
+}
+
+@keyframes moonPulse {
+  0%, 100% { transform: scale(1); opacity: 0.75; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+/* ── Shooting Stars ── */
+.shooting-star {
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+  animation: shoot 2s ease-out infinite;
+  opacity: 0;
+}
+
+.shooting-star::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(to right, rgba(200,220,255,0.8), transparent);
+  transform: translateY(-50%);
+}
+
+@keyframes shoot {
+  0%  { transform: translate(0, 0) rotate(-35deg); opacity: 0; }
+  5%  { opacity: 1; }
+  60% { opacity: 0.8; }
+  100% { transform: translate(-300px, 210px) rotate(-35deg); opacity: 0; }
+}
+
+/* ── Responsive ── */
+
+/* Tablets */
+@media (max-width: 1024px) {
+  .moon {
+    width: 60px;
+    height: 60px;
+    top: 7%;
+    left: 12%;
+  }
+  .moon-atmosphere { inset: -120px; }
+  .moon-glow--far { inset: -70px; }
+  .moon-glow--mid { inset: -45px; }
+  .moon-glow--near { inset: -20px; }
+}
+
+/* Mobile landscape & small tablets */
+@media (max-width: 768px) {
+  .moon {
+    width: 50px;
+    height: 50px;
+    top: 6%;
+    left: 10%;
+  }
+  .moon-atmosphere { inset: -100px; }
+  .moon-glow--far { inset: -60px; }
+  .moon-glow--mid { inset: -35px; }
+  .moon-glow--near { inset: -18px; }
+  
+  .shooting-star::after {
+    width: 45px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .moon {
+    width: 40px;
+    height: 40px;
+    top: 4%;
+    left: 8%;
+  }
+  .moon-atmosphere { inset: -80px; }
+  .moon-glow--far { inset: -45px; }
+  .moon-glow--mid { inset: -25px; }
+  .moon-glow--near { inset: -14px; }
+  
+  .shooting-star::after {
+    width: 30px;
+  }
+  
+  @keyframes shoot {
+    0%  { transform: translate(0, 0) rotate(-35deg); opacity: 0; }
+    5%  { opacity: 1; }
+    60% { opacity: 0.8; }
+    100% { transform: translate(-150px, 105px) rotate(-35deg); opacity: 0; }
+  }
+}
+
+/* Very small screens */
+@media (max-width: 360px) {
+  .moon {
+    width: 32px;
+    height: 32px;
+    top: 3%;
+    left: 6%;
+  }
+}
+
+/* Landscape mobile — tighter vertical space */
+@media (max-height: 500px) {
+  .moon {
+    width: 40px;
+    height: 40px;
+    top: 5%;
+    left: 10%;
+  }
+  .moon-atmosphere { inset: -70px; }
+  .moon-glow--far { inset: -40px; }
+  .moon-glow--mid { inset: -25px; }
+  .moon-glow--near { inset: -12px; }
+}

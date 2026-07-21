@@ -23,6 +23,7 @@ const DailyRecords = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [records, setRecords] = useState([]);
+  const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -142,6 +143,31 @@ const DailyRecords = () => {
   useEffect(() => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
+
+  //──Fetch Holidays From Backend──────────────────────────────────────────────
+  const fetchHolidays = useCallback(async () => {
+  try {
+    const year = currentMonth.getFullYear();
+
+    const { API_BASE_URL } = await import("../api/apiConfig");
+
+    const response = await fetch(
+      `${API_BASE_URL}/holidays/${year}`
+    );
+
+    const data = await response.json();
+
+    if (data.holidays) {
+      setHolidays(data.holidays);
+    }
+  } catch (error) {
+    console.error("Holiday fetch failed:", error);
+  }
+}, [currentMonth]);
+
+useEffect(() => {
+  fetchHolidays();
+}, [fetchHolidays]);
 
   // ── Export PDF ──────────────────────────────────────────────
   const handleExportPDF = async (params) => {
@@ -269,9 +295,27 @@ const DailyRecords = () => {
 
   const selectedDateRecords = getRecordsForDate(selectedDate);
 
+  //Holiday Helper
+  const getHolidayForDate = (date) => {
+  if (!date) return null;
+
+  return holidays.find((holiday) => {
+    const holidayDate = new Date(holiday.date);
+
+    return (
+      holidayDate.getDate() === date.getDate() &&
+      holidayDate.getMonth() === date.getMonth() &&
+      holidayDate.getFullYear() === date.getFullYear()
+    );
+  });
+};
+
   const getDayClass = (day) => {
     if (!day) return "";
     const hasRecords = getRecordsForDate(day).length > 0;
+
+    const holiday = getHolidayForDate(day);
+
     const isSelected =
       selectedDate &&
       day.getDate() === selectedDate.getDate() &&
@@ -280,6 +324,11 @@ const DailyRecords = () => {
     const isToday = day.toDateString() === new Date().toDateString();
     let classes =
       "min-h-[60px] md:min-h-[80px] p-1 md:p-2 border border-gray-100 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-50 flex flex-col justify-between";
+    
+  //Holiday Styling
+      if (holiday && !isSelected) {
+    classes += " bg-red-60 border-red-300"; 
+  }
     if (isToday) classes += " bg-blue-50 border-blue-200";
     if (isSelected) classes += " bg-indigo-100 border-indigo-300 shadow-md";
     if (hasRecords) classes += " relative";
@@ -509,6 +558,18 @@ const DailyRecords = () => {
                               <div className="text-xs md:text-sm font-medium text-gray-900">
                                 {day.getDate()}
                               </div>
+
+                              {getHolidayForDate(day) && (
+                                <div
+                                  className="text-[9px] md:text-[10px] text-red-600 font-medium truncate"
+                                  title={getHolidayForDate(day).name}
+                                >
+                                  {getHolidayForDate(day).name.length > 15
+                                    ? `${getHolidayForDate(day).name.substring(0, 15)}...`
+                                    : getHolidayForDate(day).name}
+                                </div>
+                              )}
+
                               {getRecordsForDate(day).length > 0 && (
                                 <div className="absolute bottom-1 w-full flex justify-center left-1/2 transform -translate-x-1/2">
                                   {getRecordsForDate(day).some(r => r.status === "study_leave") ? (
@@ -547,6 +608,18 @@ const DailyRecords = () => {
                         })}
                       </span>
                     </h3>
+                    {/* Holidays Data GET*/}
+                    {getHolidayForDate(selectedDate) && (
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="font-semibold text-red-700">
+                          {getHolidayForDate(selectedDate).name}
+                        </div>
+                        
+                        <div className="text-sm text-red-600">
+                          {getHolidayForDate(selectedDate).type.join(", ")}
+                        </div>
+                      </div>
+                    )}
 
                     {selectedDateRecords.length > 0 ? (
                       <div className="space-y-3 md:space-y-4 max-h-80 md:max-h-96 overflow-y-auto">

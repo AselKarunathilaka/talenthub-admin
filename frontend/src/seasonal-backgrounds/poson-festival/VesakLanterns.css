@@ -1,0 +1,154 @@
+/* ─────────────────────────────────────────────
+   Vesak Lanterns on Tree Branch
+   ───────────────────────────────────────────── */
+
+.branch-scene {
+  position: fixed;
+  top: -15px;
+  right: -25px;
+  width: 600px;
+  z-index: 50 !important;
+  pointer-events: none;
+}
+
+.branch-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+  overflow: visible;
+}
+
+/* ── Lantern Swing Animations ── */
+.lantern-swing {
+  transform-origin: top center;
+}
+
+.lantern-swing--a {
+  animation: swingA 5.5s ease-in-out infinite;
+  transform-origin: 570px 82px;
+}
+
+.lantern-swing--b {
+  animation: swingB 6.5s ease-in-out infinite;
+  transform-origin: 430px 132px;
+}
+
+.lantern-swing--c {
+  animation: swingC 5s ease-in-out infinite;
+  transform-origin: 308px 146px;
+}
+
+.lantern-swing--d {
+  animation: swingD 7s ease-in-out infinite;
+  transform-origin: 180px 150px;
+}
+
+@keyframes swingA {
+  0%, 100% { transform: rotate(-1.5deg); }
+  50%      { transform: rotate(1.5deg); }
+}
+
+@keyframes swingB {
+  0%, 100% { transform: rotate(1.2deg); }
+  50%      { transform: rotate(-2deg); }
+}
+
+@keyframes swingC {
+  0%, 100% { transform: rotate(-1.8deg); }
+  50%      { transform: rotate(1.2deg); }
+}
+
+@keyframes swingD {
+  0%, 100% { transform: rotate(1deg); }
+  50%      { transform: rotate(-1.5deg); }
+}
+
+/* ── Glow Pulse ── */
+.glow-pulse {
+  animation: glowPulse 3.5s ease-in-out infinite alternate;
+}
+
+.glow-pulse--delay {
+  animation-delay: 1.5s;
+  animation-duration: 4s;
+}
+
+@keyframes glowPulse {
+  0%   { opacity: 0.65; }
+  100% { opacity: 1; }
+}
+
+/* ── Responsive ── */
+
+/* Large desktop */
+@media (max-width: 1400px) {
+  .branch-scene {
+    width: 550px;
+    top: -14px;
+    right: -22px;
+  }
+}
+
+/* Standard laptops */
+@media (max-width: 1100px) {
+  .branch-scene {
+    width: 480px;
+    top: -12px;
+    right: -20px;
+  }
+}
+
+/* Tablets */
+@media (max-width: 900px) {
+  .branch-scene {
+    width: 400px;
+    top: -10px;
+    right: -18px;
+  }
+}
+
+/* Small tablets / large phones landscape */
+@media (max-width: 768px) {
+  .branch-scene {
+    width: 340px;
+    top: -8px;
+    right: -14px;
+  }
+}
+
+/* Phones */
+@media (max-width: 600px) {
+  .branch-scene {
+    width: 280px;
+    top: -6px;
+    right: -10px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 480px) {
+  .branch-scene {
+    width: 230px;
+    top: -5px;
+    right: -8px;
+  }
+}
+
+/* Very small phones */
+@media (max-width: 360px) {
+  .branch-scene {
+    width: 190px;
+    top: -4px;
+    right: -6px;
+  }
+}
+
+/* Landscape mobile — limit height */
+@media (max-height: 500px) {
+  .branch-scene {
+    width: 300px;
+    top: -8px;
+    right: -12px;
+  }
+}

@@ -24,13 +24,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
 import FaceScanGuide from "../components/FaceScanGuide";
+import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
+import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
 import { apiFetch } from "../utils/api";
+import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
   getDeviceTimeEvidence,
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -52,6 +56,12 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -127,6 +137,13 @@ const Attendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const {
+    attendanceAction,
+    setAttendanceAction,
+    status: dailyAttendanceStatus,
+    statusLoading: dailyStatusLoading,
+    refreshDailyStatus,
+  } = useDailyAttendanceStatus();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -139,6 +156,7 @@ const Attendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
+  const stableFaceChecksRef = useRef(0);
   const enrollmentSubmitStartedRef = useRef(false);
 
   const distanceKm = getDistanceKm(location, officeLocation);
@@ -147,13 +165,20 @@ const Attendance = () => {
   const meetingDetailsReadyFace = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const meetingDetailsReadyQr = projectName.trim().length > 0;
   const attendanceLocationReady = locationValid;
+  const dailyAttendanceCompleted =
+    activeTab === "daily" && dailyAttendanceStatus.state === "checked_out";
   
   const canStartCamera =
     modelsLoaded &&
     (mode === "enroll" ||
-    (attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyFace)));
+    (attendanceLocationReady &&
+      !dailyAttendanceCompleted &&
+      (activeTab !== "meeting" || meetingDetailsReadyFace)));
   
-  const canStartQr = attendanceLocationReady && (activeTab !== "meeting" || meetingDetailsReadyQr);
+  const canStartQr =
+    attendanceLocationReady &&
+    !dailyAttendanceCompleted &&
+    (activeTab !== "meeting" || meetingDetailsReadyQr);
 
   const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
@@ -255,6 +280,7 @@ const Attendance = () => {
 
     setCameraActive(false);
     liveDescriptorRef.current = null;
+    stableFaceChecksRef.current = 0;
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
@@ -357,21 +383,8 @@ const Attendance = () => {
       }
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Camera access requires a supported browser on HTTPS or localhost.");
-      return;
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 720 },
-          height: { ideal: 540 },
-          aspectRatio: { ideal: 4 / 3 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+      const stream = await requestFaceCameraStream();
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -380,7 +393,7 @@ const Attendance = () => {
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera access error:", error);
-      toast.error("Camera access failed. Allow camera permission and use HTTPS or localhost.");
+      toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
     }
   };
@@ -433,6 +446,64 @@ const Attendance = () => {
     }
   };
 
+  const inspectFacePosition = async () => {
+    if (!videoRef.current || !canvasRef.current) return null;
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    try {
+      const detections = await faceapi.detectAllFaces(
+        canvasRef.current,
+        FACE_GUIDE_DETECTOR_OPTIONS,
+      );
+
+      if (detections.length !== 1) {
+        return {
+          error:
+            detections.length === 0
+              ? "No face detected. Center your face in the frame."
+              : "More than one face detected. Only one person should be in frame.",
+        };
+      }
+
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
+    } catch (error) {
+      console.error("Error inspecting face position:", error);
+      return { error: "Could not read the camera frame." };
+    }
+  };
+
+  const updateFaceGuide = (nextGuide) => {
+    setFaceGuide((currentGuide) =>
+      currentGuide.ready === nextGuide.ready && currentGuide.message === nextGuide.message
+        ? currentGuide
+        : nextGuide,
+    );
+  };
+
+  const captureFreshDescriptorForVerification = async () => {
+    while (inspectBusyRef.current) {
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+    }
+
+    inspectBusyRef.current = true;
+    try {
+      return await captureFrameForDescriptor();
+    } finally {
+      inspectBusyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -456,30 +527,45 @@ const Attendance = () => {
       inspectBusyRef.current = true;
 
       try {
-        const frameData = await captureFrameForDescriptor();
+        const positionData = await inspectFacePosition();
         if (cancelled) return;
 
-        if (!frameData || frameData.error) {
+        if (!positionData || positionData.error) {
+          stableFaceChecksRef.current = 0;
           liveDescriptorRef.current = null;
-          setFaceGuide({ ready: false, message: frameData?.error || "Center your face inside the oval" });
+          clearFaceMesh(meshCanvasRef.current);
+          updateFaceGuide({
+            ready: false,
+            message: positionData?.error || "Center your face inside the oval",
+          });
           return;
         }
 
-        liveDescriptorRef.current = frameData.descriptor;
-        setFaceGuide({
-          ready: true,
+        stableFaceChecksRef.current = Math.min(
+          stableFaceChecksRef.current + 1,
+          REQUIRED_STABLE_FACE_CHECKS,
+        );
+        const faceIsStable = stableFaceChecksRef.current >= REQUIRED_STABLE_FACE_CHECKS;
+        updateFaceGuide({
+          ready: faceIsStable,
           message:
-            mode === "enroll"
+            !faceIsStable
+              ? "Hold still for a moment..."
+              : mode === "enroll"
               ? enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
                 ? "Face samples are ready. Complete enrollment."
                 : ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length]
               : "Face is ready. You can mark attendance.",
         });
 
-        if (mode !== "enroll") return;
+        if (!faceIsStable || mode !== "enroll") return;
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled || !frameData || frameData.error) return;
+        liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct =
@@ -511,7 +597,7 @@ const Attendance = () => {
     };
 
     inspectFace();
-    const timer = window.setInterval(inspectFace, 700);
+    const timer = window.setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -597,9 +683,9 @@ const Attendance = () => {
       return;
     }
 
-    const frameData = liveDescriptorRef.current
-      ? { descriptor: liveDescriptorRef.current }
-      : await captureFrameForDescriptor();
+    // Always use a fresh, full-quality descriptor for verification. The live
+    // loop only checks positioning so it cannot submit an old camera frame.
+    const frameData = await captureFreshDescriptorForVerification();
 
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -613,6 +699,8 @@ const Attendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType: activeTab,
+          attendanceAction:
+            activeTab === "daily" ? attendanceAction : undefined,
           projectName: activeTab === "meeting" ? projectName.trim() : undefined,
           meetingPin: activeTab === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
@@ -629,14 +717,23 @@ const Attendance = () => {
 
       if (response.ok) {
         const traineeName = result.intern?.traineeName || "you";
-        toast.success(`Attendance marked for ${traineeName}.`);
+        toast.success(
+          result.checkedOut
+            ? `Check-out recorded for ${traineeName}.`
+            : activeTab === "daily"
+              ? `Check-in recorded for ${traineeName}.`
+              : `Attendance marked for ${traineeName}.`,
+        );
         showSuccess(
           activeTab === "meeting"
             ? "Daily and meeting attendance marked."
-            : "Daily attendance marked.",
+            : result.checkedOut
+              ? "Check-out recorded successfully."
+              : "Check-in recorded successfully.",
         );
         stopCamera();
         setCooldown(true);
+        if (activeTab === "daily") await refreshDailyStatus();
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -705,7 +802,7 @@ const Attendance = () => {
               method: "POST",
               body: JSON.stringify(
                 activeTab === "daily"
-                  ? { ...payload, scanType: "daily" }
+                  ? { ...payload, scanType: "daily", attendanceAction }
                   : { ...payload, projectName: projectName.trim() },
               ),
             },
@@ -723,9 +820,12 @@ const Attendance = () => {
           showSuccess(
             activeTab === "meeting"
               ? "Meeting attendance marked using QR backup."
-              : "Daily attendance marked using QR backup.",
+              : data.checkedOut
+                ? "Check-out recorded using QR backup."
+                : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
+          if (activeTab === "daily") await refreshDailyStatus();
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -861,48 +961,7 @@ const Attendance = () => {
           <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
             <motion.div className="lg:col-span-2 space-y-6" variants={containerVariants} initial="initial" animate="animate">
               
-              {/* Meeting Inputs */}
-              <AnimatePresence>
-                {activeTab === "meeting" && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6"
-                  >
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">Meeting Details</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                          Project Name
-                        </label>
-                        <input
-                          type="text"
-                          value={projectName}
-                          onChange={(e) => setProjectName(e.target.value)}
-                          placeholder="Enter project name..."
-                          className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
-                        />
-                      </div>
-                      {activeMethod === "face" && (
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                            Meeting PIN (6 Digits)
-                          </label>
-                          <input
-                            type="text"
-                            value={meetingPin}
-                            onChange={(e) => setMeetingPin(e.target.value)}
-                            placeholder="Enter PIN..."
-                            maxLength={6}
-                            className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
 
               {/* Scanner Container */}
               <motion.div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" variants={itemVariants}>
@@ -918,6 +977,17 @@ const Attendance = () => {
                 </div>
 
                 <div className="p-6">
+                  {activeTab === "daily" && mode === "recognize" && (
+                    <div className="mb-4">
+                      <DailyAttendanceActionControl
+                        action={attendanceAction}
+                        onActionChange={setAttendanceAction}
+                        status={dailyAttendanceStatus}
+                        loading={dailyStatusLoading}
+                      />
+                    </div>
+                  )}
+
                   {/* FACE ID VIEW */}
                   {activeMethod === "face" && (
                     <div className="space-y-4">
@@ -995,7 +1065,15 @@ const Attendance = () => {
                                     : "bg-gradient-to-r from-[#00b4eb] to-[#0056a2] hover:shadow-blue-500/30 active:scale-95"
                                 }`}
                               >
-                                {loading ? "Verifying..." : cooldown ? "Wait 60s" : "Verify & Mark Attendance"}
+                                {loading
+                                  ? "Verifying..."
+                                  : cooldown
+                                    ? "Wait 60s"
+                                    : activeTab === "daily"
+                                      ? attendanceAction === "check_out"
+                                        ? "Verify & Check Out"
+                                        : "Verify & Check In"
+                                      : "Verify & Mark Attendance"}
                               </button>
                             )}
                             <button
@@ -1151,6 +1229,48 @@ const Attendance = () => {
             {/* Sidebar / Tips */}
             <motion.div className="space-y-6" variants={itemVariants}>
               
+              {/* Meeting Inputs */}
+              <AnimatePresence>
+                {activeTab === "meeting" && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6"
+                  >
+                    <h2 className="text-lg font-bold text-gray-800 mb-4">Meeting Details</h2>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                          Project Name
+                        </label>
+                        <input
+                          type="text"
+                          value={projectName}
+                          onChange={(e) => setProjectName(e.target.value)}
+                          placeholder="Enter project name..."
+                          className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
+                        />
+                      </div>
+                      {activeMethod === "face" && (
+                        <div>
+                          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                            Meeting PIN (6 Digits)
+                          </label>
+                          <input
+                            type="text"
+                            value={meetingPin}
+                            onChange={(e) => setMeetingPin(e.target.value)}
+                            placeholder="Enter PIN..."
+                            maxLength={6}
+                            className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="bg-slate-50/80 px-6 py-5 border-b border-gray-100">
                   <h3 className="font-extrabold text-gray-800 flex items-center text-lg">
@@ -1201,11 +1321,10 @@ const Attendance = () => {
                 <p className="text-[#0056a2]/80 text-sm mb-4 font-medium">
                   If you're experiencing persistent issues with {activeMethod === "face" ? "face recognition" : "the QR scanner"}, contact IT support.
                 </p>
-                <button
-                  className="w-full py-3 bg-white text-[#0056a2] rounded-xl font-bold shadow-sm hover:shadow-md border border-[#0056a2]/10 transition-all active:scale-95"
-                >
-                  Contact Support
-                </button>
+                <WhatsAppSupportButton
+                  className="w-full"
+                  variant="light"
+                />
               </div>
             </motion.div>
           </div>

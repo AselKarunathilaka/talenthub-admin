@@ -18,13 +18,16 @@ import { BrowserMultiFormatReader } from "@zxing/library";
 import { useNavigate } from "react-router-dom";
 import Navigation from "../components/Navigation";
 import FaceScanGuide from "../components/FaceScanGuide";
+import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
 import { apiFetch } from "../utils/api";
+import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import {
   getDeviceTimeEvidence,
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -47,6 +50,12 @@ const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
 });
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -123,6 +132,13 @@ const FaceAttendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const {
+    attendanceAction,
+    setAttendanceAction,
+    status: dailyAttendanceStatus,
+    statusLoading: dailyStatusLoading,
+    refreshDailyStatus,
+  } = useDailyAttendanceStatus();
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -135,6 +151,7 @@ const FaceAttendance = () => {
   const enrollmentFramesRef = useRef([]);
   const lastAutoCaptureRef = useRef(0);
   const inspectBusyRef = useRef(false);
+  const stableFaceChecksRef = useRef(0);
   const enrollmentSubmitStartedRef = useRef(false);
 
   const distanceKm = getDistanceKm(location, officeLocation);
@@ -142,9 +159,13 @@ const FaceAttendance = () => {
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReady = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
   const attendanceLocationReady = locationValid;
+  const dailyAttendanceCompleted =
+    attendanceType === "daily" && dailyAttendanceStatus.state === "checked_out";
   const canStartCamera =
     mode === "enroll" ||
-    (attendanceLocationReady && (attendanceType !== "meeting" || meetingDetailsReady));
+    (attendanceLocationReady &&
+      !dailyAttendanceCompleted &&
+      (attendanceType !== "meeting" || meetingDetailsReady));
   const enrollmentProgress = Math.min(enrollmentFrames.length, REQUIRED_ENROLLMENT_SAMPLES);
 
   const attachStreamToVideo = async () => {
@@ -235,6 +256,7 @@ const FaceAttendance = () => {
 
     setCameraActive(false);
     liveDescriptorRef.current = null;
+    stableFaceChecksRef.current = 0;
     clearFaceMesh(meshCanvasRef.current);
     setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
@@ -334,21 +356,8 @@ const FaceAttendance = () => {
       }
     }
 
-    if (!navigator.mediaDevices?.getUserMedia) {
-      toast.error("Camera access requires a supported browser on HTTPS or localhost.");
-      return;
-    }
-
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 720 },
-          height: { ideal: 540 },
-          aspectRatio: { ideal: 4 / 3 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+      const stream = await requestFaceCameraStream();
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -357,7 +366,7 @@ const FaceAttendance = () => {
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera access error:", error);
-      toast.error("Camera access failed. Allow camera permission and use HTTPS or localhost.");
+      toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
     }
   };
@@ -410,6 +419,64 @@ const FaceAttendance = () => {
     }
   };
 
+  const inspectFacePosition = async () => {
+    if (!videoRef.current || !canvasRef.current) return null;
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    try {
+      const detections = await faceapi.detectAllFaces(
+        canvasRef.current,
+        FACE_GUIDE_DETECTOR_OPTIONS,
+      );
+
+      if (detections.length !== 1) {
+        return {
+          error:
+            detections.length === 0
+              ? "No face detected. Center your face in the frame."
+              : "More than one face detected. Only one person should be in frame.",
+        };
+      }
+
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
+    } catch (error) {
+      console.error("Error inspecting face position:", error);
+      return { error: "Could not read the camera frame." };
+    }
+  };
+
+  const updateFaceGuide = (nextGuide) => {
+    setFaceGuide((currentGuide) =>
+      currentGuide.ready === nextGuide.ready && currentGuide.message === nextGuide.message
+        ? currentGuide
+        : nextGuide,
+    );
+  };
+
+  const captureFreshDescriptorForVerification = async () => {
+    while (inspectBusyRef.current) {
+      await new Promise((resolve) => window.setTimeout(resolve, 25));
+    }
+
+    inspectBusyRef.current = true;
+    try {
+      return await captureFrameForDescriptor();
+    } finally {
+      inspectBusyRef.current = false;
+    }
+  };
+
   useEffect(() => {
     enrollmentFramesRef.current = enrollmentFrames;
   }, [enrollmentFrames]);
@@ -433,30 +500,45 @@ const FaceAttendance = () => {
       inspectBusyRef.current = true;
 
       try {
-        const frameData = await captureFrameForDescriptor();
+        const positionData = await inspectFacePosition();
         if (cancelled) return;
 
-        if (!frameData || frameData.error) {
+        if (!positionData || positionData.error) {
+          stableFaceChecksRef.current = 0;
           liveDescriptorRef.current = null;
-          setFaceGuide({ ready: false, message: frameData?.error || "Center your face inside the oval" });
+          clearFaceMesh(meshCanvasRef.current);
+          updateFaceGuide({
+            ready: false,
+            message: positionData?.error || "Center your face inside the oval",
+          });
           return;
         }
 
-        liveDescriptorRef.current = frameData.descriptor;
-        setFaceGuide({
-          ready: true,
+        stableFaceChecksRef.current = Math.min(
+          stableFaceChecksRef.current + 1,
+          REQUIRED_STABLE_FACE_CHECKS,
+        );
+        const faceIsStable = stableFaceChecksRef.current >= REQUIRED_STABLE_FACE_CHECKS;
+        updateFaceGuide({
+          ready: faceIsStable,
           message:
-            mode === "enroll"
+            !faceIsStable
+              ? "Hold still for a moment..."
+              : mode === "enroll"
               ? enrollmentFramesRef.current.length >= REQUIRED_ENROLLMENT_SAMPLES
                 ? "Face samples are ready. Complete enrollment."
                 : ENROLLMENT_PROMPTS[enrollmentFramesRef.current.length]
               : "Face is ready. You can mark attendance.",
         });
 
-        if (mode !== "enroll") return;
+        if (!faceIsStable || mode !== "enroll") return;
         const currentFrames = enrollmentFramesRef.current;
         if (currentFrames.length >= REQUIRED_ENROLLMENT_SAMPLES) return;
         if (Date.now() - lastAutoCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
+
+        const frameData = await captureFrameForDescriptor();
+        if (cancelled || !frameData || frameData.error) return;
+        liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
         const isDistinct =
@@ -488,7 +570,7 @@ const FaceAttendance = () => {
     };
 
     inspectFace();
-    const timer = window.setInterval(inspectFace, 700);
+    const timer = window.setInterval(inspectFace, FACE_GUIDE_INTERVAL_MS);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
@@ -574,9 +656,9 @@ const FaceAttendance = () => {
       return;
     }
 
-    const frameData = liveDescriptorRef.current
-      ? { descriptor: liveDescriptorRef.current }
-      : await captureFrameForDescriptor();
+    // Always use a fresh, full-quality descriptor for verification. The live
+    // loop only checks positioning so it cannot submit an old camera frame.
+    const frameData = await captureFreshDescriptorForVerification();
 
     if (!frameData || frameData.error) {
       toast.error(frameData?.error || "No face detected.");
@@ -590,6 +672,8 @@ const FaceAttendance = () => {
         body: JSON.stringify({
           descriptor: frameData.descriptor,
           attendanceType,
+          attendanceAction:
+            attendanceType === "daily" ? attendanceAction : undefined,
           projectName: attendanceType === "meeting" ? projectName.trim() : undefined,
           meetingPin: attendanceType === "meeting" ? meetingPin.trim() : undefined,
           metadata: {
@@ -620,6 +704,7 @@ const FaceAttendance = () => {
         );
         stopCamera();
         setCooldown(true);
+        if (attendanceType === "daily") await refreshDailyStatus();
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -688,7 +773,7 @@ const FaceAttendance = () => {
               method: "POST",
               body: JSON.stringify(
                 qrMode === "daily"
-                  ? { ...payload, scanType: "daily" }
+                  ? { ...payload, scanType: "daily", attendanceAction }
                   : { ...payload, projectName: projectName.trim() },
               ),
             },
@@ -706,9 +791,12 @@ const FaceAttendance = () => {
           showSuccess(
             qrMode === "meeting"
               ? "Meeting attendance marked using QR backup."
-              : "Daily attendance marked using QR backup.",
+              : data.checkedOut
+                ? "Check-out recorded using QR backup."
+                : "Check-in recorded using QR backup.",
           );
           stopQRScanner();
+          if (qrMode === "daily") await refreshDailyStatus();
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -888,6 +976,15 @@ const FaceAttendance = () => {
                         </button>
                       </div>
 
+                      {attendanceType === "daily" && (
+                        <DailyAttendanceActionControl
+                          action={attendanceAction}
+                          onActionChange={setAttendanceAction}
+                          status={dailyAttendanceStatus}
+                          loading={dailyStatusLoading}
+                        />
+                      )}
+
                       {attendanceType === "meeting" && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <label className="block">
@@ -1053,7 +1150,11 @@ const FaceAttendance = () => {
                         className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
                       >
                         {loading ? <Loader className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                        Mark Attendance
+                        {attendanceType === "daily"
+                          ? attendanceAction === "check_out"
+                            ? "Check Out"
+                            : "Check In"
+                          : "Mark Attendance"}
                       </button>
                     )}
                     <button
@@ -1103,6 +1204,15 @@ const FaceAttendance = () => {
                   </button>
                 </div>
 
+                {qrMode === "daily" && (
+                  <DailyAttendanceActionControl
+                    action={attendanceAction}
+                    onActionChange={setAttendanceAction}
+                    status={dailyAttendanceStatus}
+                    loading={dailyStatusLoading}
+                  />
+                )}
+
                 {qrMode === "meeting" && (
                   <label className="block">
                     <span className="text-sm font-medium text-slate-700">Project Name</span>
@@ -1144,7 +1254,12 @@ const FaceAttendance = () => {
                   <button
                     type="button"
                     onClick={qrScanning ? stopQRScanner : startQRScanner}
-                    disabled={qrProcessing || !locationValid}
+                    disabled={
+                      qrProcessing ||
+                      !locationValid ||
+                      (qrMode === "daily" &&
+                        dailyAttendanceStatus.state === "checked_out")
+                    }
                     className={`inline-flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold text-white disabled:bg-slate-300 ${
                       qrScanning ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700"
                     }`}

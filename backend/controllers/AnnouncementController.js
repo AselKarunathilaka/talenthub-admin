@@ -3,7 +3,7 @@ const Announcement = require("../models/Announcement");
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
   try {
-    const { title, message, priority } = req.body;
+    const { title, message, priority, showAsPopup } = req.body;
 
     if (!title || !message) {
       return res
@@ -22,6 +22,7 @@ const createAnnouncement = async (req, res) => {
       title,
       message,
       priority: priority || "normal",
+      showAsPopup: Boolean(showAsPopup),
       createdBy,
     });
 

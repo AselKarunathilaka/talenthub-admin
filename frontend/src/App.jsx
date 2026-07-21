@@ -19,6 +19,9 @@ const App = () => {
               color: '#fff',
             },
           }}
+          containerStyle={{
+            zIndex: 9999999,
+          }}
         />
         <AppRoutes />
       </Router>

@@ -38,6 +38,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import logo from "../assets/sltlogo.jpg";
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
@@ -147,11 +148,14 @@ const AdminInternDetails = () => {
 
   const [gitCommitsData, setGitCommitsData] = useState(null);
   const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
+  // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
+  const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
     fetchGitCommits();
+    fetchCertAttendanceCount();
   }, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
@@ -181,6 +185,24 @@ const AdminInternDetails = () => {
       setAttendanceLoading(false);
     }
   }, [internId, attendanceData]);
+
+  // Fetch the same certificate-data endpoint used by the certificate page
+  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
+  const fetchCertAttendanceCount = useCallback(async () => {
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (!adminInfo.token) return;
+      const res = await fetch(
+        `${(await import("../api/apiConfig")).API_BASE_URL}/admin/intern/${internId}/certificate-data`,
+        { headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` } }
+      );
+      if (!res.ok) return;
+      const certData = await res.json();
+      setCertAttendanceCount(certData.attendanceCount ?? null);
+    } catch (err) {
+      console.warn("Could not fetch cert attendance count:", err);
+    }
+  }, [internId]);
 
   const fetchInternDetails = async () => {
     try {
@@ -498,8 +520,19 @@ const AdminInternDetails = () => {
                           {/* Overlapping Avatar */}
                           <div className="relative inline-block z-10">
                             <div className="h-20 w-20 sm:h-24 sm:w-24 bg-white p-1 rounded-2xl shadow-md border border-gray-100">
-                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200">
-                                <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+                              <div className="h-full w-full bg-slate-100 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
+                                <img
+                                  src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                                  alt={intern.traineeName}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+                                  <FaUser className="text-slate-400 text-3xl sm:text-4xl" />
+                                </div>
                               </div>
                             </div>
                             <div className="absolute -bottom-1.5 -right-1.5 bg-white rounded-full p-0.5 shadow-sm border border-gray-100">
@@ -570,6 +603,57 @@ const AdminInternDetails = () => {
                               {intern.endDate ? formatDate(intern.endDate) : "N/A"}
                             </div>
                           </div>
+
+                          {/* Meeting Attendance % = attended ÷ meetings held so far */}
+                          {attendanceData && intern.startDate && (() => {
+                            let present = 0;
+                            if (attendanceData.meetingAttendance && Array.isArray(attendanceData.meetingAttendance)) {
+                              const weeks = new Set();
+                              attendanceData.meetingAttendance.forEach(entry => {
+                                if (entry.status === 'Present' && entry.date) {
+                                  const d = new Date(entry.date);
+                                  if (!isNaN(d.getTime())) {
+                                    const day = d.getDay();
+                                    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+                                    const monday = new Date(new Date(d).setDate(diff));
+                                    weeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
+                                  }
+                                }
+                              });
+                              present = weeks.size;
+                            } else {
+                              present = attendanceData?.stats?.present ?? 0;
+                            }
+                            const start = new Date(intern.startDate);
+                            const end = intern.endDate ? new Date(intern.endDate) : null;
+                            const now = new Date();
+                            // Meetings held so far = weeks elapsed (1 meeting per week), capped at training end
+                            const measureTo = end && end < now ? end : now;
+                            if (isNaN(start) || measureTo <= start) return null;
+                            const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+                            const pct = Math.min(100, Math.round((present / weeksHeld) * 100));
+                            const color = pct >= 80 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
+                            const textColor = pct >= 80 ? 'text-emerald-600' : pct >= 50 ? 'text-amber-500' : 'text-red-500';
+                            return (
+                              <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                    <FaChartPie className="text-slate-400" /> Meeting Attendance Rate
+                                  </p>
+                                  <span className={`text-sm font-black ${textColor}`}>{pct}%</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="h-2 rounded-full transition-all duration-700"
+                                    style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
+                                  />
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1">
+                                  {present} attended out of {weeksHeld} meetings held so far (1 per week)
+                                </p>
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </motion.div>

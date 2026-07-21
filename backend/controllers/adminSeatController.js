@@ -1,6 +1,7 @@
 const SeatBooking = require("../models/SeatReserve");
 const Intern = require("../models/Intern");
 const LockedSeat = require("../models/LockedSeat");
+const DailyRecord = require("../models/DailyRecord");
 
 /**
  * Get all seat bookings with optional date filter
@@ -468,6 +469,101 @@ const unlockSeat = async (req, res) => {
   }
 };
 
+/**
+ * Get interns who booked a seat but haven't scanned daily attendance
+ * @route GET /api/admin/seat-bookings/pending-checkins
+ * @access Private (Admin only)
+ * @query date - date filter (YYYY-MM-DD), defaults to today
+ */
+const getPendingCheckIns = async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    // Resolve the target date (default to today in local time)
+    let targetDateStr;
+    if (date) {
+      targetDateStr = date; // e.g. "2026-06-20"
+    } else {
+      const d = new Date();
+      targetDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    // Build date range for the booking query
+    const filterDate = new Date(targetDateStr);
+    const nextDay = new Date(filterDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    // Fetch all active seat bookings for this date
+    const bookings = await SeatBooking.find({
+      status: "active",
+      bookingDate: { $gte: filterDate, $lt: nextDay },
+    })
+      .populate({
+        path: "internId",
+        select: "Trainee_ID Trainee_Name Trainee_Email",
+      })
+      .lean();
+
+    if (bookings.length === 0) {
+      return res.status(200).json({
+        success: true,
+        date: targetDateStr,
+        pendingCheckIns: [],
+        count: 0,
+      });
+    }
+
+    // Collect all internId ObjectIds from bookings
+    const bookedInternIds = bookings
+      .map((b) => b.internId?._id || b.internId)
+      .filter(Boolean);
+
+    // Find daily attendance records for these interns on this date
+    const attendedRecords = await DailyRecord.find({
+      internId: { $in: bookedInternIds },
+      date: targetDateStr,
+      attendance: "present",
+    })
+      .select("internId")
+      .lean();
+
+    // Build a set of intern IDs who have checked in
+    const attendedInternIdSet = new Set(
+      attendedRecords.map((r) => r.internId.toString())
+    );
+
+    // Filter bookings for interns who have NOT checked in
+    const pendingCheckIns = bookings
+      .filter((b) => {
+        const internObjId = (b.internId?._id || b.internId)?.toString();
+        return !attendedInternIdSet.has(internObjId);
+      })
+      .map((b) => ({
+        seatNumber: b.seatNumber,
+        traineeId: b.traineeId,
+        name: b.internId?.Trainee_Name || "N/A",
+        email: b.internId?.Trainee_Email || b.email,
+      }));
+
+    // Sort by seat number
+    pendingCheckIns.sort((a, b) => a.seatNumber - b.seatNumber);
+
+    res.status(200).json({
+      success: true,
+      date: targetDateStr,
+      pendingCheckIns,
+      count: pendingCheckIns.length,
+    });
+  } catch (error) {
+    console.error("Error fetching pending check-ins:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch pending check-ins",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getSeatBookings,
   getBookingStats,
@@ -476,4 +572,5 @@ module.exports = {
   getLockedSeats,
   lockSeat,
   unlockSeat,
+  getPendingCheckIns,
 };

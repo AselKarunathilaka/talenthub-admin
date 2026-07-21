@@ -49,6 +49,7 @@ export const generateCertificatePDF = async (data) => {
     logoBase64,
     gitCommitsData,
     verificationUrl,
+    extendedLeaves = [],
   } = data;
 
   // ── Landscape A4 — standard certificate format ─────────────────────
@@ -163,20 +164,51 @@ export const generateCertificatePDF = async (data) => {
   const institute = intern.institute || intern.university || "N/A";
   const duration = dur(startDate, endDate);
   const traineeId = intern.traineeId || "N/A";
-  const attendDays = `${attendanceCount} day${attendanceCount !== 1 ? "s" : ""}`;
+
+  let attendanceStr = `${attendanceCount} meeting${attendanceCount !== 1 ? "s" : ""}`;
+  if (startDate) {
+    const start = new Date(startDate);
+    const end = endDate ? new Date(endDate) : null;
+    const now = new Date();
+    // attended / weeks held so far (capped at endDate if completed)
+    const measureTo = end && end < now ? end : now;
+    if (!isNaN(start) && measureTo > start) {
+      const weeksHeld = Math.max(1, Math.ceil((measureTo - start) / (1000 * 60 * 60 * 24 * 7)));
+      const percentage = Math.min(100, Math.round((attendanceCount / weeksHeld) * 100));
+      attendanceStr += ` (achieving an attendance rate of ${percentage}%)`;
+    }
+  }
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...COLORS.black);
 
   const maxTextWidth = W - M * 2 - 60;
+
+  let extendedLeaveStr = "";
+  if (extendedLeaves && extendedLeaves.length > 0) {
+    let totalLeaveDays = 0;
+    extendedLeaves.forEach(l => {
+      if (l.leaveDate) {
+        if (l.studyEndDate) {
+          totalLeaveDays += Math.max(1, Math.ceil((new Date(l.studyEndDate) - new Date(l.leaveDate)) / 864e5) + 1);
+        } else {
+          totalLeaveDays += 1; // Single day leave
+        }
+      }
+    });
+    if (totalLeaveDays > 0) {
+      extendedLeaveStr = ` [excluding ${totalLeaveDays} day${totalLeaveDays !== 1 ? 's' : ''} of approved extended leave]`;
+    }
+  }
+
   const paragraph =
     `bearing Trainee ID ${traineeId}, from ${institute}, ` +
     `specializing in ${field}, has successfully completed the internship ` +
     `training program at Sri Lanka Telecom PLC during the period ` +
-    `${fmt(startDate)} to ${fmt(endDate)} (${duration}). ` +
+    `${fmt(startDate)} to ${fmt(endDate)} (${duration})${extendedLeaveStr}. ` +
     `Throughout the training period, the intern demonstrated outstanding ` +
-    `dedication and commitment, attending ${attendDays} of scheduled meetings. ` +
+    `dedication and commitment, attending ${attendanceStr}. ` +
     `We acknowledge and appreciate the valuable contributions made during this internship.`;
 
   const wrappedLines = doc.splitTextToSize(paragraph, maxTextWidth);
@@ -194,15 +226,17 @@ export const generateCertificatePDF = async (data) => {
       let commitsInfo = "";
       if (gitCommitsData && gitCommitsData.projectCommits) {
         const match = gitCommitsData.projectCommits.find(
-          (gc) => gc.projectName === (p.projectName || p.name)
+          (gc) => 
+            gc.projectName?.trim().toLowerCase() === 
+            (p.projectName || p.name)?.trim().toLowerCase()
         );
-        if (match && match.totalCommits !== undefined) {
-          commitsInfo = ` with ${match.totalCommits} commits`;
+        if (match && match.totalCommits > 0) {
+          commitsInfo = `, contributing ${match.totalCommits} code commit${match.totalCommits === 1 ? '' : 's'}`;
         }
       }
       let desc = projName;
-      if (supervisor) desc += ` (supervised by ${supervisor})`;
       if (commitsInfo) desc += commitsInfo;
+      if (supervisor) desc += ` (supervised by ${supervisor})`;
       return desc;
     });
 

@@ -8,6 +8,7 @@ const {
   getLockedSeats,
   lockSeat,
   unlockSeat,
+  getPendingCheckIns,
 } = require("../controllers/adminSeatController");
 const authenticateUser = require("../middleware/authMiddleware");
 
@@ -60,6 +61,14 @@ router.post("/seat-bookings/lock", lockSeat);
  * @body    { seatNumber: Number }
  */
 router.post("/seat-bookings/unlock", unlockSeat);
+
+/**
+ * @route   GET /api/admin/seat-bookings/pending-checkins
+ * @desc    Get interns who booked a seat but haven't scanned daily attendance
+ * @access  Private (Admin)
+ * @query   date - optional date filter (YYYY-MM-DD)
+ */
+router.get("/seat-bookings/pending-checkins", getPendingCheckIns);
 
 /**
  * @route   GET /api/admin/seat-bookings/seat/:seatNumber
