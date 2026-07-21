@@ -2,3 +2,26 @@
 backend/scratch/testScan.js
 backend/testManualScan.js
 backend/checkInternAttendance.js
+
+# Environment files and local deployment configuration
+**/.env*
+!**/.env.example
+!**/.env.*.example
+
+# Private keys, certificates, and service credentials
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.keystore
+**/id_rsa
+**/id_dsa
+**/id_ecdsa
+**/id_ed25519
+**/*credentials*.json
+**/*service-account*.json
+**/.npmrc
+
+# Infrastructure variables commonly containing secrets
+**/*.tfvars
+**/*.tfvars.json
