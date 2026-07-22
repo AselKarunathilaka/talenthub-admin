@@ -950,6 +950,7 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
 };
 
 // Get weekly non-submissions (Monday to Friday of current week)
+// Get weekly non-submissions (Monday to Friday of current week)
 const getWeeklyNonSubmissions = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -1033,6 +1034,11 @@ const getWeeklyNonSubmissions = async (req, res) => {
       }
     }
 
+    // Custom date range = strict "submitted nothing at all" check.
+    // Legacy current/previous full-week view keeps the weekly quota check
+    // (must submit at least MIN_WEEKLY_LOGS_REQUIRED of the working days).
+    const isCustomRange = Boolean(startDateParam && endDateParam);
+
     console.log("Checking weekly submissions from:", weekPeriodLabel);
 
     // Get all interns
@@ -1113,16 +1119,19 @@ const getWeeklyNonSubmissions = async (req, res) => {
     });
 
     // How many logs are required for this range, capped by how many working
-    // days are actually in it (handles short/custom ranges sanely)
-    const requiredSubmissions = Math.min(
-      MIN_WEEKLY_LOGS_REQUIRED,
-      workingDaysInRange,
-    );
+    // days are actually in it (handles short/custom ranges sanely).
+    // For an explicit custom date range this is purely informational — the
+    // actual filter below uses "0 submissions" instead of this quota.
+    const requiredSubmissions = isCustomRange
+      ? 1
+      : Math.min(MIN_WEEKLY_LOGS_REQUIRED, workingDaysInRange);
 
-    // Find active interns who submitted fewer than the required number of logs
+    // Find active interns who are non-submitters for the period.
+    // - Custom range: intern submitted ZERO logs during the selected dates.
+    // - Legacy week view: intern submitted fewer than the weekly quota.
     const nonSubmittedInterns = activeInterns.filter((intern) => {
       const count = submissionCountMap.get(intern._id.toString()) || 0;
-      return count < requiredSubmissions;
+      return isCustomRange ? count === 0 : count < requiredSubmissions;
     });
 
     // Format response with additional details
@@ -1149,12 +1158,18 @@ const getWeeklyNonSubmissions = async (req, res) => {
         daysSinceLastSubmission: lastSub
           ? Math.floor((Date.now() - new Date(lastSub).getTime()) / 86400000)
           : null,
-        status: "Below Required Weekly Submissions",
+        status: isCustomRange
+          ? "No Submissions In Selected Range"
+          : "Below Required Weekly Submissions",
       };
     });
 
     console.log(
-      `Found ${nonSubmissionsArray.length} active interns below the required ${requiredSubmissions} submissions for period: ${weekPeriodLabel}`,
+      `Found ${nonSubmissionsArray.length} active interns ${
+        isCustomRange
+          ? "with zero submissions"
+          : `below the required ${requiredSubmissions} submissions`
+      } for period: ${weekPeriodLabel}`,
     );
     console.log(`Total working days in period: ${workingDaysInRange}`);
     console.log(
@@ -1168,6 +1183,7 @@ const getWeeklyNonSubmissions = async (req, res) => {
       weekPeriod: weekPeriodLabel,
       workingDaysThisWeek: workingDaysInRange,
       requiredSubmissions,
+      isCustomRange,
       totalInterns: activeInterns.length,
       totalInternsInDatabase: allInterns.length,
       excludedInterns:
