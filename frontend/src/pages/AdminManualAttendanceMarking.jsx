@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
+import * as pdfjsLib from "pdfjs-dist";
+import pdfWorker from "pdfjs-dist/build/pdf.worker.min?url";
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
+
 import {
   FaArrowLeft,
   FaSearch,
@@ -452,21 +457,24 @@ const AdminManualAttendance = () => {
 
   // ── Bulk Mark Attendance ────────────────────────────────────────────────
   const handleBulkMark = async () => {
-    const ids = bulkInternIds
-      .split(/[\n,]+/)
-      .map((id) => id.trim())
-      .filter((id) => id.length > 0);
+  const rawIds = bulkInternIds
+    .split(/[\n,]+/)
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
 
-    if (ids.length === 0) {
-      showToast("Please enter at least one intern ID", "error");
-      return;
-    }
+  const ids = [...new Set(rawIds)]; // remove duplicate IDs
+
+  if (ids.length === 0) {
+    showToast("Please enter at least one intern ID", "error");
+    return;
+  }
 
     if (mode === "meeting" && !meetingName.trim()) {
       showToast("Please enter a meeting name", "error");
       return;
     }
-
+    setBulkResults(null);
+    
     setMarking(true);
     try {
       const payload = {
@@ -518,32 +526,59 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
-
-  const handleTxtUpload = async (event) => {
+const handlePdfUpload = async (event) => {
   const file = event.target.files?.[0];
 
   if (!file) return;
 
+  if (!file.name.toLowerCase().endsWith(".pdf")) {
+    showToast("Please upload a PDF file", "error");
+    return;
+  }
+
   try {
-    const text = await file.text();
+    const data = await file.arrayBuffer();
 
-    const ids = text
-      .split(/[\n,\r]+/)
-      .map((id) => id.trim())
-      .filter(Boolean);
+    const pdf = await pdfjsLib.getDocument({ data }).promise;
 
-    setBulkInternIds(ids.join("\n"));
+    const ids = [];
+
+    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+      const page = await pdf.getPage(pageNo);
+
+      const textContent = await page.getTextContent();
+
+      textContent.items.forEach((item) => {
+        const value = item.str.trim();
+
+        // Only accept 4-digit trainee IDs (3000-9999)
+        if (/^\d{4}$/.test(value)) {
+          const id = Number(value);
+
+          if (id >= 3000 && id <= 9999) {
+            ids.push(value);
+          }
+        }
+      });
+    }
+
+    const uniqueIds = [...new Set(ids)];
+
+    if (uniqueIds.length === 0) {
+      showToast("No Trainee IDs found in PDF", "error");
+      return;
+    }
+
+    setBulkInternIds(uniqueIds.join("\n"));
     setUploadedFileName(file.name);
 
     showToast(
-      `${ids.length} IDs loaded from file`,
+      `${uniqueIds.length} Trainee IDs imported successfully`,
       "success"
     );
   } catch (error) {
-    showToast(
-      "Failed to read TXT file",
-      "error"
-    );
+    console.error(error);
+    showToast("Failed to process PDF file", "error");
   }
 };
 
@@ -869,14 +904,14 @@ const handleExcelUpload = async (event) => {
                     <FaUpload className="text-blue-600" />
 
                     <span className="text-sm font-medium text-blue-700">
-
+                         Upload Attendance PDF
                     </span>
 
                     <input
                       type="file"
-                      accept=".txt"
+                      accept=".pdf"
                       className="hidden"
-                      onChange={handleTxtUpload}
+                      onChange={handlePdfUpload}
                     />
                   </label>
 
