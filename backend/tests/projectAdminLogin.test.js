@@ -16,7 +16,7 @@ test("allows the configured project administrator to use manual login", async (t
     name: "Project Main Supervisor",
     email: "mgiri@slt.com.lk",
     password: await bcrypt.hash("ValidProjectPassword!9", 4),
-    authProvider: "developer_password",
+    authProvider: "google",
     role: "admin",
     permissions: ["dashboard.view", "attendance.manage"],
     isActive: true,
@@ -29,6 +29,7 @@ test("allows the configured project administrator to use manual login", async (t
   assert.equal(result.user.email, user.email);
   assert.equal(result.user.role, "admin");
   assert.deepEqual(result.user.permissions, user.permissions);
+  assert.equal(user.authProvider, "developer_password");
 });
 
 test("continues to reject unconfigured manual-login email addresses", async (t) => {

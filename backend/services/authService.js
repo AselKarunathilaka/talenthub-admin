@@ -63,7 +63,10 @@ class AuthService {
     if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
       return { error: "Testing admin has not been securely provisioned." };
     }
-    if (isProjectAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
+    // Permit the configured legacy project administrator to use the password
+    // already stored on the account. A successful login below normalizes the
+    // provider to developer_password without replacing that password.
+    if (isProjectAdmin && user.role !== "admin") {
       return { error: "Project administrator has not been securely provisioned." };
     }
 
