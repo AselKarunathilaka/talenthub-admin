@@ -1,9 +1,15 @@
-const faceCameraConstraints = (facingMode) => ({
+const isLowPowerCameraDevice =
+  Number(navigator.hardwareConcurrency || 4) <= 4 ||
+  Number(navigator.deviceMemory || 4) <= 4 ||
+  window.matchMedia?.("(max-width: 768px)")?.matches === true;
+
+const faceCameraConstraints = (facingMode, lowPower = false) => ({
   video: {
-    width: { ideal: 640 },
-    height: { ideal: 480 },
+    width: { ideal: lowPower ? 480 : 640 },
+    height: { ideal: lowPower ? 360 : 480 },
     aspectRatio: { ideal: 4 / 3 },
     facingMode: { ideal: facingMode },
+    frameRate: { ideal: lowPower ? 24 : 30, max: 30 },
   },
   audio: false,
 });
@@ -16,15 +22,6 @@ const FALLBACK_CAMERA_CONSTRAINTS = {
   },
   audio: false,
 };
-
-const lowPowerCameraConstraints = (facingMode) => ({
-  video: {
-    width: { ideal: 480 },
-    height: { ideal: 360 },
-    facingMode: { ideal: facingMode },
-  },
-  audio: false,
-});
 
 const BASIC_CAMERA_CONSTRAINTS = { video: true, audio: false };
 const CAMERA_START_TIMEOUT_MS = 15000;
@@ -85,9 +82,9 @@ export const requestFaceCameraStream = async ({ facingMode = "user" } = {}) => {
   }
 
   const constraintLevels = [
-    faceCameraConstraints(facingMode),
+    faceCameraConstraints(facingMode, isLowPowerCameraDevice),
+    faceCameraConstraints(facingMode, false),
     FALLBACK_CAMERA_CONSTRAINTS,
-    lowPowerCameraConstraints(facingMode),
     BASIC_CAMERA_CONSTRAINTS,
   ];
   let lastError;

@@ -39,6 +39,14 @@ import {
 import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
 import { loadFaceModels } from "../utils/faceModelLoader";
 import { enrollFaceSamples } from "../utils/faceEnrollment";
+import {
+  createFaceDetectorOptions,
+  drawFaceVideoFrame,
+  evaluateFaceCaptureQuality,
+  evaluateFacePlacement,
+  faceRuntimeProfile,
+  isDistinctFaceDescriptor,
+} from "../utils/faceCapture";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -55,17 +63,10 @@ const ENROLLMENT_PROMPTS = [
   "Turn your head slightly to the right.",
   "Return to the center for the final scan.",
 ];
-const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 320,
-  scoreThreshold: 0.45,
-});
-const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 160,
-  scoreThreshold: 0.45,
-});
-const IS_LOW_POWER_DEVICE = (navigator.hardwareConcurrency || 4) <= 4 || window.matchMedia?.("(max-width: 768px)").matches;
-const FACE_GUIDE_INTERVAL_MS = IS_LOW_POWER_DEVICE ? 1000 : 600;
-const REQUIRED_STABLE_FACE_CHECKS = 2;
+const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
+const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
+const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
+const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -428,9 +429,12 @@ const Attendance = () => {
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+    const dimensions = drawFaceVideoFrame(
+      videoRef.current,
+      canvasRef.current,
+      meshCanvasRef.current,
+    );
+    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
 
     try {
       const detections = await faceapi
@@ -450,21 +454,8 @@ const Attendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const { box } = detection.detection;
-      const centerX = box.x + box.width / 2;
-      const centerY = box.y + box.height / 2;
-      const centered =
-        Math.abs(centerX - 320) <= 105 &&
-        Math.abs(centerY - 240) <= 95;
-      const largeEnough = box.width >= 135 && box.height >= 150;
-
-      if (!centered) {
-        return { error: "Move your face into the center oval." };
-      }
-
-      if (!largeEnough) {
-        return { error: "Move a little closer to the camera." };
-      }
+      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
+      if (!quality.ready) return { error: quality.error };
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (error) {
@@ -476,9 +467,12 @@ const Attendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+    const dimensions = drawFaceVideoFrame(
+      videoRef.current,
+      canvasRef.current,
+      meshCanvasRef.current,
+    );
+    if (!dimensions) return { error: "Camera is still starting..." };
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -495,16 +489,7 @@ const Attendance = () => {
         };
       }
 
-      const { box } = detections[0];
-      const centerX = box.x + box.width / 2;
-      const centerY = box.y + box.height / 2;
-      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
-      const largeEnough = box.width >= 135 && box.height >= 150;
-
-      if (!centered) return { error: "Move your face into the center oval." };
-      if (!largeEnough) return { error: "Move a little closer to the camera." };
-
-      return { ready: true };
+      return evaluateFacePlacement(detections[0], dimensions);
     } catch (error) {
       console.error("Error inspecting face position:", error);
       return { error: "Could not read the camera frame." };
@@ -596,14 +581,7 @@ const Attendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct =
-          !previousFrame ||
-          Math.sqrt(
-            previousFrame.reduce((sum, value, index) => {
-              const difference = value - frameData.descriptor[index];
-              return sum + difference * difference;
-            }, 0),
-          ) >= 0.035;
+        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });

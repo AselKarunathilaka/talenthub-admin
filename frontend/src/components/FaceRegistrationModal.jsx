@@ -2,17 +2,19 @@ import React, { useState, useRef, useEffect } from "react";
 import { Camera, Check, Loader, ShieldCheck, SwitchCamera, X } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
-import { apiFetch } from "../utils/api";
 import FaceScanGuide from "./FaceScanGuide";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
 import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
 import { loadFaceModels } from "../utils/faceModelLoader";
 import { enrollFaceSamples } from "../utils/faceEnrollment";
+import {
+  createFaceDetectorOptions,
+  drawFaceVideoFrame,
+  evaluateFaceCaptureQuality,
+  isDistinctFaceDescriptor,
+} from "../utils/faceCapture";
 
-const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
-  inputSize: 320,
-  scoreThreshold: 0.45,
-});
+const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -142,9 +144,16 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     if (!videoRef.current || !canvasRef.current || captureBusyRef.current) return;
     if (Date.now() - lastCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
     captureBusyRef.current = true;
-
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+    const dimensions = drawFaceVideoFrame(
+      videoRef.current,
+      canvasRef.current,
+      meshCanvasRef.current,
+    );
+    if (!dimensions) {
+      captureBusyRef.current = false;
+      setFaceGuide("Camera is still starting...");
+      return;
+    }
 
     try {
       const detections = await faceapi
@@ -164,28 +173,15 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const { box } = detection.detection;
-      const centerX = box.x + box.width / 2;
-      const centerY = box.y + box.height / 2;
-      if (Math.abs(centerX - 320) > 105 || Math.abs(centerY - 240) > 95) {
-        setFaceGuide("Move your face into the center oval");
-        return;
-      }
-      if (box.width < 135 || box.height < 150) {
-        setFaceGuide("Move a little closer to the camera");
+      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
+      if (!quality.ready) {
+        setFaceGuide(quality.error);
         return;
       }
 
       const descriptor = Array.from(detection.descriptor);
       const previousFrame = framesRef.current[framesRef.current.length - 1];
-      const isDistinct =
-        !previousFrame ||
-        Math.sqrt(
-          previousFrame.reduce((sum, value, index) => {
-            const difference = value - descriptor[index];
-            return sum + difference * difference;
-          }, 0),
-        ) >= 0.035;
+      const isDistinct = isDistinctFaceDescriptor(descriptor, previousFrame);
 
       if (!isDistinct) {
         setFaceGuide(ENROLLMENT_PROMPTS[frameCountRef.current]);

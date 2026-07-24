@@ -119,6 +119,7 @@ const verifyFaceAttendance = async (req, res) => {
         profile_missing: "No active face profile found. Please enroll your face first.",
         profile_has_no_embeddings: "Your face profile is incomplete. Please re-enroll your face.",
         face_not_recognized: "Face did not match your registered profile. Try again with better lighting or re-enroll your face.",
+        face_match_ambiguous: "The face match was uncertain. Ensure only you are visible and try again.",
       };
 
       return res.status(404).json({
@@ -433,6 +434,7 @@ const scanInternFaceByAdmin = async (req, res) => {
         profile_missing: "No active face profile found.",
         profile_has_no_embeddings: "The intern's face profile is incomplete. Please have them re-enroll.",
         face_not_recognized: "Face did not match the registered profile for this intern. Try again with better lighting.",
+        face_match_ambiguous: "The face match was uncertain. Ensure only the selected intern is visible and try again.",
       };
 
       return res.status(404).json({
