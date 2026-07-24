@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const { permissionsForRole } = require("../config/adminPermissions");
+const { permissionsForUser } = require("../config/adminPermissions");
 
 const requireAdmin = async (req, res, next) => {
   try {
@@ -12,10 +12,7 @@ const requireAdmin = async (req, res, next) => {
     }
     req.admin = user;
     req.user.role = user.role;
-    const permissions = user.permissions?.length ? [...user.permissions] : permissionsForRole(user.role);
-    req.user.permissions = user.role === "supervisor"
-      ? permissions.filter((permission) => permission !== "leave.manage")
-      : permissions;
+    req.user.permissions = permissionsForUser(user);
     next();
   } catch (error) {
     next(error);

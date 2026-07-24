@@ -17,4 +17,31 @@ const ROLE_PERMISSIONS = {
 
 const permissionsForRole = (role) => [...(ROLE_PERMISSIONS[role] || [])];
 
-module.exports = { ALL_PERMISSIONS, ROLE_PERMISSIONS, permissionsForRole };
+const programAdministratorEmail = () => String(
+  process.env.PROGRAM_ADMIN_EMAIL
+    || process.env.TEST_ADMIN_EMAIL
+    || "admin@slt.lk",
+).trim().toLowerCase();
+
+const permissionsForUser = (user, permissions) => {
+  let resolved = Array.isArray(permissions)
+    ? [...permissions]
+    : user?.permissions?.length
+      ? [...user.permissions]
+      : permissionsForRole(user?.role);
+
+  if (user?.role === "supervisor") {
+    resolved = resolved.filter((permission) => !["users.manage", "leave.manage"].includes(permission));
+  }
+  if (String(user?.email || "").trim().toLowerCase() === programAdministratorEmail()) {
+    resolved = resolved.filter((permission) => permission !== "users.manage");
+  }
+  return [...new Set(resolved)];
+};
+
+module.exports = {
+  ALL_PERMISSIONS,
+  ROLE_PERMISSIONS,
+  permissionsForRole,
+  permissionsForUser,
+};

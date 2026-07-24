@@ -6,19 +6,14 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
-const { permissionsForRole } = require("../config/adminPermissions");
+const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
   createAdminSession(user) {
     const role = user.role || "super_admin";
-    let permissions = user.permissions?.length
-      ? user.permissions
-      : permissionsForRole(role);
-    if (role === "supervisor") {
-      permissions = permissions.filter((permission) => permission !== "leave.manage");
-    }
+    const permissions = permissionsForUser(user);
     const token = jwt.sign(
       { id: user._id, email: user.email, role, permissions, accountType: "admin" },
       dotenv.jwtSecret,
@@ -75,7 +70,7 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : "admin";
     user.authProvider = "developer_password";
-    user.permissions = permissionsForRole(user.role);
+    user.permissions = permissionsForUser(user, permissionsForRole(user.role));
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);

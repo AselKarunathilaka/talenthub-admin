@@ -1,7 +1,7 @@
 require("dotenv").config();
 const mongoose = require("mongoose");
 const User = require("../models/User");
-const { permissionsForRole } = require("../config/adminPermissions");
+const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
 
 const run = async () => {
   const email = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
@@ -37,7 +37,7 @@ const run = async () => {
     testingAdmin.password = testingAdminPassword;
     testingAdmin.role = "admin";
     testingAdmin.authProvider = "developer_password";
-    testingAdmin.permissions = permissionsForRole("admin");
+    testingAdmin.permissions = permissionsForUser(testingAdmin, permissionsForRole("admin"));
     testingAdmin.isActive = true;
     await testingAdmin.save();
   }

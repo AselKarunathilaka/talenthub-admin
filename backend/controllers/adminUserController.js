@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const { ALL_PERMISSIONS, permissionsForRole } = require("../config/adminPermissions");
+const { ALL_PERMISSIONS, permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
 const { sendAdminInvitationEmail } = require("../services/adminInvitationEmailService");
 
 const RESEND_COOLDOWN_MS = 60 * 1000;
@@ -147,6 +147,9 @@ exports.updateUser = async (req, res, next) => {
     // re-validating unrelated legacy fields such as old password records.
     if (!user.role) updates.role = updates.role || "supervisor";
     if (!user.permissions) updates.permissions = updates.permissions || permissionsForRole(updates.role || "supervisor");
+    updates.permissions = permissionsForUser(
+      { email: user.email, role: updates.role || user.role, permissions: updates.permissions || user.permissions },
+    );
     const updatedUser = await User.findByIdAndUpdate(user._id, { $set: updates }, { new: true, runValidators: true });
     res.json({ user: publicUser(updatedUser) });
   } catch (error) { next(error); }
