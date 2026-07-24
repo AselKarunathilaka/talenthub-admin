@@ -7,7 +7,6 @@ const RESEND_COOLDOWN_MS = 60 * 1000;
 const sanitizePermissions = (role, permissions) => {
   const selected = (Array.isArray(permissions) ? permissions : permissionsForRole(role))
     .filter((item) => ALL_PERMISSIONS.includes(item));
-  if (role === "admin" && !selected.includes("users.manage")) selected.push("users.manage");
   return role === "supervisor"
     ? selected.filter((item) => !["users.manage", "leave.manage"].includes(item))
     : selected;

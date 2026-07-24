@@ -29,7 +29,7 @@ const permissionLabels = {
   "attendance.view": "View attendance", "attendance.manage": "Manage attendance",
   "leave.view": "View leave", "leave.manage": "Manage leave",
   "announcements.manage": "Announcements", "seats.manage": "Seat layout",
-  "settings.manage": "System settings",
+  "settings.manage": "System settings", "users.manage": "User management",
 };
 
 export default function AdminUserManagement() {
@@ -178,7 +178,7 @@ export default function AdminUserManagement() {
                       <button type="button" onClick={() => resendInvitation(user)} disabled={sendingInvitationId === user.id || !user.isActive} className="inline-flex items-center justify-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"><Send className="h-3.5 w-3.5" />{sendingInvitationId === user.id ? "Sending…" : "Resend invitation"}</button>
                     </div>}
                     <div className="mb-3"><p className="text-sm font-bold text-slate-800">Access permissions</p><p className="text-xs text-slate-500">Choose which areas this user can view or manage.</p></div>
-                    {isProtected ? <p className="text-sm font-medium text-violet-700">Super administrators have full system access.</p> : <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{availablePermissions.filter((permission) => permission !== "users.manage" && !(user.role === "supervisor" && permission === "leave.manage")).map((permission) => <label key={permission} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${(user.permissions || []).includes(permission) ? "border-blue-200 bg-blue-50 font-semibold text-blue-800" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"}`}><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={(user.permissions || []).includes(permission)} disabled={updatingUserId === user.id} onChange={() => togglePermission(user, permission)} />{permissionLabels[permission] || permission}</label>)}</div>}
+                    {isProtected ? <p className="text-sm font-medium text-violet-700">Super administrators have full system access.</p> : <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">{availablePermissions.filter((permission) => !(user.role === "supervisor" && ["users.manage", "leave.manage"].includes(permission))).map((permission) => <label key={permission} className={`flex cursor-pointer items-center gap-2 rounded-xl border px-3 py-2.5 text-sm transition ${(user.permissions || []).includes(permission) ? "border-blue-200 bg-blue-50 font-semibold text-blue-800" : "border-slate-200 bg-white text-slate-600 hover:border-blue-200"}`}><input type="checkbox" className="h-4 w-4 accent-blue-600" checked={(user.permissions || []).includes(permission)} disabled={updatingUserId === user.id} onChange={() => togglePermission(user, permission)} />{permissionLabels[permission] || permission}</label>)}</div>}
                   </div>}
                 </article>;
               })}

@@ -70,7 +70,14 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : "admin";
     user.authProvider = "developer_password";
-    user.permissions = permissionsForUser(user, permissionsForRole(user.role));
+    user.permissions = isDeveloper
+      ? permissionsForRole("super_admin")
+      : permissionsForUser(
+        user,
+        user.permissions?.length
+          ? user.permissions
+          : permissionsForRole("admin").filter((permission) => permission !== "users.manage"),
+      );
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);

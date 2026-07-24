@@ -37,7 +37,9 @@ const run = async () => {
     testingAdmin.password = testingAdminPassword;
     testingAdmin.role = "admin";
     testingAdmin.authProvider = "developer_password";
-    testingAdmin.permissions = permissionsForUser(testingAdmin, permissionsForRole("admin"));
+    testingAdmin.permissions = testingAdmin.permissions?.length
+      ? permissionsForUser(testingAdmin, testingAdmin.permissions)
+      : permissionsForRole("admin").filter((permission) => permission !== "users.manage");
     testingAdmin.isActive = true;
     await testingAdmin.save();
   }
