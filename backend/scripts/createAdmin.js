@@ -32,7 +32,7 @@ const createAdminUser = async () => {
       const adminUser = await UserRepository.createAdmin(
         "admin@slt.lk",
         "admin123",
-        "System Administrator"
+        "Program Administrator"
       );
 
       console.log("Admin user created successfully!");

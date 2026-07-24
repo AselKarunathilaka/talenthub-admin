@@ -33,7 +33,7 @@ const run = async () => {
   if (testingAdminEmail) {
     testingAdmin = await User.findOne({ email: testingAdminEmail }).select("+password");
     if (!testingAdmin) testingAdmin = new User({ email: testingAdminEmail });
-    testingAdmin.name = "Testing Admin";
+    testingAdmin.name = "Program Administrator";
     testingAdmin.password = testingAdminPassword;
     testingAdmin.role = "admin";
     testingAdmin.authProvider = "developer_password";
