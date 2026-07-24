@@ -49,10 +49,12 @@ class AuthService {
   async login(email, password) {
     const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
     const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
+    const projectAdminEmail = String(process.env.PROJECT_ADMIN_EMAIL || "").trim().toLowerCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const isDeveloper = normalizedEmail === developerEmail;
     const isTestingAdmin = Boolean(testingAdminEmail) && normalizedEmail === testingAdminEmail;
-    if (!isDeveloper && !isTestingAdmin) {
+    const isProjectAdmin = Boolean(projectAdminEmail) && normalizedEmail === projectAdminEmail;
+    if (!isDeveloper && !isTestingAdmin && !isProjectAdmin) {
       return { error: "Email/password login is not enabled for this account." };
     }
 
@@ -60,6 +62,9 @@ class AuthService {
     if (!user || !user.password) return { error: "Invalid email or password" };
     if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
       return { error: "Testing admin has not been securely provisioned." };
+    }
+    if (isProjectAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
+      return { error: "Project administrator has not been securely provisioned." };
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -70,14 +75,17 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : "admin";
     user.authProvider = "developer_password";
-    user.permissions = isDeveloper
-      ? permissionsForRole("super_admin")
-      : permissionsForUser(
+    if (isDeveloper) {
+      user.permissions = permissionsForRole("super_admin");
+    } else {
+      const defaultPermissions = isTestingAdmin
+        ? permissionsForRole("admin").filter((permission) => permission !== "users.manage")
+        : permissionsForRole("admin");
+      user.permissions = permissionsForUser(
         user,
-        user.permissions?.length
-          ? user.permissions
-          : permissionsForRole("admin").filter((permission) => permission !== "users.manage"),
+        user.permissions?.length ? user.permissions : defaultPermissions,
       );
+    }
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);
