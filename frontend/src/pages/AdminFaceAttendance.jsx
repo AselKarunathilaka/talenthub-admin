@@ -23,8 +23,7 @@ import {
   getDeviceTimeEvidence,
   requestFreshLocation,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 import {
   FaCheckCircle,
   FaRedo,
@@ -37,6 +36,7 @@ import {
 } from "react-icons/fa";
 
 // ── Shared Utils & Constants ──────────────────────────────────────────────────
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -260,7 +260,11 @@ const AdminFaceAttendance = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        await loadFaceModels();
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
         setModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face-api models:", error);
@@ -340,7 +344,7 @@ const AdminFaceAttendance = () => {
     if (!videoRef.current || !streamRef.current) return;
     videoRef.current.srcObject = streamRef.current;
     try {
-      await waitForPlayableVideo(videoRef.current);
+      await videoRef.current.play();
     } catch (error) {
       console.warn("Camera preview autoplay was blocked:", error);
     }
@@ -880,7 +884,6 @@ const AdminFaceAttendance = () => {
                       <>
                         <video
                           ref={videoRef}
-                          autoPlay
                           className="absolute inset-0 w-full h-full object-cover"
                           style={{ transform: "scaleX(-1)" }}
                           playsInline

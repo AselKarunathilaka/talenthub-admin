@@ -5,11 +5,6 @@ const { requireAdmin, requirePermission, enforceRoutePermission } = require("../
 const { listUsers, createUser, updateUser, resendInvitation } = require("../controllers/adminUserController");
 const fs = require("fs");
 const path = require("path");
-const multer = require("multer");
-
-const upload = multer({
-  storage: multer.memoryStorage()
-});
 
 const {
   getDashboardStats,
@@ -75,7 +70,6 @@ const {
   searchInternForAttendance,
   markManualAttendance,
   bulkMarkAttendance,
-  uploadAttendancePdf,
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
@@ -216,11 +210,6 @@ router.get("/manual-attendance/search", searchInternForAttendance);
 router.post("/manual-attendance/mark", markManualAttendance);
 router.post("/manual-attendance/bulk-mark", bulkMarkAttendance);
 
-router.post(
-  "/manual-attendance/upload-pdf",
-  upload.single("file"),
-  uploadAttendancePdf
-);
 // Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {
   try {

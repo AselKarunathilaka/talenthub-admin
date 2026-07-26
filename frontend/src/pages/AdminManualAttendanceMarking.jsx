@@ -1,11 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
-import * as pdfjsLib from "pdfjs-dist";
-import pdfWorker from "pdfjs-dist/build/pdf.worker.min?url";
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
-
 import {
   FaArrowLeft,
   FaSearch,
@@ -456,24 +451,21 @@ const AdminManualAttendance = () => {
 
   // ── Bulk Mark Attendance ────────────────────────────────────────────────
   const handleBulkMark = async () => {
-  const rawIds = bulkInternIds
-    .split(/[\n,]+/)
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+    const ids = bulkInternIds
+      .split(/[\n,]+/)
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
 
-  const ids = [...new Set(rawIds)]; // remove duplicate IDs
-
-  if (ids.length === 0) {
-    showToast("Please enter at least one intern ID", "error");
-    return;
-  }
+    if (ids.length === 0) {
+      showToast("Please enter at least one intern ID", "error");
+      return;
+    }
 
     if (mode === "meeting" && !meetingName.trim()) {
       showToast("Please select a meeting type", "error");
       return;
     }
-    setBulkResults(null);
-    
+
     setMarking(true);
     try {
       const payload = {
@@ -525,62 +517,29 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
- const handlePdfUpload = async (event) => {
-  const file = event.target.files?.[0];
 
-  if (!file) return;
+  const handleTxtUpload = async (event) => {
+    const file = event.target.files?.[0];
 
-  if (!file.name.toLowerCase().endsWith(".pdf")) {
-    showToast("Please upload a PDF file", "error");
-    return;
-  }
+    if (!file) return;
 
-  try {
-    const data = await file.arrayBuffer();
+    try {
+      const text = await file.text();
 
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
+      const ids = text
+        .split(/[\n,\r]+/)
+        .map((id) => id.trim())
+        .filter(Boolean);
 
-    const ids = [];
+      setBulkInternIds(ids.join("\n"));
+      setUploadedFileName(file.name);
 
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-      const page = await pdf.getPage(pageNo);
-
-      const textContent = await page.getTextContent();
-
-      textContent.items.forEach((item) => {
-        const value = item.str.trim();
-
-        // Only accept 4-digit trainee IDs (3000-9999)
-        if (/^\d{4}$/.test(value)) {
-          const id = Number(value);
-
-          if (id >= 2000 && id <= 9999) {
-            ids.push(value);
-          }
-        }
-      });
+      showToast(`${ids.length} IDs loaded from file`, "success");
+    } catch (error) {
+      showToast("Failed to read TXT file", "error");
     }
+  };
 
-    const uniqueIds = [...new Set(ids)];
-
-    if (uniqueIds.length === 0) {
-      showToast("No Trainee IDs found in PDF", "error");
-      return;
-    }
-
-    setBulkInternIds(uniqueIds.join("\n"));
-    setUploadedFileName(file.name);
-
-    showToast(
-      `${uniqueIds.length} Trainee IDs imported successfully`,
-      "success"
-    );
-  } catch (error) {
-    console.error(error);
-    showToast("Failed to process PDF file", "error");
-  }
-};
-  
   const handleExcelUpload = async (event) => {
     const file = event.target.files?.[0];
 
@@ -676,13 +635,6 @@ const AdminManualAttendance = () => {
               transition={{ duration: 0.3 }}
               className="mb-8"
             >
-              <button
-                onClick={() => navigate("/admin/intern-attendance")}
-                className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors"
-              >
-                <FaArrowLeft className="h-3.5 w-3.5" />
-                Back to Attendance
-              </button>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                   Manual Attendance
@@ -894,17 +846,15 @@ const AdminManualAttendance = () => {
                       <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
                         <FaUpload className="text-blue-600" />
 
-                    <span className="text-sm font-medium text-blue-700">
-                        Upload Attendance PDF
-                    </span>
+                        <span className="text-sm font-medium text-blue-700"></span>
 
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      className="hidden"
-                      onChange={handlePdfUpload}
-                    />
-                  </label>
+                        <input
+                          type="file"
+                          accept=".txt"
+                          className="hidden"
+                          onChange={handleTxtUpload}
+                        />
+                      </label>
 
                       {uploadedFileName && (
                         <p className="mt-2 text-xs text-green-600">

@@ -8,6 +8,8 @@ const run = async () => {
   const password = process.env.SUPER_ADMIN_PASSWORD;
   const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
   const testingAdminPassword = process.env.TEST_ADMIN_PASSWORD;
+  const projectAdminEmail = String(process.env.PROJECT_ADMIN_EMAIL || "").trim().toLowerCase();
+  const projectAdminPassword = process.env.PROJECT_ADMIN_PASSWORD;
   if (!password || password.length < 12) {
     throw new Error("Set SUPER_ADMIN_PASSWORD to a new password of at least 12 characters.");
   }
@@ -16,6 +18,12 @@ const run = async () => {
   }
   if (testingAdminEmail && testingAdminEmail === email) {
     throw new Error("TEST_ADMIN_EMAIL must be different from SUPER_ADMIN_EMAIL.");
+  }
+  if (
+    projectAdminEmail &&
+    [email, testingAdminEmail].filter(Boolean).includes(projectAdminEmail)
+  ) {
+    throw new Error("PROJECT_ADMIN_EMAIL must be different from the other protected admin emails.");
   }
 
   await mongoose.connect(process.env.MONGO_URI);
@@ -44,6 +52,31 @@ const run = async () => {
     await testingAdmin.save();
   }
 
+  let projectAdmin = null;
+  if (projectAdminEmail) {
+    projectAdmin = await User.findOne({ email: projectAdminEmail }).select("+password");
+    if (!projectAdmin) projectAdmin = new User({ email: projectAdminEmail });
+    if (!projectAdmin.password) {
+      if (!projectAdminPassword || projectAdminPassword.length < 6) {
+        throw new Error(
+          "The project administrator has no existing password. Set PROJECT_ADMIN_PASSWORD.",
+        );
+      }
+      if (projectAdminPassword.length < 12) {
+        console.warn("Warning: PROJECT_ADMIN_PASSWORD is a legacy password shorter than 12 characters.");
+      }
+      projectAdmin.password = projectAdminPassword;
+    }
+    projectAdmin.name = projectAdmin.name || "Project Main Supervisor";
+    projectAdmin.role = "admin";
+    projectAdmin.authProvider = "developer_password";
+    projectAdmin.permissions = projectAdmin.permissions?.length
+      ? permissionsForUser(projectAdmin, projectAdmin.permissions)
+      : permissionsForRole("admin");
+    projectAdmin.isActive = true;
+    await projectAdmin.save();
+  }
+
   const supervisorPermissionUpdate = await User.updateMany(
     { role: "supervisor", permissions: "leave.manage" },
     { $pull: { permissions: "leave.manage" } },
@@ -53,7 +86,7 @@ const run = async () => {
   if (process.env.CONFIRM_DEACTIVATE_LEGACY_USERS === "yes") {
     const result = await User.updateMany(
       {
-        _id: { $nin: [superAdmin._id, testingAdmin?._id].filter(Boolean) },
+        _id: { $nin: [superAdmin._id, testingAdmin?._id, projectAdmin?._id].filter(Boolean) },
         authProvider: { $ne: "google" },
       },
       { $set: { isActive: false, role: "supervisor", permissions: [] } },
@@ -63,6 +96,7 @@ const run = async () => {
 
   console.log(`Developer super admin ready: ${email}`);
   if (testingAdmin) console.log(`Testing admin ready: ${testingAdminEmail}`);
+  if (projectAdmin) console.log(`Project administrator ready: ${projectAdminEmail}`);
   console.log(`Supervisors changed to leave view-only: ${supervisorPermissionUpdate.modifiedCount}`);
   console.log(`Legacy accounts deactivated: ${deactivated}`);
   if (process.env.CONFIRM_DEACTIVATE_LEGACY_USERS !== "yes") {

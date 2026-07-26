@@ -2,7 +2,6 @@ const express = require("express");
 const authenticateUser = require("../middleware/authMiddleware");
 const {
   registerFaceProfile,
-  registerFaceProfileBatch,
   verifyFaceAttendance,
   getFaceProfile,
   getFaceLogs,
@@ -30,7 +29,6 @@ router.get("/profile/:identifier", getFaceProfileByIdentifier);
 
 // Face enrollment and scanning endpoints
 router.post("/enroll", registerFaceProfile);
-router.post("/enroll-batch", registerFaceProfileBatch);
 router.post("/scan", verifyFaceAttendance);
 
 // Legacy endpoints for backward compatibility
