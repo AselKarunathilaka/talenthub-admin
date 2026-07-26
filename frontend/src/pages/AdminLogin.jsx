@@ -262,6 +262,8 @@ const AdminLogin = () => {
       let errMsg = err.message || "Passkey registration failed.";
       if (errMsg.includes("The operation either timed out or was not allowed")) {
         errMsg = "The operation timed out or was cancelled. Please try again.";
+      } else if (errMsg.includes("RP ID")) {
+        errMsg = "Passkey setup is not configured correctly for this domain. Please use password login.";
       }
       setPasskeyError(errMsg);
       // Don't navigate away if it failed, let them try again or skip manually
@@ -313,6 +315,8 @@ const AdminLogin = () => {
       let errMsg = err.message || "Failed to authenticate with passkey.";
       if (errMsg.includes("The operation either timed out or was not allowed")) {
         errMsg = "The operation timed out or was cancelled. Please try again.";
+      } else if (errMsg.includes("RP ID")) {
+        errMsg = "Passkey login is not configured correctly for this domain. Please use password login.";
       }
       setError(errMsg);
     } finally {

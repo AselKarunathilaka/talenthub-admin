@@ -8,9 +8,36 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const authService = require('../services/authService');
 
+// Derive WebAuthn RP ID and origin from existing env vars.
+// In production, ADMIN_PORTAL_URL is "https://talenthub.slt.lk/admin-login"
+// so we extract the hostname (talenthub.slt.lk) and origin (https://talenthub.slt.lk).
+const deriveWebAuthnDefaults = () => {
+  if (process.env.RP_ID) {
+    return {
+      rpID: process.env.RP_ID,
+      origin: process.env.FRONTEND_URL || `https://${process.env.RP_ID}`,
+    };
+  }
+
+  // Fall back to ADMIN_PORTAL_URL which is already set in production .env
+  if (process.env.ADMIN_PORTAL_URL) {
+    try {
+      const url = new URL(process.env.ADMIN_PORTAL_URL);
+      return { rpID: url.hostname, origin: url.origin };
+    } catch (_) { /* fall through */ }
+  }
+
+  // Local development fallback
+  return { rpID: 'localhost', origin: 'http://localhost:5173' };
+};
+
+const { rpID: defaultRpID, origin: defaultOrigin } = deriveWebAuthnDefaults();
 const rpName = process.env.RP_NAME || 'TalentHub';
-const rpID = process.env.RP_ID || 'localhost';
-const origin = process.env.FRONTEND_URL || `http://${rpID}:5173`;
+
+console.log('[WebAuthn] Config → rpName:', rpName, '| rpID:', defaultRpID, '| origin:', defaultOrigin);
+
+// Helper: resolve expected origin from request (browser sends Origin header on POST)
+const getExpectedOrigin = (req) => req.get('origin') || defaultOrigin;
 
 // Store authentication challenges in memory mapped by a session ID
 const challengeStore = new Map();
@@ -24,7 +51,7 @@ exports.generateRegistrationOptions = async (req, res) => {
     const userPasskeys = user.passkeys || [];
     const options = await generateRegistrationOptions({
       rpName,
-      rpID,
+      rpID: defaultRpID,
       userID: new Uint8Array(Buffer.from(user._id.toString())),
       userName: user.email,
       attestationType: 'none',
@@ -59,7 +86,7 @@ exports.verifyRegistration = async (req, res) => {
     }
 
     const expectedChallenge = user.currentChallenge;
-    const expectedOrigin = req.get('origin') || origin;
+    const expectedOrigin = getExpectedOrigin(req);
     
     console.log('[WebAuthn] Verifying registration for:', user.email);
     console.log('[WebAuthn] Expected origin:', expectedOrigin);
@@ -68,7 +95,7 @@ exports.verifyRegistration = async (req, res) => {
       response: req.body,
       expectedChallenge,
       expectedOrigin,
-      expectedRPID: rpID,
+      expectedRPID: defaultRpID,
     });
 
     const { verified, registrationInfo } = verification;
@@ -110,7 +137,7 @@ exports.verifyRegistration = async (req, res) => {
 exports.generateAuthenticationOptions = async (req, res) => {
   try {
     const options = await generateAuthenticationOptions({
-      rpID,
+      rpID: defaultRpID,
       userVerification: 'preferred',
     });
     
@@ -173,14 +200,14 @@ exports.verifyAuthentication = async (req, res) => {
 
     console.log('[WebAuthn] Found user:', user.email);
 
-    const expectedOrigin = req.get('origin') || origin;
+    const expectedOrigin = getExpectedOrigin(req);
     
     // v13 API: use `credential` instead of `authenticator`
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
       expectedOrigin,
-      expectedRPID: rpID,
+      expectedRPID: defaultRpID,
       credential: {
         id: passkey.credentialID,                               // base64url string
         publicKey: new Uint8Array(passkey.credentialPublicKey),  // Buffer -> Uint8Array
