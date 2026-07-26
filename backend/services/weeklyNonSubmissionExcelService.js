@@ -6,6 +6,10 @@ const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
 
+// ── Minimum number of daily logs an intern must submit within the check
+// window (past 5 working days) to be considered compliant. ─────────────────
+const MIN_LOGS_REQUIRED = 3;
+
 // ---------------------------------------------------------------------------
 // Sri Lankan Public Holidays (shared helper)
 // ---------------------------------------------------------------------------
@@ -147,10 +151,10 @@ class WeeklyNonSubmissionExcelService {
   // ── Log-submission check ──────────────────────────────────────────────────
 
   /**
-   * Returns true if the intern submitted at least one daily log within the
+   * Returns the number of daily logs the intern submitted within the
    * past 5 working days (weekends + SL public holidays excluded).
    */
-  static async hasSubmittedLogsForPastWeek(internId) {
+  static async getLogsCountForPastWeek(internId) {
     try {
       const workingDays = this.getCheckWindow();
 
@@ -159,10 +163,10 @@ class WeeklyNonSubmissionExcelService {
         date: { $in: workingDays },
       });
 
-      return logsCount > 0;
+      return logsCount;
     } catch (error) {
       console.error(`Error checking logs for intern ${internId}:`, error);
-      return false;
+      return 0;
     }
   }
 
@@ -256,6 +260,7 @@ class WeeklyNonSubmissionExcelService {
         moment().format("MMMM DD, YYYY [at] h:mm A"),
       ]);
       excelData.push(["Week Period:", periodLabel]);
+      excelData.push(["Minimum Logs Required:", MIN_LOGS_REQUIRED]);
       excelData.push([
         "Total Non-Submitting Interns:",
         nonSubmittedInterns.length,
@@ -272,6 +277,7 @@ class WeeklyNonSubmissionExcelService {
         "Institute",
         "Training Start Date",
         "Training End Date",
+        "Logs Submitted per week",
         "Last Submission Date",
       ]);
 
@@ -286,6 +292,7 @@ class WeeklyNonSubmissionExcelService {
           intern.institute,
           intern.trainingStartDate,
           intern.trainingEndDate,
+          `${intern.logsSubmitted}`,
           intern.lastSubmissionDate,
         ]);
       });
@@ -294,7 +301,7 @@ class WeeklyNonSubmissionExcelService {
       excelData.push([]);
       excelData.push(["SUMMARY"]);
       excelData.push([
-        `These interns have NOT submitted any daily logbook entries for the past 5 working days (${periodLabel}).`,
+        `These interns have NOT submitted at least ${MIN_LOGS_REQUIRED} daily logbook entries for the past 5 working days (${periodLabel}).`,
       ]);
       excelData.push(["Immediate follow-up action is recommended."]);
       excelData.push([]);
@@ -314,6 +321,7 @@ class WeeklyNonSubmissionExcelService {
         { wch: 30 },
         { wch: 20 },
         { wch: 20 },
+        { wch: 15 },
         { wch: 25 },
       ];
 
@@ -407,13 +415,14 @@ class WeeklyNonSubmissionExcelService {
 
       <div class="info">
         <p style="margin: 0;"><strong>📅 Review Period:</strong> ${periodLabel}</p>
+        <p style="margin: 8px 0 0 0;"><strong>✅ Minimum Logs Required:</strong> <span class="badge">${MIN_LOGS_REQUIRED}</span></p>
         <p style="margin: 8px 0 0 0;"><strong>📊 Non-Submitting Interns:</strong> <span class="badge">${nonSubmittedInterns.length}</span></p>
         <p style="margin: 8px 0 0 0;"><strong>⏰ Generated On:</strong> ${moment().format("MMMM DD, YYYY [at] h:mm A")}</p>
       </div>
 
       <p>
         The attached Excel file contains the complete list of interns who have <strong>NOT</strong> submitted
-        any daily logbook entries during the above review period. Interns whose training commenced within this period are excluded from the report.
+        at least ${MIN_LOGS_REQUIRED} daily logbook entries during the above review period. Interns whose training commenced within this period are excluded from the report.
       </p>
 
       <div class="attachment-notice">
@@ -511,6 +520,7 @@ class WeeklyNonSubmissionExcelService {
 
     console.log("\n🔍 Starting weekly logbook non-submission check...");
     console.log(`📅 Review period: ${periodStart} to ${periodEnd}`);
+    console.log(`✅ Minimum logs required: ${MIN_LOGS_REQUIRED}`);
 
     try {
       const activeInterns = await this.getActiveInterns();
@@ -543,13 +553,14 @@ class WeeklyNonSubmissionExcelService {
             continue;
           }
 
-          const hasSubmitted = await this.hasSubmittedLogsForPastWeek(
-            intern._id,
-          );
+          const logsSubmitted = await this.getLogsCountForPastWeek(intern._id);
+          const hasSubmitted = logsSubmitted >= MIN_LOGS_REQUIRED;
 
           if (hasSubmitted) {
             results.submitted++;
-            console.log(`✅ ${internName} (${internId}) - has submitted logs`);
+            console.log(
+              `✅ ${internName} (${internId}) - submitted ${logsSubmitted} log(s), meets requirement`,
+            );
           } else {
             results.notSubmitted++;
 
@@ -571,11 +582,12 @@ class WeeklyNonSubmissionExcelService {
               trainingEndDate: intern.Training_EndDate
                 ? moment(intern.Training_EndDate).format("MMM DD, YYYY")
                 : "Not specified",
+              logsSubmitted,
               lastSubmissionDate,
             });
 
             console.log(
-              `❌ ${internName} (${internId}) - NO logs submitted for the review period (last: ${lastSubmissionDate})`,
+              `❌ ${internName} (${internId}) - only ${logsSubmitted}/${MIN_LOGS_REQUIRED} required log(s) submitted (last: ${lastSubmissionDate})`,
             );
           }
         } catch (error) {
@@ -629,8 +641,10 @@ class WeeklyNonSubmissionExcelService {
       console.log(
         `🆕 New interns skipped:            ${results.skippedNewInterns}`,
       );
-      console.log(`✅ Submitted logs:                 ${results.submitted}`);
-      console.log(`❌ Did NOT submit logs:            ${results.notSubmitted}`);
+      console.log(
+        `✅ Met requirement (>=${MIN_LOGS_REQUIRED} logs):        ${results.submitted}`,
+      );
+      console.log(`❌ Below requirement:              ${results.notSubmitted}`);
       console.log(
         `📧 Alert email sent:               ${results.emailSent ? "YES" : "NO"}`,
       );
@@ -652,6 +666,9 @@ class WeeklyNonSubmissionExcelService {
           console.log(`     🏫 Institute:     ${intern.institute}`);
           console.log(
             `     📅 Training:      ${intern.trainingStartDate} - ${intern.trainingEndDate}`,
+          );
+          console.log(
+            `     📝 Logs:          ${intern.logsSubmitted}/${MIN_LOGS_REQUIRED}`,
           );
           console.log(`     🕐 Last submit:   ${intern.lastSubmissionDate}`);
         });

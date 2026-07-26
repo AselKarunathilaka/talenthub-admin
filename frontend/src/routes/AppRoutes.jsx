@@ -34,6 +34,8 @@ import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
+import AdminUserManagement from "../pages/AdminUserManagement";
+import AdminRoute from "../components/AdminRoute";
 
 const AppRoutes = () => {
   return (
@@ -141,6 +143,10 @@ const AppRoutes = () => {
 
       {/* Admin Routes */}
       <Route path="/admin-login" element={<AdminLogin />} />
+      <Route path="/gate-staff-login" element={<GateStaffLogin />} />
+      <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
+      <Route path="/verify/certificate/:token" element={<CertificateVerify />} />
+      <Route element={<AdminRoute />}>
       <Route path="/admin-dashboard" element={<AdminDashboard />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/admin/daily-records" element={<AdminDailyRecords />} />
@@ -157,8 +163,6 @@ const AppRoutes = () => {
         path="/admin/study-leave-requests"
         element={<AdminLeaveManagement requestType="study_leave" />}
       />
-      <Route path="/gate-staff-login" element={<GateStaffLogin />} />
-      <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       <Route path="/admin/feature-tips" element={<AdminFeatureTips />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
@@ -187,16 +191,12 @@ const AppRoutes = () => {
       />
       <Route path="/admin/face-attendance" element={<AdminFaceAttendance />} />
 
-      {/* Public Certificate Verification — no auth required */}
-      <Route
-        path="/verify/certificate/:token"
-        element={<CertificateVerify />}
-      />
-
       <Route
         path="/admin/logbook-restrictions"
         element={<LogbookRestrictions />}
       />
+      <Route path="/admin/users" element={<AdminUserManagement />} />
+      </Route>
     </Routes>
   );
 };

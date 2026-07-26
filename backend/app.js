@@ -23,6 +23,8 @@ const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
+const webauthnRoutes = require("./routes/webauthnRoutes");
+const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
 
@@ -56,6 +58,7 @@ app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 // app.use(apiLimiter);
 
 // Routes
+app.use("/api/auth/webauthn", webauthnRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/interns", internRoutes);
 app.use("/api/qrcode", qrCodeRoutes);
@@ -89,5 +92,7 @@ app.get("/api/version", (_req, res) => {
     nodeEnv: process.env.NODE_ENV || "development",
   });
 });
+
+app.use(errorHandler);
 
 module.exports = app;

@@ -180,9 +180,9 @@ async function getPresentsOnDate(dateStr, attendanceTypeSet) {
       $elemMatch: {
         date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
         status: "Present",
-        type: { $in: typeArray }
-      }
-    }
+        type: { $in: typeArray },
+      },
+    },
   }).lean();
 
   const presentInterns = [];
@@ -277,8 +277,13 @@ async function getDailyPresentsOnDate(dateStr) {
   const dailyFaceInternIds = new Set(
     successfulFaceLogs
       .filter((log) => {
-        const attendanceType = String(log.metadata?.attendanceType || "daily").toLowerCase();
-        return attendanceType === "daily" || log.metadata?.dailyAttendanceMarked === true;
+        const attendanceType = String(
+          log.metadata?.attendanceType || "daily",
+        ).toLowerCase();
+        return (
+          attendanceType === "daily" ||
+          log.metadata?.dailyAttendanceMarked === true
+        );
       })
       .map((log) => String(log.internId)),
   );
@@ -295,7 +300,7 @@ async function getDailyPresentsOnDate(dateStr) {
     dailyFaceLogsByIntern.set(internId, internLogs);
   });
 
-  const dailyRecordInternIds = dailyRecords.map(r => r.internId);
+  const dailyRecordInternIds = dailyRecords.map((r) => r.internId);
 
   const typeArray = Array.from(DAILY_ATTENDANCE_TYPES);
   const interns = await Intern.find({
@@ -305,12 +310,12 @@ async function getDailyPresentsOnDate(dateStr) {
           $elemMatch: {
             date: { $gte: targetDate.toDate(), $lt: nextDate.toDate() },
             status: "Present",
-            type: { $in: typeArray }
-          }
-        }
+            type: { $in: typeArray },
+          },
+        },
       },
-      { _id: { $in: dailyRecordInternIds } }
-    ]
+      { _id: { $in: dailyRecordInternIds } },
+    ],
   }).lean();
 
   const internById = new Map(
@@ -574,10 +579,11 @@ exports.exportNonAttendanceExcel = async (req, res) => {
     for (const intern of activeInterns) {
       if (WeeklyMeetingAttendanceService.isNewIntern(intern)) continue;
 
-      const hasExtendedLeave = await WeeklyMeetingAttendanceService.hasApprovedExtendedLeaveForPeriod(
-        intern._id,
-        workingDayStrings,
-      );
+      const hasExtendedLeave =
+        await WeeklyMeetingAttendanceService.hasApprovedExtendedLeaveForPeriod(
+          intern._id,
+          workingDayStrings,
+        );
       if (hasExtendedLeave) continue;
 
       if (hasAttendedMeeting(intern)) continue;
@@ -689,10 +695,103 @@ exports.exportNonAttendanceExcel = async (req, res) => {
       if (err) console.error("Non-attendance Excel download error:", err);
       try {
         fs.unlinkSync(filePath);
-      } catch (_) { }
+      } catch (_) {}
     });
   } catch (err) {
     console.error("exportNonAttendanceExcel error:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// GET /admin/attendance/export-meeting-without-daily?date=YYYY-MM-DD
+// Interns who marked MEETING attendance but are missing DAILY attendance
+// for that date.
+// ---------------------------------------------------------------------------
+exports.exportMeetingWithoutDailyExcel = async (req, res) => {
+  try {
+    const dateStr = req.query.date;
+    if (!dateStr)
+      return res
+        .status(400)
+        .json({ error: "date query param required (YYYY-MM-DD)" });
+
+    const [meetingInterns, dailyInterns] = await Promise.all([
+      getPresentsOnDate(dateStr, MEETING_ATTENDANCE_TYPES),
+      getDailyPresentsOnDate(dateStr),
+    ]);
+
+    const dailyInternIds = new Set(dailyInterns.map((i) => String(i._id)));
+    const missingDaily = meetingInterns.filter(
+      (i) => !dailyInternIds.has(String(i._id)),
+    );
+
+    const excelData = [];
+    excelData.push(["MEETING ATTENDANCE WITHOUT DAILY ATTENDANCE"]);
+    excelData.push(["TalentHub Intern Management System"]);
+    excelData.push([]);
+    excelData.push([
+      "Report Generated:",
+      moment().tz(TZ).format("MMMM DD, YYYY [at] HH:mm"),
+    ]);
+    excelData.push([
+      "Date:",
+      moment.tz(dateStr, "YYYY-MM-DD", TZ).format("MMMM DD, YYYY"),
+    ]);
+    excelData.push(["Total Interns:", missingDaily.length]);
+    excelData.push([]);
+    excelData.push([]);
+    excelData.push([
+      "No.",
+      "Intern Name",
+      "Trainee ID",
+      "Field of Specialization",
+      "Institute",
+      "Meeting(s) Attended",
+      "Meeting Time",
+    ]);
+
+    missingDaily.forEach((intern, index) => {
+      excelData.push([
+        index + 1,
+        intern.name,
+        intern.id,
+        intern.fieldOfSpecialization,
+        intern.institute,
+        intern.meetingName || "—",
+        intern.timeMarked || "—",
+      ]);
+    });
+
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+    worksheet["!cols"] = [
+      { wch: 5 },
+      { wch: 25 },
+      { wch: 15 },
+      { wch: 25 },
+      { wch: 30 },
+      { wch: 35 },
+      { wch: 15 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Meeting Without Daily");
+
+    const tempDir = path.join(__dirname, "..", "temp");
+    if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+
+    const filename = `Meeting_Without_Daily_Report_${dateStr}.xlsx`;
+    const filePath = path.join(tempDir, filename);
+    XLSX.writeFile(workbook, filePath);
+
+    res.download(filePath, filename, (err) => {
+      if (err)
+        console.error("Meeting-without-daily Excel download error:", err);
+      try {
+        fs.unlinkSync(filePath);
+      } catch (_) {}
+    });
+  } catch (err) {
+    console.error("exportMeetingWithoutDailyExcel error:", err);
     return res.status(500).json({ error: "Internal server error" });
   }
 };

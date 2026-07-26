@@ -1,4 +1,4 @@
-const moment = require('moment-timezone');
+const moment = require("moment-timezone");
 
 /**
  * Check if the current time is after 10:00 AM in Sri Lankan timezone
@@ -6,22 +6,16 @@ const moment = require('moment-timezone');
  */
 const isAfter10AM = () => {
   try {
-    // Get current time in Sri Lankan timezone (Asia/Colombo)
-    const currentTime = moment().tz('Asia/Colombo');
-    
-    // Create a moment object for 10:00 AM today in Sri Lankan timezone
-    const tenAM = moment().tz('Asia/Colombo').set({
+    const currentTime = moment().tz("Asia/Colombo");
+    const tenAM = moment().tz("Asia/Colombo").set({
       hour: 10,
       minute: 0,
       second: 0,
-      millisecond: 0
+      millisecond: 0,
     });
-    
-    // Check if current time is after 10 AM
     return currentTime.isAfter(tenAM);
   } catch (error) {
-    console.error('Error checking time restriction:', error);
-    // If there's an error, default to allowing (false means not after 10 AM)
+    console.error("Error checking time restriction:", error);
     return false;
   }
 };
@@ -32,9 +26,9 @@ const isAfter10AM = () => {
  */
 const getCurrentSriLankanTime = () => {
   try {
-    return moment().tz('Asia/Colombo').format('HH:mm');
+    return moment().tz("Asia/Colombo").format("HH:mm");
   } catch (error) {
-    console.error('Error getting current time:', error);
+    console.error("Error getting current time:", error);
     return new Date().toLocaleTimeString();
   }
 };
@@ -46,18 +40,31 @@ const getCurrentSriLankanTime = () => {
 const checkLeaveSubmissionAllowed = () => {
   const isAfter10 = isAfter10AM();
   const currentTime = getCurrentSriLankanTime();
-  
+
   return {
     allowed: !isAfter10,
-    message: isAfter10 
-      ? `Leave applications are not allowed after 10:00 AM. Current time: ${currentTime}` 
-      : 'Leave application is allowed',
-    currentTime: currentTime
+    message: isAfter10
+      ? `Leave applications are not allowed after 10:00 AM. Current time: ${currentTime}`
+      : "Leave application is allowed",
+    currentTime: currentTime,
   };
+};
+
+// ★ New: returns today's date in Sri Lankan time as "YYYY-MM-DD"
+const getSriLankanDateString = () => {
+  try {
+    return moment().tz("Asia/Colombo").format("YYYY-MM-DD");
+  } catch (error) {
+    console.error("Error getting Sri Lankan date string:", error);
+    // Fallback: UTC date — better than crashing, though it can be off by a day
+    // near the SL midnight boundary if this ever actually triggers.
+    return new Date().toISOString().split("T")[0];
+  }
 };
 
 module.exports = {
   isAfter10AM,
   getCurrentSriLankanTime,
-  checkLeaveSubmissionAllowed
+  checkLeaveSubmissionAllowed,
+  getSriLankanDateString, // ★ New
 };

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X, Megaphone, Shield } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 
-const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen, activeTitle }) => {
+const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen, activeTitle, user }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -85,7 +85,7 @@ const AdminNavbar = ({ isMobileMenuOpen, setIsMobileMenuOpen, activeTitle }) => 
               </div>
               <div className="flex flex-col">
                 <span className="text-xs text-white/60">Welcome back,</span>
-                <span className="text-sm font-semibold text-white">Admin</span>
+                <span className="text-sm font-semibold text-white">{user?.name || user?.email || "Admin"}</span>
               </div>
             </div>
           </div>

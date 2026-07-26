@@ -25,9 +25,12 @@ import {
 import { Bike, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
+import { getAdminSession, hasAdminPermission } from "../utils/adminAuth";
 
 const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
+  const currentAdmin = getAdminSession()?.user;
+  const canManageLeave = currentAdmin?.role !== "supervisor" && hasAdminPermission("leave.manage");
   const pageCopy = isStudyLeave
     ? {
         title: "Extended Leave Requests",
@@ -599,7 +602,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               transition={{ delay: 0.1, duration: 0.2 }}
               className="flex gap-3 flex-col sm:flex-row flex-wrap sm:justify-end sm:items-center w-full md:w-auto"
             >
-              {!isStudyLeave && (
+              {!isStudyLeave && canManageLeave && (
                 <button
                   onClick={handleTriggerApprovedShortLeaveEmail}
                   disabled={triggeringEmail}
@@ -736,7 +739,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
           {/* Bulk Actions Bar */}
           <AnimatePresence>
-            {filter === "Pending" && selectedRequests.size > 0 && (
+            {canManageLeave && filter === "Pending" && selectedRequests.size > 0 && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -830,7 +833,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           ) : (
             <>
               {/* Mobile Select All */}
-              {filter === "Pending" && filteredRequests.length > 0 && (
+              {canManageLeave && filter === "Pending" && filteredRequests.length > 0 && (
                 <div className="md:hidden flex items-center justify-between mb-4 bg-white p-3 rounded-2xl shadow-sm border border-gray-100">
                   <span className="text-sm font-bold text-gray-700">Select All Requests</span>
                   <button
@@ -853,7 +856,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   <table className="min-w-full block md:table divide-y divide-gray-100">
                     <thead className="hidden md:table-header-group bg-slate-50/50">
                       <tr>
-                        {filter === "Pending" && (
+                        {canManageLeave && filter === "Pending" && (
                           <th className="px-6 py-4 text-center w-12">
                             <button
                               onClick={handleSelectAll}
@@ -912,7 +915,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                     : ""
                               }`}
                             >
-                              {filter === "Pending" && (
+                              {canManageLeave && filter === "Pending" && (
                                 <td className="col-span-2 md:table-cell px-4 py-3 md:px-6 md:py-6 text-left md:text-center border-b border-gray-50 md:border-none">
                                   <div className="flex items-center gap-3 md:block">
                                     <input
@@ -1008,7 +1011,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
                               <td className="col-span-2 md:table-cell px-4 py-4 md:px-6 md:py-6 min-w-0 md:min-w-[160px] text-left md:text-right md:border-none bg-slate-50/30 md:bg-transparent">
                                 <div className="flex flex-col md:items-end gap-2">
-                                  {request.status === "Pending" ? (
+                                  {request.status === "Pending" && canManageLeave ? (
                                     <div className="flex flex-col gap-2 w-full md:w-auto">
                                       <div className="grid grid-cols-2 gap-2">
                                         <button
@@ -1289,7 +1292,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 )}
 
                 {/* Admin Action Area */}
-                {selectedRequest.status === "Pending" && (
+                {selectedRequest.status === "Pending" && canManageLeave && (
                   <div className="pt-4 border-t border-gray-200">
                     <span className="text-[10px] font-black text-[#0056a2] uppercase tracking-widest block mb-2 flex items-center gap-1">
                       <FiFileText /> Admin Response (Optional)
@@ -1349,7 +1352,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
       {/* Bulk Action Modal */}
       <AnimatePresence>
-        {isBulkModalOpen && (
+        {isBulkModalOpen && canManageLeave && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

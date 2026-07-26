@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
+const { requireAdmin, requirePermission, enforceRoutePermission } = require("../middleware/adminAuth");
+const { listUsers, createUser, updateUser, resendInvitation } = require("../controllers/adminUserController");
 const fs = require("fs");
 const path = require("path");
 const multer = require("multer");
@@ -47,6 +49,7 @@ const {
   exportNonAttendanceExcel,
   exportMeetingAttendancePdf,
   exportDailyAttendancePdf,
+  exportMeetingWithoutDailyExcel,
 } = require("../controllers/admininternAttendanceController");
 const {
   getAttendanceSettings,
@@ -81,12 +84,18 @@ const {
   getAdminInternAttendance,
 } = require("../controllers/adminInternDetailsController");
 
-// ── Public routes (no auth) ───────────────────────────────────────────────────
-// Export on-leave interns as Excel
-router.get("/on-leave/export", exportOnLeaveExcel);
-
 // ── All routes below require authentication ───────────────────────────────────
 router.use(authMiddleware);
+router.use(requireAdmin);
+router.use(enforceRoutePermission);
+
+router.get("/users", requirePermission("users.manage"), listUsers);
+router.post("/users", requirePermission("users.manage"), createUser);
+router.patch("/users/:id", requirePermission("users.manage"), updateUser);
+router.post("/users/:id/resend-invitation", requirePermission("users.manage"), resendInvitation);
+
+// Export on-leave interns as Excel
+router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveExcel);
 
 // Dashboard statistics
 router.get("/dashboard/stats", getDashboardStats);
@@ -182,6 +191,13 @@ router.get("/attendance/export-meeting-pdf", exportMeetingAttendancePdf);
 // GET  /admin/attendance/export-daily-pdf?date=YYYY-MM-DD
 //      → Download Daily Attendance PDF (SLTMobitel template)
 router.get("/attendance/export-daily-pdf", exportDailyAttendancePdf);
+
+// GET /admin/attendance/export-meeting-without-daily?date=YYYY-MM-DD
+//     → interns who attended a meeting but have no daily check-in that date
+router.get(
+  "/attendance/export-meeting-without-daily",
+  exportMeetingWithoutDailyExcel,
+);
 
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);

@@ -314,7 +314,7 @@ const Dashboard = () => {
     }
   };
 
-  // Meeting attendance rate: attended ÷ meetings held so far (1 per week since training started)
+  // Meeting attendance rate: weeks attended ÷ total weeks (Training_StartDate to Training_EndDate)
   const presentPercentage = (() => {
     if (!internData?.Training_StartDate) return 0;
 
@@ -332,7 +332,7 @@ const Dashboard = () => {
     const weeksPresent = new Set(
       meetingAttendance
         .filter((e) => e.status === "Present" && e.date)
-        .map(entry => {
+        .map((entry) => {
           const d = new Date(entry.date);
           if (isNaN(d.getTime())) return null;
           const day = d.getDay();
@@ -348,7 +348,7 @@ const Dashboard = () => {
       ? new Date(internData.Training_EndDate)
       : null;
     const now = new Date();
-    const measureTo = end && end < now ? end : now;
+    const measureTo = now;
     if (isNaN(start) || measureTo <= start) return 0;
     const weeksHeld = Math.max(
       1,
@@ -473,6 +473,7 @@ const Dashboard = () => {
     if (
       normalizedMethod === "manual" ||
       normalizedMethod === "manual_meeting" ||
+      normalizedMethod === "daily" ||
       normalizedMethod === "manual_daily"
     ) {
       return {
@@ -696,7 +697,7 @@ const Dashboard = () => {
                         ? new Date(internData.Training_EndDate)
                         : null;
                       const now = new Date();
-                      const measureTo = end && end < now ? end : now;
+                      const measureTo = now;
                       if (isNaN(start) || measureTo <= start) return null;
                       const weeksHeld = Math.max(
                         1,
@@ -740,7 +741,8 @@ const Dashboard = () => {
                             />
                           </div>
                           <p className="text-[10px] text-gray-400">
-                            Attended {weeksPresent} out of {weeksHeld} weeks
+                            Attended {weeksPresent} out of {weeksHeld} weeks so
+                            far
                           </p>
                         </div>
                       );

@@ -10,6 +10,11 @@ const axios = require("axios");
 const https = require("https");
 const talentTrailSyncSvc = require("../services/talentTrailSyncService");
 
+// Minimum number of daily logs an intern must submit within a weekly review
+// window to be considered compliant. Used by getNonSubmissionsWithinAWeek
+// and getWeeklyNonSubmissions (kept in sync with weeklyNonSubmissionExcelService).
+const MIN_WEEKLY_LOGS_REQUIRED = 3;
+
 // In-memory cache for dashboard stats (60 seconds TTL)
 let dashboardStatsCache = null;
 let dashboardStatsCacheTime = 0;
@@ -47,6 +52,9 @@ const getDashboardStats = async (req, res) => {
     }
     fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
 
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
     // Run both queries in parallel
     const [interns, submissionSummary] = await Promise.all([
       // 1. Fetch all interns as plain objects (fast)
@@ -77,9 +85,10 @@ const getDashboardStats = async (req, res) => {
       }
     }
 
-    // Classify each intern as submitted / overdue
+    // Classify each intern as submitted / overdue / excused (grace period)
     const overdueList = [];
     let submittedCount = 0;
+    let excusedCount = 0;
     let totalRecords = 0;
 
     for (const intern of interns) {
@@ -89,6 +98,23 @@ const getDashboardStats = async (req, res) => {
       const latestSubmission = summary?.latestSubmission ?? null;
       const internTotalRec = summary?.totalRecords ?? 0;
       totalRecords += internTotalRec;
+
+      // New-intern grace period: interns still within their first 5
+      // working days (per Training_StartDate) are excused entirely —
+      // they're neither "overdue" nor counted as "submitted".
+      const internStartDate = intern.Training_StartDate
+        ? new Date(intern.Training_StartDate)
+        : null;
+      const gracePeriodEndDate = internStartDate
+        ? calculateGracePeriodEndDate(internStartDate)
+        : null;
+      const isWithinGracePeriod =
+        gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
+
+      if (isWithinGracePeriod) {
+        excusedCount++;
+        continue;
+      }
 
       // Overdue = never submitted, OR latest submission older than 5 working days
       const isOverdue =
@@ -127,6 +153,7 @@ const getDashboardStats = async (req, res) => {
       totalRecords,
       submittedInterns: submittedCount,
       overdueInterns: overdueList.length,
+      excusedInterns: excusedCount,
       overdueList,
     };
 
@@ -187,20 +214,35 @@ const getInternReport = async (req, res) => {
     }
 
     // 3. Construct the report
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
     const report = interns.map((intern) => {
       const summary = submissionMap.get(intern._id.toString());
       const lastSubmission = summary?.lastSubmission || null;
 
       const daysSinceLastSubmission = lastSubmission
         ? Math.floor(
-            (new Date() - new Date(lastSubmission)) /
-              (1000 * 60 * 60 * 24),
+            (new Date() - new Date(lastSubmission)) / (1000 * 60 * 60 * 24),
           )
         : null;
 
+      // New-intern grace period: interns still within their first 5
+      // working days are never marked overdue.
+      const internStartDate = intern.Training_StartDate
+        ? new Date(intern.Training_StartDate)
+        : null;
+      const gracePeriodEndDate = internStartDate
+        ? calculateGracePeriodEndDate(internStartDate)
+        : null;
+      const isWithinGracePeriod =
+        gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
+
       // Overdue = never submitted, OR latest submission older than 5 working days ago
+      // (unless the intern is still within their new-intern grace period)
       const isOverdue =
-        !lastSubmission || new Date(lastSubmission) < fiveWorkingDaysAgo;
+        !isWithinGracePeriod &&
+        (!lastSubmission || new Date(lastSubmission) < fiveWorkingDaysAgo);
 
       return {
         _id: intern._id,
@@ -215,6 +257,7 @@ const getInternReport = async (req, res) => {
         lastSubmission: lastSubmission,
         daysSinceLastSubmission,
         isOverdue: isOverdue,
+        isWithinGracePeriod: !!isWithinGracePeriod,
       };
     });
 
@@ -305,6 +348,19 @@ const getInternDetails = async (req, res) => {
     }).lean();
     const projects = syncRecord ? syncRecord.projects || [] : [];
 
+    // New-intern grace period: interns still within their first 5
+    // working days are never marked overdue.
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    const internStartDate = intern.Training_StartDate
+      ? new Date(intern.Training_StartDate)
+      : null;
+    const gracePeriodEndDate = internStartDate
+      ? calculateGracePeriodEndDate(internStartDate)
+      : null;
+    const isWithinGracePeriod =
+      gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
+
     const internDetails = {
       intern: {
         _id: intern._id,
@@ -329,7 +385,9 @@ const getInternDetails = async (req, res) => {
         monthlyRecords: monthlyRecords.length,
         daysSinceLastSubmission,
         isOverdue:
-          daysSinceLastSubmission === null || daysSinceLastSubmission >= 3,
+          !isWithinGracePeriod &&
+          (daysSinceLastSubmission === null || daysSinceLastSubmission >= 3),
+        isWithinGracePeriod: !!isWithinGracePeriod,
         averageSubmissionsPerWeek: monthlyRecords.length / 4,
       },
     };
@@ -383,12 +441,24 @@ const searchInterns = async (req, res) => {
               )
             : null;
 
-          // Check if overdue (no submission in last 3 days)
+          // Check if overdue (no submission in last 3 days), unless the
+          // intern is still within their new-intern grace period
           const threeDaysAgo = new Date();
           threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+          const todayEnd = new Date();
+          todayEnd.setHours(23, 59, 59, 999);
+          const internStartDate = intern.Training_StartDate
+            ? new Date(intern.Training_StartDate)
+            : null;
+          const gracePeriodEndDate = internStartDate
+            ? calculateGracePeriodEndDate(internStartDate)
+            : null;
+          const isWithinGracePeriod =
+            gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
           const isOverdue =
-            !lastSubmission ||
-            new Date(lastSubmission.createdAt) < threeDaysAgo;
+            !isWithinGracePeriod &&
+            (!lastSubmission ||
+              new Date(lastSubmission.createdAt) < threeDaysAgo);
 
           return {
             _id: intern._id,
@@ -401,6 +471,7 @@ const searchInterns = async (req, res) => {
             lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
             daysSinceLastSubmission,
             isOverdue,
+            isWithinGracePeriod: !!isWithinGracePeriod,
             recentRecords: internRecords.slice(0, 5).map((record) => ({
               _id: record._id,
               date: record.date,
@@ -458,11 +529,23 @@ const searchInterns = async (req, res) => {
           )
         : null;
 
-      // Check if overdue (no submission in last 3 days)
+      // Check if overdue (no submission in last 3 days), unless the
+      // intern is still within their new-intern grace period
       const threeDaysAgo = new Date();
       threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+      const internStartDate = intern.Training_StartDate
+        ? new Date(intern.Training_StartDate)
+        : null;
+      const gracePeriodEndDate = internStartDate
+        ? calculateGracePeriodEndDate(internStartDate)
+        : null;
+      const isWithinGracePeriod =
+        gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
       const isOverdue =
-        !lastSubmission || new Date(lastSubmission.createdAt) < threeDaysAgo;
+        !isWithinGracePeriod &&
+        (!lastSubmission || new Date(lastSubmission.createdAt) < threeDaysAgo);
 
       return {
         _id: intern._id,
@@ -475,6 +558,7 @@ const searchInterns = async (req, res) => {
         lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
         daysSinceLastSubmission,
         isOverdue,
+        isWithinGracePeriod: !!isWithinGracePeriod,
         recentRecords: internRecords.slice(0, 5).map((record) => ({
           _id: record._id,
           date: record.date,
@@ -704,7 +788,17 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
       }
     });
 
-    // Filter interns who haven't submitted on ANY of the working days
+    // Batch-fetch each intern's most recent submission ever (not just within
+    // the review window) so the export shows a real date instead of "Never".
+    const lastSubmissionSummary = await DailyRecord.aggregate([
+      { $group: { _id: "$internId", lastSubmission: { $max: "$createdAt" } } },
+    ]);
+    const lastSubmissionMap = new Map();
+    lastSubmissionSummary.forEach((s) => {
+      if (s._id) lastSubmissionMap.set(s._id.toString(), s.lastSubmission);
+    });
+
+    // Filter interns who haven't submitted the required minimum number of logs
     const nonSubmittedInterns = [];
     const excusedInterns = [];
 
@@ -788,15 +882,19 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
         },
       );
 
-      // Calculate missing days
-      const missingDaysCount =
-        applicableWorkingDays.length - submittedApplicableDays.length;
+      // Calculate how many logs are still needed, relative to the minimum
+      // required, capped by how many days actually apply to this intern
+      // (e.g. an intern with only 2 applicable days this week can't
+      // reasonably be held to a 3-log minimum).
+      const submittedCount = submittedApplicableDays.length;
+      const requiredCount = Math.min(
+        MIN_WEEKLY_LOGS_REQUIRED,
+        applicableWorkingDays.length,
+      );
+      const missingDaysCount = requiredCount - submittedCount;
 
-      // If intern hasn't submitted on ALL applicable working days, include them
-      if (
-        missingDaysCount === applicableWorkingDays.length &&
-        missingDaysCount > 0
-      ) {
+      // Flag interns who submitted fewer than the required number of logs
+      if (missingDaysCount > 0) {
         nonSubmittedInterns.push({
           _id: intern._id,
           traineeId: intern.Trainee_ID,
@@ -807,12 +905,16 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
           team: intern.team || "Unassigned",
           trainingStartDate: intern.Training_StartDate,
           trainingEndDate: intern.Training_EndDate,
+          logsSubmitted: submittedCount,
+          lastSubmission: lastSubmissionMap.get(internId) || null,
+          submittedDaysCount: submittedCount,
+          requiredDaysCount: requiredCount,
           missingDaysCount: missingDaysCount,
           applicableDaysCount: applicableWorkingDays.length,
           gracePeriodEnd: gracePeriodEndDate
             ? gracePeriodEndDate.toISOString().split("T")[0]
             : null,
-          status: "Not Submitted Within Week",
+          status: "Below Required Weekly Submissions",
         });
       }
     }
@@ -820,7 +922,7 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
     const weekPeriodLabel = `${startDate.toISOString().split("T")[0]} to ${today.toISOString().split("T")[0]}`;
 
     console.log(
-      `Found ${nonSubmittedInterns.length} interns who haven't submitted on any of the last 5 working days`,
+      `Found ${nonSubmittedInterns.length} interns below the required ${MIN_WEEKLY_LOGS_REQUIRED} logs for the review period`,
     );
     console.log(
       `Excused ${excusedInterns.length} interns (grace period or no applicable days) - excluded from report`,
@@ -831,6 +933,7 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
       startDate: startDate.toISOString().split("T")[0],
       endDate: today.toISOString().split("T")[0],
       workingDaysChecked: 5,
+      requiredSubmissions: MIN_WEEKLY_LOGS_REQUIRED,
       totalInterns: allInterns.length,
       totalActiveInterns: allInterns.length - excusedInterns.length, // Active interns not in grace period
       nonSubmittedCount: nonSubmittedInterns.length,
@@ -846,6 +949,7 @@ const getNonSubmissionsWithinAWeek = async (req, res) => {
   }
 };
 
+// Get weekly non-submissions (Monday to Friday of current week)
 // Get weekly non-submissions (Monday to Friday of current week)
 const getWeeklyNonSubmissions = async (req, res) => {
   try {
@@ -930,12 +1034,19 @@ const getWeeklyNonSubmissions = async (req, res) => {
       }
     }
 
+    // Custom date range = strict "submitted nothing at all" check.
+    // Legacy current/previous full-week view keeps the weekly quota check
+    // (must submit at least MIN_WEEKLY_LOGS_REQUIRED of the working days).
+    const isCustomRange = Boolean(startDateParam && endDateParam);
+
     console.log("Checking weekly submissions from:", weekPeriodLabel);
 
     // Get all interns
     const allInterns = await Intern.find({});
 
-    // Filter out interns whose training has already ended before the report end date
+    // Filter out interns whose training has already ended before the report
+    // end date, AND interns still within their new-intern grace period
+    // (5 working days from Training_StartDate) as of the report end date.
     const reportEndDate = endDate;
     const toDateString = (d) => {
       const date = new Date(d);
@@ -943,21 +1054,39 @@ const getWeeklyNonSubmissions = async (req, res) => {
     };
     const reportEndDateStr = toDateString(endDate);
     const reportStartDateStr = toDateString(startDate);
+    let excusedForGracePeriodCount = 0;
     const activeInterns = allInterns.filter((intern) => {
-      if (!intern.Training_EndDate) return true;
-      const internEndDateStr = toDateString(intern.Training_EndDate);
-      // Exclude if intern's end date is <= report end date
-      if (internEndDateStr <= reportEndDateStr) {
-        console.log(
-          `Excluding intern ${intern.Trainee_ID} (${intern.Trainee_Name}) with end date ${internEndDateStr} <= report end date ${reportEndDateStr}`,
-        );
-        return false;
+      if (intern.Training_EndDate) {
+        const internEndDateStr = toDateString(intern.Training_EndDate);
+        // Exclude if intern's end date is <= report end date
+        if (internEndDateStr <= reportEndDateStr) {
+          console.log(
+            `Excluding intern ${intern.Trainee_ID} (${intern.Trainee_Name}) with end date ${internEndDateStr} <= report end date ${reportEndDateStr}`,
+          );
+          return false;
+        }
       }
+
+      // New-intern grace period: exclude interns whose 5-working-day grace
+      // period (from Training_StartDate) hasn't ended by the report's end date.
+      if (intern.Training_StartDate) {
+        const gracePeriodEndDate = calculateGracePeriodEndDate(
+          new Date(intern.Training_StartDate),
+        );
+        if (reportEndDate <= gracePeriodEndDate) {
+          console.log(
+            `Excusing intern ${intern.Trainee_ID} (${intern.Trainee_Name}) - within 5-day grace period`,
+          );
+          excusedForGracePeriodCount++;
+          return false;
+        }
+      }
+
       return true;
     });
 
     console.log(
-      `Total interns: ${allInterns.length}, Active interns (training not ended): ${activeInterns.length}`,
+      `Total interns: ${allInterns.length}, Active interns (training not ended, not in grace period): ${activeInterns.length}`,
     );
 
     // Get all daily records for the custom range (single day or range)
@@ -970,21 +1099,45 @@ const getWeeklyNonSubmissions = async (req, res) => {
       .populate("internId", "traineeName traineeId email fieldOfSpecialization")
       .sort({ createdAt: -1 });
 
-    // Create a set of intern IDs who have submitted records in the range
-    const submittedInternIds = new Set();
+    // Build a map of intern ID -> submission count in the range
+    const submissionCountMap = new Map();
     weeklyRecords.forEach((record) => {
       if (record.internId) {
-        submittedInternIds.add(record.internId._id.toString());
+        const id = record.internId._id.toString();
+        submissionCountMap.set(id, (submissionCountMap.get(id) || 0) + 1);
       }
     });
 
-    // Find active interns who haven't submitted any records in the range
+    // Batch-fetch each intern's most recent submission ever (not just within
+    // this custom range) so the export shows a real date instead of "Never".
+    const lastSubmissionSummary = await DailyRecord.aggregate([
+      { $group: { _id: "$internId", lastSubmission: { $max: "$createdAt" } } },
+    ]);
+    const lastSubmissionMap = new Map();
+    lastSubmissionSummary.forEach((s) => {
+      if (s._id) lastSubmissionMap.set(s._id.toString(), s.lastSubmission);
+    });
+
+    // How many logs are required for this range, capped by how many working
+    // days are actually in it (handles short/custom ranges sanely).
+    // For an explicit custom date range this is purely informational — the
+    // actual filter below uses "0 submissions" instead of this quota.
+    const requiredSubmissions = isCustomRange
+      ? 1
+      : Math.min(MIN_WEEKLY_LOGS_REQUIRED, workingDaysInRange);
+
+    // Find active interns who are non-submitters for the period.
+    // - Custom range: intern submitted ZERO logs during the selected dates.
+    // - Legacy week view: intern submitted fewer than the weekly quota.
     const nonSubmittedInterns = activeInterns.filter((intern) => {
-      return !submittedInternIds.has(intern._id.toString());
+      const count = submissionCountMap.get(intern._id.toString()) || 0;
+      return isCustomRange ? count === 0 : count < requiredSubmissions;
     });
 
     // Format response with additional details
     const nonSubmissionsArray = nonSubmittedInterns.map((intern) => {
+      const count = submissionCountMap.get(intern._id.toString()) || 0;
+      const lastSub = lastSubmissionMap.get(intern._id.toString()) || null;
       return {
         _id: intern._id,
         traineeId: intern.Trainee_ID,
@@ -995,32 +1148,49 @@ const getWeeklyNonSubmissions = async (req, res) => {
         team: intern.team || "Unassigned",
         trainingStartDate: intern.Training_StartDate,
         trainingEndDate: intern.Training_EndDate,
-        weeklySubmissions: 0,
+        weeklySubmissions: count,
+        logsSubmitted: count,
+        requiredSubmissions: requiredSubmissions,
         workingDaysThisWeek: workingDaysInRange,
-        missedDays: workingDaysInRange,
+        missedDays: requiredSubmissions - count,
         weekPeriod: weekPeriodLabel,
-        lastSubmission: null,
-        daysSinceLastSubmission: null,
-        status: "Not Submitted This Week",
+        lastSubmission: lastSub,
+        daysSinceLastSubmission: lastSub
+          ? Math.floor((Date.now() - new Date(lastSub).getTime()) / 86400000)
+          : null,
+        status: isCustomRange
+          ? "No Submissions In Selected Range"
+          : "Below Required Weekly Submissions",
       };
     });
 
     console.log(
-      `Found ${nonSubmissionsArray.length} active interns who haven't submitted records for period: ${weekPeriodLabel}`,
+      `Found ${nonSubmissionsArray.length} active interns ${
+        isCustomRange
+          ? "with zero submissions"
+          : `below the required ${requiredSubmissions} submissions`
+      } for period: ${weekPeriodLabel}`,
     );
     console.log(`Total working days in period: ${workingDaysInRange}`);
     console.log(
-      `Excluded ${allInterns.length - activeInterns.length} interns whose training has ended`,
+      `Excluded ${allInterns.length - activeInterns.length - excusedForGracePeriodCount} interns whose training has ended`,
+    );
+    console.log(
+      `Excused ${excusedForGracePeriodCount} interns still in new-intern grace period`,
     );
 
     res.status(200).json({
       weekPeriod: weekPeriodLabel,
       workingDaysThisWeek: workingDaysInRange,
+      requiredSubmissions,
+      isCustomRange,
       totalInterns: activeInterns.length,
       totalInternsInDatabase: allInterns.length,
-      excludedInterns: allInterns.length - activeInterns.length,
+      excludedInterns:
+        allInterns.length - activeInterns.length - excusedForGracePeriodCount,
+      excusedInterns: excusedForGracePeriodCount,
       nonSubmittedCount: nonSubmissionsArray.length,
-      submittedCount: submittedInternIds.size,
+      submittedCount: activeInterns.length - nonSubmissionsArray.length,
       nonSubmittedInterns: nonSubmissionsArray,
     });
   } catch (error) {
@@ -1471,10 +1641,13 @@ const getInternGitCommits = async (req, res) => {
           let hasMore = true;
 
           while (hasMore) {
-            const ghRes = await ghClient.get(`/repos/${proj.repoName}/commits`, {
-              headers: { Authorization: `token ${proj.repoAccessToken}` },
-              params: { ...params, page },
-            });
+            const ghRes = await ghClient.get(
+              `/repos/${proj.repoName}/commits`,
+              {
+                headers: { Authorization: `token ${proj.repoAccessToken}` },
+                params: { ...params, page },
+              },
+            );
 
             const pageCommits = Array.isArray(ghRes.data) ? ghRes.data : [];
             allCommits = allCommits.concat(pageCommits);
@@ -1487,19 +1660,17 @@ const getInternGitCommits = async (req, res) => {
             }
           }
 
-          const commits = allCommits.map(
-            (c) => ({
-              sha: c.sha,
-              shortSha: c.sha.slice(0, 7),
-              message: c.commit.message.split("\n")[0], // first line only
-              authorName: c.commit.author.name,
-              authorEmail: c.commit.author.email,
-              authorLogin: c.author?.login || null,
-              authorAvatar: c.author?.avatar_url || null,
-              date: c.commit.author.date,
-              url: c.html_url,
-            }),
-          );
+          const commits = allCommits.map((c) => ({
+            sha: c.sha,
+            shortSha: c.sha.slice(0, 7),
+            message: c.commit.message.split("\n")[0], // first line only
+            authorName: c.commit.author.name,
+            authorEmail: c.commit.author.email,
+            authorLogin: c.author?.login || null,
+            authorAvatar: c.author?.avatar_url || null,
+            date: c.commit.author.date,
+            url: c.html_url,
+          }));
 
           // If no github username, filter by email as fallback
           const filtered = githubUsername

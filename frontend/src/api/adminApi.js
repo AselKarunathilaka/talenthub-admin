@@ -512,6 +512,19 @@ const formatDateForExport = (date) => {
   return `="${year}-${month}-${day}"`;
 };
 
+// Helper function to format date as "MMM DD, YYYY" (e.g., "Jul 21, 2025") —
+// matches the date format used in the emailed Excel non-submission report.
+const formatDateShort = (date) => {
+  if (!date) return "";
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  });
+};
+
 // CSV export utility functions
 export const csvUtils = {
   // Convert intern report data to CSV
@@ -580,7 +593,10 @@ export const csvUtils = {
     return csvRows.join("\n");
   },
 
-  // Convert weekly non-submissions within week data to CSV (for last 5 working days)
+  // Convert weekly non-submissions within week data to CSV (last 5 working days).
+  // Column layout mirrors the emailed Excel non-submission report:
+  // No. | Intern Name | Trainee ID | Email Address | Field of Specialization |
+  // Institute | Training Start Date | Training End Date | Logs Submitted | Last Submission Date
   convertWeeklyNonSubmissionsWithinWeekToCSV: (data) => {
     if (
       !data ||
@@ -591,25 +607,18 @@ export const csvUtils = {
       return "";
     }
 
-    // Define CSV headers
     const headers = [
+      "No.",
+      "Intern Name",
       "Trainee ID",
-      "Name",
-      "Email",
+      "Email Address",
       "Field of Specialization",
       "Institute",
-      "Start Date",
-      "End Date",
-      "Week Period",
-      "Status",
-      "Export Date",
+      "Training Start Date",
+      "Training End Date",
+      "Logs Submitted",
+      "Last Submission Date",
     ];
-
-    // Get current date for export timestamp
-    const exportDate = formatDateForExport(new Date());
-
-    // Extract week period from data - this comes from the API response
-    const weekPeriod = data.weekPeriod || "Last 5 Working Days";
 
     // Sort interns by start date in ascending order
     const sortedInterns = [...data.nonSubmittedInterns].sort((a, b) => {
@@ -625,22 +634,24 @@ export const csvUtils = {
     // Convert data to CSV rows
     const csvRows = [
       headers.join(","), // Header row
-      ...sortedInterns.map((intern) => {
+      ...sortedInterns.map((intern, idx) => {
         return [
-          intern.traineeId || "",
+          idx + 1,
           `"${intern.traineeName || ""}"`,
+          intern.traineeId || "",
           intern.email || "",
           `"${intern.fieldOfSpecialization || ""}"`,
           `"${intern.institute || "Not Specified"}"`,
           intern.trainingStartDate
-            ? formatDateForExport(intern.trainingStartDate)
-            : '="Not Set"',
+            ? formatDateShort(intern.trainingStartDate)
+            : "Not Set",
           intern.trainingEndDate
-            ? formatDateForExport(intern.trainingEndDate)
-            : '="Not Set"',
-          `"${weekPeriod}"`,
-          intern.status || "Not Submitted Within Week",
-          exportDate,
+            ? formatDateShort(intern.trainingEndDate)
+            : "Not Set",
+          intern.logsSubmitted != null ? intern.logsSubmitted : "0",
+          intern.lastSubmission
+            ? formatDateShort(intern.lastSubmission)
+            : "Never",
         ].join(",");
       }),
     ];
@@ -728,16 +739,10 @@ export const csvUtils = {
           intern.email || "",
           `"${intern.fieldOfSpecialization || ""}"`,
           `"${institute}"`,
-          intern.trainingStartDate
-            ? formatDateForExport(intern.trainingStartDate)
-            : '="Not Set"',
-          intern.trainingEndDate
-            ? formatDateForExport(intern.trainingEndDate)
-            : '="Not Set"',
+          `"${intern.trainingStartDate ? formatDateShort(intern.trainingStartDate) : "Not Set"}"`,
+          `"${intern.trainingEndDate ? formatDateShort(intern.trainingEndDate) : "Not Set"}"`,
           totalRecords,
-          intern.lastSubmission
-            ? formatDateForExport(intern.lastSubmission)
-            : '="Never"',
+          `"${intern.lastSubmission ? formatDateShort(intern.lastSubmission) : "Never"}"`,
           daysSinceLastSubmission,
           exportDate,
         ].join(",");
@@ -747,7 +752,10 @@ export const csvUtils = {
     return csvRows.join("\n");
   },
 
-  // Convert weekly non-submissions data to CSV
+  // Convert weekly non-submissions data to CSV (custom range / weekType).
+  // Column layout mirrors the emailed Excel non-submission report:
+  // No. | Intern Name | Trainee ID | Email Address | Field of Specialization |
+  // Institute | Training Start Date | Training End Date | Logs Submitted | Last Submission Date
   convertWeeklyNonSubmissionsToCSV: (data) => {
     if (
       !data ||
@@ -758,45 +766,46 @@ export const csvUtils = {
       return "";
     }
 
-    // Define CSV headers
     const headers = [
+      "No.",
+      "Intern Name",
       "Trainee ID",
-      "Name",
-      "Email",
+      "Email Address",
       "Field of Specialization",
       "Institute",
-      "Start Date",
-      "End Date",
-      "Week Period",
-      "Status",
-      "Export Date",
+      "Training Start Date",
+      "Training End Date",
+      "Logs Submitted",
+      "Last Submission Date",
     ];
 
-    // Get current date for export timestamp
-    const exportDate = formatDateForExport(new Date());
-
-    // Extract week period from data - this comes from the API response
-    const weekPeriod = data.weekPeriod || "Current Week";
+    // Sort interns by start date in ascending order (kept consistent with
+    // the within-week export above)
+    const sortedInterns = [...data.nonSubmittedInterns].sort((a, b) => {
+      const dateA = a.trainingStartDate
+        ? new Date(a.trainingStartDate)
+        : new Date(0);
+      const dateB = b.trainingStartDate
+        ? new Date(b.trainingStartDate)
+        : new Date(0);
+      return dateA - dateB;
+    });
 
     // Convert data to CSV rows
     const csvRows = [
       headers.join(","), // Header row
-      ...data.nonSubmittedInterns.map((intern) => {
+      ...sortedInterns.map((intern, idx) => {
         return [
-          intern.traineeId || "",
+          idx + 1,
           `"${intern.traineeName || ""}"`,
+          intern.traineeId || "",
           intern.email || "",
           `"${intern.fieldOfSpecialization || ""}"`,
           `"${intern.institute || "Not Specified"}"`,
-          intern.trainingStartDate
-            ? formatDateForExport(intern.trainingStartDate)
-            : '="Not Set"',
-          intern.trainingEndDate
-            ? formatDateForExport(intern.trainingEndDate)
-            : '="Not Set"',
-          `"${weekPeriod}"`,
-          intern.status || "Not Submitted This Week",
-          exportDate,
+          `"${intern.trainingStartDate ? formatDateShort(intern.trainingStartDate) : "Not Set"}"`,
+          `"${intern.trainingEndDate ? formatDateShort(intern.trainingEndDate) : "Not Set"}"`,
+          `"${intern.logsSubmitted != null ? intern.logsSubmitted : "0"}"`,
+          `"${intern.lastSubmission ? formatDateShort(intern.lastSubmission) : "Never"}"`,
         ].join(",");
       }),
     ];

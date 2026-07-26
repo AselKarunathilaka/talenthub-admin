@@ -6,10 +6,25 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
+const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 class AuthService {
+  createAdminSession(user) {
+    const role = user.role || "super_admin";
+    const permissions = permissionsForUser(user);
+    const token = jwt.sign(
+      { id: user._id, email: user.email, role, permissions, accountType: "admin" },
+      dotenv.jwtSecret,
+      { expiresIn: "24h" },
+    );
+    return {
+      token,
+      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, permissions },
+      message: "Login successful!",
+    };
+  }
   // Admin Registration
   async register(email, password) {
     console.log("Registering user:", email);
@@ -32,26 +47,53 @@ class AuthService {
 
   // Admin Login
   async login(email, password) {
-    console.log("Checking user:", email);
+    const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const isDeveloper = normalizedEmail === developerEmail;
 
-    const user = await UserRepository.findByEmail(email);
-    if (!user) {
-      console.log("User not found");
-      return { error: "Invalid email or password" };
-    }
+    const user = await UserRepository.findByEmail(normalizedEmail);
+    if (!user || !user.password) return { error: "Invalid email or password" };
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return { error: "Invalid email or password" };
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email },
-      dotenv.jwtSecret,
-      { expiresIn: "24h" },
-    );
+    if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
+    user.role = isDeveloper ? "super_admin" : (user.role || "admin");
+    user.authProvider = "developer_password";
+    user.permissions = isDeveloper
+      ? permissionsForRole("super_admin")
+      : permissionsForUser(
+        user,
+        user.permissions?.length
+          ? user.permissions
+          : permissionsForRole(user.role).filter((permission) => permission !== "users.manage"),
+      );
+    user.lastLoginAt = new Date();
+    await user.save();
+    return this.createAdminSession(user);
+  }
 
-    return { token, message: "Login successful!" };
+  async adminGoogleLogin(idToken) {
+    const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
+    const payload = ticket.getPayload();
+    if (!payload.email_verified) throw new Error("Google email is not verified.");
+
+    const user = await UserRepository.findByEmail(payload.email);
+    if (!user) throw new Error("This Google account has not been invited to the admin portal.");
+    if (!user.isActive) throw new Error("Account is inactive. Please contact a super admin.");
+    if (user.authProvider !== "google" || !["admin", "supervisor"].includes(user.role)) {
+      throw new Error("This account is not an active Google staff invitation.");
+    }
+
+    user.name = user.name || payload.name || "";
+    user.picture = payload.picture || user.picture;
+    user.googleSubject = payload.sub;
+    user.lastLoginAt = new Date();
+    if (!user.permissions?.length) user.permissions = permissionsForRole(user.role);
+    await user.save();
+    return this.createAdminSession(user);
   }
 
   // Intern Google Login with ID Token
@@ -76,7 +118,7 @@ class AuthService {
     }
 
     const token = jwt.sign(
-      { id: intern._id, email: intern.Trainee_Email },
+      { id: intern._id, email: intern.Trainee_Email, role: "intern", accountType: "intern" },
       dotenv.jwtSecret,
       { expiresIn: "24h" },
     );
@@ -106,7 +148,7 @@ class AuthService {
     }
 
     const token = jwt.sign(
-      { id: intern._id, email: intern.Trainee_Email },
+      { id: intern._id, email: intern.Trainee_Email, role: "intern", accountType: "intern" },
       dotenv.jwtSecret,
       { expiresIn: "24h" },
     );

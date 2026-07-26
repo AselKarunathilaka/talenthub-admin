@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
   AUTH: {
     GOOGLE_LOGIN: "/auth/google-login",
     ADMIN_LOGIN: "/auth/login",
+    ADMIN_GOOGLE_LOGIN: "/auth/admin-google-login",
     GateStaff_LOGIN: "/auth/gate-staff-login",
     LOGOUT: "/auth/logout",
   },
