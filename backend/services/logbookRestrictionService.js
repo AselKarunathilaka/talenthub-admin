@@ -2,6 +2,11 @@ const Intern = require("../models/Intern");
 const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
 
+// ── Minimum number of daily logs an intern must submit within the check
+// window (past 5 working days) to avoid restriction. Kept in sync with
+// WeeklyNonSubmissionExcelService.MIN_LOGS_REQUIRED. ─────────────────────────
+const MIN_LOGS_REQUIRED = 3;
+
 // ── Reuse the same holiday + working-day helpers ──────────────────────────
 
 function getSriLankanHolidays(years) {
@@ -115,13 +120,23 @@ class LogbookRestrictionService {
     return trainingStart.isSameOrAfter(windowStart);
   }
 
-  static async hasSubmittedLogsForPastWeek(internId) {
-    const workingDays = this.getCheckWindow();
-    const count = await DailyRecord.countDocuments({
-      internId,
-      date: { $in: workingDays },
-    });
-    return count > 0;
+  // ── Log-submission check (count-based, matches WeeklyNonSubmissionExcelService) ──
+  /**
+   * Returns the number of daily logs the intern submitted within the
+   * past 5 working days (weekends + SL public holidays excluded).
+   */
+  static async getLogsCountForPastWeek(internId) {
+    try {
+      const workingDays = this.getCheckWindow();
+      const count = await DailyRecord.countDocuments({
+        internId,
+        date: { $in: workingDays },
+      });
+      return count;
+    } catch (error) {
+      console.error(`Error checking logs for intern ${internId}:`, error);
+      return 0;
+    }
   }
 
   // ── Active interns ────────────────────────────────────────────────────────
@@ -157,13 +172,15 @@ class LogbookRestrictionService {
 
     console.log("\n🔒 Starting weekly logbook restriction enforcement...");
     console.log(`📅 Review period: ${periodStart} to ${periodEnd}`);
+    console.log(`✅ Minimum logs required: ${MIN_LOGS_REQUIRED}`);
 
     const results = {
       total: 0,
       restricted: 0, // newly restricted this run
-      alreadyRestricted: 0, // already restricted, still not submitting
+      alreadyRestricted: 0, // already restricted, still below requirement
       skipped: 0, // new interns
-      submittedButRestricted: 0, // submitted this week but still restricted (admin must lift)
+      submittedButRestricted: 0, // met requirement this week but still restricted (admin must lift)
+      metRequirement: 0, // met requirement, not restricted
       errors: [],
     };
 
@@ -186,20 +203,21 @@ class LogbookRestrictionService {
             continue;
           }
 
-          const submitted = await this.hasSubmittedLogsForPastWeek(intern._id);
+          const logsSubmitted = await this.getLogsCountForPastWeek(intern._id);
+          const meetsRequirement = logsSubmitted >= MIN_LOGS_REQUIRED;
 
-          if (!submitted) {
+          if (!meetsRequirement) {
             // ── Apply restriction ─────────────────────────────────────────
             if (intern.logbookRestricted) {
-              // Already restricted from a previous week — still not submitting.
+              // Already restricted from a previous week — still below requirement.
               // Do not add a duplicate history entry; just log it.
               results.alreadyRestricted++;
               console.log(
-                `⚠️  ${name} (${tid}) — already restricted, still not submitting`,
+                `⚠️  ${name} (${tid}) — already restricted, only ${logsSubmitted}/${MIN_LOGS_REQUIRED} log(s) submitted`,
               );
             } else {
               const now = new Date();
-              const reason = `No logbook submissions for 5 consecutive working days (${weekLabel})`;
+              const reason = `Only ${logsSubmitted}/${MIN_LOGS_REQUIRED} required logbook entries submitted for the past 5 working days (${weekLabel})`;
 
               await Intern.updateOne(
                 { _id: intern._id },
@@ -226,15 +244,18 @@ class LogbookRestrictionService {
               console.log(`🔒 ${name} (${tid}) — RESTRICTED (${reason})`);
             }
           } else {
-            // ── Intern submitted this week ────────────────────────────────
+            // ── Intern met the minimum-logs requirement this week ─────────
             // Restriction is NOT auto-lifted — only an admin can lift it.
+            results.metRequirement++;
             if (intern.logbookRestricted) {
               results.submittedButRestricted++;
               console.log(
-                `📝 ${name} (${tid}) — submitted this week but still RESTRICTED (awaiting admin review)`,
+                `📝 ${name} (${tid}) — submitted ${logsSubmitted}/${MIN_LOGS_REQUIRED} log(s) this week but still RESTRICTED (awaiting admin review)`,
               );
             } else {
-              console.log(`✅ ${name} (${tid}) — submitted, no restriction`);
+              console.log(
+                `✅ ${name} (${tid}) — submitted ${logsSubmitted}/${MIN_LOGS_REQUIRED} log(s), no restriction`,
+              );
             }
           }
         } catch (err) {
@@ -253,12 +274,15 @@ class LogbookRestrictionService {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log(`📋 Total checked:                  ${results.total}`);
       console.log(`🆕 New interns skipped:            ${results.skipped}`);
+      console.log(
+        `✅ Met requirement (>=${MIN_LOGS_REQUIRED} logs):        ${results.metRequirement}`,
+      );
       console.log(`🔒 Newly restricted:               ${results.restricted}`);
       console.log(
         `⚠️  Already restricted:            ${results.alreadyRestricted}`,
       );
       console.log(
-        `📝 Submitted but still restricted: ${results.submittedButRestricted}`,
+        `📝 Met requirement but still restricted: ${results.submittedButRestricted}`,
       );
       console.log(
         `❌ Errors:                         ${results.errors.length}`,
@@ -271,6 +295,7 @@ class LogbookRestrictionService {
         executionTime: Date.now() - startTime,
         periodStart,
         periodEnd,
+        minLogsRequired: MIN_LOGS_REQUIRED,
         ...results,
       };
     } catch (err) {

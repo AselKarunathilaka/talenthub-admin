@@ -240,17 +240,29 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
 
           {/* Intern summary */}
           <div className="logres-lift-summary">
-            <div className="logres-lift-summary__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+            <div
+              className="logres-lift-summary__avatar"
+              style={{ padding: 0, overflow: "hidden", position: "relative" }}
+            >
               <img
                 src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                 alt={intern.traineeName}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
                 onError={(e) => {
-                  e.target.style.display = 'none';
-                  if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                  e.target.style.display = "none";
+                  if (e.target.nextSibling)
+                    e.target.nextSibling.style.display = "flex";
                 }}
               />
-              <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+              <div
+                style={{
+                  display: "none",
+                  width: "100%",
+                  height: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 {(intern.traineeName || "?")[0].toUpperCase()}
               </div>
             </div>
@@ -472,8 +484,9 @@ const LogbookRestrictions = () => {
               />
               <p>
                 Interns listed below have been automatically restricted by the
-                system after missing logbook submissions for an entire
-                5-working-day period. To restore access, click
+                system for submitting fewer than the required number of logbook
+                (3 log entries) entries within a 5-working-day period. To
+                restore access, click
                 <strong> Lift Restriction</strong> and record the reason
                 provided during the supervisor meeting.
               </p>
