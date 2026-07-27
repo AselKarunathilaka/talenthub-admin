@@ -75,7 +75,12 @@ const federatedLogin = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: userPayload.id, email: userPayload.email, role },
+      {
+        id: userPayload.id,
+        email: userPayload.email,
+        role,
+        accountType: role === "ADMIN" ? "admin" : "intern",
+      },
       dotenv.jwtSecret,
       { expiresIn: "24h" },
     );
