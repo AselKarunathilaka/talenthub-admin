@@ -1,0 +1,42 @@
+.pumpkins-container {
+  position: absolute;
+  bottom: 10px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.pumpkin {
+  width: 120px;
+  height: 120px;
+  filter: drop-shadow(0 0 15px rgba(230, 92, 0, 0.4));
+}
+
+.pumpkin-left {
+  margin-left: 5vw;
+  transform: rotate(-10deg);
+}
+
+.pumpkin-right {
+  margin-right: 5vw;
+  transform: rotate(5deg);
+}
+
+.pumpkin-glow {
+  animation: pulse-glow 3s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { fill: #ffe066; filter: drop-shadow(0 0 5px #ffb347); }
+  50% { fill: #ff9900; filter: drop-shadow(0 0 10px #ff6600); }
+}
+
+@media (max-width: 768px) {
+  .pumpkin { width: 90px; height: 90px; }
+}
+
+@media (max-width: 480px) {
+  .pumpkin { width: 70px; height: 70px; }
+}

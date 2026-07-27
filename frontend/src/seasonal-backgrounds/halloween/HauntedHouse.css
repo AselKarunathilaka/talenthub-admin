@@ -1,0 +1,40 @@
+.haunted-house-container {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 100%;
+  height: 50vh;
+  z-index: 1;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+}
+
+.haunted-house-svg {
+  width: 100%;
+  height: 100%;
+  max-height: 400px;
+}
+
+.window-glow {
+  animation: flicker 4s infinite alternate;
+  opacity: 0.8;
+}
+
+@keyframes flicker {
+  0%, 100% { opacity: 0.8; }
+  5% { opacity: 0.5; }
+  10% { opacity: 0.9; }
+  15% { opacity: 0.4; }
+  25% { opacity: 0.8; }
+  50% { opacity: 0.7; }
+  55% { opacity: 0.9; }
+  80% { opacity: 0.8; }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .haunted-house-container {
+    height: 40vh;
+  }
+}
