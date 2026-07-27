@@ -456,24 +456,24 @@ const AdminManualAttendance = () => {
 
   // ── Bulk Mark Attendance ────────────────────────────────────────────────
   const handleBulkMark = async () => {
-  const rawIds = bulkInternIds
-    .split(/[\n,]+/)
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+    const rawIds = bulkInternIds
+      .split(/[\n,]+/)
+      .map((id) => id.trim())
+      .filter((id) => id.length > 0);
 
-  const ids = [...new Set(rawIds)]; // remove duplicate IDs
+    const ids = [...new Set(rawIds)]; // remove duplicate IDs
 
-  if (ids.length === 0) {
-    showToast("Please enter at least one intern ID", "error");
-    return;
-  }
+    if (ids.length === 0) {
+      showToast("Please enter at least one intern ID", "error");
+      return;
+    }
 
     if (mode === "meeting" && !meetingName.trim()) {
       showToast("Please select a meeting type", "error");
       return;
     }
     setBulkResults(null);
-    
+
     setMarking(true);
     try {
       const payload = {
@@ -525,61 +525,61 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
-const handlePdfUpload = async (event) => {
-  const file = event.target.files?.[0];
+  const handlePdfUpload = async (event) => {
+    const file = event.target.files?.[0];
 
-  if (!file) return;
+    if (!file) return;
 
-  if (!file.name.toLowerCase().endsWith(".pdf")) {
-    showToast("Please upload a PDF file", "error");
-    return;
-  }
-
-  try {
-    const data = await file.arrayBuffer();
-
-    const pdf = await pdfjsLib.getDocument({ data }).promise;
-
-    const ids = [];
-
-    for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
-      const page = await pdf.getPage(pageNo);
-
-      const textContent = await page.getTextContent();
-
-      textContent.items.forEach((item) => {
-        const value = item.str.trim();
-
-        // Only accept 4-digit trainee IDs (3000-9999)
-        if (/^\d{4}$/.test(value)) {
-          const id = Number(value);
-
-          if (id >= 3000 && id <= 9999) {
-            ids.push(value);
-          }
-        }
-      });
-    }
-
-    const uniqueIds = [...new Set(ids)];
-
-    if (uniqueIds.length === 0) {
-      showToast("No Trainee IDs found in PDF", "error");
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      showToast("Please upload a PDF file", "error");
       return;
     }
 
-    setBulkInternIds(uniqueIds.join("\n"));
-    setUploadedFileName(file.name);
+    try {
+      const data = await file.arrayBuffer();
 
-    showToast(
-      `${uniqueIds.length} Trainee IDs imported successfully`,
-      "success"
-    );
-  } catch (error) {
-    console.error(error);
-    showToast("Failed to process PDF file", "error");
-  }
-};
+      const pdf = await pdfjsLib.getDocument({ data }).promise;
+
+      const ids = [];
+
+      for (let pageNo = 1; pageNo <= pdf.numPages; pageNo++) {
+        const page = await pdf.getPage(pageNo);
+
+        const textContent = await page.getTextContent();
+
+        textContent.items.forEach((item) => {
+          const value = item.str.trim();
+
+          // Only accept 4-digit trainee IDs (3000-9999)
+          if (/^\d{4}$/.test(value)) {
+            const id = Number(value);
+
+            if (id >= 3000 && id <= 9999) {
+              ids.push(value);
+            }
+          }
+        });
+      }
+
+      const uniqueIds = [...new Set(ids)];
+
+      if (uniqueIds.length === 0) {
+        showToast("No Trainee IDs found in PDF", "error");
+        return;
+      }
+
+      setBulkInternIds(uniqueIds.join("\n"));
+      setUploadedFileName(file.name);
+
+      showToast(
+        `${uniqueIds.length} Trainee IDs imported successfully`,
+        "success",
+      );
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to process PDF file", "error");
+    }
+  };
 
   const handleTxtUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -908,25 +908,14 @@ const handlePdfUpload = async (event) => {
                     <div className="mt-3">
                       <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
                         <FaUpload className="text-blue-600" />
-
-                    <span className="text-sm font-medium text-blue-700">
-                         Upload Attendance PDF
-                    </span>
-
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      className="hidden"
-                      onChange={handlePdfUpload}
-                    />
-                  </label>
-                        <span className="text-sm font-medium text-blue-700"></span>
-
+                        <span className="text-sm font-medium text-blue-700">
+                          Upload Attendance PDF
+                        </span>
                         <input
                           type="file"
-                          accept=".txt"
+                          accept=".pdf"
                           className="hidden"
-                          onChange={handleTxtUpload}
+                          onChange={handlePdfUpload}
                         />
                       </label>
 
