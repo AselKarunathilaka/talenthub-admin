@@ -264,8 +264,8 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           }}
         >
           Your logbook access has been automatically restricted because no
-          logbook entries were submitted for an entire 5-working-day period. To
-          regain access, please follow the steps below:
+          logbook entries were submitted for a minimum period of 3 working days.
+          To regain access, please follow the steps below:
         </p>
 
         {/* Steps */}
