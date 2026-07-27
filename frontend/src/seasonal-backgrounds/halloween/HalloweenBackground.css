@@ -1,0 +1,44 @@
+/* ─────────────────────────────────────────────
+   Halloween Background — Container Layer
+   ───────────────────────────────────────────── */
+.halloween-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(to bottom, #0f0518 0%, #1a0b2e 40%, #2a0845 70%, #000000 100%);
+}
+
+.halloween-moon {
+  position: absolute;
+  top: 15%;
+  left: 60%;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle at 30% 30%, #fff7cc, #ffb347);
+  border-radius: 50%;
+  box-shadow: 0 0 50px 20px rgba(255, 179, 71, 0.5), inset -20px -20px 40px rgba(0, 0, 0, 0.4);
+  transform: translateX(-50%);
+  opacity: 0.9;
+  filter: blur(1px);
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .halloween-moon {
+    top: 10%;
+    left: 70%;
+    width: 150px;
+    height: 150px;
+  }
+}
+
+@media (max-width: 480px) {
+  .halloween-moon {
+    top: 8%;
+    left: 80%;
+    width: 100px;
+    height: 100px;
+  }
+}
