@@ -1,0 +1,54 @@
+.christmas-tree-container {
+  position: absolute;
+  bottom: 5vh; /* Sit on the snow hill */
+  left: 20vw;
+  width: 250px;
+  height: 400px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.christmas-tree-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.tree-star {
+  filter: drop-shadow(0 0 10px #ffea00);
+  animation: star-pulse 2s infinite alternate;
+}
+
+@keyframes star-pulse {
+  0%, 100% { filter: drop-shadow(0 0 10px #ffea00) brightness(1); }
+  50% { filter: drop-shadow(0 0 20px #ffea00) brightness(1.3); }
+}
+
+.fairy-light {
+  animation: light-blink 1.5s infinite alternate;
+}
+
+.light-1 { animation-delay: 0s; }
+.light-2 { animation-delay: 0.5s; }
+.light-3 { animation-delay: 1s; }
+
+@keyframes light-blink {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; filter: drop-shadow(0 0 5px currentColor); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .christmas-tree-container {
+    width: 200px;
+    height: 320px;
+    left: 10vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .christmas-tree-container {
+    width: 150px;
+    height: 240px;
+    left: 5vw;
+  }
+}
