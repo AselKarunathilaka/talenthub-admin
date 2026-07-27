@@ -1,0 +1,72 @@
+/* ─────────────────────────────────────────────
+   Christmas Background — Container Layer
+   ───────────────────────────────────────────── */
+.christmas-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: linear-gradient(to bottom, #040a22 0%, #0a183d 40%, #162d50 70%, #1c3e66 100%);
+}
+
+.northern-lights {
+  position: absolute;
+  top: -10%;
+  width: 200%;
+  height: 60vh;
+  opacity: 0.4;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
+.northern-lights-1 {
+  left: -50%;
+  background: radial-gradient(ellipse at center, rgba(0, 255, 128, 0.4) 0%, transparent 70%);
+  animation: aurora-shift 20s infinite alternate ease-in-out;
+}
+
+.northern-lights-2 {
+  right: -50%;
+  top: -5%;
+  background: radial-gradient(ellipse at center, rgba(0, 200, 255, 0.3) 0%, transparent 70%);
+  animation: aurora-shift 25s infinite alternate-reverse ease-in-out;
+}
+
+@keyframes aurora-shift {
+  0% { transform: scale(1) translateX(0) translateY(0) rotate(-5deg); opacity: 0.3; }
+  50% { transform: scale(1.2) translateX(10%) translateY(20px) rotate(0deg); opacity: 0.6; }
+  100% { transform: scale(1.1) translateX(-10%) translateY(-10px) rotate(5deg); opacity: 0.4; }
+}
+
+/* ── Snowy Hills ── */
+.snow-hills {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 25vh;
+  z-index: 1;
+}
+
+.hill {
+  position: absolute;
+  bottom: -20px;
+  background: #f0f8ff;
+  border-radius: 50% 50% 0 0;
+  box-shadow: inset 0 -20px 40px rgba(150, 180, 220, 0.3);
+}
+
+.hill-1 {
+  left: -10%;
+  width: 120%;
+  height: 15vh;
+}
+
+.hill-2 {
+  right: -20%;
+  width: 70%;
+  height: 20vh;
+  background: #e6f2ff;
+  box-shadow: inset 0 -20px 40px rgba(130, 160, 200, 0.4);
+}
