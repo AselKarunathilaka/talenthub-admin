@@ -1,0 +1,55 @@
+.presents-container {
+  position: absolute;
+  bottom: 4vh; /* Just below the tree */
+  left: 20vw;
+  width: 250px;
+  height: 100px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.present {
+  position: absolute;
+  width: 60px;
+  height: 60px;
+}
+
+.present-1 {
+  bottom: 0;
+  left: 20px;
+  width: 70px;
+  height: 70px;
+}
+
+.present-2 {
+  bottom: -5px;
+  right: 40px;
+  width: 60px;
+  height: 60px;
+}
+
+.present-3 {
+  bottom: 15px;
+  right: 15px;
+  width: 45px;
+  height: 45px;
+  z-index: -1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .presents-container {
+    left: 10vw;
+    width: 200px;
+  }
+}
+
+@media (max-width: 480px) {
+  .presents-container {
+    left: 5vw;
+    width: 150px;
+  }
+  .present-1 { width: 50px; height: 50px; left: 10px; }
+  .present-2 { width: 45px; height: 45px; right: 20px; }
+  .present-3 { width: 35px; height: 35px; }
+}
