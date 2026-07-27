@@ -73,8 +73,10 @@ export const SEASON_COMPONENTS = {
     import("./halloween/HalloweenBackground").then((m) => ({
       default: m.default,
     })),
-  // Future seasons can be added here as they are designed:
-  // "vesak-festival": () => import("./vesak-festival/VesakBackground"),
+  "vesak-festival": () =>
+    import("./vesak-festival/VesakBackground").then((m) => ({
+      default: m.default,
+    })),
   // "christmas": () => import("./christmas/ChristmasBackground"),
 };
 
@@ -84,6 +86,7 @@ export const SEASON_COMPONENTS = {
  * @returns {string|null} The season key, or null for default
  */
 export function getActiveSeason(date = new Date()) {
+  return 'vesak-festival'
   const month = date.getMonth() + 1; // 1-indexed
   const day = date.getDate();
 
