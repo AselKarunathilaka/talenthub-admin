@@ -1,6 +1,6 @@
-import React, { useState } from "react";
-import { GoogleLogin } from "@react-oauth/google";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { startRegistration, startAuthentication, browserSupportsWebAuthnAutofill } from '@simplewebauthn/browser';
 import {
   FaUser,
   FaLock,
@@ -24,6 +24,7 @@ import {
   Lightbulb,
   ArrowRight,
   Sparkles,
+  Fingerprint,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
@@ -124,6 +125,56 @@ const AdminLogin = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
+  const [authDataForPasskeySetup, setAuthDataForPasskeySetup] = useState(null);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyError, setPasskeyError] = useState("");
+
+  useEffect(() => {
+    const setupAutofill = async () => {
+      try {
+        const isAutofillSupported = await browserSupportsWebAuthnAutofill();
+        if (!isAutofillSupported) return;
+
+        const resp = await fetch(`${API_BASE_URL}/auth/webauthn/generate-authentication-options`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        
+        const data = await resp.json();
+        if (data.error) throw new Error(data.error);
+
+        const asseResp = await startAuthentication({ 
+          optionsJSON: data.options,
+          useBrowserAutofill: true 
+        });
+
+        const verificationResp = await fetch(`${API_BASE_URL}/auth/webauthn/verify-authentication`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ response: asseResp, sessionId: data.sessionId })
+        });
+
+        const verificationJSON = await verificationResp.json();
+        if (verificationJSON.verified) {
+          const adminInfo = {
+            token: verificationJSON.token,
+            user: verificationJSON.user,
+            loginTime: new Date().toISOString(),
+          };
+          localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+          navigate("/admin/dashboard");
+        }
+      } catch (err) {
+        if (err.name === 'NotAllowedError') {
+          return;
+        }
+        console.error("Autofill passkey error:", err);
+      }
+    };
+
+    setupAutofill();
+  }, [navigate]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -168,31 +219,109 @@ const AdminLogin = () => {
       };
 
       localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
-      navigate("/admin/dashboard");
+      setAuthDataForPasskeySetup(adminInfo);
+      setShowPasskeyPrompt(true);
     } catch (error) {
       console.error("Admin login error:", error);
       setError(error.message || "Login failed. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleLogin = async (googleResponse) => {
+  const handlePasskeyRegistration = async () => {
+    setPasskeyLoading(true);
+    try {
+      const resp = await fetch(`${API_BASE_URL}/auth/webauthn/generate-registration-options`, {
+        headers: {
+          'Authorization': `Bearer ${authDataForPasskeySetup.token}`
+        }
+      });
+      const options = await resp.json();
+      
+      if (options.error) throw new Error(options.error);
+
+      const attResp = await startRegistration({ optionsJSON: options });
+
+      const verificationResp = await fetch(`${API_BASE_URL}/auth/webauthn/verify-registration`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authDataForPasskeySetup.token}`
+        },
+        body: JSON.stringify(attResp)
+      });
+      
+      const verificationJSON = await verificationResp.json();
+      if (verificationJSON.verified) {
+        navigate("/admin/dashboard");
+      } else {
+        throw new Error(verificationJSON.error || "Registration verification failed");
+      }
+    } catch (err) {
+      console.error("Passkey registration error:", err);
+      let errMsg = err.message || "Passkey registration failed.";
+      if (errMsg.includes("The operation either timed out or was not allowed")) {
+        errMsg = "The operation timed out or was cancelled. Please try again.";
+      } else if (errMsg.includes("RP ID")) {
+        errMsg = "Passkey setup is not configured correctly for this domain. Please use password login.";
+      }
+      setPasskeyError(errMsg);
+      // Don't navigate away if it failed, let them try again or skip manually
+    } finally {
+      setPasskeyLoading(false);
+    }
+  };
+
+  const skipPasskeyRegistration = () => {
+    setShowPasskeyPrompt(false);
+    setPasskeyError("");
+    navigate("/admin/dashboard");
+  };
+
+  const handlePasskeyLogin = async () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.ADMIN_GOOGLE_LOGIN}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ credential: googleResponse.credential }),
+      const resp = await fetch(`${API_BASE_URL}/auth/webauthn/generate-authentication-options`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || "Google login failed");
-      localStorage.setItem("adminInfo", JSON.stringify({ token: data.token, user: data.user, loginTime: new Date().toISOString() }));
-      navigate("/admin/dashboard");
-    } catch (loginError) {
-      setError(loginError.message || "Google login failed.");
-    } finally { setLoading(false); }
+      
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+
+      const asseResp = await startAuthentication({ optionsJSON: data.options });
+
+      const verificationResp = await fetch(`${API_BASE_URL}/auth/webauthn/verify-authentication`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ response: asseResp, sessionId: data.sessionId })
+      });
+
+      const verificationJSON = await verificationResp.json();
+      if (verificationJSON.verified) {
+        const adminInfo = {
+          token: verificationJSON.token,
+          user: verificationJSON.user,
+          loginTime: new Date().toISOString(),
+        };
+        localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+        navigate("/admin/dashboard");
+      } else {
+        throw new Error(verificationJSON.error || "Authentication verification failed");
+      }
+    } catch (err) {
+      console.error(err);
+      let errMsg = err.message || "Failed to authenticate with passkey.";
+      if (errMsg.includes("The operation either timed out or was not allowed")) {
+        errMsg = "The operation timed out or was cancelled. Please try again.";
+      } else if (errMsg.includes("RP ID")) {
+        errMsg = "Passkey login is not configured correctly for this domain. Please use password login.";
+      }
+      setError(errMsg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -202,6 +331,82 @@ const AdminLogin = () => {
         background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
       }}
     >
+      {/* ─── Passkey Setup Modal ─── */}
+      {showPasskeyPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-[#0f172a] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative"
+          >
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 mx-auto bg-gradient-to-br from-[#00b4eb]/20 to-[#50b748]/20 rounded-full flex items-center justify-center mb-4 border border-[#00b4eb]/30">
+                <Fingerprint className="h-8 w-8 text-[#00b4eb]" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Enable Passkey</h3>
+              <p className="text-white/60 text-sm leading-relaxed">
+                Log in faster and more securely using your device's fingerprint, face scan, or PIN.
+              </p>
+            </div>
+            
+            {passkeyError && (
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-400/20"
+              >
+                <svg
+                  className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <span className="text-sm text-red-200 font-medium">
+                  {passkeyError}
+                </span>
+              </motion.div>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handlePasskeyRegistration}
+                disabled={passkeyLoading}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white transition-all duration-300"
+                style={{
+                  background: "linear-gradient(135deg, #00b4eb, #50b748)",
+                  boxShadow: "0 4px 15px rgba(0,180,235,0.3)",
+                }}
+              >
+                {passkeyLoading ? (
+                  <>
+                    <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin" />
+                    <span>Registering...</span>
+                  </>
+                ) : (
+                  <>
+                    <Fingerprint className="h-5 w-5" />
+                    <span>Enable Passkey Setup</span>
+                  </>
+                )}
+              </button>
+              
+              <button
+                onClick={skipPasskeyRegistration}
+                disabled={passkeyLoading}
+                className="w-full flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold text-white/60 hover:text-white transition-all bg-white/5 hover:bg-white/10"
+              >
+                Skip for now
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* Subtle animated grain / mesh overlay */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.035]"
@@ -386,23 +591,8 @@ const AdminLogin = () => {
 
                 {/* Middle Section */}
                 <div className="flex-1 flex flex-col justify-center mb-1">
-                  <div className="flex justify-center mb-3">
-                    <GoogleLogin
-                      onSuccess={handleGoogleLogin}
-                      onError={() => setError("Google authentication failed.")}
-                      theme="filled_blue"
-                      shape="pill"
-                      size="large"
-                      text="continue_with"
-                    />
-                  </div>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-white/40">DEVELOPER SUPER ADMIN</span>
-                    <div className="flex-1 h-px bg-white/10" />
-                  </div>
                   {/* Login form */}
-                  <form onSubmit={handleSubmit} className="space-y-1.5">
+                  <form onSubmit={handleSubmit} className="space-y-1.5 mb-3">
                     {/* Email field */}
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -412,7 +602,7 @@ const AdminLogin = () => {
                         id="admin-email"
                         name="email"
                         type="email"
-                        autoComplete="email"
+                        autoComplete="username webauthn"
                         required
                         value={formData.email}
                         onChange={handleInputChange}
@@ -503,6 +693,17 @@ const AdminLogin = () => {
                           <span className="tracking-wider">ACCESS DASHBOARD</span>
                         </>
                       )}
+                    </button>
+                    
+                    {/* Passkey Login Button */}
+                    <button
+                      type="button"
+                      onClick={handlePasskeyLogin}
+                      disabled={loading}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 group border border-[#00b4eb]/30 hover:border-[#00b4eb] bg-transparent mt-3"
+                    >
+                      <Fingerprint className="h-4 w-4 text-[#00b4eb]" />
+                      <span>SIGN IN WITH PASSKEY</span>
                     </button>
                   </form>
                 </div>

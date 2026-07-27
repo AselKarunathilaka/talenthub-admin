@@ -48,19 +48,11 @@ class AuthService {
   // Admin Login
   async login(email, password) {
     const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
-    const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const isDeveloper = normalizedEmail === developerEmail;
-    const isTestingAdmin = Boolean(testingAdminEmail) && normalizedEmail === testingAdminEmail;
-    if (!isDeveloper && !isTestingAdmin) {
-      return { error: "Email/password login is not enabled for this account." };
-    }
 
     const user = await UserRepository.findByEmail(normalizedEmail);
     if (!user || !user.password) return { error: "Invalid email or password" };
-    if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
-      return { error: "Testing admin has not been securely provisioned." };
-    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -68,7 +60,7 @@ class AuthService {
     }
 
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
-    user.role = isDeveloper ? "super_admin" : "admin";
+    user.role = isDeveloper ? "super_admin" : (user.role || "admin");
     user.authProvider = "developer_password";
     user.permissions = isDeveloper
       ? permissionsForRole("super_admin")
@@ -76,7 +68,7 @@ class AuthService {
         user,
         user.permissions?.length
           ? user.permissions
-          : permissionsForRole("admin").filter((permission) => permission !== "users.manage"),
+          : permissionsForRole(user.role).filter((permission) => permission !== "users.manage"),
       );
     user.lastLoginAt = new Date();
     await user.save();

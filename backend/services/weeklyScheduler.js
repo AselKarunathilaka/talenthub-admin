@@ -7,6 +7,7 @@ const LogbookRestrictionService = require("./logbookRestrictionService");
 const DEFAULT_RECIPIENTS = [
   "dimalshacooray@gmail.com", // Developer
   "mgiri@slt.com.lk", // Supervisor
+  "hjanaka@gmail.com", // Supervisor
 ];
 
 class WeeklyScheduler {

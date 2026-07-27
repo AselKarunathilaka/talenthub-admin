@@ -28,8 +28,17 @@ const userSchema = new mongoose.Schema({
   invitationEmailError: { type: String, select: false },
   invitationEmailAttempts: { type: Number, default: 0 },
   lastLoginAt: Date,
+  // WebAuthn Passkey fields
+  passkeys: [{
+    credentialID: { type: String },
+    credentialPublicKey: { type: Buffer },
+    counter: { type: Number },
+    credentialDeviceType: { type: String },
+    credentialBackedUp: { type: Boolean },
+    transports: { type: [String] },
+  }],
+  currentChallenge: { type: String, select: false },
 }, { timestamps: true });
-
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();

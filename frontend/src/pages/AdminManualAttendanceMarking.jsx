@@ -525,7 +525,7 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
- const handlePdfUpload = async (event) => {
+const handlePdfUpload = async (event) => {
   const file = event.target.files?.[0];
 
   if (!file) return;
@@ -554,7 +554,7 @@ const AdminManualAttendance = () => {
         if (/^\d{4}$/.test(value)) {
           const id = Number(value);
 
-          if (id >= 2000 && id <= 9999) {
+          if (id >= 3000 && id <= 9999) {
             ids.push(value);
           }
         }
@@ -580,7 +580,29 @@ const AdminManualAttendance = () => {
     showToast("Failed to process PDF file", "error");
   }
 };
-  
+
+  const handleTxtUpload = async (event) => {
+    const file = event.target.files?.[0];
+
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+
+      const ids = text
+        .split(/[\n,\r]+/)
+        .map((id) => id.trim())
+        .filter(Boolean);
+
+      setBulkInternIds(ids.join("\n"));
+      setUploadedFileName(file.name);
+
+      showToast(`${ids.length} IDs loaded from file`, "success");
+    } catch (error) {
+      showToast("Failed to read TXT file", "error");
+    }
+  };
+
   const handleExcelUpload = async (event) => {
     const file = event.target.files?.[0];
 
@@ -676,13 +698,6 @@ const AdminManualAttendance = () => {
               transition={{ duration: 0.3 }}
               className="mb-8"
             >
-              <button
-                onClick={() => navigate("/admin/intern-attendance")}
-                className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-blue-600 transition-colors"
-              >
-                <FaArrowLeft className="h-3.5 w-3.5" />
-                Back to Attendance
-              </button>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                 <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
                   Manual Attendance
@@ -895,7 +910,7 @@ const AdminManualAttendance = () => {
                         <FaUpload className="text-blue-600" />
 
                     <span className="text-sm font-medium text-blue-700">
-                        Upload Attendance PDF
+                         Upload Attendance PDF
                     </span>
 
                     <input
@@ -905,6 +920,15 @@ const AdminManualAttendance = () => {
                       onChange={handlePdfUpload}
                     />
                   </label>
+                        <span className="text-sm font-medium text-blue-700"></span>
+
+                        <input
+                          type="file"
+                          accept=".txt"
+                          className="hidden"
+                          onChange={handleTxtUpload}
+                        />
+                      </label>
 
                       {uploadedFileName && (
                         <p className="mt-2 text-xs text-green-600">

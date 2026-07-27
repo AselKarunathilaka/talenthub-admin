@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Camera, Check, Loader, ShieldCheck, SwitchCamera, X } from "lucide-react";
+import { Camera, Check, Loader, ShieldCheck, X } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
 import { apiFetch } from "../utils/api";
 import FaceScanGuide from "./FaceScanGuide";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { enrollFaceSamples } from "../utils/faceEnrollment";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 
 const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
@@ -29,10 +27,6 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   const [frames, setFrames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [cameraFacingMode, setCameraFacingMode] = useState("user");
-  const [cameraSwitching, setCameraSwitching] = useState(false);
-  const [modelLoadError, setModelLoadError] = useState("");
-  const [modelLoadAttempt, setModelLoadAttempt] = useState(0);
   const [faceGuide, setFaceGuide] = useState("Center your face inside the oval");
 
   const videoRef = useRef(null);
@@ -54,7 +48,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
     videoRef.current.srcObject = streamRef.current;
     try {
-      await waitForPlayableVideo(videoRef.current);
+      await videoRef.current.play();
     } catch (error) {
       console.warn("Camera preview autoplay was blocked:", error);
     }
@@ -62,28 +56,27 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
   // Load face-api models
   useEffect(() => {
-    let active = true;
     const loadModels = async () => {
-      setModelLoadError("");
       try {
-        await loadFaceModels();
-        if (active) setModelsLoaded(true);
+        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face-api models:", error);
-        if (active) setModelLoadError(error.message || "Failed to load face recognition.");
+        toast.error("Failed to load face recognition. Please refresh.");
       }
     };
     loadModels();
-    return () => { active = false; };
-  }, [modelLoadAttempt]);
+  }, []);
 
   useEffect(() => {
     if (step === "capturing") {
       attachStreamToVideo();
-      // captureFrame exits before inference during the sample delay. A slower
-      // polling cadence keeps mobile previews responsive without delaying the
-      // guided five-sample flow.
-      const timer = window.setInterval(() => captureFrame(), 900);
+      const timer = window.setInterval(() => captureFrame(), 700);
       return () => window.clearInterval(timer);
     }
     return undefined;
@@ -91,7 +84,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
   const startCamera = async () => {
     try {
-      const stream = await requestFaceCameraStream({ facingMode: cameraFacingMode });
+      const stream = await requestFaceCameraStream();
       streamRef.current = stream;
       lastCaptureRef.current = Date.now();
       submitStartedRef.current = false;
@@ -101,28 +94,6 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     } catch (error) {
       console.error("Camera error:", error);
       toast.error(getCameraErrorMessage(error));
-    }
-  };
-
-  const switchCamera = async () => {
-    if (cameraSwitching || loading || step !== "capturing") return;
-    const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user";
-    setCameraSwitching(true);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    try {
-      const stream = await requestFaceCameraStream({ facingMode: nextFacingMode });
-      streamRef.current = stream;
-      setCameraFacingMode(nextFacingMode);
-      lastCaptureRef.current = Date.now();
-      await attachStreamToVideo();
-    } catch (error) {
-      toast.error(getCameraErrorMessage(error));
-      stopCamera();
-      setStep("intro");
-    } finally {
-      setCameraSwitching(false);
     }
   };
 
@@ -226,7 +197,25 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     setStep("uploading");
     setLoading(true);
     try {
-      await enrollFaceSamples({ descriptors: frames, metadata: { enrollmentMethod: "login-popup-guided", timestamp: new Date().toISOString() } });
+      for (const [index, descriptor] of frames.entries()) {
+        const response = await apiFetch("/face-attendance/enroll", {
+            method: "POST",
+            body: JSON.stringify({
+              descriptor,
+              metadata: {
+                enrollmentMethod: "login-popup-guided",
+                timestamp: new Date().toISOString(),
+                replaceExisting: index === 0,
+              },
+            }),
+          });
+        if (!response.ok) {
+          const error = await response.json();
+          toast.error(error.message || "Enrollment failed. Please try again.");
+          setStep("intro");
+          return;
+        }
+      }
 
         setStep("success");
         toast.success("Face registered successfully!");
@@ -238,8 +227,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
         }, 2000);
     } catch (error) {
       console.error("Enrollment error:", error);
-      submitStartedRef.current = false;
-      toast.error(error.message || "Error during enrollment. Please try again.");
+      toast.error("Error during enrollment. Please try again.");
       setStep("intro");
     } finally {
       setLoading(false);
@@ -273,15 +261,14 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full border-t-4 border-orange-500">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-100 to-amber-100 flex items-center justify-center mb-6">
-              {modelLoadError ? <X className="w-8 h-8 text-red-500" /> : <Loader className="w-8 h-8 animate-spin text-orange-600" />}
+              <Loader className="w-8 h-8 animate-spin text-orange-600" />
             </div>
             <p className="text-center text-gray-900 font-semibold text-lg">
-              {modelLoadError ? "Face recognition unavailable" : "Initializing face recognition..."}
+              Initializing face recognition...
             </p>
             <p className="text-center text-gray-500 text-sm mt-2">
-              {modelLoadError || "Loading advanced face detection models"}
+              Loading advanced face detection models
             </p>
-            {modelLoadError && <div className="mt-5 flex gap-2"><button type="button" onClick={onClose} className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-600">Close</button><button type="button" onClick={() => setModelLoadAttempt((value) => value + 1)} className="rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white">Retry</button></div>}
           </div>
         </div>
       </div>
@@ -393,7 +380,7 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                   muted
                   playsInline
                   className="w-full h-full object-cover"
-                  style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }}
+                  style={{ transform: "scaleX(-1)" }}
                 />
                 <canvas ref={canvasRef} className="hidden" width={640} height={480} />
                 <canvas
@@ -401,9 +388,8 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
                   className="pointer-events-none absolute inset-0 z-10 h-full w-full"
                   width={640}
                   height={480}
-                  style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }}
+                  style={{ transform: "scaleX(-1)" }}
                 />
-                <button type="button" onClick={switchCamera} disabled={cameraSwitching || loading} className="absolute right-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-black/65 px-3 py-2 text-xs font-bold text-white backdrop-blur-sm disabled:opacity-60" aria-label="Switch front and rear camera"><SwitchCamera className="h-4 w-4" />{cameraSwitching ? "Switching…" : cameraFacingMode === "user" ? "Rear" : "Front"}</button>
                 
                 <FaceScanGuide
                   ready={frameCountRef.current > 0}
