@@ -77,7 +77,11 @@ export const SEASON_COMPONENTS = {
     import("./vesak-festival/VesakBackground").then((m) => ({
       default: m.default,
     })),
-  // "christmas": () => import("./christmas/ChristmasBackground"),
+  "christmas": () =>
+    import("./christmas/ChristmasBackground").then((m) => ({
+      default: m.default,
+    })),
+  // Future seasons can be added here as they are designed:
 };
 
 /**
