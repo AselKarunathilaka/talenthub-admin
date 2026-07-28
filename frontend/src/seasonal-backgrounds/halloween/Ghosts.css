@@ -1,0 +1,50 @@
+.ghosts-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.ghost {
+  position: absolute;
+  width: 80px;
+  height: 100px;
+  animation: hover 3s infinite ease-in-out alternate;
+}
+
+.ghost-1 {
+  bottom: 20%;
+  left: -20%;
+  animation: hover 4s infinite ease-in-out alternate, float-across-1 25s infinite linear;
+}
+
+.ghost-2 {
+  bottom: 40%;
+  right: -20%;
+  width: 60px;
+  height: 80px;
+  animation: hover 3s infinite ease-in-out alternate, float-across-2 30s infinite linear 10s;
+}
+
+@keyframes hover {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-20px); }
+}
+
+@keyframes float-across-1 {
+  0% { left: -20%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { left: 120%; opacity: 0; }
+}
+
+@keyframes float-across-2 {
+  0% { right: -20%; opacity: 0; transform: scaleX(-1); }
+  10% { opacity: 0.8; transform: scaleX(-1); }
+  90% { opacity: 0.8; transform: scaleX(-1); }
+  100% { right: 120%; opacity: 0; transform: scaleX(-1); }
+}
