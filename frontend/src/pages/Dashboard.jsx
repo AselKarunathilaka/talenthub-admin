@@ -9,6 +9,7 @@ import OnboardingTour from "../components/OnboardingTour";
 import FeatureTipModal from "../components/FeatureTipModal";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import AnnouncementPopup from "../components/AnnouncementPopup";
+import DailyRecordsHeatmap from "../components/DailyRecordsHeatmap";
 import {
   Users,
   User,
@@ -25,6 +26,7 @@ import {
   Mail,
   Building,
   GraduationCap,
+  ClipboardList,
 } from "lucide-react";
 import { api } from "../utils/api";
 import { formatDate } from "../utils/formatDate";
@@ -468,12 +470,19 @@ const Dashboard = () => {
         Icon: QrCode,
       };
     }
+    // Logbook - auto-marked when intern submits their daily logbook entry
+    if (normalizedMethod === "daily") {
+      return {
+        label: "Logbook",
+        className: "bg-teal-50 text-teal-700 border-teal-100",
+        Icon: ClipboardList,
+      };
+    }
 
-    // Manual - handles both raw and normalized values
+    // Manual - admin manually marked attendance
     if (
       normalizedMethod === "manual" ||
       normalizedMethod === "manual_meeting" ||
-      normalizedMethod === "daily" ||
       normalizedMethod === "manual_daily"
     ) {
       return {
@@ -861,6 +870,12 @@ const Dashboard = () => {
             </div>
           </motion.div>
         )}
+
+        <DailyRecordsHeatmap
+          startDate={internData?.Training_StartDate}
+          endDate={internData?.Training_EndDate}
+        />
+
         <motion.div
           className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-md w-full relative"
           initial={{ opacity: 0, y: -10 }}

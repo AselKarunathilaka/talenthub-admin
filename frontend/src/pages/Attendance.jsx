@@ -15,7 +15,6 @@ import {
   Scan,
   Info,
   ChevronRight
-  ,SwitchCamera
 } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
@@ -27,7 +26,6 @@ import SectionTip from "../components/SectionTip";
 import FaceScanGuide from "../components/FaceScanGuide";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import DailyAttendanceActionControl from "../components/DailyAttendanceActionControl";
-import AttendancePermissionGate from "../components/AttendancePermissionGate";
 import { apiFetch } from "../utils/api";
 import { useDailyAttendanceStatus } from "../hooks/useDailyAttendanceStatus";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
@@ -54,6 +52,7 @@ const SLT_OFFICE = {
   radiusKm: 2,
 };
 
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -123,12 +122,8 @@ const Attendance = () => {
   const [activeMethod, setActiveMethod] = useState("face"); // "face" or "qr"
   const [mode, setMode] = useState("recognize"); // "recognize" or "enroll" (for face)
   const [modelsLoaded, setModelsLoaded] = useState(false);
-  const [modelLoadError, setModelLoadError] = useState("");
-  const [modelLoadAttempt, setModelLoadAttempt] = useState(0);
   const [loading, setLoading] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
-  const [cameraFacingMode, setCameraFacingMode] = useState("user");
-  const [cameraSwitching, setCameraSwitching] = useState(false);
   const [enrollmentFrames, setEnrollmentFrames] = useState([]);
   const [location, setLocation] = useState(null);
   const [locationError, setLocationError] = useState("");
@@ -196,7 +191,7 @@ const Attendance = () => {
 
     videoRef.current.srcObject = streamRef.current;
     try {
-      await waitForPlayableVideo(videoRef.current);
+      await videoRef.current.play();
     } catch (error) {
       console.warn("Camera preview autoplay was blocked:", error);
     }
@@ -208,21 +203,22 @@ const Attendance = () => {
   };
 
   useEffect(() => {
-    let active = true;
     const loadModels = async () => {
-      setModelLoadError("");
       try {
-        await loadFaceModels();
-        if (active) setModelsLoaded(true);
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+        ]);
+        setModelsLoaded(true);
       } catch (error) {
         console.error("Error loading face-api models:", error);
-        if (active) setModelLoadError(error.message || "Face recognition could not be loaded.");
+        toast.error("Face recognition models could not be loaded.");
       }
     };
 
     loadModels();
-    return () => { active = false; };
-  }, [modelLoadAttempt]);
+  }, []);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -392,7 +388,7 @@ const Attendance = () => {
     }
 
     try {
-      const stream = await requestFaceCameraStream({ facingMode: cameraFacingMode });
+      const stream = await requestFaceCameraStream();
 
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
@@ -403,27 +399,6 @@ const Attendance = () => {
       console.error("Camera access error:", error);
       toast.error(getCameraErrorMessage(error));
       setCameraActive(false);
-    }
-  };
-
-  const switchCamera = async () => {
-    if (cameraSwitching || loading || !cameraActive) return;
-    const nextFacingMode = cameraFacingMode === "user" ? "environment" : "user";
-    setCameraSwitching(true);
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (videoRef.current) videoRef.current.srcObject = null;
-    try {
-      const stream = await requestFaceCameraStream({ facingMode: nextFacingMode });
-      streamRef.current = stream;
-      setCameraFacingMode(nextFacingMode);
-      stableFaceChecksRef.current = 0;
-      await attachStreamToVideo();
-    } catch (error) {
-      toast.error(getCameraErrorMessage(error));
-      setCameraActive(false);
-    } finally {
-      setCameraSwitching(false);
     }
   };
 
@@ -621,7 +596,25 @@ const Attendance = () => {
     stopCamera();
     setLoading(true);
     try {
-      await enrollFaceSamples({ descriptors: enrollmentFrames, metadata: { location: location || null, enrollmentMethod: "face-attendance-page-guided", ...getDeviceTimeEvidence() } });
+      for (const [index, descriptor] of enrollmentFrames.entries()) {
+        const response = await apiFetch("/face-attendance/enroll", {
+          method: "POST",
+          body: JSON.stringify({
+            descriptor,
+            metadata: {
+              location: location || null,
+              enrollmentMethod: "face-attendance-page-guided",
+              replaceExisting: index === 0,
+              ...getDeviceTimeEvidence(),
+            },
+          }),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+          toast.error(result.message || "Face enrollment failed.");
+          return;
+        }
+      }
 
       toast.success("Face enrolled successfully.");
       showSuccess("Face profile is ready for attendance.");
@@ -631,8 +624,7 @@ const Attendance = () => {
       window.setTimeout(() => setEnrollmentSuccess(false), 1800);
     } catch (error) {
       console.error("Enrollment error:", error);
-      enrollmentSubmitStartedRef.current = false;
-      toast.error(error.message || "Enrollment failed. Please try again.");
+      toast.error("Enrollment failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -845,7 +837,6 @@ const Attendance = () => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
-      <AttendancePermissionGate locationRequired={sltLocationRequired} />
 
       <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
@@ -994,16 +985,15 @@ const Attendance = () => {
                       <div className="relative aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner ring-1 ring-slate-200">
                         {cameraActive ? (
                           <>
-                            <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }} autoPlay muted playsInline />
+                            <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} muted playsInline />
                             <canvas ref={canvasRef} width="640" height="480" className="hidden" />
                             <canvas
                               ref={meshCanvasRef}
                               width="640"
                               height="480"
                               className="absolute inset-0 h-full w-full object-cover z-10 pointer-events-none"
-                              style={{ transform: cameraFacingMode === "user" ? "scaleX(-1)" : "none" }}
+                              style={{ transform: "scaleX(-1)" }}
                             />
-                            <button type="button" onClick={switchCamera} disabled={cameraSwitching || loading} className="absolute right-3 top-3 z-30 inline-flex items-center gap-2 rounded-full bg-slate-950/65 px-3 py-2 text-xs font-bold text-white shadow-lg backdrop-blur-sm hover:bg-slate-950/80 disabled:opacity-60" aria-label="Switch front and rear camera"><SwitchCamera className={`h-4 w-4 ${cameraSwitching ? "animate-pulse" : ""}`} />{cameraSwitching ? "Switching…" : cameraFacingMode === "user" ? "Rear" : "Front"}</button>
                             <div className="absolute inset-0 z-20 pointer-events-none flex flex-col justify-between p-4">
                               <FaceScanGuide
                                 ready={faceGuide.ready}
@@ -1016,14 +1006,7 @@ const Attendance = () => {
                           </>
                         ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
-                            {modelLoadError ? (
-                              <>
-                                <AlertCircle className="h-14 w-14 text-amber-500 mb-3" />
-                                <p className="text-sm font-bold text-slate-700 max-w-xs text-center px-4">Face recognition did not initialize.</p>
-                                <p className="mt-1 text-xs text-slate-500 max-w-sm text-center px-4">{modelLoadError}</p>
-                                <button type="button" onClick={() => setModelLoadAttempt((value) => value + 1)} className="mt-4 rounded-xl bg-[#0056a2] px-4 py-2 text-sm font-bold text-white hover:bg-[#004480]">Retry loading</button>
-                              </>
-                            ) : !modelsLoaded ? (
+                            {!modelsLoaded ? (
                               <>
                                 <Loader className="h-16 w-16 animate-spin text-slate-300 mb-4" />
                                 <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
@@ -1094,9 +1077,7 @@ const Attendance = () => {
                                 : "bg-gradient-to-r from-[#50b748] to-[#2e7d32] hover:shadow-green-500/30 active:scale-95"
                             }`}
                           >
-                            {modelLoadError ? (
-                              <><AlertCircle className="h-5 w-5" />Retry model loading above</>
-                            ) : !modelsLoaded ? (
+                            {!modelsLoaded ? (
                               <>
                                 <Loader className="h-5 w-5 animate-spin" />
                                 Initializing...

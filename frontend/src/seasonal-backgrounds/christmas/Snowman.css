@@ -1,0 +1,31 @@
+.snowman-container {
+  position: absolute;
+  bottom: 3vh;
+  right: 15vw;
+  width: 150px;
+  height: 220px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.snowman-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .snowman-container {
+    right: 10vw;
+    width: 120px;
+    height: 180px;
+  }
+}
+
+@media (max-width: 480px) {
+  .snowman-container {
+    right: 5vw;
+    width: 90px;
+    height: 140px;
+  }
+}

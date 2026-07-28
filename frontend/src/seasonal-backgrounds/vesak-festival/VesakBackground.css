@@ -1,0 +1,20 @@
+.vesak-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 30%, #1c1538 0%, #15102a 35%, #0d0a1b 70%, #05040a 100%);
+}
+
+@media (max-width: 768px) {
+  .vesak-background {
+    background: radial-gradient(circle at 50% 30%, #1c1538 0%, #15102a 40%, #0d0a1b 75%, #05040a 100%);
+  }
+}
+
+@media (max-width: 480px) {
+  .vesak-background {
+    background: radial-gradient(circle at 50% 30%, #1c1538 0%, #15102a 45%, #0d0a1b 80%, #05040a 100%);
+  }
+}

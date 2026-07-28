@@ -76,7 +76,7 @@ class AuthService {
     }
 
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
-    user.role = isDeveloper ? "super_admin" : "admin";
+    user.role = isDeveloper ? "super_admin" : (user.role || "admin");
     user.authProvider = "developer_password";
     if (isDeveloper) {
       user.permissions = permissionsForRole("super_admin");
