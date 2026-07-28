@@ -59,7 +59,7 @@ const deriveArchiveReason = (archiveReason, archivedAt, trainingEndDate) => {
     const archived = new Date(archivedAt);
     const end = new Date(trainingEndDate);
     if (isSameDay(archived, end)) return "Inactive";
-    if (archived < end) return "Terminated";
+    if (archived < end) return "Past Interns";
   }
   return archiveReason || "N/A";
 };
@@ -737,7 +737,7 @@ export default function AdminInactiveInterns() {
                   <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
                     <UserX className="text-[#0056a2] h-8 w-8" />
                   </div>
-                  Terminated Interns
+                  Past Interns
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}
