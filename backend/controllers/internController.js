@@ -478,10 +478,8 @@ const getAttendanceByInternId = async (req, res) => {
         .filter((log) => log.method === "face" && !log.qrBackupUsed)
         .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
     );
-    dailyAttendanceByDate.forEach((attendance, dateKey) => {
-      attendance.method = directFaceDates.has(dateKey)
-        ? "face recognition"
-        : normalizeAttendanceMethod(attendance.entry.type);
+    dailyAttendanceByDate.forEach((attendance) => {
+      attendance.method = normalizeAttendanceMethod(attendance.entry.type);
     });
     const dailyRecordMeetingKeys = new Set();
 
@@ -658,6 +656,7 @@ const getAttendanceByInternId = async (req, res) => {
               checkInTime: attendanceTime.toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "Asia/Colombo",
               }),
               isMeeting: true,
             });
@@ -687,7 +686,7 @@ const getAttendanceByInternId = async (req, res) => {
           if (datesWithDailyRecord.has(dayKey)) return; // already covered by DailyRecord
 
           dailyAttendance.push({
-            date: entryDate,
+            date: dayKey,
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: method || normalizeAttendanceMethod(entry.type),

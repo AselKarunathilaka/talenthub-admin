@@ -1008,7 +1008,25 @@ const Dashboard = () => {
                 {attendanceHistory.slice(0, 10).map((entry, index) => {
                   let date, dayName, formattedDate, dateNumber;
                   try {
-                    date = entry.date ? new Date(entry.date) : new Date();
+                    const rawDateStr = String(entry.date || "");
+                    if (rawDateStr.includes("-")) {
+                      const parts = rawDateStr
+                        .slice(0, 10)
+                        .split("-")
+                        .map(Number);
+                      if (
+                        parts.length === 3 &&
+                        !isNaN(parts[0]) &&
+                        !isNaN(parts[1]) &&
+                        !isNaN(parts[2])
+                      ) {
+                        date = new Date(parts[0], parts[1] - 1, parts[2]);
+                      } else {
+                        date = new Date(entry.date);
+                      }
+                    } else {
+                      date = new Date(entry.date);
+                    }
                     dayName = date.toLocaleDateString("en-US", {
                       weekday: "short",
                     });

@@ -10,6 +10,12 @@ const {
   validateBatchWithGemini,
 } = require("../utils/llmValidator");
 
+const {
+  addAuditCheckoutTimes,
+  buildDailyAttendanceByDate,
+  getColomboDateKey,
+} = require("../utils/attendanceHistory");
+
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
 
 function failOpenBatchResult() {
@@ -27,12 +33,12 @@ const DAILY_ATTENDANCE_TYPES = new Set([
   "manual_daily",
 ]);
 
-// Checks whether the intern already has a "daily" attendance entry for this date.
-// `dateStr` is expected in "YYYY-MM-DD" form (same shape as DailyRecord.date).
+// Checks whether the intern already has a daily attendance entry for this date.
+// `dateStr` is expected in "YYYY-MM-DD" form.
 function hasDailyAttendanceForDate(intern, dateStr) {
-  return intern.attendance.some((a) => {
-    if (!DAILY_ATTENDANCE_TYPES.has(a.type)) return false;
-    const aDateStr = new Date(a.date).toISOString().split("T")[0];
+  return (intern.attendance || []).some((a) => {
+    if (!DAILY_ATTENDANCE_TYPES.has(String(a.type || "").toLowerCase())) return false;
+    const aDateStr = getColomboDateKey(a.date);
     return aDateStr === dateStr;
   });
 }
@@ -96,7 +102,15 @@ const createDailyRecord = async (req, res) => {
       await ensureDailyAttendance(intern, date);
     }
 
-    // Upsert by internId + date
+    // Find any existing daily attendance in intern.attendance for this date (e.g. face attendance)
+    const existingAttendance = (intern.attendance || []).find((a) => {
+      return (
+        DAILY_ATTENDANCE_TYPES.has(String(a.type || "").toLowerCase()) &&
+        getColomboDateKey(a.date) === date
+      );
+    });
+
+    const now = new Date();
     const existing = await DailyRecord.findOne({ internId, date });
     if (existing) {
       existing.stack = stack;
@@ -105,6 +119,12 @@ const createDailyRecord = async (req, res) => {
       existing.blockers = blockers || "No specific plans";
       existing.traineeId = intern.Trainee_ID; // ★ keep in sync
       if (status) existing.status = status;
+      if (!existing.attendanceTime) {
+        existing.attendanceTime = existingAttendance?.timeMarked || now;
+      }
+      if (!existing.checkOutTime && existingAttendance?.checkOutTime) {
+        existing.checkOutTime = existingAttendance.checkOutTime;
+      }
       await existing.save();
       await existing.populate(
         "internId",
@@ -122,6 +142,9 @@ const createDailyRecord = async (req, res) => {
       progress: progress || "No challenges faced",
       blockers: blockers || "No specific plans",
       status: status || "working",
+      attendance: "present",
+      attendanceTime: existingAttendance?.timeMarked || now,
+      checkOutTime: existingAttendance?.checkOutTime || null,
     });
 
     await newRecord.save();

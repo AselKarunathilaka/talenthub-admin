@@ -26,6 +26,16 @@ const getColomboDateKey = (value) => {
   return `${parts.year}-${parts.month}-${parts.day}`;
 };
 
+const DAILY_TYPE_PRIORITY = {
+  face: 4,
+  daily_qr: 3,
+  manual_daily: 2,
+  daily: 1,
+};
+
+const getDailyTypePriority = (type) =>
+  DAILY_TYPE_PRIORITY[String(type || "").toLowerCase()] || 0;
+
 const buildDailyAttendanceByDate = (attendance, dailyTypes) => {
   const entriesByDate = new Map();
 
@@ -50,21 +60,36 @@ const buildDailyAttendanceByDate = (attendance, dailyTypes) => {
       return;
     }
 
-    const latest = markedAtMs > current.markedAtMs
-      ? {
+    const currentPriority = getDailyTypePriority(current.entry.type);
+    const entryPriority = getDailyTypePriority(type);
+
+    let chosen = current;
+    if (entryPriority > currentPriority) {
+      chosen = {
+        entry,
+        markedAt,
+        markedAtMs,
+        checkOutTime: entry.checkOutTime || current.checkOutTime || null,
+      };
+    } else if (entryPriority === currentPriority) {
+      // For same priority, keep the earlier check-in time unless current was missing markedAt
+      if (markedAtMs < current.markedAtMs) {
+        chosen = {
           entry,
           markedAt,
           markedAtMs,
-          checkOutTime: entry.checkOutTime || null,
-        }
-      : current;
+          checkOutTime: entry.checkOutTime || current.checkOutTime || null,
+        };
+      }
+    }
+
     const latestCheckout = [current.checkOutTime, entry.checkOutTime]
       .filter(Boolean)
       .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0];
 
     entriesByDate.set(dateKey, {
-      ...latest,
-      checkOutTime: latestCheckout || latest.checkOutTime,
+      ...chosen,
+      checkOutTime: latestCheckout || chosen.checkOutTime || null,
     });
   });
 
@@ -127,16 +152,21 @@ const addAuditCheckoutTimes = (
 const selectCanonicalDailyEntry = (entries, preferredMethod) => {
   if (!entries?.length) return null;
 
-  const sortedEntries = [...entries].sort(
-    (a, b) =>
+  const sortedEntries = [...entries].sort((a, b) => {
+    const pA = getDailyTypePriority(a.type);
+    const pB = getDailyTypePriority(b.type);
+    if (pA !== pB) return pB - pA; // Higher priority first
+    return (
       new Date(a.timeMarked || a.date).getTime() -
-      new Date(b.timeMarked || b.date).getTime(),
-  );
+      new Date(b.timeMarked || b.date).getTime()
+    );
+  });
+
   const localEntries = sortedEntries.filter(
     (entry) => entry.markedBy !== "external_system",
   );
   const canonical =
-    localEntries.find((entry) => entry.type === preferredMethod) ||
+    (preferredMethod && localEntries.find((entry) => entry.type === preferredMethod)) ||
     localEntries[0] ||
     sortedEntries[0];
   const checkOutTime = sortedEntries
@@ -147,7 +177,7 @@ const selectCanonicalDailyEntry = (entries, preferredMethod) => {
   return {
     canonical,
     canonicalType:
-      preferredMethod === "face" ? "face" : canonical.type,
+      preferredMethod === "face" && canonical.type === "face" ? "face" : canonical.type,
     checkOutTime: checkOutTime || canonical.checkOutTime || null,
     duplicates: sortedEntries.filter(
       (entry) => String(entry._id) !== String(canonical._id),
@@ -159,5 +189,6 @@ module.exports = {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
+  getDailyTypePriority,
   selectCanonicalDailyEntry,
 };
