@@ -19,6 +19,15 @@ TalentHub is an internship management platform for SLT Mobitel trainee operation
 - Admin announcements with intern-facing active announcement feed.
 - Weekly compliance, non-submission, and meeting attendance email reports.
 - Excel/PDF exports for attendance, approved leave, on-leave interns, and non-attendance reports.
+- Rotating short-lived PIN fallback for meeting attendance, with admin generate, rotate, stop, and validate controls.
+- Certificate issuance and a public, token-based certificate verification portal for third parties.
+- Project management module for intern project assignments, milestones, tasks, progress, and feedback.
+- Federated login endpoint for the companion TalentHub mobile app.
+- Admin manual and bulk attendance marking outside the Face/QR capture flow.
+- Logbook restriction management, allowing admins to restrict or lift an intern's submission access with history tracking.
+- Inactive-intern tracking and archival workflow.
+- Admin-authored feature tips shown to interns on their next dashboard login.
+- Public holiday calendar integration for attendance and logbook scheduling logic.
 
 ## Admin invitation email configuration
 
