@@ -79,7 +79,7 @@ jobs:
             cd backend
 
             if [ -f package-lock.json ]; then
-              npm ci
+              npm ci || npm install
             else
               npm install
             fi
@@ -120,7 +120,7 @@ jobs:
             echo "Installing frontend dependencies..."
 
             if [ -f package-lock.json ]; then
-              npm ci
+              npm ci || npm install
             else
               npm install
             fi
