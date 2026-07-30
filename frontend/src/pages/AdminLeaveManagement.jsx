@@ -21,6 +21,7 @@ import {
   FiSquare,
   FiCheckCircle,
   FiSend,
+  FiSearch,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -83,6 +84,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [triggeringEmail, setTriggeringEmail] = useState(false);
 
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [prevRequestType, setPrevRequestType] = useState(requestType);
   if (requestType !== prevRequestType) {
     setPrevRequestType(requestType);
@@ -93,6 +97,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setSelectedDate(requestType === "study_leave" ? "" : new Date().toISOString().split("T")[0]);
     setSelectedRequests(new Set());
     setIsSelectAll(false);
+    setSearchQuery("");
   }
 
   const fetchIdRef = useRef(0);
@@ -511,7 +516,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     );
   };
 
-  const filteredRequests = leaveRequests;
+  const filteredRequests = searchQuery.trim()
+    ? leaveRequests.filter((request) => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          (request.internName && request.internName.toLowerCase().includes(q)) ||
+          (request.internTraineeId && request.internTraineeId.toString().toLowerCase().includes(q)) ||
+          (request.nationalId && request.nationalId.toLowerCase().includes(q))
+        );
+      })
+    : leaveRequests;
 
   const displayedStats = (() => {
     if (!isStudyLeave || stats.total > 0 || pagination.total === 0) {
@@ -785,6 +799,45 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             )}
           </AnimatePresence>
 
+          {/* Search Bar */}
+          {!isStudyLeave && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.2 }}
+              className="mb-4"
+            >
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FiSearch className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by Intern ID, Name, or NIC..."
+                  className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0056a2]/30 focus:border-[#0056a2]/50 shadow-sm transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-rose-500 transition-colors"
+                    title="Clear search"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </div>
+              {searchQuery.trim() && (
+                <p className="mt-2 text-xs text-gray-500 font-medium pl-1">
+                  {filteredRequests.length === 0
+                    ? "No results found"
+                    : `${filteredRequests.length} result${filteredRequests.length !== 1 ? "s" : ""} found`}
+                </p>
+              )}
+            </motion.div>
+          )}
+
           {/* Content Body */}
           {loading ? (
             <div className="flex justify-center items-center py-20">
@@ -937,7 +990,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                 <div className="flex flex-col gap-2">
                                   <div className="flex items-start gap-2 flex-wrap">
                                     <div className="font-bold text-gray-900 text-sm">
-                                      {request.internName}
+                                      {highlightMatch(request.internName, searchQuery.trim())}
                                     </div>
                                     {urgent && request.status === "Pending" && (
                                       <span className="text-[9px] px-1.5 py-0.5 bg-rose-500 text-white rounded uppercase tracking-wider font-bold animate-pulse mt-0.5">
@@ -948,10 +1001,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <div className="text-xs font-bold text-[#0056a2] bg-blue-50 px-2 py-1 rounded-md flex items-center gap-1 w-fit">
                                       <FiUser size={10} className="shrink-0" /> ID:{" "}
-                                      {request.internTraineeId || "N/A"}
+                                      {highlightMatch(request.internTraineeId?.toString() || "N/A", searchQuery.trim())}
                                     </div>
                                     <div className="text-xs text-gray-500 font-medium">
-                                      NIC: {request.nationalId}
+                                      NIC: {highlightMatch(request.nationalId, searchQuery.trim())}
                                     </div>
                                   </div>
                                 </div>
