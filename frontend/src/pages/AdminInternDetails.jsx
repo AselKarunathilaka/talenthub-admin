@@ -145,6 +145,7 @@ const AdminInternDetails = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceError, setAttendanceError] = useState(null);
+  const [holidayData, setHolidayData] = useState([]);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -162,11 +163,12 @@ const AdminInternDetails = () => {
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
   useEffect(() => {
-    fetchInternDetails();
-    fetchAttendance();
-    fetchGitCommits();
-    fetchCertAttendanceCount();
-  }, [internId]);
+  fetchInternDetails();
+  fetchAttendance();
+  fetchGitCommits();
+  fetchCertAttendanceCount();
+  fetchHolidays();
+}, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
     if (gitCommitsData) return;
@@ -196,6 +198,32 @@ const AdminInternDetails = () => {
     }
   }, [internId, attendanceData]);
 
+ const fetchHolidays = useCallback(async () => {
+  try {
+    const year = new Date().getFullYear();
+    const { API_BASE_URL } = await import("../api/apiConfig");
+
+    const response = await fetch(
+      `${API_BASE_URL}/holidays/${year}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Holiday request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    console.log("Holiday Data:", data);
+
+    setHolidayData(data?.response?.holidays || []);
+  } catch (err) {
+    console.error("Error fetching holidays:", err);
+    setHolidayData([]);
+  }
+}, []);
+
+  // Fetch the same certificate-data endpoint used by the certificate page
+  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
   const fetchCertAttendanceCount = useCallback(async () => {
     try {
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -903,6 +931,69 @@ const AdminInternDetails = () => {
                           <div className="bg-white/80 rounded-xl border border-gray-200 p-4 shadow-sm h-full">
                             <h4 className="text-sm font-bold text-gray-900 mb-3">Personal Information</h4>
                             <div className="space-y-3">
+                    const mDailyPresent = monthDailyKeys.filter(
+                      (k) =>
+                        (dailyMap[k]?.status || "").toLowerCase() === "present",
+                    ).length;
+                    const mMeetingPresent = Object.values(meetingMap)
+                      .flat()
+                      .filter((e) => {
+                        const d = new Date(e.date);
+                        return (
+                          d.getFullYear() === year &&
+                          d.getMonth() === month &&
+                          (e.status || "").toLowerCase() === "present"
+                        );
+                      }).length;
+
+                    // All-time totals
+                    const allDailyPresent = (
+                      attendanceData?.dailyAttendance || []
+                    ).filter(
+                      (e) => (e.status || "").toLowerCase() === "present",
+                    ).length;
+                    const allMeetingPresent = (
+                      attendanceData?.meetingAttendance || []
+                    ).filter(
+                      (e) => (e.status || "").toLowerCase() === "present",
+                    ).length;
+                    const allMeetingTotal = (
+                      attendanceData?.meetingAttendance || []
+                    ).length;
+                    const allDailyTotal = (
+                      attendanceData?.dailyAttendance || []
+                    ).length;
+
+                    const allActivities = [
+                      ...(attendanceData?.dailyAttendance || []).map((e) => ({
+                        ...e,
+                        type: "daily",
+                      })),
+                      ...(attendanceData?.meetingAttendance || []).map((e) => ({
+                        ...e,
+                        type: "meeting",
+                      })),
+                    ]
+                      .filter((e) => {
+                        const d = new Date(e.date);
+                        return (
+                          d.getFullYear() === year && d.getMonth() === month
+                        );
+                      })
+                      .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                    return (
+                      <div className="space-y-5">
+                        {/* ── Intern Details Card (Profile-style) ── */}
+                        <motion.div
+                          className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: 0.3 }}
+                        >
+                          {/* Header with gradient */}
+                          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 p-5 sm:p-6 border-b border-gray-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                               <div>
                                 <p className="text-xs text-gray-400">Email:</p>
                                 <p className="text-sm font-medium text-gray-800 break-all">{intern.email || "Not specified"}</p>
@@ -1106,6 +1197,251 @@ const AdminInternDetails = () => {
                                     </div>
                                   );
                                 })}
+                                  ),
+                                )}
+                              </div>
+
+                              {/* Month nav + mini stats */}
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                                <div className="flex items-center space-x-3">
+                                  <button
+                                    onClick={() =>
+                                      setCalendarMonth(
+                                        (prev) =>
+                                          new Date(
+                                            prev.getFullYear(),
+                                            prev.getMonth() - 1,
+                                            1,
+                                          ),
+                                      )
+                                    }
+                                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                  >
+                                    <FaChevronLeft className="h-3 w-3" />
+                                  </button>
+                                  <span className="text-sm font-semibold text-gray-800 min-w-[130px] text-center">
+                                    {monthLabel}
+                                  </span>
+                                  <button
+                                    onClick={() =>
+                                      setCalendarMonth(
+                                        (prev) =>
+                                          new Date(
+                                            prev.getFullYear(),
+                                            prev.getMonth() + 1,
+                                            1,
+                                          ),
+                                      )
+                                    }
+                                    className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                  >
+                                    <FaChevronRight className="h-3 w-3" />
+                                  </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs">
+                                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-full border border-green-200 font-medium">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block shadow-sm"></span>
+                                    Daily Present: {mDailyPresent}
+                                  </span>
+                                  <span className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full border border-blue-200 font-medium">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-sm"></span>
+                                    Meetings Attended: {mMeetingPresent}
+                                  </span>
+                                </div>
+                              </div>
+                            
+                            <div className="flex items-center justify-between mb-4">
+  <button
+    onClick={() =>
+      setCalendarMonth(
+        new Date(year, month - 1, 1)
+      )
+    }
+    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+  >
+    <FaChevronLeft />
+  </button>
+
+  <h3 className="text-lg font-bold text-gray-800">
+    {monthLabel}
+  </h3>
+
+  <button
+    onClick={() =>
+      setCalendarMonth(
+        new Date(year, month + 1, 1)
+      )
+    }
+    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
+  >
+    <FaChevronRight />
+  </button>
+</div>
+                              {/* Calendar grid */}
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr>
+                                      {[
+                                        "Mon",
+                                        "Tue",
+                                        "Wed",
+                                        "Thu",
+                                        "Fri",
+                                        "Sat",
+                                        "Sun",
+                                      ].map((d) => (
+                                        <th
+                                          key={d}
+                                          className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]"
+                                        >
+                                          {d}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Array.from(
+                                      { length: Math.ceil(calDays.length / 7) },
+                                      (_, w) => (
+                                        <tr key={w}>
+                                          {calDays
+                                            .slice(w * 7, w * 7 + 7)
+                                            .map((day, di) => {
+                                              const dailyMeta = getDailyMeta(
+                                                dailyMap,
+                                                day,
+                                              );
+                                              const isToday =
+                                                day &&
+                                                day.toDateString() ===
+                                                  new Date().toDateString();
+                                              const dayKey = day
+                                                ? toDateKey(day)
+                                                : null;
+                                              const meetingsOnDay = dayKey
+                                                ? meetingMap[dayKey] || []
+                                                : [];
+                                              const hasMeetingPresent =
+                                                meetingsOnDay.some(
+                                                  (e) =>
+                                                    (
+                                                      e.status || ""
+                                                    ).toLowerCase() ===
+                                                    "present",
+                                                );
+                                              const hasMeetingMissed =
+                                                meetingsOnDay.some(
+                                                  (e) =>
+                                                    (
+                                                      e.status || ""
+                                                    ).toLowerCase() !==
+                                                    "present",
+                                                );
+                                              const hasMeeting =
+                                                meetingsOnDay.length > 0;
+
+                                              const tooltipContent = day
+                                                ? (() => {
+                                                    let lines = [
+                                                      day.toLocaleDateString(
+                                                        "en-US",
+                                                        {
+                                                          weekday: "short",
+                                                          month: "short",
+                                                          day: "numeric",
+                                                        },
+                                                      ),
+                                                    ];
+                                                    lines.push(
+                                                      `Daily: ${dailyMeta?.label ?? "No Record"}`,
+                                                    );
+                                                    if (dailyMap[dayKey]?.time)
+                                                      lines.push(
+                                                        `Time: ${dailyMap[dayKey].time}`,
+                                                      );
+                                                    if (hasMeeting)
+                                                      meetingsOnDay.forEach(
+                                                        (m) =>
+                                                          lines.push(
+                                                            `Meeting: ${m.meetingName || "Meeting"} — ${m.status || "Unknown"}`,
+                                                          ),
+                                                      );
+                                                    return lines.join("\n");
+                                                  })()
+                                                : null;
+
+                                              return (
+                                                <td
+                                                  key={di}
+                                                  className="py-1 text-center"
+                                                >
+                                                  {day ? (
+                                                    <div className="flex flex-col items-center py-0.5">
+                                                      <div
+                                                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
+                                                        style={{
+                                                          backgroundColor:
+                                                            dailyMeta?.color ??
+                                                            "#e5e7eb",
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                          const r =
+                                                            e.currentTarget.getBoundingClientRect();
+                                                          setTooltip({
+                                                            x: r.left,
+                                                            y: r.top,
+                                                            label:
+                                                              tooltipContent,
+                                                            date: "",
+                                                          });
+                                                        }}
+                                                        onMouseLeave={() =>
+                                                          setTooltip(null)
+                                                        }
+                                                      >
+                                                        <span
+                                                          className={`text-[10px] sm:text-xs font-semibold ${
+                                                            dailyMeta?.label ===
+                                                            "Present"
+                                                              ? "text-white"
+                                                              : isToday
+                                                                ? "text-blue-700"
+                                                                : "text-gray-600"
+                                                          }`}
+                                                        >
+                                                          {day.getDate()}
+                                                        </span>
+                                                      </div>
+                                                      {/* Meeting indicator dots — larger and more visible */}
+                                                      {hasMeeting && (
+                                                        <div className="flex gap-1 mt-1">
+                                                          {hasMeetingPresent && (
+                                                            <span
+                                                              className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-sm ring-1 ring-blue-300"
+                                                              title="Meeting attended"
+                                                            />
+                                                          )}
+                                                          {hasMeetingMissed && (
+                                                            <span
+                                                              className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block shadow-sm ring-1 ring-orange-200"
+                                                              title="Meeting missed"
+                                                            />
+                                                          )}
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  ) : (
+                                                    <div className="h-10" />
+                                                  )}
+                                                </td>
+                                              );
+                                            })}
+                                        </tr>
+                                      ),
+                                    )}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
 
@@ -1163,6 +1499,66 @@ const AdminInternDetails = () => {
                                               {timeDetails && <span className="text-gray-400 font-mono">{timeDetails}</span>}
                                             </div>
                                           </div>
+                              {/* Activity list */}
+                              <div className="mt-6">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                                  All Activity — {monthLabel}
+                                </h4>
+                                {allActivities.length > 0 ? (
+                                  <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                    {allActivities.map((entry, idx) => {
+                                      const d = new Date(entry.date);
+                                      const isPresent =
+                                        (entry.status || "").toLowerCase() ===
+                                        "present";
+                                      return (
+                                        <div
+                                          key={idx}
+                                          className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm"
+                                        >
+                                          <div className="flex items-center gap-3">
+                                            <span
+                                              className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                                                entry.type === "daily"
+                                                  ? isPresent
+                                                    ? "bg-green-500"
+                                                    : "bg-red-400"
+                                                  : isPresent
+                                                    ? "bg-blue-500"
+                                                    : "bg-orange-400"
+                                              }`}
+                                            />
+                                            <div>
+                                              <p className="font-medium text-gray-800 text-xs sm:text-sm">
+                                                {d.toLocaleDateString("en-US", {
+                                                  weekday: "short",
+                                                  month: "short",
+                                                  day: "numeric",
+                                                })}
+                                              </p>
+                                              {entry.meetingName && (
+                                                <p className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[160px]">
+                                                  {entry.meetingName}
+                                                </p>
+                                              )}
+                                            </div>
+                                          </div>
+                                          <span
+                                            className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                              entry.type === "daily"
+                                                ? isPresent
+                                                  ? "bg-green-100 text-green-700"
+                                                  : "bg-red-50 text-red-500"
+                                                : isPresent
+                                                  ? "bg-blue-100 text-blue-700"
+                                                  : "bg-orange-100 text-orange-600"
+                                            }`}
+                                          >
+                                            {entry.type === "daily"
+                                              ? "📅"
+                                              : "📹"}{" "}
+                                            {entry.status || "No Record"}
+                                          </span>
                                         </div>
                                         <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex items-center gap-1.5 ${entry.type === "daily" ? (isPresent ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-50 text-red-500 border border-red-200") : isPresent ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-orange-100 text-orange-600 border border-orange-200"}`}>
                                           <span>{entry.type === "daily" ? "📅" : "📹"}</span>
@@ -1266,6 +1662,118 @@ const AdminInternDetails = () => {
                                     <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">{logbookModal.blockers}</p>
                                   </div>
                                 )}
+                              <motion.div
+                                className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto"
+                                initial={{ scale: 0.9, y: 20 }}
+                                animate={{ scale: 1, y: 0 }}
+                                exit={{ scale: 0.9, y: 20 }}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <div className="flex items-start justify-between border-b border-gray-100 pb-4 mb-5">
+  <div>
+    <h3 className="text-xl font-bold text-slate-800">
+      Logbook Entry
+    </h3>
+
+    <p className="text-sm text-gray-500 mt-1">
+      {new Date(
+        logbookModal.createdAt || logbookModal.date
+      ).toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}
+    </p>
+  </div>
+
+  <button
+    onClick={() => setLogbookModal(null)}
+    className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center"
+  >
+    <FaTimes />
+  </button>
+</div>
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                  {logbookModal.stack && (
+                                    <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                                      {logbookModal.stack}
+                                    </span>
+                                  )}
+                                  {logbookModal.status && (
+                                    <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold capitalize">
+                                      {logbookModal.status}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="space-y-4">
+                                  {logbookModal.task && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaCheckCircle className="text-blue-500 mr-1.5" />{" "}
+                                        Tasks Completed
+                                      </p>
+                                      <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
+                                        {logbookModal.task}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {logbookModal.progress && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaChartLine className="text-emerald-500 mr-1.5" />{" "}
+                                        Progress
+                                      </p>
+                                      <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">
+                                        {logbookModal.progress}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {logbookModal.blockers && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                        <FaExclamationTriangle className="text-amber-500 mr-1.5" />{" "}
+                                        Challenges / Blockers
+                                      </p>
+                                      <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">
+                                        {logbookModal.blockers}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </motion.div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm">
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 sm:mb-6 gap-3">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                              <FaFileAlt className="mr-2 text-blue-500" />{" "}
+                              Record History
+                            </h3>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="flex rounded-xl overflow-hidden bg-gray-100 p-1 border border-gray-200/60">
+                                <button
+                                  onClick={() => setLogbookView("calendar")}
+                                  className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-lg ${
+                                    logbookView === "calendar"
+                                      ? "bg-white text-blue-600 shadow-sm"
+                                      : "text-gray-500 hover:text-gray-700"
+                                  }`}
+                                >
+                                  <FaCalendarAlt /> Calendar View
+                                </button>
+                                <button
+                                  onClick={() => setLogbookView("list")}
+                                  className={`px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 transition-all rounded-lg ${
+                                    logbookView === "list"
+                                      ? "bg-white text-blue-600 shadow-sm"
+                                      : "text-gray-500 hover:text-gray-700"
+                                  }`}
+                                >
+                                  <FaClipboardList /> List View
+                                </button>
                               </div>
                             </motion.div>
                           </motion.div>
@@ -1422,6 +1930,252 @@ const AdminInternDetails = () => {
                                       whileTap={{ scale: 0.95 }}
                                       onClick={() => setLogbookModal(record)}
                                       className="flex items-center text-[#0056a2] hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs shadow-sm"
+                          {logbookView === "calendar" && (
+                            <div>
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+
+  <motion.div
+    whileHover={{ y: -5, scale: 1.02 }}
+    className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-5 text-white shadow-xl"
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm opacity-90">Working Days</p>
+        <h2 className="text-3xl font-bold">{totalWeekdays}</h2>
+      </div>
+      <FaCalendarAlt className="text-4xl opacity-80" />
+    </div>
+  </motion.div>
+
+  <motion.div
+    whileHover={{ y: -5, scale: 1.02 }}
+    className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-5 text-white shadow-xl"
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm opacity-90">Logs Submitted</p>
+        <h2 className="text-3xl font-bold">{totalRecords}</h2>
+      </div>
+      <FaTasks className="text-4xl opacity-80" />
+    </div>
+  </motion.div>
+
+  <motion.div
+    whileHover={{ y: -5, scale: 1.02 }}
+    className="bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl p-5 text-white shadow-xl"
+  >
+    <div className="flex items-center justify-between">
+      <div>
+        <p className="text-sm opacity-90">Logs Missed</p>
+        <h2 className="text-3xl font-bold">{missedDays}</h2>
+      </div>
+      <FaExclamationTriangle className="text-4xl opacity-80" />
+    </div>
+  </motion.div>
+
+</div>
+
+                             <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl px-4 py-3 border border-slate-200 shadow-sm">
+
+  <button
+    onClick={() =>
+      setLogbookCalMonth(
+        (prev) =>
+          new Date(
+            prev.getFullYear(),
+            prev.getMonth() - 1,
+            1,
+          ),
+      )
+    }
+    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow hover:bg-blue-50 hover:text-blue-600 transition-all duration-300"
+  >
+    <FaChevronLeft className="h-4 w-4" />
+  </button>
+
+  <div className="text-center">
+    <p className="text-xs text-slate-500 uppercase tracking-widest">
+      Logbook Calendar
+    </p>
+    <h3 className="text-lg font-bold text-slate-800">
+      {lbMonthLabel}
+    </h3>
+  </div>
+
+  <button
+    onClick={() =>
+      setLogbookCalMonth(
+        (prev) =>
+          new Date(
+            prev.getFullYear(),
+            prev.getMonth() + 1,
+            1,
+          ),
+      )
+    }
+    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow hover:bg-blue-50 hover:text-blue-600 transition-all duration-300"
+  >
+    <FaChevronRight className="h-4 w-4" />
+  </button>
+
+</div>
+                              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+
+  {/* Week Days */}
+  <div className="grid grid-cols-7 gap-3 mb-4">
+    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day=>(
+      <div
+        key={day}
+        className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
+      >
+        {day}
+      </div>
+    ))}
+  </div>
+
+  {/* Calendar */}
+  <div className="grid grid-cols-7 gap-3">
+
+    {lbCalDays.map((day,index)=>{
+
+      const meta=getLogbookMeta(recordMap,day);
+     const holiday =
+  day &&
+  holidayData.find(
+    (h) =>
+      h.date.iso.split("T")[0] === toDateKey(day) &&
+      h.type?.some((type) =>
+        type.toLowerCase().includes("national holiday")
+      )
+  );
+
+      const isToday=
+        day &&
+        day.toDateString()===new Date().toDateString();
+
+      const dayKey=day?toDateKey(day):null;
+
+      const rec=dayKey?recordMap[dayKey]:null;
+
+      const isClickable=!!rec;
+
+      return(
+
+        <div 
+        key={index}
+         className="h-[70px] flex items-center justify-center"
+        >
+
+          {day ? (
+
+            <motion.div
+
+              whileHover={
+                isClickable
+                  ? {scale:1.05,y:-4}
+                  : {}
+              }
+
+              whileTap={
+                isClickable
+                  ? {scale:0.98}
+                  : {}
+              }
+
+              onClick={()=>{
+                if(isClickable){
+                  setLogbookModal(rec);
+                }
+              }}
+
+              className={`
+
+                h-14
+                w-15
+                mx-auto
+                rounded-2xl
+                border
+                flex
+                flex-col
+                justify-between
+                p-1
+                transition-all
+
+                ${
+                  isClickable
+                  ? "cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1"
+                  : "bg-gray-50 border-gray-200"
+                }
+
+                ${isToday?"ring-2 ring-blue-500":""}
+
+              `}
+
+             style={{
+  backgroundColor: holiday
+    ? "#fee2e2"
+    : meta?.color || "#ffffff",
+  borderColor: holiday ? "#f87171" : undefined,
+}}
+            >
+<div className="relative flex flex-col items-center justify-center flex-1 px-1">
+  <span
+    className={`font-bold tracking-tight ${
+      holiday ? "text-base text-red-800" : "text-xl text-slate-800"
+    }`}
+  >
+    {day.getDate()}
+  </span>
+
+  {holiday && (
+    <span
+      className="text-[8px] sm:text-[9px] text-red-700 font-semibold text-center leading-tight line-clamp-2"
+      title={holiday.name}
+    >
+      {holiday.name}
+    </span>
+  )}
+
+  {isClickable && (
+    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-600" />
+  )}
+</div>
+            </motion.div>
+
+          ) : (
+
+            <div className="h-24"/>
+
+          )}
+
+        </div>
+
+      );
+
+    })}
+
+  </div>
+
+</div>
+                              <div className="mt-4 pt-4 border-t border-gray-100">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                                  Legend — Click any colored day to inspect the
+                                  logbook
+                                </p>
+                                <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
+                                  {[
+                                    { color: "#bbf7d0", label: "Working" },
+                                    { color: "#ddd6fe", label: "WFH" },
+                                    { color: "#fde68a", label: "On Leave" },
+                                    { color: "#fecaca", label: "Missed" },
+                                    {
+                                      color: "#f3f4f6",
+                                      label: "Weekend / Future",
+                                    },
+                                  ].map(({ color, label }) => (
+                                    <span
+                                      key={label}
+                                      className="flex items-center gap-1.5"
                                     >
                                       <FaEye className="mr-1 h-3 w-3" /> View
                                     </motion.button>
@@ -1479,6 +2233,138 @@ const AdminInternDetails = () => {
                     </>
                   );
                 })()}
+                          )}
+
+                          {logbookView === "list" &&
+                            (internDetails.records &&
+                            internDetails.records.length > 0 ? (
+                              <>
+                                <div className="block sm:hidden space-y-3 max-h-[400px] overflow-y-auto">
+                                  {internDetails.records.map(
+                                    (record, index) => (
+                                      <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: 0.02 * index }}
+                                        className="bg-gray-50 rounded-xl p-3 border border-gray-200"
+                                      >
+                                        <div className="flex items-start justify-between mb-2">
+                                          <div className="flex-1">
+                                            <p className="text-sm font-medium text-gray-900">
+                                              {record.taskDescription ||
+                                                record.task ||
+                                                "N/A"}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-1">
+                                              {formatDate(record.createdAt)}
+                                            </p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                            {record.stack || "N/A"}
+                                          </span>
+                                          <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={() =>
+                                              setLogbookModal(record)
+                                            }
+                                            className="flex items-center text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs shadow-sm"
+                                          >
+                                            <FaEye className="mr-1 h-3 w-3" />{" "}
+                                            View
+                                          </motion.button>
+                                        </div>
+                                      </motion.div>
+                                    ),
+                                  )}
+                                </div>
+                                <div className="hidden sm:block overflow-x-auto max-h-[500px]">
+                                  <table className="w-full overflow-hidden rounded-2xl border border-slate-200">
+                                    <thead>
+                                      <tr>
+                                        {[
+                                          "Date",
+                                          "Task",
+                                          "Stack",
+                                          "Actions",
+                                        ].map((h) => (
+                                          <th
+                                            key={h}
+                                            className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                                          >
+                                            {h}
+                                          </th>
+                                        ))}
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                      {internDetails.records.map(
+                                        (record, index) => (
+                                          <motion.tr
+                                            key={index}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            transition={{ delay: 0.02 * index }}
+                                            className="hover:bg-gray-50"
+                                          >
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                              {formatDate(record.createdAt)}
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                              <div className="max-w-xs truncate">
+                                                {record.taskDescription ||
+                                                  record.task ||
+                                                  "N/A"}
+                                              </div>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                {record.stack || "N/A"}
+                                              </span>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                              <motion.button
+  onClick={() => setLogbookModal(record)}
+  className="
+    flex items-center justify-center gap-2
+    px-4 py-2
+    rounded-xl
+    bg-cyan-50
+    text-cyan-700
+    font-medium
+    border border-cyan-100
+    hover:bg-cyan-100
+    hover:shadow-lg
+    transition-all duration-300
+  "
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.95 }}
+>
+  <FaEye className="text-sm" />
+  <span>Inspect</span>
+</motion.button>
+                                            </td>
+                                          </motion.tr>
+                                        ),
+                                      )}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </>
+                            ) : (
+                              <div className="h-32 sm:h-48 flex items-center justify-center">
+                                <p className="text-gray-500 text-xs sm:text-sm text-center">
+                                  No records found for this intern.
+                                </p>
+                              </div>
+                            ))}
+                        </div>
+                      </>
+                    );
+                  })()}
               </motion.div>
             </AnimatePresence>
           </main>

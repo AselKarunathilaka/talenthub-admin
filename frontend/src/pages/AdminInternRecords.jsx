@@ -29,6 +29,9 @@ const AdminInternRecords = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [filterPeriod, setFilterPeriod] = useState("all");
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [holidays, setHolidays] = useState([]);
 
   useEffect(() => {
     fetchInternDetails();
@@ -60,6 +63,164 @@ const AdminInternRecords = () => {
       setLoading(false);
     }
   };
+const fetchHolidays = async () => {
+  try {
+    const { API_BASE_URL } = await import("../api/apiConfig");
+
+    console.log(
+      "Holiday URL:",
+      `${API_BASE_URL}/holidays/${currentMonth.getFullYear()}`
+    );
+
+    const response = await fetch(
+      `${API_BASE_URL}/holidays/${currentMonth.getFullYear()}`
+    );
+
+    if (!response.ok) {
+      throw new Error(`Holiday request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log("Holiday Data:", data);
+
+    setHolidays(data?.response?.holidays || []);
+  } catch (error) {
+    console.error("Holiday fetch failed:", error);
+    setHolidays([]);
+  }
+};
+useEffect(() => {
+  fetchHolidays();
+}, [currentMonth]);
+
+  // Calendar helpers
+const getDaysInMonth = (date) => {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+  const days = [];
+
+  for (let i = 0; i < firstDayOfMonth; i++) {
+    days.push(null);
+  }
+
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push(new Date(year, month, i));
+  }
+
+  return days;
+};
+
+const daysInMonth = getDaysInMonth(currentMonth);
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+const prevMonth = () => {
+  setCurrentMonth(
+    new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)
+  );
+};
+
+const nextMonth = () => {
+  setCurrentMonth(
+    new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+  );
+};
+
+const goToToday = () => {
+  setCurrentMonth(new Date());
+  setSelectedDate(new Date());
+};
+
+const getRecordsForDate = (date) => {
+  if (!date || !internDetails?.records) return [];
+
+  return internDetails.records.filter((record) => {
+    const recordDate = new Date(record.date || record.createdAt);
+
+    return (
+      recordDate.getDate() === date.getDate() &&
+      recordDate.getMonth() === date.getMonth() &&
+      recordDate.getFullYear() === date.getFullYear()
+    );
+  });
+};
+
+const holidayList = holidays;
+
+console.log("Holiday list:", holidayList);
+
+const getHolidayForDate = (date) => {
+  if (!date) return null;
+
+  const calendarDate = [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  return holidayList.find((holiday) => {
+    const holidayIso = holiday?.date?.iso || holiday?.date;
+
+    if (!holidayIso) return false;
+
+    const holidayDate = String(holidayIso).split("T")[0];
+
+    return holidayDate === calendarDate;
+  });
+};
+const selectedDateRecords = getRecordsForDate(selectedDate);
+
+const getDayClass = (day) => {
+  if (!day) return "";
+
+  const hasRecords = getRecordsForDate(day).length > 0;
+  const holiday = getHolidayForDate(day);
+
+  const isSelected =
+    selectedDate &&
+    day.getDate() === selectedDate.getDate() &&
+    day.getMonth() === selectedDate.getMonth() &&
+    day.getFullYear() === selectedDate.getFullYear();
+
+  const isToday = day.toDateString() === new Date().toDateString();
+
+  let classes =
+    "min-h-[60px] md:min-h-[80px] p-2 border border-gray-100 rounded-lg cursor-pointer transition duration-200 hover:bg-gray-50 flex flex-col justify-between";
+
+  if (holiday && !isSelected) {
+    classes += " bg-red-50 border-red-300";
+  }
+
+  if (isToday) {
+    classes += " bg-blue-50 border-blue-300";
+  }
+
+  if (isSelected) {
+    classes += " bg-indigo-100 border-indigo-400 shadow-md";
+  }
+
+  if (hasRecords) {
+    classes += " relative";
+  }
+
+  return classes;
+};
 
   const getFilteredRecords = () => {
     if (!internDetails?.records) return [];
