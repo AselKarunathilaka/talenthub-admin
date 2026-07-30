@@ -800,8 +800,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           </AnimatePresence>
 
           {/* Search Bar */}
-          {!isStudyLeave && (
-            <motion.div
+          <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.2 }}
@@ -836,7 +835,6 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </p>
               )}
             </motion.div>
-          )}
 
           {/* Content Body */}
           {loading ? (
