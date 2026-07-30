@@ -71,7 +71,7 @@ const getCalendarDays = (year, month) => {
 const toDateKey = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-// Modern Pastel Styling for Daily Attendance
+// Soft Pastel Backgrounds with High-Contrast Text for Daily Attendance
 const getDailyMetaClasses = (dailyMap, date) => {
   if (!date) return null;
   const key = toDateKey(date);
@@ -80,16 +80,16 @@ const getDailyMetaClasses = (dailyMap, date) => {
   today.setHours(0, 0, 0, 0);
   const isFuture = date > today;
 
-  if (isFuture) return { classes: "bg-slate-50/50 text-slate-300 border-transparent", dot: "", label: "Future" };
-  if (!entry) return { classes: "bg-white/40 text-gray-400 border-gray-100/50", dot: "", label: "No Record" };
+  if (isFuture) return { classes: "bg-slate-50 text-slate-300 border-slate-100", label: "Future" };
+  if (!entry) return { classes: "bg-white text-gray-500 border-gray-200", label: "No Record" };
   
   const st = (entry.status || "").toLowerCase();
-  if (st === "present") return { classes: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "Present" };
-  if (st === "absent") return { classes: "bg-rose-50 text-rose-700 border-rose-200", dot: "bg-rose-500", label: "Absent" };
-  return { classes: "bg-white/40 text-gray-400 border-gray-100/50", dot: "", label: "No Record" };
+  if (st === "present") return { classes: "bg-emerald-100 text-emerald-800 border-emerald-300", label: "Present" };
+  if (st === "absent") return { classes: "bg-rose-100 text-rose-800 border-rose-300", label: "Absent" };
+  return { classes: "bg-white text-gray-500 border-gray-200", label: "No Record" };
 };
 
-// Modern Pastel Styling for Logbook Records
+// Soft Pastel Backgrounds with High-Contrast Text for Logbook Records
 const getLogbookMetaClasses = (recordMap, date) => {
   if (!date) return null;
   const key = toDateKey(date);
@@ -99,14 +99,14 @@ const getLogbookMetaClasses = (recordMap, date) => {
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const isFuture = date > today;
   
-  if (isWeekend || isFuture) return { classes: "bg-slate-50/50 text-slate-300 border-transparent", dot: "", label: "Weekend / Future" };
-  if (!rec) return { classes: "bg-rose-50/50 text-rose-600 border-rose-100", dot: "bg-rose-500", label: "Missed" };
+  if (isWeekend || isFuture) return { classes: "bg-slate-50 text-slate-400 border-slate-100", label: "Weekend / Future" };
+  if (!rec) return { classes: "bg-orange-100 text-orange-800 border-orange-300", label: "Missed" }; // Made Missed Orange to differentiate from Absent Red
   
   const st = (rec.status || "").toLowerCase();
-  if (st === "working") return { classes: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "Working" };
-  if (st === "wfh") return { classes: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-500", label: "WFH" };
-  if (st === "leave") return { classes: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500", label: "On Leave" };
-  return { classes: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500", label: "Submitted" };
+  if (st === "working") return { classes: "bg-emerald-100 text-emerald-800 border-emerald-300", label: "Working" };
+  if (st === "wfh") return { classes: "bg-violet-100 text-violet-800 border-violet-300", label: "WFH" };
+  if (st === "leave") return { classes: "bg-amber-100 text-amber-800 border-amber-300", label: "On Leave" };
+  return { classes: "bg-blue-100 text-blue-800 border-blue-300", label: "Submitted" }; // Made Submitted Blue to differentiate from Working Green
 };
 
 const getGithubCommitPrefix = (message) => {
@@ -341,38 +341,28 @@ const AdminInternDetails = () => {
         <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             
-            {/* ── Page header ── */}
+            {/* ── Page header (No Back Button, just Title like Dashboard) ── */}
             <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  whileHover={{ x: -3 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex items-center px-4 py-2.5 text-sm font-semibold text-gray-700 hover:text-gray-900 bg-white/80 hover:bg-white rounded-2xl transition-all border border-[#00b4eb]/20 hover:border-[#00b4eb]/60 shadow-[0_0_15px_rgba(0,180,235,0.1)] hover:shadow-[0_0_25px_rgba(0,180,235,0.3)]"
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
                 >
-                  <FaArrowLeft className="mr-2" /> Back to Dashboard
-                </motion.button>
-                <div>
-                  <motion.h1
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                  >
-                    <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                      <FaUser className="text-[#0056a2] h-8 w-8" />
-                    </div>
-                    Intern Profile
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.05, duration: 0.2 }}
-                    className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                  >
-                    Detailed information and performance metrics
-                  </motion.p>
-                </div>
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <FaUser className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Intern Profile
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  Detailed information and performance metrics
+                </motion.p>
               </div>
               <div className="w-full sm:w-auto">
                 {getStatusBadge(statistics)}
@@ -1067,11 +1057,11 @@ const AdminInternDetails = () => {
                               </div>
                             </div>
 
-                            {/* ── PERFECTLY SIZED CALENDAR GRID ── */}
+                            {/* ── SOFT PASTEL CALENDAR GRID ── */}
                             <div className="max-w-2xl mx-auto">
-                              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                                  <div key={d} className="text-center text-[10px] font-bold text-gray-400 pb-2 uppercase tracking-wider">
+                                  <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-gray-500 pb-2 uppercase tracking-wider">
                                     {d}
                                   </div>
                                 ))}
@@ -1100,15 +1090,15 @@ const AdminInternDetails = () => {
                                       <div
                                         className={`w-full h-full rounded-lg flex flex-col items-center justify-center border transition-all duration-200 hover:shadow-md cursor-default ${meta.classes} ${isToday ? 'ring-2 ring-[#00b4eb] ring-offset-2 ring-offset-white' : ''}`}
                                       >
-                                        <span className="text-[10px] sm:text-xs font-bold">
+                                        <span className="text-[11px] sm:text-sm font-extrabold">
                                           {day.getDate()}
                                         </span>
                                         <div className="flex gap-0.5 mt-0.5 h-1.5">
-                                          {hasMeetingPresent && <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-sm" />}
-                                          {hasMeetingMissed && <span className="w-1.5 h-1.5 rounded-full bg-orange-400 shadow-sm" />}
+                                          {hasMeetingPresent && <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shadow-sm" />}
+                                          {hasMeetingMissed && <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-sm" />}
                                         </div>
                                       </div>
-                                      {/* Modern Hover Tooltip */}
+                                      {/* Hover Tooltip */}
                                       <div className="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[220px] p-2.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 shadow-xl whitespace-pre-line">
                                         {tooltipLines.join("\n")}
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
@@ -1123,16 +1113,16 @@ const AdminInternDetails = () => {
                               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Legend</p>
                               <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600">
                                 <span className="flex items-center gap-1.5">
-                                  <span className="w-3.5 h-3.5 rounded-md inline-block bg-emerald-100 border border-emerald-200"></span> Present
+                                  <span className="w-4 h-4 rounded-md inline-block bg-emerald-100 border border-emerald-300"></span> Present
                                 </span>
                                 <span className="flex items-center gap-1.5">
-                                  <span className="w-3.5 h-3.5 rounded-md inline-block bg-rose-100 border border-rose-200"></span> Absent
+                                  <span className="w-4 h-4 rounded-md inline-block bg-rose-100 border border-rose-300"></span> Absent
                                 </span>
                                 <span className="flex items-center gap-1.5">
-                                  <span className="w-3 h-3 rounded-full inline-block bg-blue-500 shadow-sm ring-1 ring-blue-300"></span> Meeting Attended
+                                  <span className="w-3 h-3 rounded-full inline-block bg-blue-600 shadow-sm ring-1 ring-blue-300"></span> Meeting Attended
                                 </span>
                                 <span className="flex items-center gap-1.5">
-                                  <span className="w-3 h-3 rounded-full inline-block bg-orange-400 shadow-sm ring-1 ring-orange-200"></span> Meeting Missed
+                                  <span className="w-3 h-3 rounded-full inline-block bg-orange-500 shadow-sm ring-1 ring-orange-200"></span> Meeting Missed
                                 </span>
                               </div>
                             </div>
@@ -1344,11 +1334,11 @@ const AdminInternDetails = () => {
                               </button>
                             </div>
 
-                            {/* ── PERFECTLY SIZED LOGBOOK CALENDAR GRID ── */}
+                            {/* ── SOFT PASTEL LOGBOOK CALENDAR GRID ── */}
                             <div className="max-w-2xl mx-auto">
-                              <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+                              <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
                                 {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                                  <div key={d} className="text-center text-[10px] font-bold text-gray-400 pb-2 uppercase tracking-wider">
+                                  <div key={d} className="text-center text-[10px] sm:text-xs font-bold text-gray-500 pb-2 uppercase tracking-wider">
                                     {d}
                                   </div>
                                 ))}
@@ -1368,14 +1358,14 @@ const AdminInternDetails = () => {
                                   return (
                                     <div key={di} className="group relative aspect-square">
                                       <div
-                                        className={`w-full h-full rounded-lg flex items-center justify-center border transition-all duration-200 ${isClickable ? "cursor-pointer hover:shadow-md" : "cursor-default"} ${meta.classes} ${isToday ? 'ring-2 ring-[#00b4eb] ring-offset-2 ring-offset-white' : ''}`}
+                                        className={`w-full h-full rounded-lg flex items-center justify-center border transition-all duration-200 ${isClickable ? "cursor-pointer hover:shadow-md hover:scale-105" : "cursor-default"} ${meta.classes} ${isToday ? 'ring-2 ring-[#00b4eb] ring-offset-2 ring-offset-white' : ''}`}
                                         onClick={() => isClickable && setLogbookModal(rec)}
                                       >
-                                        <span className="text-[10px] sm:text-xs font-bold">
+                                        <span className="text-[11px] sm:text-sm font-extrabold">
                                           {day.getDate()}
                                         </span>
                                       </div>
-                                      {/* Modern Hover Tooltip */}
+                                      {/* Hover Tooltip */}
                                       <div className="absolute z-30 bottom-full left-1/2 -translate-x-1/2 mb-2 w-max max-w-[220px] p-2.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-200 shadow-xl whitespace-pre-line">
                                         {tooltipContent}
                                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />
@@ -1392,14 +1382,15 @@ const AdminInternDetails = () => {
                               </p>
                               <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
                                 {[
-                                  { color: "bg-emerald-100 border-emerald-200", label: "Working / Submitted" },
-                                  { color: "bg-violet-100 border-violet-200", label: "WFH" },
-                                  { color: "bg-amber-100 border-amber-200", label: "On Leave" },
-                                  { color: "bg-rose-100 border-rose-200", label: "Missed" },
-                                  { color: "bg-slate-50 border-transparent", label: "Weekend / Future" },
+                                  { color: "bg-emerald-100 border-emerald-300", label: "Working" },
+                                  { color: "bg-blue-100 border-blue-300", label: "Submitted" },
+                                  { color: "bg-violet-100 border-violet-300", label: "WFH" },
+                                  { color: "bg-amber-100 border-amber-300", label: "On Leave" },
+                                  { color: "bg-orange-100 border-orange-300", label: "Missed" },
+                                  { color: "bg-slate-50 border-slate-100", label: "Weekend / Future" },
                                 ].map(({ color, label }) => (
                                   <span key={label} className="flex items-center gap-1.5">
-                                    <span className={`w-3 h-3 rounded-md inline-block border ${color}`}></span> {label}
+                                    <span className={`w-4 h-4 rounded-md inline-block border ${color}`}></span> {label}
                                   </span>
                                 ))}
                               </div>
