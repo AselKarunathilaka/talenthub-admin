@@ -133,7 +133,6 @@ const AdminInternDetails = () => {
   const [attendanceData, setAttendanceData] = useState(null);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [attendanceError, setAttendanceError] = useState(null);
-  const [holidayData, setHolidayData] = useState([]);
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -153,12 +152,11 @@ const AdminInternDetails = () => {
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
   useEffect(() => {
-  fetchInternDetails();
-  fetchAttendance();
-  fetchGitCommits();
-  fetchCertAttendanceCount();
-  fetchHolidays();
-}, [internId]);
+    fetchInternDetails();
+    fetchAttendance();
+    fetchGitCommits();
+    fetchCertAttendanceCount();
+  }, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
     if (gitCommitsData) return;
@@ -188,32 +186,6 @@ const AdminInternDetails = () => {
     }
   }, [internId, attendanceData]);
 
- const fetchHolidays = useCallback(async () => {
-  try {
-    const year = new Date().getFullYear();
-    const { API_BASE_URL } = await import("../api/apiConfig");
-
-    const response = await fetch(
-      `${API_BASE_URL}/holidays/${year}`
-    );
-
-    if (!response.ok) {
-      throw new Error(`Holiday request failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    console.log("Holiday Data:", data);
-
-    setHolidayData(data?.response?.holidays || []);
-  } catch (err) {
-    console.error("Error fetching holidays:", err);
-    setHolidayData([]);
-  }
-}, []);
-
-  // Fetch the same certificate-data endpoint used by the certificate page
-  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
   const fetchCertAttendanceCount = useCallback(async () => {
     try {
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -1260,6 +1232,7 @@ const AdminInternDetails = () => {
                       const [y, m] = k.split("-").map(Number);
                       return y === year && m === month + 1;
                     });
+<<<<<<< HEAD
                     const mDailyPresent = monthDailyKeys.filter(
                       (k) =>
                         (dailyMap[k]?.status || "").toLowerCase() === "present",
@@ -1323,6 +1296,88 @@ const AdminInternDetails = () => {
                           {/* Header with gradient */}
                           <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-cyan-50 p-5 sm:p-6 border-b border-gray-100">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+=======
+                  }
+                  const meetingMap = {};
+                  if (attendanceData?.meetingAttendance) {
+                    attendanceData.meetingAttendance.forEach((entry) => {
+                      const d = new Date(entry.date);
+                      if (!isNaN(d.getTime())) {
+                        const key = toDateKey(d);
+                        if (!meetingMap[key]) meetingMap[key] = [];
+                        meetingMap[key].push(entry);
+                      }
+                    });
+                  }
+
+                  const year = calendarMonth.getFullYear();
+                  const month = calendarMonth.getMonth();
+                  const calDays = getCalendarDays(year, month);
+                  const monthLabel = calendarMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+
+                  const monthDailyKeys = Object.keys(dailyMap).filter((k) => {
+                    const [y, m] = k.split("-").map(Number);
+                    return y === year && m === month + 1;
+                  });
+                  const mDailyPresent = monthDailyKeys.filter((k) => (dailyMap[k]?.status || "").toLowerCase() === "present").length;
+                  const mMeetingPresent = Object.values(meetingMap)
+                    .flat()
+                    .filter((e) => {
+                      const d = new Date(e.date);
+                      return d.getFullYear() === year && d.getMonth() === month && (e.status || "").toLowerCase() === "present";
+                    }).length;
+
+                  const allDailyPresent = (attendanceData?.dailyAttendance || []).filter((e) => (e.status || "").toLowerCase() === "present").length;
+                  const allMeetingPresent = (attendanceData?.meetingAttendance || []).filter((e) => (e.status || "").toLowerCase() === "present").length;
+                  const allMeetingTotal = (attendanceData?.meetingAttendance || []).length;
+                  const allDailyTotal = (attendanceData?.dailyAttendance || []).length;
+
+                  const allActivities = [
+                    ...(attendanceData?.dailyAttendance || []).map((e) => ({ ...e, type: "daily", rawType: e.rawType || e.type || "daily", attendanceTypeLabel: e.attendanceTypeLabel || null })),
+                    ...(attendanceData?.meetingAttendance || []).map((e) => ({ ...e, type: "meeting", rawType: e.rawType || e.type || "meeting", attendanceTypeLabel: e.attendanceTypeLabel || null })),
+                  ]
+                    .filter((e) => {
+                      const d = new Date(e.date);
+                      return d.getFullYear() === year && d.getMonth() === month;
+                    })
+                    .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+                  return (
+                    <div className="space-y-5">
+                      {/* Intern Details Card */}
+                      <motion.div
+                        className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl rounded-3xl border border-[#00b4eb]/20 shadow-[0_0_15px_rgba(0,180,235,0.1)] overflow-hidden"
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="bg-gradient-to-r from-[#e8f0fa] via-[#f0f9ff] to-[#e0f5fc] p-5 sm:p-6 border-b border-gray-100">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div>
+                              <h3 className="text-xl sm:text-2xl font-bold text-gray-900">{intern.traineeName}</h3>
+                              <p className="text-sm text-gray-500 mt-0.5">{intern.traineeId}</p>
+                              {intern.startDate && intern.endDate && (() => {
+                                const daysLeft = Math.ceil((new Date(intern.endDate) - new Date()) / (1000 * 60 * 60 * 24));
+                                return daysLeft > 0 ? (
+                                  <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-green-500 to-emerald-600 shadow-sm">{daysLeft} DAYS REMAINING</span>
+                                ) : (
+                                  <span className="inline-flex items-center mt-2 px-3 py-1 rounded-full text-xs font-bold text-white bg-gradient-to-r from-red-500 to-red-600 shadow-sm">TRAINING ENDED</span>
+                                );
+                              })()}
+                            </div>
+                            {intern.lastSeen && (
+                              <span className="text-xs text-gray-400 bg-white/70 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
+                                Last seen: {new Date(intern.lastSeen).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} at {new Date(intern.lastSeen).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 sm:p-6">
+                          <div className="bg-white/80 rounded-xl border border-gray-200 p-4 shadow-sm h-full">
+                            <h4 className="text-sm font-bold text-gray-900 mb-3">Personal Information</h4>
+                            <div className="space-y-3">
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
                               <div>
                                 <h3 className="text-xl sm:text-2xl font-bold text-gray-900">
                                   {intern.traineeName}
@@ -1613,6 +1668,7 @@ const AdminInternDetails = () => {
                                         )}
                                       </div>
                                     </div>
+<<<<<<< HEAD
                                   ),
                                 )}
                               </div>
@@ -1858,6 +1914,10 @@ const AdminInternDetails = () => {
                                     )}
                                   </tbody>
                                 </table>
+=======
+                                  );
+                                })}
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
                               </div>
 
                               {/* Simplified Legend */}
@@ -1885,6 +1945,7 @@ const AdminInternDetails = () => {
                                 </div>
                               </div>
 
+<<<<<<< HEAD
                               {/* Activity list */}
                               <div className="mt-6">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
@@ -1945,6 +2006,44 @@ const AdminInternDetails = () => {
                                               : "📹"}{" "}
                                             {entry.status || "No Record"}
                                           </span>
+=======
+                            {/* Activity List */}
+                            <div className="mt-6 max-w-2xl mx-auto">
+                              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">All Activity — {monthLabel}</h4>
+                              {allActivities.length > 0 ? (
+                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                  {allActivities.map((entry, idx) => {
+                                    const rawDateStr = String(entry.date || "");
+                                    let d;
+                                    if (rawDateStr.includes("-")) {
+                                      const parts = rawDateStr.slice(0, 10).split("-").map(Number);
+                                      if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                                        d = new Date(parts[0], parts[1] - 1, parts[2]);
+                                      } else {
+                                        d = new Date(entry.date);
+                                      }
+                                    } else {
+                                      d = new Date(entry.date);
+                                    }
+                                    const isPresent = (entry.status || "").toLowerCase() === "present";
+                                    const typeLabel = entry.attendanceTypeLabel || (entry.type === "daily" ? (entry.rawType === "face" || entry.attendanceMethod === "face recognition" ? "Face Attendance" : entry.rawType === "daily_qr" || entry.attendanceMethod === "qr" ? "QR Attendance" : entry.rawType === "manual_daily" ? "Manual Daily" : "Logbook Attendance") : entry.rawType === "face_meeting" ? "Face Meeting" : entry.rawType === "qr" ? "QR Meeting" : "Meeting Attendance");
+
+                                    const timeStr = entry.time || (entry.attendanceTime ? new Date(entry.attendanceTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) : null);
+                                    const checkOutStr = entry.checkOutTime || null;
+                                    const timeDetails = timeStr ? (checkOutStr ? `In: ${timeStr} • Out: ${checkOutStr}` : `In: ${timeStr}`) : null;
+
+                                    return (
+                                      <div key={idx} className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${entry.type === "daily" ? (isPresent ? "bg-green-500" : "bg-red-400") : isPresent ? "bg-blue-500" : "bg-orange-400"}`} />
+                                          <div className="min-w-0">
+                                            <p className="font-medium text-gray-800 text-xs sm:text-sm">{d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</p>
+                                            <div className="flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-gray-500">
+                                              <span className="font-medium text-gray-600 truncate">{entry.type === "meeting" && entry.meetingName ? `${entry.meetingName} (${typeLabel})` : typeLabel}</span>
+                                              {timeDetails && <span className="text-gray-400 font-mono">{timeDetails}</span>}
+                                            </div>
+                                          </div>
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
                                         </div>
                                       );
                                     })}
@@ -2030,6 +2129,7 @@ const AdminInternDetails = () => {
                               exit={{ opacity: 0 }}
                               onClick={() => setLogbookModal(null)}
                             >
+<<<<<<< HEAD
                               <motion.div
                                 className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-y-auto"
                                 initial={{ scale: 0.9, y: 20 }}
@@ -2142,6 +2242,48 @@ const AdminInternDetails = () => {
                                 >
                                   <FaClipboardList /> List View
                                 </button>
+=======
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <h3 className="text-lg font-bold text-gray-900">Logbook Entry</h3>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(logbookModal.createdAt || logbookModal.date).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+                                  </p>
+                                </div>
+                                <button onClick={() => setLogbookModal(null)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+                                  <FaTimes />
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-2 mb-4">
+                                {logbookModal.stack && <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">{logbookModal.stack}</span>}
+                                {logbookModal.status && <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold capitalize">{logbookModal.status}</span>}
+                              </div>
+                              <div className="space-y-4">
+                                {logbookModal.task && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                      <FaCheckCircle className="text-blue-500 mr-1.5" /> Tasks Completed
+                                    </p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">{logbookModal.task}</p>
+                                  </div>
+                                )}
+                                {logbookModal.progress && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                      <FaChartLine className="text-emerald-500 mr-1.5" /> Progress
+                                    </p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3">{logbookModal.progress}</p>
+                                  </div>
+                                )}
+                                {logbookModal.blockers && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                                      <FaExclamationTriangle className="text-amber-500 mr-1.5" /> Challenges / Blockers
+                                    </p>
+                                    <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3">{logbookModal.blockers}</p>
+                                  </div>
+                                )}
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
                               </div>
                               <motion.button
                                 whileHover={{ scale: 1.02 }}
@@ -2156,6 +2298,7 @@ const AdminInternDetails = () => {
                             </div>
                           </div>
 
+<<<<<<< HEAD
                           {logbookView === "calendar" && (
                             <div>
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
@@ -2402,6 +2545,32 @@ const AdminInternDetails = () => {
                                     <span
                                       key={label}
                                       className="flex items-center gap-1.5"
+=======
+                        {logbookView === "list" && (internDetails.records && internDetails.records.length > 0 ? (
+                          <>
+                            <div className="block sm:hidden space-y-3 max-h-[400px] overflow-y-auto">
+                              {internDetails.records.map((record, index) => (
+                                <motion.div
+                                  key={index}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.02 * index }}
+                                  className="bg-gray-50 rounded-xl p-3 border border-gray-200"
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-gray-900">{record.taskDescription || record.task || "N/A"}</p>
+                                      <p className="text-xs text-gray-500 mt-1">{formatDate(record.createdAt)}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{record.stack || "N/A"}</span>
+                                    <motion.button
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => setLogbookModal(record)}
+                                      className="flex items-center text-[#0056a2] hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs shadow-sm"
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
                                     >
                                       <span
                                         className="w-3 h-3 rounded inline-block"
@@ -2413,6 +2582,7 @@ const AdminInternDetails = () => {
                                 </div>
                               </div>
                             </div>
+<<<<<<< HEAD
                           )}
 
                           {logbookView === "list" &&
@@ -2545,6 +2715,18 @@ const AdminInternDetails = () => {
                       </>
                     );
                   })()}
+=======
+                          </>
+                        ) : (
+                          <div className="h-32 sm:h-48 flex items-center justify-center">
+                            <p className="text-gray-500 text-xs sm:text-sm text-center">No records found for this intern.</p>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+>>>>>>> parent of 81b3f88 (Merge branch 'main' into UI-Update)
               </motion.div>
             </AnimatePresence>
           </div>
