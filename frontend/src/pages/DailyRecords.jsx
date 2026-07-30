@@ -297,10 +297,10 @@ useEffect(() => {
 
   //Holiday Helper
   const getHolidayForDate = (date) => {
-  if (!date) return null;
+  if (!date || !holidayData?.response?.holidays) return null;
 
-  return holidays.find((holiday) => {
-    const holidayDate = new Date(holiday.date);
+  return holidayData.response.holidays.find((holiday) => {
+    const holidayDate = new Date(holiday.date.iso);
 
     return (
       holidayDate.getDate() === date.getDate() &&
@@ -327,7 +327,7 @@ useEffect(() => {
     
   //Holiday Styling
       if (holiday && !isSelected) {
-    classes += " bg-red-60 border-red-300"; 
+    classes += " bg-red-100 border-red-300";
   }
     if (isToday) classes += " bg-blue-50 border-blue-200";
     if (isSelected) classes += " bg-indigo-100 border-indigo-300 shadow-md";
