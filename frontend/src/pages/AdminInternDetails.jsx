@@ -157,6 +157,11 @@ const AdminInternDetails = () => {
     fetchGitCommits();
     fetchCertAttendanceCount();
   }, [internId]);
+    fetchInternDetails();
+    fetchAttendance();
+    fetchGitCommits();
+    fetchCertAttendanceCount();
+  }, [internId]);
 
   const fetchGitCommits = useCallback(async () => {
     if (gitCommitsData) return;
@@ -1331,13 +1336,18 @@ const AdminInternDetails = () => {
                       ...(attendanceData?.dailyAttendance || []).map((e) => ({
                         ...e,
                         // Preserve backend rawType / attendanceTypeLabel; just tag the display bucket
+                        // Preserve backend rawType / attendanceTypeLabel; just tag the display bucket
                         type: "daily",
+                        rawType: e.rawType || e.type || "daily",
+                        attendanceTypeLabel: e.attendanceTypeLabel || null,
                         rawType: e.rawType || e.type || "daily",
                         attendanceTypeLabel: e.attendanceTypeLabel || null,
                       })),
                       ...(attendanceData?.meetingAttendance || []).map((e) => ({
                         ...e,
                         type: "meeting",
+                        rawType: e.rawType || e.type || "meeting",
+                        attendanceTypeLabel: e.attendanceTypeLabel || null,
                         rawType: e.rawType || e.type || "meeting",
                         attendanceTypeLabel: e.attendanceTypeLabel || null,
                       })),
@@ -1742,6 +1752,7 @@ const AdminInternDetails = () => {
                                 </div>
                               </div>
 
+
                               {/* Calendar grid */}
                               <div className="overflow-x-auto">
                                 <table className="w-full border-collapse">
@@ -2005,9 +2016,73 @@ const AdminInternDetails = () => {
                                       } else {
                                         d = new Date(entry.date);
                                       }
+                                      const rawDateStr = String(
+                                        entry.date || "",
+                                      );
+                                      let d;
+                                      if (rawDateStr.includes("-")) {
+                                        const parts = rawDateStr
+                                          .slice(0, 10)
+                                          .split("-")
+                                          .map(Number);
+                                        if (
+                                          parts.length === 3 &&
+                                          !isNaN(parts[0]) &&
+                                          !isNaN(parts[1]) &&
+                                          !isNaN(parts[2])
+                                        ) {
+                                          d = new Date(
+                                            parts[0],
+                                            parts[1] - 1,
+                                            parts[2],
+                                          );
+                                        } else {
+                                          d = new Date(entry.date);
+                                        }
+                                      } else {
+                                        d = new Date(entry.date);
+                                      }
                                       const isPresent =
                                         (entry.status || "").toLowerCase() ===
                                         "present";
+                                      const typeLabel =
+                                        entry.attendanceTypeLabel ||
+                                        (entry.type === "daily"
+                                          ? entry.rawType === "face" ||
+                                            entry.attendanceMethod ===
+                                              "face recognition"
+                                            ? "Face Attendance"
+                                            : entry.rawType === "daily_qr" ||
+                                                entry.attendanceMethod === "qr"
+                                              ? "QR Attendance"
+                                              : entry.rawType ===
+                                                  "manual_daily"
+                                                ? "Manual Daily"
+                                                : "Logbook Attendance"
+                                          : entry.rawType === "face_meeting"
+                                            ? "Face Meeting"
+                                            : entry.rawType === "qr"
+                                              ? "QR Meeting"
+                                              : "Meeting Attendance");
+
+                                      const timeStr =
+                                        entry.time ||
+                                        (entry.attendanceTime
+                                          ? new Date(
+                                              entry.attendanceTime,
+                                            ).toLocaleTimeString("en-US", {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })
+                                          : null);
+                                      const checkOutStr =
+                                        entry.checkOutTime || null;
+                                      const timeDetails = timeStr
+                                        ? checkOutStr
+                                          ? `In: ${timeStr} • Out: ${checkOutStr}`
+                                          : `In: ${timeStr}`
+                                        : null;
+
                                       const typeLabel =
                                         entry.attendanceTypeLabel ||
                                         (entry.type === "daily"
@@ -2052,6 +2127,7 @@ const AdminInternDetails = () => {
                                           className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm"
                                         >
                                           <div className="flex items-center gap-3 min-w-0">
+                                          <div className="flex items-center gap-3 min-w-0">
                                             <span
                                               className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                                                 entry.type === "daily"
@@ -2064,7 +2140,30 @@ const AdminInternDetails = () => {
                                               }`}
                                             />
                                             <div className="min-w-0">
+                                            <div className="min-w-0">
                                               <p className="font-medium text-gray-800 text-xs sm:text-sm">
+                                                {d.toLocaleDateString(
+                                                  "en-US",
+                                                  {
+                                                    weekday: "short",
+                                                    month: "short",
+                                                    day: "numeric",
+                                                  },
+                                                )}
+                                              </p>
+                                              <div className="flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-gray-500">
+                                                <span className="font-medium text-gray-600 truncate">
+                                                  {entry.type === "meeting" &&
+                                                  entry.meetingName
+                                                    ? `${entry.meetingName} (${typeLabel})`
+                                                    : typeLabel}
+                                                </span>
+                                                {timeDetails && (
+                                                  <span className="text-gray-400 font-mono">
+                                                    {timeDetails}
+                                                  </span>
+                                                )}
+                                              </div>
                                                 {d.toLocaleDateString(
                                                   "en-US",
                                                   {
@@ -2091,11 +2190,16 @@ const AdminInternDetails = () => {
                                           </div>
                                           <span
                                             className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex items-center gap-1.5 ${
+                                            className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex items-center gap-1.5 ${
                                               entry.type === "daily"
                                                 ? isPresent
                                                   ? "bg-green-100 text-green-700 border border-green-200"
                                                   : "bg-red-50 text-red-500 border border-red-200"
+                                                  ? "bg-green-100 text-green-700 border border-green-200"
+                                                  : "bg-red-50 text-red-500 border border-red-200"
                                                 : isPresent
+                                                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                                  : "bg-orange-100 text-orange-600 border border-orange-200"
                                                   ? "bg-blue-100 text-blue-700 border border-blue-200"
                                                   : "bg-orange-100 text-orange-600 border border-orange-200"
                                             }`}
@@ -2806,6 +2910,7 @@ const AdminInternDetails = () => {
                                 </div>
                                 <div className="hidden sm:block overflow-x-auto max-h-[500px]">
                                   <table className="min-w-full divide-y divide-gray-200">
+                                  <table className="min-w-full divide-y divide-gray-200">
                                     <thead>
                                       <tr>
                                         {[
@@ -2850,6 +2955,16 @@ const AdminInternDetails = () => {
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                               <motion.button
+                                                onClick={() =>
+                                                  setLogbookModal(record)
+                                                }
+                                                className="flex items-center text-cyan-600 hover:bg-cyan-50 px-3 py-1 rounded-xl shadow-sm"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                              >
+                                                <FaEye className="mr-2" />{" "}
+                                                Inspect
+                                              </motion.button>
                                                 onClick={() =>
                                                   setLogbookModal(record)
                                                 }
