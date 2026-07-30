@@ -186,6 +186,11 @@ const AdminInternDetails = () => {
     }
   }, [internId, attendanceData]);
 
+<<<<<<< HEAD
+=======
+  // Fetch the same certificate-data endpoint used by the certificate page
+  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
+>>>>>>> parent of e68d466 (Add public holiday support to attendance calendars)
   const fetchCertAttendanceCount = useCallback(async () => {
     try {
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -1325,11 +1330,16 @@ const AdminInternDetails = () => {
                     const allActivities = [
                       ...(attendanceData?.dailyAttendance || []).map((e) => ({
                         ...e,
+                        // Preserve backend rawType / attendanceTypeLabel; just tag the display bucket
                         type: "daily",
+                        rawType: e.rawType || e.type || "daily",
+                        attendanceTypeLabel: e.attendanceTypeLabel || null,
                       })),
                       ...(attendanceData?.meetingAttendance || []).map((e) => ({
                         ...e,
                         type: "meeting",
+                        rawType: e.rawType || e.type || "meeting",
+                        attendanceTypeLabel: e.attendanceTypeLabel || null,
                       })),
                     ]
                       .filter((e) => {
@@ -1731,34 +1741,7 @@ const AdminInternDetails = () => {
                                   </span>
                                 </div>
                               </div>
-                            
-                            <div className="flex items-center justify-between mb-4">
-  <button
-    onClick={() =>
-      setCalendarMonth(
-        new Date(year, month - 1, 1)
-      )
-    }
-    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
-  >
-    <FaChevronLeft />
-  </button>
 
-  <h3 className="text-lg font-bold text-gray-800">
-    {monthLabel}
-  </h3>
-
-  <button
-    onClick={() =>
-      setCalendarMonth(
-        new Date(year, month + 1, 1)
-      )
-    }
-    className="p-2 rounded-lg bg-gray-100 hover:bg-gray-200"
-  >
-    <FaChevronRight />
-  </button>
-</div>
                               {/* Calendar grid */}
                               <div className="overflow-x-auto">
                                 <table className="w-full border-collapse">
@@ -1996,16 +1979,79 @@ const AdminInternDetails = () => {
                                 {allActivities.length > 0 ? (
                                   <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                                     {allActivities.map((entry, idx) => {
-                                      const d = new Date(entry.date);
+                                      const rawDateStr = String(
+                                        entry.date || "",
+                                      );
+                                      let d;
+                                      if (rawDateStr.includes("-")) {
+                                        const parts = rawDateStr
+                                          .slice(0, 10)
+                                          .split("-")
+                                          .map(Number);
+                                        if (
+                                          parts.length === 3 &&
+                                          !isNaN(parts[0]) &&
+                                          !isNaN(parts[1]) &&
+                                          !isNaN(parts[2])
+                                        ) {
+                                          d = new Date(
+                                            parts[0],
+                                            parts[1] - 1,
+                                            parts[2],
+                                          );
+                                        } else {
+                                          d = new Date(entry.date);
+                                        }
+                                      } else {
+                                        d = new Date(entry.date);
+                                      }
                                       const isPresent =
                                         (entry.status || "").toLowerCase() ===
                                         "present";
+                                      const typeLabel =
+                                        entry.attendanceTypeLabel ||
+                                        (entry.type === "daily"
+                                          ? entry.rawType === "face" ||
+                                            entry.attendanceMethod ===
+                                              "face recognition"
+                                            ? "Face Attendance"
+                                            : entry.rawType === "daily_qr" ||
+                                                entry.attendanceMethod === "qr"
+                                              ? "QR Attendance"
+                                              : entry.rawType ===
+                                                  "manual_daily"
+                                                ? "Manual Daily"
+                                                : "Logbook Attendance"
+                                          : entry.rawType === "face_meeting"
+                                            ? "Face Meeting"
+                                            : entry.rawType === "qr"
+                                              ? "QR Meeting"
+                                              : "Meeting Attendance");
+
+                                      const timeStr =
+                                        entry.time ||
+                                        (entry.attendanceTime
+                                          ? new Date(
+                                              entry.attendanceTime,
+                                            ).toLocaleTimeString("en-US", {
+                                              hour: "2-digit",
+                                              minute: "2-digit",
+                                            })
+                                          : null);
+                                      const checkOutStr =
+                                        entry.checkOutTime || null;
+                                      const timeDetails = timeStr
+                                        ? checkOutStr
+                                          ? `In: ${timeStr} • Out: ${checkOutStr}`
+                                          : `In: ${timeStr}`
+                                        : null;
+
                                       return (
                                         <div
                                           key={idx}
                                           className="flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors rounded-xl px-3 py-2.5 text-sm"
                                         >
-                                          <div className="flex items-center gap-3">
+                                          <div className="flex items-center gap-3 min-w-0">
                                             <span
                                               className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
                                                 entry.type === "daily"
@@ -2017,36 +2063,53 @@ const AdminInternDetails = () => {
                                                     : "bg-orange-400"
                                               }`}
                                             />
-                                            <div>
+                                            <div className="min-w-0">
                                               <p className="font-medium text-gray-800 text-xs sm:text-sm">
-                                                {d.toLocaleDateString("en-US", {
-                                                  weekday: "short",
-                                                  month: "short",
-                                                  day: "numeric",
-                                                })}
+                                                {d.toLocaleDateString(
+                                                  "en-US",
+                                                  {
+                                                    weekday: "short",
+                                                    month: "short",
+                                                    day: "numeric",
+                                                  },
+                                                )}
                                               </p>
-                                              {entry.meetingName && (
-                                                <p className="text-[10px] sm:text-xs text-gray-500 truncate max-w-[160px]">
-                                                  {entry.meetingName}
-                                                </p>
-                                              )}
+                                              <div className="flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-0.5 text-[10px] sm:text-xs text-gray-500">
+                                                <span className="font-medium text-gray-600 truncate">
+                                                  {entry.type === "meeting" &&
+                                                  entry.meetingName
+                                                    ? `${entry.meetingName} (${typeLabel})`
+                                                    : typeLabel}
+                                                </span>
+                                                {timeDetails && (
+                                                  <span className="text-gray-400 font-mono">
+                                                    {timeDetails}
+                                                  </span>
+                                                )}
+                                              </div>
                                             </div>
                                           </div>
                                           <span
-                                            className={`text-[10px] sm:text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                            className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex items-center gap-1.5 ${
                                               entry.type === "daily"
                                                 ? isPresent
-                                                  ? "bg-green-100 text-green-700"
-                                                  : "bg-red-50 text-red-500"
+                                                  ? "bg-green-100 text-green-700 border border-green-200"
+                                                  : "bg-red-50 text-red-500 border border-red-200"
                                                 : isPresent
-                                                  ? "bg-blue-100 text-blue-700"
-                                                  : "bg-orange-100 text-orange-600"
+                                                  ? "bg-blue-100 text-blue-700 border border-blue-200"
+                                                  : "bg-orange-100 text-orange-600 border border-orange-200"
                                             }`}
                                           >
-                                            {entry.type === "daily"
-                                              ? "📅"
-                                              : "📹"}{" "}
-                                            {entry.status || "No Record"}
+                                            <span>
+                                              {entry.type === "daily"
+                                                ? "📅"
+                                                : "📹"}
+                                            </span>
+                                            <span>{typeLabel}</span>
+                                            <span className="opacity-40">•</span>
+                                            <span>
+                                              {entry.status || "No Record"}
+                                            </span>
                                           </span>
                                         </div>
                                         <span className={`text-[10px] sm:text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap flex items-center gap-1.5 ${entry.type === "daily" ? (isPresent ? "bg-green-100 text-green-700 border border-green-200" : "bg-red-50 text-red-500 border border-red-200") : isPresent ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-orange-100 text-orange-600 border border-orange-200"}`}>
@@ -2192,31 +2255,30 @@ const AdminInternDetails = () => {
                                 exit={{ scale: 0.9, y: 20 }}
                                 onClick={(e) => e.stopPropagation()}
                               >
-                                <div className="flex items-start justify-between border-b border-gray-100 pb-4 mb-5">
-  <div>
-    <h3 className="text-xl font-bold text-slate-800">
-      Logbook Entry
-    </h3>
-
-    <p className="text-sm text-gray-500 mt-1">
-      {new Date(
-        logbookModal.createdAt || logbookModal.date
-      ).toLocaleDateString("en-US", {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })}
-    </p>
-  </div>
-
-  <button
-    onClick={() => setLogbookModal(null)}
-    className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-red-100 hover:text-red-500 transition-all flex items-center justify-center"
-  >
-    <FaTimes />
-  </button>
-</div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <h3 className="text-lg font-bold text-gray-900">
+                                      Logbook Entry
+                                    </h3>
+                                    <p className="text-xs text-gray-500">
+                                      {new Date(
+                                        logbookModal.createdAt ||
+                                          logbookModal.date,
+                                      ).toLocaleDateString("en-US", {
+                                        weekday: "long",
+                                        year: "numeric",
+                                        month: "long",
+                                        day: "numeric",
+                                      })}
+                                    </p>
+                                  </div>
+                                  <button
+                                    onClick={() => setLogbookModal(null)}
+                                    className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
+                                  >
+                                    <FaTimes />
+                                  </button>
+                                </div>
                                 <div className="flex flex-wrap gap-2 mb-4">
                                   {logbookModal.stack && (
                                     <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
@@ -2455,231 +2517,169 @@ const AdminInternDetails = () => {
                                       className="flex items-center text-[#0056a2] hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs shadow-sm"
                           {logbookView === "calendar" && (
                             <div>
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+                              <div className="grid grid-cols-3 gap-3 mb-5">
+                                {[
+                                  {
+                                    value: totalWeekdays,
+                                    label: "Working Days",
+                                    color: "text-slate-900",
+                                  },
+                                  {
+                                    value: totalRecords,
+                                    label: "Logs Submitted",
+                                    color: "text-emerald-600",
+                                  },
+                                  {
+                                    value: missedDays,
+                                    label: "Logs Missed",
+                                    color: "text-rose-600",
+                                  },
+                                ].map(({ value, label, color }) => (
+                                  <div
+                                    key={label}
+                                    className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm"
+                                  >
+                                    <p
+                                      className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 ${color}`}
+                                    >
+                                      {value}
+                                    </p>
+                                    <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
+                                      {label}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
 
-  <motion.div
-    whileHover={{ y: -5, scale: 1.02 }}
-    className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-2xl p-5 text-white shadow-xl"
-  >
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm opacity-90">Working Days</p>
-        <h2 className="text-3xl font-bold">{totalWeekdays}</h2>
-      </div>
-      <FaCalendarAlt className="text-4xl opacity-80" />
-    </div>
-  </motion.div>
+                              <div className="flex items-center justify-between mb-4">
+                                <button
+                                  onClick={() =>
+                                    setLogbookCalMonth(
+                                      (prev) =>
+                                        new Date(
+                                          prev.getFullYear(),
+                                          prev.getMonth() - 1,
+                                          1,
+                                        ),
+                                    )
+                                  }
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronLeft className="h-3 w-3" />
+                                </button>
+                                <span className="text-sm font-semibold text-gray-800">
+                                  {lbMonthLabel}
+                                </span>
+                                <button
+                                  onClick={() =>
+                                    setLogbookCalMonth(
+                                      (prev) =>
+                                        new Date(
+                                          prev.getFullYear(),
+                                          prev.getMonth() + 1,
+                                          1,
+                                        ),
+                                    )
+                                  }
+                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                                >
+                                  <FaChevronRight className="h-3 w-3" />
+                                </button>
+                              </div>
 
-  <motion.div
-    whileHover={{ y: -5, scale: 1.02 }}
-    className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-5 text-white shadow-xl"
-  >
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm opacity-90">Logs Submitted</p>
-        <h2 className="text-3xl font-bold">{totalRecords}</h2>
-      </div>
-      <FaTasks className="text-4xl opacity-80" />
-    </div>
-  </motion.div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse">
+                                  <thead>
+                                    <tr>
+                                      {[
+                                        "Mon",
+                                        "Tue",
+                                        "Wed",
+                                        "Thu",
+                                        "Fri",
+                                        "Sat",
+                                        "Sun",
+                                      ].map((d) => (
+                                        <th
+                                          key={d}
+                                          className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]"
+                                        >
+                                          {d}
+                                        </th>
+                                      ))}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {Array.from(
+                                      {
+                                        length: Math.ceil(lbCalDays.length / 7),
+                                      },
+                                      (_, w) => (
+                                        <tr key={w}>
+                                          {lbCalDays
+                                            .slice(w * 7, w * 7 + 7)
+                                            .map((day, di) => {
+                                              const meta = getLogbookMeta(
+                                                recordMap,
+                                                day,
+                                              );
+                                              const isToday =
+                                                day &&
+                                                day.toDateString() ===
+                                                  new Date().toDateString();
+                                              const dayKey = day
+                                                ? toDateKey(day)
+                                                : null;
+                                              const rec = dayKey
+                                                ? recordMap[dayKey]
+                                                : null;
+                                              const isClickable = rec != null;
+                                              return (
+                                                <td
+                                                  key={di}
+                                                  className="py-1 text-center"
+                                                >
+                                                  {day ? (
+                                                    <div
+                                                      className={`mx-auto w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all ${
+                                                        isClickable
+                                                          ? "cursor-pointer hover:opacity-80 hover:shadow-md"
+                                                          : ""
+                                                      } ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
+                                                      style={{
+                                                        backgroundColor:
+                                                          meta?.color ??
+                                                          "#f3f4f6",
+                                                      }}
+                                                      onClick={() =>
+                                                        isClickable &&
+                                                        setLogbookModal(rec)
+                                                      }
+                                                    >
+                                                      <span
+                                                        className="text-[10px] sm:text-xs font-bold"
+                                                        style={{
+                                                          color:
+                                                            meta?.textColor ??
+                                                            "#9ca3af",
+                                                        }}
+                                                      >
+                                                        {day.getDate()}
+                                                      </span>
+                                                    </div>
+                                                  ) : (
+                                                    <div className="h-11" />
+                                                  )}
+                                                </td>
+                                              );
+                                            })}
+                                        </tr>
+                                      ),
+                                    )}
+                                  </tbody>
+                                </table>
+                              </div>
 
-  <motion.div
-    whileHover={{ y: -5, scale: 1.02 }}
-    className="bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl p-5 text-white shadow-xl"
-  >
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-sm opacity-90">Logs Missed</p>
-        <h2 className="text-3xl font-bold">{missedDays}</h2>
-      </div>
-      <FaExclamationTriangle className="text-4xl opacity-80" />
-    </div>
-  </motion.div>
-
-</div>
-
-                             <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-slate-50 to-blue-50 rounded-2xl px-4 py-3 border border-slate-200 shadow-sm">
-
-  <button
-    onClick={() =>
-      setLogbookCalMonth(
-        (prev) =>
-          new Date(
-            prev.getFullYear(),
-            prev.getMonth() - 1,
-            1,
-          ),
-      )
-    }
-    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow hover:bg-blue-50 hover:text-blue-600 transition-all duration-300"
-  >
-    <FaChevronLeft className="h-4 w-4" />
-  </button>
-
-  <div className="text-center">
-    <p className="text-xs text-slate-500 uppercase tracking-widest">
-      Logbook Calendar
-    </p>
-    <h3 className="text-lg font-bold text-slate-800">
-      {lbMonthLabel}
-    </h3>
-  </div>
-
-  <button
-    onClick={() =>
-      setLogbookCalMonth(
-        (prev) =>
-          new Date(
-            prev.getFullYear(),
-            prev.getMonth() + 1,
-            1,
-          ),
-      )
-    }
-    className="w-10 h-10 flex items-center justify-center rounded-xl bg-white shadow hover:bg-blue-50 hover:text-blue-600 transition-all duration-300"
-  >
-    <FaChevronRight className="h-4 w-4" />
-  </button>
-
-</div>
-                              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
-
-  {/* Week Days */}
-  <div className="grid grid-cols-7 gap-3 mb-4">
-    {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(day=>(
-      <div
-        key={day}
-        className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"
-      >
-        {day}
-      </div>
-    ))}
-  </div>
-
-  {/* Calendar */}
-  <div className="grid grid-cols-7 gap-3">
-
-    {lbCalDays.map((day,index)=>{
-
-      const meta=getLogbookMeta(recordMap,day);
-     const holiday =
-  day &&
-  holidayData.find(
-    (h) =>
-      h.date.iso.split("T")[0] === toDateKey(day) &&
-      h.type?.some((type) =>
-        type.toLowerCase().includes("national holiday")
-      )
-  );
-
-      const isToday=
-        day &&
-        day.toDateString()===new Date().toDateString();
-
-      const dayKey=day?toDateKey(day):null;
-
-      const rec=dayKey?recordMap[dayKey]:null;
-
-      const isClickable=!!rec;
-
-      return(
-
-        <div 
-        key={index}
-         className="h-[70px] flex items-center justify-center"
-        >
-
-          {day ? (
-
-            <motion.div
-
-              whileHover={
-                isClickable
-                  ? {scale:1.05,y:-4}
-                  : {}
-              }
-
-              whileTap={
-                isClickable
-                  ? {scale:0.98}
-                  : {}
-              }
-
-              onClick={()=>{
-                if(isClickable){
-                  setLogbookModal(rec);
-                }
-              }}
-
-              className={`
-
-                h-14
-                w-15
-                mx-auto
-                rounded-2xl
-                border
-                flex
-                flex-col
-                justify-between
-                p-1
-                transition-all
-
-                ${
-                  isClickable
-                  ? "cursor-pointer shadow-sm hover:shadow-xl hover:-translate-y-1"
-                  : "bg-gray-50 border-gray-200"
-                }
-
-                ${isToday?"ring-2 ring-blue-500":""}
-
-              `}
-
-             style={{
-  backgroundColor: holiday
-    ? "#fee2e2"
-    : meta?.color || "#ffffff",
-  borderColor: holiday ? "#f87171" : undefined,
-}}
-            >
-<div className="relative flex flex-col items-center justify-center flex-1 px-1">
-  <span
-    className={`font-bold tracking-tight ${
-      holiday ? "text-base text-red-800" : "text-xl text-slate-800"
-    }`}
-  >
-    {day.getDate()}
-  </span>
-
-  {holiday && (
-    <span
-      className="text-[8px] sm:text-[9px] text-red-700 font-semibold text-center leading-tight line-clamp-2"
-      title={holiday.name}
-    >
-      {holiday.name}
-    </span>
-  )}
-
-  {isClickable && (
-    <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-blue-600" />
-  )}
-</div>
-            </motion.div>
-
-          ) : (
-
-            <div className="h-24"/>
-
-          )}
-
-        </div>
-
-      );
-
-    })}
-
-  </div>
-
-</div>
                               <div className="mt-4 pt-4 border-t border-gray-100">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                                   Legend — Click any colored day to inspect the
@@ -2805,7 +2805,7 @@ const AdminInternDetails = () => {
                                   )}
                                 </div>
                                 <div className="hidden sm:block overflow-x-auto max-h-[500px]">
-                                  <table className="w-full overflow-hidden rounded-2xl border border-slate-200">
+                                  <table className="min-w-full divide-y divide-gray-200">
                                     <thead>
                                       <tr>
                                         {[
@@ -2850,25 +2850,16 @@ const AdminInternDetails = () => {
                                             </td>
                                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                                               <motion.button
-  onClick={() => setLogbookModal(record)}
-  className="
-    flex items-center justify-center gap-2
-    px-4 py-2
-    rounded-xl
-    bg-cyan-50
-    text-cyan-700
-    font-medium
-    border border-cyan-100
-    hover:bg-cyan-100
-    hover:shadow-lg
-    transition-all duration-300
-  "
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.95 }}
->
-  <FaEye className="text-sm" />
-  <span>Inspect</span>
-</motion.button>
+                                                onClick={() =>
+                                                  setLogbookModal(record)
+                                                }
+                                                className="flex items-center text-cyan-600 hover:bg-cyan-50 px-3 py-1 rounded-xl shadow-sm"
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                              >
+                                                <FaEye className="mr-2" />{" "}
+                                                Inspect
+                                              </motion.button>
                                             </td>
                                           </motion.tr>
                                         ),
