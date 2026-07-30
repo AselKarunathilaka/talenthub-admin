@@ -153,6 +153,10 @@ const createDailyRecord = async (req, res) => {
       "internId",
       "Trainee_Name Trainee_ID Trainee_Email",
     );
+    
+    // Invalidate cache
+    dailyRecordsCache.delete(`records_${userId}`);
+    
     return res.status(201).json(newRecord);
   } catch (error) {
     console.error("Error creating daily record:", error);
@@ -188,10 +192,22 @@ const createDailyRecord = async (req, res) => {
   }
 };
 
+// Simple in-memory cache for daily records
+const dailyRecordsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 // Get all daily records (for admin) or user's own records
 const getDailyRecords = async (req, res) => {
   try {
     const { id: userId, email: userEmail } = req.user;
+    
+    // Check cache
+    const cacheKey = `records_${userId}`;
+    const cached = dailyRecordsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return res.status(200).json(cached.data);
+    }
+
     const query = {};
     // Check if this is an admin or intern request
     // If the user ID corresponds to a User (admin), show all records
@@ -223,6 +239,9 @@ const getDailyRecords = async (req, res) => {
     const records = await DailyRecord.find(query)
       .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
       .sort({ createdAt: -1 });
+
+    // Update cache
+    dailyRecordsCache.set(cacheKey, { data: records, timestamp: Date.now() });
 
     res.status(200).json(records);
   } catch (error) {
