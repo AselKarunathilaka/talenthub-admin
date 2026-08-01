@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { startRegistration, startAuthentication, browserSupportsWebAuthnAutofill } from '@simplewebauthn/browser';
+import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
 import {
   FaUser,
   FaLock,
@@ -25,6 +26,8 @@ import {
   ArrowRight,
   Sparkles,
   Fingerprint,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
@@ -129,6 +132,22 @@ const AdminLogin = () => {
   const [authDataForPasskeySetup, setAuthDataForPasskeySetup] = useState(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState("");
+  const [seasonActive, setSeasonActive] = useState(false);
+  const [isImmersive, setIsImmersive] = useState(false);
+
+  const handleSeasonResolved = useCallback((seasonKey) => {
+    setSeasonActive(!!seasonKey);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isImmersive) {
+        setIsImmersive(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isImmersive]);
 
   useEffect(() => {
     const setupAutofill = async () => {
@@ -328,9 +347,41 @@ const AdminLogin = () => {
     <div
       className="min-h-screen lg:h-screen text-white relative overflow-x-hidden overflow-y-auto lg:overflow-hidden flex flex-col justify-center"
       style={{
-        background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
+        background: seasonActive
+          ? "#02020a"
+          : "linear-gradient(135deg, #000066 0%, #006600 100%)",
       }}
     >
+      {/* Immersive View Toggle Button */}
+      {seasonActive && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="fixed top-4 right-4 z-40"
+        >
+          {!isImmersive ? (
+            <button
+              onClick={() => setIsImmersive(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group"
+              title="View full-screen seasonal experience without UI components"
+            >
+              <span>Immersive</span>
+              <Maximize2 className="h-3.5 w-3.5 text-white/70 group-hover:text-white transition-colors" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsImmersive(false)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group"
+              title="Exit full-screen seasonal experience (Esc)"
+            >
+              <span>Immersive</span>
+              <Minimize2 className="h-3.5 w-3.5 text-white/70 group-hover:text-white transition-colors" />
+            </button>
+          )}
+        </motion.div>
+      )}
+
       {/* ─── Passkey Setup Modal ─── */}
       {showPasskeyPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -434,7 +485,13 @@ const AdminLogin = () => {
       />
 
       {/* ─── Main content ─── */}
-      <div className="relative z-10 min-h-screen lg:h-screen flex flex-col lg:flex-row items-center justify-center">
+      <div
+        className={`relative z-10 min-h-screen lg:h-screen flex flex-col lg:flex-row items-center justify-center transition-all duration-500 ease-in-out ${
+          isImmersive
+            ? "opacity-0 scale-95 pointer-events-none invisible"
+            : "opacity-100 scale-100 visible"
+        }`}
+      >
         {/* ─── LEFT PANEL: Login card ─── */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
@@ -925,6 +982,9 @@ const AdminLogin = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Seasonal background layer */}
+      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
       {/* Hide scrollbar utility */}
       <style jsx="true" global="true">{`
