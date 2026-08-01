@@ -9,8 +9,8 @@
 .deepavali-sky {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, #0d1527 0%, #1e1b4b 25%, #4c1d95 48%, #9a3412 68%, #c2410c 82%, #d97706 92%, #f59e0b 100%);
-  opacity: 0.98;
+  background: radial-gradient(circle at 50% 100%, #2b0f4c 0%, #170529 50%, #080112 100%);
+  opacity: 0.95;
 }
 
 .deepavali-ground {
@@ -18,45 +18,8 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 20vh;
-  background: linear-gradient(to bottom, #5c3a21, #3d2412);
-  border-top: 4px solid #8d542d;
+  height: 25vh;
+  background: linear-gradient(to bottom, #150524, #05010a);
+  border-top: 2px solid rgba(255, 153, 51, 0.2);
   z-index: 1;
-}
-
-.kolam-pattern {
-  width: 100%;
-  height: 100%;
-  opacity: 0.4;
-}
-
-.diya {
-  position: absolute;
-  bottom: 1vh;
-  width: 80px;
-  height: 80px;
-  z-index: 2;
-  filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
-}
-
-.diya-1 {
-  left: 15vw;
-}
-
-.diya-2 {
-  right: 15vw;
-}
-
-.flame {
-  transform-origin: bottom center;
-  animation: flicker-flame 1s infinite alternate ease-in-out;
-}
-
-.flame-1 { animation-delay: 0s; }
-.flame-2 { animation-delay: 0.5s; }
-
-@keyframes flicker-flame {
-  0% { transform: scaleY(1) rotate(-2deg); fill: #ff9800; filter: drop-shadow(0 0 4px #ffc107); }
-  50% { transform: scaleY(1.1) rotate(0deg); fill: #ffeb3b; filter: drop-shadow(0 0 8px #ffeb3b); }
-  100% { transform: scaleY(0.9) rotate(2deg); fill: #ff5722; filter: drop-shadow(0 0 6px #ff9800); }
 }
