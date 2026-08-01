@@ -326,7 +326,7 @@ const AdminLogin = () => {
 
   return (
     <div
-      className="min-h-screen text-white overflow-hidden relative"
+      className="min-h-screen lg:h-screen text-white relative overflow-x-hidden overflow-y-auto lg:overflow-hidden flex flex-col justify-center"
       style={{
         background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
       }}
@@ -434,29 +434,29 @@ const AdminLogin = () => {
       />
 
       {/* ─── Main content ─── */}
-      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+      <div className="relative z-10 min-h-screen lg:h-screen flex flex-col lg:flex-row items-center justify-center">
         {/* ─── LEFT PANEL: Login card ─── */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
-          className="w-full lg:w-[48%] xl:w-[44%] flex items-center justify-center min-h-screen lg:min-h-0 p-6 sm:p-8 lg:p-8 xl:p-10"
+          className="w-full lg:w-[48%] xl:w-[44%] flex items-center justify-center min-h-screen lg:min-h-0 py-4 px-4 sm:p-6 lg:py-4 xl:py-6 lg:px-8"
         >
-          <div className="w-full max-w-sm lg:max-w-md">
-            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
+          <div className="w-full max-w-sm lg:max-w-md py-2">
+            <div className="lg:h-[130px] flex flex-col justify-end pb-1.5">
             {/* Brand header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex items-center gap-3 mb-4"
+              className="flex items-center gap-3 mb-2 sm:mb-3"
             >
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#00b4eb] to-[#50b748] rounded-2xl opacity-40 blur-sm group-hover:opacity-70 transition-opacity duration-500" />
                 <img
                   src={sltLogo}
                   alt="SLT Mobitel Logo"
-                  className="relative w-12 h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg"
+                  className="relative w-10 h-10 sm:w-11 sm:h-11 object-contain rounded-xl border-2 border-white/20 shadow-lg"
                 />
               </div>
               <div>
@@ -464,13 +464,13 @@ const AdminLogin = () => {
                   <img
                     src={talentHubLogo}
                     alt="TalentHub"
-                    className="h-6 w-auto rounded-md"
+                    className="h-5 sm:h-6 w-auto rounded-md"
                   />
-                  <h1 className="text-xl font-extrabold tracking-tight text-white">
+                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
                     TalentHub
                   </h1>
                 </div>
-                <p className="text-sm text-white/50 font-medium mt-0.5">
+                <p className="text-xs text-white/50 font-medium mt-0.5">
                   Administration Portal
                 </p>
               </div>
@@ -481,9 +481,9 @@ const AdminLogin = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.5 }}
-              className="mb-2"
+              className="mb-1"
             >
-              <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight tracking-tight flex items-center gap-2">
+              <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight flex items-center gap-2">
                 <span className="text-white">Admin</span>
                 <span
                   className="bg-clip-text text-transparent"
@@ -495,7 +495,7 @@ const AdminLogin = () => {
                   Access
                 </span>
               </h2>
-              <p className="text-white/60 mt-2 text-sm leading-relaxed max-w-sm">
+              <p className="text-white/60 mt-1 text-xs sm:text-sm leading-relaxed max-w-sm">
                 Sign in with your administrator credentials to manage
                 interns, attendance, and operations.
               </p>
@@ -507,7 +507,7 @@ const AdminLogin = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center min-h-[470px]"
+              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center h-[410px] sm:h-[420px]"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.1)",
@@ -524,12 +524,12 @@ const AdminLogin = () => {
                 }}
               />
 
-              <div className="p-5 sm:p-5 flex flex-col h-full">
+              <div className="p-4 sm:p-5 flex flex-col h-full justify-between">
                 {/* Session message */}
                 {sessionMsg && (
-                  <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/20">
+                  <div className="mb-2 flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/20">
                     <svg
-                      className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5"
+                      className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -539,7 +539,7 @@ const AdminLogin = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <span className="text-sm text-amber-200 font-medium">
+                    <span className="text-xs text-amber-200 font-medium">
                       {sessionMsg}
                     </span>
                   </div>
@@ -550,10 +550,10 @@ const AdminLogin = () => {
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-400/20"
+                    className="mb-2 flex items-start gap-2.5 p-2.5 rounded-xl bg-red-500/10 border border-red-400/20"
                   >
                     <svg
-                      className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"
+                      className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -563,7 +563,7 @@ const AdminLogin = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <span className="text-sm text-red-200 font-medium">
+                    <span className="text-xs text-red-200 font-medium">
                       {error}
                     </span>
                   </motion.div>
@@ -572,31 +572,31 @@ const AdminLogin = () => {
                 {/* Top Section */}
                 <div className="text-center mb-1 flex-shrink-0">
                   <div
-                    className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-1"
+                    className="w-10 h-10 sm:w-11 sm:h-11 mx-auto rounded-xl flex items-center justify-center mb-1"
                     style={{
                       background:
                         "linear-gradient(135deg, rgba(0,180,235,0.15), rgba(80,183,72,0.15))",
                       border: "1px solid rgba(0,180,235,0.2)",
                     }}
                   >
-                    <FaShieldAlt className="h-6 w-6 text-[#00b4eb]" />
+                    <FaShieldAlt className="h-5 w-5 text-[#00b4eb]" />
                   </div>
-                  <h3 className="text-base font-bold text-white mb-0.5">
+                  <h3 className="text-sm sm:text-base font-bold text-white mb-0.5">
                     Admin Login
                   </h3>
-                  <p className="text-white/50 text-sm">
+                  <p className="text-white/50 text-xs">
                     Enter your administrator credentials
                   </p>
                 </div>
 
                 {/* Middle Section */}
-                <div className="flex-1 flex flex-col justify-center mb-1">
+                <div className="flex-1 flex flex-col justify-center my-1">
                   {/* Login form */}
-                  <form onSubmit={handleSubmit} className="space-y-1.5 mb-3">
+                  <form onSubmit={handleSubmit} className="space-y-1 sm:space-y-1.5 mb-2 sm:mb-3">
                     {/* Email field */}
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaUser className="h-4 w-4 text-white/40" />
+                        <FaUser className="h-3.5 w-3.5 text-white/40" />
                       </div>
                       <input
                         id="admin-email"
@@ -606,7 +606,7 @@ const AdminLogin = () => {
                         required
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="autofill-fix block w-full pl-10 pr-3 py-2.5 rounded-xl text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
+                        className="autofill-fix block w-full pl-9 pr-3 py-2 rounded-xl text-xs sm:text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -626,7 +626,7 @@ const AdminLogin = () => {
                     {/* Password field */}
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaLock className="h-4 w-4 text-white/40" />
+                        <FaLock className="h-3.5 w-3.5 text-white/40" />
                       </div>
                       <input
                         id="admin-password"
@@ -636,7 +636,7 @@ const AdminLogin = () => {
                         required
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="autofill-fix block w-full pl-10 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
+                        className="autofill-fix block w-full pl-9 pr-9 py-2 rounded-xl text-xs sm:text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -657,9 +657,9 @@ const AdminLogin = () => {
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
-                          <FaEyeSlash className="h-4 w-4 text-white/40 hover:text-white/70 transition-colors" />
+                          <FaEyeSlash className="h-3.5 w-3.5 text-white/40 hover:text-white/70 transition-colors" />
                         ) : (
-                          <FaEye className="h-4 w-4 text-white/40 hover:text-white/70 transition-colors" />
+                          <FaEye className="h-3.5 w-3.5 text-white/40 hover:text-white/70 transition-colors" />
                         )}
                       </button>
                     </div>
@@ -668,7 +668,7 @@ const AdminLogin = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
                       style={{
                         background: "linear-gradient(135deg, #00b4eb, #50b748)",
                         boxShadow: "0 4px 15px rgba(0,180,235,0.3)",
@@ -684,12 +684,12 @@ const AdminLogin = () => {
                     >
                       {loading ? (
                         <>
-                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-t-2 border-b-2 border-white rounded-full animate-spin" />
                           <span>Authenticating...</span>
                         </>
                       ) : (
                         <>
-                          <FaShieldAlt className="h-4 w-4 transition-transform group-hover:scale-110" />
+                          <FaShieldAlt className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                           <span className="tracking-wider">ACCESS DASHBOARD</span>
                         </>
                       )}
@@ -700,9 +700,9 @@ const AdminLogin = () => {
                       type="button"
                       onClick={handlePasskeyLogin}
                       disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 group border border-[#00b4eb]/30 hover:border-[#00b4eb] bg-transparent mt-3"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 group border border-[#00b4eb]/30 hover:border-[#00b4eb] bg-transparent mt-2 sm:mt-2.5"
                     >
-                      <Fingerprint className="h-4 w-4 text-[#00b4eb]" />
+                      <Fingerprint className="h-3.5 w-3.5 text-[#00b4eb]" />
                       <span>SIGN IN WITH PASSKEY</span>
                     </button>
                   </form>
@@ -711,9 +711,9 @@ const AdminLogin = () => {
                 {/* Bottom Section */}
                 <div className="mt-auto flex-shrink-0">
                   {/* Divider */}
-                  <div className="flex items-center gap-3 mb-2">
+                  <div className="flex items-center gap-3 mb-1.5">
                     <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-white/30 font-medium uppercase tracking-wider">
+                    <span className="text-[10px] sm:text-xs text-white/30 font-medium uppercase tracking-wider">
                       or
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
@@ -722,7 +722,7 @@ const AdminLogin = () => {
                   {/* Intern Login redirect */}
                   <button
                     onClick={() => navigate("/")}
-                    className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
                     style={{
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -740,37 +740,36 @@ const AdminLogin = () => {
                         "rgba(255,255,255,0.08)";
                     }}
                   >
-                    <GraduationCap className="h-4 w-4 text-[#50b748] group-hover:text-[#50b748]" />
+                    <GraduationCap className="h-3.5 w-3.5 text-[#50b748] group-hover:text-[#50b748]" />
                     <span className="text-white/70 group-hover:text-white">
                       Login as Intern
                     </span>
-                    <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  <p className="text-center text-xs text-white/30 mt-1">
+                  <p className="text-center text-[11px] text-white/30 mt-1">
                     For interns and trainees only
-
                   </p>
                 </div>
               </div>
             </motion.div>
 
             {/* Footer */}
-            <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
+            <div className="lg:h-[70px] flex flex-col justify-start pt-3 sm:pt-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
-              className="text-center text-white/30 text-xs"
+              className="text-center text-white/30 text-[11px] sm:text-xs"
             >
-              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-2 sm:mb-3">
                 <img 
                   src={transzentLogo} 
                   alt="Transzent" 
-                  className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
+                  className="h-6 sm:h-8 w-auto rounded opacity-100 shadow-sm" 
                 />
               </div>
-              <div className="flex justify-center gap-4 mb-2">
+              <div className="flex justify-center gap-4 mb-1.5">
                 <a
                   href="#"
                   className="hover:text-[#00b4eb] transition-colors"
@@ -803,34 +802,31 @@ const AdminLogin = () => {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="hidden lg:flex lg:w-[52%] xl:w-[56%] relative items-center justify-center p-6 xl:p-8"
+          className="hidden lg:flex lg:w-[52%] xl:w-[56%] items-center justify-center p-4 xl:p-6"
         >
-          {/* Glass panel background */}
+          {/* Glass panel container */}
           <div
-            className="absolute inset-4 rounded-[2rem]"
+            className="relative z-10 w-full max-w-xl rounded-[2rem] p-5 xl:p-6 flex flex-col justify-between"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.06)",
               backdropFilter: "blur(20px)",
             }}
-          />
-
-          <div className="relative z-10 w-full max-w-xl">
-            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
+          >
             {/* Section header */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="text-center"
+              className="text-center mb-3"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-3">
-                <Sparkles className="h-4 w-4 text-[#50b748]" />
-                <span className="text-xs font-semibold text-white/70 tracking-wider uppercase">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 mb-2">
+                <Sparkles className="h-3.5 w-3.5 text-[#50b748]" />
+                <span className="text-[11px] font-semibold text-white/70 tracking-wider uppercase">
                   Full Control Panel
                 </span>
               </div>
-              <h2 className="text-2xl xl:text-3xl font-extrabold text-white leading-tight tracking-tight">
+              <h2 className="text-xl xl:text-2xl font-extrabold text-white leading-tight tracking-tight">
                 Administration,
                 <br />
                 <span
@@ -843,15 +839,14 @@ const AdminLogin = () => {
                   Empowered
                 </span>
               </h2>
-              <p className="text-white/50 mt-2 text-xs max-w-sm mx-auto leading-relaxed">
+              <p className="text-white/50 mt-1 text-[11px] xl:text-xs max-w-sm mx-auto leading-relaxed">
                 Comprehensive tools for managing interns, attendance systems,
                 leave requests, and workspace operations.
               </p>
             </motion.div>
-            </div>
 
             {/* Feature grid — showing top items from admin navLinks */}
-            <div className="grid grid-cols-2 gap-3 lg:h-[380px] overflow-y-auto hide-scrollbar">
+            <div className="grid grid-cols-2 gap-2.5 my-2 max-h-[360px] overflow-y-auto hide-scrollbar">
               {features.slice(0, 6).map((feature, index) => (
                 <motion.div
                   key={index}
@@ -861,8 +856,8 @@ const AdminLogin = () => {
                     delay: 0.5 + index * 0.08,
                     duration: 0.4,
                   }}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                  className="group rounded-xl p-3.5 cursor-default transition-all duration-300 flex flex-col justify-center"
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  className="group rounded-xl p-3 cursor-default transition-all duration-300 flex flex-col justify-center"
                   style={{
                     background: "rgba(255,255,255,0.04)",
                     border: "1px solid rgba(255,255,255,0.06)",
@@ -881,7 +876,7 @@ const AdminLogin = () => {
                   }}
                 >
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-all duration-300"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-all duration-300"
                     style={{
                       background: `${feature.color}15`,
                       color: feature.color,
@@ -892,7 +887,7 @@ const AdminLogin = () => {
                   <h3 className="text-xs font-bold text-white mb-0.5 tracking-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-[11px] text-white/45 leading-snug">
+                  <p className="text-[10px] xl:text-[11px] text-white/45 leading-snug">
                     {feature.description}
                   </p>
                 </motion.div>
@@ -900,12 +895,11 @@ const AdminLogin = () => {
             </div>
 
             {/* Bottom stats */}
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.5 }}
-              className="flex items-center justify-center gap-8"
+              className="flex items-center justify-center gap-8 pt-3 border-t border-white/5"
             >
               {[
                 { value: "13+", label: "Modules" },
@@ -914,7 +908,7 @@ const AdminLogin = () => {
               ].map((stat, i) => (
                 <div key={i} className="text-center">
                   <div
-                    className="text-base font-extrabold bg-clip-text text-transparent"
+                    className="text-sm sm:text-base font-extrabold bg-clip-text text-transparent"
                     style={{
                       backgroundImage:
                         "linear-gradient(135deg, #00b4eb, #50b748)",
@@ -922,13 +916,12 @@ const AdminLogin = () => {
                   >
                     {stat.value}
                   </div>
-                  <div className="text-xs text-white/35 font-medium mt-0.5">
+                  <div className="text-[11px] text-white/35 font-medium mt-0.5">
                     {stat.label}
                   </div>
                 </div>
               ))}
             </motion.div>
-            </div>
           </div>
         </motion.div>
       </div>
