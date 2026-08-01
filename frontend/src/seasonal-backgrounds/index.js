@@ -52,6 +52,13 @@ export const SEASONS = [
     endDay: 31,
   },
   {
+    key: "deepavali",
+    label: "Deepavali Festival",
+    month: 11,
+    day: 1,
+    endDay: 5,
+  },
+  {
     key: "christmas",
     label: "Christmas",
     month: 12,
@@ -65,6 +72,14 @@ export const SEASONS = [
  * Seasons without an entry fall back to the default gradient.
  */
 export const SEASON_COMPONENTS = {
+  "sinhala-tamil-new-year": () =>
+    import("./sinhala-tamil-new-year/AvuruduBackground").then((m) => ({
+      default: m.default,
+    })),
+  "deepavali": () =>
+    import("./deepavali/DeepavaliBackground").then((m) => ({
+      default: m.default,
+    })),
   "poson-festival": () =>
     import("./poson-festival/PosonBackground").then((m) => ({
       default: m.default,
