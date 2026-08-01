@@ -105,7 +105,7 @@ export const SEASON_COMPONENTS = {
  * @returns {string|null} The season key, or null for default
  */
 export function getActiveSeason(date = new Date()) {
-  return 'deepavali'
+  //return 'season_name'
   const month = date.getMonth() + 1; // 1-indexed
   const day = date.getDate();
 
