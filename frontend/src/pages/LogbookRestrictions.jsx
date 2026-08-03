@@ -439,8 +439,7 @@ const LogbookRestrictions = () => {
                 transition={{ delay: 0.05, duration: 0.2 }}
                 className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
               >
-                Interns restricted due to missing weekly submissions. Lift
-                access after supervisor approval.
+                Interns restricted due to submitting fewer than 3 logs in a working week (excluding weekends & public holidays). Lift access after supervisor approval.
               </motion.p>
             </div>
 

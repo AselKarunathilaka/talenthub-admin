@@ -9,6 +9,11 @@ const WeeklyNonSubmissionExcelService = require("../services/weeklyNonSubmission
 const axios = require("axios");
 const https = require("https");
 const talentTrailSyncSvc = require("../services/talentTrailSyncService");
+const {
+  getPastWorkingDays,
+  isWithinGracePeriod,
+  getActiveInternsQuery,
+} = require("../utils/workingDays");
 
 // Minimum number of daily logs an intern must submit within a weekly review
 // window to be considered compliant. Used by getNonSubmissionsWithinAWeek
@@ -40,29 +45,32 @@ const getDashboardStats = async (req, res) => {
       return res.status(200).json(dashboardStatsCache);
     }
 
-    // Calculate 5 working days ago
-    let workingDaysCount = 0;
-    let fiveWorkingDaysAgo = new Date();
-    while (workingDaysCount < 5) {
-      fiveWorkingDaysAgo.setDate(fiveWorkingDaysAgo.getDate() - 1);
-      const dayOfWeek = fiveWorkingDaysAgo.getDay();
-      if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-        workingDaysCount++;
-      }
-    }
-    fiveWorkingDaysAgo.setHours(0, 0, 0, 0);
+    // Past 5 working days (excluding weekends + SL public holidays)
+    const checkWindow = getPastWorkingDays(5);
 
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // Fetch active non-test, non-terminated interns
+    const activeQuery = getActiveInternsQuery();
 
-    // Run both queries in parallel
-    const [interns, submissionSummary] = await Promise.all([
-      // 1. Fetch all interns as plain objects (fast)
-      Intern.find({}).lean(),
+    const [interns, periodSummary, allTimeSummary] = await Promise.all([
+      // 1. Active interns only
+      Intern.find(activeQuery).lean(),
 
-      // 2. Aggregate DailyRecord collection:
-      //    For each intern, return only their latest submission date + count.
-      //    This is O(records) in the DB but returns only N rows (one per intern).
+      // 2. Count logs submitted within past 5 working days per intern
+      DailyRecord.aggregate([
+        {
+          $match: {
+            date: { $in: checkWindow },
+          },
+        },
+        {
+          $group: {
+            _id: "$internId",
+            periodLogsCount: { $sum: 1 },
+          },
+        },
+      ]),
+
+      // 3. Aggregate all-time records for totalRecords & latest submission
       DailyRecord.aggregate([
         {
           $group: {
@@ -74,53 +82,46 @@ const getDashboardStats = async (req, res) => {
       ]),
     ]);
 
-    // Build O(1) lookup map:  internId string → { latestSubmission, totalRecords }
-    const submissionMap = new Map();
-    for (const s of submissionSummary) {
-      if (s._id) {
-        submissionMap.set(s._id.toString(), {
-          latestSubmission: s.latestSubmission,
-          totalRecords: s.totalRecords,
+    // Build O(1) lookup maps
+    const periodMap = new Map();
+    for (const p of periodSummary) {
+      if (p._id) periodMap.set(p._id.toString(), p.periodLogsCount);
+    }
+
+    const allTimeMap = new Map();
+    for (const a of allTimeSummary) {
+      if (a._id) {
+        allTimeMap.set(a._id.toString(), {
+          latestSubmission: a.latestSubmission,
+          totalRecords: a.totalRecords,
         });
       }
     }
 
-    // Classify each intern as submitted / overdue / excused (grace period)
-    const overdueList = [];
+    const nonSubmissionsList = [];
     let submittedCount = 0;
     let excusedCount = 0;
     let totalRecords = 0;
 
     for (const intern of interns) {
       const key = intern._id.toString();
-      const summary = submissionMap.get(key);
-
+      const summary = allTimeMap.get(key);
       const latestSubmission = summary?.latestSubmission ?? null;
       const internTotalRec = summary?.totalRecords ?? 0;
       totalRecords += internTotalRec;
 
-      // New-intern grace period: interns still within their first 5
-      // working days (per Training_StartDate) are excused entirely —
-      // they're neither "overdue" nor counted as "submitted".
-      const internStartDate = intern.Training_StartDate
-        ? new Date(intern.Training_StartDate)
-        : null;
-      const gracePeriodEndDate = internStartDate
-        ? calculateGracePeriodEndDate(internStartDate)
-        : null;
-      const isWithinGracePeriod =
-        gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
+      const logsSubmittedInPeriod = periodMap.get(key) || 0;
+      const inGrace = isWithinGracePeriod(intern.Training_StartDate);
 
-      if (isWithinGracePeriod) {
+      if (inGrace) {
         excusedCount++;
+        submittedCount++; // Excused new interns count towards compliant active interns
         continue;
       }
 
-      // Overdue = never submitted, OR latest submission older than 5 working days
-      const isOverdue =
-        !latestSubmission || new Date(latestSubmission) < fiveWorkingDaysAgo;
-
-      if (isOverdue) {
+      if (logsSubmittedInPeriod >= MIN_WEEKLY_LOGS_REQUIRED) {
+        submittedCount++;
+      } else {
         const daysSince = latestSubmission
           ? Math.floor(
               (Date.now() - new Date(latestSubmission).getTime()) /
@@ -128,7 +129,7 @@ const getDashboardStats = async (req, res) => {
             )
           : null;
 
-        overdueList.push({
+        nonSubmissionsList.push({
           _id: intern._id,
           traineeId: intern.Trainee_ID,
           traineeName: intern.Trainee_Name,
@@ -140,11 +141,11 @@ const getDashboardStats = async (req, res) => {
             ? intern.Institute
             : "Not Specified",
           totalRecords: internTotalRec,
+          logsSubmitted: logsSubmittedInPeriod,
+          requiredLogs: MIN_WEEKLY_LOGS_REQUIRED,
           lastSubmission: latestSubmission,
           daysSinceLastSubmission: daysSince,
         });
-      } else {
-        submittedCount++;
       }
     }
 
@@ -152,9 +153,11 @@ const getDashboardStats = async (req, res) => {
       totalInterns: interns.length,
       totalRecords,
       submittedInterns: submittedCount,
-      overdueInterns: overdueList.length,
+      nonSubmittingInterns: nonSubmissionsList.length,
+      overdueInterns: nonSubmissionsList.length, // Backwards compatibility
       excusedInterns: excusedCount,
-      overdueList,
+      nonSubmissionsList,
+      overdueList: nonSubmissionsList, // Backwards compatibility
     };
 
     // Update cache
@@ -441,24 +444,12 @@ const searchInterns = async (req, res) => {
               )
             : null;
 
-          // Check if overdue (no submission in last 3 days), unless the
-          // intern is still within their new-intern grace period
-          const threeDaysAgo = new Date();
-          threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-          const todayEnd = new Date();
-          todayEnd.setHours(23, 59, 59, 999);
-          const internStartDate = intern.Training_StartDate
-            ? new Date(intern.Training_StartDate)
-            : null;
-          const gracePeriodEndDate = internStartDate
-            ? calculateGracePeriodEndDate(internStartDate)
-            : null;
-          const isWithinGracePeriod =
-            gracePeriodEndDate && todayEnd <= gracePeriodEndDate;
-          const isOverdue =
-            !isWithinGracePeriod &&
-            (!lastSubmission ||
-              new Date(lastSubmission.createdAt) < threeDaysAgo);
+          const checkWindow = getPastWorkingDays(5);
+          const periodLogsCount = internRecords.filter((r) =>
+            checkWindow.includes(r.date),
+          ).length;
+          const inGrace = isWithinGracePeriod(intern.Training_StartDate);
+          const isNonSubmitting = !inGrace && periodLogsCount < MIN_WEEKLY_LOGS_REQUIRED;
 
           return {
             _id: intern._id,
@@ -470,8 +461,9 @@ const searchInterns = async (req, res) => {
             totalRecords: internRecords.length,
             lastSubmission: lastSubmission ? lastSubmission.createdAt : null,
             daysSinceLastSubmission,
-            isOverdue,
-            isWithinGracePeriod: !!isWithinGracePeriod,
+            isOverdue: isNonSubmitting,
+            isNonSubmitting,
+            isWithinGracePeriod: !!inGrace,
             recentRecords: internRecords.slice(0, 5).map((record) => ({
               _id: record._id,
               date: record.date,
