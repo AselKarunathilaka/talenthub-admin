@@ -297,7 +297,7 @@ const AdminDashboard = () => {
       );
       notificationUtils.showSuccess(
         `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
-          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
+        `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
       console.error(
@@ -306,6 +306,62 @@ const AdminDashboard = () => {
       );
       notificationUtils.showError(
         "Failed to export weekly non-submissions within week CSV report",
+      );
+    }
+  };
+
+  const handleExportPreviousDayNonSubmissions = async () => {
+    try {
+      // Get "today" as a Sri Lanka calendar date (Asia/Colombo, UTC+5:30),
+      // regardless of the browser's local timezone.
+      const sriLankaFormatter = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Colombo",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      });
+      // "en-CA" locale formats as YYYY-MM-DD directly
+      const todayInSriLanka = sriLankaFormatter.format(new Date()); // e.g. "2026-07-31"
+
+      // Step back one calendar day using date-only arithmetic (avoids DST/timezone
+      // drift you'd get by subtracting milliseconds from a Date object)
+      const [y, m, d] = todayInSriLanka.split("-").map(Number);
+      const yesterday = new Date(Date.UTC(y, m - 1, d - 1));
+
+      // Skip weekends: if yesterday lands on Sat/Sun, roll back to Friday
+      const day = yesterday.getUTCDay(); // 0 = Sunday, 6 = Saturday
+      if (day === 0) yesterday.setUTCDate(yesterday.getUTCDate() - 2);
+      if (day === 6) yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+
+      const dateStr = yesterday.toISOString().split("T")[0];
+
+      const previousDayNonSubmissionsData = await adminApi.getWeeklyNonSubmissions({
+        startDate: dateStr,
+        endDate: dateStr,
+      });
+
+      previousDayNonSubmissionsData.nonSubmittedInterns = sortByTraineeId(
+        previousDayNonSubmissionsData.nonSubmittedInterns,
+      );
+
+      if (previousDayNonSubmissionsData.nonSubmittedInterns.length === 0) {
+        notificationUtils.showInfo(
+          "All interns submitted their logbook records for the previous working day.",
+        );
+        return;
+      }
+
+      await csvUtils.downloadInternReport(
+        previousDayNonSubmissionsData,
+        `weekly_non_submissions_previous_day_${dateStr}`,
+      );
+      notificationUtils.showSuccess(
+        `Previous day non-submissions CSV report with ${previousDayNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully.`,
+      );
+    } catch (error) {
+      console.error("Error exporting previous day non-submissions CSV:", error);
+      notificationUtils.showError(
+        "Failed to export previous day non-submissions CSV report",
       );
     }
   };
@@ -347,7 +403,7 @@ const AdminDashboard = () => {
       );
       notificationUtils.showSuccess(
         `Weekly non-submissions CSV report with ${weeklyNonSubmissionsData.nonSubmittedInterns.length} interns downloaded successfully. ` +
-          `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
+        `Period: ${weeklyNonSubmissionsData.weekPeriod}`,
       );
     } catch (error) {
       console.error("Error exporting weekly non-submissions CSV:", error);
@@ -444,101 +500,101 @@ const AdminDashboard = () => {
             </div>
 
             {/* ══════════════ KPI STAT CARDS ══════════════ */}
+            <motion.div
+              className="admin-dash-stats"
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              {[
+                {
+                  label: "Total Interns",
+                  value: loading
+                    ? "..."
+                    : dashboardStats?.totalInterns || 0,
+                  icon: FaUsers,
+                  accent: BRAND.primary,
+                  bg: BRAND.primaryLight,
+                  borderColor: "!border-blue-400/30",
+                  hoverBorderColor: "hover:!border-blue-400/60",
+                  shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
+                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,86,162,0.35)]"
+                },
+                {
+                  label: "Total Records",
+                  value: loading
+                    ? "..."
+                    : dashboardStats?.totalRecords || 0,
+                  icon: FaTasks,
+                  accent: BRAND.accent,
+                  bg: BRAND.accentLight,
+                  borderColor: "!border-cyan-400/30",
+                  hoverBorderColor: "hover:!border-cyan-400/60",
+                  shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
+                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
+                },
+                {
+                  label: "Submitted",
+                  value: loading
+                    ? "..."
+                    : dashboardStats?.submittedInterns || 0,
+                  icon: FaCheckCircle,
+                  accent: BRAND.success,
+                  bg: BRAND.successLight,
+                  borderColor: "!border-emerald-400/30",
+                  hoverBorderColor: "hover:!border-emerald-400/60",
+                  shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
+                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
+                },
+                {
+                  label: "Overdue",
+                  value: loading
+                    ? "..."
+                    : dashboardStats?.overdueInterns || 0,
+                  icon: FaExclamationTriangle,
+                  accent: BRAND.danger,
+                  bg: BRAND.dangerLight,
+                  borderColor: "!border-red-400/30",
+                  hoverBorderColor: "hover:!border-red-400/60",
+                  shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
+                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
+                },
+              ].map((stat, idx) => (
                 <motion.div
-                  className="admin-dash-stats"
-                  initial={{ opacity: 0, y: 15 }}
+                  key={stat.label}
+                  className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
+                  transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
-                  {[
-                    {
-                      label: "Total Interns",
-                      value: loading
-                        ? "..."
-                        : dashboardStats?.totalInterns || 0,
-                      icon: FaUsers,
-                      accent: BRAND.primary,
-                      bg: BRAND.primaryLight,
-                      borderColor: "!border-blue-400/30",
-                      hoverBorderColor: "hover:!border-blue-400/60",
-                      shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
-                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,86,162,0.35)]"
-                    },
-                    {
-                      label: "Total Records",
-                      value: loading
-                        ? "..."
-                        : dashboardStats?.totalRecords || 0,
-                      icon: FaTasks,
-                      accent: BRAND.accent,
-                      bg: BRAND.accentLight,
-                      borderColor: "!border-cyan-400/30",
-                      hoverBorderColor: "hover:!border-cyan-400/60",
-                      shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
-                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
-                    },
-                    {
-                      label: "Submitted",
-                      value: loading
-                        ? "..."
-                        : dashboardStats?.submittedInterns || 0,
-                      icon: FaCheckCircle,
-                      accent: BRAND.success,
-                      bg: BRAND.successLight,
-                      borderColor: "!border-emerald-400/30",
-                      hoverBorderColor: "hover:!border-emerald-400/60",
-                      shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
-                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
-                    },
-                    {
-                      label: "Overdue",
-                      value: loading
-                        ? "..."
-                        : dashboardStats?.overdueInterns || 0,
-                      icon: FaExclamationTriangle,
-                      accent: BRAND.danger,
-                      bg: BRAND.dangerLight,
-                      borderColor: "!border-red-400/30",
-                      hoverBorderColor: "hover:!border-red-400/60",
-                      shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
-                      hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
-                    },
-                  ].map((stat, idx) => (
-                    <motion.div
-                      key={stat.label}
-                      className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                  <div
+                    className="admin-dash-stat-card__icon"
+                    style={{ background: stat.bg }}
+                  >
+                    <stat.icon
+                      style={{ color: stat.accent, fontSize: 18 }}
+                    />
+                  </div>
+                  <div className="admin-dash-stat-card__text">
+                    <span
+                      className="admin-dash-stat-card__value"
+                      style={{ color: stat.accent }}
                     >
-                      <div
-                        className="admin-dash-stat-card__icon"
-                        style={{ background: stat.bg }}
-                      >
-                        <stat.icon
-                          style={{ color: stat.accent, fontSize: 18 }}
-                        />
-                      </div>
-                      <div className="admin-dash-stat-card__text">
-                        <span
-                          className="admin-dash-stat-card__value"
-                          style={{ color: stat.accent }}
-                        >
-                          {stat.value}
-                        </span>
-                        <span className="admin-dash-stat-card__label">
-                          {stat.label}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
+                      {stat.value}
+                    </span>
+                    <span className="admin-dash-stat-card__label">
+                      {stat.label}
+                    </span>
+                  </div>
                 </motion.div>
+              ))}
+            </motion.div>
 
             {/* ══════════════ SPOTLIGHT SEARCH ══════════════ */}
             <div className="mt-12 mb-8 relative w-full z-20">
-              <motion.div 
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 className={`relative bg-white/80 md:bg-white/20 md:backdrop-blur-3xl rounded-3xl border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10 shadow-[0_0_25px_rgba(0,180,235,0.35)]' : 'border-[#00b4eb]/20 hover:border-[#00b4eb]/60 shadow-[0_0_15px_rgba(0,180,235,0.15)] hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
               >
@@ -555,7 +611,7 @@ const AdminDashboard = () => {
                   <FaSpinner className="text-[#00b4eb] text-xl sm:text-2xl animate-spin ml-2 sm:ml-4 flex-shrink-0" />
                 )}
                 {searchTerm && !searchLoading && (
-                  <button 
+                  <button
                     onClick={() => { setSearchTerm(""); setHasSearched(false); setInternReport([]); }}
                     className="ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors"
                   >
@@ -574,16 +630,16 @@ const AdminDashboard = () => {
                     className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/90 md:bg-white/30 md:backdrop-blur-3xl rounded-3xl shadow-[0_0_25px_rgba(0,180,235,0.25)] border border-[#00b4eb]/40 max-h-[60vh] overflow-y-auto z-50 p-2 sm:p-3"
                   >
                     {!hasSearched ? (
-                       <div className="p-6 sm:p-10 text-center text-gray-400">
-                         <FaSpinner className="text-3xl animate-spin mx-auto mb-4 text-[#00b4eb]" />
-                         <p className="font-medium text-base sm:text-lg">Searching...</p>
-                       </div>
+                      <div className="p-6 sm:p-10 text-center text-gray-400">
+                        <FaSpinner className="text-3xl animate-spin mx-auto mb-4 text-[#00b4eb]" />
+                        <p className="font-medium text-base sm:text-lg">Searching...</p>
+                      </div>
                     ) : filteredInterns.length === 0 ? (
-                       <div className="p-6 sm:p-10 text-center text-gray-400">
-                         <FaUser className="text-4xl mx-auto mb-4 opacity-50" />
-                         <p className="font-medium text-base sm:text-lg">No interns found</p>
-                         <p className="text-xs sm:text-sm mt-2">Try adjusting your search query.</p>
-                       </div>
+                      <div className="p-6 sm:p-10 text-center text-gray-400">
+                        <FaUser className="text-4xl mx-auto mb-4 opacity-50" />
+                        <p className="font-medium text-base sm:text-lg">No interns found</p>
+                        <p className="text-xs sm:text-sm mt-2">Try adjusting your search query.</p>
+                      </div>
                     ) : (
                       <div className="flex flex-col gap-2">
                         <div className="px-4 py-2 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-50 mb-2">
@@ -596,13 +652,13 @@ const AdminDashboard = () => {
                             className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-all duration-300 border border-transparent hover:border-[#00b4eb]/30 hover:shadow-[0_0_15px_rgba(0,180,235,0.1)] group"
                           >
                             <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
-                              <img 
-                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`} 
+                              <img
+                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
                                 alt={intern.traineeName}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={(e) => {
                                   e.target.style.display = 'none';
-                                  if(e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
                                 }}
                               />
                               <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
@@ -640,9 +696,9 @@ const AdminDashboard = () => {
                 </div>
                 <h3 className="text-2xl font-extrabold text-gray-900">Reports & Exports</h3>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-3 sm:gap-6">
-                
+
                 {/* Submissions List */}
                 <motion.button
                   onClick={handleExportSubmittedCSV}
@@ -691,10 +747,26 @@ const AdminDashboard = () => {
                   </div>
                 </motion.button>
 
+                {/* Previous Day Non-Submissions */}
+                <motion.button
+                  onClick={handleExportPreviousDayNonSubmissions}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(0,86,162,0.15)] border border-[#0056a2]/20 hover:shadow-[0_0_25px_rgba(0,86,162,0.35)] hover:border-[#0056a2]/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
+                >
+                  <div className="p-3 sm:p-4 bg-[#0056a2]/10 text-[#0056a2] rounded-xl sm:rounded-2xl group-hover:bg-[#0056a2] group-hover:text-white transition-colors">
+                    <FaClock className="text-2xl sm:text-3xl" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Previous Day</h4>
+                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Non-submissions report for the previous working day.</p>
+                  </div>
+                </motion.button>
+
               </div>
-              
+
               {/* Custom Date Non-Submissions */}
-              <motion.div 
+              <motion.div
                 whileHover={{ scale: 1.02 }}
                 className="mt-8 bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-6 rounded-3xl shadow-[0_0_15px_rgba(100,116,139,0.15)] border border-slate-400/20 hover:shadow-[0_0_25px_rgba(100,116,139,0.35)] hover:border-slate-400/60 flex flex-col md:flex-row items-center gap-6 transition-all duration-300"
               >
