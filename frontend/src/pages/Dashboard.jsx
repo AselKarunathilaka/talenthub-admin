@@ -758,6 +758,92 @@ const Dashboard = () => {
                         </div>
                       );
                     })()}
+
+                  {/* Daily Attendance Rate */}
+                  {internData.Training_StartDate &&
+                    (() => {
+                      // attendanceHistory = response.dailyAttendance from /interns/attendance/:id
+                      // It already merges: DailyRecord logbook submissions + FaceAttendanceLog + intern.attendance daily entries
+                      // Each entry has { date, status: "Present"|"Late"|"Absent", ... }
+                      const toDayKey = (dateVal) => {
+                        const date = dateVal ? new Date(dateVal) : null;
+                        if (!date || isNaN(date.getTime())) return null;
+                        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                      };
+
+                      // Count unique days where intern was present (Present or Late counts as attended)
+                      const daysPresent = new Set(
+                        attendanceHistory
+                          .filter((e) => {
+                            const s = (e.status || "").toLowerCase();
+                            return s === "present" || s === "late";
+                          })
+                          .map((e) => toDayKey(e.date))
+                          .filter(Boolean),
+                      ).size;
+
+                      const start = new Date(internData.Training_StartDate);
+                      const end = internData.Training_EndDate
+                        ? new Date(internData.Training_EndDate)
+                        : null;
+                      const now = new Date();
+                      const measureTo = end && now > end ? end : now;
+                      if (isNaN(start.getTime()) || measureTo <= start) return null;
+
+                      // Count weekdays (Mon-Fri) from training start to today (or end date)
+                      let expectedDays = 0;
+                      let curDate = new Date(start);
+                      curDate.setHours(0, 0, 0, 0);
+                      const endCap = new Date(measureTo);
+                      endCap.setHours(0, 0, 0, 0);
+                      while (curDate <= endCap) {
+                        const day = curDate.getDay();
+                        if (day !== 0 && day !== 6) expectedDays++;
+                        curDate.setDate(curDate.getDate() + 1);
+                      }
+                      expectedDays = Math.max(1, expectedDays);
+
+                      const pct = Math.min(
+                        100,
+                        Math.round((daysPresent / expectedDays) * 100),
+                      );
+                      const color =
+                        pct >= 80
+                          ? "#3b82f6"
+                          : pct >= 50
+                            ? "#8b5cf6"
+                            : "#ec4899";
+                      const textColor =
+                        pct >= 80
+                          ? "text-blue-500"
+                          : pct >= 50
+                            ? "text-purple-500"
+                            : "text-pink-500";
+                      return (
+                        <div className="pt-3 border-t border-gray-100 mt-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                              Daily Attendance
+                            </p>
+                            <span className={`text-sm font-black ${textColor}`}>
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-1.5">
+                            <div
+                              className="h-2 rounded-full transition-all duration-700"
+                              style={{
+                                width: `${pct}%`,
+                                background: `linear-gradient(90deg, ${color}, ${color}bb)`,
+                              }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-gray-400">
+                            {daysPresent} day{daysPresent !== 1 ? "s" : ""} attended out of {expectedDays} expected working days
+                          </p>
+                        </div>
+                      );
+                    })()}
                 </div>
               </div>
 

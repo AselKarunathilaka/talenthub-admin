@@ -747,6 +747,96 @@ const AdminInternDetails = () => {
                                 </div>
                               );
                             })()}
+
+                          {/* Daily Attendance Rate */}
+                          {attendanceData &&
+                            intern.startDate &&
+                            (() => {
+                              // attendanceData.dailyAttendance is already the authoritative merged list from backend:
+                              // It combines DailyRecord logbook submissions + FaceAttendanceLog face scans + intern.attendance daily entries
+                              // Each entry: { date, status: "Present"|"Late"|"Absent", ... }
+                              const toDayKey = (dateVal) => {
+                                const date = dateVal ? new Date(dateVal) : null;
+                                if (!date || isNaN(date.getTime())) return null;
+                                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                              };
+
+                              // Count unique days where intern was present (Present or Late counts as attended)
+                              const daysPresent = new Set(
+                                (attendanceData.dailyAttendance || [])
+                                  .filter((e) => {
+                                    const s = (e.status || "").toLowerCase();
+                                    return s === "present" || s === "late";
+                                  })
+                                  .map((e) => toDayKey(e.date))
+                                  .filter(Boolean),
+                              ).size;
+
+                              const start = new Date(intern.startDate);
+                              const end = intern.endDate
+                                ? new Date(intern.endDate)
+                                : null;
+                              const now = new Date();
+                              const measureTo = end && now > end ? end : now;
+                              if (isNaN(start.getTime()) || measureTo <= start) return null;
+
+                              // Count weekdays (Mon–Fri) from training start to today (or end date)
+                              let expectedDays = 0;
+                              let curDate = new Date(start);
+                              curDate.setHours(0, 0, 0, 0);
+                              const endCap = new Date(measureTo);
+                              endCap.setHours(0, 0, 0, 0);
+                              while (curDate <= endCap) {
+                                const day = curDate.getDay();
+                                if (day !== 0 && day !== 6) expectedDays++;
+                                curDate.setDate(curDate.getDate() + 1);
+                              }
+                              expectedDays = Math.max(1, expectedDays);
+
+                              const pct = Math.min(
+                                100,
+                                Math.round((daysPresent / expectedDays) * 100),
+                              );
+                              const color =
+                                pct >= 80
+                                  ? "#3b82f6"
+                                  : pct >= 50
+                                    ? "#8b5cf6"
+                                    : "#ec4899";
+                              const textColor =
+                                pct >= 80
+                                  ? "text-blue-500"
+                                  : pct >= 50
+                                    ? "text-purple-500"
+                                    : "text-pink-500";
+                              return (
+                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                                  <div className="flex items-center justify-between mb-1.5">
+                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                      <FaChartLine className="text-slate-400" />{" "}
+                                      Daily Attendance Rate
+                                    </p>
+                                    <span
+                                      className={`text-sm font-black ${textColor}`}
+                                    >
+                                      {pct}%
+                                    </span>
+                                  </div>
+                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-2 rounded-full transition-all duration-700"
+                                      style={{
+                                        width: `${pct}%`,
+                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
+                                      }}
+                                    />
+                                  </div>
+                                  <p className="text-[10px] text-slate-400 mt-1">
+                                    {daysPresent} day{daysPresent !== 1 ? "s" : ""} attended out of {expectedDays} expected working days
+                                  </p>
+                                </div>
+                              );
+                            })()}
                         </div>
                       </div>
                     </motion.div>
