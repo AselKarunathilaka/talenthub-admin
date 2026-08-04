@@ -380,11 +380,14 @@ export const adminApi = {
   },
 
   // Generate QR Code
-  generateQRCode: async (type = "meeting", projectName = "") => {
+  generateQRCode: async (type = "meeting", projectName = "", limit = null) => {
     try {
       let url = `${API_BASE_URL}/qrcode/generate-qrcode?type=${type}`;
       if (type === "meeting" && projectName) {
         url += `&projectName=${encodeURIComponent(projectName)}`;
+      }
+      if (limit) {
+        url += `&limit=${limit}`;
       }
 
       const response = await fetch(url, {
@@ -399,6 +402,42 @@ export const adminApi = {
       return await response.json();
     } catch (error) {
       console.error("Error generating QR code:", error);
+      throw error;
+    }
+  },
+
+  getQrSessionStatus: async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/qrcode/session/${sessionId}`, {
+        method: "GET",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get session status: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error fetching QR session status:", error);
+      throw error;
+    }
+  },
+
+  expireQrSession: async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/qrcode/session/${sessionId}/expire`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to expire session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error expiring QR session:", error);
       throw error;
     }
   },
