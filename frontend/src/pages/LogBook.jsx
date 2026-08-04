@@ -29,6 +29,9 @@ import {
   FiCheck,
   FiSend,
   FiLock,
+  FiShield,
+  FiCode,
+  FiDatabase,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
@@ -963,6 +966,22 @@ const Logbook = () => {
       icon: <FiMonitor />,
     },
     { value: "DataScience", label: "Data Science", icon: <FiServer /> },
+    {
+      value: "Business Analyst",
+      label: "Business Analyst",
+      icon: <FiTarget />,
+    },
+    {
+      value: "Cyber Security",
+      label: "Cyber Security",
+      icon: <FiShield />,
+    },
+    { value: "Java", label: "Java", icon: <FiCode /> },
+    {
+      value: "MERN Stack",
+      label: "MERN Stack",
+      icon: <FiDatabase />,
+    },
   ];
 
   /* ──────────────────────────────────────────────────────────────────────── */
