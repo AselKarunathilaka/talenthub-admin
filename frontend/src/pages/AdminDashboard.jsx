@@ -417,11 +417,11 @@ const AdminDashboard = () => {
   const filteredInterns = internReport || [];
 
   const getStatusBadge = (intern) => {
-    if (intern.isOverdue) {
+    if (intern.isNonSubmitting || intern.isOverdue) {
       return (
         <span className="admin-dash-badge admin-dash-badge--danger">
           <FaExclamationTriangle className="mr-1" />
-          Overdue
+          Non-Submitting
         </span>
       );
     } else if (intern.totalRecords === 0) {
@@ -547,10 +547,10 @@ const AdminDashboard = () => {
                   hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
                 },
                 {
-                  label: "Overdue",
+                  label: "Non-Submissions",
                   value: loading
                     ? "..."
-                    : dashboardStats?.overdueInterns || 0,
+                    : (dashboardStats?.nonSubmittingInterns ?? dashboardStats?.overdueInterns ?? 0),
                   icon: FaExclamationTriangle,
                   accent: BRAND.danger,
                   bg: BRAND.dangerLight,
