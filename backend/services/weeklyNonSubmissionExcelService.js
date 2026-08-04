@@ -5,119 +5,15 @@ const moment = require("moment");
 const XLSX = require("xlsx");
 const fs = require("fs");
 const path = require("path");
+const {
+  getPastWorkingDays,
+  isWithinGracePeriod,
+  getActiveInternsQuery,
+} = require("../utils/workingDays");
 
 // ── Minimum number of daily logs an intern must submit within the check
 // window (past 5 working days) to be considered compliant. ─────────────────
 const MIN_LOGS_REQUIRED = 3;
-
-// ---------------------------------------------------------------------------
-// Sri Lankan Public Holidays (shared helper)
-// ---------------------------------------------------------------------------
-function getSriLankanHolidays(years) {
-  const yearList = Array.isArray(years) ? years : [years];
-  const holidays = new Set();
-
-  yearList.forEach((y) => {
-    const fixed = [`${y}-01-01`, `${y}-02-04`, `${y}-05-01`, `${y}-12-25`];
-    fixed.forEach((d) => holidays.add(d));
-
-    const lunarApprox = {
-      2024: [
-        "2024-01-15",
-        "2024-02-23",
-        "2024-03-25",
-        "2024-04-12",
-        "2024-04-13",
-        "2024-04-14",
-        "2024-05-23",
-        "2024-05-24",
-        "2024-06-17",
-        "2024-06-21",
-        "2024-07-20",
-        "2024-08-19",
-        "2024-09-17",
-        "2024-10-02",
-        "2024-10-17",
-        "2024-10-31",
-        "2024-11-15",
-        "2024-12-15",
-      ],
-      2025: [
-        "2025-01-14",
-        "2025-02-26",
-        "2025-03-14",
-        "2025-03-31",
-        "2025-04-13",
-        "2025-04-14",
-        "2025-05-12",
-        "2025-05-13",
-        "2025-06-06",
-        "2025-06-07",
-        "2025-07-05",
-        "2025-08-03",
-        "2025-09-01",
-        "2025-09-05",
-        "2025-10-01",
-        "2025-10-20",
-        "2025-10-30",
-        "2025-11-29",
-      ],
-      2026: [
-        "2026-01-14",
-        "2026-02-15",
-        "2026-03-03",
-        "2026-03-20",
-        "2026-04-02",
-        "2026-04-13",
-        "2026-04-14",
-        "2026-05-01",
-        "2026-05-02",
-        "2026-05-28",
-        "2026-05-30",
-        "2026-06-29",
-        "2026-07-28",
-        "2026-08-27",
-        "2026-09-10",
-        "2026-09-25",
-        "2026-11-09",
-        "2026-11-24",
-        "2026-12-23",
-      ],
-    };
-
-    if (lunarApprox[y]) {
-      lunarApprox[y].forEach((d) => holidays.add(d));
-    }
-  });
-
-  return holidays;
-}
-
-/**
- * Returns the past N working days (excluding weekends + SL public holidays),
- * going backwards from (but NOT including) today.
- */
-function getPastWorkingDays(count) {
-  const today = moment().startOf("day");
-  const years = new Set([today.year()]);
-  // include prior year in case we cross a year boundary
-  years.add(today.year() - 1);
-  const holidays = getSriLankanHolidays([...years]);
-
-  const days = [];
-  const cursor = today.clone().subtract(1, "day");
-
-  while (days.length < count) {
-    const dow = cursor.day();
-    const dateStr = cursor.format("YYYY-MM-DD");
-    if (dow !== 0 && dow !== 6 && !holidays.has(dateStr)) {
-      days.push(dateStr);
-    }
-    cursor.subtract(1, "day");
-  }
-
-  return days; // most-recent first; reverse() for chronological order
-}
 
 class WeeklyNonSubmissionExcelService {
   // ── Period helpers ────────────────────────────────────────────────────────
@@ -133,19 +29,11 @@ class WeeklyNonSubmissionExcelService {
   // ── New-intern guard ──────────────────────────────────────────────────────
 
   /**
-   * An intern is considered "new" if their Training_StartDate falls within the
-   * check window (i.e. they joined during the period being reviewed).
-   * New interns are excluded from the report — they can't be expected to have
-   * submitted logs for days before they started.
+   * An intern is considered "new" if they are still within their 5-working-day grace period.
    */
   static isNewIntern(intern) {
     if (!intern.Training_StartDate) return false;
-
-    const window = this.getCheckWindow();
-    const windowStart = moment(window[window.length - 1]); // earliest day
-    const trainingStart = moment(intern.Training_StartDate).startOf("day");
-
-    return trainingStart.isSameOrAfter(windowStart);
+    return isWithinGracePeriod(intern.Training_StartDate);
   }
 
   // ── Log-submission check ──────────────────────────────────────────────────
@@ -213,25 +101,7 @@ class WeeklyNonSubmissionExcelService {
 
   static async getActiveInterns() {
     try {
-      const currentDate = new Date();
-
-      const activeInterns = await Intern.find({
-        $and: [
-          {
-            $or: [
-              { Training_StartDate: { $lte: currentDate } },
-              { Training_StartDate: { $exists: false } },
-            ],
-          },
-          {
-            $or: [
-              { Training_EndDate: { $gte: currentDate } },
-              { Training_EndDate: { $exists: false } },
-            ],
-          },
-        ],
-      });
-
+      const activeInterns = await Intern.find(getActiveInternsQuery());
       return activeInterns;
     } catch (error) {
       console.error("Error fetching active interns:", error);

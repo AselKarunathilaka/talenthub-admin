@@ -169,25 +169,17 @@ const markDailyAttendance = async ({
   let dailyAttendanceMarked = false;
   try {
     await session.withTransaction(async () => {
-      if (existingDailyRecord) {
-        await DailyRecord.updateOne(
-          {
-            internId,
-            date: today,
-            $or: [
-              { attendance: { $ne: "present" } },
-              { attendanceTime: null },
-            ],
+      await DailyRecord.updateOne(
+        { internId, date: today },
+        {
+          $set: {
+            attendance: "present",
+            attendanceTime,
+            traineeId: intern.Trainee_ID,
           },
-          {
-            $set: {
-              attendance: "present",
-              attendanceTime,
-            },
-          },
-          { session },
-        );
-      }
+        },
+        { session, upsert: true },
+      );
 
       const currentDailyAttendance = await Intern.findOne({
         _id: internId,
@@ -335,7 +327,7 @@ const markDailyAttendance = async ({
         {
           $push: {
             attendance: {
-              date: todayStart.toDate(),
+              date: new Date(`${today}T00:00:00.000Z`),
               status: "Present",
               type: method,
               timeMarked: attendanceTime,

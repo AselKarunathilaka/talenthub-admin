@@ -382,6 +382,7 @@ const Logbook = () => {
   const [projectAccessBlocked, setProjectAccessBlocked] = useState(null);
   const [extendedLeaveBlocked, setExtendedLeaveBlocked] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [leaveLimitReached, setLeaveLimitReached] = useState(false);
 
   /* ── ★ New: logbook restriction state ── */
   const [logbookRestriction, setLogbookRestriction] = useState({
@@ -546,8 +547,28 @@ const Logbook = () => {
           } else {
             setExtendedLeaveBlocked(false);
           }
+
+          // Calculate start and end of the current week (Monday-Sunday)
+          const getStartOfWeek = (d) => {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(date.setDate(diff)).setHours(0,0,0,0);
+          };
+          
+          const startOfWeek = getStartOfWeek(sriLankanTime);
+          const endOfWeek = startOfWeek + 7 * 24 * 60 * 60 * 1000 - 1;
+
+          const onLeaveRecordsThisWeek = records.filter(r => {
+            if (r.status !== "leave") return false;
+            const rTime = new Date(r.date).getTime();
+            return rTime >= startOfWeek && rTime <= endOfWeek;
+          });
+
+          setLeaveLimitReached(onLeaveRecordsThisWeek.length >= 2);
         } else {
           setExtendedLeaveBlocked(false);
+          setLeaveLimitReached(false);
         }
       } catch (err) {
         console.error("Extended leave check failed:", err);
@@ -1008,7 +1029,9 @@ const Logbook = () => {
       description: "Taking time off today",
       icon: FiUmbrella,
       palette: STATUS_PALETTES.leave,
-      disabled: timeRestriction.isAfter10AM,
+      disabled: timeRestriction.isAfter10AM || leaveLimitReached,
+      disabledReason: leaveLimitReached ? "Leave limit reached" : "Closed after 10:00 AM",
+      disabledSubText: leaveLimitReached ? "Maximum 2 leaves per week" : `Now: ${timeRestriction.currentTime}`,
     },
   ];
 
@@ -1909,8 +1932,13 @@ const Logbook = () => {
                                             gap: 4,
                                           }}
                                         >
-                                          <FiClock size={12} /> Closed after
-                                          10:00 AM
+                                          {opt.disabledReason === "Leave limit reached" ? (
+                                            <FiAlertCircle size={12} />
+                                          ) : (
+                                            <FiClock size={12} />
+                                          )}
+                                          {" "}
+                                          {opt.disabledReason || "Closed after 10:00 AM"}
                                         </span>
                                         <span
                                           style={{
@@ -1920,7 +1948,7 @@ const Logbook = () => {
                                             marginTop: 2,
                                           }}
                                         >
-                                          Now: {timeRestriction.currentTime}
+                                          {opt.disabledSubText || `Now: ${timeRestriction.currentTime}`}
                                         </span>
                                       </div>
                                     )}

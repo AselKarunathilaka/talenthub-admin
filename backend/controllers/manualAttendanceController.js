@@ -1,5 +1,6 @@
 const Intern = require("../models/Intern");
 const moment = require("moment-timezone");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const TZ = "Asia/Colombo";
 
@@ -319,5 +320,73 @@ exports.uploadAttendancePdf = async (req, res) => {
       error: "Failed to process PDF file"
     });
 
+  }
+};
+
+// ---------------------------------------------------------------------------
+// POST /admin/manual-attendance/extract-ids-from-images
+// Upload image files containing attendance sheets, uses Gemini to extract IDs
+// ---------------------------------------------------------------------------
+exports.extractIdsFromImages = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: "No images provided" });
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: "API_KEY is not configured on the server." });
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const requestOptions = {};
+    if (process.env.GEMINI_BASE_URL) {
+      requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+    }
+    
+    // Use gemini-3.1-flash-lite to match the logbook API
+    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" }, requestOptions);
+
+    const prompt = `Please extract all 4-digit numeric Intern IDs from this attendance sheet. Look for numbers between 3000 and 9999. Return ONLY a comma-separated list of the extracted numbers. Do not include any other text or explanation. Ignore dates, times, page numbers, or other non-ID text.`;
+    
+    const allFoundIds = [];
+
+    // Process each image separately for maximum accuracy
+    await Promise.all(
+      req.files.map(async (file) => {
+        try {
+          const imagePart = {
+            inlineData: {
+              data: file.buffer.toString("base64"),
+              mimeType: file.mimetype,
+            },
+          };
+
+          const result = await model.generateContent([prompt, imagePart]);
+          const responseText = result.response.text();
+
+          const words = responseText.split(/[\s,]+/);
+          words.forEach((word) => {
+            const cleanWord = word.replace(/[^0-9]/g, "");
+            if (/^\d{4}$/.test(cleanWord)) {
+              const id = Number(cleanWord);
+              if (id >= 3000 && id <= 9999) {
+                allFoundIds.push(cleanWord);
+              }
+            }
+          });
+        } catch (err) {
+          console.error("Vision processing error for one file:", err);
+        }
+      })
+    );
+
+    const uniqueIds = [...new Set(allFoundIds)];
+    
+    return res.json({ success: true, ids: uniqueIds });
+
+  } catch (error) {
+    console.error("extractIdsFromImages error:", error);
+    return res.status(500).json({ error: "Failed to extract IDs" });
   }
 };

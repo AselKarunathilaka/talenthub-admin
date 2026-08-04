@@ -478,10 +478,8 @@ const getAttendanceByInternId = async (req, res) => {
         .filter((log) => log.method === "face" && !log.qrBackupUsed)
         .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
     );
-    dailyAttendanceByDate.forEach((attendance, dateKey) => {
-      attendance.method = directFaceDates.has(dateKey)
-        ? "face recognition"
-        : normalizeAttendanceMethod(attendance.entry.type);
+    dailyAttendanceByDate.forEach((attendance) => {
+      attendance.method = normalizeAttendanceMethod(attendance.entry.type);
     });
     const dailyRecordMeetingKeys = new Set();
 
@@ -549,55 +547,59 @@ const getAttendanceByInternId = async (req, res) => {
       });
     }
 
-    // Add recent attendance from dailyRecords (new QR system)
+    // Add recent attendance from dailyRecords (logbook submissions)
+    // NOTE: DailyRecord has NO 'attendance' field — it uses 'status': working | leave | wfh | study_leave
+    // A logbook submission means the intern was physically present/working that day.
     dailyRecords.forEach((record) => {
-      // Add daily attendance if it exists (NEW QR scanned daily attendance goes to Daily section)
-      if (record.attendance && record.attendance !== "absent") {
-        const matchingInternAttendance = dailyAttendanceByDate.get(
-          getDateKey(record.date),
-        );
-        const attendanceTimeValue =
-          record.attendanceTime ||
-          matchingInternAttendance?.markedAt ||
-          matchingInternAttendance?.entry?.date;
-        const attendanceTime = attendanceTimeValue
-          ? new Date(attendanceTimeValue)
-          : null;
-        const checkOutTime =
-          record.checkOutTime ||
-          matchingInternAttendance?.checkOutTime;
-        const meetingDerivedMethod = record.meetingAttendance
-          ?.map((meeting) => {
-            const projectName = meeting.projectName || meeting.meetingTitle;
-            return (
-              meeting.method ||
-              meetingMethodByKey.get(getMeetingKey(record.date, projectName))
-            );
-          })
-          .find(Boolean);
-        dailyAttendance.push({
-          date: record.date,
-          status:
-            record.attendance === "present"
-              ? "Present"
-              : record.attendance === "late"
-                ? "Late"
-                : "Absent",
-          type: "Daily",
-          recordStatus: record.status, // working | leave | wfh — used for Extended Leave / WFH colour coding (from doc4)
-          attendanceMethod:
-            matchingInternAttendance?.method ||
-            normalizeAttendanceMethod(meetingDerivedMethod) ||
-            "unknown",
-          checkInTime: attendanceTime
-            ? formatColomboTime(attendanceTime)
-            : null,
-          checkOutTime: checkOutTime
-            ? formatColomboTime(checkOutTime)
-            : null,
-          attendanceTime: attendanceTimeValue,
-        });
-      }
+      // Derive daily attendance status from record.status
+      // working / wfh  → Present
+      // leave / study_leave → Absent (still record it so it appears in the calendar)
+      const recordStatus = (record.status || "working").toLowerCase();
+      const derivedAttendanceStatus =
+        recordStatus === "leave" || recordStatus === "study_leave"
+          ? "Absent"
+          : "Present"; // working | wfh → Present
+
+      const matchingInternAttendance = dailyAttendanceByDate.get(
+        getDateKey(record.date),
+      );
+      const attendanceTimeValue =
+        record.attendanceTime ||
+        matchingInternAttendance?.markedAt ||
+        matchingInternAttendance?.entry?.date;
+      const attendanceTime = attendanceTimeValue
+        ? new Date(attendanceTimeValue)
+        : null;
+      const checkOutTime =
+        record.checkOutTime ||
+        matchingInternAttendance?.checkOutTime;
+      const meetingDerivedMethod = record.meetingAttendance
+        ?.map((meeting) => {
+          const projectName = meeting.projectName || meeting.meetingTitle;
+          return (
+            meeting.method ||
+            meetingMethodByKey.get(getMeetingKey(record.date, projectName))
+          );
+        })
+        .find(Boolean);
+      dailyAttendance.push({
+        date: record.date,
+        status: derivedAttendanceStatus,
+        type: "Daily",
+        recordStatus: record.status, // working | leave | wfh | study_leave — for calendar colour coding
+        attendanceMethod:
+          matchingInternAttendance?.method ||
+          normalizeAttendanceMethod(meetingDerivedMethod) ||
+          "logbook",
+        checkInTime: attendanceTime
+          ? formatColomboTime(attendanceTime)
+          : null,
+        checkOutTime: checkOutTime
+          ? formatColomboTime(checkOutTime)
+          : null,
+        attendanceTime: attendanceTimeValue,
+      });
+
 
       // Add meeting attendance if it exists (NEW QR scanned meeting attendance goes to Meeting section)
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
@@ -658,6 +660,7 @@ const getAttendanceByInternId = async (req, res) => {
               checkInTime: attendanceTime.toLocaleTimeString("en-US", {
                 hour: "2-digit",
                 minute: "2-digit",
+                timeZone: "Asia/Colombo",
               }),
               isMeeting: true,
             });
@@ -687,7 +690,7 @@ const getAttendanceByInternId = async (req, res) => {
           if (datesWithDailyRecord.has(dayKey)) return; // already covered by DailyRecord
 
           dailyAttendance.push({
-            date: entryDate,
+            date: dayKey,
             status: entry.status || "Present",
             type: "Daily",
             attendanceMethod: method || normalizeAttendanceMethod(entry.type),
