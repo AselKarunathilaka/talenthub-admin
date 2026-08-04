@@ -39,7 +39,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
-import logo from "../assets/sltlogo.jpg";
+import AdminNavigation from "../components/AdminNavigation";
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
 const getCalendarDays = (year, month) => {
@@ -57,40 +57,67 @@ const getCalendarDays = (year, month) => {
 const toDateKey = (date) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
-const getDailyMeta = (dailyMap, date) => {
+const getAttendanceMeta = (dailyMap, meetingMap, date, holidayChecker) => {
   if (!date) return null;
   const key = toDateKey(date);
-  const entry = dailyMap[key];
-  if (!entry) return { color: "#e5e7eb", label: "No Record" };
-  const st = (entry.status || "").toLowerCase();
-  if (st === "present") return { color: "#22c55e", label: "Present" };
-  if (st === "absent") return { color: "#f87171", label: "Absent" };
-  return { color: "#e5e7eb", label: "No Record" };
+  const dailyEntry = dailyMap[key];
+  const meetings = meetingMap[key] || [];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const isFuture = date > today;
+  const holiday = holidayChecker ? holidayChecker(date) : null;
+
+  const hasMeetingAttended = meetings.some(
+    (e) => (e.status || "").toLowerCase() === "present"
+  );
+  
+  // Check if daily entry is present AND is either face or qr (not logbook)
+  const isDailyPresent = dailyEntry && 
+    (dailyEntry.status || "").toLowerCase() === "present" &&
+    (dailyEntry.rawType === "face" || dailyEntry.rawType === "daily_qr");
+
+  if (isWeekend) return { bgClass: "bg-gray-50", textClass: "text-gray-400", isWeekend: true };
+  if (holiday) return { bgClass: "bg-yellow-50", textClass: "text-yellow-800", isHoliday: true, holidayName: holiday.name };
+  if (isFuture) return { bgClass: "bg-white", textClass: "text-gray-300", isFuture: true };
+
+  return { 
+    bgClass: "bg-white", 
+    textClass: "text-gray-700", 
+    hasMeetingAttended, 
+    isDailyPresent 
+  };
 };
 
-const getLogbookMeta = (recordMap, date) => {
+const getLogbookMeta = (recordMap, date, holidayChecker) => {
   if (!date) return null;
   const key = toDateKey(date);
   const rec = recordMap[key];
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
   const isWeekend = date.getDay() === 0 || date.getDay() === 6;
   const isFuture = date > today;
-  if (isWeekend || isFuture)
-    return {
-      color: "#f3f4f6",
-      label: "Weekend / Future",
-      textColor: "#9ca3af",
-    };
-  if (!rec) return { color: "#fecaca", label: "Missed", textColor: "#dc2626" };
+  const holiday = holidayChecker ? holidayChecker(date) : null;
+
+  if (isWeekend) return { bgClass: "bg-gray-50", textClass: "text-gray-400", isWeekend: true };
+  if (holiday) return { bgClass: "bg-yellow-50", textClass: "text-yellow-800", isHoliday: true, holidayName: holiday.name };
+  if (isFuture) return { bgClass: "bg-white", textClass: "text-gray-300", isFuture: true };
+
+  if (!rec) return { bgClass: "bg-white", textClass: "text-gray-400", label: "No Record", isMissing: true };
+  
   const st = (rec.status || "").toLowerCase();
-  if (st === "working")
-    return { color: "#bbf7d0", label: "Working", textColor: "#166534" };
-  if (st === "wfh")
-    return { color: "#ddd6fe", label: "WFH", textColor: "#5b21b6" };
-  if (st === "leave")
-    return { color: "#fde68a", label: "On Leave", textColor: "#92400e" };
-  return { color: "#bbf7d0", label: "Submitted", textColor: "#166534" };
+  if (st === "leave") return { bgClass: "bg-red-50", textClass: "text-red-700", label: "On Leave", isLeave: true };
+  
+  return { 
+    bgClass: "bg-green-50", 
+    textClass: "text-green-700", 
+    label: st === "wfh" ? "WFH" : st === "working" ? "Working" : "Submitted",
+    isWorking: st === "working",
+    isWfh: st === "wfh",
+    isSubmitted: true
+  };
 };
 
 const getGithubCommitPrefix = (message) => {
@@ -151,12 +178,57 @@ const AdminInternDetails = () => {
   // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
+  // ── Holidays ──────────────────────────────────────────────────────────────
+  const [holidays, setHolidays] = useState([]);
+
+  const fetchHolidays = useCallback(async (year) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/holidays/${year}`);
+      const data = await response.json();
+      if (data.holidays) {
+        setHolidays((prev) => {
+          // Merge new holidays, deduplicate by date string
+          const existing = new Map(prev.map((h) => [h.date, h]));
+          data.holidays.forEach((h) => existing.set(h.date, h));
+          return Array.from(existing.values());
+        });
+      }
+    } catch (error) {
+      console.error("Holiday fetch failed:", error);
+    }
+  }, []);
+
+  const getHolidayForDate = useCallback(
+    (date) => {
+      if (!date) return null;
+      return holidays.find((holiday) => {
+        const holidayDate = new Date(holiday.date);
+        return (
+          holidayDate.getDate() === date.getDate() &&
+          holidayDate.getMonth() === date.getMonth() &&
+          holidayDate.getFullYear() === date.getFullYear()
+        );
+      });
+    },
+    [holidays],
+  );
+
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
     fetchGitCommits();
     fetchCertAttendanceCount();
+    fetchHolidays(new Date().getFullYear());
   }, [internId]);
+
+  // Re-fetch holidays when calendar months change to a different year
+  useEffect(() => {
+    const years = new Set([
+      calendarMonth.getFullYear(),
+      logbookCalMonth.getFullYear(),
+    ]);
+    years.forEach((y) => fetchHolidays(y));
+  }, [calendarMonth, logbookCalMonth, fetchHolidays]);
 
   const fetchGitCommits = useCallback(async () => {
     if (gitCommitsData) return;
@@ -331,114 +403,8 @@ const AdminInternDetails = () => {
   const { intern, statistics } = internDetails;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Background blobs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{ y: [0, -30, 0], x: [0, 20, 0], rotate: [0, 5, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
-          animate={{ y: [0, 20, 0], x: [0, -20, 0], rotate: [0, -5, 0] }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-        />
-        <motion.div
-          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
-          animate={{ y: [0, -20, 0], x: [0, 15, 0], rotate: [0, 3, 0] }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-        <motion.div
-          className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
-          animate={{ y: [0, 25, 0], x: [0, -15, 0], rotate: [0, -3, 0] }}
-          transition={{
-            duration: 17,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3,
-          }}
-        />
-      </div>
-
-      {/* Navbar */}
-      <motion.header
-        className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-      >
-        <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-            <motion.div
-              className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-              onClick={() => {
-                localStorage.clear();
-                navigate("/admin-login");
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <motion.img
-                src={logo}
-                alt="SLT Logo"
-                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
-                whileHover={{ rotate: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              />
-              <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
-                  SLT Admin Portal
-                </span>
-                <span className="text-xs sm:text-sm text-gray-600 truncate">
-                  Intern Details
-                </span>
-              </div>
-            </motion.div>
-          </div>
-          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
-            <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
-              <motion.div
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center border border-gray-200 shadow-sm"
-                whileHover={{ scale: 1.1, rotate: 5 }}
-              >
-                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
-              </motion.div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">
-                  Administrator
-                </span>
-              </div>
-            </div>
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
-            >
-              <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* Main Content */}
-      <div className="pt-[4.5rem] sm:pt-[5.5rem]">
+    <AdminNavigation>
+      <div className="min-h-screen bg-[#f8fafc] text-gray-800">
         <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <div className="max-w-7xl mx-auto">
             {/* Page header */}
@@ -448,34 +414,24 @@ const AdminInternDetails = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <motion.button
-                  onClick={() => navigate("/admin/dashboard")}
-                  className="flex items-center px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all border border-gray-200 shadow-sm hover:shadow-md"
-                  whileHover={{ x: -3 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaArrowLeft className="mr-2" /> Back to Dashboard
-                </motion.button>
-                <div>
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                      Intern Profile
-                    </span>
-                  </h2>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    Detailed information and performance metrics
-                  </p>
-                </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
+                  <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
+                    Intern Profile
+                  </span>
+                </h2>
+                <p className="text-sm sm:text-base text-gray-600">
+                  Detailed information and performance metrics
+                </p>
               </div>
               <div className="w-full sm:w-auto">
                 {getStatusBadge(statistics)}
               </div>
             </motion.div>
 
-            {/* Tabs */}
-            <div className="mb-4 sm:mb-6 border-b border-gray-200">
-              <nav className="flex space-x-1 overflow-x-auto">
+            {/* Tabs — modern pill style */}
+            <div className="mb-4 sm:mb-6">
+              <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 border border-gray-200/60">
                 {["overview", "records", "attendance"].map((tab) => (
                   <button
                     key={tab}
@@ -483,16 +439,16 @@ const AdminInternDetails = () => {
                       setActiveTab(tab);
                       if (tab === "attendance") fetchAttendance();
                     }}
-                    className={`px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-t-lg transition-colors whitespace-nowrap flex-shrink-0 ${
+                    className={`px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab
-                        ? "bg-white text-blue-600 border-t border-l border-r border-gray-200"
-                        : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
                     {tab.charAt(0).toUpperCase() + tab.slice(1)}
                   </button>
                 ))}
-              </nav>
+              </div>
             </div>
 
             {/* Tab content */}
@@ -1641,170 +1597,88 @@ const AdminInternDetails = () => {
                               </div>
 
                               {/* Calendar grid */}
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                  <thead>
-                                    <tr>
-                                      {[
-                                        "Mon",
-                                        "Tue",
-                                        "Wed",
-                                        "Thu",
-                                        "Fri",
-                                        "Sat",
-                                        "Sun",
-                                      ].map((d) => (
-                                        <th
-                                          key={d}
-                                          className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]"
-                                        >
-                                          {d}
-                                        </th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {Array.from(
-                                      { length: Math.ceil(calDays.length / 7) },
-                                      (_, w) => (
-                                        <tr key={w}>
-                                          {calDays
-                                            .slice(w * 7, w * 7 + 7)
-                                            .map((day, di) => {
-                                              const dailyMeta = getDailyMeta(
-                                                dailyMap,
-                                                day,
-                                              );
-                                              const isToday =
-                                                day &&
-                                                day.toDateString() ===
-                                                  new Date().toDateString();
-                                              const dayKey = day
-                                                ? toDateKey(day)
-                                                : null;
-                                              const meetingsOnDay = dayKey
-                                                ? meetingMap[dayKey] || []
-                                                : [];
-                                              const hasMeetingPresent =
-                                                meetingsOnDay.some(
-                                                  (e) =>
-                                                    (
-                                                      e.status || ""
-                                                    ).toLowerCase() ===
-                                                    "present",
-                                                );
-                                              const hasMeetingMissed =
-                                                meetingsOnDay.some(
-                                                  (e) =>
-                                                    (
-                                                      e.status || ""
-                                                    ).toLowerCase() !==
-                                                    "present",
-                                                );
-                                              const hasMeeting =
-                                                meetingsOnDay.length > 0;
+                              {/* Calendar grid */}
+                              <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm">
+                                <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+                                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                                    <div
+                                      key={d}
+                                      className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0"
+                                    >
+                                      {d}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid grid-cols-7 auto-rows-fr">
+                                  {calDays.map((day, di) => {
+                                    if (!day) return <div key={di} className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50" />;
+                                    
+                                    const attMeta = getAttendanceMeta(dailyMap, meetingMap, day, getHolidayForDate);
+                                    const isToday = day.toDateString() === new Date().toDateString();
+                                    const dayKey = toDateKey(day);
 
-                                              const tooltipContent = day
-                                                ? (() => {
-                                                    let lines = [
-                                                      day.toLocaleDateString(
-                                                        "en-US",
-                                                        {
-                                                          weekday: "short",
-                                                          month: "short",
-                                                          day: "numeric",
-                                                        },
-                                                      ),
-                                                    ];
-                                                    lines.push(
-                                                      `Daily: ${dailyMeta?.label ?? "No Record"}`,
-                                                    );
-                                                    if (dailyMap[dayKey]?.time)
-                                                      lines.push(
-                                                        `Time: ${dailyMap[dayKey].time}`,
-                                                      );
-                                                    if (hasMeeting)
-                                                      meetingsOnDay.forEach(
-                                                        (m) =>
-                                                          lines.push(
-                                                            `Meeting: ${m.meetingName || "Meeting"} — ${m.status || "Unknown"}`,
-                                                          ),
-                                                      );
-                                                    return lines.join("\n");
-                                                  })()
-                                                : null;
-
-                                              return (
-                                                <td
-                                                  key={di}
-                                                  className="py-1 text-center"
-                                                >
-                                                  {day ? (
-                                                    <div className="flex flex-col items-center py-0.5">
-                                                      <div
-                                                        className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-110 shadow-sm ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
-                                                        style={{
-                                                          backgroundColor:
-                                                            dailyMeta?.color ??
-                                                            "#e5e7eb",
-                                                        }}
-                                                        onMouseEnter={(e) => {
-                                                          const r =
-                                                            e.currentTarget.getBoundingClientRect();
-                                                          setTooltip({
-                                                            x: r.left,
-                                                            y: r.top,
-                                                            label:
-                                                              tooltipContent,
-                                                            date: "",
-                                                          });
-                                                        }}
-                                                        onMouseLeave={() =>
-                                                          setTooltip(null)
-                                                        }
-                                                      >
-                                                        <span
-                                                          className={`text-[10px] sm:text-xs font-semibold ${
-                                                            dailyMeta?.label ===
-                                                            "Present"
-                                                              ? "text-white"
-                                                              : isToday
-                                                                ? "text-blue-700"
-                                                                : "text-gray-600"
-                                                          }`}
-                                                        >
-                                                          {day.getDate()}
-                                                        </span>
-                                                      </div>
-                                                      {/* Meeting indicator dots — larger and more visible */}
-                                                      {hasMeeting && (
-                                                        <div className="flex gap-1 mt-1">
-                                                          {hasMeetingPresent && (
-                                                            <span
-                                                              className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block shadow-sm ring-1 ring-blue-300"
-                                                              title="Meeting attended"
-                                                            />
-                                                          )}
-                                                          {hasMeetingMissed && (
-                                                            <span
-                                                              className="w-2.5 h-2.5 rounded-full bg-orange-400 inline-block shadow-sm ring-1 ring-orange-200"
-                                                              title="Meeting missed"
-                                                            />
-                                                          )}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  ) : (
-                                                    <div className="h-10" />
-                                                  )}
-                                                </td>
-                                              );
-                                            })}
-                                        </tr>
-                                      ),
-                                    )}
-                                  </tbody>
-                                </table>
+                                    const tooltipContent = (() => {
+                                      let lines = [
+                                        day.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
+                                      ];
+                                      if (attMeta?.isHoliday) {
+                                        lines.push(`Holiday: ${attMeta.holidayName}`);
+                                      }
+                                      const dailyE = dayKey ? dailyMap[dayKey] : null;
+                                      if (dailyE && (dailyE.status || "").toLowerCase() === "present") {
+                                        lines.push(`Daily: Present (${dailyE.rawType || "Unknown"})`);
+                                        if (dailyE.time) lines.push(`Time: ${dailyE.time}`);
+                                      }
+                                      const meetings = dayKey ? meetingMap[dayKey] || [] : [];
+                                      meetings.forEach((m) => {
+                                        lines.push(`Meeting: ${m.meetingName || "Meeting"} — ${m.status || "Unknown"}`);
+                                      });
+                                      return lines.join("\n");
+                                    })();
+                                    
+                                    return (
+                                      <div
+                                        key={di}
+                                        className={`min-h-[100px] border-b border-r border-gray-100 p-2 flex flex-col transition-colors relative ${attMeta?.bgClass || "bg-white"} hover:bg-gray-50`}
+                                        title={attMeta?.isHoliday ? attMeta.holidayName : ""}
+                                        onMouseEnter={(e) => {
+                                          const r = e.currentTarget.getBoundingClientRect();
+                                          setTooltip({ x: r.left, y: r.top, label: tooltipContent, date: "" });
+                                        }}
+                                        onMouseLeave={() => setTooltip(null)}
+                                      >
+                                        <div className="flex justify-between items-start mb-2">
+                                          <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white shadow-sm" : attMeta?.textClass || "text-gray-700"}`}>
+                                            {day.getDate()}
+                                          </span>
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-1 flex-1 justify-end">
+                                          {attMeta?.hasMeetingAttended && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 rounded shadow-sm border border-blue-200">
+                                              Meeting
+                                            </span>
+                                          )}
+                                          {attMeta?.isDailyPresent && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 rounded shadow-sm border border-green-200">
+                                              QR / Face
+                                            </span>
+                                          )}
+                                          {!attMeta?.hasMeetingAttended && !attMeta?.isDailyPresent && !attMeta?.isWeekend && !attMeta?.isFuture && !attMeta?.isHoliday && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-red-50 text-red-400 rounded border border-red-100">
+                                              Absent
+                                            </span>
+                                          )}
+                                          {attMeta?.isHoliday && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded border border-yellow-200 truncate" title={attMeta.holidayName}>
+                                              Holiday
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
 
                               {/* Simplified Legend */}
@@ -1814,20 +1688,16 @@ const AdminInternDetails = () => {
                                 </p>
                                 <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-gray-600">
                                   <span className="flex items-center gap-1.5">
-                                    <span className="w-3.5 h-3.5 rounded-full inline-block bg-green-400 shadow-sm"></span>
+                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 rounded shadow-sm border border-green-200">QR / Face</span>
                                     Daily Present
                                   </span>
                                   <span className="flex items-center gap-1.5">
-                                    <span className="w-3.5 h-3.5 rounded-full inline-block bg-red-400 shadow-sm"></span>
-                                    Daily Absent
-                                  </span>
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="w-3 h-3 rounded-full inline-block bg-blue-500 shadow-sm ring-1 ring-blue-300"></span>
+                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 rounded shadow-sm border border-blue-200">Meeting</span>
                                     Meeting Attended
                                   </span>
                                   <span className="flex items-center gap-1.5">
-                                    <span className="w-3 h-3 rounded-full inline-block bg-orange-400 shadow-sm ring-1 ring-orange-200"></span>
-                                    Meeting Missed
+                                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded border border-yellow-200">Holiday</span>
+                                    Holiday
                                   </span>
                                 </div>
                               </div>
@@ -2174,123 +2044,98 @@ const AdminInternDetails = () => {
                                 </button>
                               </div>
 
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                  <thead>
-                                    <tr>
-                                      {[
-                                        "Mon",
-                                        "Tue",
-                                        "Wed",
-                                        "Thu",
-                                        "Fri",
-                                        "Sat",
-                                        "Sun",
-                                      ].map((d) => (
-                                        <th
-                                          key={d}
-                                          className="text-center pb-2 text-xs font-semibold text-gray-500 w-[14.28%]"
-                                        >
-                                          {d}
-                                        </th>
-                                      ))}
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {Array.from(
-                                      {
-                                        length: Math.ceil(lbCalDays.length / 7),
-                                      },
-                                      (_, w) => (
-                                        <tr key={w}>
-                                          {lbCalDays
-                                            .slice(w * 7, w * 7 + 7)
-                                            .map((day, di) => {
-                                              const meta = getLogbookMeta(
-                                                recordMap,
-                                                day,
-                                              );
-                                              const isToday =
-                                                day &&
-                                                day.toDateString() ===
-                                                  new Date().toDateString();
-                                              const dayKey = day
-                                                ? toDateKey(day)
-                                                : null;
-                                              const rec = dayKey
-                                                ? recordMap[dayKey]
-                                                : null;
-                                              const isClickable = rec != null;
-                                              return (
-                                                <td
-                                                  key={di}
-                                                  className="py-1 text-center"
-                                                >
-                                                  {day ? (
-                                                    <div
-                                                      className={`mx-auto w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center transition-all ${
-                                                        isClickable
-                                                          ? "cursor-pointer hover:opacity-80 hover:shadow-md"
-                                                          : ""
-                                                      } ${isToday ? "ring-2 ring-blue-400 ring-offset-1" : ""}`}
-                                                      style={{
-                                                        backgroundColor:
-                                                          meta?.color ??
-                                                          "#f3f4f6",
-                                                      }}
-                                                      onClick={() =>
-                                                        isClickable &&
-                                                        setLogbookModal(rec)
-                                                      }
-                                                    >
-                                                      <span
-                                                        className="text-[10px] sm:text-xs font-bold"
-                                                        style={{
-                                                          color:
-                                                            meta?.textColor ??
-                                                            "#9ca3af",
-                                                        }}
-                                                      >
-                                                        {day.getDate()}
-                                                      </span>
-                                                    </div>
-                                                  ) : (
-                                                    <div className="h-11" />
-                                                  )}
-                                                </td>
-                                              );
-                                            })}
-                                        </tr>
-                                      ),
-                                    )}
-                                  </tbody>
-                                </table>
+                              {/* Calendar grid */}
+                              <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm">
+                                <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+                                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                                    <div
+                                      key={d}
+                                      className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0"
+                                    >
+                                      {d}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="grid grid-cols-7 auto-rows-fr">
+                                  {lbCalDays.map((day, di) => {
+                                    if (!day) return <div key={di} className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50" />;
+                                    
+                                    const meta = getLogbookMeta(recordMap, day, getHolidayForDate);
+                                    const isToday = day.toDateString() === new Date().toDateString();
+                                    const dayKey = toDateKey(day);
+                                    const rec = recordMap[dayKey];
+                                    const isClickable = rec != null;
+                                    
+                                    return (
+                                      <div
+                                        key={di}
+                                        className={`min-h-[100px] border-b border-r border-gray-100 p-2 flex flex-col transition-colors relative ${meta?.bgClass || "bg-white"} ${isClickable ? "cursor-pointer hover:bg-gray-100/50 hover:shadow-inner" : ""}`}
+                                        title={meta?.isHoliday ? meta.holidayName : ""}
+                                        onClick={() => isClickable && setLogbookModal(rec)}
+                                      >
+                                        <div className="flex justify-between items-start mb-2">
+                                          <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white shadow-sm" : meta?.textClass || "text-gray-700"}`}>
+                                            {day.getDate()}
+                                          </span>
+                                        </div>
+                                        
+                                        <div className="flex flex-col gap-1 flex-1 justify-end">
+                                          {meta?.isWorking && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 rounded shadow-sm border border-blue-200 truncate">
+                                              Office
+                                            </span>
+                                          )}
+                                          {meta?.isWfh && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 rounded shadow-sm border border-green-200 truncate">
+                                              WFH
+                                            </span>
+                                          )}
+                                          {!meta?.isWorking && !meta?.isWfh && meta?.isSubmitted && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 rounded shadow-sm border border-emerald-200 truncate">
+                                              Submitted
+                                            </span>
+                                          )}
+                                          {meta?.isLeave && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 rounded shadow-sm border border-red-200 truncate">
+                                              On Leave
+                                            </span>
+                                          )}
+                                          {meta?.isHoliday && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded border border-yellow-200 truncate" title={meta.holidayName}>
+                                              Holiday
+                                            </span>
+                                          )}
+                                          {meta?.isMissing && !meta?.isWeekend && !meta?.isFuture && !meta?.isHoliday && (
+                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500 rounded border border-gray-200 truncate">
+                                              No Record
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
 
                               <div className="mt-4 pt-4 border-t border-gray-100">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                                  Legend — Click any colored day to inspect the
-                                  logbook
+                                  Legend — Click any day with a record to inspect the logbook
                                 </p>
                                 <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
                                   {[
-                                    { color: "#bbf7d0", label: "Working" },
-                                    { color: "#ddd6fe", label: "WFH" },
-                                    { color: "#fde68a", label: "On Leave" },
-                                    { color: "#fecaca", label: "Missed" },
-                                    {
-                                      color: "#f3f4f6",
-                                      label: "Weekend / Future",
-                                    },
-                                  ].map(({ color, label }) => (
+                                    { label: "Submitted (Unknown Type)", badge: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+                                    { label: "Working (Office)", badge: "bg-blue-100 text-blue-700 border-blue-200" },
+                                    { label: "WFH", badge: "bg-green-100 text-green-700 border-green-200" },
+                                    { label: "On Leave", badge: "bg-red-100 text-red-700 border-red-200" },
+                                    { label: "Holiday", badge: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+                                  ].map(({ label, badge }) => (
                                     <span
                                       key={label}
                                       className="flex items-center gap-1.5"
                                     >
-                                      <span
-                                        className="w-3 h-3 rounded inline-block"
-                                        style={{ backgroundColor: color }}
-                                      ></span>{" "}
+                                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded shadow-sm border ${badge}`}>
+                                        {label.split(' ')[0]}
+                                      </span>
                                       {label}
                                     </span>
                                   ))}
@@ -2425,7 +2270,7 @@ const AdminInternDetails = () => {
           </div>
         </main>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 
