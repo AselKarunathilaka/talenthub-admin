@@ -27,7 +27,10 @@ import {
   FaInfoCircle,
   FaShieldAlt,
   FaSignOutAlt,
+  FaDownload,
 } from "react-icons/fa";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
 
@@ -361,6 +364,89 @@ const LogbookRestrictions = () => {
   const [historyTarget, setHistoryTarget] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const exportToPDF = () => {
+    const doc = new jsPDF("landscape");
+    doc.setFont("helvetica");
+
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(0, 86, 162); // BRAND.primary
+    doc.text("Logbook Restrictions Report", 14, 22);
+
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+    const tableColumn = [
+      "Name",
+      "Trainee ID",
+      "Restricted Since",
+      "Day 1",
+      "Day 2",
+      "Day 3",
+      "Day 4",
+      "Day 5",
+      "Reason"
+    ];
+
+    const tableRows = [];
+
+    interns.forEach(intern => {
+      const reason = intern.logbookRestrictionReason || "";
+      
+      const rowData = [
+        intern.traineeName || "-",
+        intern.traineeId || "-",
+        fmtDate(intern.logbookRestrictedAt)
+      ];
+
+      for (let i = 0; i < 5; i++) {
+        if (intern.heatmap && intern.heatmap[i]) {
+          const h = intern.heatmap[i];
+          const dateFmt = new Date(h.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          rowData.push(`${dateFmt}\n${h.submitted ? "Submitted" : "Not Submitted"}`);
+        } else {
+          rowData.push("-");
+        }
+      }
+
+      rowData.push(reason);
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 2, halign: "center", valign: "middle" },
+      headStyles: { fillColor: [0, 86, 162], textColor: 255, halign: "center", valign: "middle" },
+      columnStyles: {
+        0: { halign: "left" }, // Name
+        1: { halign: "center" }, // ID
+        2: { halign: "center" }, // Restricted Since
+        8: { cellWidth: 50, halign: "left" } // Reason
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index >= 3 && data.column.index <= 7) {
+          const raw = data.cell.raw;
+          if (raw && typeof raw === 'string') {
+             if (raw.includes('Not Submitted')) {
+                data.cell.styles.textColor = [220, 38, 38]; // Red text
+                data.cell.styles.fontStyle = 'bold';
+             } else if (raw.includes('Submitted')) {
+                data.cell.styles.textColor = [37, 99, 235]; // Blue text
+                data.cell.styles.fontStyle = 'bold';
+             }
+          }
+        }
+      }
+    });
+
+    const dateSuffix = new Date().toISOString().split('T')[0];
+    doc.save(`Logbook_Restrictions_${dateSuffix}.pdf`);
+  };
+
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -439,8 +525,7 @@ const LogbookRestrictions = () => {
                 transition={{ delay: 0.05, duration: 0.2 }}
                 className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
               >
-                Interns restricted due to missing weekly submissions. Lift
-                access after supervisor approval.
+                Interns restricted due to submitting fewer than 3 logs in a working week.
               </motion.p>
             </div>
 
@@ -450,26 +535,52 @@ const LogbookRestrictions = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
+              style={{ flexWrap: "wrap", justifyContent: "space-between" }}
             >
-              <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.danger }}
-                >
-                  {loading ? "—" : interns.length}
-                </span>
-                <span className="logres-stat__label">Currently Restricted</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                <div className="logres-stat">
+                  <span
+                    className="logres-stat__value"
+                    style={{ color: BRAND.danger }}
+                  >
+                    {loading ? "—" : interns.length}
+                  </span>
+                  <span className="logres-stat__label">Currently Restricted</span>
+                </div>
+                <div className="logres-stat logres-stat--divider" />
+                <div className="logres-stat">
+                  <span
+                    className="logres-stat__value"
+                    style={{ color: BRAND.warn }}
+                  >
+                    {loading ? "—" : filtered.length}
+                  </span>
+                  <span className="logres-stat__label">Shown (filtered)</span>
+                </div>
               </div>
-              <div className="logres-stat logres-stat--divider" />
-              <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.warn }}
-                >
-                  {loading ? "—" : filtered.length}
-                </span>
-                <span className="logres-stat__label">Shown (filtered)</span>
-              </div>
+
+              <button
+                onClick={exportToPDF}
+                className="logres-btn logres-btn--primary"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: BRAND.primary,
+                  color: "white",
+                  padding: "10px 20px",
+                  borderRadius: "10px",
+                  fontWeight: "600",
+                  border: "none",
+                  cursor: "pointer",
+                  marginLeft: "auto",
+                  transition: "background 0.2s"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#004482")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = BRAND.primary)}
+              >
+                <FaDownload /> Export PDF
+              </button>
             </motion.div>
 
             {/* Info banner */}
@@ -483,12 +594,7 @@ const LogbookRestrictions = () => {
                 style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }}
               />
               <p>
-                Interns listed below have been automatically restricted by the
-                system for submitting fewer than the required number of logbook
-                (3 log entries) entries within a 5-working-day period. To
-                restore access, click
-                <strong> Lift Restriction</strong> and record the reason
-                provided during the supervisor meeting.
+                Interns below are automatically restricted for submitting fewer than <strong>3 logbook </strong>entries within a <strong> 5 working-day </strong>period <strong>(</strong>excluding weekends and public holidays<strong>)</strong>. Use <strong> "Lift Restriction" </strong>to restore access and record the supervisor's reason.
               </p>
             </motion.div>
 
