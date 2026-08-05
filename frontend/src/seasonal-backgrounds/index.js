@@ -52,13 +52,6 @@ export const SEASONS = [
     endDay: 31,
   },
   {
-    key: "deepavali",
-    label: "Deepavali Festival",
-    month: 11,
-    day: 1,
-    endDay: 5,
-  },
-  {
     key: "christmas",
     label: "Christmas",
     month: 12,
@@ -72,14 +65,6 @@ export const SEASONS = [
  * Seasons without an entry fall back to the default gradient.
  */
 export const SEASON_COMPONENTS = {
-  "sinhala-tamil-new-year": () =>
-    import("./sinhala-tamil-new-year/AvuruduBackground").then((m) => ({
-      default: m.default,
-    })),
-  "deepavali": () =>
-    import("./deepavali/DeepavaliBackground").then((m) => ({
-      default: m.default,
-    })),
   "poson-festival": () =>
     import("./poson-festival/PosonBackground").then((m) => ({
       default: m.default,
@@ -105,14 +90,7 @@ export const SEASON_COMPONENTS = {
  * @returns {string|null} The season key, or null for default
  */
 export function getActiveSeason(date = new Date()) {
-  //return 'sinhala-tamil-new-year'
-  //return 'deepavali'
-  //return 'poson-festival'
-  //return 'halloween'
-  //return 'vesak-festival'
-  //return 'christmas'
-  //return 'independence-day'
-  //return 'new-year'
+  return 'vesak-festival'
   const month = date.getMonth() + 1; // 1-indexed
   const day = date.getDate();
 

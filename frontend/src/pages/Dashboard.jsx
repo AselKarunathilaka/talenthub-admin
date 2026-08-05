@@ -10,7 +10,6 @@ import FeatureTipModal from "../components/FeatureTipModal";
 import WhatsAppSupportButton from "../components/WhatsAppSupportButton";
 import AnnouncementPopup from "../components/AnnouncementPopup";
 import DailyRecordsHeatmap from "../components/DailyRecordsHeatmap";
-import CommitHeatmap from "../components/CommitHeatmap";
 import {
   Users,
   User,
@@ -50,7 +49,6 @@ const Dashboard = () => {
     absent: 0,
   });
   const [activeTab, setActiveTab] = useState("meeting");
-  const [heatmapView, setHeatmapView] = useState("logbook");
   const [showCricketPopup, setShowCricketPopup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState("");
@@ -758,92 +756,6 @@ const Dashboard = () => {
                         </div>
                       );
                     })()}
-
-                  {/* Daily Attendance Rate */}
-                  {internData.Training_StartDate &&
-                    (() => {
-                      // attendanceHistory = response.dailyAttendance from /interns/attendance/:id
-                      // It already merges: DailyRecord logbook submissions + FaceAttendanceLog + intern.attendance daily entries
-                      // Each entry has { date, status: "Present"|"Late"|"Absent", ... }
-                      const toDayKey = (dateVal) => {
-                        const date = dateVal ? new Date(dateVal) : null;
-                        if (!date || isNaN(date.getTime())) return null;
-                        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                      };
-
-                      // Count unique days where intern was present (Present or Late counts as attended)
-                      const daysPresent = new Set(
-                        attendanceHistory
-                          .filter((e) => {
-                            const s = (e.status || "").toLowerCase();
-                            return s === "present" || s === "late";
-                          })
-                          .map((e) => toDayKey(e.date))
-                          .filter(Boolean),
-                      ).size;
-
-                      const start = new Date(internData.Training_StartDate);
-                      const end = internData.Training_EndDate
-                        ? new Date(internData.Training_EndDate)
-                        : null;
-                      const now = new Date();
-                      const measureTo = end && now > end ? end : now;
-                      if (isNaN(start.getTime()) || measureTo <= start) return null;
-
-                      // Count weekdays (Mon-Fri) from training start to today (or end date)
-                      let expectedDays = 0;
-                      let curDate = new Date(start);
-                      curDate.setHours(0, 0, 0, 0);
-                      const endCap = new Date(measureTo);
-                      endCap.setHours(0, 0, 0, 0);
-                      while (curDate <= endCap) {
-                        const day = curDate.getDay();
-                        if (day !== 0 && day !== 6) expectedDays++;
-                        curDate.setDate(curDate.getDate() + 1);
-                      }
-                      expectedDays = Math.max(1, expectedDays);
-
-                      const pct = Math.min(
-                        100,
-                        Math.round((daysPresent / expectedDays) * 100),
-                      );
-                      const color =
-                        pct >= 80
-                          ? "#3b82f6"
-                          : pct >= 50
-                            ? "#8b5cf6"
-                            : "#ec4899";
-                      const textColor =
-                        pct >= 80
-                          ? "text-blue-500"
-                          : pct >= 50
-                            ? "text-purple-500"
-                            : "text-pink-500";
-                      return (
-                        <div className="pt-3 border-t border-gray-100 mt-3">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                              Daily Attendance
-                            </p>
-                            <span className={`text-sm font-black ${textColor}`}>
-                              {pct}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mb-1.5">
-                            <div
-                              className="h-2 rounded-full transition-all duration-700"
-                              style={{
-                                width: `${pct}%`,
-                                background: `linear-gradient(90deg, ${color}, ${color}bb)`,
-                              }}
-                            />
-                          </div>
-                          <p className="text-[10px] text-gray-400">
-                            {daysPresent} day{daysPresent !== 1 ? "s" : ""} attended out of {expectedDays} expected working days
-                          </p>
-                        </div>
-                      );
-                    })()}
                 </div>
               </div>
 
@@ -959,71 +871,10 @@ const Dashboard = () => {
           </motion.div>
         )}
 
-        {/* Heatmap toggle */}
-        <motion.div
-          className="flex mb-4 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-xs w-full relative"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <button
-            onClick={() => setHeatmapView("logbook")}
-            className={`relative z-10 flex-1 py-2 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-              heatmapView === "logbook" ? "text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Logbook
-          </button>
-          <button
-            onClick={() => setHeatmapView("commits")}
-            className={`relative z-10 flex-1 py-2 px-4 text-sm font-semibold rounded-xl transition-all duration-300 ${
-              heatmapView === "commits" ? "text-white" : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Commits
-          </button>
-          <div
-            className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-sm"
-            style={{
-              background:
-                heatmapView === "logbook"
-                  ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
-                  : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-              left: heatmapView === "logbook" ? "6px" : "calc(50%)",
-            }}
-          />
-        </motion.div>
-
-        <AnimatePresence mode="wait">
-          {heatmapView === "logbook" ? (
-            <motion.div
-              key="logbook-heatmap"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-            >
-              <DailyRecordsHeatmap
-                startDate={internData?.Training_StartDate}
-                endDate={internData?.Training_EndDate}
-              />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="commit-heatmap"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.2 }}
-            >
-              <CommitHeatmap
-                startDate={internData?.Training_StartDate}
-                endDate={internData?.Training_EndDate}
-                internId={localStorage.getItem("internId")}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <DailyRecordsHeatmap
+          startDate={internData?.Training_StartDate}
+          endDate={internData?.Training_EndDate}
+        />
 
         <motion.div
           className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 mx-auto max-w-md w-full relative"
@@ -1157,25 +1008,7 @@ const Dashboard = () => {
                 {attendanceHistory.slice(0, 10).map((entry, index) => {
                   let date, dayName, formattedDate, dateNumber;
                   try {
-                    const rawDateStr = String(entry.date || "");
-                    if (rawDateStr.includes("-")) {
-                      const parts = rawDateStr
-                        .slice(0, 10)
-                        .split("-")
-                        .map(Number);
-                      if (
-                        parts.length === 3 &&
-                        !isNaN(parts[0]) &&
-                        !isNaN(parts[1]) &&
-                        !isNaN(parts[2])
-                      ) {
-                        date = new Date(parts[0], parts[1] - 1, parts[2]);
-                      } else {
-                        date = new Date(entry.date);
-                      }
-                    } else {
-                      date = new Date(entry.date);
-                    }
+                    date = entry.date ? new Date(entry.date) : new Date();
                     dayName = date.toLocaleDateString("en-US", {
                       weekday: "short",
                     });

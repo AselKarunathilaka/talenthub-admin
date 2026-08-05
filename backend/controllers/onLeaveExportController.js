@@ -2,17 +2,22 @@ const xlsx = require("xlsx");
 const Intern = require("../models/Intern");
 const DailyRecord = require("../models/DailyRecord");
 
-const { getPastWorkingDays } = require("../utils/workingDays");
-
 const exportOnLeaveExcel = async (req, res) => {
   try {
-    // Get the most recent working day (Mon-Fri excl. public holidays)
-    const targetDateStr = req.query.date || getPastWorkingDays(1)[0];
+  // Always use local time for 'yesterday' (previous day)
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  yesterday.setHours(0, 0, 0, 0);
+  const yyyy = yesterday.getFullYear();
+  const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+  const dd = String(yesterday.getDate()).padStart(2, '0');
+  const yesterdayStr = `${yyyy}-${mm}-${dd}`;
 
 
     // Get yesterday's daily records where status is 'leave' OR task is 'On Leave' OR stack is 'On Leave'
     const leaveRecords = await DailyRecord.find({
-      date: targetDateStr,
+      date: yesterdayStr,
       $or: [
         { status: 'leave' },
         { task: 'On Leave' },

@@ -76,7 +76,6 @@ const {
   markManualAttendance,
   bulkMarkAttendance,
   uploadAttendancePdf,
-  extractIdsFromImages,
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
@@ -222,13 +221,6 @@ router.post(
   upload.single("file"),
   uploadAttendancePdf
 );
-
-router.post(
-  "/manual-attendance/extract-ids-from-images",
-  upload.array("images", 20),
-  extractIdsFromImages
-);
-
 // Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {
   try {

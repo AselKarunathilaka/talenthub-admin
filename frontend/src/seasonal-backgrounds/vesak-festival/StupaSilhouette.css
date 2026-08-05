@@ -26,20 +26,6 @@
   100% { opacity: 1; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 1)); }
 }
 
-.buddha-halo-glow {
-  animation: halo-pulse 4s ease-in-out infinite alternate;
-}
-
-@keyframes halo-pulse {
-  0% { opacity: 0.5; transform: scale(0.96); transform-origin: 180px 205px; }
-  100% { opacity: 1; transform: scale(1.04); transform-origin: 180px 205px; }
-}
-
-.siraspata-glow {
-  animation: crystal-glow 2.5s infinite alternate;
-  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.9));
-}
-
 @media (max-width: 768px) {
   .stupa-silhouette-container {
     height: 40vh;

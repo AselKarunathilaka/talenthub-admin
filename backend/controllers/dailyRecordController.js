@@ -10,12 +10,6 @@ const {
   validateBatchWithGemini,
 } = require("../utils/llmValidator");
 
-const {
-  addAuditCheckoutTimes,
-  buildDailyAttendanceByDate,
-  getColomboDateKey,
-} = require("../utils/attendanceHistory");
-
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
 
 function failOpenBatchResult() {
@@ -33,12 +27,12 @@ const DAILY_ATTENDANCE_TYPES = new Set([
   "manual_daily",
 ]);
 
-// Checks whether the intern already has a daily attendance entry for this date.
-// `dateStr` is expected in "YYYY-MM-DD" form.
+// Checks whether the intern already has a "daily" attendance entry for this date.
+// `dateStr` is expected in "YYYY-MM-DD" form (same shape as DailyRecord.date).
 function hasDailyAttendanceForDate(intern, dateStr) {
-  return (intern.attendance || []).some((a) => {
-    if (!DAILY_ATTENDANCE_TYPES.has(String(a.type || "").toLowerCase())) return false;
-    const aDateStr = getColomboDateKey(a.date);
+  return intern.attendance.some((a) => {
+    if (!DAILY_ATTENDANCE_TYPES.has(a.type)) return false;
+    const aDateStr = new Date(a.date).toISOString().split("T")[0];
     return aDateStr === dateStr;
   });
 }
@@ -102,15 +96,7 @@ const createDailyRecord = async (req, res) => {
       await ensureDailyAttendance(intern, date);
     }
 
-    // Find any existing daily attendance in intern.attendance for this date (e.g. face attendance)
-    const existingAttendance = (intern.attendance || []).find((a) => {
-      return (
-        DAILY_ATTENDANCE_TYPES.has(String(a.type || "").toLowerCase()) &&
-        getColomboDateKey(a.date) === date
-      );
-    });
-
-    const now = new Date();
+    // Upsert by internId + date
     const existing = await DailyRecord.findOne({ internId, date });
     if (existing) {
       existing.stack = stack;
@@ -119,12 +105,6 @@ const createDailyRecord = async (req, res) => {
       existing.blockers = blockers || "No specific plans";
       existing.traineeId = intern.Trainee_ID; // ★ keep in sync
       if (status) existing.status = status;
-      if (!existing.attendanceTime) {
-        existing.attendanceTime = existingAttendance?.timeMarked || now;
-      }
-      if (!existing.checkOutTime && existingAttendance?.checkOutTime) {
-        existing.checkOutTime = existingAttendance.checkOutTime;
-      }
       await existing.save();
       await existing.populate(
         "internId",
@@ -142,9 +122,6 @@ const createDailyRecord = async (req, res) => {
       progress: progress || "No challenges faced",
       blockers: blockers || "No specific plans",
       status: status || "working",
-      attendance: "present",
-      attendanceTime: existingAttendance?.timeMarked || now,
-      checkOutTime: existingAttendance?.checkOutTime || null,
     });
 
     await newRecord.save();
@@ -153,10 +130,6 @@ const createDailyRecord = async (req, res) => {
       "internId",
       "Trainee_Name Trainee_ID Trainee_Email",
     );
-    
-    // Invalidate cache
-    dailyRecordsCache.delete(`records_${userId}`);
-    
     return res.status(201).json(newRecord);
   } catch (error) {
     console.error("Error creating daily record:", error);
@@ -192,22 +165,10 @@ const createDailyRecord = async (req, res) => {
   }
 };
 
-// Simple in-memory cache for daily records
-const dailyRecordsCache = new Map();
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
 // Get all daily records (for admin) or user's own records
 const getDailyRecords = async (req, res) => {
   try {
     const { id: userId, email: userEmail } = req.user;
-    
-    // Check cache
-    const cacheKey = `records_${userId}`;
-    const cached = dailyRecordsCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      return res.status(200).json(cached.data);
-    }
-
     const query = {};
     // Check if this is an admin or intern request
     // If the user ID corresponds to a User (admin), show all records
@@ -239,9 +200,6 @@ const getDailyRecords = async (req, res) => {
     const records = await DailyRecord.find(query)
       .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
       .sort({ createdAt: -1 });
-
-    // Update cache
-    dailyRecordsCache.set(cacheKey, { data: records, timestamp: Date.now() });
 
     res.status(200).json(records);
   } catch (error) {

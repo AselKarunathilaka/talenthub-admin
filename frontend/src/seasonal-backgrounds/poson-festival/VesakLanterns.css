@@ -1,16 +1,14 @@
 /* ─────────────────────────────────────────────
-   Vesak Lanterns on Tree Branch (Top-Left Mirrored)
+   Vesak Lanterns on Tree Branch
    ───────────────────────────────────────────── */
 
 .branch-scene {
   position: fixed;
   top: -15px;
-  left: -25px;
-  right: auto;
+  right: -25px;
   width: 600px;
-  z-index: 2;
+  z-index: 50 !important;
   pointer-events: none;
-  transform: scaleX(-1);
 }
 
 .branch-svg {
@@ -88,8 +86,7 @@
   .branch-scene {
     width: 550px;
     top: -14px;
-    left: -22px;
-    right: auto;
+    right: -22px;
   }
 }
 
@@ -98,8 +95,7 @@
   .branch-scene {
     width: 480px;
     top: -12px;
-    left: -20px;
-    right: auto;
+    right: -20px;
   }
 }
 
@@ -108,8 +104,7 @@
   .branch-scene {
     width: 400px;
     top: -10px;
-    left: -18px;
-    right: auto;
+    right: -18px;
   }
 }
 
@@ -118,8 +113,7 @@
   .branch-scene {
     width: 340px;
     top: -8px;
-    left: -14px;
-    right: auto;
+    right: -14px;
   }
 }
 
@@ -128,8 +122,7 @@
   .branch-scene {
     width: 280px;
     top: -6px;
-    left: -10px;
-    right: auto;
+    right: -10px;
   }
 }
 
@@ -138,8 +131,7 @@
   .branch-scene {
     width: 230px;
     top: -5px;
-    left: -8px;
-    right: auto;
+    right: -8px;
   }
 }
 
@@ -148,8 +140,7 @@
   .branch-scene {
     width: 190px;
     top: -4px;
-    left: -6px;
-    right: auto;
+    right: -6px;
   }
 }
 
@@ -158,7 +149,6 @@
   .branch-scene {
     width: 300px;
     top: -8px;
-    left: -12px;
-    right: auto;
+    right: -12px;
   }
 }

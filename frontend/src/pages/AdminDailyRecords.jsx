@@ -62,8 +62,6 @@ const AdminDailyRecords = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
 
-  const [exporting, setExporting] = useState(false);
-
   const searchTimer = useRef(null);
 
   // Core fetch
@@ -139,55 +137,13 @@ const AdminDailyRecords = () => {
   const displayedRecords =
     sortOrder === "desc" ? records : [...records].reverse();
 
-  // Fetch every page for the given date/search so export isn't limited to
-  // whatever page happens to be loaded in the table.
-  const fetchAllRecordsForExport = async (date, search) => {
-    const EXPORT_PAGE_SIZE = 200; // fewer round-trips than the UI's LIMIT of 50
-    const all = [];
-
-    // First page also tells us the true total / totalPages for this filter.
-    const first = await adminApi.getAllDailyRecords({
-      page: 1,
-      limit: EXPORT_PAGE_SIZE,
-      search,
-      date,
-    });
-    all.push(...(first.records || []));
-
-    const totalPages = first.pagination?.totalPages || 1;
-    for (let page = 2; page <= totalPages; page++) {
-      const next = await adminApi.getAllDailyRecords({
-        page,
-        limit: EXPORT_PAGE_SIZE,
-        search,
-        date,
-      });
-      all.push(...(next.records || []));
-    }
-
-    return all;
-  };
-
-  // CSV export — pulls the full result set for the selected date (not just
-  // the current page) so the export always matches the "Submissions" total.
-  const handleExportCSV = async () => {
-    if (exporting) return;
-
+  // CSV export
+  const handleExportCSV = () => {
     try {
-      setExporting(true);
-
-      const allRecords = await fetchAllRecordsForExport(
-        selectedDate,
-        searchTerm,
-      );
-
-      if (allRecords.length === 0) {
+      if (displayedRecords.length === 0) {
         notificationUtils.showInfo("No records to export.");
         return;
       }
-
-      const sortedRecords =
-        sortOrder === "desc" ? allRecords : [...allRecords].reverse();
 
       const fmtDT = (d) => {
         if (!d) return '="N/A"';
@@ -196,7 +152,7 @@ const AdminDailyRecords = () => {
         return `="${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")} ${String(dt.getHours()).padStart(2, "0")}:${String(dt.getMinutes()).padStart(2, "0")}:${String(dt.getSeconds()).padStart(2, "0")}"`;
       };
 
-      const csvData = sortedRecords.map((r) => ({
+      const csvData = displayedRecords.map((r) => ({
         Date: `="${r.date || "N/A"}"`,
         "Trainee Name": `"${r.internId?.Trainee_Name || r.Trainee_Name || "N/A"}"`,
         "Trainee ID": r.internId?.Trainee_ID || r.Trainee_ID || "N/A",
@@ -222,21 +178,18 @@ const AdminDailyRecords = () => {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       link.href = URL.createObjectURL(blob);
-      link.download = `daily_records_${selectedDate}.csv`;
+      link.download = `daily_records_${selectedDate}${pagination.totalPages > 1 ? `_p${pagination.page}` : ""}.csv`;
       link.style.display = "none";
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      URL.revokeObjectURL(link.href);
 
       notificationUtils.showSuccess(
-        `Exported ${sortedRecords.length} record${sortedRecords.length !== 1 ? "s" : ""} for ${selectedDate}`,
+        `Exported ${displayedRecords.length} records for ${selectedDate}`,
       );
     } catch (err) {
       console.error(err);
       notificationUtils.showError("Failed to export CSV");
-    } finally {
-      setExporting(false);
     }
   };
 
@@ -270,9 +223,9 @@ const AdminDailyRecords = () => {
       ? "WFH"
       : s === "study_leave"
         ? "Extended Leave"
-        : s
-          ? s.charAt(0).toUpperCase() + s.slice(1)
-          : "Working";
+      : s
+        ? s.charAt(0).toUpperCase() + s.slice(1)
+        : "Working";
 
   // Pagination bar
   const PaginationBar = () => {
@@ -456,7 +409,7 @@ const AdminDailyRecords = () => {
                         className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
                       />
                       {searchTerm && (
-                        <button onClick={() => { setSearchTerm(''); fetchRecords({ page: 1, date: selectedDate, search: '' }); }} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm">
+                        <button onClick={() => {setSearchTerm(''); fetchRecords({ page: 1, date: selectedDate, search: '' });}} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm">
                           <FaTimes className="h-3 w-3" />
                         </button>
                       )}
@@ -473,21 +426,11 @@ const AdminDailyRecords = () => {
                   </motion.button>
                   <motion.button
                     onClick={handleExportCSV}
-                    disabled={pagination.total === 0 || loading || exporting}
+                    disabled={displayedRecords.length === 0 || pageLoading}
                     className="flex items-center space-x-2 px-5 py-3 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none disabled:cursor-not-allowed"
                   >
-                    {exporting ? (
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
-                        className="inline-flex"
-                      >
-                        <FaSpinner className="h-4 w-4" />
-                      </motion.span>
-                    ) : (
-                      <FaDownload className="h-4 w-4" />
-                    )}
-                    <span>{exporting ? "Exporting..." : "Export CSV"}</span>
+                    <FaDownload className="h-4 w-4" />
+                    <span>Export CSV</span>
                   </motion.button>
                 </div>
               </div>
@@ -496,8 +439,8 @@ const AdminDailyRecords = () => {
                 {loading
                   ? "Loading records..."
                   : pagination.total === 0
-                    ? `No submissions found for ${prettyDate(selectedDate)}`
-                    : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
+                  ? `No submissions found for ${prettyDate(selectedDate)}`
+                  : `${displayedRecords.length} of ${pagination.total} records · page ${pagination.page}/${pagination.totalPages || 1}`}
                 {searchTerm && !loading && " · filtered by search"}
               </p>
             </motion.div>

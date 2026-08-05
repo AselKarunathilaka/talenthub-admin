@@ -45,13 +45,102 @@ const DAILY_ATTENDANCE_TYPES = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
-const {
-  getSriLankanHolidays,
-  getWorkingDaysInRange,
-} = require("../utils/workingDays");
+// Helper: Sri Lankan Public Holidays
+// ---------------------------------------------------------------------------
+function getSriLankanHolidays(years) {
+  const yearList = Array.isArray(years) ? years : [years];
+  const holidays = new Set();
+
+  yearList.forEach((y) => {
+    const fixed = [`${y}-01-01`, `${y}-02-04`, `${y}-05-01`, `${y}-12-25`];
+    fixed.forEach((d) => holidays.add(d));
+
+    const lunarApprox = {
+      2024: [
+        "2024-01-15",
+        "2024-02-23",
+        "2024-03-25",
+        "2024-04-12",
+        "2024-04-13",
+        "2024-04-14",
+        "2024-05-23",
+        "2024-05-24",
+        "2024-06-17",
+        "2024-06-21",
+        "2024-07-20",
+        "2024-08-19",
+        "2024-09-17",
+        "2024-10-02",
+        "2024-10-17",
+        "2024-10-31",
+        "2024-11-15",
+        "2024-12-15",
+      ],
+      2025: [
+        "2025-01-14",
+        "2025-02-26",
+        "2025-03-14",
+        "2025-03-31",
+        "2025-04-13",
+        "2025-04-14",
+        "2025-05-12",
+        "2025-05-13",
+        "2025-06-06",
+        "2025-06-07",
+        "2025-07-05",
+        "2025-08-03",
+        "2025-09-01",
+        "2025-09-05",
+        "2025-10-01",
+        "2025-10-20",
+        "2025-10-30",
+        "2025-11-29",
+      ],
+      2026: [
+        "2026-01-14",
+        "2026-02-15",
+        "2026-03-03",
+        "2026-03-20",
+        "2026-04-02",
+        "2026-04-13",
+        "2026-04-14",
+        "2026-05-01",
+        "2026-05-02",
+        "2026-05-28",
+        "2026-05-30",
+        "2026-06-29",
+        "2026-07-28",
+        "2026-08-27",
+        "2026-09-10",
+        "2026-09-25",
+        "2026-11-09",
+        "2026-11-24",
+        "2026-12-23",
+      ],
+    };
+
+    if (lunarApprox[y]) lunarApprox[y].forEach((d) => holidays.add(d));
+  });
+
+  return holidays;
+}
 
 function getWorkingDaysInTwoWeekRange(startDate, endDate) {
-  return getWorkingDaysInRange(startDate, endDate);
+  const years = [];
+  for (let y = startDate.year(); y <= endDate.year(); y++) years.push(y);
+  const holidays = getSriLankanHolidays(years);
+
+  const workingDays = [];
+  const cursor = startDate.clone();
+  while (cursor.isSameOrBefore(endDate, "day")) {
+    const dayOfWeek = cursor.day();
+    const dateStr = cursor.format("YYYY-MM-DD");
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.has(dateStr)) {
+      workingDays.push(cursor.clone());
+    }
+    cursor.add(1, "day");
+  }
+  return workingDays;
 }
 
 // ---------------------------------------------------------------------------
