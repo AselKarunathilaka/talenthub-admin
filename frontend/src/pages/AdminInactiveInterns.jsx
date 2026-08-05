@@ -842,8 +842,19 @@ export default function AdminInactiveInterns() {
                         transition={{ duration: 0.15 }}
                         className={`inactive-list-item ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
                       >
-                        <div className="inactive-list-item__avatar">
-                          {(intern.traineeName || '?').charAt(0).toUpperCase()}
+                         <div className="inactive-list-item__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                            <img
+                              src={`${API_BASE_URL}/interns/${intern.id}/profile-picture`}
+                              alt={intern.traineeName}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                              {(intern.traineeName || '?').charAt(0).toUpperCase()}
+                            </div>
                         </div>
                         <div className="inactive-list-item__body">
                           <div className="inactive-list-item__name" title={intern.traineeName}>
@@ -924,8 +935,19 @@ export default function AdminInactiveInterns() {
                     >
                       {/* Profile header */}
                       <div className="inactive-detail-header">
-                        <div className="inactive-detail-avatar">
-                          {(details.traineeName || '?').charAt(0).toUpperCase()}
+                        <div className="inactive-detail-avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                          <img
+                            src={`${API_BASE_URL}/interns/${details.id}/profile-picture`}
+                            alt={details.traineeName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                            {(details.traineeName || '?').charAt(0).toUpperCase()}
+                          </div>
                         </div>
                         <div className="inactive-detail-info">
                           <h2 className="inactive-detail-name">{details.traineeName}</h2>

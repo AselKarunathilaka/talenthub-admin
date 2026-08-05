@@ -1166,16 +1166,24 @@ const getProfilePicture = async (req, res) => {
       return res.end(profilePic.imageBuffer);
     }
 
-    // 2. Check for Google profile picture fallback
+    // 2. Check active Intern for Google profile picture
     const mongoose = require("mongoose");
     const Intern = mongoose.model("Intern");
-    const internDoc = await Intern.findById(internId);
+    const internDoc = await Intern.findById(internId).select("googlePictureUrl");
     if (internDoc && internDoc.googlePictureUrl) {
       res.setHeader("Cache-Control", "public, max-age=3600");
       return res.redirect(302, internDoc.googlePictureUrl);
     }
 
-    // 3. Fallback to 404
+    // 3. Check InactiveIntern for Google profile picture (archived interns)
+    const InactiveIntern = require("../models/InactiveIntern");
+    const inactiveDoc = await InactiveIntern.findById(internId).select("googlePictureUrl");
+    if (inactiveDoc && inactiveDoc.googlePictureUrl) {
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      return res.redirect(302, inactiveDoc.googlePictureUrl);
+    }
+
+    // 4. Fallback to 404
     res.status(404).json({ error: "Profile picture not found" });
   } catch (error) {
     console.error("Error fetching profile picture:", error);

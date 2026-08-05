@@ -766,8 +766,19 @@ const LogbookRestrictions = () => {
                         >
                           <td>
                             <div className="logres-table__intern-cell">
-                              <div className="logres-table__avatar">
-                                {(intern.traineeName || "?")[0].toUpperCase()}
+                              <div className="logres-table__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                                <img
+                                  src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                                  alt={intern.traineeName}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                                  {(intern.traineeName || "?")[0].toUpperCase()}
+                                </div>
                               </div>
                               <div>
                                 <div className="logres-table__name">
@@ -839,8 +850,19 @@ const LogbookRestrictions = () => {
                       transition={{ delay: idx * 0.04 }}
                     >
                       <div className="logres-card__top">
-                        <div className="logres-card__avatar">
-                          {(intern.traineeName || "?")[0].toUpperCase()}
+                        <div className="logres-card__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                          <img
+                            src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                            alt={intern.traineeName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                            {(intern.traineeName || "?")[0].toUpperCase()}
+                          </div>
                         </div>
                         <div className="logres-card__identity">
                           <span className="logres-card__name">
