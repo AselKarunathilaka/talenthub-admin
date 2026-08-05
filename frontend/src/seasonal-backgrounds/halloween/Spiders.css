@@ -28,14 +28,17 @@
 }
 
 .spider-thread {
-  width: 1px;
-  background-color: rgba(255, 255, 255, 0.3);
+  width: 1.5px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.2));
+  box-shadow: 0 0 2px rgba(255, 255, 255, 0.4);
   height: 0;
+  transform-origin: top center;
 }
 
 .spider-body {
   width: 50px;
   height: 50px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.6));
 }
 
 .spider-eye {
@@ -48,8 +51,7 @@
 }
 
 .spider-1 {
-  left: 15%;
-  animation: drop-down-1 12s infinite ease-in-out;
+  left: 100px;
 }
 
 .spider-1 .spider-thread {
@@ -57,34 +59,25 @@
 }
 
 .spider-2 {
-  right: 25%;
-  animation: drop-down-2 15s infinite ease-in-out 5s;
+  right: 22%;
 }
 
 .spider-2 .spider-thread {
-  animation: thread-drop-2 15s infinite ease-in-out 5s;
-}
-
-@keyframes drop-down-1 {
-  0%, 100% { transform: translateY(-50px); }
-  20% { transform: translateY(150px); }
-  30% { transform: translateY(140px); }
-  80% { transform: translateY(150px); }
+  animation: thread-drop-2 15s infinite ease-in-out 3s;
 }
 
 @keyframes thread-drop-1 {
   0%, 100% { height: 0px; }
-  20%, 80% { height: 150px; }
-}
-
-@keyframes drop-down-2 {
-  0%, 100% { transform: translateY(-50px); }
-  15% { transform: translateY(200px); }
-  25% { transform: translateY(180px); }
-  85% { transform: translateY(200px); }
+  20% { height: 180px; }
+  28% { height: 165px; }
+  35% { height: 175px; }
+  80% { height: 180px; }
 }
 
 @keyframes thread-drop-2 {
   0%, 100% { height: 0px; }
-  15%, 85% { height: 200px; }
+  18% { height: 260px; }
+  25% { height: 240px; }
+  32% { height: 250px; }
+  82% { height: 260px; }
 }

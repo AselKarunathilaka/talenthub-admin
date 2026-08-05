@@ -59,7 +59,7 @@ const deriveArchiveReason = (archiveReason, archivedAt, trainingEndDate) => {
     const archived = new Date(archivedAt);
     const end = new Date(trainingEndDate);
     if (isSameDay(archived, end)) return "Inactive";
-    if (archived < end) return "Terminated";
+    if (archived < end) return "Past Interns";
   }
   return archiveReason || "N/A";
 };

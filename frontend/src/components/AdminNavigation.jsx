@@ -178,9 +178,9 @@ const AdminNavigation = ({ children }) => {
       <div className="hidden lg:block h-[5.5rem]" />
 
       <main className="flex-1 lg:ml-[270px] transition-all duration-300">
-         <div className="lg:ml-[0px]">
-           {children}
-         </div>
+        <div className="lg:ml-[0px]">
+          {children}
+        </div>
       </main>
     </>
   );

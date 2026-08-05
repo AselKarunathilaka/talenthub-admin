@@ -1,0 +1,38 @@
+.oil-lamp-container {
+  position: absolute;
+  bottom: 2vh;
+  right: 15vw;
+  width: 100px;
+  height: 150px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.lamp-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
+}
+
+.flame {
+  transform-origin: bottom center;
+  animation: flicker-flame 1s infinite alternate ease-in-out;
+}
+
+.flame-1 { animation-delay: 0s; }
+.flame-2 { animation-delay: 0.3s; }
+.flame-3 { animation-delay: 0.6s; }
+
+@keyframes flicker-flame {
+  0% { transform: scaleY(1) rotate(-2deg); fill: #ff9800; filter: drop-shadow(0 0 4px #ffc107); }
+  50% { transform: scaleY(1.1) rotate(0deg); fill: #ffeb3b; filter: drop-shadow(0 0 8px #ffeb3b); }
+  100% { transform: scaleY(0.9) rotate(2deg); fill: #ff5722; filter: drop-shadow(0 0 6px #ff9800); }
+}
+
+@media (max-width: 768px) {
+  .oil-lamp-container {
+    right: 5vw;
+    width: 70px;
+    height: 105px;
+  }
+}
