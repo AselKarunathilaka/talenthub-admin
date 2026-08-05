@@ -21,6 +21,7 @@ import {
   FiSquare,
   FiCheckCircle,
   FiSend,
+  FiSearch,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,7 +56,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     loading: false,
   });
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("Pending");
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -83,16 +84,20 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [triggeringEmail, setTriggeringEmail] = useState(false);
 
+  // Search
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [prevRequestType, setPrevRequestType] = useState(requestType);
   if (requestType !== prevRequestType) {
     setPrevRequestType(requestType);
     setLeaveRequests([]);
     setStats({ total: 0, pending: 0, approved: 0, denied: 0 });
-    setFilter("all");
+    setFilter("Pending");
     setPagination({ page: 1, limit: 10, total: 0, totalPages: 0 });
     setSelectedDate(requestType === "study_leave" ? "" : new Date().toISOString().split("T")[0]);
     setSelectedRequests(new Set());
     setIsSelectAll(false);
+    setSearchQuery("");
   }
 
   const fetchIdRef = useRef(0);
@@ -511,7 +516,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     );
   };
 
-  const filteredRequests = leaveRequests;
+  const filteredRequests = searchQuery.trim()
+    ? leaveRequests.filter((request) => {
+        const q = searchQuery.trim().toLowerCase();
+        return (
+          (request.internName && request.internName.toLowerCase().includes(q)) ||
+          (request.internTraineeId && request.internTraineeId.toString().toLowerCase().includes(q)) ||
+          (request.nationalId && request.nationalId.toLowerCase().includes(q))
+        );
+      })
+    : leaveRequests;
 
   const displayedStats = (() => {
     if (!isStudyLeave || stats.total > 0 || pagination.total === 0) {
@@ -660,80 +674,205 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.3 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6"
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4"
           >
+            {/* Total Card */}
             <div 
               onClick={() => { setFilter("all"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
-              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "all" ? "bg-blue-50/50 border-[#0056a2] shadow-md shadow-[#0056a2]/10 ring-2 ring-[#0056a2]/20" : "bg-white shadow-sm border-gray-100 hover:border-[#0056a2]/30"}`}
+              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
+                filter === "all" 
+                  ? "bg-gradient-to-br from-blue-50/90 via-sky-50 to-indigo-50/80 border-2 border-[#0056a2] shadow-lg shadow-[#0056a2]/15 ring-4 ring-[#0056a2]/15 scale-[1.02] z-10" 
+                  : "bg-white border-slate-200/80 shadow-xs hover:border-[#0056a2]/40 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
+              }`}
             >
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-100 z-10 transition-colors ${filter === "all" ? "text-[#0056a2]" : "text-gray-500 group-hover:text-[#0056a2]"}`}>
+              {filter === "all" && (
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#0056a2] text-white shadow-xs flex items-center gap-1">
+                    <FiCheckCircle size={10} /> Active
+                  </span>
+                </div>
+              )}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
+                filter === "all" 
+                  ? "bg-[#0056a2] text-white border-[#0056a2] shadow-sm" 
+                  : "bg-slate-100 text-slate-500 border-slate-200 group-hover:bg-[#0056a2]/10 group-hover:text-[#0056a2]"
+              }`}>
                 <FiFileText className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div className="z-10 text-left min-w-0">
-                <div className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight truncate">
+              <div className="z-10 text-left min-w-0 flex-1">
+                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
+                  filter === "all" ? "text-[#0056a2]" : "text-gray-800"
+                }`}>
                   {displayedStats.total}
                 </div>
-                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mt-0.5 leading-tight truncate">
+                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
+                  filter === "all" ? "font-black text-[#0056a2]" : "font-bold text-gray-500"
+                }`}>
                   Total
                 </div>
               </div>
             </div>
 
+            {/* Pending Card */}
             <div 
               onClick={() => { setFilter("Pending"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
-              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "Pending" ? "bg-amber-100/40 border-amber-500 shadow-md shadow-amber-500/10 ring-2 ring-amber-500/20" : "bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm border-amber-100 hover:border-amber-300"}`}
+              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
+                filter === "Pending" 
+                  ? "bg-gradient-to-br from-amber-50/90 via-amber-50 to-orange-50/90 border-2 border-amber-500 shadow-lg shadow-amber-500/15 ring-4 ring-amber-500/15 scale-[1.02] z-10" 
+                  : "bg-white border-slate-200/80 shadow-xs hover:border-amber-400 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
+              }`}
             >
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-amber-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-white rounded-2xl flex items-center justify-center border border-amber-100 z-10 text-amber-500 shadow-sm">
+              {filter === "Pending" && (
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500 text-white shadow-xs flex items-center gap-1">
+                    <FiCheckCircle size={10} /> Active
+                  </span>
+                </div>
+              )}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
+                filter === "Pending" 
+                  ? "bg-amber-500 text-white border-amber-500 shadow-sm" 
+                  : "bg-amber-50 text-amber-500 border-amber-200/60 group-hover:bg-amber-100"
+              }`}>
                 <FiClock className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div className="z-10 text-left min-w-0">
-                <div className="text-2xl sm:text-3xl font-extrabold text-amber-600 tracking-tight truncate">
+              <div className="z-10 text-left min-w-0 flex-1">
+                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
+                  filter === "Pending" ? "text-amber-700" : "text-amber-600"
+                }`}>
                   {displayedStats.pending}
                 </div>
-                <div className="text-[10px] sm:text-xs font-bold text-amber-700 uppercase tracking-wider mt-0.5 leading-tight truncate">
+                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
+                  filter === "Pending" ? "font-black text-amber-800" : "font-bold text-amber-600/80"
+                }`}>
                   Pending
                 </div>
               </div>
             </div>
 
+            {/* Approved Card */}
             <div 
               onClick={() => { setFilter("Approved"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
-              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "Approved" ? "bg-green-100/40 border-green-500 shadow-md shadow-green-500/10 ring-2 ring-green-500/20" : "bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm border-green-100 hover:border-green-300"}`}
+              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
+                filter === "Approved" 
+                  ? "bg-gradient-to-br from-emerald-50/90 via-green-50 to-teal-50/90 border-2 border-emerald-600 shadow-lg shadow-emerald-500/15 ring-4 ring-emerald-500/15 scale-[1.02] z-10" 
+                  : "bg-white border-slate-200/80 shadow-xs hover:border-emerald-400 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
+              }`}
             >
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-green-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-white rounded-2xl flex items-center justify-center border border-green-100 z-10 text-green-500 shadow-sm">
+              {filter === "Approved" && (
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-xs flex items-center gap-1">
+                    <FiCheckCircle size={10} /> Active
+                  </span>
+                </div>
+              )}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
+                filter === "Approved" 
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-sm" 
+                  : "bg-green-50 text-emerald-600 border-green-200/60 group-hover:bg-green-100"
+              }`}>
                 <FiCheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div className="z-10 text-left min-w-0">
-                <div className="text-2xl sm:text-3xl font-extrabold text-green-600 tracking-tight truncate">
+              <div className="z-10 text-left min-w-0 flex-1">
+                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
+                  filter === "Approved" ? "text-emerald-800" : "text-emerald-600"
+                }`}>
                   {displayedStats.approved}
                 </div>
-                <div className="text-[10px] sm:text-xs font-bold text-green-700 uppercase tracking-wider mt-0.5 leading-tight truncate">
+                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
+                  filter === "Approved" ? "font-black text-emerald-800" : "font-bold text-emerald-600/80"
+                }`}>
                   Approved
                 </div>
               </div>
             </div>
 
+            {/* Denied Card */}
             <div 
               onClick={() => { setFilter("Denied"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
-              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all cursor-pointer ${filter === "Denied" ? "bg-rose-100/40 border-rose-500 shadow-md shadow-rose-500/10 ring-2 ring-rose-500/20" : "bg-gradient-to-br from-rose-50 to-red-50 shadow-sm border-rose-100 hover:border-rose-300"}`}
+              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
+                filter === "Denied" 
+                  ? "bg-gradient-to-br from-rose-50/90 via-red-50 to-pink-50/90 border-2 border-rose-600 shadow-lg shadow-rose-500/15 ring-4 ring-rose-500/15 scale-[1.02] z-10" 
+                  : "bg-white border-slate-200/80 shadow-xs hover:border-rose-400 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
+              }`}
             >
               <div className="absolute -right-6 -top-6 w-24 h-24 bg-rose-100/50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 shrink-0 bg-white rounded-2xl flex items-center justify-center border border-rose-100 z-10 text-rose-500 shadow-sm">
+              {filter === "Denied" && (
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs flex items-center gap-1">
+                    <FiCheckCircle size={10} /> Active
+                  </span>
+                </div>
+              )}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
+                filter === "Denied" 
+                  ? "bg-rose-600 text-white border-rose-600 shadow-sm" 
+                  : "bg-rose-50 text-rose-600 border-rose-200/60 group-hover:bg-rose-100"
+              }`}>
                 <FiX className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
-              <div className="z-10 text-left min-w-0">
-                <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 tracking-tight truncate">
+              <div className="z-10 text-left min-w-0 flex-1">
+                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
+                  filter === "Denied" ? "text-rose-800" : "text-rose-600"
+                }`}>
                   {displayedStats.denied}
                 </div>
-                <div className="text-[10px] sm:text-xs font-bold text-rose-700 uppercase tracking-wider mt-0.5 leading-tight truncate">
+                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
+                  filter === "Denied" ? "font-black text-rose-800" : "font-bold text-rose-600/80"
+                }`}>
                   Denied
                 </div>
               </div>
             </div>
           </motion.div>
+
+          {/* Active Filter Indicator Bar */}
+          <div className="mb-6 bg-white rounded-2xl border border-slate-200/80 p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Filter:</span>
+              {filter === "Pending" && (
+                <span className="px-3 py-1 bg-amber-100/90 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Pending Requests ({displayedStats.pending})
+                </span>
+              )}
+              {filter === "Approved" && (
+                <span className="px-3 py-1 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                  Approved Requests ({displayedStats.approved})
+                </span>
+              )}
+              {filter === "Denied" && (
+                <span className="px-3 py-1 bg-rose-100/90 text-rose-900 border border-rose-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-rose-600" />
+                  Denied Requests ({displayedStats.denied})
+                </span>
+              )}
+              {filter === "all" && (
+                <span className="px-3 py-1 bg-blue-100/90 text-[#0056a2] border border-blue-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-[#0056a2]" />
+                  Total / All Requests ({displayedStats.total})
+                </span>
+              )}
+            </div>
+
+            {filter !== "Pending" && (
+              <button
+                onClick={() => {
+                  setFilter("Pending");
+                  setPagination((prev) => ({ ...prev, page: 1 }));
+                  setSelectedRequests(new Set());
+                  setIsSelectAll(false);
+                }}
+                className="text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-all border border-amber-200 flex items-center gap-1.5"
+              >
+                <FiClock size={13} /> Switch to Pending Default
+              </button>
+            )}
+          </div>
 
 
 
@@ -785,6 +924,43 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             )}
           </AnimatePresence>
 
+          {/* Search Bar */}
+          <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.2 }}
+              className="mb-4"
+            >
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <FiSearch className="h-4 w-4 text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search by Intern ID, Name, or NIC..."
+                  className="w-full pl-10 pr-10 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#0056a2]/30 focus:border-[#0056a2]/50 shadow-sm transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-gray-400 hover:text-rose-500 transition-colors"
+                    title="Clear search"
+                  >
+                    <FiX size={16} />
+                  </button>
+                )}
+              </div>
+              {searchQuery.trim() && (
+                <p className="mt-2 text-xs text-gray-500 font-medium pl-1">
+                  {filteredRequests.length === 0
+                    ? "No results found"
+                    : `${filteredRequests.length} result${filteredRequests.length !== 1 ? "s" : ""} found`}
+                </p>
+              )}
+            </motion.div>
+
           {/* Content Body */}
           {loading ? (
             <div className="flex justify-center items-center py-20">
@@ -808,15 +984,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   : "Try adjusting your filters."}
               </p>
               <div className="mt-8 flex justify-center gap-4">
-                {(selectedDate || filter !== "all") && (
+                {(selectedDate || filter !== "Pending") && (
                   <button
                     onClick={() => {
                       setSelectedDate("");
-                      setFilter("all");
+                      setFilter("Pending");
                     }}
                     className="px-6 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-bold text-sm hover:bg-gray-50 shadow-sm"
                   >
-                    Clear All Filters
+                    Clear All Filters & Reset to Pending
                   </button>
                 )}
                 <button
@@ -937,7 +1113,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                 <div className="flex flex-col gap-2">
                                   <div className="flex items-start gap-2 flex-wrap">
                                     <div className="font-bold text-gray-900 text-sm">
-                                      {request.internName}
+                                      {highlightMatch(request.internName, searchQuery.trim())}
                                     </div>
                                     {urgent && request.status === "Pending" && (
                                       <span className="text-[9px] px-1.5 py-0.5 bg-rose-500 text-white rounded uppercase tracking-wider font-bold animate-pulse mt-0.5">
@@ -948,10 +1124,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                   <div className="flex flex-wrap items-center gap-2 mt-1">
                                     <div className="text-xs font-bold text-[#0056a2] bg-blue-50 px-2 py-1 rounded-md flex items-center gap-1 w-fit">
                                       <FiUser size={10} className="shrink-0" /> ID:{" "}
-                                      {request.internTraineeId || "N/A"}
+                                      {highlightMatch(request.internTraineeId?.toString() || "N/A", searchQuery.trim())}
                                     </div>
                                     <div className="text-xs text-gray-500 font-medium">
-                                      NIC: {request.nationalId}
+                                      NIC: {highlightMatch(request.nationalId, searchQuery.trim())}
                                     </div>
                                   </div>
                                 </div>
