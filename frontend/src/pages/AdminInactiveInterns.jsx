@@ -1229,10 +1229,10 @@ export default function AdminInactiveInterns() {
           /* ── Two-column layout ── */
           .inactive-layout {
             display: flex; gap: 20px; align-items: stretch;
-            min-height: calc(100vh - 250px);
+            height: calc(100vh - 120px);
           }
           @media (max-width: 900px) {
-            .inactive-layout { flex-direction: column; }
+            .inactive-layout { flex-direction: column; height: auto; min-height: calc(100vh - 120px); }
           }
 
           /* ── Left col: intern list ── */
@@ -1256,7 +1256,6 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-body {
             flex: 1; overflow-y: auto; min-height: 0;
-            max-height: calc(100vh - 350px);
           }
           .inactive-list-item {
             display: flex; align-items: center; gap: 10px;
