@@ -32,7 +32,7 @@ export default function SeasonalBackground({ onSeasonResolved }) {
 
       // 1. Check backend override
       try {
-        const res = await fetch(`${API_BASE_URL}/api/login-season`);
+        const res = await fetch(`${API_BASE_URL}/login-season`);
         if (res.ok) {
           const data = await res.json();
           if (data.seasonKey) {

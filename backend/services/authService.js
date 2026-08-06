@@ -7,6 +7,9 @@ const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
 const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
+const Supervisor = require("../models/Supervisor");
+const User = require("../models/User");
+const https = require("https");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -75,25 +78,117 @@ class AuthService {
     return this.createAdminSession(user);
   }
 
-  async adminGoogleLogin(idToken) {
-    const ticket = await client.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID });
-    const payload = ticket.getPayload();
-    if (!payload.email_verified) throw new Error("Google email is not verified.");
+  /**
+   * Admin Google Login
+   *
+   * Accepts either:
+   *   - { credential }  — Google One Tap / GSI ID token
+   *   - { accessToken } — useGoogleLogin implicit flow access token
+   *
+   * In both cases, the authenticated email is checked against the
+   * `supervisors` allowlist before a session is issued.
+   */
+  async adminGoogleLogin(credentialOrCode) {
+    let payload;
 
-    const user = await UserRepository.findByEmail(payload.email);
-    if (!user) throw new Error("This Google account has not been invited to the admin portal.");
-    if (!user.isActive) throw new Error("Account is inactive. Please contact a super admin.");
-    if (user.authProvider !== "google" || !["admin", "supervisor"].includes(user.role)) {
-      throw new Error("This account is not an active Google staff invitation.");
+    if (credentialOrCode && credentialOrCode.startsWith("ya29.")) {
+      // ── Access token flow (useGoogleLogin implicit) ──────────────────────
+      // Verify by fetching Google userinfo
+      const googlePayload = await this._fetchGoogleUserInfo(credentialOrCode);
+      if (!googlePayload || !googlePayload.email) {
+        throw new Error("Failed to verify Google identity. Please try again.");
+      }
+      payload = {
+        email: googlePayload.email,
+        email_verified: googlePayload.email_verified,
+        name: googlePayload.name,
+        picture: googlePayload.picture,
+        sub: googlePayload.sub,
+      };
+    } else {
+      // ── ID token flow (Google One Tap / credential) ───────────────────────
+      const ticket = await client.verifyIdToken({
+        idToken: credentialOrCode,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      payload = ticket.getPayload();
     }
 
-    user.name = user.name || payload.name || "";
-    user.picture = payload.picture || user.picture;
-    user.googleSubject = payload.sub;
-    user.lastLoginAt = new Date();
-    if (!user.permissions?.length) user.permissions = permissionsForRole(user.role);
-    await user.save();
+    if (!payload.email_verified) {
+      throw new Error("Google email is not verified. Please verify your Google account and try again.");
+    }
+
+    const normalizedEmail = payload.email.toLowerCase().trim();
+
+    // 2. Check allowlist — supervisors collection (case-insensitive)
+    const supervisor = await Supervisor.findOne({ email: normalizedEmail });
+    if (!supervisor) {
+      throw new Error(
+        "Access denied. Your Google account is not registered as an authorized supervisor. " +
+        "Please contact the system administrator."
+      );
+    }
+
+    // 3. Find or create the User record
+    let user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // First-time sign-in: auto-provision the admin User from supervisor record
+      const roleMap = { Supervisor: "supervisor", Developer: "admin" };
+      const userRole = roleMap[supervisor.role] || "supervisor";
+      user = new User({
+        name: payload.name || supervisor.name,
+        email: normalizedEmail,
+        authProvider: "google",
+        role: userRole,
+        picture: payload.picture || "",
+        googleSubject: payload.sub,
+        isActive: true,
+        permissions: permissionsForRole(userRole),
+      });
+      await user.save();
+    } else {
+      // Subsequent sign-ins: refresh name/picture
+      user.name = user.name || payload.name || supervisor.name;
+      user.picture = payload.picture || user.picture;
+      user.googleSubject = payload.sub;
+      user.lastLoginAt = new Date();
+      if (!user.permissions?.length) {
+        user.permissions = permissionsForRole(user.role || "supervisor");
+      }
+      if (!user.isActive) {
+        throw new Error("Your account has been deactivated. Please contact the system administrator.");
+      }
+      await user.save();
+    }
+
     return this.createAdminSession(user);
+  }
+
+  /** Fetches Google userinfo via the v3 endpoint using an access token */
+  _fetchGoogleUserInfo(accessToken) {
+    return new Promise((resolve, reject) => {
+      const options = {
+        hostname: "www.googleapis.com",
+        path: "/oauth2/v3/userinfo",
+        method: "GET",
+        headers: { Authorization: `Bearer ${accessToken}` },
+      };
+      const req = https.request(options, (res) => {
+        let data = "";
+        res.on("data", (chunk) => { data += chunk; });
+        res.on("end", () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) return reject(new Error(parsed.error.message || "Google userinfo error"));
+            resolve(parsed);
+          } catch (e) {
+            reject(new Error("Failed to parse Google userinfo response"));
+          }
+        });
+      });
+      req.on("error", reject);
+      req.end();
+    });
   }
 
   // Intern Google Login with ID Token
