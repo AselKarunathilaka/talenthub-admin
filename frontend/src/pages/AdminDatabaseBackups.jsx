@@ -84,6 +84,7 @@ export default function AdminDatabaseBackups() {
   const operation = data?.operation;
   const snapshots = data?.snapshots || [];
   const isRunning = operation?.status === "running";
+  const operationProgress = Math.min(100, Math.max(0, Number(operation?.progress) || 0));
   const lastSnapshot = snapshots[0];
   const totalProtectedBytes = snapshots.reduce(
     (total, snapshot) => total + (Number(snapshot.sizeBytes) || 0),
@@ -164,7 +165,47 @@ export default function AdminDatabaseBackups() {
             {summaryCards.map(({ label, value, detail, icon, color }) => <article key={label} className="group rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><p className="text-xs font-bold uppercase tracking-[0.12em] text-slate-400">{label}</p><p className="mt-2 truncate text-lg font-black text-slate-900" title={String(value)}>{value}</p><p className="mt-1 truncate text-xs font-medium text-slate-500" title={detail}>{detail}</p></div><div className={`rounded-xl p-3 ${color}`}>{createElement(icon, { className: "h-5 w-5" })}</div></div></article>)}
           </section>
 
-          {operation && operation.status !== "idle" && <section className={`rounded-2xl border p-5 ${operation.status === "failed" ? "border-red-200 bg-red-50" : operation.status === "success" ? "border-emerald-200 bg-emerald-50" : "border-blue-200 bg-blue-50"}`}><div className="flex items-start gap-3">{operation.status === "running" ? <LoaderCircle className="h-6 w-6 animate-spin text-blue-600" /> : operation.status === "success" ? <CheckCircle2 className="h-6 w-6 text-emerald-600" /> : <TriangleAlert className="h-6 w-6 text-red-600" />}<div><h2 className="font-bold capitalize text-slate-900">{operation.type} {operation.status}</h2><p className="mt-1 text-sm text-slate-600">Started {formatDate(operation.startedAt)}{operation.completedAt ? ` · Completed ${formatDate(operation.completedAt)}` : ""}</p>{operation.warning && <p className="mt-2 text-sm font-semibold text-amber-700">Retention warning: {operation.warning}</p>}{operation.error && <p className="mt-2 text-sm font-semibold text-red-700">{operation.error}</p>}</div></div></section>}
+          {operation && operation.status !== "idle" && (
+            <section className={`overflow-hidden rounded-2xl border p-5 shadow-sm ${operation.status === "failed" ? "border-red-200 bg-red-50" : operation.status === "success" ? "border-emerald-200 bg-emerald-50" : "border-blue-200 bg-gradient-to-r from-blue-50 to-cyan-50"}`}>
+              <div className="flex items-start gap-3">
+                <div className={`rounded-xl p-2.5 ${operation.status === "failed" ? "bg-red-100 text-red-600" : operation.status === "success" ? "bg-emerald-100 text-emerald-600" : "bg-blue-100 text-blue-600"}`}>
+                  {operation.status === "running" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : operation.status === "success" ? <CheckCircle2 className="h-5 w-5" /> : <TriangleAlert className="h-5 w-5" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <h2 className="font-black capitalize text-slate-900">{operation.type} {operation.status}</h2>
+                      <p className="mt-0.5 text-sm font-semibold text-slate-600">{operation.phase || (isRunning ? "Backup in progress" : "Operation finished")}</p>
+                    </div>
+                    <span className={`text-2xl font-black tabular-nums ${operation.status === "failed" ? "text-red-600" : operation.status === "success" ? "text-emerald-600" : "text-blue-700"}`}>{operationProgress}%</span>
+                  </div>
+
+                  <div
+                    className="mt-4 h-3 overflow-hidden rounded-full bg-white/80 ring-1 ring-slate-900/5"
+                    role="progressbar"
+                    aria-label="Database backup progress"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow={operationProgress}
+                  >
+                    <div
+                      className={`relative h-full rounded-full transition-[width] duration-700 ease-out ${operation.status === "failed" ? "bg-red-500" : operation.status === "success" ? "bg-emerald-500" : "bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400"}`}
+                      style={{ width: `${operationProgress}%` }}
+                    >
+                      {isRunning && <span className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/35 to-transparent" />}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-col gap-1 text-xs font-medium text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+                    <span>Started {formatDate(operation.startedAt)}</span>
+                    <span>{operation.completedAt ? `Completed ${formatDate(operation.completedAt)}` : "The backup continues safely on the server."}</span>
+                  </div>
+                  {operation.warning && <p className="mt-3 text-sm font-semibold text-amber-700">Retention warning: {operation.warning}</p>}
+                  {operation.error && <p className="mt-3 text-sm font-semibold text-red-700">{operation.error}</p>}
+                </div>
+              </div>
+            </section>
+          )}
 
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <section className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm">

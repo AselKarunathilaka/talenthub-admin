@@ -1,7 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { requireSuperAdmin } = require("../middleware/adminAuth");
-const { snapshotCreatedAt } = require("../services/databaseBackupManager");
+const {
+  parseBackupProgress,
+  snapshotCreatedAt,
+} = require("../services/databaseBackupManager");
 
 test("backup administration only permits the persisted super-admin role", () => {
   let nextCalled = false;
@@ -23,4 +26,16 @@ test("snapshot timestamps are parsed as UTC for Colombo display conversion", () 
     snapshotCreatedAt("talenthub_backup_20260804_063000", "talenthub_backup"),
     "2026-08-04T06:30:00.000Z",
   );
+});
+
+test("backup progress markers expose only a bounded percentage and phase", () => {
+  assert.deepEqual(
+    parseBackupProgress("log line\nBACKUP_PROGRESS=55|Copying snapshot to the backup cluster\n"),
+    { progress: 55, phase: "Copying snapshot to the backup cluster" },
+  );
+  assert.deepEqual(
+    parseBackupProgress("BACKUP_PROGRESS=120|Finishing"),
+    { progress: 100, phase: "Finishing" },
+  );
+  assert.equal(parseBackupProgress("ordinary backup output"), null);
 });

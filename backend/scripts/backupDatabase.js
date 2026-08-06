@@ -16,6 +16,9 @@ const {
 
 const hasFlag = (name) => process.argv.slice(2).includes(name);
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const reportProgress = (percentage, phase) => {
+  console.log(`BACKUP_PROGRESS=${percentage}|${phase}`);
+};
 
 async function ensureTargetDatabaseIsEmpty(uri, databaseName) {
   const client = new MongoClient(uri);
@@ -139,6 +142,7 @@ async function createSourceArchiveWithRetries(config, paths) {
 }
 
 async function main() {
+  reportProgress(3, "Validating backup configuration");
   const config = resolveBackupConfig();
   const paths = backupPaths(config);
   const checkOnly = hasFlag("--check");
@@ -156,6 +160,7 @@ async function main() {
     return;
   }
 
+  reportProgress(8, "Preparing secure backup workspace");
   await fs.mkdir(config.backupDir, { recursive: true, mode: 0o700 });
   const startedAt = new Date();
   const metadata = {
@@ -170,8 +175,10 @@ async function main() {
   };
 
   try {
+    reportProgress(15, "Exporting the live database");
     metadata.sourceDumpAttempts = await createSourceArchiveWithRetries(config, paths);
 
+    reportProgress(45, "Securing and validating the archive");
     const partialStats = await fs.stat(paths.partialArchivePath);
     if (!partialStats.size) throw new Error("mongodump produced an empty archive.");
     await fs.rename(paths.partialArchivePath, paths.archivePath);
@@ -182,8 +189,10 @@ async function main() {
     metadata.sha256 = await sha256File(paths.archivePath);
 
     if (config.targetUri) {
+      reportProgress(55, "Copying snapshot to the backup cluster");
       await ensureTargetDatabaseIsEmpty(config.targetUri, paths.targetDatabase);
       const importAttempts = await importSnapshotWithRetries(config, paths);
+      reportProgress(82, "Verifying collections and document counts");
       const inventory = await inventoryDatabase(config.targetUri, paths.targetDatabase);
       if (!inventory.length) throw new Error("Separate backup import completed without any collections.");
       metadata.secondaryBackup = {
@@ -194,6 +203,7 @@ async function main() {
         collections: inventory,
       };
       try {
+        reportProgress(92, "Applying the remote retention policy");
         metadata.secondaryBackup.removedSnapshots = await pruneExcessRemoteSnapshots(
           config.targetUri,
           config.targetDatabasePrefix,
@@ -205,6 +215,7 @@ async function main() {
       }
     }
 
+    reportProgress(96, "Finalizing backup metadata");
     metadata.status = "success";
     metadata.completedAt = new Date().toISOString();
     metadata.durationMs = Date.now() - startedAt.getTime();
@@ -219,6 +230,7 @@ async function main() {
       console.log(`Separate backup database verified: ${paths.targetDatabase}`);
     }
     if (removed.length) console.log(`Pruned ${removed.length} expired local backup file(s).`);
+    reportProgress(100, "Backup completed");
   } catch (error) {
     metadata.status = "failed";
     metadata.completedAt = new Date().toISOString();

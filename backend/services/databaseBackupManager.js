@@ -12,6 +12,8 @@ let activeChild = null;
 let operation = {
   type: null,
   status: "idle",
+  progress: 0,
+  phase: null,
   startedAt: null,
   completedAt: null,
   requestedBy: null,
@@ -28,6 +30,16 @@ class OperationBusyError extends Error {
 
 function publicOperation() {
   return { ...operation };
+}
+
+function parseBackupProgress(value) {
+  const matches = [...String(value || "").matchAll(/BACKUP_PROGRESS=(\d{1,3})\|([^\r\n]+)/g)];
+  if (!matches.length) return null;
+  const [, percentage, phase] = matches.at(-1);
+  return {
+    progress: Math.min(100, Math.max(0, Number.parseInt(percentage, 10))),
+    phase: phase.trim() || "Backup in progress",
+  };
 }
 
 function configurationStatus() {
@@ -93,6 +105,8 @@ function runManagedProcess(type, scriptName, args, requestedBy) {
   operation = {
     type,
     status: "running",
+    progress: 2,
+    phase: "Starting backup process",
     startedAt: new Date().toISOString(),
     completedAt: null,
     requestedBy: requestedBy || "system",
@@ -111,7 +125,11 @@ function runManagedProcess(type, scriptName, args, requestedBy) {
   const capture = (chunk) => {
     const text = chunk.toString().replace(/mongodb(?:\+srv)?:\/\/[^\s]+/gi, "[MongoDB URI redacted]");
     output = `${output}${text}`.slice(-12000);
-    text.trim().split(/\r?\n/).filter(Boolean).forEach((line) => console.log(`[Database ${type}] ${line}`));
+    const progress = parseBackupProgress(output);
+    if (progress && type === "backup") operation = { ...operation, ...progress };
+    text.trim().split(/\r?\n/).filter(Boolean).forEach((line) => {
+      if (!line.startsWith("BACKUP_PROGRESS=")) console.log(`[Database ${type}] ${line}`);
+    });
   };
   child.stdout.on("data", capture);
   child.stderr.on("data", capture);
@@ -123,6 +141,8 @@ function runManagedProcess(type, scriptName, args, requestedBy) {
     operation = {
       ...operation,
       status: code === 0 ? "success" : "failed",
+      progress: code === 0 ? 100 : operation.progress,
+      phase: code === 0 ? "Backup completed" : "Backup failed",
       completedAt: new Date().toISOString(),
       error: code === 0 ? null : (operation.error || output.trim().split(/\r?\n/).at(-1) || `Process exited with code ${code}.`),
       warning,
@@ -162,6 +182,7 @@ module.exports = {
   getStatus,
   listSnapshots,
   publicOperation,
+  parseBackupProgress,
   snapshotCreatedAt,
   startBackup,
 };
