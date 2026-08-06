@@ -191,16 +191,15 @@ class AuthService {
     });
   }
 
-  // Intern Google Login with ID Token
-  async googleLogin(idToken) {
-    const ticket = await client.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+  // Intern Google Login — supports access token (implicit flow)
+  async googleLogin(accessToken) {
+    const googlePayload = await this._fetchGoogleUserInfo(accessToken);
+    if (!googlePayload || !googlePayload.email) {
+      throw new Error("Failed to verify Google identity. Please try again.");
+    }
 
-    const payload = ticket.getPayload();
-    const email = payload.email;
-    const googlePictureUrl = payload.picture;
+    const email = googlePayload.email;
+    const googlePictureUrl = googlePayload.picture;
 
     const intern = await InternRepository.findByEmail(email);
     if (!intern) {
@@ -218,7 +217,7 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" }; // Return internId
+    return { token, internId: intern._id, message: "Login successful!" };
   }
 
   async internLogin(email, password) {
