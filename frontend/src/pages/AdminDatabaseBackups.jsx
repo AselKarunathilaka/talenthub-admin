@@ -84,7 +84,10 @@ export default function AdminDatabaseBackups() {
   const operation = data?.operation;
   const snapshots = data?.snapshots || [];
   const isRunning = operation?.status === "running";
-  const operationProgress = Math.min(100, Math.max(0, Number(operation?.progress) || 0));
+  const reportedProgress = Number(operation?.progress);
+  const operationProgress = Number.isFinite(reportedProgress)
+    ? Math.min(100, Math.max(0, reportedProgress))
+    : operation?.status === "success" ? 100 : null;
   const lastSnapshot = snapshots[0];
   const totalProtectedBytes = snapshots.reduce(
     (total, snapshot) => total + (Number(snapshot.sizeBytes) || 0),
@@ -177,7 +180,7 @@ export default function AdminDatabaseBackups() {
                       <h2 className="font-black capitalize text-slate-900">{operation.type} {operation.status}</h2>
                       <p className="mt-0.5 text-sm font-semibold text-slate-600">{operation.phase || (isRunning ? "Backup in progress" : "Operation finished")}</p>
                     </div>
-                    <span className={`text-2xl font-black tabular-nums ${operation.status === "failed" ? "text-red-600" : operation.status === "success" ? "text-emerald-600" : "text-blue-700"}`}>{operationProgress}%</span>
+                    <span className={`text-2xl font-black tabular-nums ${operation.status === "failed" ? "text-red-600" : operation.status === "success" ? "text-emerald-600" : "text-blue-700"}`}>{operationProgress === null ? "Waiting…" : `${operationProgress}%`}</span>
                   </div>
 
                   <div
@@ -186,11 +189,11 @@ export default function AdminDatabaseBackups() {
                     aria-label="Database backup progress"
                     aria-valuemin="0"
                     aria-valuemax="100"
-                    aria-valuenow={operationProgress}
+                    aria-valuenow={operationProgress ?? undefined}
                   >
                     <div
-                      className={`relative h-full rounded-full transition-[width] duration-700 ease-out ${operation.status === "failed" ? "bg-red-500" : operation.status === "success" ? "bg-emerald-500" : "bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400"}`}
-                      style={{ width: `${operationProgress}%` }}
+                      className={`relative h-full rounded-full transition-[width] duration-700 ease-out ${operationProgress === null ? "animate-pulse" : ""} ${operation.status === "failed" ? "bg-red-500" : operation.status === "success" ? "bg-emerald-500" : "bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-400"}`}
+                      style={{ width: operationProgress === null ? "35%" : `${operationProgress}%` }}
                     >
                       {isRunning && <span className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/35 to-transparent" />}
                     </div>
