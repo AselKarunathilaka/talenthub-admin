@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
-  FaSpinner,
-  FaCalendarAlt,
-  FaUser,
-  FaTasks,
-  FaExclamationTriangle,
-  FaPlus,
-  FaSearch,
-  FaFilter,
-  FaBook,
-  FaChevronLeft,
-  FaChevronRight,
-  FaFilePdf,
-  FaTimes,
-} from "react-icons/fa";
+  FiLoader,
+  FiCalendar,
+  FiUser,
+  FiCheckSquare,
+  FiAlertTriangle,
+  FiPlus,
+  FiSearch,
+  FiFilter,
+  FiBook,
+  FiChevronLeft,
+  FiChevronRight,
+  FiFileText,
+  FiX,
+  FiArrowRight,
+  FiList,
+} from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import ExportModal from "../components/ExportModal";
 
@@ -32,6 +34,7 @@ const DailyRecords = () => {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState("calendar");
+  const [isDayModalOpen, setIsDayModalOpen] = useState(false);
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -250,7 +253,7 @@ useEffect(() => {
           record.internId.traineeId
             .toLowerCase()
             .includes(searchTerm.toLowerCase())) ||
-        record.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (record.task && record.task.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (record.progress &&
           record.progress.toLowerCase().includes(searchTerm.toLowerCase())) ||
         (record.blockers &&
@@ -363,17 +366,17 @@ useEffect(() => {
   // ── Loading / Error states ──────────────────────────────────
   if (loading) {
     return (
-      <div className="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
         <Navigation />
-        <div className="flex-1 w-full lg:mt-20 lg:px-10 flex items-center justify-center px-4">
-          <div className="text-center bg-white rounded-2xl shadow-lg p-8 md:p-12 border border-gray-200 max-w-md w-full">
-            <div className="bg-indigo-100 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
-              <FaSpinner className="animate-spin text-2xl md:text-4xl text-indigo-600" />
+        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
+          <div className="text-center bg-white rounded-2xl shadow-sm p-8 md:p-12 border border-gray-200 max-w-md w-full" style={{ borderRadius: 20 }}>
+            <div className="bg-indigo-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
+              <FiLoader className="animate-spin text-2xl md:text-4xl" style={{ color: "#0056a2" }} />
             </div>
             <h3 className="text-xl md:text-2xl font-semibold text-gray-800 mb-2">
               Loading Daily Records
             </h3>
-            <p className="text-gray-600 text-sm md:text-lg">
+            <p className="text-gray-500 text-sm md:text-base">
               Please wait while we fetch your records...
             </p>
           </div>
@@ -384,22 +387,23 @@ useEffect(() => {
 
   if (error) {
     return (
-      <div className="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
         <Navigation />
-        <div className="flex-1 w-full lg:mt-20 lg:px-10 flex items-center justify-center px-4">
-          <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 max-w-md w-full text-center border border-gray-200">
-            <div className="bg-red-100 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
-              <FaExclamationTriangle className="text-2xl md:text-4xl text-red-500" />
+        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
+          <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12 max-w-md w-full text-center border border-gray-200" style={{ borderRadius: 20 }}>
+            <div className="bg-red-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
+              <FiAlertTriangle className="text-2xl md:text-4xl text-red-500" />
             </div>
             <h2 className="text-xl md:text-2xl font-semibold text-gray-800 mb-3 md:mb-4">
               Error Loading Records
             </h2>
-            <p className="text-gray-600 mb-4 md:mb-6 leading-relaxed text-sm md:text-base">
+            <p className="text-gray-500 mb-4 md:mb-6 leading-relaxed text-sm md:text-base">
               {error}
             </p>
             <button
               onClick={fetchDailyRecords}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 md:px-8 py-2 md:py-3 rounded-xl transition duration-300 font-medium shadow-lg text-sm md:text-base"
+              className="text-white px-6 md:px-8 py-2 md:py-3 rounded-xl transition duration-300 font-medium shadow-sm text-sm md:text-base"
+              style={{ background: "linear-gradient(135deg, #0056a2 0%, #00b4eb 100%)", borderRadius: 14 }}
             >
               Try Again
             </button>
@@ -411,7 +415,7 @@ useEffect(() => {
 
   // ── Render ──────────────────────────────────────────────────
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
       <Navigation />
 
       {/* Export Modal */}
@@ -426,311 +430,485 @@ useEffect(() => {
         />
       )}
 
-      <div className="flex-1 w-full lg:mt-20 lg:px-10">
-        <main className="mx-auto px-4 py-6 md:py-8 lg:py-10 max-w-7xl">
+      {/* Day Details Modal */}
+      {isDayModalOpen && selectedDate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Header */}
+            <div className="flex items-center justify-between p-5 md:p-6 border-b border-gray-100 bg-white">
+              <h3 className="text-lg md:text-xl font-bold text-gray-900">
+                {selectedDate.toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </h3>
+              <button
+                onClick={() => setIsDayModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <FiX className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
+            </div>
+            
+            {/* Body */}
+            <div className="p-5 md:p-6 overflow-y-auto bg-gray-50/50">
+              {getHolidayForDate(selectedDate) && (
+                <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <div className="font-semibold text-red-700 text-sm md:text-base">
+                    {getHolidayForDate(selectedDate).name}
+                  </div>
+                  <div className="text-xs md:text-sm text-red-600 mt-1">
+                    {getHolidayForDate(selectedDate).type.join(", ")}
+                  </div>
+                </div>
+              )}
+
+              {selectedDateRecords.length > 0 ? (
+                <div className="space-y-4">
+                  {selectedDateRecords.map((record) => (
+                    <div
+                      key={record._id}
+                      className="bg-white rounded-xl p-4 md:p-5 shadow-sm"
+                      style={{ border: "1.5px solid rgba(0, 180, 235, 0.2)" }}
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <FiUser className="text-indigo-600 text-sm" />
+                        <span className="font-semibold text-gray-900 text-sm md:text-base">
+                          {isAdmin
+                            ? record.internId?.traineeName || "Unknown User"
+                            : "My Record"}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {record.stack &&
+                          !(
+                            record.status === "leave" &&
+                            record.stack === "On Leave"
+                          ) && (
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              {record.stack}
+                            </span>
+                          )}
+                        {record.status === "wfh" && (
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                            Work From Home
+                          </span>
+                        )}
+                        {record.status === "leave" && (
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                            On Leave
+                          </span>
+                        )}
+                        {record.status === "study_leave" && (
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">
+                            Extended Leave
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                            <div className="bg-blue-100 p-1.5 rounded-lg flex-shrink-0">
+                              <FiCheckSquare className="text-blue-600 flex-shrink-0 text-sm" />
+                            </div>
+                            <span className="text-sm">Tasks Completed</span>
+                          </h4>
+                          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-4 rounded-xl border border-blue-200">
+                            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                              {record.task}
+                            </p>
+                          </div>
+                        </div>
+
+                        {record.progress && (
+                          <div className="space-y-2">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                              <div className="bg-amber-100 p-1.5 rounded-lg flex-shrink-0">
+                                <FiAlertTriangle className="text-amber-600 flex-shrink-0 text-sm" />
+                              </div>
+                              <span className="text-sm">Challenges Faced</span>
+                            </h4>
+                            <div className="bg-gradient-to-r from-amber-50 to-amber-100 p-3 md:p-4 rounded-xl border border-amber-200">
+                              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                {record.progress}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {record.blockers && (
+                          <div className="space-y-2">
+                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                              <div className="bg-emerald-100 p-1.5 rounded-lg flex-shrink-0">
+                                <FiPlus className="text-emerald-600 flex-shrink-0 text-sm" />
+                              </div>
+                              <span className="text-sm">Plans for Tomorrow</span>
+                            </h4>
+                            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 md:p-4 rounded-xl border border-emerald-200">
+                              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                {record.blockers}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="text-xs text-gray-400 mt-4 flex items-center gap-1.5 font-medium">
+                        <FiCalendar className="w-3.5 h-3.5" />
+                        {formatDate(record.createdAt || record.date)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <FiCheckSquare className="text-4xl text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 font-medium text-sm md:text-base">
+                    No records for this date
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           {/* Export error toast */}
           {exportError && (
-            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 flex items-center justify-between text-sm">
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 flex items-center justify-between text-sm" style={{ borderRadius: 14 }}>
               <span>{exportError}</span>
               <button
                 onClick={() => setExportError(null)}
                 className="ml-2 text-red-500 hover:text-red-700"
               >
-                <FaTimes />
+                <FiX />
               </button>
             </div>
           )}
 
-          {/* Navigation Header */}
-          <nav className="bg-white shadow-lg rounded-xl border border-gray-200 mb-6 md:mb-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10">
-              <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center py-4 lg:py-6 gap-4 lg:gap-0">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-indigo-100 rounded-lg">
-                    <FaCalendarAlt className="text-indigo-600 text-xl md:text-2xl" />
-                  </div>
-                  <div>
-                    <h1 className="text-xl md:text-2xl font-bold text-gray-800">
-                      {isAdmin ? "All Student Records" : "My Daily Records"}
-                    </h1>
-                    <p className="text-gray-600 text-xs md:text-sm">
-                      Track daily progress and achievements
-                    </p>
-                  </div>
+          {/* ───── Page Header ───── */}
+          <div style={{ marginBottom: 32 }}>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+              <div>
+                <h1
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 800,
+                    color: "#1a1a2e",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      color: "#1a1a2e",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 10,
+                    }}
+                  >
+                    <FiCalendar style={{ color: "#0056a2" }} />
+                    {isAdmin ? "Student Records" : "My Daily Records"}
+                  </span>
+                </h1>
+                <p
+                  style={{
+                    color: "#6b7280",
+                    marginTop: 6,
+                    fontSize: 15,
+                    fontStyle: "italic",
+                  }}
+                >
+                  Track daily progress and achievements
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                {/* View Switcher (Symmetrical Equal-Width Segmented Control) */}
+                <div className="inline-grid grid-cols-2 p-1 bg-white rounded-[14px] border border-[rgba(0,180,235,0.35)] shadow-sm w-[170px] sm:w-[200px]">
+                  <button
+                    onClick={() => setViewMode("calendar")}
+                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-[10px] text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                      viewMode === "calendar"
+                        ? "bg-[#0056a2] text-white shadow-sm font-bold"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FiCalendar className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${viewMode === "calendar" ? "text-white" : "text-[#00b4eb]"}`} />
+                    <span>Calendar</span>
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-[10px] text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                      viewMode === "list"
+                        ? "bg-[#0056a2] text-white shadow-sm font-bold"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FiList className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${viewMode === "list" ? "text-white" : "text-[#00b4eb]"}`} />
+                    <span>List</span>
+                  </button>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-3">
-                  {/* Toggle View */}
-                  <button
-                    onClick={() =>
-                      setViewMode(viewMode === "calendar" ? "list" : "calendar")
-                    }
-                    className="inline-flex items-center justify-center px-4 lg:px-5 py-2 lg:py-3 bg-white border border-gray-200 rounded-xl shadow-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 group cursor-pointer text-sm"
-                  >
-                    <FaCalendarAlt className="mr-2 h-3 w-3 lg:h-4 lg:w-4 text-blue-600 group-hover:text-blue-700" />
-                    <span className="whitespace-nowrap">
-                      {viewMode === "calendar" ? "List View" : "Calendar View"}
-                    </span>
-                  </button>
+                {/* Export PDF */}
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    background: "white",
+                    border: "1.5px solid rgba(0, 180, 235, 0.35)",
+                    borderRadius: 14,
+                    fontWeight: 600,
+                    color: "#0056a2",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease",
+                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  }}
+                  className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm hover:bg-blue-50/50"
+                >
+                  <FiFileText className="mr-1.5 sm:mr-2 text-[#00b4eb] text-xs sm:text-sm" />
+                  Export Records
+                </button>
 
-                  {/* Export PDF — visible to both intern and admin */}
-                  <button
-                    onClick={() => setShowExportModal(true)}
-                    className="inline-flex items-center justify-center px-4 lg:px-5 py-2 lg:py-3 bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-sm"
+                {/* Add New Entry */}
+                {!isAdmin && (
+                  <Link
+                    to="/log-book"
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      background: "linear-gradient(135deg, #0056a2 0%, #00b4eb 100%)",
+                      borderRadius: 14,
+                      fontWeight: 600,
+                      color: "white",
+                      cursor: "pointer",
+                      transition: "all 0.3s ease",
+                      boxShadow: "0 4px 14px rgba(0, 180, 235, 0.25)",
+                    }}
+                    className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm hover:shadow-lg hover:opacity-95"
                   >
-                    <FaFilePdf className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-                    <span className="whitespace-nowrap">Export Records</span>
-                  </button>
-
-                  {/* Add New Entry — intern only */}
-                  {!isAdmin && (
-                    <Link
-                      to="/log-book"
-                      className="inline-flex items-center justify-center px-4 lg:px-5 py-2 lg:py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-sm"
-                    >
-                      <FaBook className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
-                      <span className="whitespace-nowrap">Add New Entry</span>
-                      <FaPlus className="ml-2 h-3 w-3 lg:h-4 lg:w-4" />
-                    </Link>
-                  )}
-                </div>
+                    Add New Entry
+                    <FiPlus className="ml-1.5 sm:ml-2 text-xs sm:text-sm" />
+                  </Link>
+                )}
               </div>
             </div>
-          </nav>
+          </div>
 
-          {/* Main Content */}
-          <div className="py-4">
-            <div className="max-w-7xl mx-auto">
+            {/* Main Content */}
+            <div className="w-full">
               {viewMode === "calendar" ? (
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-6">
+                <div className="w-full">
                   {/* Calendar */}
-                  <div className="xl:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 md:mb-6 gap-3 sm:gap-0">
-                      <h2 className="text-xl md:text-2xl font-bold text-gray-900 text-center sm:text-left">
+                  {/* Calendar Container */}
+                  <div 
+                    className="w-full p-3 sm:p-6 md:p-8 bg-gradient-to-r from-[#006600] to-[#000066] text-white"
+                    style={{
+                      borderRadius: 20,
+                      boxShadow: "0 10px 40px rgba(0,0,0,0.1)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-4 sm:mb-6">
+                      <h2 className="text-lg sm:text-2xl font-extrabold text-white">
                         {monthNames[currentMonth.getMonth()]}{" "}
                         {currentMonth.getFullYear()}
                       </h2>
-                      <div className="flex items-center justify-center space-x-2">
+                      <div className="flex items-center space-x-1 bg-white/15 backdrop-blur-sm rounded-lg p-1 border border-white/20">
                         <button
                           onClick={prevMonth}
-                          className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition duration-200"
+                          className="p-1 sm:p-1.5 rounded-md hover:bg-white/20 text-white transition duration-200"
                         >
-                          <FaChevronLeft className="text-gray-600" />
-                        </button>
-                        <button
-                          onClick={goToToday}
-                          className="px-3 md:px-4 py-2 text-xs md:text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition duration-200"
-                        >
-                          Today
+                          <FiChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </button>
                         <button
                           onClick={nextMonth}
-                          className="p-2 rounded-lg border border-gray-300 hover:bg-gray-50 transition duration-200"
+                          className="p-1 sm:p-1.5 rounded-md hover:bg-white/20 text-white transition duration-200"
                         >
-                          <FaChevronRight className="text-gray-600" />
+                          <FiChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                         </button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-1 mb-4">
-                      {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
-                        (day) => (
-                          <div
-                            key={day}
-                            className="p-2 md:p-3 text-center text-xs md:text-sm font-medium text-gray-500 border-b border-gray-200"
-                          >
-                            <span className="hidden sm:inline">{day}</span>
-                            <span className="sm:hidden">{day.charAt(0)}</span>
-                          </div>
-                        ),
-                      )}
-                    </div>
-
-                    <div className="grid grid-cols-7 gap-1">
-                      {daysInMonth.map((day, index) => (
-                        <div
-                          key={index}
-                          className={getDayClass(day)}
-                          onClick={() => day && setSelectedDate(day)}
-                        >
-                          {day && (
-                            <>
-                              <div className="text-xs md:text-sm font-medium text-gray-900">
-                                {day.getDate()}
-                              </div>
-
-                              {getHolidayForDate(day) && (
-                                <div
-                                  className="text-[9px] md:text-[10px] text-red-600 font-medium truncate"
-                                  title={getHolidayForDate(day).name}
-                                >
-                                  {getHolidayForDate(day).name.length > 15
-                                    ? `${getHolidayForDate(day).name.substring(0, 15)}...`
-                                    : getHolidayForDate(day).name}
-                                </div>
-                              )}
-
-                              {getRecordsForDate(day).length > 0 && (
-                                <div className="absolute bottom-1 w-full flex justify-center left-1/2 transform -translate-x-1/2">
-                                  {getRecordsForDate(day).some(r => r.status === "study_leave") ? (
-                                    <span className="text-[8px] md:text-[9px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-semibold whitespace-nowrap shadow-sm">
-                                      Extended Leave
-                                    </span>
-                                  ) : (
-                                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-indigo-500 rounded-full"></div>
-                                  )}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Selected Date Records */}
-                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-6">
-                    <h3 className="text-base md:text-lg font-semibold text-gray-900 mb-4">
-                      <span className="hidden sm:inline">
-                        Records for{" "}
-                        {selectedDate.toLocaleDateString("en-US", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}
-                      </span>
-                      <span className="sm:hidden">
-                        Records for{" "}
-                        {selectedDate.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </span>
-                    </h3>
-                    {/* Holidays Data GET*/}
-                    {getHolidayForDate(selectedDate) && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="font-semibold text-red-700">
-                          {getHolidayForDate(selectedDate).name}
-                        </div>
-                        
-                        <div className="text-sm text-red-600">
-                          {getHolidayForDate(selectedDate).type.join(", ")}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedDateRecords.length > 0 ? (
-                      <div className="space-y-3 md:space-y-4 max-h-80 md:max-h-96 overflow-y-auto">
-                        {selectedDateRecords.map((record) => (
-                          <div
-                            key={record._id}
-                            className="bg-gray-50 rounded-lg p-3 md:p-4 border border-gray-200 hover:shadow-sm transition duration-200"
-                          >
-                            <div className="flex items-center gap-2 mb-2">
-                              <FaUser className="text-indigo-600 text-sm" />
-                              <span className="font-medium text-gray-900 text-sm">
-                                {isAdmin
-                                  ? record.internId?.traineeName ||
-                                    "Unknown User"
-                                  : "My Record"}
-                              </span>
+                    <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm mt-3 sm:mt-4">
+                      <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                          (day) => (
+                            <div
+                              key={day}
+                              className="py-2 sm:py-3 text-center text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0"
+                            >
+                              <span className="hidden sm:inline">{day}</span>
+                              <span className="sm:hidden">{day.charAt(0)}</span>
                             </div>
-                            <div className="flex flex-wrap gap-1 mb-1">
-                              {record.stack &&
-                                !(
-                                  record.status === "leave" &&
-                                  record.stack === "On Leave"
-                                ) && (
-                                  <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                    {record.stack}
+                          ),
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-7 auto-rows-fr">
+                        {daysInMonth.map((day, index) => {
+                          if (!day) return <div key={`empty-${index}`} className="min-h-[55px] sm:min-h-[100px] md:min-h-[140px] border-b border-r border-gray-100 bg-gray-50/50" />;
+                          
+                          const dayRecords = getRecordsForDate(day);
+                          const holiday = getHolidayForDate(day);
+                          const isToday = day.toDateString() === new Date().toDateString();
+                          const isSelected = selectedDate && day.toDateString() === selectedDate.toDateString();
+                          
+                          const hasWorkRecord = dayRecords.some(r => r.status === "working" || r.status === "wfh");
+
+                          let bgClass = "bg-white";
+                          if (holiday && !isSelected) bgClass = "bg-yellow-50";
+                          if (hasWorkRecord && !isSelected) bgClass = "bg-green-100";
+                          if (isSelected) bgClass = "bg-indigo-50 border-indigo-200";
+
+                          return (
+                            <div
+                              key={index}
+                              onClick={() => {
+                                setSelectedDate(day);
+                                setIsDayModalOpen(true);
+                              }}
+                              className={`min-h-[55px] sm:min-h-[100px] md:min-h-[140px] border-b border-r border-gray-100 p-1 sm:p-2 flex flex-col justify-between transition-colors relative cursor-pointer hover:bg-gray-50/80 ${bgClass}`}
+                            >
+                              {/* Holiday Name at the top if present (desktop only) */}
+                              {dayRecords.length === 0 && holiday ? (
+                                <div className="z-10 w-full text-center pt-0.5 hidden sm:block">
+                                  <span className="text-[11px] font-bold text-red-600 leading-tight w-full break-words block px-1">
+                                    {holiday.name}
                                   </span>
+                                </div>
+                              ) : (
+                                <div className="hidden sm:block" />
+                              )}
+
+                              {/* Date Number fixed in the middle of the cell */}
+                              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                <span className={`text-xs sm:text-xl md:text-2xl font-semibold w-6 h-6 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full ${isToday ? "bg-indigo-600 text-white shadow-md font-bold" : isSelected ? "text-indigo-700 font-bold" : "text-gray-700"}`}>
+                                  {day.getDate()}
+                                </span>
+                              </div>
+                              
+                              <div className="flex flex-col gap-0.5 sm:gap-1 w-full justify-end z-10">
+                                {dayRecords.map((record) => {
+                                  // Status Pills
+                                  if (record.status === "study_leave") {
+                                    return (
+                                      <React.Fragment key={record._id}>
+                                        <span className="sm:hidden text-[8px] font-bold text-sky-700 bg-sky-100/90 px-0.5 py-0.5 rounded text-center truncate">Leave</span>
+                                        <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-sky-100 text-sky-700 rounded shadow-sm border border-sky-200 truncate">
+                                          Extended Leave
+                                        </span>
+                                      </React.Fragment>
+                                    );
+                                  }
+                                  if (record.status === "leave") {
+                                    return (
+                                      <React.Fragment key={record._id}>
+                                        <span className="sm:hidden text-[8px] font-bold text-red-700 bg-red-100/90 px-0.5 py-0.5 rounded text-center truncate">Leave</span>
+                                        <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 rounded shadow-sm border border-red-200 truncate">
+                                          Leave
+                                        </span>
+                                      </React.Fragment>
+                                    );
+                                  }
+                                  if (record.status === "wfh") {
+                                    return (
+                                      <React.Fragment key={record._id}>
+                                        <span className="sm:hidden text-[8px] font-bold text-purple-700 bg-purple-100/90 px-0.5 py-0.5 rounded text-center truncate">WFH</span>
+                                        <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-purple-100 text-purple-700 rounded shadow-sm border border-purple-200 truncate">
+                                          WFH
+                                        </span>
+                                      </React.Fragment>
+                                    );
+                                  }
+                                  return (
+                                    <React.Fragment key={record._id}>
+                                      <span className="sm:hidden text-[8px] font-bold text-blue-700 bg-blue-100/90 px-0.5 py-0.5 rounded text-center truncate">Work</span>
+                                      <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 rounded shadow-sm border border-blue-200 truncate">
+                                        Working
+                                      </span>
+                                    </React.Fragment>
+                                  );
+                                })}
+                                {dayRecords.length === 0 && holiday && (
+                                  <React.Fragment>
+                                    <span className="sm:hidden text-[8px] font-bold text-yellow-800 bg-yellow-100/90 px-0.5 py-0.5 rounded text-center truncate">Hol</span>
+                                    <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded shadow-sm border border-yellow-200 truncate">
+                                      Holiday
+                                    </span>
+                                  </React.Fragment>
                                 )}
-                              {record.status === "wfh" && (
-                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
-                                  Work From Home
-                                </span>
-                              )}
-                              {record.status === "leave" && (
-                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">
-                                  On Leave
-                                </span>
-                              )}
-                              {record.status === "study_leave" && (
-                                <span className="inline-block px-2 md:px-3 py-1 rounded-full text-xs font-semibold bg-sky-100 text-sky-700">
-                                  Extended Leave
-                                </span>
-                              )}
+                              </div>
                             </div>
-                            <p className="text-gray-700 text-xs md:text-sm line-clamp-3 break-words leading-relaxed">
-                              {record.task}
-                            </p>
-                            <div className="text-xs text-gray-500 mt-2">
-                              {formatDate(record.createdAt || record.date)}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
-                    ) : (
-                      <div className="text-center py-6 md:py-8">
-                        <FaTasks className="text-3xl md:text-4xl text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500 text-sm md:text-base">
-                          No records for this date
-                        </p>
-                      </div>
-                    )}
+                    </div>
                   </div>
+
                 </div>
               ) : (
                 /* List View */
                 <>
-                  <div className="bg-white rounded-2xl shadow-lg p-6 md:p-8 mb-6 md:mb-8 border border-gray-200 bg-gradient-to-r from-white to-gray-50">
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-4 md:gap-6">
-                      <div className="text-center sm:text-left">
-                        <h1 className="text-2xl md:text-4xl font-bold tracking-wide bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                          Daily Records
-                        </h1>
-                        <p className="text-gray-600 mt-2 text-base md:text-lg">
-                          {filteredRecords.length} record
-                          {filteredRecords.length !== 1 ? "s" : ""} found
+                  <div 
+                    className="mb-6 md:mb-8 p-6 md:p-8"
+                    style={{
+                      background: "white",
+                      borderRadius: 20,
+                      border: "1px solid rgba(0,0,0,0.06)",
+                      boxShadow: "0 10px 40px rgba(0,0,0,0.03)",
+                    }}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <h2 className="text-xl md:text-2xl font-bold text-gray-800">
+                          {isAdmin ? "Student Records" : "My Records"}
+                        </h2>
+                        <p className="text-gray-500 text-sm mt-1">
+                          Showing {filteredRecords.length} record{filteredRecords.length !== 1 ? "s" : ""}
                         </p>
                       </div>
-                    </div>
 
-                    <div className="mt-6 md:mt-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                      <div className="relative sm:col-span-2 lg:col-span-1">
-                        <FaSearch className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search records..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 rounded-xl border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-600 transition duration-300 shadow-sm hover:border-gray-400 hover:shadow-md text-sm md:text-base"
-                        />
-                      </div>
-                      <div className="relative">
-                        <FaFilter className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                        <select
-                          value={filterBy}
-                          onChange={(e) => setFilterBy(e.target.value)}
-                          className="w-full pl-10 md:pl-12 pr-4 py-3 md:py-4 rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-600 transition duration-300 shadow-sm appearance-none hover:border-gray-400 hover:shadow-md text-sm md:text-base"
-                        >
-                          <option value="all">All Records</option>
-                          <option value="today">Today</option>
-                          <option value="week">This Week</option>
-                          <option value="month">This Month</option>
-                        </select>
-                      </div>
-                      <div>
-                        <select
-                          value={sortBy}
-                          onChange={(e) => setSortBy(e.target.value)}
-                          className="w-full px-4 py-3 md:py-4 rounded-xl border border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-600 transition duration-300 shadow-sm appearance-none hover:border-gray-400 hover:shadow-md text-sm md:text-base"
-                        >
-                          <option value="newest">Newest First</option>
-                          <option value="oldest">Oldest First</option>
-                        </select>
+                      <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1 sm:min-w-[200px]">
+                          <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+                          <input
+                            type="text"
+                            placeholder="Search tasks..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-sm"
+                          />
+                        </div>
+                        <div className="relative">
+                          <FiFilter className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
+                          <select
+                            value={filterBy}
+                            onChange={(e) => setFilterBy(e.target.value)}
+                            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none text-sm cursor-pointer"
+                          >
+                            <option value="all">All Time</option>
+                            <option value="today">Today</option>
+                            <option value="week">This Week</option>
+                            <option value="month">This Month</option>
+                          </select>
+                        </div>
+                        <div>
+                          <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value)}
+                            className="w-full px-4 py-2.5 rounded-xl border border-gray-300 bg-gray-50 text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all appearance-none text-sm cursor-pointer"
+                          >
+                            <option value="newest">Newest</option>
+                            <option value="oldest">Oldest</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -739,7 +917,7 @@ useEffect(() => {
                     <div className="bg-white rounded-2xl shadow-lg p-8 md:p-16 text-center border border-gray-200">
                       <div className="max-w-sm mx-auto">
                         <div className="bg-gray-100 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
-                          <FaTasks className="text-2xl md:text-4xl text-gray-400" />
+                          <FiCheckSquare className="text-2xl md:text-4xl text-gray-400" />
                         </div>
                         <h3 className="text-xl md:text-2xl font-semibold text-gray-600 mb-2 md:mb-3">
                           No Records Found
@@ -756,7 +934,7 @@ useEffect(() => {
                               to="/log-book"
                               className="inline-flex items-center mt-4 md:mt-6 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-300 text-sm md:text-base"
                             >
-                              <FaPlus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
+                              <FiPlus className="mr-2 h-3 w-3 md:h-4 md:w-4" />
                               Create First Record
                             </Link>
                           )}
@@ -767,15 +945,20 @@ useEffect(() => {
                       {filteredRecords.map((record) => (
                         <div
                           key={record._id}
-                          className="bg-white rounded-2xl shadow-lg border border-gray-200 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col transform hover:-translate-y-1 hover:scale-[1.02] min-w-0"
+                          className="bg-white hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col min-w-0 h-[450px]"
+                          style={{
+                            borderRadius: 20,
+                            border: "1.5px solid rgba(0, 180, 235, 0.2)",
+                            boxShadow: "0 10px 30px rgba(0,0,0,0.03)"
+                          }}
                         >
-                          <div className="bg-gradient-to-r from-blue-100 to-blue-200 p-4 md:p-6 flex-shrink-0">
+                          <div className="p-4 md:p-5 flex-shrink-0 bg-gradient-to-r from-[#006600] to-[#000066] text-white">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2 md:gap-3 min-w-0">
-                                <div className="bg-white/30 p-1.5 md:p-2 rounded-lg">
-                                  <FaUser className="text-xs md:text-sm flex-shrink-0 text-gray-700" />
+                                <div className="p-1.5 md:p-2 rounded-lg bg-white/15 backdrop-blur-sm">
+                                  <FiUser className="text-xs md:text-sm flex-shrink-0 text-white" />
                                 </div>
-                                <span className="font-semibold truncate text-gray-800 text-sm md:text-lg">
+                                <span className="font-semibold truncate text-white text-sm md:text-base">
                                   {isAdmin
                                     ? record.internId?.traineeName ||
                                       "Unknown User"
@@ -784,11 +967,11 @@ useEffect(() => {
                               </div>
                             </div>
 
-                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-gray-700 text-xs md:text-sm mt-3 md:mt-4">
-                              <span className="text-gray-600 font-medium">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 text-white/80 text-xs md:text-sm mt-3">
+                              <span className="font-medium text-white/90">
                                 Trainee ID:
                               </span>
-                              <span className="font-mono bg-white/30 px-2 md:px-4 py-1 md:py-2 rounded-lg text-gray-800 font-semibold backdrop-blur-sm text-xs md:text-sm">
+                              <span className="font-mono bg-white/15 backdrop-blur-sm px-2 py-1 md:py-1.5 rounded-lg text-white font-semibold shadow-sm text-xs md:text-sm border border-white/10">
                                 {(() => {
                                   if (isAdmin && record.internId) {
                                     return (
@@ -819,20 +1002,20 @@ useEffect(() => {
                               </span>
                             </div>
 
-                            <div className="flex items-center gap-2 md:gap-3 text-gray-700 text-xs md:text-sm mt-2 md:mt-3">
-                              <div className="bg-white/30 p-1 md:p-1.5 rounded-lg">
-                                <FaCalendarAlt className="flex-shrink-0 text-gray-700" />
+                            <div className="flex items-center justify-between mt-3 text-white/80">
+                              <div className="flex items-center gap-2 text-xs md:text-sm">
+                                <FiCalendar className="flex-shrink-0 text-white/70" />
+                                <span className="truncate font-medium text-white/90">
+                                  {formatDate(record.createdAt || record.date)}
+                                </span>
                               </div>
-                              <span className="truncate font-medium">
-                                {formatDate(record.createdAt || record.date)}
-                              </span>
-                            </div>
-                            <div className="text-gray-600 text-xs mt-1 md:mt-2 ml-6 md:ml-8">
-                              {getTimeAgo(record.createdAt || record.date)}
+                              <div className="text-white/70 text-xs font-medium">
+                                {getTimeAgo(record.createdAt || record.date)}
+                              </div>
                             </div>
                           </div>
 
-                          <div className="p-4 md:p-6 space-y-4 md:space-y-6 flex-grow">
+                          <div className="p-4 md:p-5 space-y-4 md:space-y-5 flex-1 overflow-y-auto">
                             <div className="mb-2 flex flex-wrap gap-2">
                               {record.stack &&
                                 !(
@@ -863,7 +1046,7 @@ useEffect(() => {
                             <div className="space-y-2 md:space-y-3">
                               <h4 className="font-semibold text-gray-800 flex items-center gap-2 md:gap-3">
                                 <div className="bg-blue-100 p-1.5 md:p-2 rounded-lg flex-shrink-0">
-                                  <FaTasks className="text-blue-600 flex-shrink-0 text-xs md:text-sm" />
+                                  <FiCheckSquare className="text-blue-600 flex-shrink-0 text-xs md:text-sm" />
                                 </div>
                                 <span className="text-sm md:text-lg">
                                   Tasks Completed
@@ -880,7 +1063,7 @@ useEffect(() => {
                               <div className="space-y-2 md:space-y-3">
                                 <h4 className="font-semibold text-gray-800 flex items-center gap-2 md:gap-3">
                                   <div className="bg-amber-100 p-1.5 md:p-2 rounded-lg flex-shrink-0">
-                                    <FaExclamationTriangle className="text-amber-600 flex-shrink-0 text-xs md:text-sm" />
+                                    <FiAlertTriangle className="text-amber-600 flex-shrink-0 text-xs md:text-sm" />
                                   </div>
                                   <span className="text-sm md:text-lg">
                                     Challenges Faced
@@ -898,7 +1081,7 @@ useEffect(() => {
                               <div className="space-y-2 md:space-y-3">
                                 <h4 className="font-semibold text-gray-800 flex items-center gap-2 md:gap-3">
                                   <div className="bg-emerald-100 p-1.5 md:p-2 rounded-lg flex-shrink-0">
-                                    <FaPlus className="text-emerald-600 flex-shrink-0 text-xs md:text-sm" />
+                                    <FiPlus className="text-emerald-600 flex-shrink-0 text-xs md:text-sm" />
                                   </div>
                                   <span className="text-sm md:text-lg">
                                     Plans for Tomorrow
@@ -919,7 +1102,6 @@ useEffect(() => {
                 </>
               )}
             </div>
-          </div>
         </main>
       </div>
     </div>
