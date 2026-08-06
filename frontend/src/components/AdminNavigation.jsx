@@ -18,6 +18,7 @@ import {
   FileText,
   LogOut,
   Users,
+  DatabaseBackup,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -42,6 +43,7 @@ const AdminNavigation = ({ children }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  const isSuperAdmin = getAdminSession()?.user?.role === "super_admin";
   const navLinks = [
     { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/daily-records", label: "Daily Logs", icon: <BookOpen className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "daily_logs.view" },
@@ -55,8 +57,9 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "seats.manage" },
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/database-backups", label: "Database Backups", icon: <DatabaseBackup className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", superAdminOnly: true },
     //{ to: "/admin/users", label: "Users", icon: <Users className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "users.manage" },
-  ].filter((link) => !link.permission || hasAdminPermission(link.permission));
+  ].filter((link) => (!link.superAdminOnly || isSuperAdmin) && (!link.permission || hasAdminPermission(link.permission)));
 
   const isActive = (path) => location.pathname === path;
 

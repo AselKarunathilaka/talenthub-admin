@@ -25,3 +25,10 @@ dist-ssr
 
 # Local env files
 .env*
+!.env.backup.example
+
+# Database backup artifacts
+backups/
+*.archive.gz
+*.archive.gz.partial
+*.metadata.json

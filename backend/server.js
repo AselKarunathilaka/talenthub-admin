@@ -12,6 +12,7 @@ const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
 const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
 const { initSeatBookingScheduler } = require("./services/seatBookingSchedulerService");
+const { initDatabaseBackupScheduler } = require("./services/databaseBackupScheduler");
 
 connectDB();
 
@@ -19,11 +20,13 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 
-  // Auto-sync with SLT API on server startup
-  // WARNING: enableCleanup: true will remove interns from the DB that are not present in the API.
-  // This is destructive. Set AUTO_CLEANUP_INACTIVE_INTERNS='false' in your env if you want to disable cleanup.
-  console.log("🔄 Starting auto-sync with SLT API (cleanup enabled)...");
-  InternService.syncWithSLTAPI({ enableCleanup: true })
+  // Auto-sync with SLT API on server startup. Destructive cleanup is disabled
+  // unless an operator explicitly enables it in the server environment.
+  const enableStartupCleanup = process.env.AUTO_CLEANUP_INACTIVE_INTERNS === "true";
+  console.log(
+    `🔄 Starting auto-sync with SLT API (cleanup ${enableStartupCleanup ? "enabled" : "disabled"})...`,
+  );
+  InternService.syncWithSLTAPI({ enableCleanup: enableStartupCleanup })
     .then((result) => {
       if (result.success) {
         console.log("✅ Auto-sync completed successfully!");
@@ -49,6 +52,9 @@ const server = app.listen(PORT, () => {
 
   // Initialize daily 4:30 PM seat booking expiration scheduler
   initSeatBookingScheduler();
+
+  // Initialize daily 12:00 PM full database backup to the separate cluster
+  initDatabaseBackupScheduler();
 
   // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
   console.log("⏳ Starting TalentTrail sync job...");

@@ -24,6 +24,7 @@ const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
+const databaseBackupRoutes = require("./routes/databaseBackupRoutes");
 const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
@@ -67,6 +68,7 @@ app.use("/api/face", faceAttendanceRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/records", dailyRecordRoutes);
+app.use("/api/admin/backups", databaseBackupRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/compliance", complianceRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
