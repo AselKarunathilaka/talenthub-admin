@@ -235,9 +235,17 @@ const getAdminInternAttendance = async (req, res) => {
     // ── Step 4: DailyRecord — daily and meeting rows ──────────────────────────
     dailyRecords.forEach((record) => {
       const dateKey = getDateKey(record.date);
-      const isFaceScan = faceDates.has(dateKey);
-      // Daily
-      if (record.attendance && record.attendance !== "absent") {
+      // Daily — every logbook submission counts as a daily attendance entry.
+      // DailyRecord has NO 'attendance' field; derive status from record.status:
+      //   working / wfh  → Present
+      //   leave / study_leave → Absent
+      {
+        const recordStatus = (record.status || "working").toLowerCase();
+        const derivedAttendanceStatus =
+          recordStatus === "leave" || recordStatus === "study_leave"
+            ? "Absent"
+            : "Present";
+
         const matchingMethodInfo = dailyMethodByDate.get(dateKey);
         const attendanceTime = record.attendanceTime
           ? new Date(record.attendanceTime)
@@ -253,12 +261,7 @@ const getAdminInternAttendance = async (req, res) => {
 
         dailyAttendance.push({
           date: record.date,
-          status:
-            record.attendance === "present"
-              ? "Present"
-              : record.attendance === "late"
-                ? "Late"
-                : "Absent",
+          status: derivedAttendanceStatus,
           type: "Daily",
           rawType,
           attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),

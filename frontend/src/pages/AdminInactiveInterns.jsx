@@ -495,28 +495,24 @@ function Pagination({ page, totalPages, onPrev, onNext, onPage }) {
   if (totalPages <= 1) return null;
 
   const getPages = () => {
-    const pages = [];
-    const delta = 6; // Increased delta to reduce concatenated pages
-    const left = Math.max(1, page - delta);
-    const right = Math.min(totalPages, page + delta);
-    if (left > 1) {
-      pages.push(1);
-      if (left > 2) pages.push("...");
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    for (let i = left; i <= right; i++) pages.push(i);
-    if (right < totalPages) {
-      if (right < totalPages - 1) pages.push("...");
-      pages.push(totalPages);
+    if (page <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
     }
-    return pages;
+    if (page >= totalPages - 3) {
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", page - 1, page, page + 1, "...", totalPages];
   };
 
   return (
-    <div className="flex items-center justify-between w-full px-4 py-2 border-t border-gray-100 bg-white/50 gap-2">
+    <div className="flex flex-nowrap items-center justify-center w-full gap-1">
       <button
         onClick={onPrev}
         disabled={page === 1}
-        className="flex items-center gap-2 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs shrink-0"
+        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
       >
         <FaChevronLeft className="text-[10px]" /> Prev
       </button>
@@ -530,7 +526,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onPage }) {
           <button
             key={p}
             onClick={() => onPage(p)}
-            className={`flex-1 max-w-[40px] h-8 rounded-lg text-xs font-semibold transition-colors ${
+            className={`w-[26px] h-[28px] flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
               p === page
                 ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                 : "text-gray-500 hover:bg-blue-50 hover:text-blue-600 bg-white"
@@ -544,7 +540,7 @@ function Pagination({ page, totalPages, onPrev, onNext, onPage }) {
       <button
         onClick={onNext}
         disabled={page === totalPages}
-        className="flex items-center gap-2 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs shrink-0"
+        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
       >
         Next <FaChevronRight className="text-[10px]" />
       </button>
@@ -614,7 +610,8 @@ export default function AdminInactiveInterns() {
       });
       if (res.ok) {
         const result = await res.json();
-        setInactiveInterns(result.data || []);
+        const data = result.data || [];
+        setInactiveInterns(data);
         setTotalInterns(result.total || 0);
       }
     } catch (err) {
@@ -695,15 +692,12 @@ export default function AdminInactiveInterns() {
         },
       );
       if (res.ok) {
-        setSuccessMessage(
-          `${selectedIntern.traineeName} has been reactivated!`,
-        );
+        setSuccessMessage(`${selectedIntern.traineeName} has been reactivated!`);
         setTotalInterns((prev) => Math.max(0, prev - 1));
-        setInactiveInterns((prev) =>
-          prev.filter((i) => i.id !== selectedIntern.id),
-        );
+        setInactiveInterns((prev) => prev.filter((i) => i.id !== selectedIntern.id));
         setSelectedIntern(null);
         setDetails(null);
+        setSearchInput("");
         setTimeout(() => setSuccessMessage(""), 3000);
       }
     } catch (err) {
@@ -718,409 +712,414 @@ export default function AdminInactiveInterns() {
   /* ── render ── */
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            {/* page header */}
-            <motion.div
-              className="mb-8 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <UserX className="text-[#0056a2] h-8 w-8" />
-                  </div>
-                  Past Interns
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  Manage interns no longer in the active system
-                </motion.p>
-              </div>
+      <div className="inactive-root relative z-10">
+        {/* Ambient background */}
+        <div className="inactive-ambient absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="inactive-ambient__orb inactive-ambient__orb--1 absolute" />
+          <div className="inactive-ambient__orb inactive-ambient__orb--2 absolute" />
+        </div>
 
-              {/* Controls */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto mt-4 xl:mt-0">
-                <div className="relative w-full sm:w-[280px]">
-                  <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search by ID, name or email…"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    className="w-full pl-11 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent placeholder-gray-400 font-bold transition-all text-gray-800 shadow-sm"
-                  />
+        <div className="inactive-content relative z-10 pt-4">
+          <main className="inactive-main">
+
+            {/* Page header */}
+            <div className="mb-8">
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+              >
+                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                  <UserX className="text-[#0056a2] h-8 w-8" />
                 </div>
-                
-                <div className="px-4 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-[11px] font-bold text-[#0056a2] uppercase tracking-wider flex items-center justify-center shadow-sm w-full sm:w-auto whitespace-nowrap">
-                  <span>
-                    {totalInterns} intern{totalInterns !== 1 ? "s" : ""}
-                    {searchTerm && " found"}
-                  </span>
-                </div>
+                Inactive Interns
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.05, duration: 0.2 }}
+                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+              >
+                Manage interns no longer in the active TalentHub system
+              </motion.p>
+            </div>
+
+            {/* Stats + Search bar */}
+            <motion.div
+              className="inactive-stats-bar"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="inactive-stat">
+                <span className="inactive-stat__value" style={{ color: '#0056a2' }}>
+                  {loading ? '—' : totalInterns}
+                </span>
+                <span className="inactive-stat__label">Total Inactive</span>
+              </div>
+              <div className="inactive-stat--divider" />
+              <div className="inactive-search-bar">
+                <FaSearch className="inactive-search-bar__icon" />
+                <input
+                  type="text"
+                  placeholder="Search by ID, name or email…"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="inactive-search-bar__input"
+                  autoComplete="off"
+                  data-lpignore="true"
+                />
+                {(searchInput || selectedIntern) && (
+                  <button
+                    className="inactive-search-bar__clear"
+                    onClick={() => { 
+                      setSearchInput(''); 
+                      setSelectedIntern(null); 
+                      setDetails(null); 
+                      setDailyRecords([]); 
+                      setRecordsByDate({}); 
+                    }}
+                  >
+                    <FaTimesCircle />
+                  </button>
+                )}
               </div>
             </motion.div>
 
-            {/* success banner */}
+            {/* Success banner */}
             <AnimatePresence>
               {successMessage && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="mb-6 bg-[#50b748]/10 border border-[#50b748]/30 text-[#15803d] px-5 py-4 rounded-2xl font-bold shadow-sm flex items-center justify-between"
+                  className="mb-4 bg-[#50b748]/10 border border-[#50b748]/30 text-[#15803d] px-5 py-4 rounded-2xl font-bold shadow-sm flex items-center gap-3"
                 >
-                  <div className="flex items-center gap-3">
-                    <FaCheckCircle className="text-xl" />
-                    <span>{successMessage}</span>
-                  </div>
+                  <FaCheckCircle className="text-xl flex-shrink-0" />
+                  <span>{successMessage}</span>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* vertically stacked layout */}
-            <div className="flex flex-col gap-6">
-              {/* ── top: horizontal strip ── */}
-              <motion.div
-                className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden p-4"
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-              >
-                {/* horizontal scroll list */}
-                <div
-                  ref={carouselRef}
-                  className="flex flex-col overflow-x-auto custom-scrollbar pb-2 px-1 relative"
-                >
-                  {/* Cards Row */}
-                  <div className="flex gap-3 items-stretch pb-4 w-max min-w-full min-h-[160px]">
-                    {loading ? (
-                      <div className="flex flex-col items-center justify-center py-8 px-20 text-gray-400 w-full sticky left-0 h-full">
-                        <FaSpinner className="animate-spin text-2xl mb-3 text-[#00b4eb]" />
-                        <span className="text-sm font-medium">Loading…</span>
+            {/* Two-column layout */}
+            <div className="inactive-layout">
+
+              {/* LEFT: intern list */}
+              <div className="inactive-list-col">
+                <div className="inactive-list-header">
+                  <span className="inactive-list-header__title">Interns</span>
+                  <span className="inactive-count-badge">{totalInterns} total</span>
+                </div>
+
+                <div className="inactive-list-body">
+                  {loading ? (
+                    <div className="inactive-loader" style={{ minHeight: 200 }}>
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="inactive-loader__spinner"
+                      />
+                      <p>Loading…</p>
+                    </div>
+                  ) : inactiveInterns.length === 0 ? (
+                    <div className="inactive-empty" style={{ minHeight: 200 }}>
+                      <div className="inactive-empty__icon">
+                        <FaUser style={{ color: '#9ca3af', fontSize: 24 }} />
                       </div>
-                    ) : inactiveInterns.length === 0 ? (
-                      <div className="text-center py-8 px-20 text-gray-400 text-sm font-medium w-full flex items-center justify-center sticky left-0 h-full">
-                        {searchTerm
-                          ? "No results matching your search"
-                          : "No inactive interns found"}
-                      </div>
-                    ) : (
-                      inactiveInterns.map((intern, index) => (
-                        <motion.div
-                          key={intern.id}
-                          onClick={() => handleSelectIntern(intern)}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.04 }}
-                          className={`min-w-[220px] max-w-[220px] p-3.5 rounded-2xl border-2 cursor-pointer transition-all flex flex-col ${
-                            selectedIntern?.id === intern.id
-                              ? "bg-[#0056a2] border-[#0056a2] text-white shadow-md shadow-[#0056a2]/20"
-                              : "bg-white border-gray-100 hover:border-[#00b4eb]/50 hover:bg-blue-50/50"
-                          }`}
-                        >
-                          <div className="font-extrabold text-sm mb-1 truncate" title={intern.traineeName}>
+                      <h3>{searchTerm ? 'No results' : 'No inactive interns'}</h3>
+                      <p>{searchTerm ? 'Try a different search term.' : 'All interns are currently active.'}</p>
+                    </div>
+                  ) : (
+                    inactiveInterns.map((intern, index) => (
+                      <motion.div
+                        key={intern.id}
+                        onClick={() => {
+                          handleSelectIntern(intern);
+                        }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ duration: 0.15 }}
+                        className={`inactive-list-item ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
+                      >
+                         <div className="inactive-list-item__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                            <img
+                              src={`${API_BASE_URL}/interns/${intern.id}/profile-picture`}
+                              alt={intern.traineeName}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                              {(intern.traineeName || '?').charAt(0).toUpperCase()}
+                            </div>
+                        </div>
+                        <div className="inactive-list-item__body">
+                          <div className="inactive-list-item__name" title={intern.traineeName}>
                             {intern.traineeName}
                           </div>
-                          <div
-                            className={`text-[10px] font-bold mb-3 ${selectedIntern?.id === intern.id ? "text-blue-200" : "text-gray-500"}`}
-                          >
-                            ID: {intern.traineeId}
-                          </div>
-                          <div className="space-y-1.5 mt-auto">
-                            {[
-                              { icon: FaEnvelope, label: intern.email },
-                              { icon: FaSchool, label: intern.institute },
-                              {
-                                icon: FaCalendar,
-                                label: intern.archivedAt
-                                  ? `Archived: ${new Date(intern.archivedAt).toLocaleDateString()}`
-                                  : "No archive date",
-                              },
-                            ].map(({ icon: Icon, label }) => (
-                              <div
-                                key={label}
-                                className={`flex items-center gap-2 text-[10px] font-medium ${
-                                  selectedIntern?.id === intern.id
-                                    ? "text-blue-100"
-                                    : "text-gray-500"
-                                }`}
-                                title={label}
-                              >
-                                <Icon className="text-[10px] flex-shrink-0" />
-                                <span className="truncate">{label}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </motion.div>
-                      ))
-                    )}
-                  </div>
-
-                  {/* Pagination Row */}
-                  {totalPages > 1 && (
-                    <div className="sticky left-0 w-full flex justify-center pt-2 border-t border-gray-100 mt-auto bg-white/95 z-10">
-                      <Pagination
-                        page={currentPage}
-                        totalPages={totalPages}
-                        onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        onNext={() =>
-                          setCurrentPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        onPage={(p) => setCurrentPage(p)}
-                      />
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-
-              {/* ── bottom: details panel ── */}
-              {selectedIntern ? (
-                <motion.div
-                  className="bg-white rounded-3xl border border-gray-100 shadow-sm flex flex-col overflow-hidden min-h-[600px] w-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  {detailsLoading ? (
-                    <div className="flex flex-col items-center justify-center flex-1 text-[#0056a2] min-h-[400px]">
-                      <FaSpinner className="animate-spin text-4xl mb-4" />
-                      <span className="text-sm font-bold text-gray-500">Loading details…</span>
-                    </div>
-                  ) : details ? (
-                    <>
-                      {/* details header */}
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6 p-6 sm:p-8 bg-slate-50/50 border-b border-gray-100">
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 text-center sm:text-left">
-                          <div className="h-20 w-20 rounded-2xl bg-[#00b4eb]/10 border border-[#00b4eb]/20 flex items-center justify-center shadow-sm flex-shrink-0">
-                            <FaUser className="text-[#0056a2] text-3xl" />
-                          </div>
-                          <div className="pt-1">
-                            <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">
-                              {details.traineeName}
-                            </h2>
-                            <p className="text-sm font-bold text-gray-500 mt-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
-                              <span>ID: {details.traineeId}</span>
-                              <span className="hidden sm:inline text-gray-300">•</span>
-                              <span>{details.institute}</span>
-                            </p>
-                            {details.homeAddress && (
-                              <p className="text-xs font-medium text-gray-400 flex items-center justify-center sm:justify-start gap-1.5 mt-2">
-                                <FaHome className="text-gray-400" />
-                                {details.homeAddress}
-                              </p>
+                          <div className="inactive-list-item__meta">
+                            <span>ID: {intern.traineeId}</span>
+                            {intern.archivedAt && (
+                              <span>· {new Date(intern.archivedAt).toLocaleDateString()}</span>
                             )}
                           </div>
+                          <div className="inactive-list-item__email" title={intern.email}>
+                            {intern.email}
+                          </div>
+                        </div>
+                        <div className="inactive-list-item__arrow">›</div>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="inactive-list-pagination">
+                    <Pagination
+                      page={currentPage}
+                      totalPages={totalPages}
+                      onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      onPage={(p) => setCurrentPage(p)}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* RIGHT: detail panel */}
+              <div className="inactive-detail-col">
+                <AnimatePresence mode="wait">
+                  {!selectedIntern ? (
+                    <motion.div
+                      key="empty"
+                      className="inactive-empty-detail"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <div className="inactive-empty-detail__icon">
+                        <UserX style={{ width: 40, height: 40, color: '#d1d5db' }} />
+                      </div>
+                      <p className="inactive-empty-detail__title">No Intern Selected</p>
+                      <p className="inactive-empty-detail__sub">
+                        Click an intern from the list to view their profile, attendance, and logbook records.
+                      </p>
+                    </motion.div>
+                  ) : detailsLoading ? (
+                    <motion.div
+                      key="loading"
+                      className="inactive-empty-detail"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="inactive-loader__spinner"
+                        style={{ width: 48, height: 48, marginBottom: 16 }}
+                      />
+                      <p className="inactive-empty-detail__sub">Loading profile…</p>
+                    </motion.div>
+                  ) : details ? (
+                    <motion.div
+                      key={selectedIntern.id}
+                      className="inactive-detail-panel"
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -12 }}
+                    >
+                      {/* Profile header */}
+                      <div className="inactive-detail-header">
+                        <div className="inactive-detail-avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                          <img
+                            src={`${API_BASE_URL}/interns/${details.id}/profile-picture`}
+                            alt={details.traineeName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                            {(details.traineeName || '?').charAt(0).toUpperCase()}
+                          </div>
+                        </div>
+                        <div className="inactive-detail-info">
+                          <h2 className="inactive-detail-name">{details.traineeName}</h2>
+                          <p className="inactive-detail-meta">
+                            <span>ID: {details.traineeId}</span>
+                            {details.institute && (
+                              <><span className="inactive-dot">·</span><span>{details.institute}</span></>
+                            )}
+                          </p>
+                          {details.email && (
+                            <p className="inactive-detail-email">
+                              <FaEnvelope style={{ marginRight: 6, flexShrink: 0 }} />
+                              {details.email}
+                            </p>
+                          )}
+                          {details.homeAddress && (
+                            <p className="inactive-detail-email" style={{ marginTop: 4 }}>
+                              <FaHome style={{ marginRight: 6, flexShrink: 0 }} />
+                              {details.homeAddress}
+                            </p>
+                          )}
                         </div>
                         <motion.button
                           onClick={handleReactivate}
                           disabled={reactivating}
-                          whileHover={{ scale: reactivating ? 1 : 1.05 }}
-                          whileTap={{ scale: reactivating ? 1 : 0.95 }}
-                          className="flex items-center justify-center px-6 py-3 bg-[#50b748] hover:bg-[#43a03c] text-white rounded-2xl font-bold text-sm shadow-md shadow-[#50b748]/20 disabled:bg-gray-300 disabled:text-gray-500 disabled:shadow-none disabled:cursor-not-allowed transition-all whitespace-nowrap mt-2 sm:mt-0"
+                          whileHover={{ scale: reactivating ? 1 : 1.04 }}
+                          whileTap={{ scale: reactivating ? 1 : 0.96 }}
+                          className="inactive-btn inactive-btn--reactivate"
                         >
                           {reactivating ? (
-                            <>
-                              <FaSpinner className="animate-spin mr-2" />
-                              Reactivating…
-                            </>
+                            <><FaSpinner className="animate-spin mr-2" />Reactivating…</>
                           ) : (
-                            <>
-                              <FaCheckCircle className="mr-2" /> Reactivate
-                            </>
+                            <><FaCheckCircle className="mr-2" />Reactivate</>
                           )}
                         </motion.button>
                       </div>
 
-                      {/* tabs */}
-                      <div className="flex border-b border-gray-100 px-4 sm:px-6 bg-white overflow-x-auto custom-scrollbar">
+                      {/* Tabs */}
+                      <div className="inactive-tabs">
                         {tabs.map((tab) => (
                           <button
                             key={tab}
                             onClick={() => setActiveTab(tab)}
-                            className={`px-6 py-4 text-sm font-bold capitalize transition-all border-b-2 whitespace-nowrap ${
-                              activeTab === tab
-                                ? "text-[#0056a2] border-[#0056a2]"
-                                : "text-gray-400 border-transparent hover:text-gray-700 hover:border-gray-200"
-                            }`}
+                            className={`inactive-tab ${activeTab === tab ? 'inactive-tab--active' : ''}`}
                           >
-                            {tab === "records"
-                              ? "Daily Records"
-                              : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            {tab === "records" ? "Daily Records" : tab.charAt(0).toUpperCase() + tab.slice(1)}
                           </button>
                         ))}
                       </div>
 
-                      {/* tab content */}
-                      <div className="flex-1 p-6 sm:p-8 overflow-y-auto bg-white custom-scrollbar">
+                      {/* Tab content */}
+                      <div className="inactive-tab-content">
                         <AnimatePresence mode="wait">
                           <motion.div
                             key={activeTab}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 8 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            transition={{ duration: 0.2 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.18 }}
                           >
-                            {/* ── OVERVIEW ── */}
+                            {/* OVERVIEW */}
                             {activeTab === "overview" && (
-                              <div className="space-y-6">
-                                <h3 className="text-lg font-extrabold text-gray-900 mb-4">Internship Details</h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                  <div className="sm:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <div className="space-y-4">
+                                <h3 className="text-base font-extrabold text-gray-800 mb-3">Internship Details</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="sm:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaEnvelope className="text-[#00b4eb]" /> Email
                                     </p>
-                                    <p className="text-sm font-bold text-gray-800 break-words">
-                                      {details.email}
-                                    </p>
+                                    <p className="text-sm font-bold text-gray-800 break-words">{details.email}</p>
                                   </div>
-                                  <div className="sm:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <div className="sm:col-span-2 bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaLaptopCode className="text-[#0056a2]" /> Field of Specialization
                                     </p>
-                                    <p className="text-sm font-bold text-gray-800 break-words">
-                                      {details.fieldOfSpecialization || "N/A"}
-                                    </p>
+                                    <p className="text-sm font-bold text-gray-800">{details.fieldOfSpecialization || "N/A"}</p>
                                   </div>
-                                  
-                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaCalendar className="text-[#50b748]" /> Training Start
                                     </p>
-                                    <p className="text-sm font-bold text-gray-800">
-                                      {fmtDate(details.trainingStartDate)}
-                                    </p>
+                                    <p className="text-sm font-bold text-gray-800">{fmtDate(details.trainingStartDate)}</p>
                                   </div>
-                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaCalendar className="text-[#50b748]" /> Training End
                                     </p>
-                                    <p className="text-sm font-bold text-gray-800">
-                                      {fmtDate(details.trainingEndDate)}
-                                    </p>
+                                    <p className="text-sm font-bold text-gray-800">{fmtDate(details.trainingEndDate)}</p>
                                   </div>
-
-                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaExclamationTriangle className="text-rose-400" /> Archive Reason
                                     </p>
                                     <p className="text-sm font-bold text-gray-800">
-                                      {deriveArchiveReason(
-                                        details.archiveReason,
-                                        details.archivedAt,
-                                        details.trainingEndDate,
-                                      )}
+                                      {deriveArchiveReason(details.archiveReason, details.archivedAt, details.trainingEndDate)}
                                     </p>
                                   </div>
-                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-5 hover:border-blue-100 transition-colors">
-                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                  <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 hover:border-blue-100 transition-colors">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-2">
                                       <FaClock className="text-rose-400" /> Archived At
                                     </p>
-                                    <p className="text-sm font-bold text-gray-800">
-                                      {fmtDate(details.archivedAt)}
-                                    </p>
+                                    <p className="text-sm font-bold text-gray-800">{fmtDate(details.archivedAt)}</p>
                                   </div>
                                 </div>
                               </div>
                             )}
 
-                            {/* ── ATTENDANCE ── */}
+                            {/* ATTENDANCE */}
                             {activeTab === "attendance" && (
-                              <div className="space-y-8">
-                                <h3 className="text-lg font-extrabold text-gray-900 mb-2">Attendance Overview</h3>
-                                {/* two stat cards */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                                  <div className="bg-green-50 border border-green-100 rounded-3xl p-6 flex flex-col items-center text-center shadow-sm">
-                                    <div className="w-12 h-12 rounded-2xl bg-white border border-green-200 flex items-center justify-center mb-4 shadow-sm">
-                                      <FaRegCalendarAlt className="text-[#50b748] text-xl" />
+                              <div className="space-y-5">
+                                <h3 className="text-base font-extrabold text-gray-800 mb-1">Attendance Overview</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                  <div className="bg-green-50 border border-green-100 rounded-2xl p-5 flex flex-col items-center text-center shadow-sm">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-green-200 flex items-center justify-center mb-3 shadow-sm">
+                                      <FaRegCalendarAlt className="text-[#50b748]" />
                                     </div>
-                                    <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-1">
-                                      Daily Attendance
-                                    </p>
-                                    <p className="text-5xl font-black text-green-700 my-2">
-                                      {details.attendance?.daily?.count ?? 0}
-                                    </p>
-                                    <div className="bg-white/60 px-3 py-1 rounded-full border border-green-200/50">
-                                      <p className="text-xs font-bold text-green-600">
-                                        {details.attendance?.daily?.presentCount ?? 0} present
-                                      </p>
-                                    </div>
+                                    <p className="text-[10px] font-bold text-green-600 uppercase tracking-wider mb-1">Daily Attendance</p>
+                                    <p className="text-4xl font-black text-green-700 my-1">{details.attendance?.daily?.count ?? 0}</p>
+                                    <p className="text-xs font-bold text-green-600">{details.attendance?.daily?.presentCount ?? 0} present</p>
                                   </div>
-
-                                  <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 flex flex-col items-center text-center shadow-sm">
-                                    <div className="w-12 h-12 rounded-2xl bg-white border border-blue-200 flex items-center justify-center mb-4 shadow-sm">
-                                      <FaVideo className="text-[#0056a2] text-xl" />
+                                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 flex flex-col items-center text-center shadow-sm">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-blue-200 flex items-center justify-center mb-3 shadow-sm">
+                                      <FaVideo className="text-[#0056a2]" />
                                     </div>
-                                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">
-                                      Meeting Attendance
-                                    </p>
-                                    <p className="text-5xl font-black text-[#0056a2] my-2">
-                                      {details.attendance?.meeting?.count ?? 0}
-                                    </p>
-                                    <div className="bg-white/60 px-3 py-1 rounded-full border border-blue-200/50">
-                                      <p className="text-xs font-bold text-[#0056a2]">
-                                        {details.attendance?.meeting?.presentCount ?? 0} present
-                                      </p>
-                                    </div>
+                                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">Meeting Attendance</p>
+                                    <p className="text-4xl font-black text-[#0056a2] my-1">{details.attendance?.meeting?.count ?? 0}</p>
+                                    <p className="text-xs font-bold text-[#0056a2]">{details.attendance?.meeting?.presentCount ?? 0} present</p>
                                   </div>
                                 </div>
-
-                                {/* calendar */}
-                                <div className="bg-white rounded-3xl border border-gray-100 p-6 shadow-sm">
-                                  <h3 className="text-sm font-extrabold text-gray-800 mb-6 flex items-center gap-2">
-                                    <FaCalendar className="text-[#00b4eb]" />
-                                    Attendance Calendar
+                                <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
+                                  <h3 className="text-sm font-extrabold text-gray-800 mb-4 flex items-center gap-2">
+                                    <FaCalendar className="text-[#00b4eb]" /> Attendance Calendar
                                   </h3>
                                   <AttendanceCalendar
-                                    dailyMap={
-                                      details.attendance?.daily?.map ?? {}
-                                    }
-                                    meetingMap={
-                                      details.attendance?.meeting?.map ?? {}
-                                    }
+                                    dailyMap={details.attendance?.daily?.map ?? {}}
+                                    meetingMap={details.attendance?.meeting?.map ?? {}}
                                   />
                                 </div>
                               </div>
                             )}
 
-                            {/* ── DAILY RECORDS ── */}
+                            {/* DAILY RECORDS */}
                             {activeTab === "records" && (
                               <div>
                                 {recordsLoading ? (
-                                  <div className="flex flex-col items-center justify-center py-20 text-[#0056a2]">
-                                    <FaSpinner className="animate-spin text-4xl mb-4" />
-                                    <span className="text-sm font-bold text-gray-500">Loading records…</span>
+                                  <div className="inactive-loader" style={{ minHeight: 200 }}>
+                                    <motion.div
+                                      animate={{ rotate: 360 }}
+                                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                      className="inactive-loader__spinner"
+                                    />
+                                    <p>Loading records…</p>
                                   </div>
                                 ) : recordsError ? (
-                                  <div className="flex flex-col items-center justify-center py-20 text-rose-500">
-                                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center mb-4">
-                                      <FaExclamationTriangle className="text-2xl" />
+                                  <div className="flex flex-col items-center justify-center py-16 text-rose-500">
+                                    <div className="w-14 h-14 bg-rose-50 rounded-full flex items-center justify-center mb-4">
+                                      <FaExclamationTriangle className="text-xl" />
                                     </div>
                                     <span className="text-sm font-bold">{recordsError}</span>
                                   </div>
                                 ) : (
-                                  <div className="space-y-6">
+                                  <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                      <h3 className="text-lg font-extrabold text-gray-900">Logbook Entries</h3>
+                                      <h3 className="text-base font-extrabold text-gray-800">Logbook Entries</h3>
                                       {dailyRecords.length > 0 && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-[#0056a2] rounded-xl text-xs font-bold border border-blue-100">
+                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-[#0056a2] rounded-xl text-xs font-bold border border-blue-100">
                                           <FaClipboardList />
                                           {dailyRecords.length} {dailyRecords.length !== 1 ? "entries" : "entry"}
                                         </span>
                                       )}
                                     </div>
-                                    
-                                    <DailyRecordsCalendar
-                                      recordsByDate={recordsByDate}
-                                    />
+                                    <DailyRecordsCalendar recordsByDate={recordsByDate} />
                                   </div>
                                 )}
                               </div>
@@ -1128,39 +1127,315 @@ export default function AdminInactiveInterns() {
                           </motion.div>
                         </AnimatePresence>
                       </div>
-                    </>
+                    </motion.div>
                   ) : (
-                    <div className="flex flex-col items-center justify-center flex-1 text-gray-400 p-8 text-center min-h-[400px]">
-                      <div className="w-20 h-20 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center mb-4 shadow-sm border border-yellow-100">
-                        <FaExclamationTriangle className="text-3xl" />
+                    <motion.div
+                      key="error"
+                      className="inactive-empty-detail"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <div style={{ width: 56, height: 56, background: '#fef9c3', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16, border: '1px solid #fde68a' }}>
+                        <FaExclamationTriangle style={{ fontSize: 22, color: '#f59e0b' }} />
                       </div>
-                      <p className="text-base font-bold text-gray-700">Failed to load details</p>
-                      <p className="text-sm mt-1">Please try selecting the intern again.</p>
-                    </div>
+                      <p className="inactive-empty-detail__title">Failed to load profile</p>
+                      <p className="inactive-empty-detail__sub">Please click the intern card again to retry.</p>
+                    </motion.div>
                   )}
-                </motion.div>
-              ) : (
-                <motion.div
-                  className="bg-white rounded-3xl border border-gray-100 shadow-sm flex items-center justify-center min-h-[400px] w-full"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                >
-                  <div className="text-center text-gray-400 flex flex-col items-center max-w-sm px-6">
-                    <div className="w-24 h-24 bg-slate-50 border border-slate-100 rounded-3xl flex items-center justify-center mb-6 shadow-sm">
-                      <FaUser className="text-4xl text-gray-300" />
-                    </div>
-                    <p className="text-lg font-extrabold text-gray-800 mb-2">
-                      No Intern Selected
-                    </p>
-                    <p className="text-sm font-medium text-gray-500">
-                      Select an inactive intern from the list above to view their detailed profile, attendance, and logbook entries.
-                    </p>
-                  </div>
-                </motion.div>
-              )}
+                </AnimatePresence>
+              </div>
+
             </div>
           </main>
         </div>
+
+        <style>{`
+          /* ── Root ── */
+          .inactive-root {
+            min-height: 100vh;
+            background: #f0f4f8;
+            position: relative;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+          }
+
+          /* ── Ambient ── */
+          .inactive-ambient { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+          .inactive-ambient__orb {
+            position: absolute; border-radius: 50%;
+            filter: blur(80px); opacity: 0.06;
+          }
+          .inactive-ambient__orb--1 {
+            width: 500px; height: 500px;
+            background: #0056a2; top: -100px; right: -100px;
+          }
+          .inactive-ambient__orb--2 {
+            width: 400px; height: 400px;
+            background: #50b748; bottom: -80px; left: -80px;
+          }
+
+          /* ── Layout ── */
+          .inactive-content { position: relative; z-index: 1; padding-top: 8px; }
+          .inactive-main { max-width: 1200px; margin: 0 auto; padding: 24px 24px 60px; }
+
+          /* ── Stats bar ── */
+          .inactive-stats-bar {
+            display: flex; align-items: center; gap: 20px;
+            padding: 14px 20px; background: white;
+            border-radius: 14px; border: 1px solid #f0f0f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            margin-bottom: 20px; flex-wrap: wrap;
+          }
+          .inactive-stat { display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; }
+          .inactive-stat__value { font-size: 26px; font-weight: 800; }
+          .inactive-stat__label { font-size: 12px; color: #6b7280; font-weight: 500; }
+          .inactive-stat--divider { width: 1px; height: 36px; background: #e5e7eb; flex-shrink: 0; }
+
+          /* ── Search bar ── */
+          .inactive-search-bar {
+            position: relative; flex: 1; min-width: 200px;
+          }
+          .inactive-search-bar__icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            color: #9ca3af; font-size: 14px; pointer-events: none;
+          }
+          .inactive-search-bar__input {
+            width: 100%; padding: 10px 40px 10px 38px;
+            border: 1.5px solid #e0e0e0; border-radius: 10px;
+            font-size: 14px; font-weight: 500; color: #1a1a2e;
+            outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+            background: white; box-sizing: border-box;
+          }
+          .inactive-search-bar__input:focus {
+            border-color: #0056a2;
+            box-shadow: 0 0 0 3px rgba(0,86,162,0.08);
+          }
+          .inactive-search-bar__clear {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            color: #9ca3af; background: none; border: none; cursor: pointer;
+            font-size: 14px; display: flex; align-items: center;
+            transition: color 0.2s;
+          }
+          .inactive-search-bar__clear:hover { color: #ef4444; }
+
+          /* ── Count badge ── */
+          .inactive-count-badge {
+            display: inline-flex; align-items: center;
+            padding: 5px 12px; background: #eff6ff;
+            border: 1px solid #bfdbfe; border-radius: 8px;
+            font-size: 12px; font-weight: 700; color: #0056a2;
+            white-space: nowrap;
+          }
+
+          /* ── Two-column layout ── */
+          .inactive-layout {
+            display: flex; gap: 20px; align-items: stretch;
+            height: calc(100vh - 120px);
+          }
+          @media (max-width: 900px) {
+            .inactive-layout { flex-direction: column; height: auto; min-height: calc(100vh - 120px); }
+          }
+
+          /* ── Left col: intern list ── */
+          .inactive-list-col {
+            flex: 0 0 340px; min-width: 0;
+            background: white; border-radius: 20px;
+            border: 1px solid #f0f0f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            overflow: hidden; display: flex; flex-direction: column;
+          }
+          @media (max-width: 900px) {
+            .inactive-list-col { flex: none; width: 100%; height: 500px; }
+          }
+          .inactive-list-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+            background: #fafafa;
+          }
+          .inactive-list-header__title {
+            font-size: 14px; font-weight: 800; color: #1a1a2e;
+          }
+          .inactive-list-body {
+            flex: 1; overflow-y: auto; min-height: 0;
+          }
+          .inactive-list-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; cursor: pointer;
+            border-bottom: 1px solid #f9f9f9;
+            transition: background 0.15s; position: relative;
+          }
+          .inactive-list-item:hover { background: #f0f9ff; }
+          .inactive-list-item--selected {
+            background: linear-gradient(90deg, #eff6ff, #f0f9ff) !important;
+            border-left: 3px solid #0056a2;
+          }
+          .inactive-list-item__avatar {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, #0056a2, #00b4eb);
+            color: white; font-size: 14px; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+          }
+          .inactive-list-item--selected .inactive-list-item__avatar {
+            background: linear-gradient(135deg, #004485, #0090c0);
+          }
+          .inactive-list-item__body { flex: 1; min-width: 0; }
+          .inactive-list-item__name {
+            font-size: 13px; font-weight: 700; color: #1a1a2e;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            margin-bottom: 2px;
+          }
+          .inactive-list-item__meta {
+            font-size: 11px; color: #6b7280; font-weight: 500;
+            display: flex; gap: 6px; margin-bottom: 2px;
+          }
+          .inactive-list-item__email {
+            font-size: 11px; color: #9ca3af;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+          }
+          .inactive-list-item__arrow {
+            font-size: 18px; color: #9ca3af; flex-shrink: 0;
+            transition: color 0.2s;
+          }
+          .inactive-list-item:hover .inactive-list-item__arrow { color: #0056a2; }
+          .inactive-list-item--selected .inactive-list-item__arrow { color: #0056a2; }
+          .inactive-list-pagination {
+            border-top: 1px solid #f0f0f0; background: white;
+            padding: 12px 14px; flex-shrink: 0;
+            display: flex; justify-content: center;
+          }
+
+          /* ── Right col: detail ── */
+          .inactive-detail-col {
+            flex: 1; min-width: 0; display: flex; flex-direction: column;
+          }
+
+          /* ── Detail panel ── */
+          .inactive-detail-panel {
+            background: white; border-radius: 20px;
+            border: 1px solid #f0f0f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column; overflow: hidden;
+            flex: 1;
+          }
+
+          /* ── Detail header ── */
+          .inactive-detail-header {
+            display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
+            padding: 24px; background: #fafafa;
+            border-bottom: 1px solid #f0f0f0;
+          }
+          .inactive-detail-avatar {
+            width: 64px; height: 64px; border-radius: 16px;
+            background: linear-gradient(135deg, #0056a2, #00b4eb);
+            color: white; font-size: 24px; font-weight: 800;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; box-shadow: 0 4px 12px rgba(0,86,162,0.2);
+          }
+          .inactive-detail-info { flex: 1; min-width: 0; }
+          .inactive-detail-name {
+            font-size: 20px; font-weight: 800; color: #1a1a2e; margin: 0 0 4px;
+          }
+          .inactive-detail-meta {
+            font-size: 13px; font-weight: 600; color: #6b7280;
+            display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+            margin: 0 0 4px;
+          }
+          .inactive-dot { color: #d1d5db; }
+          .inactive-detail-email {
+            font-size: 12px; color: #9ca3af;
+            display: flex; align-items: center; margin: 4px 0 0;
+          }
+
+          /* ── Tabs ── */
+          .inactive-tabs {
+            display: flex; border-bottom: 1px solid #f0f0f0;
+            padding: 0 16px; background: white; overflow-x: auto;
+          }
+          .inactive-tab {
+            padding: 14px 20px; font-size: 13px; font-weight: 700;
+            color: #9ca3af; border: none; background: transparent;
+            border-bottom: 2px solid transparent; cursor: pointer;
+            transition: all 0.2s; white-space: nowrap; text-transform: capitalize;
+          }
+          .inactive-tab:hover { color: #374151; border-bottom-color: #e5e7eb; }
+          .inactive-tab--active { color: #0056a2; border-bottom-color: #0056a2; }
+
+          /* ── Tab content ── */
+          .inactive-tab-content {
+            padding: 24px; overflow-y: auto; flex: 1; min-height: 0;
+          }
+
+          /* ── Reactivate button ── */
+          .inactive-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 10px 20px; border-radius: 14px;
+            font-size: 13px; font-weight: 700; cursor: pointer;
+            transition: all 0.2s; border: none; white-space: nowrap;
+          }
+          .inactive-btn--reactivate {
+            background: linear-gradient(135deg, #50b748, #2d8a3e);
+            color: white; box-shadow: 0 4px 12px rgba(80,183,72,0.2);
+          }
+          .inactive-btn--reactivate:hover {
+            background: linear-gradient(135deg, #43a03c, #237232);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(80,183,72,0.3);
+          }
+          .inactive-btn--reactivate:disabled {
+            background: #d1d5db; color: #9ca3af;
+            box-shadow: none; cursor: not-allowed; transform: none;
+          }
+
+          /* ── Loader ── */
+          .inactive-loader {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 48px 20px; gap: 12px;
+          }
+          .inactive-loader__spinner {
+            width: 36px; height: 36px; border-radius: 50%;
+            border: 3px solid #e0e0e0; border-top-color: #0056a2;
+          }
+          .inactive-loader p { font-size: 13px; color: #9ca3af; font-weight: 500; margin: 0; }
+
+          /* ── Empty states ── */
+          .inactive-empty {
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 32px 16px; gap: 8px; text-align: center;
+          }
+          .inactive-empty__icon {
+            width: 60px; height: 60px; border-radius: 50%;
+            background: #f3f4f6;
+            display: flex; align-items: center; justify-content: center;
+          }
+          .inactive-empty h3 { font-size: 14px; font-weight: 700; color: #1a1a2e; margin: 0; }
+          .inactive-empty p { color: #6b7280; font-size: 12px; max-width: 240px; margin: 0; }
+
+          /* ── Empty detail ── */
+          .inactive-empty-detail {
+            background: white; border-radius: 20px;
+            border: 1px solid #f0f0f0;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            min-height: 400px; padding: 40px; text-align: center;
+            flex: 1; height: 100%;
+          }
+          .inactive-empty-detail__icon {
+            width: 88px; height: 88px;
+            background: #f8fafc; border: 1px solid #e5e7eb;
+            border-radius: 22px; display: flex; align-items: center;
+            justify-content: center; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          }
+          .inactive-empty-detail__title {
+            font-size: 17px; font-weight: 800; color: #1f2937; margin: 0 0 8px;
+          }
+          .inactive-empty-detail__sub {
+            font-size: 13px; color: #6b7280; max-width: 320px; margin: 0; line-height: 1.6;
+          }
+        `}</style>
       </div>
     </AdminNavigation>
   );

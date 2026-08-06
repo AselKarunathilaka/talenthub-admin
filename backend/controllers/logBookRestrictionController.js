@@ -8,6 +8,7 @@
  */
 
 const Intern = require("../models/Intern"); // adjust path as needed
+const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -33,10 +34,71 @@ exports.listRestricted = async (req, res) => {
       },
     ).sort({ logbookRestrictedAt: -1 });
 
+    const enrichedData = await Promise.all(
+      restricted.map(async (internDoc) => {
+        const intern = internDoc;
+        const mapped = mapInternToResponse(intern);
+        
+        let heatmap = [];
+        const reason = intern.logbookRestrictionReason || "";
+        
+        let startDate;
+        
+        // Match e.g., "(week of 2026-07-24)"
+        const matchWeek = reason.match(/\(week of (\d{4}-\d{2}-\d{2})\)/);
+        // Fallback for old format if any: "(Jul 29 – Aug 02)"
+        const matchOld = reason.match(/\((.*?)\s*[-–]\s*(.*?)\)/);
+
+        if (matchWeek) {
+          startDate = moment(matchWeek[1], "YYYY-MM-DD");
+        } else if (matchOld && intern.logbookRestrictedAt) {
+          const startStr = matchOld[1].trim(); 
+          const year = new Date(intern.logbookRestrictedAt).getFullYear();
+          startDate = moment(`${startStr} ${year}`, "MMM DD YYYY");
+          
+          const endStr = matchOld[2].trim();
+          let endDate = moment(`${endStr} ${year}`, "MMM DD YYYY");
+          if (startDate.isAfter(endDate)) {
+            startDate = startDate.subtract(1, 'year');
+          }
+        }
+
+        if (startDate && startDate.isValid()) {
+          const workingDays = [];
+          let current = startDate.clone();
+          
+          // Generate exactly 5 working days starting from startDate
+          while (workingDays.length < 5) {
+            if (current.isoWeekday() <= 5) { // Monday to Friday
+              workingDays.push(current.format("YYYY-MM-DD"));
+            }
+            current.add(1, 'day');
+          }
+
+          const checkDays = workingDays;
+
+          const logs = await DailyRecord.find({
+            internId: intern._id,
+            date: { $in: checkDays }
+          }).select("date").lean();
+
+          const submittedDates = new Set(logs.map(l => l.date));
+
+          heatmap = checkDays.map(dateStr => ({
+            date: dateStr,
+            submitted: submittedDates.has(dateStr)
+          }));
+        }
+
+        mapped.heatmap = heatmap;
+        return mapped;
+      })
+    );
+
     return res.json({
       success: true,
-      count: restricted.length,
-      data: restricted.map(mapInternToResponse),
+      count: enrichedData.length,
+      data: enrichedData,
     });
   } catch (err) {
     console.error("listRestricted error:", err);
