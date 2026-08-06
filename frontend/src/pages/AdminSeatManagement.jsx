@@ -503,7 +503,7 @@ const AdminSeatManagement = () => {
               <AnimatePresence>
                 {lockConfirm && (
                   <motion.div
-                    className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-[9999] p-4"
+                    className="fixed inset-0 lg:left-[270px] lg:top-[5.5rem] backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-[9999] p-4"
                     initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                   >
                     <motion.div
