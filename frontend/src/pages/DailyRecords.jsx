@@ -16,6 +16,7 @@ import {
   FiX,
   FiArrowRight,
   FiList,
+  FiDownload,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import ExportModal from "../components/ExportModal";
@@ -45,18 +46,44 @@ const DailyRecords = () => {
   const studentInfo = JSON.parse(localStorage.getItem("studentInfo") || "{}");
 
   // ── Calendar helpers ────────────────────────────────────────
-  const getDaysInMonth = (date) => {
+  const getCalendarDays = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInCurrentMonth = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+
     const days = [];
-    for (let i = 0; i < firstDayOfMonth; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(new Date(year, month, i));
+
+    // Trailing days from previous month
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      days.push({
+        date: new Date(year, month - 1, prevMonthLastDay - i),
+        isCurrentMonth: false,
+      });
+    }
+
+    // Current month days
+    for (let i = 1; i <= daysInCurrentMonth; i++) {
+      days.push({
+        date: new Date(year, month, i),
+        isCurrentMonth: true,
+      });
+    }
+
+    // Leading days from next month to reach exactly 42 cells (6 full rows)
+    const remainingCells = 42 - days.length;
+    for (let i = 1; i <= remainingCells; i++) {
+      days.push({
+        date: new Date(year, month + 1, i),
+        isCurrentMonth: false,
+      });
+    }
+
     return days;
   };
 
-  const daysInMonth = getDaysInMonth(currentMonth);
+  const calendarDays = getCalendarDays(currentMonth);
   const monthNames = [
     "January",
     "February",
@@ -593,70 +620,100 @@ useEffect(() => {
 
           {/* ───── Page Header ───── */}
           <div style={{ marginBottom: 32 }}>
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-              <div>
-                <h1
-                  style={{
-                    fontSize: 28,
-                    fontWeight: 800,
-                    color: "#1a1a2e",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                  }}
-                >
-                  <span
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+              {/* Title Section (with Mobile Switcher) */}
+              <div className="flex justify-between items-start w-full md:w-auto gap-2">
+                <div className="flex-1 pr-1">
+                  <h1
                     style={{
+                      fontSize: 28,
+                      fontWeight: 800,
                       color: "#1a1a2e",
-                      display: "inline-flex",
+                      display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 12,
                     }}
+                    className="text-[22px] sm:text-[28px]"
                   >
-                    <FiCalendar style={{ color: "#0056a2" }} />
-                    {isAdmin ? "Student Records" : "My Daily Records"}
-                  </span>
-                </h1>
-                <p
-                  style={{
-                    color: "#6b7280",
-                    marginTop: 6,
-                    fontSize: 15,
-                    fontStyle: "italic",
-                  }}
-                >
-                  Track daily progress and achievements
-                </p>
-              </div>
+                    <span
+                      style={{
+                        color: "#1a1a2e",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <FiCalendar style={{ color: "#0056a2" }} className="w-5 h-5 sm:w-auto sm:h-auto shrink-0" />
+                      <span className="truncate">{isAdmin ? "Student Records" : "My Daily Records"}</span>
+                    </span>
+                  </h1>
+                  <p
+                    style={{
+                      color: "#6b7280",
+                      marginTop: 6,
+                      fontSize: 15,
+                      fontStyle: "italic",
+                    }}
+                    className="text-[13px] sm:text-[15px]"
+                  >
+                    Track daily progress and achievements
+                  </p>
+                </div>
 
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                {/* View Switcher (Symmetrical Equal-Width Segmented Control) */}
-                <div className="inline-grid grid-cols-2 p-1 bg-white rounded-[14px] border border-[rgba(0,180,235,0.35)] shadow-sm w-[170px] sm:w-[200px]">
+                {/* Mobile View Switcher (Hidden on Desktop) */}
+                <div className="inline-grid md:hidden grid-cols-2 p-1 bg-white rounded-[14px] border border-[rgba(0,180,235,0.35)] shadow-sm w-[90px] shrink-0 mt-1">
                   <button
                     onClick={() => setViewMode("calendar")}
-                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-[10px] text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                    className={`inline-flex items-center justify-center px-1.5 py-1.5 rounded-[10px] transition-all duration-200 min-h-[36px] ${
+                      viewMode === "calendar"
+                        ? "bg-[#0056a2] text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FiCalendar className={`w-5 h-5 ${viewMode === "calendar" ? "text-white" : "text-[#00b4eb]"}`} />
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`inline-flex items-center justify-center px-1.5 py-1.5 rounded-[10px] transition-all duration-200 min-h-[36px] ${
+                      viewMode === "list"
+                        ? "bg-[#0056a2] text-white shadow-sm"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                    }`}
+                  >
+                    <FiList className={`w-5 h-5 ${viewMode === "list" ? "text-white" : "text-[#00b4eb]"}`} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop Action Bar (Original Clustered Layout) */}
+              <div className="hidden md:flex flex-wrap items-center gap-3">
+                {/* View Switcher */}
+                <div className="inline-grid grid-cols-2 p-1 bg-white rounded-[14px] border border-[rgba(0,180,235,0.35)] shadow-sm w-[200px]">
+                  <button
+                    onClick={() => setViewMode("calendar")}
+                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-[10px] text-sm font-semibold transition-all duration-200 ${
                       viewMode === "calendar"
                         ? "bg-[#0056a2] text-white shadow-sm font-bold"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
-                    <FiCalendar className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${viewMode === "calendar" ? "text-white" : "text-[#00b4eb]"}`} />
+                    <FiCalendar className={`w-4 h-4 ${viewMode === "calendar" ? "text-white" : "text-[#00b4eb]"}`} />
                     <span>Calendar</span>
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-1.5 sm:py-2 rounded-[10px] text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                    className={`inline-flex items-center justify-center gap-1.5 px-2 py-2 rounded-[10px] text-sm font-semibold transition-all duration-200 ${
                       viewMode === "list"
                         ? "bg-[#0056a2] text-white shadow-sm font-bold"
                         : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                     }`}
                   >
-                    <FiList className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${viewMode === "list" ? "text-white" : "text-[#00b4eb]"}`} />
+                    <FiList className={`w-4 h-4 ${viewMode === "list" ? "text-white" : "text-[#00b4eb]"}`} />
                     <span>List</span>
                   </button>
                 </div>
 
-                {/* Export PDF */}
+                {/* Export Records */}
                 <button
                   onClick={() => setShowExportModal(true)}
                   style={{
@@ -671,10 +728,10 @@ useEffect(() => {
                     transition: "all 0.3s ease",
                     boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                   }}
-                  className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm hover:bg-blue-50/50"
+                  className="px-4 py-2.5 text-sm hover:bg-blue-50/50"
                 >
-                  <FiFileText className="mr-1.5 sm:mr-2 text-[#00b4eb] text-xs sm:text-sm" />
-                  Export Records
+                  <FiDownload className="mr-2 text-[#00b4eb] text-sm" />
+                  Export My Records
                 </button>
 
                 {/* Add New Entry */}
@@ -692,12 +749,37 @@ useEffect(() => {
                       transition: "all 0.3s ease",
                       boxShadow: "0 4px 14px rgba(0, 180, 235, 0.25)",
                     }}
-                    className="px-2.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm hover:shadow-lg hover:opacity-95"
+                    className="px-4 py-2.5 text-sm hover:shadow-lg hover:opacity-95"
                   >
-                    Add New Entry
-                    <FiPlus className="ml-1.5 sm:ml-2 text-xs sm:text-sm" />
+                    <FiPlus className="mr-2 text-sm" />
+                    New Entry
                   </Link>
                 )}
+              </div>
+
+              {/* Mobile Action Bar (Add New Entry & Export) */}
+              <div className="flex md:hidden items-center justify-between w-full mt-4 gap-2">
+                {/* Left Side: Add New Entry */}
+                <div className="flex-1 flex justify-start">
+                  {!isAdmin && (
+                    <Link
+                      to="/log-book"
+                      className="inline-flex items-center justify-center gap-1.5 px-3 xs:px-4 py-2.5 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white rounded-[14px] shadow-sm hover:shadow-md active:scale-95 transition-all duration-200 min-h-[44px] w-full max-w-[160px]"
+                    >
+                      <FiPlus className="w-4 h-4 shrink-0" />
+                      <span className="text-[12px] xs:text-[13px] font-semibold whitespace-nowrap">Add New Entry</span>
+                    </Link>
+                  )}
+                </div>
+
+                {/* Right Side: Export Records */}
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 xs:px-4 py-2.5 text-[12px] xs:text-[13px] font-semibold text-[#0056a2] bg-white border border-[rgba(0,180,235,0.35)] rounded-[14px] shadow-sm hover:bg-blue-50/60 active:scale-95 transition-all duration-200 min-h-[44px] whitespace-nowrap shrink-0"
+                >
+                  <FiDownload className="w-4 h-4 text-[#00b4eb] shrink-0" />
+                  <span>Export My Records</span>
+                </button>
               </div>
             </div>
           </div>
@@ -720,25 +802,27 @@ useEffect(() => {
                         {monthNames[currentMonth.getMonth()]}{" "}
                         {currentMonth.getFullYear()}
                       </h2>
-                      <div className="flex items-center space-x-1 bg-white/15 backdrop-blur-sm rounded-lg p-1 border border-white/20">
+                      <div className="flex items-center space-x-1.5 bg-white/15 backdrop-blur-sm rounded-xl p-1.5 border border-white/20">
                         <button
                           onClick={prevMonth}
-                          className="p-1 sm:p-1.5 rounded-md hover:bg-white/20 text-white transition duration-200"
+                          aria-label="Previous Month"
+                          className="p-2 sm:p-2.5 rounded-lg hover:bg-white/25 active:scale-95 text-white transition duration-200"
                         >
-                          <FiChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          <FiChevronLeft className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                         </button>
                         <button
                           onClick={nextMonth}
-                          className="p-1 sm:p-1.5 rounded-md hover:bg-white/20 text-white transition duration-200"
+                          aria-label="Next Month"
+                          className="p-2 sm:p-2.5 rounded-lg hover:bg-white/25 active:scale-95 text-white transition duration-200"
                         >
-                          <FiChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          <FiChevronRight className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                         </button>
                       </div>
                     </div>
 
                     <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm mt-3 sm:mt-4">
                       <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-                        {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
                           (day) => (
                             <div
                               key={day}
@@ -752,9 +836,8 @@ useEffect(() => {
                       </div>
 
                       <div className="grid grid-cols-7 auto-rows-fr">
-                        {daysInMonth.map((day, index) => {
-                          if (!day) return <div key={`empty-${index}`} className="min-h-[55px] sm:min-h-[100px] md:min-h-[140px] border-b border-r border-gray-100 bg-gray-50/50" />;
-                          
+                        {calendarDays.map((dayItem, index) => {
+                          const { date: day, isCurrentMonth } = dayItem;
                           const dayRecords = getRecordsForDate(day);
                           const holiday = getHolidayForDate(day);
                           const isToday = day.toDateString() === new Date().toDateString();
@@ -762,10 +845,10 @@ useEffect(() => {
                           
                           const hasWorkRecord = dayRecords.some(r => r.status === "working" || r.status === "wfh");
 
-                          let bgClass = "bg-white";
-                          if (holiday && !isSelected) bgClass = "bg-yellow-50";
-                          if (hasWorkRecord && !isSelected) bgClass = "bg-green-100";
-                          if (isSelected) bgClass = "bg-indigo-50 border-indigo-200";
+                          let bgClass = isCurrentMonth ? "bg-white" : "bg-gray-50/50 text-gray-400 opacity-60";
+                          if (isCurrentMonth && holiday) bgClass = "bg-yellow-50";
+                          if (isCurrentMonth && hasWorkRecord) bgClass = "bg-green-100";
+                          if (!isCurrentMonth && holiday) bgClass = "bg-yellow-50/40 opacity-60";
 
                           return (
                             <div
@@ -774,12 +857,12 @@ useEffect(() => {
                                 setSelectedDate(day);
                                 setIsDayModalOpen(true);
                               }}
-                              className={`min-h-[55px] sm:min-h-[100px] md:min-h-[140px] border-b border-r border-gray-100 p-1 sm:p-2 flex flex-col justify-between transition-colors relative cursor-pointer hover:bg-gray-50/80 ${bgClass}`}
+                              className={`min-h-[55px] sm:min-h-[100px] md:min-h-[140px] border-b border-r border-gray-100 p-1 sm:p-2 flex flex-col justify-between transition-colors relative cursor-pointer hover:bg-indigo-50 ${bgClass}`}
                             >
                               {/* Holiday Name at the top if present (desktop only) */}
                               {dayRecords.length === 0 && holiday ? (
                                 <div className="z-10 w-full text-center pt-0.5 hidden sm:block">
-                                  <span className="text-[11px] font-bold text-red-600 leading-tight w-full break-words block px-1">
+                                  <span className={`text-[11px] font-bold leading-tight w-full break-words block px-1 ${isCurrentMonth ? "text-red-600" : "text-red-400/70"}`}>
                                     {holiday.name}
                                   </span>
                                 </div>
@@ -789,7 +872,15 @@ useEffect(() => {
 
                               {/* Date Number fixed in the middle of the cell */}
                               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                <span className={`text-xs sm:text-xl md:text-2xl font-semibold w-6 h-6 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full ${isToday ? "bg-indigo-600 text-white shadow-md font-bold" : isSelected ? "text-indigo-700 font-bold" : "text-gray-700"}`}>
+                                <span className={`text-xs sm:text-xl md:text-2xl font-semibold w-6 h-6 sm:w-9 sm:h-9 md:w-10 md:h-10 flex items-center justify-center rounded-full ${
+                                  isToday 
+                                    ? "bg-indigo-600 text-white shadow-md font-bold" 
+                                    : isSelected 
+                                    ? "text-indigo-700 font-bold" 
+                                    : isCurrentMonth 
+                                    ? "text-gray-700" 
+                                    : "text-gray-400 font-normal"
+                                }`}>
                                   {day.getDate()}
                                 </span>
                               </div>
@@ -838,8 +929,8 @@ useEffect(() => {
                                 })}
                                 {dayRecords.length === 0 && holiday && (
                                   <React.Fragment>
-                                    <span className="sm:hidden text-[8px] font-bold text-yellow-800 bg-yellow-100/90 px-0.5 py-0.5 rounded text-center truncate">Hol</span>
-                                    <span className="hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded shadow-sm border border-yellow-200 truncate">
+                                    <span className={`sm:hidden text-[8px] font-bold px-0.5 py-0.5 rounded text-center truncate ${isCurrentMonth ? "text-yellow-800 bg-yellow-100/90" : "text-yellow-700/60 bg-yellow-50"}`}>Hol</span>
+                                    <span className={`hidden sm:block w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide rounded shadow-sm border truncate ${isCurrentMonth ? "bg-yellow-100 text-yellow-700 border-yellow-200" : "bg-yellow-50 text-yellow-600/70 border-yellow-100"}`}>
                                       Holiday
                                     </span>
                                   </React.Fragment>
@@ -945,7 +1036,7 @@ useEffect(() => {
                       {filteredRecords.map((record) => (
                         <div
                           key={record._id}
-                          className="bg-white hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col min-w-0 h-[450px]"
+                          className="bg-white hover:bg-indigo-50 transition-all duration-300 overflow-hidden flex flex-col min-w-0 h-auto"
                           style={{
                             borderRadius: 20,
                             border: "1.5px solid rgba(0, 180, 235, 0.2)",
@@ -1015,7 +1106,7 @@ useEffect(() => {
                             </div>
                           </div>
 
-                          <div className="p-4 md:p-5 space-y-4 md:space-y-5 flex-1 overflow-y-auto">
+                          <div className="p-4 md:p-5 space-y-4 md:space-y-5 flex-1">
                             <div className="mb-2 flex flex-wrap gap-2">
                               {record.stack &&
                                 !(

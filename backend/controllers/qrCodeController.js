@@ -156,6 +156,7 @@ const generateQRCode = async (req, res) => {
       meetingTitle: normalizedProjectName,
       limit: limit ? parseInt(limit, 10) : null,
       status: "Active",
+      createdAt: Date.now(),
       expiresAt: Date.now() + 5 * 60 * 1000,
       attendees: []
     });
@@ -184,7 +185,14 @@ const getSessionStatus = async (req, res) => {
     try {
       const now = moment.tz("Asia/Colombo");
       const todayStart = now.clone().startOf("day").toDate();
-      const todayEnd = now.clone().endOf("day").toDate();
+      const sessionStart = session.createdAt ? new Date(session.createdAt) : todayStart;
+      
+      let sessionEnd;
+      if (session.status === "Ended" || session.status === "Expired") {
+        sessionEnd = session.endedAt ? new Date(session.endedAt) : new Date(session.expiresAt);
+      } else {
+        sessionEnd = now.clone().endOf("day").toDate();
+      }
 
       const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting", "manual_meeting"];
 
@@ -199,7 +207,7 @@ const getSessionStatus = async (req, res) => {
                 type: { $in: MEETING_ATTENDANCE_TYPES },
                 status: "Present",
                 meetingName: projectNameRegex,
-                date: { $gte: todayStart, $lte: todayEnd }
+                date: { $gte: sessionStart, $lte: sessionEnd }
               }
             }
           },
@@ -209,7 +217,7 @@ const getSessionStatus = async (req, res) => {
                 type: { $in: MEETING_ATTENDANCE_TYPES },
                 status: "Present",
                 projectName: projectNameRegex,
-                date: { $gte: todayStart, $lte: todayEnd }
+                date: { $gte: sessionStart, $lte: sessionEnd }
               }
             }
           }
@@ -226,8 +234,8 @@ const getSessionStatus = async (req, res) => {
               projectNameRegex.test(a.meetingName || "") ||
               projectNameRegex.test(a.projectName || "")
             ) &&
-            new Date(a.date) >= todayStart &&
-            new Date(a.date) <= todayEnd
+            new Date(a.date) >= sessionStart &&
+            new Date(a.date) <= sessionEnd
           )
           .sort((a, b) => new Date(b.timeMarked || b.date) - new Date(a.timeMarked || a.date))[0];
 
@@ -280,6 +288,7 @@ const expireSession = async (req, res) => {
     }
 
     session.status = "Ended";
+    session.endedAt = Date.now();
     res.status(200).json({ message: "Session ended successfully", session });
   } catch (error) {
     res.status(500).json({ message: "Error expiring session", error: error.message });
