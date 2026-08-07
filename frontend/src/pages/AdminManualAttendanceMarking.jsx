@@ -369,6 +369,12 @@ const AdminManualAttendance = () => {
   const [uploadedFileName, setUploadedFileName] = useState("");
   const [uploadedExcelFileName, setUploadedExcelFileName] = useState("");
 
+  // OCR states
+  const [ocrScanning, setOcrScanning] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [ocrImagesTotal, setOcrImagesTotal] = useState(0);
+  const [ocrImagesProcessed, setOcrImagesProcessed] = useState(0);
+
   const showToast = (text, type = "info") => setToast({ text, type });
 
   // ── Search ──────────────────────────────────────────────────────────────
@@ -525,6 +531,61 @@ const AdminManualAttendance = () => {
       setMarking(false);
     }
   };
+  const handleImageUpload = async (event) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setOcrScanning(true);
+    setOcrImagesTotal(files.length);
+
+    try {
+      const formData = new FormData();
+      for (let i = 0; i < files.length; i++) {
+        formData.append("images", files[i]);
+      }
+
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(
+        `${API_BASE_URL}/admin/manual-attendance/extract-ids-from-images`,
+        {
+          method: "POST",
+          headers: {
+            ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+          },
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to process images");
+      }
+
+      const uniqueIds = data.ids || [];
+
+      if (uniqueIds.length === 0) {
+        showToast("No valid Intern IDs found in the images", "error");
+      } else {
+        setBulkInternIds((prev) => {
+          const existing = prev
+            .split(/[\n,]+/)
+            .map((id) => id.trim())
+            .filter((id) => id.length > 0);
+          const combined = [...new Set([...existing, ...uniqueIds])];
+          return combined.join("\n");
+        });
+        showToast(`${uniqueIds.length} Intern IDs detected successfully.`, "success");
+      }
+    } catch (error) {
+      console.error("OCR Error:", error);
+      showToast(error.message || "Failed to process images. Please try again.", "error");
+    } finally {
+      setOcrScanning(false);
+      event.target.value = null;
+    }
+  };
+
   const handlePdfUpload = async (event) => {
     const file = event.target.files?.[0];
 
@@ -905,32 +966,42 @@ const AdminManualAttendance = () => {
                       </p>
                     )}
 
+                    {/* Image Upload (OCR) */}
                     <div className="mt-3">
-                      <label className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer hover:bg-blue-100 transition-all">
-                        <FaUpload className="text-blue-600" />
-                        <span className="text-sm font-medium text-blue-700">
-                          Upload Attendance PDF
+                      <label
+                        className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl transition-all ${
+                          ocrScanning
+                            ? "bg-indigo-50 border border-indigo-200 cursor-wait opacity-80"
+                            : "bg-indigo-50 border border-indigo-200 cursor-pointer hover:bg-indigo-100"
+                        }`}
+                      >
+                        {ocrScanning ? (
+                          <FaSpinner className="text-indigo-600 animate-spin" />
+                        ) : (
+                          <FaUpload className="text-indigo-600" />
+                        )}
+                        <span className="text-sm font-medium text-indigo-700">
+                          {ocrScanning
+                            ? `Scanning ...`
+                            : "Upload Attendance Images"}
                         </span>
                         <input
                           type="file"
-                          accept=".pdf"
+                          accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+                          multiple
                           className="hidden"
-                          onChange={handlePdfUpload}
+                          onChange={handleImageUpload}
+                          disabled={ocrScanning}
                         />
                       </label>
-
-                      {uploadedFileName && (
-                        <p className="mt-2 text-xs text-green-600">
-                          Loaded: {uploadedFileName}
-                        </p>
-                      )}
                     </div>
 
+                    {/* Excel Upload */}
                     <div className="mt-3">
-                      <label className="flex items-center justify-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl cursor-pointer hover:bg-green-100 transition-all">
-                        <FaUpload className="text-green-600" />
+                      <label className="flex items-center justify-center gap-2 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-xl cursor-pointer hover:bg-emerald-100 transition-all">
+                        <FaUpload className="text-emerald-600" />
 
-                        <span className="text-sm font-medium text-green-700">
+                        <span className="text-sm font-medium text-emerald-700">
                           Upload Attendance Excel
                         </span>
 
@@ -943,8 +1014,30 @@ const AdminManualAttendance = () => {
                       </label>
 
                       {uploadedExcelFileName && (
-                        <p className="mt-2 text-xs text-green-600">
+                        <p className="mt-2 text-xs text-emerald-600">
                           Loaded: {uploadedExcelFileName}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* PDF Upload */}
+                    <div className="mt-3">
+                      <label className="flex items-center justify-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100 transition-all">
+                        <FaUpload className="text-amber-600" />
+                        <span className="text-sm font-medium text-amber-700">
+                          Upload Attendance PDF
+                        </span>
+                        <input
+                          type="file"
+                          accept=".pdf"
+                          className="hidden"
+                          onChange={handlePdfUpload}
+                        />
+                      </label>
+
+                      {uploadedFileName && (
+                        <p className="mt-2 text-xs text-amber-600">
+                          Loaded: {uploadedFileName}
                         </p>
                       )}
                     </div>

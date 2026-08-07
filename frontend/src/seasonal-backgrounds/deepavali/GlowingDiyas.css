@@ -1,0 +1,61 @@
+.glowing-diyas-container {
+  position: absolute;
+  bottom: 5vh;
+  left: 0;
+  width: 100%;
+  height: 100px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.rangoli-base {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  opacity: 0.8;
+}
+
+.rangoli-base svg {
+  width: 100%;
+  height: 100%;
+}
+
+.diya-wrapper {
+  position: absolute;
+  bottom: 10px;
+  width: 60px;
+  height: 40px;
+  transform-origin: bottom center;
+}
+
+.diya-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 5px 5px rgba(0,0,0,0.5));
+}
+
+.diya-flame {
+  transform-origin: 30px 22px;
+  animation: diya-flicker 0.4s infinite alternate ease-in-out;
+}
+
+.diya-wrapper:nth-child(odd) .diya-flame {
+  animation-delay: 0.2s;
+}
+
+@keyframes diya-flicker {
+  0% { transform: scaleY(1) rotate(-3deg); filter: drop-shadow(0 0 10px #ff9800); }
+  50% { transform: scaleY(1.1) rotate(0deg); filter: drop-shadow(0 0 20px #ffeb3b); }
+  100% { transform: scaleY(0.9) rotate(3deg); filter: drop-shadow(0 0 15px #ff5722); }
+}
+
+@media (max-width: 768px) {
+  .glowing-diyas-container {
+    bottom: 2vh;
+  }
+  .diya-wrapper {
+    bottom: 0;
+  }
+}

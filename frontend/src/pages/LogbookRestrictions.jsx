@@ -27,7 +27,11 @@ import {
   FaInfoCircle,
   FaShieldAlt,
   FaSignOutAlt,
+  FaDownload,
 } from "react-icons/fa";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import Swal from "sweetalert2";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
 
@@ -195,6 +199,82 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
       setError("Please provide a detailed reason (at least 15 characters).");
       return;
     }
+    
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
+    const bypassEmails = [
+      "mgiri@slt.com.lk",
+      "mgiridaransysdev@gmail.com",
+      "hjanaka@gmail.com",
+      "ranujaliyanaarachchi@gmail.com"
+    ];
+
+    if (!bypassEmails.includes(currentUserEmail)) {
+      const { value: password } = await Swal.fire({
+        title: 'Enter Password',
+        html: `
+          <div style="font-size: 14px; color: #4b5563; margin-bottom: 16px;">Admin Password required.</div>
+          <div class="logres-pw-wrapper">
+            <input type="text" name="username" value="" tabindex="-1" autocomplete="username" style="opacity: 0; position: absolute; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;" />
+            <input type="password" id="logres-password-input" class="logres-swal-input" placeholder="Enter your password" autocomplete="current-password" />
+            <div class="logres-pw-toggle" id="logres-pw-toggle">
+              <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 640 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M320 400c-75.85 0-137.25-58.71-142.9-133.11L72.2 185.82c-13.79 17.3-26.48 35.59-36.72 55.59a32.35 32.35 0 0 0 0 29.19C89.71 376.41 197.07 448 320 448c26.91 0 52.87-4 77.89-10.46L346 397.39a144.13 144.13 0 0 1-26 2.61zm313.82 58.1l-110.55-85.44a331.25 331.25 0 0 0 81.25-102.07 32.35 32.35 0 0 0 0-29.19C550.29 135.59 442.93 64 320 64a308.15 308.15 0 0 0-147.32 37.7L45.46 3.37A16 16 0 0 0 23 6.18L3.37 31.45A16 16 0 0 0 6.18 53.9l588.36 454.73a16 16 0 0 0 22.46-2.81l19.64-25.27a16 16 0 0 0-2.82-22.45zm-183.72-142l-39.3-30.38A94.75 94.75 0 0 0 416 256a94.76 94.76 0 0 0-121.31-92.21A47.65 47.65 0 0 1 304 192a46.64 46.64 0 0 1-1.54 10l-73.61-56.89A142.31 142.31 0 0 1 320 112a143.92 143.92 0 0 1 144 144c0 21.63-5.29 41.79-13.9 60.11z"></path></svg>
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Verify & Restore',
+        confirmButtonColor: BRAND.primary,
+        cancelButtonColor: BRAND.ghost,
+        customClass: {
+          container: 'logres-swal-container',
+          popup: 'logres-swal-popup',
+          title: 'logres-swal-title',
+          confirmButton: 'logres-btn logres-btn--primary',
+          cancelButton: 'logres-btn logres-btn--ghost'
+        },
+        didOpen: () => {
+          const toggle = document.getElementById('logres-pw-toggle');
+          const input = document.getElementById('logres-password-input');
+          
+          const eyeSVG = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M288 144a110.94 110.94 0 0 0-31.24 5 55.4 55.4 0 0 1 7.24 27 56 56 0 0 1-56 56 55.4 55.4 0 0 1-27-7.24A111.71 111.71 0 1 0 288 144zm284.52 97.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400c-98.65 0-189.09-55-237.93-144C98.91 167 189.34 112 288 112s189.09 55 237.93 144C477.1 345 386.66 400 288 400z"></path></svg>`;
+          const eyeSlashSVG = toggle.innerHTML;
+
+          toggle.addEventListener('click', () => {
+            if (input.type === 'password') {
+              input.type = 'text';
+              toggle.innerHTML = eyeSVG;
+            } else {
+              input.type = 'password';
+              toggle.innerHTML = eyeSlashSVG;
+            }
+          });
+        },
+        preConfirm: () => {
+          const password = document.getElementById('logres-password-input').value;
+          if (!password) {
+            Swal.showValidationMessage('You need to enter the password!');
+            return false;
+          }
+          return password;
+        }
+      });
+
+      if (!password) {
+        return; // Cancelled
+      }
+
+      if (password !== 'TalentHub@2026' && password !== 'G2026@SLT@npm') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Incorrect Password',
+          text: 'The password you entered is incorrect.',
+          confirmButtonColor: BRAND.primary,
+        });
+        return;
+      }
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -361,6 +441,89 @@ const LogbookRestrictions = () => {
   const [historyTarget, setHistoryTarget] = useState(null);
   const [toast, setToast] = useState(null);
 
+  const exportToPDF = () => {
+    const doc = new jsPDF("landscape");
+    doc.setFont("helvetica");
+
+    // Title
+    doc.setFontSize(18);
+    doc.setTextColor(0, 86, 162); // BRAND.primary
+    doc.text("Logbook Restrictions Report", 14, 22);
+
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+    const tableColumn = [
+      "Name",
+      "Trainee ID",
+      "Restricted Since",
+      "Day 1",
+      "Day 2",
+      "Day 3",
+      "Day 4",
+      "Day 5",
+      "Reason"
+    ];
+
+    const tableRows = [];
+
+    interns.forEach(intern => {
+      const reason = intern.logbookRestrictionReason || "";
+      
+      const rowData = [
+        intern.traineeName || "-",
+        intern.traineeId || "-",
+        fmtDate(intern.logbookRestrictedAt)
+      ];
+
+      for (let i = 0; i < 5; i++) {
+        if (intern.heatmap && intern.heatmap[i]) {
+          const h = intern.heatmap[i];
+          const dateFmt = new Date(h.date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          rowData.push(`${dateFmt}\n${h.submitted ? "Submitted" : "Not Submitted"}`);
+        } else {
+          rowData.push("-");
+        }
+      }
+
+      rowData.push(reason);
+      tableRows.push(rowData);
+    });
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 40,
+      theme: "grid",
+      styles: { fontSize: 8, cellPadding: 2, halign: "center", valign: "middle" },
+      headStyles: { fillColor: [0, 86, 162], textColor: 255, halign: "center", valign: "middle" },
+      columnStyles: {
+        0: { halign: "left" }, // Name
+        1: { halign: "center" }, // ID
+        2: { halign: "center" }, // Restricted Since
+        8: { cellWidth: 50, halign: "left" } // Reason
+      },
+      didParseCell: function (data) {
+        if (data.section === 'body' && data.column.index >= 3 && data.column.index <= 7) {
+          const raw = data.cell.raw;
+          if (raw && typeof raw === 'string') {
+             if (raw.includes('Not Submitted')) {
+                data.cell.styles.textColor = [220, 38, 38]; // Red text
+                data.cell.styles.fontStyle = 'bold';
+             } else if (raw.includes('Submitted')) {
+                data.cell.styles.textColor = [37, 99, 235]; // Blue text
+                data.cell.styles.fontStyle = 'bold';
+             }
+          }
+        }
+      }
+    });
+
+    const dateSuffix = new Date().toISOString().split('T')[0];
+    doc.save(`Logbook_Restrictions_${dateSuffix}.pdf`);
+  };
+
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
@@ -439,8 +602,7 @@ const LogbookRestrictions = () => {
                 transition={{ delay: 0.05, duration: 0.2 }}
                 className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
               >
-                Interns restricted due to missing weekly submissions. Lift
-                access after supervisor approval.
+                Interns restricted due to submitting fewer than 3 logs in a working week (excluding weekends & public holidays). Lift access after supervisor approval.
               </motion.p>
             </div>
 
@@ -450,26 +612,52 @@ const LogbookRestrictions = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
+              style={{ flexWrap: "wrap", justifyContent: "space-between" }}
             >
-              <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.danger }}
-                >
-                  {loading ? "—" : interns.length}
-                </span>
-                <span className="logres-stat__label">Currently Restricted</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+                <div className="logres-stat">
+                  <span
+                    className="logres-stat__value"
+                    style={{ color: BRAND.danger }}
+                  >
+                    {loading ? "—" : interns.length}
+                  </span>
+                  <span className="logres-stat__label">Currently Restricted</span>
+                </div>
+                <div className="logres-stat logres-stat--divider" />
+                <div className="logres-stat">
+                  <span
+                    className="logres-stat__value"
+                    style={{ color: BRAND.warn }}
+                  >
+                    {loading ? "—" : filtered.length}
+                  </span>
+                  <span className="logres-stat__label">Shown (filtered)</span>
+                </div>
               </div>
-              <div className="logres-stat logres-stat--divider" />
-              <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.warn }}
-                >
-                  {loading ? "—" : filtered.length}
-                </span>
-                <span className="logres-stat__label">Shown (filtered)</span>
-              </div>
+
+              <button
+                onClick={exportToPDF}
+                className="logres-btn logres-btn--primary"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  backgroundColor: BRAND.primary,
+                  color: "white",
+                  padding: "10px 20px",
+                  borderRadius: "10px",
+                  fontWeight: "600",
+                  border: "none",
+                  cursor: "pointer",
+                  marginLeft: "auto",
+                  transition: "background 0.2s"
+                }}
+                onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#004482")}
+                onMouseOut={(e) => (e.currentTarget.style.backgroundColor = BRAND.primary)}
+              >
+                <FaDownload /> Export PDF
+              </button>
             </motion.div>
 
             {/* Info banner */}
@@ -483,12 +671,7 @@ const LogbookRestrictions = () => {
                 style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }}
               />
               <p>
-                Interns listed below have been automatically restricted by the
-                system for submitting fewer than the required number of logbook
-                (3 log entries) entries within a 5-working-day period. To
-                restore access, click
-                <strong> Lift Restriction</strong> and record the reason
-                provided during the supervisor meeting.
+                Interns below are automatically restricted for submitting fewer than <strong>3 logbook </strong>entries within a <strong> 5 working-day </strong>period <strong>(</strong>excluding weekends and public holidays<strong>)</strong>. Use <strong> "Lift Restriction" </strong>to restore access and record the supervisor's reason.
               </p>
             </motion.div>
 
@@ -506,6 +689,8 @@ const LogbookRestrictions = () => {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="logres-search-bar__input"
+                autoComplete="off"
+                data-lpignore="true"
               />
               {search && (
                 <button
@@ -592,8 +777,19 @@ const LogbookRestrictions = () => {
                         >
                           <td>
                             <div className="logres-table__intern-cell">
-                              <div className="logres-table__avatar">
-                                {(intern.traineeName || "?")[0].toUpperCase()}
+                              <div className="logres-table__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                                <img
+                                  src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                                  alt={intern.traineeName}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                                  {(intern.traineeName || "?")[0].toUpperCase()}
+                                </div>
                               </div>
                               <div>
                                 <div className="logres-table__name">
@@ -665,8 +861,19 @@ const LogbookRestrictions = () => {
                       transition={{ delay: idx * 0.04 }}
                     >
                       <div className="logres-card__top">
-                        <div className="logres-card__avatar">
-                          {(intern.traineeName || "?")[0].toUpperCase()}
+                        <div className="logres-card__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
+                          <img
+                            src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                            alt={intern.traineeName}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                          <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                            {(intern.traineeName || "?")[0].toUpperCase()}
+                          </div>
                         </div>
                         <div className="logres-card__identity">
                           <span className="logres-card__name">
@@ -962,10 +1169,14 @@ const LogbookRestrictions = () => {
         }
         .logres-btn--sm { padding: 6px 12px; font-size: 12px; }
         .logres-btn--primary {
-          background: linear-gradient(135deg, #0056a2, #00b4eb);
-          color: white; box-shadow: 0 4px 12px rgba(0,86,162,0.2);
+          background: linear-gradient(135deg, #0056a2, #00b4eb) !important;
+          color: white !important; box-shadow: 0 4px 12px rgba(0,86,162,0.2) !important;
         }
-        .logres-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,86,162,0.3); }
+        .logres-btn--primary:hover {
+          background: linear-gradient(135deg, #004485, #00a4d6) !important;
+          transform: translateY(-1px) !important;
+          box-shadow: 0 6px 16px rgba(0,86,162,0.3) !important;
+        }
         .logres-btn--lift {
           background: linear-gradient(135deg, #50b748, #2d8a3e);
           color: white; box-shadow: 0 4px 12px rgba(80,183,72,0.2);
@@ -973,19 +1184,80 @@ const LogbookRestrictions = () => {
         .logres-btn--lift:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(80,183,72,0.3); }
         .logres-btn--lift:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
         .logres-btn--ghost {
-          background: white; color: #6b7280;
-          border: 1.5px solid #e0e0e0;
+          background: white !important; color: #6b7280 !important;
+          border: 1.5px solid #e0e0e0 !important;
         }
-        .logres-btn--ghost:hover { border-color: #0056a2; color: #0056a2; }
-        .logres-btn--ghost:disabled { opacity: 0.5; cursor: not-allowed; }
+        .logres-btn--ghost:hover { border-color: #0056a2 !important; color: #0056a2 !important; background: #f8fafc !important; }
+        .logres-btn--ghost:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
 
         /* ── Modal overlay ── */
         .logres-modal-overlay {
-          position: fixed; inset: 0; z-index: 200;
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999;
           background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
           display: flex; align-items: center; justify-content: center;
-          padding: 20px;
+          padding: 20px; box-sizing: border-box;
         }
+        @media (min-width: 1024px) {
+          .logres-modal-overlay,
+          .logres-swal-container {
+            padding-left: 270px !important; /* Offset to center relative to main content area */
+          }
+        }
+        
+        /* ── SweetAlert Customization ── */
+        .logres-swal-popup {
+          border-radius: 20px !important;
+          padding: 32px 24px 24px !important;
+          font-family: 'Segoe UI', system-ui, sans-serif !important;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.15) !important;
+          max-width: 380px !important; /* Reduced width */
+          width: 100% !important;
+        }
+        .logres-swal-title {
+          font-size: 19px !important;
+          font-weight: 700 !important;
+          color: #1a1a2e !important;
+          margin-bottom: 12px !important;
+        }
+        .logres-pw-wrapper {
+          position: relative;
+          width: 100%;
+          margin: 0;
+        }
+        .logres-swal-input {
+          border: 1.5px solid #e0e0e0 !important;
+          border-radius: 12px !important;
+          padding: 12px 42px 12px 16px !important;
+          font-size: 15px !important;
+          color: #1a1a2e !important;
+          transition: all 0.2s !important;
+          text-align: center !important;
+          letter-spacing: 2px !important;
+          width: 100% !important;
+          box-sizing: border-box !important;
+          outline: none !important;
+          display: block !important;
+        }
+        .logres-swal-input:focus {
+          border-color: #0056a2 !important;
+          box-shadow: 0 0 0 3px rgba(0,86,162,0.1) !important;
+        }
+        .logres-pw-toggle {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          cursor: pointer;
+          color: #9ca3af;
+          font-size: 18px;
+          transition: color 0.2s;
+          z-index: 10;
+        }
+        .logres-pw-toggle:hover { color: #0056a2; }
+        
+        
         .logres-modal {
           background: white; border-radius: 20px;
           width: 100%; max-width: 520px; max-height: 90vh;
