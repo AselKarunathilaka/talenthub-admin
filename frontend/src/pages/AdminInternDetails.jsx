@@ -165,6 +165,7 @@ const AdminInternDetails = () => {
     return new Date(now.getFullYear(), now.getMonth(), 1);
   });
   const [tooltip, setTooltip] = useState(null);
+  const [holidayData, setHolidayData] = useState([]);
 
   const [logbookView, setLogbookView] = useState("calendar");
   const [logbookCalMonth, setLogbookCalMonth] = useState(() => {
@@ -181,22 +182,25 @@ const AdminInternDetails = () => {
   // ── Holidays ──────────────────────────────────────────────────────────────
   const [holidays, setHolidays] = useState([]);
 
-  const fetchHolidays = useCallback(async (year) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/holidays/${year}`);
-      const data = await response.json();
-      if (data.holidays) {
-        setHolidays((prev) => {
-          // Merge new holidays, deduplicate by date string
-          const existing = new Map(prev.map((h) => [h.date, h]));
-          data.holidays.forEach((h) => existing.set(h.date, h));
-          return Array.from(existing.values());
-        });
-      }
-    } catch (error) {
-      console.error("Holiday fetch failed:", error);
+  const fetchHolidays = useCallback(async (year = new Date().getFullYear()) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/holidays/${year}`);
+
+    if (!response.ok) {
+      throw new Error(`Holiday request failed: ${response.status}`);
     }
-  }, []);
+
+    const data = await response.json();
+    const newHolidays = data?.response?.holidays || [];
+
+    setHolidays(newHolidays);
+    setHolidayData(newHolidays);
+  } catch (error) {
+    console.error("Holiday fetch failed:", error);
+    setHolidays([]);
+    setHolidayData([]);
+  }
+}, []);
 
   const getHolidayForDate = useCallback(
     (date) => {
@@ -218,7 +222,7 @@ const AdminInternDetails = () => {
     fetchAttendance();
     fetchGitCommits();
     fetchCertAttendanceCount();
-    fetchHolidays(new Date().getFullYear());
+    fetchHolidays();
   }, [internId]);
 
   // Re-fetch holidays when calendar months change to a different year
@@ -1686,7 +1690,7 @@ const AdminInternDetails = () => {
                                 </div>
                               </div>
 
-                              {/* Calendar grid */}
+                              
                               {/* Calendar grid */}
                               <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm">
                                 <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
@@ -2064,149 +2068,206 @@ const AdminInternDetails = () => {
 
                           {logbookView === "calendar" && (
                             <div>
-                              <div className="grid grid-cols-3 gap-3 mb-5">
-                                {[
-                                  {
-                                    value: totalWeekdays,
-                                    label: "Working Days",
-                                    color: "text-slate-900",
-                                  },
-                                  {
-                                    value: totalRecords,
-                                    label: "Logs Submitted",
-                                    color: "text-emerald-600",
-                                  },
-                                  {
-                                    value: missedDays,
-                                    label: "Logs Missed",
-                                    color: "text-rose-600",
-                                  },
-                                ].map(({ value, label, color }) => (
-                                  <div
-                                    key={label}
-                                    className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-sm"
-                                  >
-                                    <p
-                                      className={`text-2xl sm:text-3xl font-bold tracking-tight mb-1 ${color}`}
-                                    >
-                                      {value}
-                                    </p>
-                                    <p className="text-[11px] uppercase tracking-wider font-bold text-slate-500">
-                                      {label}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
+                            <div className="space-y-6">
+  {/* Summary cards */}
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+   <div className="rounded-xl p-3 sm:p-4 text-white shadow-md bg-gradient-to-r from-blue-500 to-cyan-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-white/90">Working Days</p>
+          <p className="text-4xl font-bold mt-1">{totalWeekdays}</p>
+        </div>
+        <FaCalendarAlt className="text-4xl text-white/80" />
+      </div>
+    </div>
 
-                              <div className="flex items-center justify-between mb-4">
-                                <button
-                                  onClick={() =>
-                                    setLogbookCalMonth(
-                                      (prev) =>
-                                        new Date(
-                                          prev.getFullYear(),
-                                          prev.getMonth() - 1,
-                                          1,
-                                        ),
-                                    )
-                                  }
-                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-                                >
-                                  <FaChevronLeft className="h-3 w-3" />
-                                </button>
-                                <span className="text-sm font-semibold text-gray-800">
-                                  {lbMonthLabel}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    setLogbookCalMonth(
-                                      (prev) =>
-                                        new Date(
-                                          prev.getFullYear(),
-                                          prev.getMonth() + 1,
-                                          1,
-                                        ),
-                                    )
-                                  }
-                                  className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
-                                >
-                                  <FaChevronRight className="h-3 w-3" />
-                                </button>
-                              </div>
+    <div className="rounded-2xl p-5 text-white shadow-lg bg-gradient-to-r from-emerald-500 to-green-500">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-white/90">Logs Submitted</p>
+          <p className="text-4xl font-bold mt-1">{totalRecords}</p>
+        </div>
+        <FaClipboardList className="text-4xl text-white/80" />
+      </div>
+    </div>
 
-                              {/* Calendar grid */}
-                              <div className="w-full overflow-hidden bg-white border border-gray-200 rounded-xl shadow-sm">
-                                <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
-                                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                                    <div
-                                      key={d}
-                                      className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200 last:border-r-0"
-                                    >
-                                      {d}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="grid grid-cols-7 auto-rows-fr">
-                                  {lbCalDays.map((day, di) => {
-                                    if (!day) return <div key={di} className="min-h-[100px] border-b border-r border-gray-100 bg-gray-50" />;
-                                    
-                                    const meta = getLogbookMeta(recordMap, day, getHolidayForDate);
-                                    const isToday = day.toDateString() === new Date().toDateString();
-                                    const dayKey = toDateKey(day);
-                                    const rec = recordMap[dayKey];
-                                    const isClickable = rec != null;
-                                    
-                                    return (
-                                      <div
-                                        key={di}
-                                        className={`min-h-[100px] border-b border-r border-gray-100 p-2 flex flex-col transition-colors relative ${meta?.bgClass || "bg-white"} ${isClickable ? "cursor-pointer hover:bg-gray-100/50 hover:shadow-inner" : ""}`}
-                                        title={meta?.isHoliday ? meta.holidayName : ""}
-                                        onClick={() => isClickable && setLogbookModal(rec)}
-                                      >
-                                        <div className="flex justify-between items-start mb-2">
-                                          <span className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full ${isToday ? "bg-blue-600 text-white shadow-sm" : meta?.textClass || "text-gray-700"}`}>
-                                            {day.getDate()}
-                                          </span>
-                                        </div>
-                                        
-                                        <div className="flex flex-col gap-1 flex-1 justify-end">
-                                          {meta?.isWorking && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-blue-100 text-blue-700 rounded shadow-sm border border-blue-200 truncate">
-                                              Office
-                                            </span>
-                                          )}
-                                          {meta?.isWfh && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-green-100 text-green-700 rounded shadow-sm border border-green-200 truncate">
-                                              WFH
-                                            </span>
-                                          )}
-                                          {!meta?.isWorking && !meta?.isWfh && meta?.isSubmitted && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-emerald-100 text-emerald-700 rounded shadow-sm border border-emerald-200 truncate">
-                                              Submitted
-                                            </span>
-                                          )}
-                                          {meta?.isLeave && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-red-100 text-red-700 rounded shadow-sm border border-red-200 truncate">
-                                              On Leave
-                                            </span>
-                                          )}
-                                          {meta?.isHoliday && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-yellow-100 text-yellow-700 rounded border border-yellow-200 truncate" title={meta.holidayName}>
-                                              Holiday
-                                            </span>
-                                          )}
-                                          {meta?.isMissing && !meta?.isWeekend && !meta?.isFuture && !meta?.isHoliday && (
-                                            <span className="w-full text-center px-1 py-1 text-[10px] font-bold uppercase tracking-wide bg-gray-100 text-gray-500 rounded border border-gray-200 truncate">
-                                              No Record
-                                            </span>
-                                          )}
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </div>
+<div className="rounded-2xl p-5 text-white shadow-lg bg-gradient-to-r from-red-500 to-pink-500">
+  <div className="flex items-center justify-between">
+    <div>
+      <p className="text-sm font-medium text-white/90">
+        Logs Missed
+      </p>
+      <p className="text-4xl font-bold mt-1">
+        {missedDays}
+      </p>
+    </div>
+    <FaExclamationTriangle className="text-4xl text-white/80" />
+  </div>
+</div>
 
+</div>
+
+  {/* Month navigation */}
+  <div className="bg-slate-50 border border-slate-200 rounded-2xl px-4 py-4 shadow-sm">
+    <div className="flex items-center justify-between">
+      <button
+        onClick={() =>
+          setLogbookCalMonth(
+            (prev) =>
+              new Date(
+                prev.getFullYear(),
+                prev.getMonth() - 1,
+                1,
+              ),
+          )
+        }
+        className="w-11 h-11 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-100 transition"
+      >
+        <FaChevronLeft className="text-slate-700" />
+      </button>
+
+      <div className="text-center">
+        <p className="text-xs uppercase tracking-[0.18em] text-slate-400 font-semibold">
+          Logbook Calendar
+        </p>
+        <h4 className="text-xl font-bold text-slate-900 mt-1">
+          {lbMonthLabel}
+        </h4>
+      </div>
+
+      <button
+        onClick={() =>
+          setLogbookCalMonth(
+            (prev) =>
+              new Date(
+                prev.getFullYear(),
+                prev.getMonth() + 1,
+                1,
+              ),
+          )
+        }
+        className="w-11 h-11 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center hover:bg-slate-100 transition"
+      >
+        <FaChevronRight className="text-slate-700" />
+      </button>
+    </div>
+  </div>
+
+  {/* Calendar card */}
+  <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-sm">
+   <div className="grid grid-cols-7 gap-x-3 gap-y-3 sm:gap-x-5 sm:gap-y-4">
+      {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+        (dayName) => (
+          <div
+            key={dayName}
+            className="text-center text-xs font-bold uppercase tracking-wide text-slate-500"
+          >
+            {dayName}
+          </div>
+        ),
+      )}
+    </div>
+
+    <div className="grid grid-cols-7 gap-1 sm:gap-0">
+      {lbCalDays.map((day, index) => {
+        const meta = getLogbookMeta(recordMap, day);
+
+        const holiday =
+          day &&
+          holidayData.find(
+            (h) =>
+              h.date?.iso?.split("T")[0] === toDateKey(day) &&
+              h.type?.some((type) =>
+                type.toLowerCase().includes("national holiday"),
+              ),
+          );
+
+        const isToday =
+          day &&
+          day.toDateString() === new Date().toDateString();
+
+        const dayKey = day ? toDateKey(day) : null;
+        const rec = dayKey ? recordMap[dayKey] : null;
+        const isClickable = Boolean(rec);
+
+        return (
+          <div
+            key={index}
+            className="min-h-[56px] sm:min-h-[64px] flex items-center justify-center"
+          >
+            {day ? (
+              <motion.div
+                whileHover={
+                  isClickable ? { scale: 1.04, y: -3 } : {}
+                }
+                whileTap={isClickable ? { scale: 0.98 } : {}}
+                onClick={() => {
+                  if (isClickable) {
+                    setLogbookModal(rec);
+                  }
+                }}
+                className={`
+                  relative
+                  w-full
+                  max-w-[45px]
+                  min-h-[30px]
+                  sm:min-h-[45px]
+                  rounded-2xl
+                  border
+                  flex
+                  flex-col
+                  items-center
+                  justify-center
+                  px-2
+                  transition-all
+                  shadow-sm
+                  ${isClickable ? "cursor-pointer hover:shadow-lg" : ""}
+                  ${isToday ? "ring-2 ring-blue-500 ring-offset-2" : ""}
+                `}
+                style={{
+                  backgroundColor: holiday
+                    ? "#fef9c3"
+                    : meta?.color || "#f8fafc",
+                  borderColor: holiday
+                    ? "#fb7185"
+                    : isClickable
+                      ? "#334155"
+                      : "#e2e8f0",
+                }}
+              >
+                <span
+                  className="text-xl font-bold"
+                  style={{
+                    color: holiday
+                      ? "#dc2626"
+                      : meta?.textColor || "#1e293b",
+                  }}
+                >
+                  {day.getDate()}
+                </span>
+
+                {holiday && (
+  <span
+    className="-mt-0.5 text-[6px] sm:text-[7px] text-red-600 font-semibold text-center leading-[0.85] line-clamp-2 w-full px-0.5"
+    title={holiday.name}
+  >
+    {holiday.name}
+  </span>
+)}
+
+                {isClickable && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-blue-600" />
+                )}
+              </motion.div>
+            ) : (
+              <div className="min-h-[62px] sm:min-h-[72px]" />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</div>                               
                               <div className="mt-4 pt-4 border-t border-gray-100">
                                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
                                   Legend — Click any day with a record to inspect the logbook
