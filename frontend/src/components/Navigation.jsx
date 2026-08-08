@@ -163,7 +163,7 @@ const Navigation = ({ children }) => {
     }
   };
 
-  // Responsive & scroll handlers
+  // Responsive handlers
   useEffect(() => {
     if (window.innerWidth < 1024) setIsMobileMenuOpen(false);
   }, [location]);
@@ -175,24 +175,6 @@ const Navigation = ({ children }) => {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerWidth >= 1024) {
-        const currentScrollY = window.scrollY;
-        if (currentScrollY > lastScrollY && currentScrollY > 100) {
-          setIsScrollingUp(false);
-          setIsNavbarHidden(true);
-        } else if (currentScrollY < lastScrollY) {
-          setIsScrollingUp(true);
-          setIsNavbarHidden(false);
-        }
-        setLastScrollY(currentScrollY);
-      }
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [lastScrollY]);
 
   const navLinks = [
     { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, hoverColor: "#48cef7ff" },
@@ -302,8 +284,7 @@ const Navigation = ({ children }) => {
       {/* Desktop Top Bar */}
       <header
         className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
-          transition-all duration-500 ease-out
-          ${isNavbarHidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100"}`}
+          transition-all duration-500 ease-out`}
         style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
@@ -361,7 +342,7 @@ const Navigation = ({ children }) => {
         className={`fixed lg:sticky inset-y-0 left-0 z-40
           bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 w-[270px] h-screen lg:top-0`}
+          lg:translate-x-0 w-[270px] h-[100dvh] lg:top-0`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header with TalentHub + Logo */}
@@ -403,7 +384,7 @@ const Navigation = ({ children }) => {
           </div>
 
           {/* Navigation Links */}
-          <nav className="px-3 py-4 lg:py-6 flex-1 flex flex-col justify-evenly gap-2 lg:gap-0 overflow-y-auto">
+          <nav className="px-3 py-4 lg:py-6 flex-1 flex flex-col justify-evenly gap-2 lg:gap-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
@@ -474,21 +455,24 @@ const Navigation = ({ children }) => {
 
       {/* Profile Picture Upload Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-gradient-to-b from-[#006600] to-[#000066] border border-white/10 rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <div className="flex justify-between items-center mb-5">
-              <h3 className="text-lg font-bold text-white">Profile Picture</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl shadow-2xl max-w-sm w-full p-6 relative overflow-hidden">
+            {/* Background accent */}
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-[#00b4eb]/20 to-indigo-500/20 rounded-t-3xl" />
+            
+            <div className="relative flex justify-between items-center mb-6">
+              <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">Profile Picture</h3>
               <button
                 onClick={() => setIsProfileModalOpen(false)}
-                className="text-white/50 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-slate-700 bg-white/50 hover:bg-slate-100 rounded-full p-2 transition-colors backdrop-blur-md"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="flex flex-col items-center justify-center py-4">
+            <div className="relative flex flex-col items-center justify-center py-2">
               {/* Preview ring */}
-              <div className="h-28 w-28 rounded-full overflow-hidden mb-4 border-4 border-[#00b4eb]/40 shadow-xl relative group cursor-pointer">
+              <div className="h-32 w-32 rounded-full overflow-hidden mb-5 border-4 border-white shadow-xl relative group cursor-pointer ring-4 ring-[#00b4eb]/20 bg-slate-50">
                 <img
                   src={profilePicUrl}
                   alt="Profile Preview"
@@ -496,34 +480,34 @@ const Navigation = ({ children }) => {
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
                 <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
-                  <User className="h-12 w-12 text-white/60" />
+                  <User className="h-14 w-14 text-white/90" />
                 </div>
                 {/* Hover overlay */}
-                <label className="absolute inset-0 bg-black/60 hidden group-hover:flex flex-col items-center justify-center cursor-pointer text-white">
-                  <Camera className="h-6 w-6 mb-1" />
-                  <span className="text-xs font-medium">Update</span>
+                <label className="absolute inset-0 bg-slate-900/60 hidden group-hover:flex flex-col items-center justify-center cursor-pointer text-white transition-all backdrop-blur-sm">
+                  <Camera className="h-7 w-7 mb-1 text-white" />
+                  <span className="text-xs font-bold tracking-wide">UPDATE</span>
                   <input type="file" accept="image/*" className="hidden" onChange={handleProfilePicUpload} disabled={uploadingPic} />
                 </label>
               </div>
 
-              <p className="text-sm font-semibold text-white mb-1">{internName}</p>
-              <p className="text-xs text-white/50 text-center mb-5">Hover the image above or click the button below to upload a new photo.</p>
+              <p className="text-lg font-bold text-slate-800 mb-1">{internName}</p>
+              <p className="text-sm text-slate-500 text-center mb-8">Hover the image above or click below to choose a new photo.</p>
 
               <label
-                className={`w-full py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 font-semibold transition-all ${
+                className={`w-full py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-[15px] transition-all duration-300 ${
                   uploadingPic
-                    ? 'bg-white/10 text-white/40 cursor-not-allowed'
-                    : 'bg-[#00b4eb] hover:bg-[#0096c7] text-white cursor-pointer shadow-lg shadow-[#00b4eb]/20'
+                    ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-[#00b4eb] to-blue-600 hover:to-blue-700 text-white cursor-pointer shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 hover:-translate-y-0.5'
                 }`}
               >
                 {uploadingPic ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/30 border-t-white"></div>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-300 border-t-slate-500"></div>
                     Uploading...
                   </>
                 ) : (
                   <>
-                    <Camera className="h-4 w-4" />
+                    <Camera className="h-5 w-5" />
                     Choose & Upload Photo
                   </>
                 )}

@@ -267,7 +267,7 @@ const DailyRecordsHeatmap = ({ startDate, endDate }) => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-inner"
+              className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white shadow-inner"
               style={{
                 background: "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
               }}
