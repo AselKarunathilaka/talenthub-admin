@@ -21,7 +21,7 @@ import {
   GraduationCap,
   Bike,
 } from "lucide-react";
-import logo from "../assets/talenthubwhitebg.jpeg";
+import logo from "../assets/talenthub.png";
 import axios from "axios";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
 import leaveFormPdf from "../assets/34453_251111_135120.pdf";
@@ -231,9 +231,9 @@ const Navigation = ({ children }) => {
       <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-r from-[#006600] to-[#000066]">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
-            <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2">
+            <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2 group">
+              <img src={logo} alt="SLT Logo" className="h-8 w-auto drop-shadow-[0_0_6px_rgba(255,255,255,0.6)] group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.9)] transition-all duration-300" />
               <span className="text-xl font-extrabold text-white">TalentHub</span>
-              <img src={logo} alt="SLT Logo" className="h-8 w-auto rounded-md border border-white/10" />
             </Link>
           </div>
 
@@ -347,8 +347,8 @@ const Navigation = ({ children }) => {
         <div className="flex flex-col h-full">
           {/* Sidebar Header with TalentHub + Logo */}
           <div className="px-4 py-6 border-b border-white/10 flex items-center gap-3">
-            <Link to="/" onClick={() => localStorage.clear()} className="flex-shrink-0">
-              <img src={logo} alt="SLT Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
+            <Link to="/" onClick={() => localStorage.clear()} className="flex-shrink-0 group">
+              <img src={logo} alt="SLT Logo" className="h-10 w-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] transition-all duration-300" />
             </Link>
             <span className="text-2xl font-extrabold tracking-tight">
               <span className="text-[#ffffff]">TalentHub</span>

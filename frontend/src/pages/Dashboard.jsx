@@ -653,59 +653,59 @@ const Dashboard = () => {
           </div>
 
           {/* Support Button */}
-          <div className="absolute top-1.5 right-1.5 xs:top-2.5 xs:right-2.5 xm:top-3 xm:right-3 sm:top-6 sm:right-6 z-20 scale-[0.55] xs:scale-[0.65] xm:scale-[0.75] sm:scale-100 origin-top-right">
+          <div className="absolute top-3 right-3 xs:top-4 xs:right-4 xm:top-4 xm:right-4 sm:top-6 sm:right-6 z-20 scale-[0.75] xs:scale-[0.85] xm:scale-[0.9] sm:scale-100 origin-top-right">
             <WhatsAppSupportButton size="sm" className="shadow-lg hover:scale-105 border border-[#25D366]/30" />
           </div>
 
-          <div className="relative z-10 px-3 py-4 xs:px-5 xs:py-6 xm:px-6 xm:py-7 sm:px-10 sm:py-10 flex flex-row items-center gap-2.5 xs:gap-4 xm:gap-5 sm:gap-8">
+          <div className="relative z-10 px-3 pt-10 pb-4 xs:px-5 xs:pt-12 xs:pb-5 xm:px-6 xm:pt-12 xm:pb-5 sm:px-10 sm:py-10 flex flex-row items-end min-h-[130px] xs:min-h-[150px] sm:min-h-0 gap-2.5 xs:gap-4 xm:gap-5 sm:gap-8">
 
             {/* Profile Picture */}
             <div className="relative group flex-shrink-0">
-              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{width: 'clamp(56px, 16vw, 112px)', height: 'clamp(56px, 16vw, 112px)'}}>
+              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{width: 'clamp(62px, 18vw, 112px)', height: 'clamp(62px, 18vw, 112px)'}}>
                 <img
                   src={profilePicUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
-                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{fontSize: 'clamp(14px, 4vw, 36px)'}}>
+                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{fontSize: 'clamp(16px, 4.5vw, 36px)'}}>
                   {(internData?.Trainee_Name || internData?.name) ? (internData?.Trainee_Name || internData?.name).charAt(0).toUpperCase() : "U"}
                 </div>
               </div>
-              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{width: 'clamp(14px, 4vw, 28px)', height: 'clamp(14px, 4vw, 28px)', borderWidth: 'clamp(2px, 0.6vw, 4px)', bottom: 'clamp(-2px, -0.5vw, -8px)', right: 'clamp(-2px, -0.5vw, -8px)'}} title="Active">
-                <div className="bg-white rounded-full animate-pulse" style={{width: 'clamp(5px, 1.5vw, 8px)', height: 'clamp(5px, 1.5vw, 8px)'}} />
+              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{width: 'clamp(15px, 4.2vw, 28px)', height: 'clamp(15px, 4.2vw, 28px)', borderWidth: 'clamp(2px, 0.6vw, 4px)', bottom: 'clamp(-2px, -0.5vw, -8px)', right: 'clamp(-2px, -0.5vw, -8px)'}} title="Active">
+                <div className="bg-white rounded-full animate-pulse" style={{width: 'clamp(6px, 1.8vw, 8px)', height: 'clamp(6px, 1.8vw, 8px)'}} />
               </div>
             </div>
 
             {/* Main Info */}
-            <div className="flex-1 text-left flex flex-col justify-center min-w-0 pr-2 xs:pr-4">
-              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{fontSize: 'clamp(6px, 1.8vw, 12px)', marginBottom: 'clamp(2px, 0.5vw, 6px)'}}>
+            <div className="flex-1 text-left flex flex-col justify-end min-w-0 pr-2 xs:pr-4 mb-1">
+              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{fontSize: 'clamp(8px, 2.2vw, 12px)', marginBottom: 'clamp(2px, 0.5vw, 6px)'}}>
                 Welcome Back
               </span>
-              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md truncate leading-tight" style={{fontSize: 'clamp(13px, 4vw, 30px)', marginBottom: 'clamp(4px, 1vw, 12px)'}}>
+              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md leading-tight" style={{fontSize: 'clamp(15px, 4.2vw, 31px)', marginBottom: 'clamp(4px, 1vw, 12px)', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                 {(internData?.Trainee_Name || internData?.name) || "User"}
               </h1>
 
               <div className="flex flex-nowrap items-center justify-start overflow-hidden" style={{gap: 'clamp(3px, 1vw, 12px)'}}>
-                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(6px, 1.8vw, 12px)', borderRadius: 'clamp(4px, 1vw, 12px)'}}>
-                  <User className="text-[#00b4eb] shrink-0" style={{width: 'clamp(8px, 2vw, 12px)', height: 'clamp(8px, 2vw, 12px)'}} />
+                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)'}}>
+                  <User className="text-[#00b4eb] shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
                   {internData?.Trainee_ID || internData?.internId || "ID Not Assigned"}
                 </span>
 
                 {countdownTime?.days > 0 ? (
-                  <span className="flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(6px, 1.8vw, 12px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
-                    <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(8px, 2vw, 12px)', height: 'clamp(8px, 2vw, 12px)'}} />
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
+                    <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
                     {countdownTime.days} Days Left
                   </span>
                 ) : internData?.Training_Status === "Ended" ? (
-                  <span className="flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(6px, 1.8vw, 12px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
                     Training Ended
                   </span>
                 ) : null}
 
                 {lastSeenDate && (
-                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(6px, 1.8vw, 12px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)'}}>
-                    <Clock className="text-slate-400 shrink-0" style={{width: 'clamp(8px, 2vw, 12px)', height: 'clamp(8px, 2vw, 12px)'}} />
+                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)'}}>
+                    <Clock className="text-slate-400 shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
                     Last seen: {lastSeenDate}
                   </span>
                 )}
@@ -1034,7 +1034,7 @@ const Dashboard = () => {
                   </div>
                   {filteredAttendance && filteredAttendance.length > 0 ? (
                     <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="overflow-x-auto overflow-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
+                      <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
                         <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
                           <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
@@ -1147,7 +1147,7 @@ const Dashboard = () => {
                   </div>
                   {filteredMeetingAttendance && filteredMeetingAttendance.length > 0 ? (
                     <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="overflow-x-auto overflow-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
+                      <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
                         <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
                           <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
                             <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
@@ -1209,20 +1209,36 @@ const Dashboard = () => {
           </div>
 
           {/* Heatmap External Toggle */}
-          <div style={{ display: "flex", justifyContent: "center", padding: "0 16px" }}>
-            <div className="flex flex-nowrap justify-center gap-1.5 sm:gap-2.5 bg-slate-100 p-1 sm:p-1.5 rounded-lg sm:rounded-2xl shadow-inner">
+          <div className="att-toggle-wrap" style={{ display: "flex", justifyContent: "center", padding: "0 16px" }}>
+            <div className="att-toggle-inner" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 10, background: "#f1f5f9", padding: 6, borderRadius: 18, boxShadow: "inset 0 2px 4px rgba(0,0,0,0.04)" }}>
               <button
+                className="att-toggle-btn"
                 onClick={() => setHeatmapView("logbook")}
-                className={`flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-xl border-none cursor-pointer text-[10px] sm:text-sm font-bold transition-all duration-200 ${heatmapView === "logbook" ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-[0_4px_14px_rgba(16,185,129,0.35)]" : "bg-white text-slate-500 shadow-sm"}`}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 22px", borderRadius: 12, border: "none", cursor: "pointer",
+                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                  background: heatmapView === "logbook" ? "linear-gradient(135deg,#10b981,#059669)" : "#ffffff",
+                  color: heatmapView === "logbook" ? "#fff" : "#64748b",
+                  boxShadow: heatmapView === "logbook" ? "0 4px 14px rgba(16,185,129,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
+                }}
               >
-                <BookOpen className="w-3 h-3 sm:w-4 sm:h-4" />
+                <BookOpen size={16} />
                 Logbook
               </button>
               <button
+                className="att-toggle-btn"
                 onClick={() => setHeatmapView("commits")}
-                className={`flex items-center gap-1 sm:gap-2 px-3 py-1.5 sm:px-5 sm:py-2.5 rounded-md sm:rounded-xl border-none cursor-pointer text-[10px] sm:text-sm font-bold transition-all duration-200 ${heatmapView === "commits" ? "bg-gradient-to-br from-sky-500 to-sky-600 text-white shadow-[0_4px_14px_rgba(14,165,233,0.35)]" : "bg-white text-slate-500 shadow-sm"}`}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  padding: "10px 22px", borderRadius: 12, border: "none", cursor: "pointer",
+                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
+                  background: heatmapView === "commits" ? "linear-gradient(135deg,#0ea5e9,#0284c7)" : "#ffffff",
+                  color: heatmapView === "commits" ? "#fff" : "#64748b",
+                  boxShadow: heatmapView === "commits" ? "0 4px 14px rgba(14,165,233,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
+                }}
               >
-                <GitCommit className="w-3 h-3 sm:w-4 sm:h-4" />
+                <GitCommit size={16} />
                 Commits
               </button>
             </div>
