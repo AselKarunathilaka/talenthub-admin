@@ -29,16 +29,6 @@ import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_1
 import imageCompression from "browser-image-compression";
 import { toast } from "react-hot-toast";
 
-// Read-state helpers
-const READ_KEY = "readAnnouncementIds";
-
-const getReadIds = () => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
-  } catch {
-    return new Set();
-  }
-};
 
 // Navigation Component
 const Navigation = ({ children }) => {
@@ -115,9 +105,7 @@ const Navigation = ({ children }) => {
       if (!res.ok) return;
 
       const data = await res.json();
-      const readIds = getReadIds();
-      const count = data.filter((a) => !readIds.has(a._id)).length;
-      setUnreadCount(count);
+      setUnreadCount(data.length);
     } catch {
       // silently ignore
     }
@@ -127,7 +115,13 @@ const Navigation = ({ children }) => {
     if (!traineeId) return;
     refreshUnreadCount();
     const interval = setInterval(refreshUnreadCount, 2 * 60 * 1000);
-    return () => clearInterval(interval);
+    
+    window.addEventListener('announcementsUpdated', refreshUnreadCount);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('announcementsUpdated', refreshUnreadCount);
+    };
   }, [traineeId]);
 
   useEffect(() => {
@@ -228,11 +222,11 @@ const Navigation = ({ children }) => {
   return (
     <>
       {/* Mobile Top Bar */}
-      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-r from-[#006600] to-[#000066]">
+      <header className="lg:hidden fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-r from-[#006600] to-[#000066] select-none">
         <div className="flex items-center justify-between h-16 px-4">
           <div className="flex items-center gap-3">
-            <Link to="/" onClick={() => localStorage.clear()} className="flex items-center gap-2 group">
-              <img src={logo} alt="SLT Logo" className="h-8 w-auto drop-shadow-[0_0_6px_rgba(255,255,255,0.6)] group-hover:drop-shadow-[0_0_10px_rgba(255,255,255,0.9)] transition-all duration-300" />
+            <Link to="/dashboard" className="flex items-center gap-2 group">
+              <img src={logo} alt="SLT Logo" className="h-8 w-auto drop-shadow-[0_0_10px_rgba(255,255,255,0.8)] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,1)] transition-all duration-300" />
               <span className="text-xl font-extrabold text-white">TalentHub</span>
             </Link>
           </div>
@@ -284,7 +278,7 @@ const Navigation = ({ children }) => {
       {/* Desktop Top Bar */}
       <header
         className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
-          transition-all duration-500 ease-out`}
+          transition-all duration-500 ease-out select-none`}
         style={{ left: "270px", width: "calc(100% - 270px)" }}
       >
         <div className="flex items-center justify-between w-full">
@@ -342,17 +336,17 @@ const Navigation = ({ children }) => {
         className={`fixed lg:sticky inset-y-0 left-0 z-40
           bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-out
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 w-[270px] h-[100dvh] lg:top-0`}
+          lg:translate-x-0 w-[270px] h-[100dvh] lg:top-0 select-none`}
       >
         <div className="flex flex-col h-full">
           {/* Sidebar Header with TalentHub + Logo */}
           <div className="px-4 py-6 border-b border-white/10 flex items-center gap-3">
-            <Link to="/" onClick={() => localStorage.clear()} className="flex-shrink-0 group">
-              <img src={logo} alt="SLT Logo" className="h-10 w-auto drop-shadow-[0_0_8px_rgba(255,255,255,0.6)] group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,0.9)] transition-all duration-300" />
+            <Link to="/dashboard" className="flex items-center gap-3 flex-shrink-0 group">
+              <img src={logo} alt="SLT Logo" className="h-10 w-auto drop-shadow-[0_0_12px_rgba(255,255,255,0.8)] group-hover:drop-shadow-[0_0_16px_rgba(255,255,255,1)] transition-all duration-300" />
+              <span className="text-2xl font-extrabold tracking-tight">
+                <span className="text-[#ffffff]">TalentHub</span>
+              </span>
             </Link>
-            <span className="text-2xl font-extrabold tracking-tight">
-              <span className="text-[#ffffff]">TalentHub</span>
-            </span>
           </div>
 
           {/* Mobile User Profile */}

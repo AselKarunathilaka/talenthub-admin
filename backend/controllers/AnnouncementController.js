@@ -1,4 +1,5 @@
 const Announcement = require("../models/Announcement");
+const Intern = require("../models/Intern");
 
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
@@ -46,16 +47,40 @@ const getAllAnnouncements = async (req, res) => {
   }
 };
 
-// GET /api/announcements/active — intern-facing, returns all announcements
+// GET /api/announcements/active — intern-facing, returns all active unread announcements
 const getActiveAnnouncements = async (req, res) => {
   try {
-    const announcements = await Announcement.find()
+    const intern = await Intern.findById(req.user.id).lean();
+    const readIds = intern?.readAnnouncements || [];
+    const announcements = await Announcement.find({ _id: { $nin: readIds } })
       .sort({ createdAt: -1 })
       .lean();
     return res.status(200).json(announcements);
   } catch (error) {
     console.error("Error fetching active announcements:", error);
     return res.status(500).json({ message: "Failed to fetch announcements." });
+  }
+};
+
+// POST /api/announcements/:id/read
+const markAnnouncementAsRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const intern = await Intern.findById(req.user.id);
+    
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found." });
+    }
+    
+    if (!intern.readAnnouncements.includes(id)) {
+      intern.readAnnouncements.push(id);
+      await intern.save();
+    }
+    
+    return res.status(200).json({ message: "Announcement marked as read." });
+  } catch (error) {
+    console.error("Error marking announcement as read:", error);
+    return res.status(500).json({ message: "Failed to mark announcement as read." });
   }
 };
 
@@ -82,5 +107,6 @@ module.exports = {
   createAnnouncement,
   getAllAnnouncements,
   getActiveAnnouncements,
+  markAnnouncementAsRead,
   deleteAnnouncement,
 };

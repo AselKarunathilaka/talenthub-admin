@@ -3,19 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Bell, AlertTriangle, Info } from "lucide-react";
 import { API_BASE_URL } from "../api/apiConfig";
 
-const READ_KEY = "readAnnouncementIds";
-
-const getReadIds = () => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
-  } catch {
-    return new Set();
-  }
-};
-
-const saveReadIds = (set) => {
-  localStorage.setItem(READ_KEY, JSON.stringify([...set]));
-};
 
 const getInternToken = () => {
   const authToken = localStorage.getItem("authToken");
@@ -72,10 +59,8 @@ const AnnouncementPopup = () => {
         if (!res.ok) return;
 
         const data = await res.json();
-        const readIds = getReadIds();
-        
         const unreadPopups = data
-          .filter(a => a.showAsPopup && !readIds.has(a._id))
+          .filter(a => a.showAsPopup)
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           
         setPopups(unreadPopups);
@@ -88,11 +73,21 @@ const AnnouncementPopup = () => {
     fetchPopups();
   }, []);
 
-  const handleDismiss = (id) => {
-    const readIds = getReadIds();
-    readIds.add(id);
-    saveReadIds(readIds);
+  const handleDismiss = async (id) => {
     setPopups((prev) => prev.filter(p => p._id !== id));
+    
+    const token = getInternToken();
+    if (!token) return;
+    
+    try {
+      await fetch(`${API_BASE_URL}/announcements/${id}/read`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      window.dispatchEvent(new Event('announcementsUpdated'));
+    } catch (err) {
+      console.error("Error marking popup as read:", err);
+    }
   };
 
   if (popups.length === 0) return null;

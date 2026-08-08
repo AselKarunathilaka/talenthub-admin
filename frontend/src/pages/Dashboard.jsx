@@ -1262,7 +1262,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="bento-page-bg cursor-default">
+    <div className="bento-page-bg cursor-default select-none">
       <Navigation onLogout={handleLogout} />
       <div className="bento-page-content">
         <AnnouncementPopup />
