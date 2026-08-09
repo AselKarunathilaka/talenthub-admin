@@ -14,15 +14,17 @@ router.get("/:year", async (req, res) => {
 
     //validate year 
     const response = await axios.get(
-  `${process.env.HOLIDAY_API_URL}/api/v2/holidays`,
-  {
-    params: {
-      api_key: process.env.HOLIDAY_API_KEY,
-      country: "LK",
-      year,
-    },
-  }
-);
+      `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
+      {
+        params: {
+          year,
+          format: "full",
+        },
+        headers: {
+          "X-API-Key": process.env.HOLIDAY_API_KEY,
+        },
+      }
+    );
 
     res.json(response.data);
   } catch (error) {
