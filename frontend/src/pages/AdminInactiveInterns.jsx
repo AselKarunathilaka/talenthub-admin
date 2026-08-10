@@ -75,16 +75,17 @@ const toKey = (date) => {
 
 /* ─── AttendanceCalendar ────────────────────────────────────── */
 /**
- * Renders a monthly grid calendar with two colored cell types:
+ * Renders a modern monthly grid calendar with two colored cell types:
  *   • green = daily attendance
  *   • blue  = meeting attendance
  *   • both  = split diagonal pill
- * No absent/rate display — just the two presence types.
+ * Enhanced with modern UI/UX design patterns.
  */
 function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
+  const [hoveredDay, setHoveredDay] = useState(null);
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -115,112 +116,143 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
     return `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   };
 
-  const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div className="select-none">
-      {/* month nav */}
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <FaChevronLeft className="text-xs" />
-        </button>
-        <span className="text-sm font-semibold text-gray-700">
-          {monthLabel}
-        </span>
-        <button
-          onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <FaChevronRight className="text-xs" />
-        </button>
-      </div>
-
-      {/* day-of-week headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {DOW.map((d) => (
-          <div
-            key={d}
-            className="text-center text-[10px] font-semibold text-gray-400 py-1"
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 border border-gray-100 shadow-lg">
+        {/* month nav */}
+        <div className="flex items-center justify-between mb-6">
+          <motion.button
+            onClick={prevMonth}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
           >
-            {d}
+            <FaChevronLeft className="text-base" />
+          </motion.button>
+          <div className="text-center">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              {monthLabel}
+            </h3>
+            <p className="text-xs text-gray-400 mt-0.5">Daily & Meeting Attendance</p>
           </div>
-        ))}
-      </div>
+          <motion.button
+            onClick={nextMonth}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+          >
+            <FaChevronRight className="text-base" />
+          </motion.button>
+        </div>
 
-      {/* day cells */}
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((day, idx) => {
-          if (!day) return <div key={`blank-${idx}`} />;
-          const k = keyFor(day);
-          const hasDaily = !!dailyMap[k];
-          const hasMeeting = !!meetingMap[k];
-          const hasBoth = hasDaily && hasMeeting;
-          const isToday =
-            day === today.getDate() &&
-            viewMonth === today.getMonth() &&
-            viewYear === today.getFullYear();
-
-          // Determine cell background
-          let cellBg = "bg-white";
-          let textColor = "text-gray-500";
-          let ring = "";
-
-          if (hasBoth) {
-            // split: left green, right blue via gradient
-            cellBg = "bg-gradient-to-r from-green-400 to-blue-500";
-            textColor = "text-white font-bold";
-          } else if (hasDaily) {
-            cellBg = "bg-green-100 border border-green-300";
-            textColor = "text-green-800 font-semibold";
-          } else if (hasMeeting) {
-            cellBg = "bg-blue-100 border border-blue-300";
-            textColor = "text-blue-800 font-semibold";
-          }
-
-          if (isToday && !hasDaily && !hasMeeting) {
-            ring = "ring-2 ring-gray-300";
-            textColor = "text-gray-700 font-bold";
-          }
-
-          const dailyCount = hasDaily ? dailyMap[k].length : 0;
-          const meetingCount = hasMeeting ? meetingMap[k].length : 0;
-
-          return (
+        {/* day-of-week headers */}
+        <div className="grid grid-cols-7 gap-2 mb-4">
+          {DOW.map((d) => (
             <div
-              key={k}
-              title={
-                hasBoth
-                  ? `Daily: ${dailyCount} · Meeting: ${meetingCount}`
-                  : hasDaily
-                    ? `Daily attendance: ${dailyCount}`
-                    : hasMeeting
-                      ? `Meeting attendance: ${meetingCount}`
-                      : undefined
-              }
-              className={`flex items-center justify-center rounded-lg h-8 text-xs transition-all ${cellBg} ${textColor} ${ring}`}
+              key={d}
+              className="text-center text-xs font-bold text-gray-600 py-3 px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-lg border border-gray-200"
             >
-              {day}
+              {d}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* legend */}
-      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-green-100 border border-green-300 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Daily</span>
+        {/* day cells */}
+        <div className="grid grid-cols-7 gap-2">
+          {cells.map((day, idx) => {
+            if (!day) return <div key={`blank-${idx}`} />;
+            const k = keyFor(day);
+            const hasDaily = !!dailyMap[k];
+            const hasMeeting = !!meetingMap[k];
+            const hasBoth = hasDaily && hasMeeting;
+            const isToday =
+              day === today.getDate() &&
+              viewMonth === today.getMonth() &&
+              viewYear === today.getFullYear();
+            const isHovered = hoveredDay === k;
+
+            // Determine cell background
+            let cellBg = "bg-white";
+            let textColor = "text-gray-400";
+            let borderClass = "border border-gray-100";
+            let shadowClass = "";
+
+            if (hasBoth) {
+              // split: left green, right blue via gradient
+              cellBg = "bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500";
+              textColor = "text-white font-bold";
+              borderClass = "border-0";
+              shadowClass = isHovered ? "shadow-lg shadow-blue-300" : "shadow-md shadow-blue-200";
+            } else if (hasDaily) {
+              cellBg = "bg-gradient-to-br from-emerald-50 to-green-50";
+              textColor = "text-emerald-700 font-semibold";
+              borderClass = "border border-emerald-200";
+              shadowClass = isHovered ? "shadow-md shadow-emerald-200" : "shadow-sm";
+            } else if (hasMeeting) {
+              cellBg = "bg-gradient-to-br from-blue-50 to-cyan-50";
+              textColor = "text-blue-700 font-semibold";
+              borderClass = "border border-blue-200";
+              shadowClass = isHovered ? "shadow-md shadow-blue-200" : "shadow-sm";
+            }
+
+            if (isToday && !hasDaily && !hasMeeting) {
+              cellBg = "bg-gradient-to-br from-amber-50 to-orange-50";
+              textColor = "text-gray-700 font-bold";
+              borderClass = "border-2 border-amber-300";
+              shadowClass = isHovered ? "shadow-md shadow-amber-200" : "";
+            }
+
+            const dailyCount = hasDaily ? dailyMap[k].length : 0;
+            const meetingCount = hasMeeting ? meetingMap[k].length : 0;
+
+            return (
+              <motion.div
+                key={k}
+                onMouseEnter={() => setHoveredDay(k)}
+                onMouseLeave={() => setHoveredDay(null)}
+                whileHover={hasDaily || hasMeeting || isToday ? { scale: 1.08, y: -3 } : {}}
+                whileTap={hasDaily || hasMeeting || isToday ? { scale: 0.94 } : {}}
+                title={
+                  hasBoth
+                    ? `Daily: ${dailyCount} · Meeting: ${meetingCount}`
+                    : hasDaily
+                      ? `Daily attendance: ${dailyCount}`
+                      : hasMeeting
+                        ? `Meeting attendance: ${meetingCount}`
+                        : isToday ? "Today" : undefined
+                }
+                className={`flex items-center justify-center rounded-xl h-12 text-base font-semibold transition-all duration-200 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass}`}
+              >
+                {day}
+              </motion.div>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-blue-100 border border-blue-300 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Meeting</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-gradient-to-r from-green-400 to-blue-500 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Both</span>
+
+        {/* legend */}
+        <div className="flex items-center flex-wrap gap-5 mt-6 pt-5 border-t border-gray-200">
+          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200">
+              <span className="text-xs text-emerald-600">✓</span>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Daily</span>
+          </div>
+          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200">
+              <span className="text-xs text-blue-600">•</span>
+            </div>
+            <span className="text-sm font-semibold text-gray-700">Meeting</span>
+          </div>
+          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500 border-0"></div>
+            <span className="text-sm font-semibold text-gray-700">Both</span>
+          </div>
+          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400"></div>
+            <span className="text-sm font-semibold text-gray-700">Today</span>
+          </div>
         </div>
       </div>
     </div>
@@ -229,14 +261,15 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
 
 /* ─── DailyRecordsCalendar ──────────────────────────────────── */
 /**
- * Shows a calendar where dates that have a daily record are highlighted.
- * Clicking a date reveals the record details below.
+ * Shows a modern calendar where dates that have a daily record are highlighted.
+ * Clicking a date reveals the record details below with smooth animations.
  */
 function DailyRecordsCalendar({ recordsByDate = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedKey, setSelectedKey] = useState(null);
+  const [hoveredDay, setHoveredDay] = useState(null);
 
   const prevMonth = () => {
     if (viewMonth === 0) {
@@ -265,56 +298,63 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
   const keyFor = (day) =>
     `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
-  const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const selectedRecord = selectedKey ? recordsByDate[selectedKey] : null;
 
   const attendanceBadge = (status) => {
     const map = {
-      present: "bg-green-100 text-green-700",
-      absent: "bg-red-100 text-red-700",
-      late: "bg-yellow-100 text-yellow-700",
+      present: "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-300",
+      absent: "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-300",
+      late: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-300",
     };
-    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-500";
+    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600 border border-gray-200";
   };
 
   const workStatusBadge = (status) => {
     const map = {
-      working: "bg-blue-100 text-blue-700",
-      leave: "bg-orange-100 text-orange-700",
-      wfh: "bg-indigo-100 text-indigo-700",
+      working: "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-300",
+      leave: "bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-300",
+      wfh: "bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 border border-indigo-300",
     };
-    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-500";
+    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600 border border-gray-200";
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* calendar */}
-      <div className="bg-gray-50 rounded-2xl p-4">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 border border-gray-100 shadow-lg">
         {/* nav */}
-        <div className="flex items-center justify-between mb-3">
-          <button
+        <div className="flex items-center justify-between mb-6">
+          <motion.button
             onClick={prevMonth}
-            className="p-1.5 rounded-lg hover:bg-white text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
           >
-            <FaChevronLeft className="text-xs" />
-          </button>
-          <span className="text-sm font-semibold text-gray-700">
-            {monthLabel}
-          </span>
-          <button
+            <FaChevronLeft className="text-base" />
+          </motion.button>
+          <div className="text-center">
+            <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              {monthLabel}
+            </h3>
+            <p className="text-xs text-gray-400 mt-1">Click a date to view</p>
+          </div>
+          <motion.button
             onClick={nextMonth}
-            className="p-1.5 rounded-lg hover:bg-white text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
           >
-            <FaChevronRight className="text-xs" />
-          </button>
+            <FaChevronRight className="text-base" />
+          </motion.button>
         </div>
 
         {/* dow headers */}
-        <div className="grid grid-cols-7 mb-1">
+        <div className="grid grid-cols-7 gap-2 mb-4">
           {DOW.map((d) => (
             <div
               key={d}
-              className="text-center text-[10px] font-semibold text-gray-400 py-1"
+              className="text-center text-xs font-bold text-gray-600 py-3 px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-lg border border-gray-200"
             >
               {d}
             </div>
@@ -322,7 +362,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         </div>
 
         {/* cells */}
-        <div className="grid grid-cols-7 gap-y-1">
+        <div className="grid grid-cols-7 gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
             const k = keyFor(day);
@@ -332,36 +372,48 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
               day === today.getDate() &&
               viewMonth === today.getMonth() &&
               viewYear === today.getFullYear();
+            const isHovered = hoveredDay === k;
 
             return (
-              <button
+              <motion.button
                 key={k}
+                onMouseEnter={() => setHoveredDay(k)}
+                onMouseLeave={() => setHoveredDay(null)}
                 onClick={() => setSelectedKey(isSelected ? null : k)}
-                disabled={!hasRecord}
-                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all text-xs font-medium leading-none
+                disabled={!hasRecord && !isToday}
+                whileHover={hasRecord || isToday ? { scale: 1.08, y: -3 } : {}}
+                whileTap={hasRecord || isToday ? { scale: 0.94 } : {}}
+                className={`flex flex-col items-center justify-center py-4 px-1 rounded-xl font-bold transition-all duration-200 text-base leading-tight
                   ${
                     isSelected
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-300 border-0"
                       : hasRecord
-                        ? "bg-white hover:bg-blue-50 text-gray-800 border border-blue-200 hover:border-blue-400 cursor-pointer shadow-sm"
+                        ? `bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-2 border-blue-300 hover:from-blue-100 hover:to-cyan-100 cursor-pointer ${isHovered ? "shadow-lg shadow-blue-200" : "shadow-md"}`
                         : isToday
-                          ? "text-blue-500 font-bold"
-                          : "text-gray-400 cursor-default"
+                          ? "bg-gradient-to-br from-amber-50 to-orange-50 text-amber-700 font-bold border-2 border-amber-400 hover:from-amber-100 hover:to-orange-100 cursor-pointer shadow-md"
+                          : "text-gray-300 cursor-default"
                   }`}
               >
                 {day}
                 {hasRecord && !isSelected && (
-                  <span className="w-1 h-1 rounded-full bg-blue-400 mt-0.5" />
+                  <motion.span 
+                    animate={{ scale: [1, 1.2, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5"
+                  />
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>
 
         {/* hint */}
-        <p className="text-[10px] text-gray-400 text-center mt-3">
-          Highlighted dates have logbook entries — tap to view
-        </p>
+        <div className="mt-5 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2">
+            <FaRegCalendarAlt className="text-blue-400" />
+            Dates with a dot have logbook entries
+          </p>
+        </div>
       </div>
 
       {/* selected record details */}
@@ -369,105 +421,153 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         {selectedRecord ? (
           <motion.div
             key={selectedKey}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-            className="border border-blue-100 rounded-2xl overflow-hidden bg-white shadow-sm"
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ duration: 0.25, type: "spring", bounce: 0.3 }}
+            className="border border-blue-200 rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50 shadow-xl"
           >
             {/* record header */}
-            <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
-              <FaCalendar className="text-blue-400 text-xs flex-shrink-0" />
-              <span className="text-sm font-semibold text-gray-800">
-                {new Date(selectedRecord.date).toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
+            <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border-b border-blue-300">
+              <div className="p-2.5 rounded-lg bg-white/20">
+                <FaCalendar className="text-white text-lg flex-shrink-0" />
+              </div>
+              <div className="flex-1">
+                <span className="text-base font-bold text-white block">
+                  {new Date(selectedRecord.date).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+                <span className="text-xs text-blue-100">
+                  {new Date(selectedRecord.date).toLocaleDateString("en-US", { weekday: "short" })}
+                </span>
+              </div>
               {selectedRecord.status && (
-                <span
-                  className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-semibold ${workStatusBadge(selectedRecord.status)}`}
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ${workStatusBadge(selectedRecord.status)}`}
                 >
                   {selectedRecord.status}
-                </span>
+                </motion.span>
               )}
             </div>
 
             {/* record body */}
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-6 py-6 space-y-5">
               {[
                 {
                   label: "Stack / Technology",
                   icon: FaLaptopCode,
                   value: selectedRecord.stack,
+                  color: "from-purple-500 to-pink-500",
                 },
-                { label: "Task", icon: FaTasks, value: selectedRecord.task },
+                { 
+                  label: "Task", 
+                  icon: FaTasks, 
+                  value: selectedRecord.task,
+                  color: "from-blue-500 to-cyan-500",
+                },
                 {
                   label: "Progress / Challenges",
                   icon: FaChartBar,
                   value: selectedRecord.progress,
+                  color: "from-green-500 to-emerald-500",
                 },
                 {
                   label: "Blockers / Plans",
                   icon: FaExclamationTriangle,
                   value: selectedRecord.blockers,
+                  color: "from-orange-500 to-red-500",
                 },
-              ].map(({ label, icon: Icon, value }) => (
-                <div key={label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <Icon className="text-[9px]" /> {label}
+              ].map(({ label, icon: Icon, value, color }) => (
+                <motion.div 
+                  key={label}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 }}
+                  className="border-l-4 border-blue-300 pl-4 py-2"
+                >
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <span className={`p-1.5 rounded-lg bg-gradient-to-br ${color} text-white`}>
+                      <Icon className="text-xs" />
+                    </span>
+                    {label}
                   </p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                    {value || <span className="italic text-gray-400">—</span>}
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
+                    {value || <span className="italic text-gray-400 font-normal">— No entry</span>}
                   </p>
-                </div>
+                </motion.div>
               ))}
 
               {/* meeting attendance within the record */}
               {selectedRecord.meetingAttendance?.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="border-t-2 border-dashed border-blue-200 pt-5"
+                >
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
+                      <FaVideo className="text-xs" />
+                    </span>
                     Meeting Attendance (
                     {selectedRecord.meetingAttendance.length})
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {selectedRecord.meetingAttendance.map((m, i) => (
-                      <div
+                      <motion.div
                         key={i}
-                        className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl px-4 py-3 text-xs border border-blue-100 hover:border-blue-300 transition-all"
                       >
-                        <span className="font-medium text-gray-700 truncate mr-2">
-                          {m.meetingTitle}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 truncate mr-2">
+                            {m.meetingTitle}
+                          </p>
                           {m.projectName && (
-                            <span className="ml-1 text-gray-400">
-                              ({m.projectName})
-                            </span>
+                            <p className="text-[11px] text-gray-500">
+                              {m.projectName}
+                            </p>
                           )}
-                        </span>
-                        <span
-                          className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${attendanceBadge(m.attendanceStatus)}`}
+                        </div>
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          className={`px-2.5 py-1 rounded-lg font-bold flex-shrink-0 text-[11px] ${attendanceBadge(m.attendanceStatus)}`}
                         >
                           {m.attendanceStatus}
-                        </span>
-                      </div>
+                        </motion.span>
+                      </motion.div>
                     ))}
                   </div>
-                </div>
+                </motion.div>
               )}
 
               {selectedRecord.attendanceTime && (
-                <p className="text-xs text-gray-400">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-xs text-gray-500 flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 pt-4"
+                >
+                  <FaClock className="text-blue-400" />
                   Marked at:{" "}
-                  {new Date(selectedRecord.attendanceTime).toLocaleTimeString(
-                    "en-US",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  )}
-                </p>
+                  <span className="font-semibold text-gray-700">
+                    {new Date(selectedRecord.attendanceTime).toLocaleTimeString(
+                      "en-US",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )}
+                  </span>
+                </motion.p>
               )}
             </div>
           </motion.div>
@@ -477,12 +577,23 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-10 text-gray-400 space-y-2"
+            className="flex flex-col items-center justify-center py-12 text-center space-y-3"
           >
-            <FaRegCalendarAlt className="text-3xl opacity-30" />
-            <p className="text-sm">
-              Select a highlighted date to view the logbook entry
-            </p>
+            <motion.div 
+              animate={{ y: [0, -5, 0] }}
+              transition={{ duration: 3, repeat: Infinity }}
+              className="text-5xl text-blue-300 opacity-40"
+            >
+              <FaRegCalendarAlt />
+            </motion.div>
+            <div>
+              <p className="text-base font-semibold text-gray-600 mb-1">
+                No date selected
+              </p>
+              <p className="text-sm text-gray-400">
+                Click on a highlighted date with a dot to view the logbook entry
+              </p>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
