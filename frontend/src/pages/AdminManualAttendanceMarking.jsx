@@ -385,7 +385,7 @@ const AdminManualAttendance = () => {
                   transition={{ duration: 0.2 }}
                   className="text-3xl sm:text-4xl font-extrabold text-slate-900 flex items-center gap-3 tracking-tight"
                 >
-                  <div className="p-2.5 bg-[#0056a2] rounded-2xl text-white shadow-lg shadow-[#0056a2]/20">
+                  <div className="p-2.5 bg-gradient-to-br from-[#0056a2] to-[#00b4eb] rounded-2xl text-white shadow-lg shadow-[#0056a2]/20">
                     <FaClipboardList className="h-8 w-8" />
                   </div>
                   Manual Attendance
@@ -417,14 +417,14 @@ const AdminManualAttendance = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => setInputMode("single")}
-                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${inputMode === "single" ? "bg-[#0056a2] border-transparent text-white shadow-md" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
+                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${inputMode === "single" ? "bg-gradient-to-br from-[#0056a2] to-[#0078c2] border-transparent text-white shadow-md shadow-[#0056a2]/20" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
                       >
                         <FaUser className="h-4 w-4" />
                         <span className="text-xs font-bold">Single</span>
                       </button>
                       <button
                         onClick={() => setInputMode("bulk")}
-                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${inputMode === "bulk" ? "bg-[#0056a2] border-transparent text-white shadow-md" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
+                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${inputMode === "bulk" ? "bg-gradient-to-br from-[#0056a2] to-[#0078c2] border-transparent text-white shadow-md shadow-[#0056a2]/20" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
                       >
                         <FaLayerGroup className="h-4 w-4" />
                         <span className="text-xs font-bold">Bulk</span>
@@ -442,14 +442,14 @@ const AdminManualAttendance = () => {
                     <div className="grid grid-cols-2 gap-3">
                       <button
                         onClick={() => { setMode("daily"); setMeetingName(""); }}
-                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${mode === "daily" ? "bg-[#0056a2] border-transparent text-white shadow-md" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
+                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${mode === "daily" ? "bg-gradient-to-br from-[#0056a2] to-[#0078c2] border-transparent text-white shadow-md shadow-[#0056a2]/20" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
                       >
                         <FaClipboardList className="h-4 w-4" />
                         <span className="text-xs font-bold">Daily</span>
                       </button>
                       <button
                         onClick={() => setMode("meeting")}
-                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${mode === "meeting" ? "bg-[#0056a2] border-transparent text-white shadow-md" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#00b4eb]/40"}`}
+                        className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-xl border-2 transition-all ${mode === "meeting" ? "bg-gradient-to-br from-[#6366f1] to-[#8b5cf6] border-transparent text-white shadow-md shadow-[#6366f1]/20" : "bg-white/50 text-slate-600 border-slate-200 hover:border-[#8b5cf6]/40"}`}
                       >
                         <FaVideo className="h-4 w-4" />
                         <span className="text-xs font-bold">Meeting</span>
@@ -575,19 +575,19 @@ const AdminManualAttendance = () => {
                       />
                       
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                        <label className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl transition-all cursor-pointer ${ocrScanning ? "bg-indigo-50 border border-indigo-200 opacity-80" : "bg-white/50 border border-slate-200 hover:bg-slate-100"}`}>
+                        <label className={`flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl transition-all cursor-pointer ${ocrScanning ? "bg-indigo-50 border border-indigo-200 opacity-80" : "bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100 hover:from-indigo-100 hover:to-purple-100"}`}>
                           {ocrScanning ? <FaSpinner className="text-indigo-600 animate-spin h-5 w-5" /> : <FaFileImage className="text-indigo-600 h-5 w-5" />}
                           <span className="text-xs font-bold text-slate-700 text-center">{ocrScanning ? "Scanning..." : "Upload Image"}</span>
                           <input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple className="hidden" onChange={handleImageUpload} disabled={ocrScanning} />
                         </label>
 
-                        <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl bg-white/50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-all">
+                        <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl bg-gradient-to-br from-emerald-50 to-green-50 border border-emerald-100 cursor-pointer hover:from-emerald-100 hover:to-green-100 transition-all">
                           <FaFileExcel className="text-[#50b748] h-5 w-5" />
                           <span className="text-xs font-bold text-slate-700 text-center">Upload Excel</span>
                           <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleExcelUpload} />
                         </label>
 
-                        <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl bg-white/50 border border-slate-200 cursor-pointer hover:bg-slate-100 transition-all">
+                        <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 cursor-pointer hover:from-amber-100 hover:to-orange-100 transition-all">
                           <FaFilePdf className="text-amber-600 h-5 w-5" />
                           <span className="text-xs font-bold text-slate-700 text-center">Upload PDF</span>
                           <input type="file" accept=".pdf" className="hidden" onChange={handlePdfUpload} />
@@ -615,13 +615,13 @@ const AdminManualAttendance = () => {
                   <div className="grid grid-cols-2 gap-3 mb-6">
                     <button
                       onClick={() => setStatus("Present")}
-                      className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${status === "Present" ? "bg-[#50b748] text-white shadow-md shadow-[#50b748]/20" : "bg-[#50b748]/10 text-[#15803d] border border-[#50b748]/20"}`}
+                      className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${status === "Present" ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-md shadow-emerald-500/20" : "bg-[#50b748]/10 text-[#15803d] border border-[#50b748]/20"}`}
                     >
                       <FaCheckCircle className="h-4 w-4" /> Present
                     </button>
                     <button
                       onClick={() => setStatus("Absent")}
-                      className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${status === "Absent" ? "bg-[#ef4444] text-white shadow-md shadow-[#ef4444]/20" : "bg-[#ef4444]/10 text-[#b91c1c] border border-[#ef4444]/20"}`}
+                      className={`flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all ${status === "Absent" ? "bg-gradient-to-r from-rose-500 to-red-500 text-white shadow-md shadow-rose-500/20" : "bg-[#ef4444]/10 text-[#b91c1c] border border-[#ef4444]/20"}`}
                     >
                       <FaTimesCircle className="h-4 w-4" /> Absent
                     </button>
@@ -633,7 +633,7 @@ const AdminManualAttendance = () => {
                     whileHover={{ scale: canSubmit && !marking ? 1.01 : 1 }}
                     whileTap={{ scale: canSubmit && !marking ? 0.99 : 1 }}
                     className={`w-full flex items-center justify-center gap-3 py-4 rounded-2xl text-white text-sm font-bold transition-all shadow-lg disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none ${
-                      mode === "daily" ? "bg-[#0056a2] hover:bg-[#004488] shadow-[#0056a2]/20" : "bg-[#6366f1] hover:bg-[#4f46e5] shadow-[#6366f1]/20"
+                      mode === "daily" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] hover:from-[#004488] hover:to-[#009bd4] shadow-[#0056a2]/20" : "bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] hover:from-[#4f46e5] hover:to-[#7c3aed] shadow-[#6366f1]/20"
                     }`}
                   >
                     {marking ? (
