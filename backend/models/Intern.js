@@ -74,6 +74,8 @@ const internSchema = new mongoose.Schema(
     tourSeenVersion: { type: String, default: null },
     // Array of FeatureTip _id strings the intern has already dismissed
     seenFeatureTipIds: { type: [String], default: [] },
+    // Array of Announcement _id strings the intern has read
+    readAnnouncements: { type: [String], default: [] },
 
     /* ── Logbook restriction ──────────────────────────────────────────────── */
     logbookRestricted: {

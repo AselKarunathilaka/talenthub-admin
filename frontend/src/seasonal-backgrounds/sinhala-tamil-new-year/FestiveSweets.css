@@ -1,0 +1,23 @@
+.festive-sweets-container {
+  position: absolute;
+  bottom: 2vh;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 100px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sweets-svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 10px 5px rgba(0,0,0,0.2));
+}
+
+@media (max-width: 768px) {
+  .festive-sweets-container {
+    width: 150px;
+    height: 75px;
+  }
+}

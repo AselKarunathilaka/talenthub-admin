@@ -1,11 +1,15 @@
 const authService = require("../services/authService");
 
-// Google Login
+// Google Login (Intern)
 const googleLogin = async (req, res) => {
-  const { code } = req.body;
+  const { accessToken } = req.body;
+
+  if (!accessToken) {
+    return res.status(400).json({ message: "Missing Google access token." });
+  }
 
   try {
-    const result = await authService.googleLogin(code);
+    const result = await authService.googleLogin(accessToken);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -14,7 +18,12 @@ const googleLogin = async (req, res) => {
 
 const adminGoogleLogin = async (req, res) => {
   try {
-    const result = await authService.adminGoogleLogin(req.body.credential || req.body.code);
+    // Accept accessToken (implicit flow) or credential/code (ID token flow)
+    const token = req.body.accessToken || req.body.credential || req.body.code;
+    if (!token) {
+      return res.status(400).json({ message: "Missing Google token." });
+    }
+    const result = await authService.adminGoogleLogin(token);
     res.status(200).json(result);
   } catch (error) {
     res.status(401).json({ message: error.message });

@@ -63,6 +63,8 @@ const {
   markTourSeen,
 } = require("../controllers/internController");
 
+const { getInternGitCommits } = require("../controllers/adminController");
+
 const router = express.Router();
 
 // =========================== ONBOARDING TOUR ===========================
@@ -70,6 +72,14 @@ router.patch("/:id/tour-seen", authenticateUser, markTourSeen);
 
 // =========================== AGREEMENT ===========================
 router.put("/:id/accept-agreement", acceptAgreement);
+
+// =========================== GIT COMMITS (Intern self-access) ===========================
+// Intern can only fetch their own commits; internId is validated against the auth token.
+router.get("/:id/git-commits", authenticateUser, (req, res, next) => {
+  // Map :id → :internId which getInternGitCommits reads from req.params
+  req.params.internId = req.params.id;
+  return getInternGitCommits(req, res, next);
+});
 
 // =========================== PROJECT CHECK ===========================
 router.get("/:id/projects/check", checkInternProjects);

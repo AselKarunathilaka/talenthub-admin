@@ -363,8 +363,6 @@ class InternRepository {
     limit = 15,
     search = "",
   } = {}) {
-    // Build the filter — if there's a search term, apply a case-insensitive
-    // regex across the three most useful identifier fields.
     const filter = search
       ? {
           $or: [
@@ -375,20 +373,35 @@ class InternRepository {
         }
       : {};
 
-    // Run count and page fetch in parallel to keep latency low
-    const [total, interns] = await Promise.all([
-      InactiveIntern.countDocuments(filter),
-      InactiveIntern.find(filter)
-        .sort({ archivedAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        // Only project the fields needed for the list card — avoids pulling
-        // the full attendance array (potentially huge) for every list item.
-        .select(
-          "_id Trainee_ID Trainee_Name Trainee_Email Institute field_of_spec_name " +
-            "Training_StartDate Training_EndDate archiveReason archivedAt originalCreatedAt",
-        ),
+    // Aggregate to deduplicate by Trainee_ID, preferring the record with
+    // the most attendance entries (so clicking always shows correct data).
+    // Use $facet for a single DB round-trip for both count and page.
+    const dedupPipeline = [
+      { $match: filter },
+      { $addFields: { attendanceCount: { $size: { $ifNull: ["$attendance", []] } } } },
+      { $sort: { attendanceCount: -1, archivedAt: -1 } },
+      {
+        $group: {
+          _id: "$Trainee_ID",
+          doc: { $first: "$$ROOT" },
+        },
+      },
+      { $replaceRoot: { newRoot: "$doc" } },
+      { $sort: { archivedAt: -1 } },
+    ];
+
+    const [result] = await InactiveIntern.aggregate([
+      ...dedupPipeline,
+      {
+        $facet: {
+          totalArr: [{ $count: "count" }],
+          interns: [{ $skip: skip }, { $limit: limit }],
+        },
+      },
     ]);
+
+    const total = result?.totalArr?.[0]?.count || 0;
+    const interns = result?.interns || [];
 
     return { interns, total };
   }

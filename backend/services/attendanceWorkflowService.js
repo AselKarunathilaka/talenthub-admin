@@ -169,20 +169,20 @@ const markDailyAttendance = async ({
   let dailyAttendanceMarked = false;
   try {
     await session.withTransaction(async () => {
+      // Attendance never creates a logbook entry. The intern submits that
+      // themselves via POST /records, which is where the quality gate runs.
+      // Here we only sync attendance fields onto a DailyRecord that exists.
       if (existingDailyRecord) {
         await DailyRecord.updateOne(
-          {
-            internId,
-            date: today,
-            $or: [
-              { attendance: { $ne: "present" } },
-              { attendanceTime: null },
-            ],
-          },
+          { internId, date: today },
           {
             $set: {
               attendance: "present",
-              attendanceTime,
+              // Preserve the first check-in time — this same function also runs
+              // on checkout scans, and checkout has its own checkOutTime field.
+              attendanceTime:
+                existingDailyRecord.attendanceTime || attendanceTime,
+              traineeId: intern.Trainee_ID,
             },
           },
           { session },
@@ -335,7 +335,7 @@ const markDailyAttendance = async ({
         {
           $push: {
             attendance: {
-              date: todayStart.toDate(),
+              date: new Date(`${today}T00:00:00.000Z`),
               status: "Present",
               type: method,
               timeMarked: attendanceTime,
@@ -503,7 +503,9 @@ const markMeetingAttendance = async ({
           {
             $set: {
               attendance: "present",
-              attendanceTime,
+              // Keep the original daily check-in time — a meeting scan later in
+              // the day must not overwrite it.
+              attendanceTime: dailyRecord.attendanceTime || attendanceTime,
             },
             $pull: {
               meetingAttendance: {
@@ -645,7 +647,7 @@ const markMeetingAttendance = async ({
   let dailyAttendanceMarked = false;
   if (autoMarkDaily) {
     try {
-      await markDailyAttendance({
+      const dailyResult = await markDailyAttendance({
         internId,
         sessionId: sessionId || meetingSessionId,
         method: dailyMethod,
@@ -653,7 +655,7 @@ const markMeetingAttendance = async ({
         syncEndpoint: dailySyncEndpoint,
         allowCheckout: false,
       });
-      dailyAttendanceMarked = Boolean(result.dailyAttendanceMarked);
+      dailyAttendanceMarked = Boolean(dailyResult?.dailyAttendanceMarked);
     } catch (error) {
       // Meeting attendance stays successful if daily attendance is already marked.
     }

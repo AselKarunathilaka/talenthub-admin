@@ -12,7 +12,8 @@
 .moon {
   position: absolute;
   top: 8%;
-  left: 15%;
+  right: 14%;
+  left: auto;
   width: 70px;
   height: 70px;
 }
@@ -155,7 +156,8 @@
     width: 60px;
     height: 60px;
     top: 7%;
-    left: 12%;
+    right: 12%;
+    left: auto;
   }
   .moon-atmosphere { inset: -120px; }
   .moon-glow--far { inset: -70px; }
@@ -169,7 +171,8 @@
     width: 50px;
     height: 50px;
     top: 6%;
-    left: 10%;
+    right: 10%;
+    left: auto;
   }
   .moon-atmosphere { inset: -100px; }
   .moon-glow--far { inset: -60px; }
@@ -187,7 +190,8 @@
     width: 40px;
     height: 40px;
     top: 4%;
-    left: 8%;
+    right: 8%;
+    left: auto;
   }
   .moon-atmosphere { inset: -80px; }
   .moon-glow--far { inset: -45px; }
@@ -212,7 +216,8 @@
     width: 32px;
     height: 32px;
     top: 3%;
-    left: 6%;
+    right: 6%;
+    left: auto;
   }
 }
 
@@ -222,7 +227,8 @@
     width: 40px;
     height: 40px;
     top: 5%;
-    left: 10%;
+    right: 10%;
+    left: auto;
   }
   .moon-atmosphere { inset: -70px; }
   .moon-glow--far { inset: -40px; }

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import { useGoogleLogin } from '@react-oauth/google';
 import { startRegistration, startAuthentication, browserSupportsWebAuthnAutofill } from '@simplewebauthn/browser';
+import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
 import {
   FaUser,
   FaLock,
@@ -25,6 +27,8 @@ import {
   ArrowRight,
   Sparkles,
   Fingerprint,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
@@ -124,11 +128,87 @@ const AdminLogin = () => {
   const [sessionMsg] = React.useState(() => getSessionMessage());
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPasskeyPrompt, setShowPasskeyPrompt] = useState(false);
   const [authDataForPasskeySetup, setAuthDataForPasskeySetup] = useState(null);
   const [passkeyLoading, setPasskeyLoading] = useState(false);
   const [passkeyError, setPasskeyError] = useState("");
+  const [seasonActive, setSeasonActive] = useState(false);
+  const [isImmersive, setIsImmersive] = useState(false);
+
+  const handleSeasonResolved = useCallback((seasonKey) => {
+    setSeasonActive(!!seasonKey);
+  }, []);
+
+  // ── Google Sign-In ──────────────────────────────────────────────────────
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setGoogleLoading(true);
+      setError("");
+      try {
+        // Exchange the access token for a user info to get the ID token
+        // We use the access_token to call userinfo endpoint and then pass
+        // it to our backend. Since useGoogleLogin returns access_token,
+        // we fetch the id_token via tokeninfo endpoint.
+        const tokenInfoRes = await fetch(
+          `https://www.googleapis.com/oauth2/v3/userinfo`,
+          { headers: { Authorization: `Bearer ${tokenResponse.access_token}` } }
+        );
+        if (!tokenInfoRes.ok) throw new Error("Failed to fetch Google user info.");
+
+        // We need the ID token — use credential flow instead
+        // This path is reached only if implicit flow returns access_token.
+        // Fall back: send access_token to backend for verification.
+        const userInfo = await tokenInfoRes.json();
+
+        // Call our backend with the access token — backend verifies via Google
+        const response = await fetch(
+          `${API_BASE_URL}${API_ENDPOINTS.AUTH.ADMIN_GOOGLE_LOGIN}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ accessToken: tokenResponse.access_token, userInfo }),
+          }
+        );
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Access denied.");
+        }
+
+        const adminInfo = {
+          token: data.token,
+          user: data.user,
+          loginTime: new Date().toISOString(),
+        };
+        localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
+        navigate("/admin/dashboard");
+      } catch (err) {
+        console.error("Google sign-in error:", err);
+        setError(err.message || "Google sign-in failed. Please try again.");
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    onError: (err) => {
+      console.error("Google OAuth error:", err);
+      if (err.error !== "access_denied" && err.error !== "popup_closed_by_user") {
+        setError("Google sign-in was cancelled or failed. Please try again.");
+      }
+    },
+    flow: "implicit",
+  });
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && isImmersive) {
+        setIsImmersive(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isImmersive]);
 
   useEffect(() => {
     const setupAutofill = async () => {
@@ -166,7 +246,7 @@ const AdminLogin = () => {
           navigate("/admin/dashboard");
         }
       } catch (err) {
-        if (err.name === 'NotAllowedError') {
+        if (err.name === 'NotAllowedError' || err.name === 'AbortError') {
           return;
         }
         console.error("Autofill passkey error:", err);
@@ -326,11 +406,43 @@ const AdminLogin = () => {
 
   return (
     <div
-      className="min-h-screen text-white overflow-hidden relative"
+      className="min-h-screen lg:h-screen text-white relative overflow-x-hidden overflow-y-auto lg:overflow-hidden flex flex-col justify-center"
       style={{
-        background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
+        background: seasonActive
+          ? "#02020a"
+          : "linear-gradient(135deg, #000066 0%, #006600 100%)",
       }}
     >
+      {/* Immersive View Toggle Button */}
+      {seasonActive && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="fixed top-4 right-4 z-40"
+        >
+          {!isImmersive ? (
+            <button
+              onClick={() => setIsImmersive(true)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group"
+              title="View full-screen seasonal experience without UI components"
+            >
+              <span>Immersive</span>
+              <Maximize2 className="h-3.5 w-3.5 text-white/70 group-hover:text-white transition-colors" />
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsImmersive(false)}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-full text-xs font-semibold text-white/90 bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer group"
+              title="Exit full-screen seasonal experience (Esc)"
+            >
+              <span>Immersive</span>
+              <Minimize2 className="h-3.5 w-3.5 text-white/70 group-hover:text-white transition-colors" />
+            </button>
+          )}
+        </motion.div>
+      )}
+
       {/* ─── Passkey Setup Modal ─── */}
       {showPasskeyPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
@@ -434,56 +546,28 @@ const AdminLogin = () => {
       />
 
       {/* ─── Main content ─── */}
-      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+      <div
+        className={`relative z-10 min-h-screen lg:h-screen flex flex-col lg:flex-row items-center justify-center transition-all duration-500 ease-in-out ${
+          isImmersive
+            ? "opacity-0 scale-95 pointer-events-none invisible"
+            : "opacity-100 scale-100 visible"
+        }`}
+      >
         {/* ─── LEFT PANEL: Login card ─── */}
         <motion.div
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
-          className="w-full lg:w-[48%] xl:w-[44%] flex items-center justify-center min-h-screen lg:min-h-0 p-6 sm:p-8 lg:p-8 xl:p-10"
+          className="w-full lg:w-[48%] xl:w-[46%] flex items-center justify-center min-h-screen lg:min-h-0 py-6 px-4 sm:p-6 lg:py-6 xl:py-8 lg:px-8"
         >
-          <div className="w-full max-w-sm lg:max-w-md">
-            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
-            {/* Brand header */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex items-center gap-3 mb-4"
-            >
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-[#00b4eb] to-[#50b748] rounded-2xl opacity-40 blur-sm group-hover:opacity-70 transition-opacity duration-500" />
-                <img
-                  src={sltLogo}
-                  alt="SLT Mobitel Logo"
-                  className="relative w-12 h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg"
-                />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <img
-                    src={talentHubLogo}
-                    alt="TalentHub"
-                    className="h-6 w-auto rounded-md"
-                  />
-                  <h1 className="text-xl font-extrabold tracking-tight text-white">
-                    TalentHub
-                  </h1>
-                </div>
-                <p className="text-sm text-white/50 font-medium mt-0.5">
-                  Administration Portal
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Welcome text */}
+          <div className="w-full max-w-sm lg:max-w-md py-2">
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.35, duration: 0.5 }}
-              className="mb-2"
+              className="mb-1 text-center"
             >
-              <h2 className="text-3xl sm:text-4xl font-extrabold leading-tight tracking-tight flex items-center gap-2">
+              <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight flex items-center justify-center gap-2">
                 <span className="text-white">Admin</span>
                 <span
                   className="bg-clip-text text-transparent"
@@ -495,19 +579,18 @@ const AdminLogin = () => {
                   Access
                 </span>
               </h2>
-              <p className="text-white/60 mt-2 text-sm leading-relaxed max-w-sm">
+              <p className="text-white/60 mt-1 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
                 Sign in with your administrator credentials to manage
-                interns, attendance, and operations.
+                interns.
               </p>
             </motion.div>
-            </div>
 
             {/* ─── Login card ─── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center min-h-[470px]"
+              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.1)",
@@ -524,12 +607,12 @@ const AdminLogin = () => {
                 }}
               />
 
-              <div className="p-5 sm:p-5 flex flex-col h-full">
+              <div className="p-5 sm:p-6 flex flex-col gap-4">
                 {/* Session message */}
                 {sessionMsg && (
-                  <div className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-amber-500/10 border border-amber-400/20">
+                  <div className="mb-2 flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/20">
                     <svg
-                      className="h-5 w-5 text-amber-400 flex-shrink-0 mt-0.5"
+                      className="h-4 w-4 text-amber-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -539,7 +622,7 @@ const AdminLogin = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <span className="text-sm text-amber-200 font-medium">
+                    <span className="text-xs text-amber-200 font-medium">
                       {sessionMsg}
                     </span>
                   </div>
@@ -550,10 +633,10 @@ const AdminLogin = () => {
                   <motion.div
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-red-500/10 border border-red-400/20"
+                    className="mb-2 flex items-start gap-2.5 p-2.5 rounded-xl bg-red-500/10 border border-red-400/20"
                   >
                     <svg
-                      className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5"
+                      className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5"
                       viewBox="0 0 20 20"
                       fill="currentColor"
                     >
@@ -563,40 +646,40 @@ const AdminLogin = () => {
                         clipRule="evenodd"
                       />
                     </svg>
-                    <span className="text-sm text-red-200 font-medium">
+                    <span className="text-xs text-red-200 font-medium">
                       {error}
                     </span>
                   </motion.div>
                 )}
 
                 {/* Top Section */}
-                <div className="text-center mb-1 flex-shrink-0">
+                <div className="text-center flex-shrink-0">
                   <div
-                    className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center mb-1"
+                    className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-xl flex items-center justify-center mb-2"
                     style={{
                       background:
                         "linear-gradient(135deg, rgba(0,180,235,0.15), rgba(80,183,72,0.15))",
                       border: "1px solid rgba(0,180,235,0.2)",
                     }}
                   >
-                    <FaShieldAlt className="h-6 w-6 text-[#00b4eb]" />
+                    <FaShieldAlt className="h-5 w-5 text-[#00b4eb]" />
                   </div>
-                  <h3 className="text-base font-bold text-white mb-0.5">
+                  <h3 className="text-sm sm:text-base font-bold text-white mb-1">
                     Admin Login
                   </h3>
-                  <p className="text-white/50 text-sm">
+                  <p className="text-white/50 text-xs">
                     Enter your administrator credentials
                   </p>
                 </div>
 
                 {/* Middle Section */}
-                <div className="flex-1 flex flex-col justify-center mb-1">
+                <div className="flex flex-col">
                   {/* Login form */}
-                  <form onSubmit={handleSubmit} className="space-y-1.5 mb-3">
+                  <form onSubmit={handleSubmit} className="space-y-2.5">
                     {/* Email field */}
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaUser className="h-4 w-4 text-white/40" />
+                        <FaUser className="h-3.5 w-3.5 text-white/40" />
                       </div>
                       <input
                         id="admin-email"
@@ -606,7 +689,7 @@ const AdminLogin = () => {
                         required
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="autofill-fix block w-full pl-10 pr-3 py-2.5 rounded-xl text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
+                        className="autofill-fix block w-full pl-9 pr-3 py-2.5 rounded-xl text-xs sm:text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -626,7 +709,7 @@ const AdminLogin = () => {
                     {/* Password field */}
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <FaLock className="h-4 w-4 text-white/40" />
+                        <FaLock className="h-3.5 w-3.5 text-white/40" />
                       </div>
                       <input
                         id="admin-password"
@@ -636,7 +719,7 @@ const AdminLogin = () => {
                         required
                         value={formData.password}
                         onChange={handleInputChange}
-                        className="autofill-fix block w-full pl-10 pr-10 py-2.5 rounded-xl text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
+                        className="autofill-fix block w-full pl-9 pr-9 py-2.5 rounded-xl text-xs sm:text-sm text-white placeholder-white/30 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50"
                         style={{
                           background: "rgba(255,255,255,0.05)",
                           border: "1px solid rgba(255,255,255,0.08)",
@@ -657,9 +740,9 @@ const AdminLogin = () => {
                         onClick={() => setShowPassword(!showPassword)}
                       >
                         {showPassword ? (
-                          <FaEyeSlash className="h-4 w-4 text-white/40 hover:text-white/70 transition-colors" />
+                          <FaEyeSlash className="h-3.5 w-3.5 text-white/40 hover:text-white/70 transition-colors" />
                         ) : (
-                          <FaEye className="h-4 w-4 text-white/40 hover:text-white/70 transition-colors" />
+                          <FaEye className="h-3.5 w-3.5 text-white/40 hover:text-white/70 transition-colors" />
                         )}
                       </button>
                     </div>
@@ -668,7 +751,7 @@ const AdminLogin = () => {
                     <button
                       type="submit"
                       disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group"
                       style={{
                         background: "linear-gradient(135deg, #00b4eb, #50b748)",
                         boxShadow: "0 4px 15px rgba(0,180,235,0.3)",
@@ -684,12 +767,12 @@ const AdminLogin = () => {
                     >
                       {loading ? (
                         <>
-                          <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin" />
+                          <div className="w-4 h-4 border-t-2 border-b-2 border-white rounded-full animate-spin" />
                           <span>Authenticating...</span>
                         </>
                       ) : (
                         <>
-                          <FaShieldAlt className="h-4 w-4 transition-transform group-hover:scale-110" />
+                          <FaShieldAlt className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
                           <span className="tracking-wider">ACCESS DASHBOARD</span>
                         </>
                       )}
@@ -699,21 +782,63 @@ const AdminLogin = () => {
                     <button
                       type="button"
                       onClick={handlePasskeyLogin}
-                      disabled={loading}
-                      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 group border border-[#00b4eb]/30 hover:border-[#00b4eb] bg-transparent mt-3"
+                      disabled={loading || googleLoading}
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white transition-all duration-300 cursor-pointer disabled:opacity-50 group border border-[#00b4eb]/30 hover:border-[#00b4eb] bg-transparent"
                     >
-                      <Fingerprint className="h-4 w-4 text-[#00b4eb]" />
+                      <Fingerprint className="h-3.5 w-3.5 text-[#00b4eb]" />
                       <span>SIGN IN WITH PASSKEY</span>
+                    </button>
+
+                    {/* Google Sign-In Button */}
+                    <button
+                      type="button"
+                      onClick={() => { setError(""); googleLogin(); }}
+                      disabled={loading || googleLoading}
+                      className="w-full flex items-center justify-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer disabled:opacity-50 group"
+                      style={{
+                        background: "rgba(255,255,255,0.92)",
+                        color: "#3c3c3c",
+                        border: "1px solid rgba(255,255,255,0.3)",
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,1)";
+                        e.currentTarget.style.boxShadow = "0 4px 16px rgba(0,0,0,0.3)";
+                        e.currentTarget.style.transform = "translateY(-1px)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.92)";
+                        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.2)";
+                        e.currentTarget.style.transform = "translateY(0)";
+                      }}
+                    >
+                      {googleLoading ? (
+                        <>
+                          <div className="w-4 h-4 border-t-2 border-b-2 border-[#4285f4] rounded-full animate-spin flex-shrink-0" />
+                          <span style={{ color: "#3c3c3c" }}>Signing in...</span>
+                        </>
+                      ) : (
+                        <>
+                          {/* Google G logo SVG */}
+                          <svg className="h-4 w-4 flex-shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                          </svg>
+                          <span style={{ color: "#3c3c3c" }}>SIGN IN WITH GOOGLE</span>
+                        </>
+                      )}
                     </button>
                   </form>
                 </div>
 
                 {/* Bottom Section */}
-                <div className="mt-auto flex-shrink-0">
+                <div className="flex-shrink-0 pt-1">
                   {/* Divider */}
                   <div className="flex items-center gap-3 mb-2">
                     <div className="flex-1 h-px bg-white/10" />
-                    <span className="text-xs text-white/30 font-medium uppercase tracking-wider">
+                    <span className="text-[10px] sm:text-xs text-white/30 font-medium uppercase tracking-wider">
                       or
                     </span>
                     <div className="flex-1 h-px bg-white/10" />
@@ -722,7 +847,7 @@ const AdminLogin = () => {
                   {/* Intern Login redirect */}
                   <button
                     onClick={() => navigate("/")}
-                    className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
                     style={{
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -740,59 +865,36 @@ const AdminLogin = () => {
                         "rgba(255,255,255,0.08)";
                     }}
                   >
-                    <GraduationCap className="h-4 w-4 text-[#50b748] group-hover:text-[#50b748]" />
+                    <GraduationCap className="h-3.5 w-3.5 text-[#50b748] group-hover:text-[#50b748]" />
                     <span className="text-white/70 group-hover:text-white">
                       Login as Intern
                     </span>
-                    <ArrowRight className="h-4 w-4 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
+                    <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
                   </button>
 
-                  <p className="text-center text-xs text-white/30 mt-1">
+                  <p className="text-center text-[11px] text-white/30 mt-1">
                     For interns and trainees only
-
                   </p>
                 </div>
               </div>
             </motion.div>
 
             {/* Footer */}
-            <div className="lg:min-h-[80px] flex flex-col justify-start pt-6">
+            <div className="lg:h-[70px] flex flex-col justify-start pt-3 sm:pt-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.5 }}
-              className="text-center text-white/30 text-xs"
+              className="text-center text-white/30 text-[11px] sm:text-xs"
             >
-              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-4">
-                <img 
-                  src={transzentLogo} 
-                  alt="Transzent" 
-                  className="h-8 sm:h-10 w-auto rounded opacity-100 shadow-sm" 
-                />
+
+              <div className="flex flex-wrap justify-center items-center gap-x-3 sm:gap-x-4 gap-y-1 mt-1">
+                <a href="#" className="hover:text-[#00b4eb] transition-colors">Privacy</a>
+                <a href="#" className="hover:text-[#00b4eb] transition-colors">Terms</a>
+                <a href="#" className="hover:text-[#00b4eb] transition-colors">Help</a>
+                <span className="hidden sm:inline text-white/20">|</span>
+                <p>© 2026 SLT Mobitel. All rights reserved.</p>
               </div>
-              <div className="flex justify-center gap-4 mb-2">
-                <a
-                  href="#"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Privacy
-                </a>
-                <a
-                  href="#"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Terms
-                </a>
-                <a
-                  href="#"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Help
-                </a>
-              </div>
-              <p>
-                © {new Date().getFullYear()} SLT Mobitel. All rights reserved.
-              </p>
             </motion.div>
             </div>
           </div>
@@ -803,55 +905,47 @@ const AdminLogin = () => {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="hidden lg:flex lg:w-[52%] xl:w-[56%] relative items-center justify-center p-6 xl:p-8"
+          className="hidden lg:flex lg:w-[52%] xl:w-[56%] items-center justify-center p-4 xl:p-6"
         >
-          {/* Glass panel background */}
+          {/* Glass panel container */}
           <div
-            className="absolute inset-4 rounded-[2rem]"
+            className="relative z-10 w-full max-w-xl rounded-[2rem] p-5 xl:p-6 flex flex-col justify-between"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.06)",
               backdropFilter: "blur(20px)",
             }}
-          />
-
-          <div className="relative z-10 w-full max-w-xl">
-            <div className="lg:h-[160px] flex flex-col justify-end pb-2">
+          >
             {/* Section header */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4, duration: 0.5 }}
-              className="text-center"
+              className="text-center mb-4"
             >
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-3">
-                <Sparkles className="h-4 w-4 text-[#50b748]" />
-                <span className="text-xs font-semibold text-white/70 tracking-wider uppercase">
-                  Full Control Panel
-                </span>
+              <div className="flex items-center justify-center gap-4 mb-3">
+                <div className="flex items-center justify-center gap-2 relative group shrink-0">
+                  <img src={talentHubLogo} alt="TalentHub" className="relative w-10 h-10 xl:w-12 xl:h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg" />
+                  <img src={sltLogo} alt="SLT Mobitel Logo" className="relative w-10 h-10 xl:w-12 xl:h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg bg-white" />
+                  <img src={transzentLogo} alt="Transzent" className="relative w-10 h-10 xl:w-12 xl:h-12 object-contain rounded-xl border-2 border-white/20 shadow-lg bg-white" />
+                </div>
+                <div className="text-left">
+                  <h2 className="text-xl xl:text-2xl font-extrabold text-white leading-tight tracking-tight mb-0.5">
+                    TalentHub
+                  </h2>
+                  <p className="text-white/80 font-medium text-xs xl:text-sm">
+                    Administration Portal
+                  </p>
+                </div>
               </div>
-              <h2 className="text-2xl xl:text-3xl font-extrabold text-white leading-tight tracking-tight">
-                Administration,
-                <br />
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(135deg, #00b4eb, #50b748)",
-                  }}
-                >
-                  Empowered
-                </span>
-              </h2>
-              <p className="text-white/50 mt-2 text-xs max-w-sm mx-auto leading-relaxed">
+              <p className="text-white/50 text-[11px] xl:text-xs max-w-sm mx-auto leading-relaxed">
                 Comprehensive tools for managing interns, attendance systems,
                 leave requests, and workspace operations.
               </p>
             </motion.div>
-            </div>
 
             {/* Feature grid — showing top items from admin navLinks */}
-            <div className="grid grid-cols-2 gap-3 lg:h-[380px] overflow-y-auto hide-scrollbar">
+            <div className="grid grid-cols-2 gap-2.5 my-2 max-h-[360px] overflow-y-auto hide-scrollbar">
               {features.slice(0, 6).map((feature, index) => (
                 <motion.div
                   key={index}
@@ -861,8 +955,8 @@ const AdminLogin = () => {
                     delay: 0.5 + index * 0.08,
                     duration: 0.4,
                   }}
-                  whileHover={{ y: -4, scale: 1.02 }}
-                  className="group rounded-xl p-3.5 cursor-default transition-all duration-300 flex flex-col justify-center"
+                  whileHover={{ y: -3, scale: 1.01 }}
+                  className="group rounded-xl p-3 cursor-default transition-all duration-300 flex flex-col justify-center"
                   style={{
                     background: "rgba(255,255,255,0.04)",
                     border: "1px solid rgba(255,255,255,0.06)",
@@ -881,7 +975,7 @@ const AdminLogin = () => {
                   }}
                 >
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center mb-2 transition-all duration-300"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center mb-1.5 transition-all duration-300"
                     style={{
                       background: `${feature.color}15`,
                       color: feature.color,
@@ -892,7 +986,7 @@ const AdminLogin = () => {
                   <h3 className="text-xs font-bold text-white mb-0.5 tracking-tight">
                     {feature.title}
                   </h3>
-                  <p className="text-[11px] text-white/45 leading-snug">
+                  <p className="text-[10px] xl:text-[11px] text-white/45 leading-snug">
                     {feature.description}
                   </p>
                 </motion.div>
@@ -900,12 +994,11 @@ const AdminLogin = () => {
             </div>
 
             {/* Bottom stats */}
-            <div className="lg:h-[80px] flex flex-col justify-start pt-6">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 1, duration: 0.5 }}
-              className="flex items-center justify-center gap-8"
+              className="flex items-center justify-center gap-8 pt-3 border-t border-white/5"
             >
               {[
                 { value: "13+", label: "Modules" },
@@ -914,7 +1007,7 @@ const AdminLogin = () => {
               ].map((stat, i) => (
                 <div key={i} className="text-center">
                   <div
-                    className="text-base font-extrabold bg-clip-text text-transparent"
+                    className="text-sm sm:text-base font-extrabold bg-clip-text text-transparent"
                     style={{
                       backgroundImage:
                         "linear-gradient(135deg, #00b4eb, #50b748)",
@@ -922,16 +1015,18 @@ const AdminLogin = () => {
                   >
                     {stat.value}
                   </div>
-                  <div className="text-xs text-white/35 font-medium mt-0.5">
+                  <div className="text-[11px] text-white/35 font-medium mt-0.5">
                     {stat.label}
                   </div>
                 </div>
               ))}
             </motion.div>
-            </div>
           </div>
         </motion.div>
       </div>
+
+      {/* Seasonal background layer */}
+      <SeasonalBackground onSeasonResolved={handleSeasonResolved} />
 
       {/* Hide scrollbar utility */}
       <style jsx="true" global="true">{`

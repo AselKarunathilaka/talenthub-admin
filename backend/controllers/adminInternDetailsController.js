@@ -16,6 +16,7 @@ const resolveInternId = async (req, res, next) => {
 
 const InternService = require("../services/internService");
 const DailyRecord = require("../models/DailyRecord");
+const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const TalentTrailService = require("../services/talentTrailService");
 
 // ─── Attendance type classification ─────────────────────────────────────────
@@ -44,6 +45,18 @@ const getDateKey = (date) => {
     : String(date || "");
 };
 
+/** Format a Date (or date-string/timestamp) as hh:mm AM/PM in Sri Lanka time. */
+const formatColomboTime = (date) => {
+  if (!date) return null;
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return null;
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Colombo",
+  });
+};
+
 const getMeetingKey = (date, meetingName) =>
   `${getDateKey(date)}::${String(meetingName || "General Meeting")
     .trim()
@@ -65,6 +78,22 @@ const normalizeAttendanceMethod = (type) => {
  *
  * Returns { dailyAttendance, meetingAttendance, attendance (combined), stats }
  */
+const { getDailyTypePriority } = require("../utils/attendanceHistory");
+
+const formatAttendanceTypeLabel = (type, isMeeting = false) => {
+  const t = String(type || "").toLowerCase();
+  if (t === "face") return "Face Attendance";
+  if (t === "daily_qr") return "QR Attendance";
+  if (t === "daily") return "Logbook Attendance";
+  if (t === "manual_daily") return "Manual Daily";
+  if (t === "face_meeting") return "Face Meeting";
+  if (t === "qr") return "QR Meeting";
+  if (t === "meeting" || t === "manual_meeting" || t === "manual")
+    return "Meeting Attendance";
+  if (t === "face recognition") return isMeeting ? "Face Meeting" : "Face Attendance";
+  return isMeeting ? "Meeting Attendance" : "Daily Attendance";
+};
+
 const getAdminInternAttendance = async (req, res) => {
   const { internId } = req.params;
 
@@ -75,10 +104,33 @@ const getAdminInternAttendance = async (req, res) => {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    // 2. Load DailyRecord entries (new QR / face system)
-    const dailyRecords = await DailyRecord.find({ internId }).sort({
-      date: -1,
-    });
+    // 2. Load DailyRecord entries and FaceAttendanceLog (authoritative audit for face scans)
+    const [dailyRecords, successfulFaceLogs] = await Promise.all([
+      DailyRecord.find({ internId }).sort({
+        date: -1,
+      }),
+      FaceAttendanceLog.find({
+        internId,
+        status: "present",
+        method: "face",
+        qrBackupUsed: { $ne: true },
+      })
+        .select("attendanceDate attendanceTime method qrBackupUsed metadata")
+        .lean(),
+    ]);
+
+    // Build a set of ISO date keys where a genuine face (non-QR-backup) daily scan exists
+    const faceDates = new Set(
+      successfulFaceLogs
+        .filter((log) => {
+          const attendanceType = String(
+            log.metadata?.attendanceType || "daily",
+          ).toLowerCase();
+          // Include if explicitly typed "daily" or no type set (defaults to daily context)
+          return attendanceType === "daily" || !log.metadata?.attendanceType;
+        })
+        .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
+    );
 
     const dailyAttendance = [];
     const meetingAttendance = [];
@@ -96,10 +148,24 @@ const getAdminInternAttendance = async (req, res) => {
           const markedAt = entry.timeMarked || entry.date;
           const dateKey = getDateKey(entry.date);
           const current = dailyMethodByDate.get(dateKey);
-          if (!current || new Date(markedAt) > new Date(current.markedAt)) {
+          const entryPriority = getDailyTypePriority(type);
+          const currentPriority = current ? getDailyTypePriority(current.rawType) : 0;
+
+          if (!current || entryPriority > currentPriority) {
             dailyMethodByDate.set(dateKey, {
               method: normalizeAttendanceMethod(type),
+              rawType: type,
               markedAt,
+              checkInTime: entry.timeMarked || entry.date,
+              checkOutTime: entry.checkOutTime || null,
+            });
+          } else if (entryPriority === currentPriority && markedAt && current.markedAt && new Date(markedAt) < new Date(current.markedAt)) {
+            dailyMethodByDate.set(dateKey, {
+              method: normalizeAttendanceMethod(type),
+              rawType: type,
+              markedAt,
+              checkInTime: entry.timeMarked || entry.date,
+              checkOutTime: entry.checkOutTime || current.checkOutTime || null,
             });
           }
         }
@@ -157,13 +223,10 @@ const getAdminInternAttendance = async (req, res) => {
           status: entry.status || "Present",
           meetingName: legacyName || "General Meeting",
           type: "Meeting",
+          rawType: type,
+          attendanceTypeLabel: formatAttendanceTypeLabel(type, true),
           attendanceMethod: normalizeAttendanceMethod(type),
-          time: entry.date
-            ? new Date(entry.date).toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
+          time: formatColomboTime(entry.date),
           isMeeting: true,
         });
       });
@@ -171,30 +234,43 @@ const getAdminInternAttendance = async (req, res) => {
 
     // ── Step 4: DailyRecord — daily and meeting rows ──────────────────────────
     dailyRecords.forEach((record) => {
-      // Daily
-      if (record.attendance && record.attendance !== "absent") {
+      const dateKey = getDateKey(record.date);
+      // Daily — every logbook submission counts as a daily attendance entry.
+      // DailyRecord has NO 'attendance' field; derive status from record.status:
+      //   working / wfh  → Present
+      //   leave / study_leave → Absent
+      {
+        const recordStatus = (record.status || "working").toLowerCase();
+        const derivedAttendanceStatus =
+          recordStatus === "leave" || recordStatus === "study_leave"
+            ? "Absent"
+            : "Present";
+
+        const matchingMethodInfo = dailyMethodByDate.get(dateKey);
         const attendanceTime = record.attendanceTime
           ? new Date(record.attendanceTime)
-          : null;
+          : matchingMethodInfo?.checkInTime
+            ? new Date(matchingMethodInfo.checkInTime)
+            : null;
+        const checkOutTime = record.checkOutTime
+          ? new Date(record.checkOutTime)
+          : matchingMethodInfo?.checkOutTime
+            ? new Date(matchingMethodInfo.checkOutTime)
+            : null;
+        const rawType = matchingMethodInfo?.rawType || "daily";
+
         dailyAttendance.push({
           date: record.date,
-          status:
-            record.attendance === "present"
-              ? "Present"
-              : record.attendance === "late"
-                ? "Late"
-                : "Absent",
+          status: derivedAttendanceStatus,
           type: "Daily",
+          rawType,
+          attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
           recordStatus: record.status,
           attendanceMethod:
-            dailyMethodByDate.get(getDateKey(record.date))?.method || "unknown",
-          time: attendanceTime
-            ? attendanceTime.toLocaleTimeString("en-US", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
-            : null,
-          attendanceTime: record.attendanceTime,
+            matchingMethodInfo?.method || normalizeAttendanceMethod(rawType),
+          time: formatColomboTime(attendanceTime),
+          checkOutTime: formatColomboTime(checkOutTime),
+          attendanceTime: attendanceTime,
         });
       }
 
@@ -203,20 +279,18 @@ const getAdminInternAttendance = async (req, res) => {
         record.meetingAttendance.forEach((meeting) => {
           const attendanceTime = new Date(meeting.attendanceTime);
           const projectName = meeting.projectName || meeting.meetingTitle;
+          const meetingMethod = meeting.method || meetingMethodByKey.get(getMeetingKey(record.date, projectName));
+
           meetingAttendance.push({
             date: record.date,
             status: "Present",
             meetingName: projectName,
             projectName,
             type: "Meeting",
-            attendanceMethod: normalizeAttendanceMethod(
-              meeting.method ||
-                meetingMethodByKey.get(getMeetingKey(record.date, projectName)),
-            ),
-            time: attendanceTime.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            rawType: meetingMethod,
+            attendanceTypeLabel: formatAttendanceTypeLabel(meetingMethod, true),
+            attendanceMethod: normalizeAttendanceMethod(meetingMethod),
+            time: formatColomboTime(attendanceTime),
             isMeeting: true,
           });
         });
@@ -248,11 +322,10 @@ const getAdminInternAttendance = async (req, res) => {
             meetingName: projectName,
             projectName,
             type: "Meeting",
+            rawType: "talenttrail",
+            attendanceTypeLabel: "External Project",
             attendanceMethod: "talenttrail",
-            time: at.toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            time: formatColomboTime(at),
             isMeeting: true,
           });
           dailyRecordMeetingKeys.add(getMeetingKey(at, projectName));
@@ -268,7 +341,7 @@ const getAdminInternAttendance = async (req, res) => {
     // ── Step 6: Fallback — daily scans in intern.attendance[] not in DailyRecord
     try {
       const coveredDates = new Set(
-        dailyAttendance.map((d) => new Date(d.date).toDateString()),
+        dailyAttendance.map((d) => getDateKey(d.date)),
       );
 
       if (intern.attendance && intern.attendance.length > 0) {
@@ -279,32 +352,66 @@ const getAdminInternAttendance = async (req, res) => {
           const entryDate = entry.date ? new Date(entry.date) : null;
           if (!entryDate || isNaN(entryDate.getTime())) return;
 
-          const dayKey = entryDate.toDateString();
+          const dayKey = getDateKey(entryDate);
           if (coveredDates.has(dayKey)) return;
 
+          const isFaceScan = faceDates.has(dayKey);
+          const rawType = isFaceScan ? "face" : type;
+          const checkInDate = entry.timeMarked ? new Date(entry.timeMarked) : entryDate;
+          const checkOutDate = entry.checkOutTime ? new Date(entry.checkOutTime) : null;
+
           dailyAttendance.push({
-            date: entryDate,
+            date: dayKey,
             status: entry.status || "Present",
             type: "Daily",
-            attendanceMethod: normalizeAttendanceMethod(type),
-            time: (entry.timeMarked
-              ? new Date(entry.timeMarked)
-              : entryDate
-            ).toLocaleTimeString("en-US", {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
+            rawType,
+            attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
+            attendanceMethod: isFaceScan ? "face recognition" : normalizeAttendanceMethod(type),
+            time: formatColomboTime(checkInDate),
+            checkOutTime: formatColomboTime(checkOutDate),
             attendanceTime: entry.timeMarked || entry.date,
           });
           coveredDates.add(dayKey);
         });
       }
+
+      // Also ensure all faceDates are present even if not in DailyRecord or intern.attendance
+      faceDates.forEach((faceDateKey) => {
+        const currentCovered = new Set(
+          dailyAttendance.map((d) => getDateKey(d.date)),
+        );
+        if (!currentCovered.has(faceDateKey)) {
+          const matchingMethodInfo = dailyMethodByDate.get(faceDateKey);
+          const faceLog = successfulFaceLogs.find(
+            (log) => getDateKey(log.attendanceDate || log.attendanceTime) === faceDateKey,
+          );
+          const checkInTime = faceLog?.attendanceTime || matchingMethodInfo?.checkInTime;
+
+          dailyAttendance.push({
+            date: faceDateKey,
+            status: "Present",
+            type: "Daily",
+            rawType: "face",
+            attendanceTypeLabel: "Face Attendance",
+            attendanceMethod: "face recognition",
+            time: formatColomboTime(checkInTime),
+            checkOutTime: formatColomboTime(matchingMethodInfo?.checkOutTime),
+            attendanceTime: checkInTime || faceDateKey,
+          });
+        }
+      });
     } catch (_) {
       // Non-fatal
     }
 
     // ── Step 7: Sort + de-duplicate daily, sort meeting ───────────────────────
-    dailyAttendance.sort((a, b) => new Date(b.date) - new Date(a.date));
+    dailyAttendance.sort((a, b) => {
+      const dateDiff = new Date(b.date) - new Date(a.date);
+      if (dateDiff !== 0) return dateDiff;
+      const pA = getDailyTypePriority(a.rawType || a.attendanceMethod);
+      const pB = getDailyTypePriority(b.rawType || b.attendanceMethod);
+      return pB - pA;
+    });
 
     const uniqueDailyAttendance = [];
     const seenDailyDates = new Set();
