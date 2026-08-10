@@ -128,7 +128,45 @@ There are now TWO weekly checks:
 - **Recipient**: mgiri@slt.com.lk only
 - **Grace Period**: No grace period - all active interns are checked
 
+## Duplicate-Email Protection
+
+The scheduled report is protected against being sent more than once per day by
+two independent layers:
+
+1. **`SCHEDULER_EMAILS_ENABLED`** — every non-production `.env` should set
+   `SCHEDULER_EMAILS_ENABLED=false`. Dev machines point at the *production*
+   MongoDB and use the *production* Gmail account, so a backend left running on
+   a developer's laptop on a Sunday morning fires the same cron and supervisors
+   receive the report twice. When the variable is unset the scheduler is
+   enabled, so production is never affected by a missing value.
+2. **Once-per-period claim in MongoDB** — before sending, the job inserts a row
+   into `scheduledemaillogs` with a unique index on `{ jobKey, periodKey }`
+   (`services/scheduledEmailGuard.js`). Whichever backend process wins the
+   insert sends the email; any other process — a second replica, a PM2 cluster
+   worker, a dev laptop — gets a duplicate-key error and skips with a log line:
+
+   ```
+   ⏭️  [weekly-non-submission] Skipping 2026-08-09 — already-sent (owner: <host>#<pid>). No duplicate email sent.
+   ```
+
+   A claim left `in_progress` for more than 30 minutes is treated as abandoned
+   (crashed process) and may be taken over. A failed send releases the claim so
+   it can be retried.
+
+Manual admin triggers deliberately **bypass** this guard — re-sending on request
+is intentional. The `scheduledemaillogs` collection also serves as the audit
+trail of which host actually sent each weekly report.
+
 ## Troubleshooting
+
+### Supervisor Received the Report Twice
+1. Query `scheduledemaillogs` for that `periodKey` — the `claimedBy` field names
+   the host/PID that sent it.
+2. If the duplicate predates the guard, the second copy almost certainly came
+   from a second backend process on the shared database. Confirm every
+   non-production `.env` has `SCHEDULER_EMAILS_ENABLED=false`.
+3. Check whether production runs more than one instance (PM2 cluster mode,
+   two replicas). The guard covers this, but only one instance needs the cron.
 
 ### Email Not Sending
 1. Verify `.env` has correct `GMAIL_USER` and `GMAIL_PASS`

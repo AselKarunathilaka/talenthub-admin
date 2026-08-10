@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { GitBranch, Flame, Loader2 } from "lucide-react";
 
 // ── Config ─────────────────────────────────────────────────────────────────
@@ -113,6 +113,7 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [hovered, setHovered] = useState(null);
+  const scrollRef = useRef(null);
 
   // ── Resolve date range ────────────────────────────────────────────────────
   const { rangeStart, rangeEnd, usingFallback } = useMemo(() => {
@@ -261,6 +262,12 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
     !loading && !error && commitData &&
     (!commitData.projectCommits || commitData.projectCommits.length === 0);
 
+  useEffect(() => {
+    if (!loading && !error && !hasNoProjects && scrollRef.current) {
+      scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
+    }
+  }, [loading, error, hasNoProjects, weeks]);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="mb-8 bg-white rounded-3xl overflow-hidden shadow-[0_0_15px_rgba(0,180,235,0.12)] border border-[#00b4eb]/20 hover:shadow-[0_0_25px_rgba(0,180,235,0.25)] transition-all duration-500">
@@ -269,7 +276,7 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-inner"
+              className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-white shadow-inner"
               style={{ background: "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)" }}
             >
               <GitBranch className="w-5 h-5" />
@@ -285,18 +292,18 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
           </div>
 
           {!loading && !error && !hasNoProjects && (
-            <div className="flex items-center gap-3 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00b4eb]/10 text-[#0056a2] text-xs font-semibold">
+            <div className="flex items-center gap-1.5 sm:gap-3 flex-nowrap overflow-x-auto no-scrollbar pb-1">
+              <span className="inline-flex items-center whitespace-nowrap gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-[#00b4eb]/10 text-[#0056a2] text-[10px] sm:text-xs font-semibold">
                 {stats.totalCommits} commit{stats.totalCommits !== 1 ? "s" : ""}
               </span>
               {stats.projectCount > 0 && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
+                <span className="inline-flex items-center whitespace-nowrap gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] sm:text-xs font-semibold">
                   {stats.projectCount} project{stats.projectCount !== 1 ? "s" : ""}
                 </span>
               )}
               {stats.currentStreak > 0 && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50 text-orange-600 text-xs font-semibold">
-                  <Flame className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center whitespace-nowrap gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full bg-orange-50 text-orange-600 text-[10px] sm:text-xs font-semibold">
+                  <Flame className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                   {stats.currentStreak}-day streak
                 </span>
               )}
@@ -334,7 +341,7 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
         {/* Heatmap grid */}
         {!loading && !error && !hasNoProjects && (
           <>
-            <div className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+            <div ref={scrollRef} className="overflow-x-auto pb-2 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:bg-gray-200 [&::-webkit-scrollbar-thumb]:rounded-full">
               <div className="inline-flex flex-col gap-1 min-w-full">
                 {/* Month labels */}
                 <div className="flex pl-8 gap-[3px]">

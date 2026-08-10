@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import {
   FiLoader,
@@ -175,29 +175,44 @@ const DailyRecords = () => {
   }, [fetchDailyRecords]);
 
   //──Fetch Holidays From Backend──────────────────────────────────────────────
-  const fetchHolidays = useCallback(async () => {
-  try {
-    const year = currentMonth.getFullYear();
+  // Years already requested, so paging through months does not refire the request
+  const fetchedHolidayYears = useRef(new Set());
+  const calendarYear = currentMonth.getFullYear();
 
-    const { API_BASE_URL } = await import("../api/apiConfig");
+  const fetchHolidays = useCallback(async (year) => {
+    if (!year || fetchedHolidayYears.current.has(year)) return;
+    fetchedHolidayYears.current.add(year);
+    try {
+      const { API_BASE_URL } = await import("../api/apiConfig");
 
-    const response = await fetch(
-      `${API_BASE_URL}/holidays/${year}`
-    );
+      const response = await fetch(`${API_BASE_URL}/holidays/${year}`);
 
-    const data = await response.json();
+      if (!response.ok) {
+        throw new Error(`Holiday request failed: ${response.status}`);
+      }
 
-    if (data.holidays) {
-      setHolidays(data.holidays);
+      const data = await response.json();
+
+      if (!Array.isArray(data.holidays)) {
+        throw new Error(data.error || "Holiday response had no holidays");
+      }
+
+      // Keep holidays from other years already loaded, dedupe by date
+      setHolidays((prev) => {
+        const existing = new Map(prev.map((h) => [h.date, h]));
+        data.holidays.forEach((h) => existing.set(h.date, h));
+        return Array.from(existing.values());
+      });
+    } catch (error) {
+      // Allow a retry on the next navigation rather than caching the failure
+      fetchedHolidayYears.current.delete(year);
+      console.error("Holiday fetch failed:", error);
     }
-  } catch (error) {
-    console.error("Holiday fetch failed:", error);
-  }
-}, [currentMonth]);
+  }, []);
 
 useEffect(() => {
-  fetchHolidays();
-}, [fetchHolidays]);
+  fetchHolidays(calendarYear);
+}, [fetchHolidays, calendarYear]);
 
   // ── Export PDF ──────────────────────────────────────────────
   const handleExportPDF = async (params) => {
@@ -357,7 +372,7 @@ useEffect(() => {
     
   //Holiday Styling
       if (holiday && !isSelected) {
-    classes += " bg-red-60 border-red-300"; 
+    classes += " bg-yellow-50 border-yellow-300";
   }
     if (isToday) classes += " bg-blue-50 border-blue-200";
     if (isSelected) classes += " bg-indigo-100 border-indigo-300 shadow-md";
@@ -487,7 +502,7 @@ useEffect(() => {
                     {getHolidayForDate(selectedDate).name}
                   </div>
                   <div className="text-xs md:text-sm text-red-600 mt-1">
-                    {getHolidayForDate(selectedDate).type.join(", ")}
+                    {(getHolidayForDate(selectedDate).type || []).join(", ")}
                   </div>
                 </div>
               )}

@@ -56,20 +56,7 @@ const PRIORITY_META = {
   },
 };
 
-const READ_KEY = "readAnnouncementIds";
 const PAGE_SIZE = 5;
-
-const getReadIds = () => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
-  } catch {
-    return new Set();
-  }
-};
-
-const saveReadIds = (set) => {
-  localStorage.setItem(READ_KEY, JSON.stringify([...set]));
-};
 
 // ─── Token helper ─────────────────────────────────────────────────────────────
 const getInternToken = () => {
@@ -111,7 +98,6 @@ const InternAnnouncements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [readIds, setReadIds] = useState(getReadIds);
   const [filterPriority, setFilterPriority] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -147,18 +133,25 @@ const InternAnnouncements = () => {
   }, [filterPriority]);
 
   // Mark an individual announcement as read when expanded
-  const toggleExpand = (id) => {
-    setExpandedId((prev) => {
-      const next = prev === id ? null : id;
-      if (next) {
-        // Mark as read on expand
-        const updated = new Set(readIds);
-        updated.add(id);
-        setReadIds(updated);
-        saveReadIds(updated);
-      }
-      return next;
-    });
+  const toggleExpand = async (id) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      // Remove it from view once it's closed, so it doesn't display again
+      setAnnouncements((prev) => prev.filter((a) => a._id !== id));
+      return;
+    }
+
+    setExpandedId(id);
+    const token = getInternToken();
+    try {
+      await fetch(`${API_BASE_URL}/announcements/${id}/read`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      window.dispatchEvent(new Event('announcementsUpdated'));
+    } catch (e) {
+      console.error("Error marking announcement as read", e);
+    }
   };
 
   // Filter
@@ -191,7 +184,7 @@ const InternAnnouncements = () => {
     return [1, "…", safePage - 1, safePage, safePage + 1, "…", totalPages];
   };
 
-  const unreadCount = announcements.filter((a) => !readIds.has(a._id)).length;
+  const unreadCount = announcements.length;
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -309,7 +302,7 @@ const InternAnnouncements = () => {
                 {paginated.map((a) => {
                   const meta =
                     PRIORITY_META[a.priority] || PRIORITY_META.normal;
-                  const isRead = readIds.has(a._id);
+                  const isRead = false;
                   const isExpanded = expandedId === a._id;
 
                   return (

@@ -18,7 +18,10 @@ const FeatureTipModal = () => {
           setIsOpen(true);
         }
       } catch (err) {
-        console.error("Failed to fetch feature tips", err);
+        // Silently ignore 404s until the backend route is ready
+        if (process.env.NODE_ENV === "development") {
+          // console.error("Feature tips route not available");
+        }
       }
     };
 
