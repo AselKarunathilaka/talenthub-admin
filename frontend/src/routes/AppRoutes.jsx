@@ -34,6 +34,7 @@ import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
+import AdminHolidays from "../pages/AdminHolidays";
 import AdminUserManagement from "../pages/AdminUserManagement";
 import AdminRoute from "../components/AdminRoute";
 
@@ -213,6 +214,7 @@ const AppRoutes = () => {
         path="/admin/logbook-restrictions"
         element={<LogbookRestrictions />}
       />
+      <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
       </Route>
       </Routes>

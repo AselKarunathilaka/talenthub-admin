@@ -18,6 +18,7 @@ import {
   FileText,
   LogOut,
   Users,
+  CalendarDays,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -55,6 +56,7 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "seats.manage" },
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/holidays", label: "Holidays", icon: <CalendarDays className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     //{ to: "/admin/users", label: "Users", icon: <Users className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "users.manage" },
   ].filter((link) => !link.permission || hasAdminPermission(link.permission));
 
