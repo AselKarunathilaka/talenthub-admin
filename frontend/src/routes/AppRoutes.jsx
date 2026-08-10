@@ -35,7 +35,6 @@ import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
 import AdminUserManagement from "../pages/AdminUserManagement";
-import AdminDatabaseBackups from "../pages/AdminDatabaseBackups";
 import AdminRoute from "../components/AdminRoute";
 
 const ScrollbarThemer = () => {
@@ -215,7 +214,6 @@ const AppRoutes = () => {
         element={<LogbookRestrictions />}
       />
       <Route path="/admin/users" element={<AdminUserManagement />} />
-      <Route path="/admin/database-backups" element={<AdminDatabaseBackups />} />
       </Route>
       </Routes>
     </>

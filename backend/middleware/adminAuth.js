@@ -24,11 +24,6 @@ const requirePermission = (permission) => (req, res, next) => {
   return res.status(403).json({ message: `Permission required: ${permission}`, code: "FORBIDDEN" });
 };
 
-const requireSuperAdmin = (req, res, next) => {
-  if (req.user?.role === "super_admin") return next();
-  return res.status(403).json({ message: "Super-admin access required.", code: "SUPER_ADMIN_REQUIRED" });
-};
-
 const routePermission = (req) => {
   const path = req.path;
   if (path.startsWith("/users")) return "users.manage";
@@ -45,4 +40,4 @@ const routePermission = (req) => {
 
 const enforceRoutePermission = (req, res, next) => requirePermission(routePermission(req))(req, res, next);
 
-module.exports = { requireAdmin, requirePermission, requireSuperAdmin, enforceRoutePermission };
+module.exports = { requireAdmin, requirePermission, enforceRoutePermission };

@@ -6,11 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "npx nodemon server.js",
-    "migrate:secure-admin-auth": "node scripts/secureAdminAuthMigration.js",
-    "backup:db": "node scripts/backupDatabase.js",
-    "backup:db:check": "node scripts/backupDatabase.js --check",
-    "backup:db:dry-run": "node scripts/backupDatabase.js --dry-run",
-    "test:backup": "node --test tests/databaseBackup.test.js tests/databaseBackupAdmin.test.js"
+    "migrate:secure-admin-auth": "node scripts/secureAdminAuthMigration.js"
   },
   "keywords": [],
   "author": "",
