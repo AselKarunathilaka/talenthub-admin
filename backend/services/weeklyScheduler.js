@@ -2,6 +2,7 @@ const cron = require("node-cron");
 const WeeklyNonSubmissionExcelService = require("./weeklyNonSubmissionExcelService");
 const WeeklyMeetingAttendanceService = require("./weeklymeetingattendanceservice");
 const LogbookRestrictionService = require("./logbookRestrictionService");
+const ScheduledEmailGuard = require("./scheduledEmailGuard");
 
 // ── Single source of truth for recipients ────────────────────────────────
 const DEFAULT_RECIPIENTS = [
@@ -10,9 +11,36 @@ const DEFAULT_RECIPIENTS = [
   "hjanaka@gmail.com", // Supervisor
 ];
 
+// ── Job keys used by the once-per-period send guard ──────────────────────
+const JOB_NON_SUBMISSION = "weekly-non-submission";
+const JOB_MEETING_ATTENDANCE = "weekly-meeting-attendance";
+
+/**
+ * Local/dev machines share the production MongoDB and the production Gmail
+ * account, so a developer who happens to have the backend running on a Sunday
+ * morning would fire these crons too and supervisors would receive the report
+ * twice. Set SCHEDULER_EMAILS_ENABLED=false in any non-production .env to keep
+ * that machine from mailing anyone.
+ *
+ * Unset (the production case) means enabled — this flag can never silently
+ * switch the real reports off.
+ */
+function schedulerEmailsEnabled() {
+  return String(process.env.SCHEDULER_EMAILS_ENABLED ?? "true").toLowerCase() !== "false";
+}
+
 class WeeklyScheduler {
   static init() {
     console.log("🕐 Initializing weekly work log compliance scheduler...");
+
+    if (!schedulerEmailsEnabled()) {
+      console.log(
+        "🚫 SCHEDULER_EMAILS_ENABLED=false — weekly report emails are DISABLED on this instance.",
+      );
+      console.log(
+        "   (Logbook restriction enforcement still runs; report emails do not.)",
+      );
+    }
 
     // ── 9:30 AM — Non-submission report email with Excel ─────────────────
     cron.schedule(
@@ -23,15 +51,40 @@ class WeeklyScheduler {
         );
         console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
         console.log(`📧 Recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
+
+        if (!schedulerEmailsEnabled()) {
+          console.log(
+            "🚫 Skipped — report emails are disabled on this instance.",
+          );
+          return;
+        }
+
         try {
-          await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(
-            DEFAULT_RECIPIENTS,
+          // runOnce guarantees a single send per day across every backend
+          // process pointed at this database.
+          await ScheduledEmailGuard.runOnce(
+            JOB_NON_SUBMISSION,
+            ScheduledEmailGuard.todayKey(),
+            async () => {
+              const results =
+                await WeeklyNonSubmissionExcelService.performWeeklyNonSubmissionCheckWithExcel(
+                  DEFAULT_RECIPIENTS,
+                );
+              return {
+                sent: !!results?.emailSent,
+                meta: {
+                  recipients: DEFAULT_RECIPIENTS,
+                  internsCount: results?.notSubmitted ?? 0,
+                  messageId: results?.emailMessageId || null,
+                },
+              };
+            },
           );
         } catch (error) {
           console.error("❌ Non-submission scheduler error:", error);
         }
       },
-      { scheduled: true, timezone: "Asia/Colombo" },
+      { timezone: "Asia/Colombo", noOverlap: true },
     );
 
     // ── 9:45 AM — Meeting attendance report ──────────────────────────────
@@ -43,15 +96,38 @@ class WeeklyScheduler {
         );
         console.log(`🗓️  Scheduled time: ${new Date().toLocaleString()}`);
         console.log(`📧 Recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
+
+        if (!schedulerEmailsEnabled()) {
+          console.log(
+            "🚫 Skipped — report emails are disabled on this instance.",
+          );
+          return;
+        }
+
         try {
-          await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
-            DEFAULT_RECIPIENTS,
+          await ScheduledEmailGuard.runOnce(
+            JOB_MEETING_ATTENDANCE,
+            ScheduledEmailGuard.todayKey(),
+            async () => {
+              const results =
+                await WeeklyMeetingAttendanceService.performWeeklyMeetingAttendanceCheck(
+                  DEFAULT_RECIPIENTS,
+                );
+              return {
+                sent: !!results?.emailSent,
+                meta: {
+                  recipients: DEFAULT_RECIPIENTS,
+                  internsCount: results?.notAttended ?? 0,
+                  messageId: results?.emailMessageId || null,
+                },
+              };
+            },
           );
         } catch (error) {
           console.error("❌ Meeting attendance scheduler error:", error);
         }
       },
-      { scheduled: true, timezone: "Asia/Colombo" },
+      { timezone: "Asia/Colombo", noOverlap: true },
     );
 
     // ── 10:00 AM — Logbook restriction enforcement ────────────────────────
@@ -70,7 +146,7 @@ class WeeklyScheduler {
           console.error("❌ Logbook restriction scheduler error:", error);
         }
       },
-      { scheduled: true, timezone: "Asia/Colombo" },
+      { timezone: "Asia/Colombo", noOverlap: true },
     );
 
     console.log("✅ Weekly scheduler initialized successfully!");
@@ -84,9 +160,14 @@ class WeeklyScheduler {
       "📅 Logbook restriction enforcement: Every Sunday at 10:00 AM (Asia/Colombo)",
     );
     console.log(`📧 Email recipients: ${DEFAULT_RECIPIENTS.join(", ")}`);
+    console.log(
+      `🔒 Duplicate protection: report emails are claimed once per day in MongoDB (owner: ${ScheduledEmailGuard.owner()})`,
+    );
   }
 
   // ── Manual triggers ───────────────────────────────────────────────────────
+  // Manual triggers are deliberately NOT covered by the once-per-period guard:
+  // an admin asking for the report again is an explicit, intentional re-send.
 
   static async triggerManualNonSubmissionCheck(recipients = null) {
     console.log("\n🔧 Manual non-submission check triggered");
