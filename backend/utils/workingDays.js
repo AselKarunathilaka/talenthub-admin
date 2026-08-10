@@ -1,54 +1,24 @@
 const moment = require("moment-timezone");
 const axios = require("axios");
 
+const { getFallbackHolidayDates } = require("./holidayData");
+
 const TZ = "Asia/Colombo";
 
 // In-memory cache for API holiday responses: year -> { holidays: Set<string>, fetchedAt: number }
 const holidayCache = new Map();
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// Built-in Sri Lankan Public Holidays fallback dataset (2024–2027)
+// year -> Promise, so concurrent callers share one outgoing request
+const inFlightRefreshes = new Map();
+// year -> timestamp of the last failed fetch, to avoid retrying on every call
+const failedFetchAt = new Map();
+const FAILURE_BACKOFF_MS = 15 * 60 * 1000; // 15 minutes
+
+// Built-in Sri Lankan Public Holidays fallback, from the bundled dataset
+// (backend/data/holidays) — same source as the holiday API.
 function getBuiltInHolidays(years) {
-  const yearList = Array.isArray(years) ? years : [years];
-  const holidays = new Set();
-
-  yearList.forEach((y) => {
-    // Fixed public holidays
-    const fixed = [`${y}-01-01`, `${y}-02-04`, `${y}-05-01`, `${y}-12-25`];
-    fixed.forEach((d) => holidays.add(d));
-
-    // Poya & Mercantile / Public Holidays per year
-    const lunarApprox = {
-      2024: [
-        "2024-01-15", "2024-02-23", "2024-03-25", "2024-04-12", "2024-04-13",
-        "2024-04-14", "2024-05-23", "2024-05-24", "2024-06-17", "2024-06-21",
-        "2024-07-20", "2024-08-19", "2024-09-17", "2024-10-02", "2024-10-17",
-        "2024-10-31", "2024-11-15", "2024-12-15",
-      ],
-      2025: [
-        "2025-01-14", "2025-02-26", "2025-03-14", "2025-03-31", "2025-04-13",
-        "2025-04-14", "2025-05-12", "2025-05-13", "2025-06-06", "2025-06-07",
-        "2025-07-05", "2025-08-03", "2025-09-01", "2025-09-05", "2025-10-01",
-        "2025-10-20", "2025-10-30", "2025-11-29",
-      ],
-      2026: [
-        "2026-01-14", "2026-02-15", "2026-03-03", "2026-03-20", "2026-04-02",
-        "2026-04-13", "2026-04-14", "2026-05-01", "2026-05-02", "2026-05-28",
-        "2026-05-30", "2026-06-29", "2026-07-28", "2026-08-27", "2026-09-10",
-        "2026-09-25", "2026-11-09", "2026-11-24", "2026-12-23",
-      ],
-      2027: [
-        "2027-01-15", "2027-02-04", "2027-02-20", "2027-03-22", "2027-04-13",
-        "2027-04-14", "2027-05-01", "2027-05-20", "2027-05-21", "2027-06-18",
-        "2027-07-17", "2027-08-16", "2027-09-15", "2027-10-14", "2027-11-13",
-        "2027-12-13", "2027-12-25",
-      ],
-    };
-
-    if (lunarApprox[y]) lunarApprox[y].forEach((d) => holidays.add(d));
-  });
-
-  return holidays;
+  return getFallbackHolidayDates(years);
 }
 
 /**
@@ -67,7 +37,11 @@ function getSriLankanHolidays(years) {
       // Return built-in fallback while triggering background API refresh
       const builtIn = getBuiltInHolidays(y);
       builtIn.forEach((d) => combinedHolidays.add(d));
-      refreshHolidaysFromApi(y).catch(() => {});
+
+      const lastFailure = failedFetchAt.get(y);
+      if (!lastFailure || Date.now() - lastFailure > FAILURE_BACKOFF_MS) {
+        refreshHolidaysFromApi(y).catch(() => {});
+      }
     }
   }
 
@@ -81,25 +55,39 @@ async function refreshHolidaysFromApi(year) {
   if (!process.env.HOLIDAY_API_URL || !process.env.HOLIDAY_API_KEY) {
     return;
   }
-  try {
-    const response = await axios.get(
-      `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
-      {
-        params: { year, format: "full" },
-        headers: { "X-API-Key": process.env.HOLIDAY_API_KEY },
-        timeout: 5000,
-      },
-    );
-    if (response.data && response.data.holidays) {
-      const dates = new Set();
-      response.data.holidays.forEach((item) => {
-        if (item.date) dates.add(item.date);
-      });
-      holidayCache.set(year, { holidays: dates, fetchedAt: Date.now() });
+  // One refresh per year at a time — getSriLankanHolidays is called many times
+  // per request, and without this every call fires its own external request.
+  if (inFlightRefreshes.has(year)) return inFlightRefreshes.get(year);
+
+  const refresh = (async () => {
+    try {
+      const response = await axios.get(
+        `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
+        {
+          params: { year, format: "full" },
+          headers: { "X-API-Key": process.env.HOLIDAY_API_KEY },
+          timeout: 5000,
+        },
+      );
+      if (response.data && Array.isArray(response.data.holidays)) {
+        const dates = new Set();
+        response.data.holidays.forEach((item) => {
+          if (item.date) dates.add(item.date);
+        });
+        if (dates.size > 0) {
+          holidayCache.set(year, { holidays: dates, fetchedAt: Date.now() });
+        }
+      }
+    } catch (err) {
+      // Fail quietly and use the bundled fallback; back off before retrying.
+      failedFetchAt.set(year, Date.now());
+    } finally {
+      inFlightRefreshes.delete(year);
     }
-  } catch (err) {
-    // Fail quietly and use fallback
-  }
+  })();
+
+  inFlightRefreshes.set(year, refresh);
+  return refresh;
 }
 
 /**

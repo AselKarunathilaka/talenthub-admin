@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -181,19 +181,30 @@ const AdminInternDetails = () => {
   // ── Holidays ──────────────────────────────────────────────────────────────
   const [holidays, setHolidays] = useState([]);
 
+  // Years already requested, so month navigation does not refire the request
+  const fetchedHolidayYears = useRef(new Set());
+
   const fetchHolidays = useCallback(async (year) => {
+    if (!year || fetchedHolidayYears.current.has(year)) return;
+    fetchedHolidayYears.current.add(year);
     try {
       const response = await fetch(`${API_BASE_URL}/holidays/${year}`);
-      const data = await response.json();
-      if (data.holidays) {
-        setHolidays((prev) => {
-          // Merge new holidays, deduplicate by date string
-          const existing = new Map(prev.map((h) => [h.date, h]));
-          data.holidays.forEach((h) => existing.set(h.date, h));
-          return Array.from(existing.values());
-        });
+      if (!response.ok) {
+        throw new Error(`Holiday request failed: ${response.status}`);
       }
+      const data = await response.json();
+      if (!Array.isArray(data.holidays)) {
+        throw new Error(data.error || "Holiday response had no holidays");
+      }
+      setHolidays((prev) => {
+        // Merge new holidays, deduplicate by date string
+        const existing = new Map(prev.map((h) => [h.date, h]));
+        data.holidays.forEach((h) => existing.set(h.date, h));
+        return Array.from(existing.values());
+      });
     } catch (error) {
+      // Allow a retry on the next navigation rather than caching the failure
+      fetchedHolidayYears.current.delete(year);
       console.error("Holiday fetch failed:", error);
     }
   }, []);

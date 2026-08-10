@@ -181,12 +181,14 @@ const Dashboard = () => {
         });
         // Set daily attendance stats based on the daily attendance data
         setDailyAttendanceStats({
-          present: dailyAttendanceData.filter(
-            (entry) => entry.status === "Present",
-          ).length,
-          absent: dailyAttendanceData.filter(
-            (entry) => entry.status === "Absent",
-          ).length,
+          present: dailyAttendanceData.filter((entry) => {
+            const s = (entry.status || "").toLowerCase();
+            return s === "present" || s === "late";
+          }).length,
+          absent: dailyAttendanceData.filter((entry) => {
+            const s = (entry.status || "").toLowerCase();
+            return s === "absent";
+          }).length,
         });
       } else {
         throw new Error("No data returned from API");
@@ -552,10 +554,13 @@ const Dashboard = () => {
       cursor.setDate(cursor.getDate() + 1);
     }
     workingDays = Math.max(1, workingDays);
-    // Count distinct days marked Present
+    // Count distinct days marked Present or Late
     const attendedDays = new Set(
       dailyRecords
-        .filter((r) => r.status === "Present" && r.date)
+        .filter((r) => {
+          const s = (r.status || "").toLowerCase();
+          return (s === "present" || s === "late") && r.date;
+        })
         .map((r) => {
           const raw = String(r.date || "");
           return raw.includes("T") ? raw.slice(0, 10) : raw;

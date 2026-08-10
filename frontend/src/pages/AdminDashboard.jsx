@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaUsers,
@@ -7,127 +7,52 @@ import {
   FaExclamationTriangle,
   FaCheckCircle,
   FaTimesCircle,
-  FaCalendarAlt,
-  FaFileExport,
-  FaFilter,
-  FaSort,
-  FaUser,
   FaTasks,
   FaSpinner,
-  FaShieldAlt,
-  FaArrowLeft,
-  FaEye,
-  FaFileAlt,
-  FaChair,
-  FaSignOutAlt,
   FaRunning,
-  FaClock,
-  FaAngleDoubleLeft,
+  FaFileAlt,
   FaRegFileExcel,
-  FaSlidersH,
-  FaCalendarCheck,
-  FaMapMarkedAlt,
-  FaBullhorn,
-  FaChevronDown,
-  FaQrcode,
-  FaKey,
-  FaChevronRight,
-  FaTimes,
-  FaGraduationCap,
-  FaCamera,
-  FaLock,
-  FaChartLine,
+  FaClock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
-import logo from "../assets/sltlogo.jpg";
 import AdminNavigation from "../components/AdminNavigation";
 import { Home } from "lucide-react";
-/* ── Chart.js imports removed as per user request ── */
-/* ═══════════════════════════════════════════════════════════════
-   Brand Colors
-   ═══════════════════════════════════════════════════════════════ */
-const BRAND = {
-  primary: "#0056a2",
-  accent: "#00b4eb",
-  success: "#50b748",
-  primaryLight: "#e8f0fa",
-  accentLight: "#e0f5fc",
-  successLight: "#eaf7e9",
-  dangerLight: "#fef2f2",
-  danger: "#ef4444",
+
+// Digital Clock Component
+const formatDigit = (num) => num.toString().padStart(2, '0');
+
+const DigitalClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const h = formatDigit(time.getHours());
+  const m = formatDigit(time.getMinutes());
+  const s = formatDigit(time.getSeconds());
+
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex items-center gap-1 sm:gap-1.5 text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
+        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{h}</span>
+        <span className="text-slate-300 -mt-1">:</span>
+        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{m}</span>
+        <span className="text-slate-300 -mt-1">:</span>
+        <span className="bg-[#00b4eb]/15 text-[#00b4eb] rounded-xl shadow-sm border border-[#00b4eb]/20 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{s}</span>
+      </div>
+      <div className="hidden sm:flex flex-col justify-center border-l-2 border-slate-100 pl-4">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{time.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+        <span className="text-sm font-extrabold text-[#0056a2] uppercase">{time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+      </div>
+    </div>
+  );
 };
 
-/* ═══════════════════════════════════════════════════════════════
-   Date formatting utilities (unchanged)
-   ═══════════════════════════════════════════════════════════════ */
-const formatDateDisplay = (dateString) => {
-  if (!dateString) return "N/A";
-  try {
-    if (dateString.includes("T") || dateString.includes("Z")) {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "Invalid Date";
-      return date.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
-    }
-    if (dateString.includes("-") && dateString.split("-").length === 3) {
-      const parts = dateString.split("-");
-      if (parts[2].length <= 2) {
-        const [year, month, day] = parts.map(Number);
-        const date = new Date(year, month - 1, day);
-        if (isNaN(date.getTime())) return "Invalid Date";
-        return date.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
-      }
-    }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Invalid Date";
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  } catch (error) {
-    console.error("Error formatting date:", dateString, error);
-    return "Invalid Date";
-  }
-};
-
-const parseDateForComparison = (dateString) => {
-  if (!dateString) return new Date(0);
-  try {
-    if (dateString.includes("T") || dateString.includes("Z")) {
-      return new Date(dateString);
-    }
-    if (dateString.includes("-") && dateString.split("-").length === 3) {
-      const parts = dateString.split("-");
-      if (parts[2].length <= 2) {
-        const [year, month, day] = parts.map(Number);
-        return new Date(year, month - 1, day);
-      }
-    }
-    return new Date(dateString);
-  } catch (error) {
-    console.error("Error parsing date for comparison:", dateString, error);
-    return new Date(0);
-  }
-};
-
-/* ═══════════════════════════════════════════════════════════════
-   Generate submission trend data (Removed)
-   ═══════════════════════════════════════════════════════════════ */
-/* ═══════════════════════════════════════════════════════════════
-   Component
-   ═══════════════════════════════════════════════════════════════ */
 const AdminDashboard = () => {
-  /* ── State (unchanged) ── */
   const [showDateSelector, setShowDateSelector] = useState(false);
   const handleShowDateSelector = () => setShowDateSelector(true);
   const [customStartDate, setCustomStartDate] = useState("");
@@ -139,14 +64,9 @@ const AdminDashboard = () => {
   const [searchLoading, setSearchLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [sendingNotifications, setSendingNotifications] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
-  const [showExports, setShowExports] = useState(false);
-  const [activeExport, setActiveExport] = useState(null);
-  const [showLeaveRequestPicker, setShowLeaveRequestPicker] = useState(false);
+  const searchInputRef = useRef(null);
 
-  /* ── Data fetching (unchanged) ── */
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
@@ -192,21 +112,19 @@ const AdminDashboard = () => {
         setSearchLoading(false);
       }
     },
-    [],
+    []
   );
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       searchInterns(searchTerm);
-    }, 500);
+    }, 400);
     return () => clearTimeout(timeoutId);
   }, [searchTerm, searchInterns]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-
-  /* ── Chart data removed ── */
 
   const handleExportSubmittedCSV = async () => {
     try {
@@ -312,24 +230,18 @@ const AdminDashboard = () => {
 
   const handleExportPreviousDayNonSubmissions = async () => {
     try {
-      // Get "today" as a Sri Lanka calendar date (Asia/Colombo, UTC+5:30),
-      // regardless of the browser's local timezone.
       const sriLankaFormatter = new Intl.DateTimeFormat("en-CA", {
         timeZone: "Asia/Colombo",
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
       });
-      // "en-CA" locale formats as YYYY-MM-DD directly
-      const todayInSriLanka = sriLankaFormatter.format(new Date()); // e.g. "2026-07-31"
+      const todayInSriLanka = sriLankaFormatter.format(new Date()); 
 
-      // Step back one calendar day using date-only arithmetic (avoids DST/timezone
-      // drift you'd get by subtracting milliseconds from a Date object)
       const [y, m, d] = todayInSriLanka.split("-").map(Number);
       const yesterday = new Date(Date.UTC(y, m - 1, d - 1));
 
-      // Skip weekends: if yesterday lands on Sat/Sun, roll back to Friday
-      const day = yesterday.getUTCDay(); // 0 = Sunday, 6 = Saturday
+      const day = yesterday.getUTCDay(); 
       if (day === 0) yesterday.setUTCDate(yesterday.getUTCDate() - 2);
       if (day === 6) yesterday.setUTCDate(yesterday.getUTCDate() - 1);
 
@@ -413,50 +325,39 @@ const AdminDashboard = () => {
     }
   };
 
-  /* ── Filtering & sorting removed, using internReport directly ── */
   const filteredInterns = internReport || [];
 
   const getStatusBadge = (intern) => {
     if (intern.isNonSubmitting || intern.isOverdue) {
       return (
-        <span className="admin-dash-badge admin-dash-badge--danger">
-          <FaExclamationTriangle className="mr-1" />
-          Non-Submitting
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700">
+          <FaExclamationTriangle className="mr-1.5" /> Non-Submitting
         </span>
       );
     } else if (intern.totalRecords === 0) {
       return (
-        <span className="admin-dash-badge admin-dash-badge--neutral">
-          <FaTimesCircle className="mr-1" />
-          Not Submitted
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+          <FaTimesCircle className="mr-1.5" /> Not Submitted
         </span>
       );
     } else {
       return (
-        <span className="admin-dash-badge admin-dash-badge--success">
-          <FaCheckCircle className="mr-1" />
-          Submitted
+        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-700">
+          <FaCheckCircle className="mr-1.5" /> Submitted
         </span>
       );
     }
   };
 
-  /* ── Filter pills removed ── */
-
-  /* ══════════════════════════════════════════════════════════
-     Error state
-     ══════════════════════════════════════════════════════════ */
   if (error) {
     return (
-      <div className="admin-dash-loader">
-        <div className="admin-dash-error-card">
-          <FaExclamationTriangle
-            style={{ fontSize: 40, color: BRAND.danger, marginBottom: 16 }}
-          />
-          <p style={{ color: BRAND.danger, marginBottom: 20 }}>{error}</p>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="text-center p-8 bg-white rounded-3xl shadow-xl border border-slate-100 max-w-sm">
+          <FaExclamationTriangle className="text-5xl text-red-500 mx-auto mb-4" />
+          <p className="text-red-600 font-semibold mb-6">{error}</p>
           <button
             onClick={fetchData}
-            className="admin-dash-btn admin-dash-btn--primary"
+            className="px-6 py-3 bg-[#0056a2] text-white rounded-xl font-bold hover:bg-[#004482] transition-colors"
           >
             Retry
           </button>
@@ -465,430 +366,346 @@ const AdminDashboard = () => {
     );
   }
 
-  /* ══════════════════════════════════════════════════════════
-     Main render — Two-Column Grid Layout
-     ══════════════════════════════════════════════════════════ */
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-50/60 via-slate-50 to-indigo-50/60 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            {/* ── Page title ── */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <Home className="text-[#0056a2] h-8 w-8" />
-                  </div>
-                  Dashboard
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  Overview of intern attendance, logbook submissions, and
-                  statistics
-                </motion.p>
-              </div>
-            </div>
-
-            {/* ══════════════ KPI STAT CARDS ══════════════ */}
+      {/* Background using pure Tailwind */}
+      <div className="min-h-screen relative overflow-hidden bg-white font-sans text-slate-800 pb-16 flex flex-col">
+        
+        {/* Blur Overlay when Searching */}
+        <AnimatePresence>
+          {searchTerm && (
             <motion.div
-              className="admin-dash-stats"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-0 z-20 bg-white/60 backdrop-blur-md cursor-pointer"
+              onClick={() => { setSearchTerm(""); setHasSearched(false); setInternReport([]); }}
+            />
+          )}
+        </AnimatePresence>
+
+        <main className="relative flex-1 p-4 sm:p-8 mx-auto max-w-[1400px] w-full flex flex-col gap-8">
+          
+          {/* Top Header with Clock */}
+          <div className="relative z-30 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-2">
+            <div>
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-4xl sm:text-5xl font-extrabold text-slate-900 flex items-center gap-4 tracking-tight"
+              >
+                <div className="p-3.5 bg-white shadow-sm shadow-[#0056a2]/10 rounded-2xl border border-slate-100">
+                  <Home className="text-[#0056a2] h-8 w-8" />
+                </div>
+                Dashboard
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                className="text-slate-500 mt-3 text-base sm:text-lg font-medium max-w-xl"
+              >
+                Overview of intern attendance, logbook submissions, and statistics
+              </motion.p>
+            </div>
+            
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="bg-blue-50/50 backdrop-blur-md px-5 py-4 rounded-3xl border border-blue-100/50 shadow-sm self-start md:self-auto"
+            >
+              <DigitalClock />
+            </motion.div>
+          </div>
+
+          {/* Search */}
+          <section className="w-full z-50 mt-4 relative">
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
-              {[
-                {
-                  label: "Total Interns",
-                  value: loading
-                    ? "..."
-                    : dashboardStats?.totalInterns || 0,
-                  icon: FaUsers,
-                  accent: BRAND.primary,
-                  bg: BRAND.primaryLight,
-                  borderColor: "!border-blue-400/30",
-                  hoverBorderColor: "hover:!border-blue-400/60",
-                  shadowColor: "shadow-[0_0_15px_rgba(0,86,162,0.15)]",
-                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,86,162,0.35)]"
-                },
-                {
-                  label: "Total Records",
-                  value: loading
-                    ? "..."
-                    : dashboardStats?.totalRecords || 0,
-                  icon: FaTasks,
-                  accent: BRAND.accent,
-                  bg: BRAND.accentLight,
-                  borderColor: "!border-cyan-400/30",
-                  hoverBorderColor: "hover:!border-cyan-400/60",
-                  shadowColor: "shadow-[0_0_15px_rgba(0,180,235,0.15)]",
-                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]"
-                },
-                {
-                  label: "Submitted",
-                  value: loading
-                    ? "..."
-                    : dashboardStats?.submittedInterns || 0,
-                  icon: FaCheckCircle,
-                  accent: BRAND.success,
-                  bg: BRAND.successLight,
-                  borderColor: "!border-emerald-400/30",
-                  hoverBorderColor: "hover:!border-emerald-400/60",
-                  shadowColor: "shadow-[0_0_15px_rgba(80,183,72,0.15)]",
-                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(80,183,72,0.35)]"
-                },
-                {
-                  label: "Non-Submissions",
-                  value: loading
-                    ? "..."
-                    : (dashboardStats?.nonSubmittingInterns ?? dashboardStats?.overdueInterns ?? 0),
-                  icon: FaExclamationTriangle,
-                  accent: BRAND.danger,
-                  bg: BRAND.dangerLight,
-                  borderColor: "!border-red-400/30",
-                  hoverBorderColor: "hover:!border-red-400/60",
-                  shadowColor: "shadow-[0_0_15px_rgba(239,68,68,0.15)]",
-                  hoverShadowColor: "hover:shadow-[0_0_25px_rgba(239,68,68,0.35)]"
-                },
-              ].map((stat, idx) => (
-                <motion.div
-                  key={stat.label}
-                  className={`admin-dash-stat-card !bg-white/80 md:!bg-white/20 md:backdrop-blur-3xl !border ${stat.borderColor} ${stat.hoverBorderColor} ${stat.shadowColor} ${stat.hoverShadowColor} transition-all duration-300`}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.25 + idx * 0.08, duration: 0.35 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <div
-                    className="admin-dash-stat-card__icon"
-                    style={{ background: stat.bg }}
-                  >
-                    <stat.icon
-                      style={{ color: stat.accent, fontSize: 18 }}
-                    />
-                  </div>
-                  <div className="admin-dash-stat-card__text">
-                    <span
-                      className="admin-dash-stat-card__value"
-                      style={{ color: stat.accent }}
-                    >
-                      {stat.value}
-                    </span>
-                    <span className="admin-dash-stat-card__label">
-                      {stat.label}
-                    </span>
-                  </div>
-                </motion.div>
-              ))}
-            </motion.div>
-
-            {/* ══════════════ SPOTLIGHT SEARCH ══════════════ */}
-            <div className="mt-12 mb-8 relative w-full z-20">
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className={`relative bg-white/80 md:bg-white/20 md:backdrop-blur-3xl rounded-3xl border transition-all duration-300 ${searchTerm ? 'border-[#00b4eb]/50 ring-4 ring-[#00b4eb]/10 shadow-[0_0_25px_rgba(0,180,235,0.35)]' : 'border-[#00b4eb]/20 hover:border-[#00b4eb]/60 shadow-[0_0_15px_rgba(0,180,235,0.15)] hover:shadow-[0_0_25px_rgba(0,180,235,0.35)]'} overflow-hidden flex items-center px-4 sm:px-6 py-4 sm:py-5`}
+              <div
+                className={`relative bg-blue-50/80 backdrop-blur-2xl rounded-3xl border-2 transition-all duration-200 ease-out flex items-center px-6 py-5 shadow-lg hover:scale-[1.015] ${
+                  searchTerm 
+                    ? 'border-[#00b4eb] shadow-[0_8px_30px_rgb(0,180,235,0.2)] bg-white scale-[1.015]' 
+                    : 'border-blue-100 hover:border-[#00b4eb]/50 hover:shadow-[0_8px_30px_rgb(0,180,235,0.12)]'
+                }`}
               >
-                <FaSearch className="text-gray-400 text-xl sm:text-3xl mr-3 sm:mr-6 flex-shrink-0" />
+                <FaSearch className={`text-2xl mr-4 flex-shrink-0 transition-colors ${searchTerm ? 'text-[#00b4eb]' : 'text-slate-400'}`} />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   placeholder="Search interns by name, ID, or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full text-sm sm:text-2xl font-semibold text-gray-800 placeholder-gray-400 sm:placeholder-gray-300 outline-none bg-transparent"
+                  className="w-full text-xl sm:text-2xl font-semibold text-slate-800 placeholder-slate-400 outline-none bg-transparent"
+                  aria-label="Search interns"
+                  role="combobox"
+                  aria-expanded={searchTerm.length >= 2}
                   autoFocus
                 />
                 {searchLoading && (
-                  <FaSpinner className="text-[#00b4eb] text-xl sm:text-2xl animate-spin ml-2 sm:ml-4 flex-shrink-0" />
+                  <FaSpinner className="text-[#00b4eb] text-2xl animate-spin ml-4 flex-shrink-0" />
                 )}
                 {searchTerm && !searchLoading && (
                   <button
-                    onClick={() => { setSearchTerm(""); setHasSearched(false); setInternReport([]); }}
-                    className="ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+                    onClick={() => { setSearchTerm(""); setHasSearched(false); setInternReport([]); searchInputRef.current?.focus(); }}
+                    className="ml-4 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                    aria-label="Clear search"
                   >
-                    <FaTimesCircle className="text-xl sm:text-2xl" />
+                    <FaTimesCircle className="text-2xl" />
                   </button>
                 )}
-              </motion.div>
-
-              {/* Search Results Dropdown */}
-              <AnimatePresence>
-                {searchTerm.length >= 2 && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    className="absolute top-[calc(100%+12px)] left-0 right-0 bg-white/90 md:bg-white/30 md:backdrop-blur-3xl rounded-3xl shadow-[0_0_25px_rgba(0,180,235,0.25)] border border-[#00b4eb]/40 max-h-[60vh] overflow-y-auto z-50 p-2 sm:p-3"
-                  >
-                    {!hasSearched ? (
-                      <div className="p-6 sm:p-10 text-center text-gray-400">
-                        <FaSpinner className="text-3xl animate-spin mx-auto mb-4 text-[#00b4eb]" />
-                        <p className="font-medium text-base sm:text-lg">Searching...</p>
-                      </div>
-                    ) : filteredInterns.length === 0 ? (
-                      <div className="p-6 sm:p-10 text-center text-gray-400">
-                        <FaUser className="text-4xl mx-auto mb-4 opacity-50" />
-                        <p className="font-medium text-base sm:text-lg">No interns found</p>
-                        <p className="text-xs sm:text-sm mt-2">Try adjusting your search query.</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-2">
-                        <div className="px-4 py-2 text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-wider border-b border-gray-50 mb-2">
-                          {filteredInterns.length} Results
-                        </div>
-                        {filteredInterns.map((intern, idx) => (
-                          <div
-                            key={intern._id}
-                            onClick={() => navigate(`/admin/intern/${intern._id}`)}
-                            className="flex items-center gap-3 sm:gap-5 p-3 sm:p-4 rounded-2xl hover:bg-white/60 cursor-pointer transition-all duration-300 border border-transparent hover:border-[#00b4eb]/30 hover:shadow-[0_0_15px_rgba(0,180,235,0.1)] group"
-                          >
-                            <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-lg sm:text-xl flex-shrink-0 group-hover:scale-105 transition-transform overflow-hidden">
-                              <img
-                                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
-                                alt={intern.traineeName}
-                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                  if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
-                                }}
-                              />
-                              <div style={{ display: 'none', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-                                {(intern.traineeName || "?")[0].toUpperCase()}
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-base sm:text-lg font-bold text-gray-900 truncate">
-                                {intern.traineeName || "N/A"}
-                              </h4>
-                              <p className="text-xs sm:text-sm font-medium text-gray-500 truncate mt-0.5">
-                                {intern.traineeId || "N/A"} <span className="hidden sm:inline">· {intern.email || "No Email"}</span>
-                              </p>
-                            </div>
-                            <div className="flex flex-col items-end gap-1 sm:gap-2 flex-shrink-0">
-                              {getStatusBadge(intern)}
-                              <span className="text-[10px] sm:text-xs font-semibold text-gray-400 mt-1">
-                                {intern.totalRecords || 0} Records
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            {/* ══════════════ EXPORTS SECTION ══════════════ */}
-            <div className="mt-16 w-full">
-              <div className="flex items-center gap-3 mb-6 px-2">
-                <div className="p-2 bg-purple-100 text-purple-700 rounded-xl flex-shrink-0">
-                  <FaFileExport className="text-lg" />
-                </div>
-                <h3 className="text-2xl font-extrabold text-gray-900">Reports & Exports</h3>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3 sm:gap-6">
-
-                {/* Submissions List */}
-                <motion.button
-                  onClick={handleExportSubmittedCSV}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(80,183,72,0.15)] border border-[#50b748]/20 hover:shadow-[0_0_25px_rgba(80,183,72,0.35)] hover:border-[#50b748]/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
-                >
-                  <div className="p-3 sm:p-4 bg-[#50b748]/10 text-[#50b748] rounded-xl sm:rounded-2xl group-hover:bg-[#50b748] group-hover:text-white transition-colors">
-                    <FaRegFileExcel className="text-2xl sm:text-3xl" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Submissions</h4>
-                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Export a complete CSV of all currently submitted interns.</p>
-                  </div>
-                </motion.button>
-
-                {/* On-Leave List */}
-                <motion.button
-                  onClick={handleDownloadOnLeaveExcel}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(147,51,234,0.15)] border border-purple-400/20 hover:shadow-[0_0_25px_rgba(147,51,234,0.35)] hover:border-purple-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
-                >
-                  <div className="p-3 sm:p-4 bg-purple-100 text-purple-600 rounded-xl sm:rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                    <FaRegFileExcel className="text-2xl sm:text-3xl" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">On-Leave</h4>
-                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Download Excel report of interns currently on leave.</p>
-                  </div>
-                </motion.button>
-
-                {/* Current Week Non-Submissions */}
-                <motion.button
-                  onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(239,68,68,0.15)] border border-red-400/20 hover:shadow-[0_0_25px_rgba(239,68,68,0.35)] hover:border-red-400/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
-                >
-                  <div className="p-3 sm:p-4 bg-red-50 text-red-500 rounded-xl sm:rounded-2xl group-hover:bg-red-500 group-hover:text-white transition-colors">
-                    <FaExclamationTriangle className="text-2xl sm:text-3xl" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Non-Submissions</h4>
-                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Last 5 working days non-submissions report.</p>
-                  </div>
-                </motion.button>
-
-                {/* Previous Day Non-Submissions */}
-                <motion.button
-                  onClick={handleExportPreviousDayNonSubmissions}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-3 sm:p-6 rounded-2xl sm:rounded-3xl shadow-[0_0_15px_rgba(0,86,162,0.15)] border border-[#0056a2]/20 hover:shadow-[0_0_25px_rgba(0,86,162,0.35)] hover:border-[#0056a2]/60 flex flex-col items-center sm:items-start text-center sm:text-left gap-2 sm:gap-4 transition-all duration-300 group w-full"
-                >
-                  <div className="p-3 sm:p-4 bg-[#0056a2]/10 text-[#0056a2] rounded-xl sm:rounded-2xl group-hover:bg-[#0056a2] group-hover:text-white transition-colors">
-                    <FaClock className="text-2xl sm:text-3xl" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight">Previous Day</h4>
-                    <p className="hidden sm:block text-sm font-medium text-gray-500 mt-1">Non-submissions report for the previous working day.</p>
-                  </div>
-                </motion.button>
-
-              </div>
-
-              {/* Custom Date Non-Submissions */}
-              <motion.div
-                whileHover={{ scale: 1.02 }}
-                className="mt-8 bg-white/80 md:bg-white/20 md:backdrop-blur-3xl p-6 rounded-3xl shadow-[0_0_15px_rgba(100,116,139,0.15)] border border-slate-400/20 hover:shadow-[0_0_25px_rgba(100,116,139,0.35)] hover:border-slate-400/60 flex flex-col md:flex-row items-center gap-6 transition-all duration-300"
-              >
-                <div className="flex-1">
-                  <h4 className="text-lg font-bold text-gray-900">Custom Date Range Non-Submissions</h4>
-                  <p className="text-sm font-medium text-gray-500 mt-1">Export non-submission data between specific dates.</p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 w-full sm:w-auto"
-                    />
-                    <span className="text-gray-400 font-bold">to</span>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 w-full sm:w-auto"
-                    />
-                  </div>
-                  <motion.button
-                    onClick={handleExportWeeklyNonSubmissionsCSV}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="px-6 py-3 bg-gray-900 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors w-full sm:w-auto flex-shrink-0 shadow-md"
-                  >
-                    <FaDownload />
-                    <span>Download</span>
-                  </motion.button>
-                </div>
-              </motion.div>
-            </div>
-          </main>
-        </div>
-      </div>
-
-      <AnimatePresence>
-        {showLeaveRequestPicker && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowLeaveRequestPicker(false)}
-          >
-            <motion.div
-              className="w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-gray-100"
-              initial={{ y: 24, scale: 0.98, opacity: 0 }}
-              animate={{ y: 0, scale: 1, opacity: 1 }}
-              exit={{ y: 24, scale: 0.98, opacity: 0 }}
-              transition={{ duration: 0.18 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between border-b border-gray-100 px-6 py-5">
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900">
-                    Leave Requests Management
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Select which request type you want to manage
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowLeaveRequestPicker(false)}
-                  className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-                  aria-label="Close leave request selection"
-                >
-                  <FaTimesCircle className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="grid gap-3 p-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLeaveRequestPicker(false);
-                    navigate("/admin/leave-requests");
-                  }}
-                  className="flex items-center gap-4 rounded-xl border border-purple-100 bg-purple-50 px-5 py-4 text-left hover:border-purple-200 hover:bg-purple-100 transition-colors"
-                >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100">
-                    <FaRunning className="h-5 w-5 text-purple-600" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold text-gray-900">
-                      Short Leave Request Management
-                    </span>
-                    <span className="block text-xs text-gray-500 mt-0.5">
-                      Review early-exit permission requests
-                    </span>
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowLeaveRequestPicker(false);
-                    navigate("/admin/study-leave-requests");
-                  }}
-                  className="flex items-center gap-4 rounded-xl border border-sky-100 bg-sky-50 px-5 py-4 text-left hover:border-sky-200 hover:bg-sky-100 transition-colors"
-                >
-                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-sky-100">
-                    <FaFileAlt className="h-5 w-5 text-sky-600" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold text-gray-900">
-                      Extended Leave Requests Management
-                    </span>
-                    <span className="block text-xs text-gray-500 mt-0.5">
-                      Review extended leave requests
-                    </span>
-                  </span>
-                </button>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+            {/* Results Dropdown */}
+            <AnimatePresence>
+              {searchTerm.length >= 2 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                  transition={{ duration: 0.2 }}
+                  className="absolute top-[calc(100%+16px)] left-0 right-0 bg-blue-50/95 backdrop-blur-3xl rounded-3xl shadow-2xl border border-blue-100/50 min-h-[220px] max-h-[60vh] overflow-y-auto z-50 p-3 flex flex-col"
+                  role="listbox"
+                >
+                  {!hasSearched ? (
+                    <div className="p-10 text-center text-slate-400">
+                      <FaSpinner className="text-4xl animate-spin mx-auto mb-4 text-[#00b4eb]" />
+                      <p className="font-semibold text-lg">Searching...</p>
+                    </div>
+                  ) : filteredInterns.length === 0 ? (
+                    <div className="p-12 text-center text-slate-400">
+                      <FaUsers className="text-5xl mx-auto mb-4 opacity-40 text-slate-300" />
+                      <p className="font-semibold text-xl text-slate-600">No interns found</p>
+                      <p className="text-sm mt-2">Try searching by trainee ID or a different name.</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <div className="px-5 py-3 text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        {filteredInterns.length} Results Found
+                      </div>
+                      {filteredInterns.map((intern, idx) => (
+                        <div
+                          key={intern._id}
+                          onClick={() => navigate(`/admin/intern/${intern._id}`)}
+                          className="flex items-center gap-5 p-4 rounded-2xl hover:bg-slate-50 cursor-pointer transition-all duration-200 border border-transparent hover:border-slate-200 hover:shadow-sm group focus:outline-none focus:bg-slate-50 focus:border-[#00b4eb]"
+                          role="option"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                             if (e.key === 'Enter') navigate(`/admin/intern/${intern._id}`);
+                          }}
+                        >
+                          <div className="h-14 w-14 rounded-2xl bg-[#00b4eb]/10 text-[#0056a2] flex items-center justify-center font-bold text-xl flex-shrink-0 overflow-hidden shadow-inner relative">
+                            <img
+                              src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                              alt={intern.traineeName}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                            <div className="w-full h-full flex items-center justify-center hidden bg-gradient-to-br from-[#00b4eb]/20 to-[#0056a2]/20">
+                              {(intern.traineeName || "?")[0].toUpperCase()}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-lg font-bold text-slate-900 truncate group-hover:text-[#0056a2] transition-colors">
+                              {intern.traineeName || "N/A"}
+                            </h4>
+                            <p className="text-sm font-medium text-slate-500 truncate mt-0.5 flex items-center gap-2">
+                              <span className="font-semibold text-slate-600">{intern.traineeId || "N/A"}</span>
+                              <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                              {intern.email || "No Email"}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                            {getStatusBadge(intern)}
+                            <span className="text-xs font-bold text-slate-400">
+                              {intern.totalRecords || 0} Records
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </section>
+
+          {/* Bento-Box KPIs */}
+          <motion.section 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+            className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 z-10"
+          >
+            {[
+              {
+                label: "Total Interns",
+                value: loading ? "..." : dashboardStats?.totalInterns || 0,
+                icon: FaUsers,
+                color: "#0056a2", // Primary
+                bg: "bg-[#0056a2]/5",
+                border: "border-[#0056a2]/10",
+                hoverBorder: "hover:border-[#0056a2]/30",
+              },
+              {
+                label: "Total Records",
+                value: loading ? "..." : dashboardStats?.totalRecords || 0,
+                icon: FaTasks,
+                color: "#00b4eb", // Accent
+                bg: "bg-[#00b4eb]/5",
+                border: "border-[#00b4eb]/10",
+                hoverBorder: "hover:border-[#00b4eb]/30",
+              },
+              {
+                label: "Submitted",
+                value: loading ? "..." : dashboardStats?.submittedInterns || 0,
+                icon: FaCheckCircle,
+                color: "#50b748", // Success
+                bg: "bg-[#50b748]/5",
+                border: "border-[#50b748]/10",
+                hoverBorder: "hover:border-[#50b748]/30",
+              },
+              {
+                label: "Non-Submissions",
+                value: loading ? "..." : (dashboardStats?.nonSubmittingInterns ?? dashboardStats?.overdueInterns ?? 0),
+                icon: FaExclamationTriangle,
+                color: "#ef4444", // Danger
+                bg: "bg-[#ef4444]/5",
+                border: "border-[#ef4444]/10",
+                hoverBorder: "hover:border-[#ef4444]/30",
+              },
+            ].map((stat, idx) => (
+              <div
+                key={stat.label}
+                className={`group bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 transition-all duration-300 flex flex-col justify-between hover:bg-blue-50 ${stat.border} ${stat.hoverBorder} shadow-sm hover:shadow-md cursor-default`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className={`p-3 rounded-2xl ${stat.bg} transition-transform group-hover:scale-110 duration-300`}>
+                    <stat.icon size={22} style={{ color: stat.color }} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-4xl font-extrabold text-slate-900 tracking-tight" style={{ color: stat.color }}>
+                    {stat.value}
+                  </div>
+                  <div className="text-sm font-semibold text-slate-500 mt-1">
+                    {stat.label}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </motion.section>
+
+          {/* Reports & Exports Grid */}
+          <motion.section 
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.4 }}
+            className="z-10 mt-2"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3 px-1">
+                <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-md">
+                  <FaDownload className="text-sm" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-slate-900">Reports & Exports</h3>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              
+              <button
+                onClick={handleExportSubmittedCSV}
+                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#50b748]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#50b748]/10 transition-all duration-300 text-left overflow-hidden"
+              >
+                <div className="absolute top-4 right-5 text-[#50b748]/40 group-hover:text-[#50b748] transition-colors z-20"><FaDownload className="text-xl" /></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#50b748]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaRegFileExcel className="text-3xl text-[#50b748] mb-4 relative z-20" />
+                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Submissions</h4>
+                <p className="text-sm font-medium text-slate-500 relative z-20">Export a complete CSV of all currently submitted interns.</p>
+              </button>
+
+              <button
+                onClick={handleDownloadOnLeaveExcel}
+                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-purple-400/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-purple-400/10 transition-all duration-300 text-left overflow-hidden"
+              >
+                <div className="absolute top-4 right-5 text-purple-500/40 group-hover:text-purple-500 transition-colors z-20"><FaDownload className="text-xl" /></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-400/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaRegFileExcel className="text-3xl text-purple-500 mb-4 relative z-20" />
+                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">On-Leave</h4>
+                <p className="text-sm font-medium text-slate-500 relative z-20">Download Excel report of interns currently on leave.</p>
+              </button>
+
+              <button
+                onClick={handleExportWeeklyNonSubmissionsWithinWeek}
+                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#ef4444]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#ef4444]/10 transition-all duration-300 text-left overflow-hidden"
+              >
+                <div className="absolute top-4 right-5 text-[#ef4444]/40 group-hover:text-[#ef4444] transition-colors z-20"><FaDownload className="text-xl" /></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#ef4444]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaExclamationTriangle className="text-3xl text-[#ef4444] mb-4 relative z-20" />
+                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Non-Submissions</h4>
+                <p className="text-sm font-medium text-slate-500 relative z-20">Last 5 working days non-submissions report.</p>
+              </button>
+
+              <button
+                onClick={handleExportPreviousDayNonSubmissions}
+                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#0056a2]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#0056a2]/10 transition-all duration-300 text-left overflow-hidden"
+              >
+                <div className="absolute top-4 right-5 text-[#0056a2]/40 group-hover:text-[#0056a2] transition-colors z-20"><FaDownload className="text-xl" /></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#0056a2]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaClock className="text-3xl text-[#0056a2] mb-4 relative z-20" />
+                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Previous Day</h4>
+                <p className="text-sm font-medium text-slate-500 relative z-20">Non-submissions report for the previous working day.</p>
+              </button>
+
+            </div>
+
+            {/* Custom Date Range */}
+            <div className="mt-6 bg-blue-50/50 backdrop-blur-xl p-6 md:p-8 rounded-3xl border-2 border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+              <div>
+                <h4 className="text-xl font-bold text-slate-900">Custom Date Range Export</h4>
+                <p className="text-sm font-medium text-slate-500 mt-1">Export non-submission data between specific dates.</p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <div className="flex items-center bg-white/80 border-2 border-blue-200 rounded-2xl p-1.5 focus-within:border-[#00b4eb] transition-colors w-full sm:w-auto shadow-inner">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="px-3 py-2 outline-none text-sm font-bold text-slate-700 bg-transparent"
+                    aria-label="Start date"
+                  />
+                  <span className="text-slate-300 mx-2 font-bold px-1">→</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="px-3 py-2 outline-none text-sm font-bold text-slate-700 bg-transparent"
+                    aria-label="End date"
+                  />
+                </div>
+                <button
+                  onClick={handleExportWeeklyNonSubmissionsCSV}
+                  className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <FaDownload /> Download Range
+                </button>
+              </div>
+            </div>
+          </motion.section>
+        </main>
+      </div>
+
     </AdminNavigation>
   );
 };

@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
 import FaceAttendance from "../pages/FaceAttendance";
@@ -37,9 +37,27 @@ import LogbookRestrictions from "../pages/LogbookRestrictions";
 import AdminUserManagement from "../pages/AdminUserManagement";
 import AdminRoute from "../components/AdminRoute";
 
+const ScrollbarThemer = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      document.documentElement.classList.add('admin-theme');
+      document.body.classList.add('admin-theme');
+    } else {
+      document.documentElement.classList.remove('admin-theme');
+      document.body.classList.remove('admin-theme');
+    }
+  }, [location.pathname]);
+
+  return null;
+};
+
 const AppRoutes = () => {
   return (
-    <Routes>
+    <>
+      <ScrollbarThemer />
+      <Routes>
       <Route path="/" element={<Login />} />
 
       {/* Protected Intern Routes - Wrapped with AgreementGuard */}
@@ -197,7 +215,8 @@ const AppRoutes = () => {
       />
       <Route path="/admin/users" element={<AdminUserManagement />} />
       </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 };
 
