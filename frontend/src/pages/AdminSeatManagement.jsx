@@ -20,7 +20,8 @@ import {
   FaUnlock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
-import { Armchair } from "lucide-react";
+import { API_BASE_URL } from "../api/apiConfig";
+import { Armchair, Map as MapIcon, List } from "lucide-react";
 
 import {
   adminSeatApi,
@@ -36,9 +37,9 @@ const AdminSeatManagement = () => {
   const mapViewportRef = useRef(null);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 910;
-  const [showLockManager, setShowLockManager] = useState(true);
 
   const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef);
+  const [activeTab, setActiveTab] = useState("map");
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -360,14 +361,6 @@ const AdminSeatManagement = () => {
 
   // Removed blocking loading screen to allow immediate render
 
-  const todayStr = getLocalISODate();
-  const tomorrowDate = new Date();
-  tomorrowDate.setDate(tomorrowDate.getDate() + 1);
-  const tomorrowStr = getLocalISODate(tomorrowDate);
-
-  const isToday = selectedDate === todayStr;
-  const isTomorrow = selectedDate === tomorrowStr;
-
   return (
     <AdminNavigation>
       <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
@@ -510,6 +503,13 @@ const AdminSeatManagement = () => {
             {/* Map Section */}
             {!showHistory && (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col mb-6" style={{ minHeight: "850px", height: "calc(100vh - 160px)" }}>
+              <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2 shrink-0">
+                <button onClick={() => setActiveTab("map")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "map" ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><MapIcon size={18} /> Seat Map</button>
+                <button onClick={() => setActiveTab("bookings")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "bookings" ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"}`}><List size={18} /> Bookings{displayBookings.length > 0 && <span className={`ml-1.5 px-2 py-0.5 rounded-full font-black text-[10px] ${activeTab === "bookings" ? "bg-white text-[#15803d]" : "bg-[#50b748] text-white"}`}>{displayBookings.length}</span>}</button>
+              </div>
+              <div className="flex-1 relative bg-white flex-col" style={{ minHeight: 0 }}>
+                {/* MAP TAB CONTENT */}
+                <div className={`flex flex-col w-full h-full ${activeTab === "map" ? "flex" : "hidden"}`}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-4 bg-white border-b border-gray-100 gap-3 shrink-0">
                 <div>
                   <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
@@ -561,7 +561,6 @@ const AdminSeatManagement = () => {
 
                             const lockDetail = lockedSeatDetailsBySeat[number];
                             let statusClasses = "";
-                            let titleText = "";
                             const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-colors shadow-sm border-2 cursor-pointer group";
 
                             if (isLocked) {
@@ -637,61 +636,14 @@ const AdminSeatManagement = () => {
                     </div>
                   </div>
               </div>
-            </div>
-            )}
+              </div>
 
-            {/* Lock Confirmation Modal */}
-            <AnimatePresence>
-              {lockConfirm && (
-                <motion.div
-                  className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
-                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                >
-                  <motion.div
-                    className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100 overflow-hidden relative"
-                    initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  >
-                    <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
-                    <div className="flex justify-between items-center mb-6 mt-2">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${lockConfirm.action === "lock" ? "bg-red-50 text-red-500" : "bg-green-50 text-green-500"}`}>
-                          {lockConfirm.action === "lock" ? <FaLock size={20} /> : <FaUnlock size={20} />}
-                        </div>
-                        <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">
-                          {lockConfirm.action === "lock" ? "Lock Seat" : "Unlock Seat"} {lockConfirm.seatNumber}
-                        </h2>
-                      </div>
-                      <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
-                        <FaTimes size={16} />
-                      </button>
-                    </div>
-
-                    <div className="space-y-4">
-                      <p className="text-sm text-gray-600 font-medium px-1">
-                        {lockConfirm.action === "lock"
-                          ? "Interns will no longer be able to book this seat."
-                          : "This seat will become available for interns to book."}
-                      </p>
-                      {lockConfirm.action === "lock" && (
-                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Trainee ID <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
-                          <input type="text" value={lockTraineeId} onChange={(e) => setLockTraineeId(e.target.value)} placeholder="e.g. 3425" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all shadow-sm" autoFocus />
-                          <p className="text-xs text-gray-400 mt-2 font-medium">Tag this seat for a specific intern.</p>
-                        </div>
-                      )}
-                      <div className="flex gap-3 pt-4">
-                        <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} disabled={lockLoading} className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95">Cancel</button>
-                        <button onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)} disabled={lockLoading} className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-all shadow-lg focus:outline-none focus:ring-4 active:scale-95 flex items-center justify-center gap-2 ${lockConfirm.action === "lock" ? "bg-red-500 hover:bg-red-600 shadow-red-500/30 focus:ring-red-100" : "bg-[#50b748] hover:bg-[#43a03c] shadow-[#50b748]/30 focus:ring-green-100"}`}>
-                          {lockLoading ? <FaSpinner className="animate-spin" /> : (lockConfirm.action === "lock" ? <><FaLock size={14}/> Confirm Lock</> : <><FaUnlock size={14}/> Confirm Unlock</>)}
-                        </button>
-                      </div>
-                    </div>
-                  </motion.div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Date Filter and Export for Bookings */}
+              {/* BOOKINGS TAB CONTENT */}
+              <div className={`flex flex-col w-full h-full p-4 sm:p-6 overflow-y-auto custom-scrollbar bg-slate-50/30 ${activeTab === "bookings" ? "flex" : "hidden"}`}>
+                <div className="max-w-7xl mx-auto w-full">
+                  {!showHistory && (
+                      <div className="w-full">
+                          {/* Date Filter and Export for Bookings */}
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4 mt-8">
                <div>
                   <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
@@ -765,8 +717,13 @@ const AdminSeatManagement = () => {
                           <div className="flex items-start justify-between mb-3">
                             <div className="flex items-center space-x-3">
                               <div className="flex-shrink-0">
-                                <div className="h-12 w-12 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shadow-sm border border-[#00b4eb]/20">
-                                  <span className="text-sm font-extrabold text-[#0056a2]">#{booking.seatNumber}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-300">
+                                    <img src={`${API_BASE_URL}/interns/${booking.traineeId}/profile-picture`} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.internName || 'Intern') + '&background=random' }} />
+                                  </div>
+                                  <div className="h-12 w-12 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shadow-sm border border-[#00b4eb]/20">
+                                    <span className="text-sm font-extrabold text-[#0056a2]">#{booking.seatNumber}</span>
+                                  </div>
                                 </div>
                               </div>
                               <div>
@@ -810,6 +767,9 @@ const AdminSeatManagement = () => {
                           <tr key={booking._id} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-300">
+                                  <img src={`${API_BASE_URL}/interns/${booking.traineeId}/profile-picture`} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.internName || 'Intern') + '&background=random' }} />
+                                </div>
                                 <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shrink-0 border border-[#00b4eb]/20">
                                   <span className="font-extrabold text-[#0056a2] leading-none">{booking.seatNumber}</span>
                                 </div>
@@ -847,7 +807,245 @@ const AdminSeatManagement = () => {
                 </>
               )}
             </motion.div>
-          </main>
+                      </div>
+                  )}
+                </div>
+              </div>
+
+              </div>
+            </div>
+            )}
+
+            {/* Lock Confirmation Modal */}
+            <AnimatePresence>
+              {lockConfirm && (
+                <motion.div
+                  className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                >
+                  <motion.div
+                    className="bg-white rounded-3xl shadow-2xl p-6 w-full max-w-md border border-gray-100 overflow-hidden relative"
+                    initial={{ scale: 0.9, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.9, y: 20, opacity: 0 }} transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  >
+                    <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#00b4eb] via-[#0056a2] to-[#50b748]"></div>
+                    <div className="flex justify-between items-center mb-6 mt-2">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-sm ${lockConfirm.action === "lock" ? "bg-red-50 text-red-500" : "bg-green-50 text-green-500"}`}>
+                          {lockConfirm.action === "lock" ? <FaLock size={20} /> : <FaUnlock size={20} />}
+                        </div>
+                        <h2 className="text-2xl font-extrabold text-gray-800 tracking-tight">
+                          {lockConfirm.action === "lock" ? "Lock Seat" : "Unlock Seat"} {lockConfirm.seatNumber}
+                        </h2>
+                      </div>
+                      <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} className="text-gray-400 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors">
+                        <FaTimes size={16} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-600 font-medium px-1">
+                        {lockConfirm.action === "lock"
+                          ? "Interns will no longer be able to book this seat."
+                          : "This seat will become available for interns to book."}
+                      </p>
+                      {lockConfirm.action === "lock" && (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Trainee ID <span className="text-gray-400 font-normal normal-case">(optional)</span></label>
+                          <input type="text" value={lockTraineeId} onChange={(e) => setLockTraineeId(e.target.value)} placeholder="e.g. 3425" className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all shadow-sm" autoFocus />
+                          <p className="text-xs text-gray-400 mt-2 font-medium">Tag this seat for a specific intern.</p>
+                        </div>
+                      )}
+                      <div className="flex gap-3 pt-4">
+                        <button onClick={() => { setLockConfirm(null); setLockTraineeId(""); }} disabled={lockLoading} className="flex-1 px-4 py-3 bg-white border-2 border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 hover:border-gray-300 transition-all focus:outline-none focus:ring-4 focus:ring-gray-100 active:scale-95">Cancel</button>
+                        <button onClick={() => handleToggleLock(lockConfirm.seatNumber, lockConfirm.action)} disabled={lockLoading} className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-all shadow-lg focus:outline-none focus:ring-4 active:scale-95 flex items-center justify-center gap-2 ${lockConfirm.action === "lock" ? "bg-red-500 hover:bg-red-600 shadow-red-500/30 focus:ring-red-100" : "bg-[#50b748] hover:bg-[#43a03c] shadow-[#50b748]/30 focus:ring-green-100"}`}>
+                          {lockLoading ? <FaSpinner className="animate-spin" /> : (lockConfirm.action === "lock" ? <><FaLock size={14}/> Confirm Lock</> : <><FaUnlock size={14}/> Confirm Unlock</>)}
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            
+          
+        {/* HISTORY VIEW BOOKINGS */}
+        {showHistory && (
+            <div className="mt-8">
+                
+            </div>
+        )}
+    
+        {/* HISTORY VIEW BOOKINGS */}
+        {showHistory && (
+            <div className="mt-8">
+                {/* Date Filter and Export for Bookings */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 px-2 gap-4 mt-8">
+               <div>
+                  <h3 className="text-xl font-extrabold text-gray-900 tracking-tight">
+                    {showHistory && searchResults
+                      ? `Booking History - ${searchResults.internInfo?.internName || "Intern"}`
+                      : `Seat Bookings${selectedDate ? ` - ${formatDate(selectedDate)}` : ""}`}
+                  </h3>
+               </div>
+               <div className="flex w-full md:w-auto items-center gap-2 sm:gap-3">
+                  {/* Export Pending Check-ins */}
+                  {!showHistory && (
+                    <motion.button
+                      onClick={handleExportPendingCheckIns}
+                      disabled={exportingPendingCheckIns}
+                      className="flex-1 md:flex-none w-full md:w-auto flex items-center justify-center space-x-1.5 sm:space-x-2 px-2 sm:px-5 py-2.5 bg-[#ff4444] hover:bg-[#ff1111] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#ff1a1a]/20 disabled:shadow-none"
+                      whileHover={{ scale: exportingPendingCheckIns ? 1 : 1.05 }}
+                      whileTap={{ scale: exportingPendingCheckIns ? 1 : 0.95 }}
+                      title="Export interns who booked a seat but haven't scanned daily attendance"
+                    >
+                      {exportingPendingCheckIns ? (
+                        <FaSpinner className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      <span className="whitespace-nowrap">Pending Check-ins</span>
+                    </motion.button>
+                  )}
+
+                  {/* Export Bookings */}
+                  <motion.button
+                    onClick={handleExportCSV}
+                    disabled={displayBookings.length === 0}
+                    className="flex-1 md:flex-none w-full md:w-auto flex items-center justify-center space-x-1.5 sm:space-x-2 px-2 sm:px-5 py-2.5 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none"
+                    whileHover={{ scale: displayBookings.length === 0 ? 1 : 1.05 }}
+                    whileTap={{ scale: displayBookings.length === 0 ? 1 : 0.95 }}
+                  >
+                    <FaDownload className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="whitespace-nowrap">Export Bookings</span>
+                    {displayBookings.length > 0 && (
+                      <span className="bg-white/20 px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs">{displayBookings.length}</span>
+                    )}
+                  </motion.button>
+               </div>
+            </div>
+
+            {/* Bookings Table */}
+            <motion.div
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden relative min-h-[300px]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
+            >
+              {!loading && displayBookings.length === 0 ? (
+                <div className="text-center py-16 bg-gray-50 px-4">
+                  <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-100"><FaChair className="h-8 w-8 text-gray-300" /></div>
+                  <h3 className="text-lg font-bold text-gray-700 mb-2">No bookings found</h3>
+                  <p className="text-gray-500 text-sm font-medium">
+                    {showHistory
+                      ? "No booking history found for this intern."
+                      : selectedDate
+                        ? `No seat bookings found for ${formatDate(selectedDate)}.`
+                        : "There are no active seat bookings at the moment."}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="block lg:hidden">
+                    <div className="divide-y divide-gray-100">
+                      {displayBookings.map((booking) => (
+                        <div key={booking._id} className="p-4 hover:bg-slate-50/50 transition-colors">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex-shrink-0">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-12 h-12 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-300">
+                                    <img src={`${API_BASE_URL}/interns/${booking.traineeId}/profile-picture`} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.internName || 'Intern') + '&background=random' }} />
+                                  </div>
+                                  <div className="h-12 w-12 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shadow-sm border border-[#00b4eb]/20">
+                                    <span className="text-sm font-extrabold text-[#0056a2]">#{booking.seatNumber}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-gray-900">{booking.internName}</div>
+                                <div className="text-xs font-medium text-gray-500 mt-0.5">ID: {booking.traineeId}</div>
+                              </div>
+                            </div>
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${booking.status === "active" ? "bg-[#50b748]/10 text-[#15803d]" : "bg-rose-50 text-rose-600"}`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                            <div className="text-xs font-medium text-gray-600 truncate flex items-center gap-2">
+                              <span className="text-gray-400">📧</span> {booking.email}
+                            </div>
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                              <span className="text-gray-400">📅</span> {formatDate(booking.bookingDate)}
+                            </div>
+                            <div className="text-xs font-medium text-gray-600 flex items-center gap-2">
+                              <span className="text-gray-400">⏰</span> {formatDateTime(booking.bookedAt)}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="hidden lg:block overflow-x-auto">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-slate-50/80 border-b border-gray-100">
+                        <tr>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Seat</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Intern Info</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booking Date</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Booked At</th>
+                          <th className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {displayBookings.map((booking) => (
+                          <tr key={booking._id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden shrink-0 border border-gray-300">
+                                  <img src={`${API_BASE_URL}/interns/${booking.traineeId}/profile-picture`} alt="Profile" className="w-full h-full object-cover" onError={(e) => { e.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(booking.internName || 'Intern') + '&background=random' }} />
+                                </div>
+                                <div className="w-10 h-10 rounded-xl bg-[#00b4eb]/10 flex items-center justify-center shrink-0 border border-[#00b4eb]/20">
+                                  <span className="font-extrabold text-[#0056a2] leading-none">{booking.seatNumber}</span>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-900">{booking.internName}</span>
+                                <span className="text-xs font-medium text-gray-500 mt-0.5">ID: {booking.traineeId}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="font-medium text-gray-700">{formatDate(booking.bookingDate)}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="text-xs font-medium text-gray-500">{formatDateTime(booking.bookedAt)}</div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${booking.status === "active" ? "bg-[#50b748]/10 text-[#15803d]" : "bg-rose-50 text-rose-600"}`}>
+                                {booking.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div className="px-6 py-4 bg-slate-50/80 border-t border-gray-100">
+                    <p className="text-sm font-bold text-gray-500 text-center uppercase tracking-wider">
+                      Showing {displayBookings.length} booking{displayBookings.length !== 1 ? "s" : ""}
+                      {showHistory ? ` for ${searchResults?.internInfo?.internName || "intern"}` : selectedDate ? ` for ${formatDate(selectedDate)}` : ""}
+                    </p>
+                  </div>
+                </>
+              )}
+            </motion.div>
+            </div>
+        )}
+    </main>
         </div>
       </div>
     </AdminNavigation>
