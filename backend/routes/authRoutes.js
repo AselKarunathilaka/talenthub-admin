@@ -9,6 +9,7 @@ const {
   gateStaffLogin,
   registerGateStaff,
   internLogin,
+  unifiedGoogleLogin,
 } = require("../controllers/authController");
 const {
   federatedLogin,
@@ -18,6 +19,7 @@ const federationAuth = require("../middleware/federationAuth");
 
 router.post("/google-login", googleLogin);
 router.post("/admin-google-login", adminGoogleLogin);
+router.post("/unified-google-login", unifiedGoogleLogin);
 router.post("/intern-login", internLogin); //email, password login for intern
 router.get("/google-auth-url", getGoogleAuthUrl);
 router.post("/login", login);

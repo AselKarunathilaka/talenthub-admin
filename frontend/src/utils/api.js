@@ -40,9 +40,13 @@ export const createHeaders = (isJson = true) => {
   };
 };
 
-// Check response for 401 and handle session expiry
-const checkAuth = async (res) => {
+const checkAuth = async (res, endpoint) => {
   if (res.status === 401) {
+    // Don't trigger global logout/reload for authentication endpoints
+    if (endpoint && endpoint.includes("/auth/")) {
+      return res;
+    }
+
     // Try to read the error code from the response body
     let code = "";
     try {
@@ -56,13 +60,21 @@ const checkAuth = async (res) => {
     const message =
       code === "TOKEN_EXPIRED"
         ? "Your session has expired. Please log in again."
-        : "Your session is invalid. Please log in again.";
+        : "Your session is invalid. Please log in again using your organization registered email.";
 
     handleUnauthorized(message);
     // Throw so the calling code doesn't try to parse the response
     throw new Error(message);
   }
   return res;
+};
+
+const handleResponse = async (res) => {
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.message || errData.error || "Request failed");
+  }
+  return res.json();
 };
 
 export const apiFetch = async (endpoint, options = {}) => {
@@ -86,8 +98,8 @@ export const api = {
     const res = await fetch(`${API_BASE_URL}${endpoint}`, {
       headers: createHeaders(),
     });
-    await checkAuth(res);
-    return res.json();
+    await checkAuth(res, endpoint);
+    return handleResponse(res);
   },
 
   post: async (endpoint, data) => {
@@ -96,8 +108,8 @@ export const api = {
       headers: createHeaders(),
       body: JSON.stringify(data),
     });
-    await checkAuth(res);
-    return res.json();
+    await checkAuth(res, endpoint);
+    return handleResponse(res);
   },
 
   put: async (endpoint, data) => {
@@ -106,8 +118,8 @@ export const api = {
       headers: createHeaders(),
       body: JSON.stringify(data),
     });
-    await checkAuth(res);
-    return res.json();
+    await checkAuth(res, endpoint);
+    return handleResponse(res);
   },
 
   patch: async (endpoint, data) => {
@@ -116,8 +128,8 @@ export const api = {
       headers: createHeaders(),
       body: JSON.stringify(data),
     });
-    await checkAuth(res);
-    return res.json();
+    await checkAuth(res, endpoint);
+    return handleResponse(res);
   },
 
   delete: async (endpoint) => {
@@ -125,7 +137,7 @@ export const api = {
       method: "DELETE",
       headers: createHeaders(),
     });
-    await checkAuth(res);
-    return res.json();
+    await checkAuth(res, endpoint);
+    return handleResponse(res);
   },
 };

@@ -16,8 +16,9 @@ import {
   Lightbulb,
   SquarePlay,
   FileText,
-  LogOut,
   Users,
+  User,
+  LogOut,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -28,6 +29,19 @@ const AdminNavigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const [availableRoles, setAvailableRoles] = useState([]);
+
+  useEffect(() => {
+    try {
+      const roles = JSON.parse(localStorage.getItem("availableRoles") || "[]");
+      setAvailableRoles(roles);
+    } catch { }
+  }, []);
+
+  const handleSwitchToIntern = () => {
+    localStorage.setItem("currentRole", "intern");
+    navigate("/dashboard");
+  };
 
   // Responsive handlers
   useEffect(() => {
@@ -161,6 +175,16 @@ const AdminNavigation = ({ children }) => {
               <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
               <span className="text-sm font-medium">Guidelines Agreement</span>
             </button>
+
+            {availableRoles.includes("intern") && (
+              <button
+                onClick={handleSwitchToIntern}
+                className="flex items-center w-full px-4 py-2.5 text-white/90 rounded-xl bg-gradient-to-r from-[#00b4eb]/20 to-[#50b748]/20 hover:from-[#00b4eb]/40 hover:to-[#50b748]/40 border border-[#00b4eb]/30 transition-all duration-200 group mt-2"
+              >
+                <User className="h-5 w-5 mr-3 text-[#00b4eb] group-hover:scale-110 transition-transform" />
+                <span className="font-bold">Switch to Intern</span>
+              </button>
+            )}
 
             <button
               onClick={handleLogout}
