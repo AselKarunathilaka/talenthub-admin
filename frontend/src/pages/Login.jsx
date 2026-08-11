@@ -122,7 +122,7 @@ const Login = () => {
 
   return (
     <div
-      className="min-h-screen text-white relative flex flex-col font-sans overflow-x-hidden transition-colors duration-700 select-none cursor-default"
+      className="min-h-[100dvh] text-white relative flex flex-col font-sans overflow-x-hidden transition-colors duration-700 select-none cursor-default"
       style={{
         background: seasonActive ? "#02020a" : "linear-gradient(135deg, #000066 0%, #006600 100%)",
       }}
@@ -232,18 +232,18 @@ const Login = () => {
                 }}
               >
                 <h1 className="text-2xl xs:text-3xl sm:text-4xl md:text-5xl font-extrabold text-white mb-1 sm:mb-2 tracking-tight leading-tight">TalentHub</h1>
-                <p className="text-xs xs:text-sm sm:text-base md:text-lg text-white/70 mb-5 sm:mb-6 font-medium px-2">Internship Management Portal</p>
+                <p className="text-xs xs:text-sm sm:text-base md:text-lg text-white/70 mb-4 sm:mb-6 font-medium px-2">Internship Management Portal</p>
 
                 {/* Auto Role Detection Text */}
-                <div className="flex items-start sm:items-center justify-center gap-2 mb-6 sm:mb-8 bg-white/5 border border-white/10 px-3 py-2 sm:px-4 sm:py-2.5 rounded-xl sm:rounded-full shadow-inner max-w-sm">
-                  <UserCheck className="w-4 h-4 sm:w-4 sm:h-4 text-[#00b4eb] flex-shrink-0 mt-0.5 sm:mt-0" />
-                  <span className="text-[10px] sm:text-xs text-white/80 font-medium tracking-wide text-left sm:text-center leading-snug">
+                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mb-5 sm:mb-8 bg-white/5 border border-white/10 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full shadow-inner max-w-sm mx-auto">
+                  <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00b4eb] flex-shrink-0" />
+                  <span className="text-[10px] sm:text-xs text-white/80 font-medium tracking-wide text-center leading-snug">
                     Your role is auto detected
                   </span>
                 </div>
 
                 {/* Small Logos */}
-                <div className="flex items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-10">
+                <div className="flex items-center justify-center gap-3 sm:gap-4 mb-6 sm:mb-10">
                   <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-lg sm:rounded-xl p-1.5 flex items-center justify-center border border-white/60 shadow-[0_0_10px_rgba(255,255,255,0.5)] transition-transform hover:scale-105">
                     <img src={talentHubLogo} alt="TalentHub" className="w-full h-full object-contain rounded-sm" />
                   </div>
@@ -286,7 +286,7 @@ const Login = () => {
                   type="button"
                   onClick={() => { setError(null); googleLogin(); }}
                   disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 sm:gap-3 px-2 py-2.5 sm:px-4 sm:py-4 rounded-lg sm:rounded-xl text-xs sm:text-base font-bold transition-all duration-300 disabled:opacity-70 bg-white text-slate-900 hover:bg-slate-50 hover:-translate-y-1 shadow-[0_0_15px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]"
+                  className="w-full flex items-center justify-center gap-2 sm:gap-3 px-2 py-3 sm:px-4 sm:py-4 rounded-lg sm:rounded-xl text-xs sm:text-base font-bold transition-all duration-300 disabled:opacity-70 bg-white text-slate-900 hover:bg-slate-50 hover:-translate-y-1 shadow-[0_0_15px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.3)]"
                 >
                   {loading ? (
                     <div className="w-4 h-4 sm:w-6 sm:h-6 border-2 border-slate-300 border-t-slate-800 rounded-full animate-spin flex-shrink-0" />
@@ -301,8 +301,8 @@ const Login = () => {
                   <span>Continue with Google</span>
                 </button>
 
-                <div className="flex items-center justify-center gap-1.5 sm:gap-2 mt-6 sm:mt-8 text-white/60 text-[10px] sm:text-xs font-medium text-center px-2">
-                  <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#50b748] flex-shrink-0" />
+                <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-4 sm:mt-8 text-white/60 text-[10px] sm:text-xs font-medium text-center px-2">
+                  <ShieldCheck className="hidden md:block w-4 h-4 text-[#50b748] flex-shrink-0" />
                   <span>Secure, private, and protected by industry standard encryption.</span>
                 </div>
               </div>
