@@ -33,44 +33,12 @@ const TOTAL_SEATS = 88;
 
 const AdminSeatManagement = () => {
   const navigate = useNavigate();
-  const [mapElement, setMapElement] = useState(null);
+  const mapViewportRef = useRef(null);
   const MAP_WIDTH = 1450;
   const MAP_HEIGHT = 910;
   const [showLockManager, setShowLockManager] = useState(true);
-  const [scale, setScale] = useState(1);
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    if (!mapElement) return;
-
-    const updateScale = () => {
-      const rect = mapElement.getBoundingClientRect();
-      if (rect.width === 0 || rect.height === 0) return;
-      
-      const isMobile = window.innerWidth < 768;
-      let fitScale;
-      if (isMobile) {
-        fitScale = (rect.height / MAP_HEIGHT) * 0.98;
-      } else {
-        const scaleX = (rect.width / MAP_WIDTH) * 0.98;
-        const scaleY = (rect.height / MAP_HEIGHT) * 0.98;
-        fitScale = Math.min(scaleX, scaleY, 1);
-      }
-      setScale(fitScale);
-      setReady(true);
-    };
-
-    updateScale();
-    
-    const observer = new ResizeObserver(() => updateScale());
-    observer.observe(mapElement);
-    
-    window.addEventListener('resize', updateScale);
-    return () => {
-      observer.disconnect();
-      window.removeEventListener('resize', updateScale);
-    };
-  }, [mapElement]);
+  const { scale, ready } = useMapScale(MAP_WIDTH, MAP_HEIGHT, mapViewportRef);
   const [bookings, setBookings] = useState([]);
   const [filteredBookings, setFilteredBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -560,9 +528,9 @@ const AdminSeatManagement = () => {
               </div>
               
               <div 
-                ref={setMapElement}
+                ref={mapViewportRef}
                 className="w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar border border-gray-100 shadow-inner relative"
-                style={{ height: "75vh", minHeight: "550px", maxHeight: "900px" }}
+                style={{ height: "calc(100vh - 250px)", minHeight: "650px", maxHeight: "1100px" }}
               >
                 <div className={`relative shrink-0 overflow-hidden transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
                   <div className="absolute" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
