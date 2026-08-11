@@ -34,17 +34,11 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
   return (
     <motion.div
       onClick={() => handleSeatClick(number)}
-      className={`${baseClasses} ${statusClasses}`}
+      className={`${baseClasses} ${statusClasses} seat-hover-wrapper`}
       style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-      initial="initial"
-      animate="initial"
-      whileHover="hover"
-      whileTap={status === "available" ? "tap" : undefined}
-      variants={{
-        initial: { scale: 1, zIndex: 1, transition: { zIndex: { delay: 0.2 }, type: "spring", stiffness: 400, damping: 25 } },
-        hover: { scale: 1.15, zIndex: 100, transition: { zIndex: { delay: 0 }, type: "spring", stiffness: 400, damping: 25 } },
-        tap: { scale: 0.95 }
-      }}
+      whileHover={{ scale: 1.15 }}
+      whileTap={status === "available" ? { scale: 0.95 } : {}}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
     >
       <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
         {status === "booked" ? (
@@ -192,7 +186,7 @@ const InternSeatManagement = () => {
           {/* Map Viewport - ensure it takes all available space */}
           <div
             ref={mapViewportRef}
-            className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center"
+            className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ minHeight: 0 }}
           >
             {/* Map content - only show after initial transform is ready to avoid flicker */}

@@ -58,6 +58,7 @@ const AdminSeatManagement = () => {
   const [lockConfirm, setLockConfirm] = useState(null); // { seatNumber, action: 'lock' | 'unlock' }
   const [lockTraineeId, setLockTraineeId] = useState(""); // Trainee ID input for locking
 
+
   const [selectedDate, setSelectedDate] = useState(() => {
     const now = new Date();
     if (now.getHours() > 16 || (now.getHours() === 16 && now.getMinutes() >= 30)) {
@@ -529,7 +530,7 @@ const AdminSeatManagement = () => {
               
               <div 
                 ref={mapViewportRef}
-                className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center custom-scrollbar shadow-inner"
+                className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center custom-scrollbar shadow-inner [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                 style={{ minHeight: 0 }}
               >
                 <div className={`relative shrink-0 transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
@@ -578,17 +579,14 @@ const AdminSeatManagement = () => {
                                   if (isLocked) setLockConfirm({ seatNumber: number, action: "unlock" });
                                   else setLockConfirm({ seatNumber: number, action: "lock" });
                                 }}
-                                className={`${baseClasses} ${statusClasses}`}
-                                style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-                                initial="initial"
-                                animate="initial"
-                                whileHover="hover"
-                                whileTap="tap"
-                                variants={{
-                                  initial: { scale: 1, zIndex: 1, transition: { zIndex: { delay: 0.2 }, type: "spring", stiffness: 400, damping: 25 } },
-                                  hover: { scale: 1.15, zIndex: 100, transition: { zIndex: { delay: 0 }, type: "spring", stiffness: 400, damping: 25 } },
-                                  tap: { scale: 0.95 }
+                                className={`${baseClasses} ${statusClasses} seat-hover-wrapper`}
+                                style={{ 
+                                  left: `${posX - 24}px`, 
+                                  top: `${posY - 24}px`
                                 }}
+                                whileHover={{ scale: 1.15 }}
+                                whileTap={{ scale: 0.95 }}
+                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                               >
                                 <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
                                   {isBooked && !isLocked ? (
