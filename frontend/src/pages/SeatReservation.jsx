@@ -20,15 +20,15 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
     posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
   }
 
-  const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden";
+  const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-colors shadow-sm border-2 cursor-pointer group";
 
   let statusClasses = "";
   if (status === "locked") {
-    statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75";
+    statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75 hover:border-slate-400 hover:shadow-md";
   } else if (status === "booked") {
-    statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50";
+    statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50 hover:bg-rose-600";
   } else {
-    statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30 cursor-pointer";
+    statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30";
   }
 
   return (
@@ -36,25 +36,44 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
       onClick={() => handleSeatClick(number)}
       className={`${baseClasses} ${statusClasses}`}
       style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-      whileHover={status === "available" ? { scale: 1.15, zIndex: 10 } : {}}
-      whileTap={status === "available" ? { scale: 0.95 } : {}}
-      title={
-        status === "locked" ? (lockedSeatDetails?.[number]?.traineeId ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}` : `Seat ${number} (Locked)`)
-          : status === "booked" && bookingInfo?.traineeId ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
-            : status === "booked" && bookingInfo?.email ? `Seat ${number} - Booked by: ${bookingInfo.email}`
-              : status === "booked" ? `Seat ${number} (Already Booked)`
-                : `Seat ${number} (Available)`
-      }
+      initial="initial"
+      animate="initial"
+      whileHover="hover"
+      whileTap={status === "available" ? "tap" : undefined}
+      variants={{
+        initial: { scale: 1, zIndex: 1, transition: { zIndex: { delay: 0.2 }, type: "spring", stiffness: 400, damping: 25 } },
+        hover: { scale: 1.15, zIndex: 100, transition: { zIndex: { delay: 0 }, type: "spring", stiffness: 400, damping: 25 } },
+        tap: { scale: 0.95 }
+      }}
     >
-      <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+      <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
         {status === "booked" ? (
-          <X size={18} strokeWidth={3} className="text-white/90" />
+          <X size={18} strokeWidth={3} className="text-white/90 mb-0.5" />
         ) : status === "locked" ? (
-          <Armchair size={18} strokeWidth={2.5} className="mb-0.5 opacity-60" />
+          <Armchair size={18} strokeWidth={2.5} className="mb-1 opacity-60" />
         ) : (
           <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
         )}
-        <span className="text-[10px] mt-0.5 leading-none">{number}</span>
+        
+        <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
+          <span className="text-[12px] font-extrabold leading-none absolute opacity-100 group-hover:opacity-0 transition-opacity duration-200">{number}</span>
+          <span className="text-[10px] font-extrabold leading-none absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-center px-0.5 w-full truncate">
+            {status === "locked" && lockedSeatDetails?.[number]?.traineeId ? lockedSeatDetails[number].traineeId : status === "booked" && bookingInfo?.traineeId ? bookingInfo.traineeId : status === "available" ? "Book" : "Booked"}
+          </span>
+        </div>
+      </div>
+      
+      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
+        <div className="bg-slate-800 text-white px-3 py-1.5 rounded-xl flex flex-col items-center gap-0.5 border border-slate-700">
+           {status === "locked" ? (
+              <span className="font-bold text-slate-200 text-xs">Locked Seat</span>
+           ) : status === "booked" ? (
+              <span className="font-bold text-white text-xs">{bookingInfo?.internName || bookingInfo?.email || "Reserved"}</span>
+           ) : (
+              <span className="font-bold text-[#50b748] text-xs">Available</span>
+           )}
+        </div>
+        <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800"></div>
       </div>
     </motion.div>
   );
@@ -179,7 +198,7 @@ const InternSeatManagement = () => {
             {/* Map content - only show after initial transform is ready to avoid flicker */}
             {ready && (
               <div
-                className="relative shrink-0 overflow-hidden"
+                className="relative shrink-0"
                 style={{
                   width: `${MAP_WIDTH * scale}px`,
                   height: `${MAP_HEIGHT * scale}px`,
