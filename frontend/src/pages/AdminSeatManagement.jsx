@@ -509,8 +509,8 @@ const AdminSeatManagement = () => {
 
             {/* Map Section */}
             {!showHistory && (
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 mb-6">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 px-2 gap-3">
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col mb-6" style={{ minHeight: "850px", height: "calc(100vh - 160px)" }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-3 px-4 bg-white border-b border-gray-100 gap-3 shrink-0">
                 <div>
                   <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
                     <div className="p-1.5 bg-blue-50 rounded-lg text-[#0056a2]"><Armchair size={18} /></div>
@@ -529,8 +529,8 @@ const AdminSeatManagement = () => {
               
               <div 
                 ref={mapViewportRef}
-                className="w-full bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] rounded-2xl overflow-y-hidden overflow-x-auto flex items-center justify-start sm:justify-center custom-scrollbar border border-gray-100 shadow-inner relative"
-                style={{ height: "calc(100vh - 250px)", minHeight: "650px", maxHeight: "1100px" }}
+                className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center custom-scrollbar shadow-inner"
+                style={{ minHeight: 0 }}
               >
                 <div className={`relative shrink-0 overflow-hidden transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
                   <div className="absolute" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
@@ -562,17 +562,14 @@ const AdminSeatManagement = () => {
                             const lockDetail = lockedSeatDetailsBySeat[number];
                             let statusClasses = "";
                             let titleText = "";
-                            const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden cursor-pointer";
+                            const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-colors shadow-sm border-2 cursor-pointer group";
 
                             if (isLocked) {
                               statusClasses = "bg-slate-200 text-slate-500 border-slate-300 opacity-75 hover:border-slate-400 hover:shadow-md";
-                              titleText = lockDetail?.traineeId ? `Seat ${number} (Locked for: ${lockDetail.traineeId}) — Click to unlock` : `Seat ${number} (Locked) — Click to unlock`;
                             } else if (isBooked) {
                               statusClasses = "bg-rose-500 text-white border-rose-600 shadow-md shadow-rose-200/50 hover:bg-rose-600";
-                              titleText = `Seat ${number} — Booked by: ${booking.traineeId || booking.internName || booking.email || "Unknown"} — Click to lock`;
                             } else {
                               statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30";
-                              titleText = `Seat ${number} (Available) — Click to lock`;
                             }
 
                             return (
@@ -584,11 +581,11 @@ const AdminSeatManagement = () => {
                                 }}
                                 className={`${baseClasses} ${statusClasses}`}
                                 style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-                                whileHover={{ scale: 1.15, zIndex: 10 }}
+                                whileHover={{ scale: 1.15, zIndex: 50 }}
                                 whileTap={{ scale: 0.95 }}
-                                title={titleText}
+                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                               >
-                                <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
+                                <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
                                   {isBooked && !isLocked ? (
                                     <FaTimes size={16} className="text-white/90 mb-0.5" />
                                   ) : isLocked ? (
@@ -596,13 +593,26 @@ const AdminSeatManagement = () => {
                                   ) : (
                                     <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
                                   )}
-                                  {isLocked && lockDetail?.traineeId ? (
-                                    <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5 leading-none">{lockDetail.traineeId}</span>
-                                  ) : isBooked && !isLocked ? (
-                                    <span className="text-[8px] mt-0.5 truncate w-full text-center px-0.5 leading-none">{booking.traineeId || number}</span>
-                                  ) : (
-                                    <span className="text-[10px] mt-0.5 leading-none">{number}</span>
-                                  )}
+                                  
+                                  <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
+                                    <span className="text-[12px] font-extrabold leading-none absolute opacity-100 group-hover:opacity-0 transition-opacity duration-200">{number}</span>
+                                    <span className="text-[10px] font-extrabold leading-none absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-center px-0.5 w-full truncate">
+                                      {isLocked && lockDetail?.traineeId ? lockDetail.traineeId : isBooked && !isLocked ? (booking.traineeId || "Booked") : "Lock"}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[60] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
+                                  <div className="bg-slate-800 text-white px-3 py-1.5 rounded-xl flex flex-col items-center gap-0.5 border border-slate-700">
+                                     {isLocked ? (
+                                        <span className="font-bold text-slate-200 text-xs">Locked Seat</span>
+                                     ) : isBooked && !isLocked ? (
+                                        <span className="font-bold text-white text-xs">{booking.internName || booking.email || "Unknown Intern"}</span>
+                                     ) : (
+                                        <span className="font-bold text-[#50b748] text-xs">Available</span>
+                                     )}
+                                  </div>
+                                  <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800"></div>
                                 </div>
                               </motion.div>
                             );
