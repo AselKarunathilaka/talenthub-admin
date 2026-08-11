@@ -532,7 +532,7 @@ const AdminSeatManagement = () => {
                 className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center custom-scrollbar shadow-inner"
                 style={{ minHeight: 0 }}
               >
-                <div className={`relative shrink-0 overflow-hidden transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
+                <div className={`relative shrink-0 transition-opacity duration-300 ${ready ? 'opacity-100' : 'opacity-0'}`} style={{ width: `${MAP_WIDTH * scale}px`, height: `${MAP_HEIGHT * scale}px` }}>
                   <div className="absolute" style={{ width: `${MAP_WIDTH}px`, height: `${MAP_HEIGHT}px`, transform: `scale(${scale})`, transformOrigin: '0 0' }}>
                       <div className="absolute inset-0" style={{ transform: 'translate(150px, 60px)' }}>
                         <div className="absolute top-0 h-14 bg-gradient-to-r from-slate-700 to-slate-800 rounded-2xl flex items-center shadow-lg" style={{ left: "-124px", width: "742px" }}>
@@ -580,9 +580,15 @@ const AdminSeatManagement = () => {
                                 }}
                                 className={`${baseClasses} ${statusClasses}`}
                                 style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-                                whileHover={{ scale: 1.15, zIndex: 50 }}
-                                whileTap={{ scale: 0.95 }}
-                                transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                                initial="initial"
+                                animate="initial"
+                                whileHover="hover"
+                                whileTap="tap"
+                                variants={{
+                                  initial: { scale: 1, zIndex: 1, transition: { zIndex: { delay: 0.2 }, type: "spring", stiffness: 400, damping: 25 } },
+                                  hover: { scale: 1.15, zIndex: 100, transition: { zIndex: { delay: 0 }, type: "spring", stiffness: 400, damping: 25 } },
+                                  tap: { scale: 0.95 }
+                                }}
                               >
                                 <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
                                   {isBooked && !isLocked ? (
@@ -601,7 +607,7 @@ const AdminSeatManagement = () => {
                                   </div>
                                 </div>
                                 
-                                <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[60] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
+                                <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
                                   <div className="bg-slate-800 text-white px-3 py-1.5 rounded-xl flex flex-col items-center gap-0.5 border border-slate-700">
                                      {isLocked ? (
                                         <span className="font-bold text-slate-200 text-xs">Locked Seat</span>

@@ -36,9 +36,15 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
       onClick={() => handleSeatClick(number)}
       className={`${baseClasses} ${statusClasses}`}
       style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-      whileHover={{ scale: 1.15, zIndex: 50 }}
-      whileTap={status === "available" ? { scale: 0.95 } : {}}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      initial="initial"
+      animate="initial"
+      whileHover="hover"
+      whileTap={status === "available" ? "tap" : undefined}
+      variants={{
+        initial: { scale: 1, zIndex: 1, transition: { zIndex: { delay: 0.2 }, type: "spring", stiffness: 400, damping: 25 } },
+        hover: { scale: 1.15, zIndex: 100, transition: { zIndex: { delay: 0 }, type: "spring", stiffness: 400, damping: 25 } },
+        tap: { scale: 0.95 }
+      }}
     >
       <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
         {status === "booked" ? (
@@ -57,12 +63,12 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
         </div>
       </div>
       
-      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[60] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
+      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
         <div className="bg-slate-800 text-white px-3 py-1.5 rounded-xl flex flex-col items-center gap-0.5 border border-slate-700">
            {status === "locked" ? (
               <span className="font-bold text-slate-200 text-xs">Locked Seat</span>
            ) : status === "booked" ? (
-              <span className="font-bold text-white text-xs">{bookingInfo?.email || bookingInfo?.internName || "Reserved"}</span>
+              <span className="font-bold text-white text-xs">{bookingInfo?.internName || bookingInfo?.email || "Reserved"}</span>
            ) : (
               <span className="font-bold text-[#50b748] text-xs">Available</span>
            )}
@@ -192,7 +198,7 @@ const InternSeatManagement = () => {
             {/* Map content - only show after initial transform is ready to avoid flicker */}
             {ready && (
               <div
-                className="relative shrink-0 overflow-hidden"
+                className="relative shrink-0"
                 style={{
                   width: `${MAP_WIDTH * scale}px`,
                   height: `${MAP_HEIGHT * scale}px`,
