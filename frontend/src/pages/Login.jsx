@@ -16,6 +16,7 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
+  Shield,
 } from "lucide-react";
 import { api } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
@@ -200,73 +201,47 @@ const Login = () => {
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
-          className="w-full lg:w-[48%] xl:w-[44%] flex items-center justify-center min-h-screen lg:min-h-0 py-4 px-4 sm:p-6 lg:py-4 xl:py-6 lg:px-8"
+          className="w-full lg:w-[48%] xl:w-[50%] flex items-center justify-center min-h-screen lg:min-h-0 py-4 px-4 sm:p-6 lg:py-4 xl:py-6 lg:px-8"
         >
           <div className="w-full max-w-sm lg:max-w-md py-2">
-            <div className="lg:h-[130px] flex flex-col justify-end pb-1.5">
             {/* Brand header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex items-center gap-3 mb-2 sm:mb-3"
+              className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
             >
               <div className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-[#00b4eb] to-[#50b748] rounded-2xl opacity-40 blur-sm group-hover:opacity-70 transition-opacity duration-500" />
                 <img
                   src={sltLogo}
                   alt="SLT Mobitel Logo"
-                  className="relative w-10 h-10 sm:w-11 sm:h-11 object-contain rounded-xl border-2 border-white/20 shadow-lg"
+                  className="relative w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-xl border-2 border-white/20 shadow-lg"
                 />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="text-left">
+                <div className="flex items-center gap-2.5">
                   <img
                     src={talentHubLogo}
                     alt="TalentHub"
-                    className="h-5 sm:h-6 w-auto rounded-md"
+                    className="h-6 sm:h-8 w-auto rounded-md"
                   />
-                  <h1 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
+                  <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
                     TalentHub
                   </h1>
                 </div>
-                <p className="text-xs text-white/50 font-medium mt-0.5">
+                <p className="text-xs sm:text-sm text-white/50 font-medium mt-0.5">
                   Internship Management Portal
                 </p>
               </div>
             </motion.div>
-
-            {/* Welcome text */}
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.35, duration: 0.5 }}
-              className="mb-2 text-center"
-            >
-              <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight flex items-center justify-center gap-2">
-                <span className="text-white">Welcome</span>
-                <span
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    backgroundImage:
-                      "linear-gradient(135deg, #00b4eb, #50b748)",
-                  }}
-                >
-                  Back
-                </span>
-              </h2>
-              <p className="text-white/60 mt-1 text-xs sm:text-sm leading-relaxed max-w-sm mx-auto">
-                Sign in with your organization's registered Google account.
-              </p>
-            </motion.div>
-            </div>
 
             {/* ─── Login card ─── */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.5 }}
-              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center h-[330px] sm:h-[340px]"
+              className="rounded-2xl overflow-hidden backdrop-blur-xl relative flex flex-col justify-center py-3 sm:py-4"
               style={{
                 background: "rgba(255,255,255,0.06)",
                 border: "1px solid rgba(255,255,255,0.1)",
@@ -283,7 +258,7 @@ const Login = () => {
                 }}
               />
 
-              <div className="p-4 sm:p-5 flex flex-col h-full justify-between">
+              <div className="px-4 py-3 sm:px-5 sm:py-3 flex flex-col h-full justify-between gap-3">
                 {/* Session message */}
                 {sessionMsg && (
                   <div className="mb-2 flex items-start gap-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-400/20">
@@ -328,34 +303,24 @@ const Login = () => {
                   </motion.div>
                 )}
 
-                {/* Top Section */}
-                <div className="text-center mb-1 flex-shrink-0">
-                  <div
-                    className="w-10 h-10 sm:w-11 sm:h-11 mx-auto rounded-xl flex items-center justify-center mb-1"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(0,180,235,0.15), rgba(0,86,162,0.15))",
-                      border: "1px solid rgba(0,180,235,0.2)",
-                    }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5 text-[#00b4eb]"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
+                {/* Welcome text inside card */}
+                <div className="text-center flex-shrink-0">
+                  <h2 className="text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight flex items-center justify-center gap-2">
+                    <GraduationCap className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+                    <span className="text-white">Welcome Back</span>
+                    <span
+                      className="bg-clip-text text-transparent"
+                      style={{
+                        backgroundImage:
+                          "linear-gradient(135deg, #00b4eb, #50b748)",
+                      }}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                      />
-                    </svg>
-                  </div>
-                  <h3 className="text-sm sm:text-base font-bold text-white mb-0.5">
-                    Intern Login
-                  </h3>
+                      Intern
+                    </span>
+                  </h2>
+                  <p className="text-white/60 mt-1.5 text-[11px] sm:text-[13px] leading-relaxed max-w-[280px] sm:max-w-xs mx-auto">
+                    Sign in with your registered intern account
+                  </p>
                 </div>
 
                 {/* Middle Section */}
@@ -404,7 +369,7 @@ const Login = () => {
                 </div>
 
                 {/* Bottom Section */}
-                <div className="mt-auto flex-shrink-0">
+                <div className="flex-shrink-0">
                   {/* Divider */}
                   <div className="flex items-center gap-3 mb-1.5">
                     <div className="flex-1 h-px bg-white/10" />
@@ -435,7 +400,7 @@ const Login = () => {
                         "rgba(255,255,255,0.08)";
                     }}
                   >
-                    <FaShieldAlt className="text-[#00b4eb] group-hover:text-[#00b4eb]" />
+                    <Shield className="h-4 w-4 text-[#00b4eb] group-hover:text-[#00b4eb]" />
                     <span className="text-white/70 group-hover:text-white">
                       Login as Admin
                     </span>
@@ -468,14 +433,10 @@ const Login = () => {
               transition={{ delay: 0.8, duration: 0.5 }}
               className="text-center text-white/30 text-[11px] sm:text-xs"
             >
-              <div className="flex flex-col sm:flex-row justify-center items-center gap-2 mb-2 sm:mb-3">
-                <img 
-                  src={transzentLogo} 
-                  alt="Transzent" 
-                  className="h-6 sm:h-8 w-auto rounded opacity-100 shadow-sm" 
-                />
-              </div>
-              <div className="flex justify-center gap-4 mb-1.5">
+              <p className="mb-1.5">
+                © {new Date().getFullYear()} SLT Mobitel. All rights reserved.
+              </p>
+              <div className="flex justify-center gap-4 mb-2 sm:mb-3">
                 <a
                   href="#"
                   className="hover:text-[#00b4eb] transition-colors"
@@ -497,9 +458,13 @@ const Login = () => {
                   Help
                 </a>
               </div>
-              <p>
-                © {new Date().getFullYear()} SLT Mobitel. All rights reserved.
-              </p>
+              <div className="flex justify-center items-center">
+                <img
+                  src={transzentLogo}
+                  alt="Transzent"
+                  className="h-6 sm:h-8 w-auto rounded opacity-100 shadow-sm"
+                />
+              </div>
             </motion.div>
             </div>
           </div>
@@ -564,8 +529,7 @@ const Login = () => {
                     delay: 0.5 + index * 0.08,
                     duration: 0.4,
                   }}
-                  whileHover={{ y: -3, scale: 1.01 }}
-                  className="group rounded-xl p-3 cursor-default transition-all duration-300 flex flex-col justify-center"
+                  className="group rounded-xl p-3 cursor-default transition-all duration-500 ease-out flex flex-col justify-center"
                   style={{
                     background: "rgba(255,255,255,0.04)",
                     border: "1px solid rgba(255,255,255,0.06)",
