@@ -36,6 +36,7 @@ import { toast } from "react-hot-toast";
 // Navigation Component
 const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem("isSidebarCollapsed");
     return saved ? JSON.parse(saved) : false;
@@ -175,6 +176,7 @@ const Navigation = ({ children }) => {
 
   useEffect(() => {
     const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
       if (window.innerWidth >= 1024) setIsMobileMenuOpen(false);
     };
     window.addEventListener("resize", handleResize);
@@ -229,6 +231,8 @@ const Navigation = ({ children }) => {
       "noopener,noreferrer",
     );
   };
+
+  const effectivelyCollapsed = isSidebarCollapsed && isDesktop;
 
   return (
     <>
@@ -297,27 +301,27 @@ const Navigation = ({ children }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky inset-y-0 left-0 z-40
+        className={`fixed lg:sticky top-16 lg:top-0 bottom-0 left-0 z-40
           bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-[width,transform] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform]
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 ${isSidebarCollapsed ? "lg:w-[80px]" : "lg:w-[270px]"} w-[270px] h-[100dvh] lg:top-0 select-none flex flex-col`}
+          lg:translate-x-0 ${effectivelyCollapsed ? "lg:w-[80px]" : "lg:w-[270px]"} w-[270px] h-[calc(100dvh-64px)] lg:h-[100dvh] select-none flex flex-col`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header with TalentHub + Logo */}
-          <div className="py-6 border-b border-white/10 flex items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)]">
+          <div className="hidden lg:flex py-6 border-b border-white/10 items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)]">
             <div className="flex items-center w-full">
               <div 
                 className="relative h-12 w-12 ml-4 flex-shrink-0 flex items-center justify-center cursor-pointer group"
                 onClick={() => setIsSidebarCollapsed(false)}
-                title={isSidebarCollapsed ? "Expand menu" : ""}
+                title={effectivelyCollapsed ? "Expand menu" : ""}
               >
-                <img src={logo} alt="TalentHub Logo" className={`absolute h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" : "hover:border-[#00b4eb]/50"}`} />
-                {isSidebarCollapsed && (
+                <img src={logo} alt="TalentHub Logo" className={`absolute h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out ${effectivelyCollapsed ? "opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" : "hover:border-[#00b4eb]/50"}`} />
+                {effectivelyCollapsed && (
                   <PanelLeftOpen className="absolute h-6 w-6 text-white/70 transition-all duration-300 ease-in-out opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 group-hover:text-white" />
                 )}
               </div>
 
-              {!isSidebarCollapsed && (
+              {!effectivelyCollapsed && (
                 <div className="flex items-center justify-between flex-1 pr-4 pl-3 overflow-hidden">
                   <Link to="/dashboard" className="flex items-center group">
                     <span className="text-2xl font-extrabold tracking-tight whitespace-nowrap animate-in fade-in duration-300 text-[#ffffff]">
@@ -344,8 +348,8 @@ const Navigation = ({ children }) => {
               <Link
                 key={link.to}
                 to={link.to}
-                title={isSidebarCollapsed ? link.label : ""}
-                className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-200 group focus:outline-none ${isActive(link.to) ? "" : "text-white/70"}`}
+                title={effectivelyCollapsed ? link.label : ""}
+                className={`flex items-center h-12 ml-4 ${effectivelyCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-200 group focus:outline-none ${isActive(link.to) ? "" : "text-white/70"}`}
                 style={{ '--hover-color': link.hoverColor }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -360,7 +364,7 @@ const Navigation = ({ children }) => {
                   )}
                 </div>
 
-                {!isSidebarCollapsed && (
+                {!effectivelyCollapsed && (
                   <>
                     <span className={`font-medium flex-1 transition-colors duration-200 whitespace-nowrap animate-in fade-in duration-300 pl-2 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}>
                       {link.label}
@@ -378,8 +382,8 @@ const Navigation = ({ children }) => {
           <div className="border-t border-white/10 flex flex-col gap-2 py-4">
             <button 
               onClick={handleAnnouncementsToggle} 
-              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-300 group ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/70 hover:text-white"}`}
-              title={isSidebarCollapsed ? "Announcements" : ""}
+              className={`flex items-center h-12 ml-4 ${effectivelyCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-300 group ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/70 hover:text-white"}`}
+              title={effectivelyCollapsed ? "Announcements" : ""}
             >
               <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center relative">
                 <Bell className={`h-5 w-5 group-hover:text-[#f43f5e]`} />
@@ -389,38 +393,38 @@ const Navigation = ({ children }) => {
                   </span>
                 )}
               </div>
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Announcements</span>}
+              {!effectivelyCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Announcements</span>}
             </button>
 
             <button
               onClick={handleYouTubeClick}
-              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#ff3333] transition-all duration-200 group`}
-              title={isSidebarCollapsed ? "Digital Serendib" : ""}
+              className={`flex items-center h-12 ml-4 ${effectivelyCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#ff3333] transition-all duration-200 group`}
+              title={effectivelyCollapsed ? "Digital Serendib" : ""}
             >
               <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
                 <Youtube className={`h-5 w-5 group-hover:text-[#ff3333]`} />
               </div>
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Digital Serendib</span>}
+              {!effectivelyCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Digital Serendib</span>}
             </button>
 
             <button
               onClick={handleDownloadAgreement}
-              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#00b4eb] transition-all duration-200 group`}
-              title={isSidebarCollapsed ? "Guidelines Agreement" : ""}
+              className={`flex items-center h-12 ml-4 ${effectivelyCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#00b4eb] transition-all duration-200 group`}
+              title={effectivelyCollapsed ? "Guidelines Agreement" : ""}
             >
               <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
                 <FileText className={`h-5 w-5 group-hover:text-[#00b4eb]`} />
               </div>
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Guidelines Agreement</span>}
+              {!effectivelyCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Guidelines Agreement</span>}
             </button>
 
             {/* User Profile + Logout */}
             <div 
-              className={`mt-2 h-12 flex items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] ml-4 rounded-xl border border-white/10 bg-white/5 ${isSidebarCollapsed ? "w-12 justify-center hover:bg-white/10 cursor-pointer group" : "mr-4 pr-2 pl-1 justify-between relative"}`}
-              onClick={isSidebarCollapsed ? handleLogout : undefined}
-              title={isSidebarCollapsed ? "Logout" : ""}
+              className={`mt-2 h-12 flex items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] ml-4 rounded-xl border border-white/10 bg-white/5 ${effectivelyCollapsed ? "w-12 justify-center hover:bg-white/10 cursor-pointer group" : "mr-4 pr-2 pl-1 justify-between relative"}`}
+              onClick={effectivelyCollapsed ? handleLogout : undefined}
+              title={effectivelyCollapsed ? "Logout" : ""}
             >
-              {isSidebarCollapsed ? (
+              {effectivelyCollapsed ? (
                 <div className="flex items-center justify-center p-0 text-rose-500 group-hover:text-rose-400 transition-all duration-200 w-full h-full">
                   <LogOut className="h-6 w-6" />
                 </div>
