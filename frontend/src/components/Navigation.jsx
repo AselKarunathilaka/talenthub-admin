@@ -298,133 +298,132 @@ const Navigation = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={`fixed lg:sticky inset-y-0 left-0 z-40
-          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-[width,transform] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform]
+          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-[width,transform] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform]
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
           lg:translate-x-0 ${isSidebarCollapsed ? "lg:w-[80px]" : "lg:w-[270px]"} w-[270px] h-[100dvh] lg:top-0 select-none flex flex-col`}
       >
         <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header with TalentHub + Logo */}
-          <div className={`px-4 py-6 border-b border-white/10 flex items-center ${isSidebarCollapsed ? "justify-center" : "justify-between"} gap-3 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]`}>
-            <div className="flex items-center gap-3 overflow-hidden">
-              {isSidebarCollapsed ? (
-                // Collapsed View
-                <div 
-                  className="relative h-10 w-10 flex items-center justify-center cursor-pointer group"
-                  onClick={() => setIsSidebarCollapsed(false)}
-                  title="Expand menu"
-                >
-                  <img src={logo} alt="TalentHub Logo" className="absolute inset-0 h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" />
+          <div className="py-6 border-b border-white/10 flex items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)]">
+            <div className="flex items-center w-full">
+              <div 
+                className="relative h-12 w-12 ml-4 flex-shrink-0 flex items-center justify-center cursor-pointer group"
+                onClick={() => setIsSidebarCollapsed(false)}
+                title={isSidebarCollapsed ? "Expand menu" : ""}
+              >
+                <img src={logo} alt="TalentHub Logo" className={`absolute h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out ${isSidebarCollapsed ? "opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" : "hover:border-[#00b4eb]/50"}`} />
+                {isSidebarCollapsed && (
                   <PanelLeftOpen className="absolute h-6 w-6 text-white/70 transition-all duration-300 ease-in-out opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 group-hover:text-white" />
+                )}
+              </div>
+
+              {!isSidebarCollapsed && (
+                <div className="flex items-center justify-between flex-1 pr-4 pl-3 overflow-hidden">
+                  <Link to="/dashboard" className="flex items-center group">
+                    <span className="text-2xl font-extrabold tracking-tight whitespace-nowrap animate-in fade-in duration-300 text-[#ffffff]">
+                      TalentHub
+                    </span>
+                  </Link>
+                  <button 
+                    onClick={() => setIsSidebarCollapsed(true)}
+                    className="hidden lg:flex relative p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors flex-shrink-0 group/collapse"
+                    title="Collapse menu"
+                  >
+                    <PanelLeft className="h-5 w-5 absolute top-2 left-2 transition-opacity duration-200 opacity-100 group-hover/collapse:opacity-0" />
+                    <PanelLeftClose className="h-5 w-5 transition-opacity duration-200 opacity-0 group-hover/collapse:opacity-100" />
+                  </button>
                 </div>
-              ) : (
-                // Expanded View
-                <Link to="/dashboard" className="flex items-center gap-3 flex-shrink-0 group">
-                  <img src={logo} alt="TalentHub Logo" className="h-10 w-10 flex-shrink-0 rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
-                  <span className="text-2xl font-extrabold tracking-tight whitespace-nowrap animate-in fade-in duration-300">
-                    <span className="text-[#ffffff]">TalentHub</span>
-                  </span>
-                </Link>
               )}
             </div>
-            
-            {!isSidebarCollapsed && (
-              <button 
-                onClick={() => setIsSidebarCollapsed(true)}
-                className="hidden lg:flex relative p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors flex-shrink-0 group/collapse"
-                title="Collapse menu"
-              >
-                <PanelLeft className="h-5 w-5 absolute top-2 left-2 transition-opacity duration-200 opacity-100 group-hover/collapse:opacity-0" />
-                <PanelLeftClose className="h-5 w-5 transition-opacity duration-200 opacity-0 group-hover/collapse:opacity-100" />
-              </button>
-            )}
           </div>
 
 
           {/* Navigation Links */}
-          <nav className="px-3 py-4 lg:py-4 flex-1 flex flex-col justify-start gap-1 lg:gap-2 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="py-4 lg:py-4 flex-1 flex flex-col justify-start gap-1 lg:gap-2 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
                 title={isSidebarCollapsed ? link.label : ""}
-                className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-3.5 lg:py-3.5 rounded-xl mx-2 transition-all duration-200 group focus:outline-none
-                  ${isActive(link.to)
-                    ? ""
-                    : "text-white/70"
-                  }`}
+                className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-200 group focus:outline-none ${isActive(link.to) ? "" : "text-white/70"}`}
                 style={{ '--hover-color': link.hoverColor }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <span
-                  className={`${!isSidebarCollapsed && "mr-3"} relative transition-colors duration-200 flex-shrink-0 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
-                >
-                  {link.icon}
+                <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center relative">
+                  <span className={`transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}>
+                    {link.icon}
+                  </span>
                   {link.badge > 0 && (
-                    <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-md animate-pulse">
+                    <span className="absolute top-2 right-2 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-md animate-pulse">
                       {link.badge > 9 ? "9+" : link.badge}
                     </span>
                   )}
-                </span>
+                </div>
+
                 {!isSidebarCollapsed && (
-                  <span
-                    className={`font-medium flex-1 transition-colors duration-200 whitespace-nowrap animate-in fade-in duration-300 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
-                  >
-                    {link.label}
-                  </span>
-                )}
-                {isActive(link.to) && !isSidebarCollapsed && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow animate-in zoom-in duration-300" />
+                  <>
+                    <span className={`font-medium flex-1 transition-colors duration-200 whitespace-nowrap animate-in fade-in duration-300 pl-2 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}>
+                      {link.label}
+                    </span>
+                    {isActive(link.to) && (
+                      <span className="ml-auto mr-3 h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow animate-in zoom-in duration-300" />
+                    )}
+                  </>
                 )}
               </Link>
             ))}
           </nav>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-white/10 flex flex-col gap-2">
+          <div className="border-t border-white/10 flex flex-col gap-2 py-4">
             <button 
               onClick={handleAnnouncementsToggle} 
-              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 rounded-xl transition-all duration-300 group ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/70 hover:text-white"}`}
+              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} rounded-xl transition-all duration-300 group ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/70 hover:text-white"}`}
               title={isSidebarCollapsed ? "Announcements" : ""}
             >
-              <div className="relative flex-shrink-0">
-                <Bell className={`h-5 w-5 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#f43f5e]`} />
+              <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center relative">
+                <Bell className={`h-5 w-5 group-hover:text-[#f43f5e]`} />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                  <span className="absolute top-2 right-2 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </div>
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Announcements</span>}
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Announcements</span>}
             </button>
 
             <button
               onClick={handleYouTubeClick}
-              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 text-white/70 rounded-xl hover:text-[#ff3333] transition-all duration-200 group`}
+              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#ff3333] transition-all duration-200 group`}
               title={isSidebarCollapsed ? "Digital Serendib" : ""}
             >
-              <Youtube className={`h-5 w-5 flex-shrink-0 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#ff3333]`} />
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Digital Serendib</span>}
+              <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                <Youtube className={`h-5 w-5 group-hover:text-[#ff3333]`} />
+              </div>
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Digital Serendib</span>}
             </button>
 
             <button
               onClick={handleDownloadAgreement}
-              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 text-white/70 rounded-xl hover:text-[#00b4eb] transition-all duration-200 group`}
+              className={`flex items-center h-12 ml-4 ${isSidebarCollapsed ? "w-12" : "mr-4"} text-white/70 rounded-xl hover:text-[#00b4eb] transition-all duration-200 group`}
               title={isSidebarCollapsed ? "Guidelines Agreement" : ""}
             >
-              <FileText className={`h-5 w-5 flex-shrink-0 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#00b4eb]`} />
-              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Guidelines Agreement</span>}
+              <div className="w-12 h-12 flex-shrink-0 flex items-center justify-center">
+                <FileText className={`h-5 w-5 group-hover:text-[#00b4eb]`} />
+              </div>
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in pl-2">Guidelines Agreement</span>}
             </button>
 
             {/* User Profile + Logout */}
-            <div className={`mt-2 ${!isSidebarCollapsed ? "p-2 rounded-xl border border-white/10 bg-white/5 relative" : ""} flex items-center ${isSidebarCollapsed ? "justify-center" : "justify-between"} transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] h-[58px]`}>
+            <div 
+              className={`mt-2 h-12 flex items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] ml-4 rounded-xl border border-white/10 bg-white/5 ${isSidebarCollapsed ? "w-12 justify-center hover:bg-white/10 cursor-pointer group" : "mr-4 pr-2 pl-1 justify-between relative"}`}
+              onClick={isSidebarCollapsed ? handleLogout : undefined}
+              title={isSidebarCollapsed ? "Logout" : ""}
+            >
               {isSidebarCollapsed ? (
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center justify-center p-2.5 text-white/70 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all duration-200 w-full"
-                  title="Logout"
-                >
+                <div className="flex items-center justify-center p-0 text-rose-500 group-hover:text-rose-400 transition-all duration-200 w-full h-full">
                   <LogOut className="h-6 w-6" />
-                </button>
+                </div>
               ) : (
                 <>
                   {/* Left: Clickable Avatar */}
@@ -446,13 +445,13 @@ const Navigation = ({ children }) => {
                   
                   {/* Center: ID */}
                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden animate-in fade-in duration-300">
-                    <span className="text-[15px] font-bold text-white/90 tracking-widest" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
+                    <span className="text-[15px] font-bold text-white/90 tracking-[0.4em]" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
                   </div>
 
                   {/* Right: Logout */}
                   <button
                     onClick={handleLogout}
-                    className="p-2 text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0 relative z-10"
+                    className="p-2 text-rose-500 hover:text-rose-400 hover:bg-white/10 rounded-lg transition-colors flex-shrink-0 relative z-10"
                     title="Logout"
                   >
                     <LogOut className="h-5 w-5" />
