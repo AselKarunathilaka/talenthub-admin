@@ -1331,11 +1331,6 @@ const Dashboard = () => {
           <div style={{ flex: 1, paddingBottom: 16 }}>
             {renderContent()}
           </div>
-          <footer className="w-full text-center py-4 mt-auto border-t border-white/10 bg-gradient-to-r from-[#006600] to-[#000066]">
-            <p className="text-xs font-medium text-white/80">
-              © {new Date().getFullYear()} TalentHub. All rights reserved.
-            </p>
-          </footer>
         </div>
         <FeatureTipModal />
       </div>

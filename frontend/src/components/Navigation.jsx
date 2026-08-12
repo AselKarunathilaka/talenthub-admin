@@ -20,6 +20,9 @@ import {
   ScanLine,
   GraduationCap,
   Bike,
+  PanelLeftClose,
+  PanelLeft,
+  PanelLeftOpen,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -33,14 +36,21 @@ import { toast } from "react-hot-toast";
 // Navigation Component
 const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isNavbarHidden, setIsNavbarHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("isSidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("isSidebarCollapsed", JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
   const [isScrollingUp, setIsScrollingUp] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const [internEmail, setInternEmail] = useState("");
   const [internName, setInternName] = useState("");
+  const [displayInternId, setDisplayInternId] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Profile picture state
@@ -66,6 +76,7 @@ const Navigation = ({ children }) => {
         if (res.data) {
           setInternEmail(res.data.Trainee_Email || res.data.email || "");
           setInternName(res.data.Trainee_Name || res.data.traineeName || "");
+          setDisplayInternId(res.data.Trainee_ID || "");
         }
       } catch (error) {
         console.error("Error fetching trainee data:", error);
@@ -275,54 +286,7 @@ const Navigation = ({ children }) => {
         </div>
       </header>
 
-      {/* Desktop Top Bar */}
-      <header
-        className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
-          transition-all duration-500 ease-out select-none`}
-        style={{ left: "270px", width: "calc(100% - 270px)" }}
-      >
-        <div className="flex items-center justify-between w-full">
-          <h2 className="text-2xl font-bold text-white">
-            {isActive("/announcements") ? "Announcements" : (navLinks.find((link) => isActive(link.to))?.label || "Dashboard")}
-          </h2>
-
-          <div className="flex items-center space-x-6">
-            <button 
-              onClick={handleAnnouncementsToggle} 
-              className={`relative p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white hover:text-[#00b4eb] hover:bg-white/10"}`}
-              aria-label="Toggle Announcements"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
-              {/* Clickable Avatar for desktop */}
-              <button
-                onClick={() => setIsProfileModalOpen(true)}
-                className="h-9 w-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
-              >
-                <img
-                  src={profilePicUrl}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-              </button>
-              <div className="flex flex-col">
-                <span className="text-xs text-white/60">Welcome back,</span>
-                <span className="text-sm font-semibold text-white">{internName}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      {/* Desktop Top Bar Removed per requirements */}
 
       {/* Mobile Menu Overlay */}
       <div
@@ -334,65 +298,65 @@ const Navigation = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={`fixed lg:sticky inset-y-0 left-0 z-40
-          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-out
+          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-[width,transform] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform]
           ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 w-[270px] h-[100dvh] lg:top-0 select-none`}
+          lg:translate-x-0 ${isSidebarCollapsed ? "lg:w-[80px]" : "lg:w-[270px]"} w-[270px] h-[100dvh] lg:top-0 select-none flex flex-col`}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header with TalentHub + Logo */}
-          <div className="px-4 py-6 border-b border-white/10 flex items-center gap-3">
-            <Link to="/dashboard" className="flex items-center gap-3 flex-shrink-0 group">
-              <img src={logo} alt="TalentHub Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
-              <span className="text-2xl font-extrabold tracking-tight">
-                <span className="text-[#ffffff]">TalentHub</span>
-              </span>
-            </Link>
+          <div className={`px-4 py-6 border-b border-white/10 flex items-center ${isSidebarCollapsed ? "justify-center" : "justify-between"} gap-3 transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)]`}>
+            <div className="flex items-center gap-3 overflow-hidden">
+              {isSidebarCollapsed ? (
+                // Collapsed View
+                <div 
+                  className="relative h-10 w-10 flex items-center justify-center cursor-pointer group"
+                  onClick={() => setIsSidebarCollapsed(false)}
+                  title="Expand menu"
+                >
+                  <img src={logo} alt="TalentHub Logo" className="absolute inset-0 h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" />
+                  <PanelLeftOpen className="absolute h-6 w-6 text-white/70 transition-all duration-300 ease-in-out opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 group-hover:text-white" />
+                </div>
+              ) : (
+                // Expanded View
+                <Link to="/dashboard" className="flex items-center gap-3 flex-shrink-0 group">
+                  <img src={logo} alt="TalentHub Logo" className="h-10 w-10 flex-shrink-0 rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
+                  <span className="text-2xl font-extrabold tracking-tight whitespace-nowrap animate-in fade-in duration-300">
+                    <span className="text-[#ffffff]">TalentHub</span>
+                  </span>
+                </Link>
+              )}
+            </div>
+            
+            {!isSidebarCollapsed && (
+              <button 
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="hidden lg:flex relative p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors flex-shrink-0 group/collapse"
+                title="Collapse menu"
+              >
+                <PanelLeft className="h-5 w-5 absolute top-2 left-2 transition-opacity duration-200 opacity-100 group-hover/collapse:opacity-0" />
+                <PanelLeftClose className="h-5 w-5 transition-opacity duration-200 opacity-0 group-hover/collapse:opacity-100" />
+              </button>
+            )}
           </div>
 
-          {/* Mobile User Profile */}
-          <div className="lg:hidden px-4 py-5 border-b border-white/10 bg-white/5 backdrop-blur-sm">
-            <div className="flex items-center space-x-3">
-              {/* Clickable Avatar for mobile sidebar */}
-              <button
-                onClick={() => setIsProfileModalOpen(true)}
-                className="h-10 w-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none"
-              >
-                <img
-                  src={profilePicUrl}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
-                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
-                </div>
-              </button>
-              <div className="flex flex-col">
-                <span className="text-xs text-white/60">Welcome,</span>
-                <span className="text-sm font-semibold text-white">{internName || "User"}</span>
-                {internEmail && (
-                  <span className="text-xs text-white/40 truncate max-w-[180px]">{internEmail}</span>
-                )}
-              </div>
-            </div>
-          </div>
 
           {/* Navigation Links */}
-          <nav className="px-3 py-4 lg:py-6 flex-1 flex flex-col justify-evenly gap-2 lg:gap-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="px-3 py-4 lg:py-4 flex-1 flex flex-col justify-start gap-1 lg:gap-2 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3.5 lg:py-6 rounded-xl mx-2 transition-all duration-200 group border focus:outline-none
+                title={isSidebarCollapsed ? link.label : ""}
+                className={`flex items-center ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-3.5 lg:py-3.5 rounded-xl mx-2 transition-all duration-200 group focus:outline-none
                   ${isActive(link.to)
-                    ? "bg-white/10 shadow-lg backdrop-blur-sm border-white/10"
-                    : "border-transparent text-white/70 hover:bg-white/5"
+                    ? ""
+                    : "text-white/70"
                   }`}
                 style={{ '--hover-color': link.hoverColor }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
                 <span
-                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                  className={`${!isSidebarCollapsed && "mr-3"} relative transition-colors duration-200 flex-shrink-0 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
                 >
                   {link.icon}
                   {link.badge > 0 && (
@@ -401,51 +365,107 @@ const Navigation = ({ children }) => {
                     </span>
                   )}
                 </span>
-                <span
-                  className={`font-medium flex-1 transition-colors duration-200 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
-                >
-                  {link.label}
-                </span>
-                {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow" />
+                {!isSidebarCollapsed && (
+                  <span
+                    className={`font-medium flex-1 transition-colors duration-200 whitespace-nowrap animate-in fade-in duration-300 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
+                  >
+                    {link.label}
+                  </span>
+                )}
+                {isActive(link.to) && !isSidebarCollapsed && (
+                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow animate-in zoom-in duration-300" />
                 )}
               </Link>
             ))}
           </nav>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-white/10 space-y-2">
+          <div className="p-4 border-t border-white/10 flex flex-col gap-2">
+            <button 
+              onClick={handleAnnouncementsToggle} 
+              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 rounded-xl transition-all duration-300 group ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/70 hover:text-white"}`}
+              title={isSidebarCollapsed ? "Announcements" : ""}
+            >
+              <div className="relative flex-shrink-0">
+                <Bell className={`h-5 w-5 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#f43f5e]`} />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Announcements</span>}
+            </button>
+
             <button
               onClick={handleYouTubeClick}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
+              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 text-white/70 rounded-xl hover:text-[#ff3333] transition-all duration-200 group`}
+              title={isSidebarCollapsed ? "Digital Serendib" : ""}
             >
-              <Youtube className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
-              <span className="text-sm font-medium">Digital Serendib</span>
+              <Youtube className={`h-5 w-5 flex-shrink-0 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#ff3333]`} />
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Digital Serendib</span>}
             </button>
 
             <button
               onClick={handleDownloadAgreement}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#00b4eb] transition-all duration-200 group"
+              className={`flex items-center w-full ${isSidebarCollapsed ? "justify-center px-0" : "px-4"} py-2.5 text-white/70 rounded-xl hover:text-[#00b4eb] transition-all duration-200 group`}
+              title={isSidebarCollapsed ? "Guidelines Agreement" : ""}
             >
-              <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
-              <span className="text-sm font-medium">Guidelines Agreement</span>
+              <FileText className={`h-5 w-5 flex-shrink-0 ${!isSidebarCollapsed && "mr-3"} group-hover:text-[#00b4eb]`} />
+              {!isSidebarCollapsed && <span className="text-sm font-medium whitespace-nowrap animate-in fade-in">Guidelines Agreement</span>}
             </button>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
-            >
-              <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
-              <span className="font-medium">Logout</span>
-              <span className="ml-auto text-xs text-white/30">v1.0.0</span>
-            </button>
+            {/* User Profile + Logout */}
+            <div className={`mt-2 ${!isSidebarCollapsed ? "p-2 rounded-xl border border-white/10 bg-white/5 relative" : ""} flex items-center ${isSidebarCollapsed ? "justify-center" : "justify-between"} transition-all duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] h-[58px]`}>
+              {isSidebarCollapsed ? (
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-center p-2.5 text-white/70 hover:bg-red-500/10 hover:text-red-400 rounded-xl transition-all duration-200 w-full"
+                  title="Logout"
+                >
+                  <LogOut className="h-6 w-6" />
+                </button>
+              ) : (
+                <>
+                  {/* Left: Clickable Avatar */}
+                  <button
+                    onClick={() => setIsProfileModalOpen(true)}
+                    className="h-10 w-10 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none relative z-10"
+                    title="Profile"
+                  >
+                    <img
+                      src={profilePicUrl}
+                      alt="Profile"
+                      className="h-full w-full object-cover"
+                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                    />
+                    <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
+                      {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
+                    </div>
+                  </button>
+                  
+                  {/* Center: ID */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden animate-in fade-in duration-300">
+                    <span className="text-[15px] font-bold text-white/90 tracking-widest" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
+                  </div>
+
+                  {/* Right: Logout */}
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 text-white/50 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors flex-shrink-0 relative z-10"
+                    title="Logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Spacers for fixed headers */}
       <div className="lg:hidden h-16" />
-      <div className="hidden lg:block h-[5.5rem]" />
 
       {/* Profile Picture Upload Modal */}
       {isProfileModalOpen && (

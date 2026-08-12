@@ -1903,7 +1903,7 @@
 }
 @media (min-width: 1024px) {
   .bento-page-content {
-    padding-top: 88px; /* Desktop topbar space */
+    padding-top: 24px; /* Default desktop top padding without topbar */
   }
 }
 
