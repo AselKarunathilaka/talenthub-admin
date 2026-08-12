@@ -694,9 +694,6 @@ const AdminLogin = () => {
                   <h3 className="text-sm sm:text-base font-bold text-white mb-0.5">
                     Admin Login
                   </h3>
-                  <p className="text-white/50 text-xs">
-                    Enter your administrator credentials
-                  </p>
                 </div>
 
                 {/* Middle Section */}
@@ -896,10 +893,6 @@ const AdminLogin = () => {
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
                   </button>
-
-                  <p className="text-center text-[11px] text-white/30 mt-1">
-                    For interns and trainees only
-                  </p>
                 </div>
               </div>
             </motion.div>
