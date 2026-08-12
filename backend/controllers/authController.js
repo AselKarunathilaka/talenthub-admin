@@ -30,19 +30,6 @@ const adminGoogleLogin = async (req, res) => {
   }
 };
 
-const unifiedGoogleLogin = async (req, res) => {
-  try {
-    const token = req.body.accessToken || req.body.credential || req.body.code;
-    if (!token) {
-      return res.status(400).json({ message: "Missing Google token." });
-    }
-    const result = await authService.unifiedGoogleLogin(token);
-    res.status(200).json(result);
-  } catch (error) {
-    res.status(401).json({ message: error.message });
-  }
-};
-
 const internLogin = async (req, res) => {
   const { email, password } = req.body;
 
@@ -137,5 +124,4 @@ module.exports = {
   gateStaffLogin,
   registerGateStaff,
   internLogin,
-  unifiedGoogleLogin,
 };

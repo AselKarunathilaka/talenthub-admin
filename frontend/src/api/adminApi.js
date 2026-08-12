@@ -13,7 +13,7 @@ const checkAuth = async (res) => {
     const msg =
       code === "TOKEN_EXPIRED"
         ? "Your session has expired. Please log in again."
-        : "Your session is invalid. Please log in again using your organization registered email.";
+        : "Your session is invalid. Please log in again.";
     handleUnauthorized(msg);
     throw new Error(msg);
   }

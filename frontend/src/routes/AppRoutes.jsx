@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
 import FaceAttendance from "../pages/FaceAttendance";
@@ -11,7 +11,7 @@ import DailyRecords from "../pages/DailyRecords";
 import MyLeaveRequests from "../pages/MyLeaveRequests";
 import ShortLeavePass from "../pages/ShortLeavePass";
 import SeatReservation from "../pages/SeatReservation";
-
+import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminDailyRecords from "../pages/AdminDailyRecords";
 import AdminInternDetails from "../pages/AdminInternDetails";
@@ -160,7 +160,7 @@ const AppRoutes = () => {
       />
 
       {/* Admin Routes */}
-      <Route path="/admin-login" element={<Navigate to="/" replace />} />
+      <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
       <Route path="/gate-staff-dashboard" element={<GateStaffDashboard />} />
       <Route path="/verify/certificate/:token" element={<CertificateVerify />} />

@@ -20,7 +20,6 @@ import {
   ScanLine,
   GraduationCap,
   Bike,
-  Shield,
 } from "lucide-react";
 import logo from "../assets/talenthub.png";
 import axios from "axios";
@@ -43,19 +42,6 @@ const Navigation = ({ children }) => {
   const [internEmail, setInternEmail] = useState("");
   const [internName, setInternName] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
-  const [availableRoles, setAvailableRoles] = useState([]);
-
-  useEffect(() => {
-    try {
-      const roles = JSON.parse(localStorage.getItem("availableRoles") || "[]");
-      setAvailableRoles(roles);
-    } catch { }
-  }, []);
-
-  const handleSwitchToAdmin = () => {
-    localStorage.setItem("currentRole", "admin");
-    navigate("/admin/dashboard");
-  };
 
   // Profile picture state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -444,16 +430,6 @@ const Navigation = ({ children }) => {
               <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
               <span className="text-sm font-medium">Guidelines Agreement</span>
             </button>
-
-            {availableRoles.includes("admin") && (
-              <button
-                onClick={handleSwitchToAdmin}
-                className="flex items-center w-full px-4 py-2.5 text-white/90 rounded-xl bg-gradient-to-r from-[#50b748]/20 to-[#00b4eb]/20 hover:from-[#50b748]/40 hover:to-[#00b4eb]/40 border border-[#50b748]/30 transition-all duration-200 group mt-2"
-              >
-                <Shield className="h-5 w-5 mr-3 text-[#50b748] group-hover:scale-110 transition-transform" />
-                <span className="font-bold">Switch to Admin</span>
-              </button>
-            )}
 
             <button
               onClick={handleLogout}

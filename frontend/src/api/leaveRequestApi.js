@@ -10,7 +10,7 @@ axios.interceptors.response.use(
       const code = error.response?.data?.code || "";
       const msg = code === "TOKEN_EXPIRED"
         ? "Your session has expired. Please log in again."
-        : "Your session is invalid. Please log in again using your organization registered email.";
+        : "Your session is invalid. Please log in again.";
       handleUnauthorized(msg);
     }
     return Promise.reject(error);

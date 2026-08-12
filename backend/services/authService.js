@@ -8,7 +8,6 @@ const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
 const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
 const Supervisor = require("../models/Supervisor");
-const Staff = require("../models/Staff");
 const User = require("../models/User");
 const https = require("https");
 
@@ -310,115 +309,6 @@ class AuthService {
       staffId: newStaff._id,
       message: "Gate staff registered successfully!",
     };
-  }
-
-  // Unified Google Login
-  async unifiedGoogleLogin(credentialOrCode) {
-    let payload;
-
-    if (credentialOrCode && credentialOrCode.startsWith("ya29.")) {
-      const googlePayload = await this._fetchGoogleUserInfo(credentialOrCode);
-      if (!googlePayload || !googlePayload.email) {
-        throw new Error("Failed to verify Google identity. Please try again.");
-      }
-      payload = {
-        email: googlePayload.email,
-        email_verified: googlePayload.email_verified,
-        name: googlePayload.name,
-        picture: googlePayload.picture,
-        sub: googlePayload.sub,
-      };
-    } else {
-      const ticket = await client.verifyIdToken({
-        idToken: credentialOrCode,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
-    }
-
-    if (!payload.email_verified) {
-      throw new Error("Google email is not verified. Please verify your Google account and try again.");
-    }
-
-    const normalizedEmail = payload.email.toLowerCase().trim();
-    
-    // Check all collections
-    const internRecord = await InternRepository.findByEmail(normalizedEmail);
-    const supervisorRecord = await Supervisor.findOne({ email: normalizedEmail });
-    const staffRecord = await Staff.findOne({ email: normalizedEmail });
-
-    if (!internRecord && !supervisorRecord && !staffRecord) {
-      throw new Error("Access denied. This Google account is not registered. Please contact the administrator.");
-    }
-
-    const result = {
-      roles: [],
-      intern: null,
-      admin: null
-    };
-
-    // If intern, generate intern session
-    if (internRecord) {
-      if (payload.picture && internRecord.googlePictureUrl !== payload.picture) {
-        internRecord.googlePictureUrl = payload.picture;
-        await internRecord.save();
-      }
-      const internToken = jwt.sign(
-        { id: internRecord._id, email: internRecord.Trainee_Email, role: "intern", accountType: "intern" },
-        dotenv.jwtSecret,
-        { expiresIn: "24h" },
-      );
-      result.roles.push('intern');
-      result.intern = { token: internToken, internId: internRecord._id };
-    }
-
-    // If supervisor or staff, generate admin session
-    if (supervisorRecord || staffRecord) {
-      const record = staffRecord || supervisorRecord; // Staff takes precedence if both somehow exist, or whichever
-      
-      let user = await User.findOne({ email: normalizedEmail });
-      if (!user) {
-        // First-time sign-in
-        const roleMap = { Supervisor: "supervisor", Developer: "admin", "Project Manager": "admin" };
-        const userRole = roleMap[record.role] || "supervisor";
-        user = new User({
-          name: payload.name || record.name,
-          email: normalizedEmail,
-          authProvider: "google",
-          role: userRole,
-          picture: payload.picture || "",
-          googleSubject: payload.sub,
-          isActive: true,
-          permissions: permissionsForRole(userRole),
-        });
-        await user.save();
-      } else {
-        // Subsequent sign-ins
-        user.name = user.name || payload.name || record.name;
-        user.picture = payload.picture || user.picture;
-        user.googleSubject = payload.sub;
-        user.lastLoginAt = new Date();
-        if (!user.permissions?.length) {
-          user.permissions = permissionsForRole(user.role || "supervisor");
-        }
-        if (!user.isActive) {
-          throw new Error("Your admin account has been deactivated. Please contact the system administrator.");
-        }
-        await user.save();
-      }
-
-      const adminSession = this.createAdminSession(user);
-      result.roles.push('admin');
-      result.admin = { token: adminSession.token, user: adminSession.user };
-      
-      if (staffRecord) {
-        staffRecord.lastLogin = new Date();
-        await staffRecord.save();
-      }
-    }
-
-    result.message = "Login successful!";
-    return result;
   }
 }
 
