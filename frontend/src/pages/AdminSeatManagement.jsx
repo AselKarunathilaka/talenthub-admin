@@ -589,18 +589,23 @@ const AdminSeatManagement = () => {
                                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                               >
                                 <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
-                                  {isBooked && !isLocked ? (
-                                    <FaTimes size={16} className="text-white/90 mb-0.5" />
-                                  ) : isLocked ? (
-                                    <FaLock size={14} className="mb-1 opacity-60" />
-                                  ) : (
-                                    <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
-                                  )}
+                                  <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:opacity-0 group-hover:scale-75 transition-all duration-300">
+                                    {isBooked && !isLocked ? (
+                                      <FaTimes size={16} className="text-white/90 mb-0.5" />
+                                    ) : isLocked ? (
+                                      <FaLock size={14} className="mb-1 opacity-60" />
+                                    ) : (
+                                      <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
+                                    )}
+                                    
+                                    <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
+                                      <span className="text-[12px] font-extrabold leading-none">{number}</span>
+                                    </div>
+                                  </div>
                                   
-                                  <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
-                                    <span className="text-[12px] font-extrabold leading-none absolute opacity-100 group-hover:opacity-0 transition-opacity duration-200">{number}</span>
-                                    <span className="text-[10px] font-extrabold leading-none absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-center px-0.5 w-full truncate">
-                                      {isLocked && lockDetail?.traineeId ? lockDetail.traineeId : isBooked && !isLocked ? (booking.traineeId || "Booked") : "Lock"}
+                                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300 px-0.5">
+                                    <span className="text-[14px] tracking-tight font-extrabold leading-none text-center drop-shadow-sm break-words">
+                                      {isLocked ? (lockDetail?.traineeId || "Unlock") : isBooked ? (booking.traineeId || "Booked") : "Lock"}
                                     </span>
                                   </div>
                                 </div>

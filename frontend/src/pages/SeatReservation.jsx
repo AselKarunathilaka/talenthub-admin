@@ -41,19 +41,22 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
       transition={{ type: "spring", stiffness: 400, damping: 25 }}
     >
       <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
-        {status === "booked" ? (
-          <X size={18} strokeWidth={3} className="text-white/90 mb-0.5" />
-        ) : status === "locked" ? (
-          <Armchair size={18} strokeWidth={2.5} className="mb-1 opacity-60" />
-        ) : (
-          <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
-        )}
-        
-        <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
-          <span className="text-[12px] font-extrabold leading-none absolute opacity-100 group-hover:opacity-0 transition-opacity duration-200">{number}</span>
-          <span className="text-[10px] font-extrabold leading-none absolute opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-center px-0.5 w-full truncate">
-            {status === "locked" && lockedSeatDetails?.[number]?.traineeId ? lockedSeatDetails[number].traineeId : status === "booked" && bookingInfo?.traineeId ? bookingInfo.traineeId : status === "available" ? "Book" : "Booked"}
-          </span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:opacity-0 group-hover:scale-75 transition-all duration-300">
+          {status === "booked" ? (
+            <X size={18} strokeWidth={3} className="text-white/90 mb-0.5" />
+          ) : status === "locked" ? (
+            <Armchair size={18} strokeWidth={2.5} className="mb-1 opacity-60" />
+          ) : (
+            <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
+          )}
+          
+          <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
+            <span className="text-[12px] font-extrabold leading-none">{number}</span>
+          </div>
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300">
+           <span className="text-[26px] font-extrabold leading-none drop-shadow-sm">{number}</span>
         </div>
       </div>
       
@@ -62,7 +65,7 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
            {status === "locked" ? (
               <span className="font-bold text-slate-200 text-xs">Locked Seat</span>
            ) : status === "booked" ? (
-              <span className="font-bold text-white text-xs">{bookingInfo?.internName || bookingInfo?.email || "Reserved"}</span>
+              <span className="font-bold text-white text-xs">{bookingInfo?.internName || "Reserved"}</span>
            ) : (
               <span className="font-bold text-[#50b748] text-xs">Available</span>
            )}
