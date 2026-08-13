@@ -1,37 +1,39 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import AdminNavigation from "../components/AdminNavigation";
+import { BookOpen } from "lucide-react";
 import {
-  FaUser,
-  FaCalendarAlt,
-  FaArrowLeft,
-  FaExclamationTriangle,
   FaSearch,
-  FaFilter,
+  FaCalendarAlt,
+  FaUser,
   FaSort,
-  FaTasks,
-  FaEye,
-  FaShieldAlt,
-  FaRegSmile,
+  FaExclamationTriangle,
   FaRegClock,
+  FaTasks,
   FaChartLine,
+  FaFilter,
+  FaTimes,
+  FaRegSmile,
 } from "react-icons/fa";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { adminApi } from "../api/adminApi";
-import logo from "../assets/sltlogo.jpg";
 
 const AdminInternRecords = () => {
   const { internId } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
+
   const [internDetails, setInternDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Filters
   const [searchTerm, setSearchTerm] = useState("");
-  const [sortBy, setSortBy] = useState("date");
+  const [sortOrder, setSortOrder] = useState("desc"); // desc = newest first
   const [filterPeriod, setFilterPeriod] = useState("all");
 
   useEffect(() => {
     fetchInternDetails();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [internId]);
 
   const fetchInternDetails = async () => {
@@ -39,7 +41,6 @@ const AdminInternRecords = () => {
       setLoading(true);
       setError(null);
 
-      // Check admin authentication
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
       if (!adminInfo.token) {
         navigate("/admin-login");
@@ -48,11 +49,10 @@ const AdminInternRecords = () => {
 
       const data = await adminApi.getInternDetails(internId);
       setInternDetails(data);
-    } catch (error) {
-      console.error("Error fetching intern details:", error);
-      setError("Failed to load intern records");
-
-      if (error.message.includes("403") || error.message.includes("401")) {
+    } catch (err) {
+      console.error("Error fetching intern details:", err);
+      setError("Failed to load intern records. Please try again.");
+      if (err.message?.includes("403") || err.message?.includes("401")) {
         localStorage.removeItem("adminInfo");
         navigate("/admin-login");
       }
@@ -61,20 +61,22 @@ const AdminInternRecords = () => {
     }
   };
 
-  const getFilteredRecords = () => {
+  // Filtering / sorting logic
+  const filteredRecords = useMemo(() => {
     if (!internDetails?.records) return [];
 
     let filtered = [...internDetails.records];
 
-    // Search filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
+    // Search
+    if (searchTerm.trim()) {
+      const q = searchTerm.toLowerCase();
       filtered = filtered.filter(
-        (record) =>
-          record.task?.toLowerCase().includes(searchLower) ||
-          record.progress?.toLowerCase().includes(searchLower) ||
-          record.blockers?.toLowerCase().includes(searchLower) ||
-          record.date?.toLowerCase().includes(searchLower),
+        (r) =>
+          r.task?.toLowerCase().includes(q) ||
+          r.progress?.toLowerCase().includes(q) ||
+          r.blockers?.toLowerCase().includes(q) ||
+          r.date?.toLowerCase().includes(q) ||
+          r.stack?.toLowerCase().includes(q),
       );
     }
 
@@ -82,7 +84,6 @@ const AdminInternRecords = () => {
     if (filterPeriod !== "all") {
       const now = new Date();
       const filterDate = new Date();
-
       switch (filterPeriod) {
         case "week":
           filterDate.setDate(now.getDate() - 7);
@@ -96,561 +97,462 @@ const AdminInternRecords = () => {
         default:
           break;
       }
-
-      if (filterPeriod !== "all") {
-        filtered = filtered.filter(
-          (record) => new Date(record.createdAt) >= filterDate,
-        );
-      }
+      filtered = filtered.filter(
+        (r) => new Date(r.createdAt) >= filterDate || new Date(r.date) >= filterDate,
+      );
     }
 
     // Sort
     filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "date":
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        case "dateOld":
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        default:
-          return 0;
-      }
+      const da = new Date(a.createdAt || a.date);
+      const db = new Date(b.createdAt || b.date);
+      return sortOrder === "desc" ? db - da : da - db;
     });
 
     return filtered;
-  };
+  }, [internDetails, searchTerm, sortOrder, filterPeriod]);
 
-  const filteredRecords = getFilteredRecords();
+  const intern = internDetails?.intern || {};
+  const totalRecords = internDetails?.records?.length || 0;
 
+  // Status badge helper
+  const statusBadgeClass = (s) =>
+    ({
+      working: "bg-green-100 text-green-700 border-green-200",
+      wfh: "bg-blue-100 text-blue-700 border-blue-200",
+      leave: "bg-orange-100 text-orange-700 border-orange-200",
+      study_leave: "bg-sky-100 text-sky-700 border-sky-200",
+    })[s] || "bg-gray-100 text-gray-600 border-gray-200";
+
+  const statusLabel = (s) =>
+    s === "wfh"
+      ? "WFH"
+      : s === "study_leave"
+        ? "Extended Leave"
+        : s
+          ? s.charAt(0).toUpperCase() + s.slice(1)
+          : "Working";
+
+  // Loading Screen
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
-          />
-          <p className="text-gray-600 font-medium">Loading intern records...</p>
+      <AdminNavigation>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+              className="w-12 h-12 border-t-4 border-b-4 border-[#00b4eb] rounded-full mx-auto mb-4"
+            />
+            <p className="text-gray-500 font-medium">Loading logbook records...</p>
+          </div>
         </div>
-      </div>
+      </AdminNavigation>
     );
   }
 
+  // Error Screen
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg">
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 300 }}
-          >
+      <AdminNavigation>
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+          <div className="text-center max-w-md p-8 bg-white rounded-3xl border border-gray-100 shadow-sm">
             <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
-          </motion.div>
-          <p className="text-gray-700 mb-6">{error}</p>
-          <div className="flex justify-center space-x-4">
-            <motion.button
-              onClick={fetchInternDetails}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white rounded-xl transition-all shadow-md hover:shadow-lg"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Retry
-            </motion.button>
-            <motion.button
-              onClick={() => navigate("/admin/dashboard")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              Back to Dashboard
-            </motion.button>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <div className="flex justify-center">
+              <motion.button
+                onClick={fetchInternDetails}
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-sm"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                Retry
+              </motion.button>
+            </div>
           </div>
         </div>
-      </div>
+      </AdminNavigation>
     );
   }
 
-  const { intern } = internDetails;
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 text-gray-800 overflow-hidden">
-      {/* Enhanced floating background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{
-            y: [0, -30, 0],
-            x: [0, 20, 0],
-            rotate: [0, 5, 0],
-          }}
-          transition={{
-            duration: 15,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 rounded-full bg-cyan-100/40 top-1/4 right-0"
-          animate={{
-            y: [0, 20, 0],
-            x: [0, -20, 0],
-            rotate: [0, -5, 0],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 2,
-          }}
-        />
-        <motion.div
-          className="absolute w-64 h-64 rounded-full bg-green-100/40 bottom-20 left-1/4"
-          animate={{
-            y: [0, -20, 0],
-            x: [0, 15, 0],
-            rotate: [0, 3, 0],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 1,
-          }}
-        />
-        <motion.div
-          className="absolute w-72 h-72 rounded-full bg-purple-100/40 bottom-0 right-20"
-          animate={{
-            y: [0, 25, 0],
-            x: [0, -15, 0],
-            rotate: [0, -3, 0],
-          }}
-          transition={{
-            duration: 17,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: 3,
-          }}
-        />
-      </div>
-
-      {/* Enhanced Top Navbar */}
-      <motion.header
-        className="bg-white/80 backdrop-blur-md shadow-sm fixed top-0 left-0 right-0 z-30 h-[4.5rem] sm:h-[5.5rem] border-b border-gray-100"
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ type: "spring", stiffness: 100 }}
-      >
-        <div className="flex items-center justify-between h-full px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-1">
-            <motion.div
-              className="flex items-center space-x-2 sm:space-x-4 cursor-pointer"
-              onClick={() => {
-                localStorage.clear();
-                navigate("/admin-login");
-              }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <motion.img
-                src={logo}
-                alt="SLT Logo"
-                className="h-8 sm:h-10 w-auto rounded-lg border border-gray-200 flex-shrink-0 shadow-sm"
-                whileHover={{ rotate: 5 }}
-                transition={{ type: "spring", stiffness: 300 }}
-              />
-              <div className="hidden sm:flex flex-col min-w-0">
-                <span className="text-sm sm:text-lg font-semibold text-gray-900 truncate">
-                  SLT Admin Portal
-                </span>
-                <span className="text-xs sm:text-sm text-gray-600 truncate">
-                  Intern Records
-                </span>
+    <AdminNavigation>
+      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
+        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            {/* Header Section */}
+            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+              <div>
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                >
+                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
+                    <BookOpen className="text-[#0056a2] h-8 w-8" />
+                  </div>
+                  Logbook Records
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                >
+                  {intern.traineeName || intern.Trainee_Name || "Intern"} —{" "}
+                  {intern.traineeId || intern.Trainee_ID || "N/A"}
+                </motion.p>
               </div>
-            </motion.div>
-          </div>
 
-          <div className="flex items-center space-x-2 sm:space-x-6 flex-shrink-0">
-            <div className="hidden md:flex items-center space-x-3 mr-4 p-2 bg-gray-50 rounded-xl">
+              {/* Stats */}
               <motion.div
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center transition-all duration-300 group-hover:bg-gray-200 border border-gray-200 shadow-sm"
-                whileHover={{ scale: 1.1, rotate: 5 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.1, duration: 0.2 }}
+                className="bg-white rounded-3xl shadow-sm border border-gray-100 p-3 flex flex-wrap items-center gap-3"
               >
-                <FaUser className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+                <div className="flex-1 min-w-[180px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
+                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
+                    <FaUser className="text-[#00b4eb] h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">
+                      Trainee
+                    </p>
+                    <p className="text-sm font-bold text-gray-800 truncate">
+                      {intern.traineeName || intern.Trainee_Name || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                <div className="w-32 text-center p-3 bg-blue-50/80 rounded-2xl border border-blue-100">
+                  <div className="text-2xl font-black text-cyan-600 leading-none mb-1">
+                    {totalRecords}
+                  </div>
+                  <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-wider">
+                    Total Records
+                  </div>
+                </div>
               </motion.div>
-              <div className="flex flex-col">
-                <span className="text-xs text-gray-500">Welcome back,</span>
-                <span className="text-sm font-medium text-gray-800">
-                  Administrator
-                </span>
-              </div>
             </div>
 
-            <motion.button
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                localStorage.removeItem("adminInfo");
-                navigate("/admin-login");
-              }}
-              className="flex items-center space-x-1 sm:space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm text-red-600 hover:text-white hover:bg-gradient-to-r from-red-500 to-orange-500 rounded-xl transition-all duration-200 border border-red-200 hover:border-red-600 cursor-pointer shadow-sm hover:shadow-md"
-            >
-              <FaShieldAlt className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </motion.button>
-          </div>
-        </div>
-      </motion.header>
-
-      {/* Main Content */}
-      <div className="pt-[4.5rem] sm:pt-[5.5rem]">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Header with Back Button */}
+            {/* Search / Filter Bar */}
             <motion.div
-              className="mb-4 sm:mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                <motion.button
-                  onClick={() => {
-                    if (location.state?.from === "daily-records") {
-                      navigate("/admin/daily-records");
-                    } else {
-                      navigate(`/admin/intern/${internId}`);
-                    }
-                  }}
-                  className="flex items-center px-3 sm:px-4 py-2 text-sm sm:text-base text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-xl transition-all border border-gray-200 shadow-sm hover:shadow-md"
-                  whileHover={{ x: -3 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <FaArrowLeft className="mr-2" />
-                  {location.state?.from === "daily-records"
-                    ? "Back to Daily Records"
-                    : "Back to Details"}
-                </motion.button>
-                <div>
-                  <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-                      Logbook Records
-                    </span>
-                  </h2>
-                  <p className="text-sm sm:text-base text-gray-600">
-                    {intern?.traineeName} - {intern?.traineeId}
-                  </p>
-                </div>
-              </div>
-              <motion.div
-                className="text-left sm:text-right w-full sm:w-auto bg-white/80 backdrop-blur-sm p-3 rounded-2xl border border-gray-100 shadow-sm"
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                transition={{ delay: 0.2 }}
-              >
-                <p className="text-xs sm:text-sm text-gray-500">
-                  Total Records
-                </p>
-                <p className="text-xl sm:text-2xl font-bold text-cyan-600">
-                  {internDetails?.records?.length || 0}
-                </p>
-              </motion.div>
-            </motion.div>
-
-            {/* Search and Filter Controls */}
-            <motion.div
-              className="bg-white/80 backdrop-blur-sm p-4 sm:p-5 lg:p-6 rounded-2xl border border-gray-100 shadow-sm mb-4 sm:mb-6"
+              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.2, duration: 0.3 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
             >
-              <div className="flex flex-col space-y-3 sm:space-y-4 xl:flex-row xl:space-y-0 xl:space-x-4">
-                {/* Search */}
+              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
                 <div className="flex-1">
-                  <div className="relative">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <motion.input
+                  <label
+                    htmlFor="search-input"
+                    className="block text-sm font-bold text-gray-700 mb-2"
+                  >
+                    Search Records
+                  </label>
+                  <div className="relative flex-1">
+                    <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <input
+                      id="search-input"
                       type="text"
-                      placeholder="Search in tasks, progress, and blockers..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 sm:py-3 text-sm sm:text-base bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder-gray-500 shadow-sm"
-                      whileFocus={{ scale: 1.01 }}
+                      placeholder="Search tasks, challenges, plans, stack..."
+                      className="w-full pl-11 pr-10 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
                     />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm"
+                      >
+                        <FaTimes className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Filter Controls */}
-                <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
-                  {/* Period Filter */}
-                  <motion.div
-                    className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"
-                    whileHover={{ y: -2 }}
-                  >
-                    <FaFilter className="text-blue-500 h-4 w-4 flex-shrink-0" />
+                <div className="flex gap-3">
+                  <div className="flex items-center space-x-2 bg-slate-50 border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
+                    <FaFilter className="text-blue-400 h-4 w-4" />
                     <select
                       value={filterPeriod}
                       onChange={(e) => setFilterPeriod(e.target.value)}
-                      className="px-3 py-1.5 text-sm sm:text-base bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 flex-1 sm:flex-none"
+                      className="bg-transparent text-sm font-bold text-gray-700 focus:outline-none cursor-pointer"
                     >
-                      <option value="all" className="bg-white">
-                        All Time
-                      </option>
-                      <option value="week" className="bg-white">
-                        Last Week
-                      </option>
-                      <option value="month" className="bg-white">
-                        Last Month
-                      </option>
-                      <option value="3months" className="bg-white">
-                        Last 3 Months
-                      </option>
+                      <option value="all">All Time</option>
+                      <option value="week">Last Week</option>
+                      <option value="month">Last Month</option>
+                      <option value="3months">Last 3 Months</option>
                     </select>
-                  </motion.div>
+                  </div>
 
-                  {/* Sort */}
-                  <motion.div
-                    className="flex items-center space-x-2 bg-white p-2 rounded-xl border border-gray-200 shadow-sm"
-                    whileHover={{ y: -2 }}
+                  <motion.button
+                    onClick={() =>
+                      setSortOrder((o) => (o === "desc" ? "asc" : "desc"))
+                    }
+                    className="flex items-center space-x-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold transition-all shadow-sm hover:bg-gray-50"
                   >
-                    <FaSort className="text-blue-500 h-4 w-4 flex-shrink-0" />
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value)}
-                      className="px-3 py-1.5 text-sm sm:text-base bg-transparent border-0 focus:ring-0 focus:outline-none text-gray-900 flex-1 sm:flex-none"
-                    >
-                      <option value="date" className="bg-white">
-                        Newest First
-                      </option>
-                      <option value="dateOld" className="bg-white">
-                        Oldest First
-                      </option>
-                    </select>
-                  </motion.div>
+                    <FaSort className="text-blue-400 h-4 w-4" />
+                    <span>{sortOrder === "desc" ? "↓ Newest" : "↑ Oldest"}</span>
+                  </motion.button>
                 </div>
               </div>
-              <motion.p
-                className="text-xs sm:text-sm text-gray-500 mt-2 sm:mt-3 flex items-center"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
+
+              <p className="text-xs text-gray-400 mt-3 font-medium flex items-center">
                 <FaRegSmile className="mr-1.5 text-amber-500" />
-                Showing {filteredRecords.length} of{" "}
-                {internDetails?.records?.length || 0} records
-              </motion.p>
+                Showing {filteredRecords.length} of {totalRecords} records
+                {searchTerm && " · filtered by search"}
+              </p>
             </motion.div>
 
-            {/* Records List */}
+            {/* Records Table */}
             <motion.div
-              className="space-y-3 sm:space-y-4"
+              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.4, duration: 0.3 }}
+              transition={{ delay: 0.3, duration: 0.3 }}
             >
-              <AnimatePresence>
-                {filteredRecords.length === 0 ? (
+              {/* Table title bar */}
+              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
+                    All Submissions —{" "}
+                    <span className="text-blue-600">
+                      {intern.traineeName || intern.Trainee_Name || "Intern"}
+                    </span>
+                  </h2>
+                  <p className="text-sm text-gray-500 font-medium mt-0.5">
+                    {filteredRecords.length} record{filteredRecords.length !== 1 ? "s" : ""} shown
+                  </p>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="relative min-h-[300px]">
+                {!loading && filteredRecords.length === 0 ? (
                   <motion.div
-                    className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-6 sm:p-8 lg:p-12 text-center"
-                    initial={{ opacity: 0, scale: 0.9 }}
+                    className="text-center py-16 px-4"
+                    initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0 }}
                   >
                     <motion.div
-                      animate={{
-                        y: [0, -10, 0],
-                        rotate: [0, 5, 0],
-                      }}
+                      animate={{ y: [0, -10, 0] }}
                       transition={{
                         duration: 3,
                         repeat: Infinity,
                         ease: "easeInOut",
                       }}
                     >
-                      <FaTasks className="mx-auto h-8 w-8 sm:h-12 sm:w-12 text-gray-400 mb-3 sm:mb-4" />
+                      <FaCalendarAlt className="mx-auto h-12 w-12 text-gray-200 mb-4" />
                     </motion.div>
-                    <h3 className="text-base sm:text-lg font-medium text-gray-700 mb-2">
+                    <h3 className="text-base font-semibold text-gray-500 mb-1">
                       No records found
                     </h3>
-                    <p className="text-sm sm:text-base text-gray-500">
+                    <p className="text-sm text-gray-400">
                       {searchTerm || filterPeriod !== "all"
                         ? "Try adjusting your search or filter criteria."
                         : "This intern hasn't submitted any logbook entries yet."}
                     </p>
                   </motion.div>
                 ) : (
-                  filteredRecords.map((record, index) => (
-                    <motion.div
-                      key={record._id}
-                      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-sm p-4 sm:p-6 overflow-hidden"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.05, duration: 0.3 }}
-                      whileHover={{
-                        y: -3,
-                        boxShadow:
-                          "0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)",
-                      }}
-                    >
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-3 sm:mb-4 gap-3">
-                        <div className="flex items-start sm:items-center space-x-3 flex-1 min-w-0">
+                  <>
+                    {/* Mobile cards */}
+                    <div className="block lg:hidden divide-y divide-gray-100">
+                      {filteredRecords.map((record, idx) => {
+                        const status = record.status || "working";
+                        return (
                           <motion.div
-                            className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0 shadow-sm"
-                            whileHover={{ scale: 1.1, rotate: 5 }}
+                            key={record._id}
+                            className="p-4 hover:bg-gray-50/60 transition-colors"
+                            whileHover={{ y: -1 }}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: idx * 0.03 }}
                           >
-                            <FaCalendarAlt className="text-blue-600 text-sm sm:text-base" />
-                          </motion.div>
-                          <div className="min-w-0 flex-1">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-900">
-                              {new Date(record.date).toLocaleDateString(
-                                "en-US",
-                                {
-                                  weekday:
-                                    window.innerWidth < 640 ? "short" : "long",
-                                  year: "numeric",
-                                  month:
-                                    window.innerWidth < 640 ? "short" : "long",
-                                  day: "numeric",
-                                },
-                              )}
-                            </h3>
-                            <p className="text-xs sm:text-sm text-gray-500 flex items-center">
-                              <FaRegClock className="mr-1.5 text-gray-400" />
-                              Submitted:{" "}
-                              {new Date(record.createdAt).toLocaleDateString()}
-                            </p>
-                            <div className="flex flex-wrap gap-2 mt-1 sm:mt-2">
-                              {/* Show stack only if it's not "On Leave" when status is leave */}
-                              {record.stack &&
-                                !(
-                                  record.status === "leave" &&
-                                  record.stack === "On Leave"
-                                ) && (
-                                  <motion.span
-                                    className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"
-                                    whileHover={{ scale: 1.05 }}
-                                  >
-                                    {record.stack}
-                                  </motion.span>
-                                )}
-
-                              {/* Show status badge for Work From Home */}
-                              {record.status === "wfh" && (
-                                <motion.span
-                                  className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800"
-                                  whileHover={{ scale: 1.05 }}
-                                >
-                                  Work From Home
-                                </motion.span>
-                              )}
-                              {/* Show status badge for On Leave */}
-                              {record.status === "leave" && (
-                                <motion.span
-                                  className="inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800"
-                                  whileHover={{ scale: 1.05 }}
-                                >
-                                  On Leave
-                                </motion.span>
-                              )}
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
+                                  <FaCalendarAlt className="text-blue-600 h-4 w-4" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-900">
+                                    {idx + 1}.{" "}
+                                    {new Date(record.date).toLocaleDateString(
+                                      "en-US",
+                                      {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                      },
+                                    )}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    <FaRegClock className="inline mr-1" />
+                                    {new Date(record.createdAt).toLocaleString(
+                                      "en-US",
+                                      {
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      },
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusBadgeClass(status)}`}
+                              >
+                                {statusLabel(status)}
+                              </span>
                             </div>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                          <motion.span
-                            className="inline-flex items-center px-2 sm:px-2.5 py-1 sm:py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-800 shadow-sm"
-                            whileHover={{ scale: 1.05 }}
-                          >
-                            <FaTasks className="mr-1" />
-                            Daily Record
-                          </motion.span>
-                        </div>
-                      </div>
 
-                      {/* Record Details */}
-                      <div className="space-y-3 sm:space-y-4">
-                        {/* Task */}
-                        {record.task && (
-                          <motion.div
-                            className="border-l-4 border-blue-400 pl-3 sm:pl-4 py-2 bg-blue-50/50 rounded-r-lg"
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.1 }}
-                          >
-                            <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base flex items-center">
-                              <FaChartLine className="mr-2 text-blue-500" />
-                              Tasks Completed
-                            </h4>
-                            <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                              {record.task}
-                            </p>
-                          </motion.div>
-                        )}
+                            {record.stack &&
+                              !(
+                                record.status === "leave" &&
+                                record.stack === "On Leave"
+                              ) && (
+                                <span className="inline-block mb-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                                  {record.stack}
+                                </span>
+                              )}
 
-                        {/* Progress */}
-                        {record.progress &&
-                          record.progress !== "No challenges faced" && (
-                            <motion.div
-                              className="border-l-4 border-green-400 pl-3 sm:pl-4 py-2 bg-green-50/50 rounded-r-lg"
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.2 }}
-                            >
-                              <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base flex items-center">
-                                <FaExclamationTriangle className="mr-2 text-green-500" />
-                                Challenges Faced
-                              </h4>
-                              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                                {record.progress}
+                            {record.task && (
+                              <p className="text-xs text-gray-700 line-clamp-2 mt-1">
+                                <FaChartLine className="inline mr-1 text-blue-500" />
+                                {record.task}
                               </p>
-                            </motion.div>
-                          )}
-
-                        {/* Blockers */}
-                        {record.blockers &&
-                          record.blockers !== "No specific plans" && (
-                            <motion.div
-                              className="border-l-4 border-amber-400 pl-3 sm:pl-4 py-2 bg-amber-50/50 rounded-r-lg"
-                              initial={{ opacity: 0, x: -10 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              transition={{ delay: 0.3 }}
-                            >
-                              <h4 className="font-medium text-gray-900 mb-1 sm:mb-2 text-sm sm:text-base flex items-center">
-                                <FaEye className="mr-2 text-amber-500" />
-                                Plans for Tomorrow
-                              </h4>
-                              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                                {record.blockers}
-                              </p>
-                            </motion.div>
-                          )}
-                      </div>
-
-                      {!record.task &&
-                        (!record.progress ||
-                          record.progress === "No challenges faced") &&
-                        (!record.blockers ||
-                          record.blockers === "No specific plans") && (
-                          <motion.div
-                            className="text-center py-3 sm:py-4 text-gray-500 bg-gray-50/50 rounded-lg mt-3"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.4 }}
-                          >
-                            <FaExclamationTriangle className="mx-auto h-6 w-6 sm:h-8 sm:w-8 mb-2 text-gray-400" />
-                            <p className="text-xs sm:text-sm">
-                              No detailed information available for this record
-                            </p>
+                            )}
                           </motion.div>
-                        )}
-                    </motion.div>
-                  ))
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className="hidden lg:block overflow-x-auto">
+                      <table className="w-full text-left text-sm">
+                        <thead className="bg-slate-50/80 border-b border-gray-100">
+                          <tr>
+                            {["#", "Date", "Stack", "Status", "Tasks Completed", "Submitted At"].map(
+                              (h) => (
+                                <th
+                                  key={h}
+                                  className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs"
+                                >
+                                  {h}
+                                </th>
+                              ),
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-50">
+                          {filteredRecords.map((record, idx) => {
+                            const status = record.status || "working";
+                            return (
+                              <motion.tr
+                                key={record._id}
+                                className="hover:bg-slate-50/50 transition-colors group align-top"
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.02 }}
+                              >
+                                <td className="px-6 py-4 text-sm text-gray-400 w-12">
+                                  {idx + 1}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
+                                      <FaCalendarAlt className="text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold text-gray-900">
+                                        {new Date(record.date).toLocaleDateString(
+                                          "en-US",
+                                          {
+                                            weekday: "short",
+                                            month: "short",
+                                            day: "numeric",
+                                            year: "numeric",
+                                          },
+                                        )}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {new Date(record.date).toLocaleDateString(
+                                          "en-US",
+                                          { weekday: "long" },
+                                        )}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  {record.stack &&
+                                  !(
+                                    record.status === "leave" &&
+                                    record.stack === "On Leave"
+                                  ) ? (
+                                    <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                      {record.stack}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">—</span>
+                                  )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap">
+                                  <span
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(status)}`}
+                                  >
+                                    {statusLabel(status)}
+                                  </span>
+                                </td>
+                                <td className="px-6 py-4 max-w-md">
+                                  {record.task ? (
+                                    <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">
+                                      {record.task}
+                                    </p>
+                                  ) : (
+                                    <span className="text-gray-400 text-xs">
+                                      No task info
+                                    </span>
+                                  )}
+
+                                  {record.progress &&
+                                    record.progress !== "No challenges faced" && (
+                                      <p className="mt-2 text-xs text-green-700 bg-green-50/60 border-l-2 border-green-400 px-2 py-1 rounded-r">
+                                        <strong>Challenges:</strong> {record.progress}
+                                      </p>
+                                    )}
+                                  {record.blockers &&
+                                    record.blockers !== "No specific plans" && (
+                                      <p className="mt-1 text-xs text-amber-700 bg-amber-50/60 border-l-2 border-amber-400 px-2 py-1 rounded-r">
+                                        <strong>Plans:</strong> {record.blockers}
+                                      </p>
+                                    )}
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                  {new Date(record.createdAt).toLocaleString(
+                                    "en-US",
+                                    {
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
+                                </td>
+                              </motion.tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
                 )}
-              </AnimatePresence>
+              </div>
             </motion.div>
-          </div>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </AdminNavigation>
   );
 };
 
