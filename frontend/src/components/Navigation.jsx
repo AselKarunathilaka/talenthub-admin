@@ -20,6 +20,9 @@ import {
   ScanLine,
   GraduationCap,
   Bike,
+  PanelLeftClose,
+  PanelLeft,
+  PanelLeftOpen,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import axios from "axios";
@@ -33,14 +36,22 @@ import { toast } from "react-hot-toast";
 // Navigation Component
 const Navigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isNavbarHidden, setIsNavbarHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+    const saved = localStorage.getItem("isSidebarCollapsed");
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  useEffect(() => {
+    localStorage.setItem("isSidebarCollapsed", JSON.stringify(isSidebarCollapsed));
+  }, [isSidebarCollapsed]);
   const [isScrollingUp, setIsScrollingUp] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
   const [internEmail, setInternEmail] = useState("");
   const [internName, setInternName] = useState("");
+  const [displayInternId, setDisplayInternId] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Profile picture state
@@ -66,6 +77,7 @@ const Navigation = ({ children }) => {
         if (res.data) {
           setInternEmail(res.data.Trainee_Email || res.data.email || "");
           setInternName(res.data.Trainee_Name || res.data.traineeName || "");
+          setDisplayInternId(res.data.Trainee_ID || "");
         }
       } catch (error) {
         console.error("Error fetching trainee data:", error);
@@ -164,6 +176,7 @@ const Navigation = ({ children }) => {
 
   useEffect(() => {
     const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024);
       if (window.innerWidth >= 1024) setIsMobileMenuOpen(false);
     };
     window.addEventListener("resize", handleResize);
@@ -218,6 +231,8 @@ const Navigation = ({ children }) => {
       "noopener,noreferrer",
     );
   };
+
+  const effectivelyCollapsed = isSidebarCollapsed && isDesktop;
 
   return (
     <>
@@ -275,177 +290,222 @@ const Navigation = ({ children }) => {
         </div>
       </header>
 
-      {/* Desktop Top Bar */}
-      <header
-        className={`hidden lg:flex items-center justify-between bg-gradient-to-r from-[#006600] to-[#000066] shadow-2xl fixed top-0 right-0 z-30 h-[5.5rem] px-8
-          transition-all duration-500 ease-out select-none`}
-        style={{ left: "270px", width: "calc(100% - 270px)" }}
-      >
-        <div className="flex items-center justify-between w-full">
-          <h2 className="text-2xl font-bold text-white">
-            {isActive("/announcements") ? "Announcements" : (navLinks.find((link) => isActive(link.to))?.label || "Dashboard")}
-          </h2>
+      {/* Desktop Top Bar Removed per requirements */}
 
-          <div className="flex items-center space-x-6">
-            <button 
-              onClick={handleAnnouncementsToggle} 
-              className={`relative p-2 rounded-xl backdrop-blur-sm border transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_15px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white hover:text-[#00b4eb] hover:bg-white/10"}`}
-              aria-label="Toggle Announcements"
-            >
-              <Bell className="h-5 w-5" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
-                  {unreadCount > 9 ? "9+" : unreadCount}
-                </span>
-              )}
-            </button>
-            <div className="flex items-center space-x-3 mr-4 bg-white/5 backdrop-blur-sm rounded-2xl px-4 py-2 border border-white/10">
-              {/* Clickable Avatar for desktop */}
-              <button
-                onClick={() => setIsProfileModalOpen(true)}
-                className="h-9 w-9 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all cursor-pointer shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
-              >
-                <img
-                  src={profilePicUrl}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center">
-                  <User className="h-5 w-5 text-white" />
-                </div>
-              </button>
-              <div className="flex flex-col">
-                <span className="text-xs text-white/60">Welcome back,</span>
-                <span className="text-sm font-semibold text-white">{internName}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu Backdrop - heavy blur behind the panel */}
       <div
-        className={`fixed inset-0 bg-black/60 z-30 transition-opacity duration-300 backdrop-blur-sm
-          ${isMobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"} lg:hidden`}
+        className={`fixed top-16 inset-x-0 bottom-0 z-30 transition-all duration-300
+          ${isMobileMenuOpen ? "opacity-100 backdrop-blur-xl bg-black/40" : "opacity-0 pointer-events-none"} lg:hidden`}
         onClick={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* Sidebar */}
+      {/* Sidebar / Full-Screen Mobile Menu */}
       <aside
-        className={`fixed lg:sticky inset-y-0 left-0 z-40
-          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-out
-          ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-          lg:translate-x-0 w-[270px] h-[100dvh] lg:top-0 select-none`}
+        className={`fixed lg:sticky top-16 lg:top-0 lg:bottom-0 left-0 right-0 lg:right-auto z-40
+          bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform,opacity]
+          ${isMobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto"}
+          ${effectivelyCollapsed ? "lg:w-[80px]" : "lg:w-[270px]"} max-h-[calc(100dvh-64px)] lg:max-h-none lg:h-[100dvh] select-none flex flex-col rounded-b-3xl lg:rounded-none`}
       >
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full overflow-hidden">
           {/* Sidebar Header with TalentHub + Logo */}
-          <div className="px-4 py-6 border-b border-white/10 flex items-center gap-3">
-            <Link to="/dashboard" className="flex items-center gap-3 flex-shrink-0 group">
-              <img src={logo} alt="TalentHub Logo" className="h-10 w-auto rounded-md border border-white/10 hover:border-[#00b4eb]/50 transition-all duration-300" />
-              <span className="text-2xl font-extrabold tracking-tight">
-                <span className="text-[#ffffff]">TalentHub</span>
-              </span>
-            </Link>
-          </div>
-
-          {/* Mobile User Profile */}
-          <div className="lg:hidden px-4 py-5 border-b border-white/10 bg-white/5 backdrop-blur-sm">
-            <div className="flex items-center space-x-3">
-              {/* Clickable Avatar for mobile sidebar */}
-              <button
-                onClick={() => setIsProfileModalOpen(true)}
-                className="h-10 w-10 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none"
+          <div className="hidden lg:flex py-6 border-b border-white/10 items-center transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)]">
+            <div className="flex items-center w-full overflow-hidden">
+              <div 
+                className="relative h-12 w-12 ml-4 flex-shrink-0 flex items-center justify-center cursor-pointer group"
+                onClick={() => setIsSidebarCollapsed(false)}
+                title={effectivelyCollapsed ? "Expand menu" : ""}
               >
-                <img
-                  src={profilePicUrl}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
-                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
-                </div>
-              </button>
-              <div className="flex flex-col">
-                <span className="text-xs text-white/60">Welcome,</span>
-                <span className="text-sm font-semibold text-white">{internName || "User"}</span>
-                {internEmail && (
-                  <span className="text-xs text-white/40 truncate max-w-[180px]">{internEmail}</span>
-                )}
+                <img src={logo} alt="TalentHub Logo" className={`absolute h-10 w-10 rounded-md border border-white/10 transition-all duration-300 ease-in-out ${effectivelyCollapsed ? "opacity-100 scale-100 group-hover:opacity-0 group-hover:scale-75" : "hover:border-[#00b4eb]/50"}`} />
+                <PanelLeftOpen className={`absolute h-6 w-6 text-white/70 transition-all duration-300 ease-in-out ${effectivelyCollapsed ? "opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100 group-hover:text-white" : "opacity-0 scale-75 pointer-events-none"}`} />
+              </div>
+
+              <div className={`flex items-center justify-between flex-1 pr-4 pl-3 overflow-hidden transition-all duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] ${effectivelyCollapsed ? "opacity-0 w-0 pr-0 pl-0" : "opacity-100"}`}>
+                <Link to="/dashboard" className="flex items-center group">
+                  <span className="text-2xl font-extrabold tracking-tight whitespace-nowrap text-[#ffffff]">
+                    TalentHub
+                  </span>
+                </Link>
+                <button 
+                  onClick={() => setIsSidebarCollapsed(true)}
+                  className="hidden lg:flex relative p-2 rounded-xl hover:bg-white/10 text-white/70 hover:text-white transition-colors flex-shrink-0 group/collapse"
+                  title="Collapse menu"
+                >
+                  <PanelLeft className="h-5 w-5 absolute top-2 left-2 transition-opacity duration-200 opacity-100 group-hover/collapse:opacity-0" />
+                  <PanelLeftClose className="h-5 w-5 transition-opacity duration-200 opacity-0 group-hover/collapse:opacity-100" />
+                </button>
               </div>
             </div>
           </div>
 
+
           {/* Navigation Links */}
-          <nav className="px-3 py-4 lg:py-6 flex-1 flex flex-col justify-evenly gap-2 lg:gap-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <nav className="p-4 lg:p-0 lg:py-4 lg:flex-1 grid grid-cols-2 content-start gap-3 lg:flex lg:flex-col lg:justify-start lg:gap-2 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {navLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex items-center px-4 py-3.5 lg:py-6 rounded-xl mx-2 transition-all duration-200 group border focus:outline-none
-                  ${isActive(link.to)
-                    ? "bg-white/10 shadow-lg backdrop-blur-sm border-white/10"
-                    : "border-transparent text-white/70 hover:bg-white/5"
-                  }`}
-                style={{ '--hover-color': link.hoverColor }}
+                title={effectivelyCollapsed ? link.label : ""}
+                className={`
+                  transition-all duration-300 group focus:outline-none
+                  /* Desktop Layout */
+                  lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
+                  /* Mobile Layout (Glassmorphism Grid) */
+                  flex flex-col items-center justify-center p-4 rounded-2xl border
+                  ${isActive(link.to) 
+                    ? "bg-white/15 border-[var(--hover-color)]/40 shadow-[0_4px_20px_var(--hover-bg)] text-white ring-1 ring-[var(--hover-color)]/20 lg:bg-white/10 lg:border-white/10 lg:shadow-none lg:ring-0" 
+                    : "bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent"}
+                `}
+                style={{ '--hover-color': link.hoverColor, '--hover-bg': `${link.hoverColor}25` }}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                <span
-                  className={`mr-3 relative transition-colors duration-200 ${isActive(link.to) ? "text-[var(--hover-color)]" : "text-white/60 group-hover:text-[var(--hover-color)]"}`}
+                <div 
+                  className={`
+                    w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 transition-all duration-300
+                    ${isActive(link.to) 
+                      ? "bg-[var(--hover-bg)] text-[var(--hover-color)] lg:bg-transparent" 
+                      : "bg-white/5 lg:bg-transparent text-[var(--hover-color)] lg:text-white/60 lg:group-hover:text-[var(--hover-color)]"}
+                  `}
                 >
                   {link.icon}
                   {link.badge > 0 && (
-                    <span className="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-md animate-pulse">
+                    <span className="absolute -top-1 -right-1 lg:top-2 lg:right-2 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-md animate-pulse">
                       {link.badge > 9 ? "9+" : link.badge}
                     </span>
                   )}
-                </span>
-                <span
-                  className={`font-medium flex-1 transition-colors duration-200 ${isActive(link.to) ? "text-white" : "group-hover:text-[var(--hover-color)]"}`}
-                >
+                </div>
+
+                {/* Text label - always rendered, fades via CSS on desktop */}
+                <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm lg:flex-1 whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} ${isActive(link.to) ? "text-white" : "text-white/80 lg:group-hover:text-[var(--hover-color)]"}`}>
                   {link.label}
                 </span>
-                {isActive(link.to) && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow" />
-                )}
+                {/* Active Dot - Desktop Only */}
+                <span className={`hidden lg:block mr-3 h-2 w-2 rounded-full bg-[var(--hover-color)] shadow-glow transition-all duration-150 ${isActive(link.to) && !effectivelyCollapsed ? "opacity-100 ml-auto" : "opacity-0 w-0 mr-0"}`} />
               </Link>
             ))}
           </nav>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-white/10 space-y-2">
-            <button
-              onClick={handleYouTubeClick}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
+          <div className="flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:px-0 lg:pb-4 lg:gap-2 lg:border-t lg:border-white/10 lg:mt-auto lg:pt-4">
+            {/* Announcements - full width on mobile */}
+            <button 
+              onClick={() => { handleAnnouncementsToggle(); setIsMobileMenuOpen(false); }} 
+              className={`
+                transition-all duration-300 group
+                /* Desktop */
+                lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
+                /* Mobile */
+                flex flex-col items-center justify-center p-4 rounded-2xl border
+                ${isActive("/announcements") 
+                  ? "bg-[#f43f5e]/10 border-[#f43f5e]/40 shadow-[0_4px_20px_rgba(244,63,94,0.15)] text-[#f43f5e] ring-1 ring-[#f43f5e]/20 lg:bg-white/10 lg:border-white/10 lg:shadow-none lg:ring-0" 
+                  : "bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent"}
+              `}
+              title={effectivelyCollapsed ? "Announcements" : ""}
             >
-              <Youtube className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
-              <span className="text-sm font-medium">Digital Serendib</span>
+              <div className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#f43f5e]/10 lg:bg-transparent transition-colors">
+                <Bell className="h-5 w-5 text-[#f43f5e]" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 lg:top-2 lg:right-2 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </div>
+              <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/80"}`}>Announcements</span>
             </button>
 
-            <button
-              onClick={handleDownloadAgreement}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#00b4eb] transition-all duration-200 group"
-            >
-              <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
-              <span className="text-sm font-medium">Guidelines Agreement</span>
-            </button>
+            {/* Digital Serendib + Guidelines - side by side on mobile */}
+            <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-2">
+              <button
+                onClick={handleYouTubeClick}
+                className={`
+                  transition-all duration-300 group
+                  /* Desktop */
+                  lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
+                  /* Mobile */
+                  flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent
+                `}
+                title={effectivelyCollapsed ? "Digital Serendib" : ""}
+              >
+                <div className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#ff3333]/10 lg:bg-transparent transition-colors">
+                  <Youtube className="h-5 w-5 text-[#ff3333] lg:text-white/60 lg:group-hover:text-[#ff3333]" />
+                </div>
+                <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} text-white/80 lg:text-white/70 lg:group-hover:text-white`}>Digital Serendib</span>
+              </button>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
+              <button
+                onClick={handleDownloadAgreement}
+                className={`
+                  transition-all duration-300 group
+                  /* Desktop */
+                  lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
+                  /* Mobile */
+                  flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent
+                `}
+                title={effectivelyCollapsed ? "Guidelines Agreement" : ""}
+              >
+                <div className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#00b4eb]/10 lg:bg-transparent transition-colors">
+                  <FileText className="h-5 w-5 text-[#00b4eb] lg:text-white/60 lg:group-hover:text-[#00b4eb]" />
+                </div>
+                <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} text-white/80 lg:text-white/70 lg:group-hover:text-white`}>Guidelines Agreement</span>
+              </button>
+            </div>
+
+            {/* User Profile + Logout */}
+            <div 
+              className={`
+                relative h-12 flex items-center transition-all duration-150
+                lg:mt-2 lg:ml-4 lg:rounded-xl overflow-hidden
+                ${effectivelyCollapsed ? "lg:w-12 lg:justify-center lg:cursor-pointer lg:hover:bg-white/10" : "lg:mr-4 lg:pr-2 lg:pl-1 lg:justify-between"}
+                /* Mobile */
+                mx-0 px-3 bg-white/5 border border-white/10 rounded-2xl
+              `}
+              onClick={effectivelyCollapsed ? handleLogout : undefined}
+              title={effectivelyCollapsed ? "Logout" : ""}
             >
-              <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
-              <span className="font-medium">Logout</span>
-              <span className="ml-auto text-xs text-white/30">v1.0.0</span>
-            </button>
+              {/* Collapsed: Logout icon (desktop only) */}
+              <div className={`absolute inset-0 items-center justify-center text-rose-500 hover:text-rose-400 transition-all duration-150 hidden ${effectivelyCollapsed ? "lg:flex" : ""}`}>
+                <LogOut className="h-6 w-6" />
+              </div>
+              
+              {/* Expanded: Avatar + ID + Logout */}
+              <div className={`flex items-center w-full transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:pointer-events-none" : "lg:opacity-100"}`}>
+                {/* Left: Clickable Avatar */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setIsProfileModalOpen(true); }}
+                  className="h-9 w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none relative z-10"
+                  title="Profile"
+                >
+                  <img
+                    src={profilePicUrl}
+                    alt="Profile"
+                    className="h-full w-full object-cover"
+                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                  />
+                  <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
+                    {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
+                  </div>
+                </button>
+                
+                {/* Center: ID */}
+                <div className="flex-1 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <span className="text-[15px] font-bold text-white/90 tracking-[0.4em]" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
+                </div>
+
+                {/* Right: Logout Button */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleLogout(); }}
+                  className="relative z-10 p-2 text-rose-500 hover:bg-white/10 hover:text-rose-400 rounded-xl transition-all duration-200 flex-shrink-0"
+                  title="Logout"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
 
       {/* Spacers for fixed headers */}
       <div className="lg:hidden h-16" />
-      <div className="hidden lg:block h-[5.5rem]" />
 
       {/* Profile Picture Upload Modal */}
       {isProfileModalOpen && (

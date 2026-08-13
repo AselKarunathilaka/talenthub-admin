@@ -144,7 +144,7 @@ const Availability = () => {
     <div className="flex flex-col lg:flex-row w-full min-h-screen bg-white">
       <Navigation />
 
-      <div className="flex-1 w-full p-4 md:p-6 lg:mt-20">
+      <div className="flex-1 w-full p-4 md:p-6">
         <main className="mx-auto">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

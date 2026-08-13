@@ -175,7 +175,6 @@ const AdminNavigation = ({ children }) => {
 
       {/* Spacers for fixed headers */}
       <div className="lg:hidden h-16" />
-      <div className="hidden lg:block h-[5.5rem]" />
 
       <main className="flex-1 lg:ml-[270px] transition-all duration-300">
         <div className="lg:ml-[0px]">
