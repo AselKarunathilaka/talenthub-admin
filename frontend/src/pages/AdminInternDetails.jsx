@@ -361,53 +361,59 @@ const AdminInternDetails = () => {
     }
   };
 
+  // Loading Screen - Wrapped inside AdminNavigation to keep layout consistent
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-t-4 border-b-4 border-green-500 rounded-full mx-auto mb-6"
-          />
-          <p className="text-gray-600 font-medium">Loading intern details...</p>
+      <AdminNavigation>
+        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+          <div className="text-center">
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-16 h-16 border-t-4 border-b-4 border-[#00b4eb] rounded-full mx-auto mb-6"
+            />
+            <p className="text-gray-600 font-medium">Loading intern details...</p>
+          </div>
         </div>
-      </div>
+      </AdminNavigation>
     );
   }
 
+  // Error Screen - Wrapped inside AdminNavigation to keep layout consistent
   if (error || !internDetails) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 flex items-center justify-center">
-        <motion.div
-          className="text-center max-w-md p-6 bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 shadow-lg"
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-        >
-          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
-          <p className="text-red-600 mb-6">
-            {error || "Intern details not found"}
-          </p>
-          <div className="flex justify-center space-x-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={fetchInternDetails}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-600 text-white rounded-xl shadow-md"
-            >
-              Retry
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/admin/dashboard")}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl"
-            >
-              Back to Dashboard
-            </motion.button>
-          </div>
-        </motion.div>
-      </div>
+      <AdminNavigation>
+        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center">
+          <motion.div
+            className="text-center max-w-md p-6 bg-white rounded-2xl border border-gray-100 shadow-lg"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+          >
+            <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
+            <p className="text-red-600 mb-6">
+              {error || "Intern details not found"}
+            </p>
+            <div className="flex justify-center space-x-4">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={fetchInternDetails}
+                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl shadow-md"
+              >
+                Retry
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate("/admin/dashboard")}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl"
+              >
+                Back to Dashboard
+              </motion.button>
+            </div>
+          </motion.div>
+        </div>
+      </AdminNavigation>
     );
   }
 
