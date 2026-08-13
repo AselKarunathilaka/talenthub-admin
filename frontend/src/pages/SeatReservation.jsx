@@ -20,41 +20,57 @@ const Seat = ({ number, x, y, angle, radius, centerX, centerY }) => {
     posY = centerY + Math.sin((angle * Math.PI) / 180) * radius;
   }
 
-  const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-all shadow-sm border-2 overflow-hidden";
+  const baseClasses = "absolute w-12 h-12 rounded-xl flex flex-col items-center justify-center text-xs font-bold transition-colors shadow-sm border-2 cursor-pointer group";
 
   let statusClasses = "";
   if (status === "locked") {
-    statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75";
+    statusClasses = "bg-slate-200 text-slate-500 border-slate-300 cursor-not-allowed opacity-75 hover:border-slate-400 hover:shadow-md";
   } else if (status === "booked") {
-    statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50";
+    statusClasses = "bg-rose-500 text-white border-rose-600 cursor-not-allowed shadow-md shadow-rose-200/50 hover:bg-rose-600";
   } else {
-    statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30 cursor-pointer";
+    statusClasses = "bg-white text-[#50b748] border-[#50b748] hover:bg-[#50b748] hover:text-white hover:shadow-lg hover:shadow-[#50b748]/30";
   }
 
   return (
     <motion.div
       onClick={() => handleSeatClick(number)}
-      className={`${baseClasses} ${statusClasses}`}
+      className={`${baseClasses} ${statusClasses} seat-hover-wrapper`}
       style={{ left: `${posX - 24}px`, top: `${posY - 24}px` }}
-      whileHover={status === "available" ? { scale: 1.15, zIndex: 10 } : {}}
+      whileHover={{ scale: 1.15 }}
       whileTap={status === "available" ? { scale: 0.95 } : {}}
-      title={
-        status === "locked" ? (lockedSeatDetails?.[number]?.traineeId ? `Seat ${number} — Reserved for Trainee ID: ${lockedSeatDetails[number].traineeId}` : `Seat ${number} (Locked)`)
-          : status === "booked" && bookingInfo?.traineeId ? `Seat ${number} - Trainee ID: ${bookingInfo.traineeId}`
-            : status === "booked" && bookingInfo?.email ? `Seat ${number} - Booked by: ${bookingInfo.email}`
-              : status === "booked" ? `Seat ${number} (Already Booked)`
-                : `Seat ${number} (Available)`
-      }
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
     >
-      <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none">
-        {status === "booked" ? (
-          <X size={18} strokeWidth={3} className="text-white/90" />
-        ) : status === "locked" ? (
-          <Armchair size={18} strokeWidth={2.5} className="mb-0.5 opacity-60" />
-        ) : (
-          <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
-        )}
-        <span className="text-[10px] mt-0.5 leading-none">{number}</span>
+      <div className="flex flex-col items-center justify-center w-full h-full pointer-events-none relative">
+        <div className="absolute inset-0 flex flex-col items-center justify-center group-hover:opacity-0 group-hover:scale-75 transition-all duration-300">
+          {status === "booked" ? (
+            <X size={18} strokeWidth={3} className="text-white/90 mb-0.5" />
+          ) : status === "locked" ? (
+            <Armchair size={18} strokeWidth={2.5} className="mb-1 opacity-60" />
+          ) : (
+            <Armchair size={18} strokeWidth={2.5} className="mb-0.5" />
+          )}
+          
+          <div className="relative w-full flex items-center justify-center h-4 mt-0.5">
+            <span className="text-[12px] font-extrabold leading-none">{number}</span>
+          </div>
+        </div>
+
+        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 scale-50 group-hover:scale-100 transition-all duration-300">
+           <span className="text-[26px] font-extrabold leading-none drop-shadow-sm">{number}</span>
+        </div>
+      </div>
+      
+      <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100] flex flex-col items-center whitespace-nowrap drop-shadow-lg">
+        <div className="bg-slate-800 text-white px-3 py-1.5 rounded-xl flex flex-col items-center gap-0.5 border border-slate-700">
+           {status === "locked" ? (
+              <span className="font-bold text-slate-200 text-xs">Locked Seat</span>
+           ) : status === "booked" ? (
+              <span className="font-bold text-white text-xs">{bookingInfo?.internName || "Reserved"}</span>
+           ) : (
+              <span className="font-bold text-[#50b748] text-xs">Available</span>
+           )}
+        </div>
+        <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-800"></div>
       </div>
     </motion.div>
   );
@@ -173,13 +189,13 @@ const InternSeatManagement = () => {
           {/* Map Viewport - ensure it takes all available space */}
           <div
             ref={mapViewportRef}
-            className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center"
+            className="flex-1 overflow-y-hidden overflow-x-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] relative flex items-center justify-start sm:justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
             style={{ minHeight: 0 }}
           >
             {/* Map content - only show after initial transform is ready to avoid flicker */}
             {ready && (
               <div
-                className="relative shrink-0 overflow-hidden"
+                className="relative shrink-0"
                 style={{
                   width: `${MAP_WIDTH * scale}px`,
                   height: `${MAP_HEIGHT * scale}px`,
@@ -298,17 +314,18 @@ const InternSeatManagement = () => {
     <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
       <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
         <Navigation />
-        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <SectionTip sectionKey="seat" />
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 logbook-fade-in">
               <div>
-                <motion.h1 initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }} className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight">
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl"><Armchair className="text-[#0056a2] h-8 w-8" /></div> Seat Reservation
-                </motion.h1>
-                <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05, duration: 0.2 }} className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
-                  Select a date and reserve your preferred spot.
-                </motion.p>
+                <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                  <Armchair className="text-[#00b4eb] h-8 w-8" />
+                  Seat Reservation
+                </h1>
+                <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                  "Select a date and reserve your preferred spot."
+                </p>
               </div>
 
               {(isToday || isTomorrow) && (
@@ -325,14 +342,14 @@ const InternSeatManagement = () => {
                 </motion.div>
               )}
 
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><Calendar className="text-[#00b4eb] h-5 w-5" /></div>
-                  <div className="flex-1"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label><input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" /></div>
-                </div>
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 sm:p-2 flex flex-wrap sm:flex-nowrap items-center gap-2">
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-red-50/80 rounded-2xl border border-red-100"><div className="text-2xl font-black text-rose-600 leading-none mb-1">{totalUnavailableCount}</div><div className="text-[10px] font-bold text-rose-500/80 uppercase tracking-wider">Unavailable</div></div>
-                  <div className="flex-1 sm:w-28 text-center p-3 bg-green-50/80 rounded-2xl border border-green-100"><div className="text-2xl font-black text-[#50b748] leading-none mb-1">{totalAvailableCount}</div><div className="text-[10px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div></div>
+                  <div className="flex-1 sm:w-24 text-center p-2 bg-green-50/80 rounded-xl border border-green-100"><div className="text-xl font-black text-[#50b748] leading-none mb-0.5">{totalAvailableCount}</div><div className="text-[8px] font-bold text-[#50b748]/80 uppercase tracking-wider">Available</div></div>
+                  <div className="flex-1 sm:w-24 text-center p-2 bg-red-50/80 rounded-xl border border-red-100"><div className="text-xl font-black text-rose-600 leading-none mb-0.5">{totalUnavailableCount}</div><div className="text-[8px] font-bold text-rose-500/80 uppercase tracking-wider">Reserved</div></div>
+                </div>
+                <div className="flex-1 min-w-[160px] bg-slate-50 rounded-xl p-2 flex items-center gap-2 border border-slate-100">
+                  <div className="bg-white p-1.5 rounded-lg shadow-sm border border-slate-100"><Calendar className="text-[#00b4eb] h-4 w-4" /></div>
+                  <div className="flex-1"><label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Select Date</label><input type="date" value={selectedDate} onChange={(e) => handleDateChange(e.target.value)} min={minBookingDate} max={maxBookingDate} className="bg-transparent text-xs font-bold text-gray-800 w-full focus:outline-none cursor-pointer" /></div>
                 </div>
               </motion.div>
             </div>

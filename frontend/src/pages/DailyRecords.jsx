@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Calendar } from "lucide-react";
 import {
   FiLoader,
   FiCalendar,
@@ -618,7 +619,7 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           {/* Export error toast */}
           {exportError && (
@@ -639,39 +640,12 @@ useEffect(() => {
               {/* Title Section (with Mobile Switcher) */}
               <div className="flex justify-between items-start w-full md:w-auto gap-2">
                 <div className="flex-1 pr-1">
-                  <h1
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: "#1a1a2e",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                    className="text-[22px] sm:text-[28px]"
-                  >
-                    <span
-                      style={{
-                        color: "#1a1a2e",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 10,
-                      }}
-                    >
-                      <FiCalendar style={{ color: "#0056a2" }} className="w-5 h-5 sm:w-auto sm:h-auto shrink-0" />
-                      <span className="truncate">{isAdmin ? "Student Records" : "My Daily Records"}</span>
-                    </span>
+                  <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                    <Calendar className="text-[#00b4eb] h-8 w-8 shrink-0" />
+                    <span className="truncate">{isAdmin ? "Student Records" : "My Daily Records"}</span>
                   </h1>
-                  <p
-                    style={{
-                      color: "#6b7280",
-                      marginTop: 6,
-                      fontSize: 15,
-                      fontStyle: "italic",
-                    }}
-                    className="text-[13px] sm:text-[15px]"
-                  >
-                    Track daily progress and achievements
+                  <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                    "Track daily progress and achievements"
                   </p>
                 </div>
 

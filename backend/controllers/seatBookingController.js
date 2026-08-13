@@ -158,10 +158,19 @@ exports.getBookingsByDate = async (req, res) => {
       bookingDate: queryDate,
       status: "active",
     })
-      .select("seatNumber traineeId internId bookingDate")
+      .select("seatNumber traineeId internId email bookingDate")
+      .populate("internId", "name email")
       .sort({ seatNumber: 1 });
 
-    res.status(200).json(bookings);
+    const formattedBookings = bookings.map(b => {
+      const obj = b.toObject ? b.toObject() : b;
+      return {
+        ...obj,
+        internName: obj.internId ? obj.internId.name : null
+      };
+    });
+
+    res.status(200).json(formattedBookings);
   } catch (error) {
     console.error("Get bookings by date error:", error);
     res.status(500).json({

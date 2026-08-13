@@ -319,6 +319,7 @@ export const useSeatManagement = () => {
           internId: booking.internId,
           traineeId: booking.traineeId,
           email: booking.email,
+          internName: booking.internName || booking.name || (booking.intern ? booking.intern.name : null),
           date: booking.bookingDate,
           bookedAt: booking.createdAt || booking.bookedAt,
           id: booking._id,

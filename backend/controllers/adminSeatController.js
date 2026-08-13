@@ -38,7 +38,6 @@ const getSeatBookings = async (req, res) => {
     const transformedBookings = bookings.map((booking) => ({
       _id: booking._id,
       seatNumber: booking.seatNumber,
-      internId: booking.internId?._id || null,
       traineeId: booking.traineeId,
       email: booking.email,
       bookingDate: booking.bookingDate,
@@ -278,7 +277,6 @@ const getInternBookingHistory = async (req, res) => {
       bookingDate: booking.bookingDate,
       bookedAt: booking.bookedAt,
       status: booking.status,
-      internId: booking.internId?._id || booking.internId,
       internName: booking.internId?.Trainee_Name || "N/A",
       internEmail: booking.internId?.Trainee_Email || booking.email,
     }));

@@ -20,6 +20,21 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+@keyframes zIndexExit {
+  0% { z-index: 50; }
+  99% { z-index: 50; }
+  100% { z-index: 1; }
+}
+
+.seat-hover-wrapper {
+  z-index: 1;
+  animation: zIndexExit 0.2s forwards;
+}
+.seat-hover-wrapper:hover {
+  z-index: 100;
+  animation: none;
+}
+
 @keyframes drawCircle {
   to {
     stroke-dashoffset: 0;
@@ -1888,7 +1903,7 @@
 }
 @media (min-width: 1024px) {
   .bento-page-content {
-    padding-top: 88px; /* Desktop topbar space */
+    padding-top: 24px; /* Default desktop top padding without topbar */
   }
 }
 
