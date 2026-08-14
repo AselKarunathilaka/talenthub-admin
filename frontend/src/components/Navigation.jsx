@@ -247,37 +247,6 @@ const Navigation = ({ children }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              {/* Announcement toggle button (from main) */}
-              <button 
-                onClick={handleAnnouncementsToggle} 
-                className={`relative p-1.5 rounded-full transition-all duration-300 border ${isActive("/announcements") ? "bg-[#f43f5e]/20 border-[#f43f5e]/50 text-[#f43f5e] shadow-[0_0_10px_rgba(244,63,94,0.3)]" : "bg-white/5 border-white/10 text-white/80 hover:text-white hover:bg-white/10"}`}
-                aria-label="Toggle Announcements"
-              >
-                <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
-              {/* Clickable Avatar (our profile picture feature) */}
-              <button
-                onClick={() => setIsProfileModalOpen(true)}
-                className="h-8 w-8 rounded-full overflow-hidden border-2 border-white/30 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-[#00b4eb]"
-              >
-                <img
-                  src={profilePicUrl}
-                  alt="Profile"
-                  className="h-full w-full object-cover"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium text-sm">
-                  {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
-                </div>
-              </button>
-            </div>
-
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="p-2 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10
