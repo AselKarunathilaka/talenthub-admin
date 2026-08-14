@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
-import { Home } from "lucide-react";
+import { Home, Bell } from "lucide-react";
 
 // Digital Clock Component
 const formatDigit = (num) => num.toString().padStart(2, '0');
@@ -36,17 +36,22 @@ const DigitalClock = () => {
   const s = formatDigit(time.getSeconds());
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1 sm:gap-1.5 text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{h}</span>
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-1 sm:gap-1.5 text-xl sm:text-3xl font-black text-slate-800 tracking-tight">
+        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{h}</span>
         <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{m}</span>
+        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{m}</span>
         <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-[#00b4eb]/15 text-[#00b4eb] rounded-xl shadow-sm border border-[#00b4eb]/20 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{s}</span>
+        <span className="bg-[#00b4eb]/15 text-[#00b4eb] rounded-xl shadow-sm border border-[#00b4eb]/20 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{s}</span>
       </div>
-      <div className="hidden sm:flex flex-col justify-center border-l-2 border-slate-100 pl-4">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{time.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-        <span className="text-sm font-extrabold text-[#0056a2] uppercase">{time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+      <div className="flex flex-col justify-center border-l-2 border-slate-100 pl-3 sm:pl-5">
+        <div className="w-full text-center text-[10px] sm:text-base font-extrabold text-[#2e7d32] uppercase tracking-[0.2em] mb-0.5">
+          {time.toLocaleDateString('en-US', { month: 'long' })}
+        </div>
+        <div className="flex justify-between items-center w-full text-base sm:text-2xl font-black text-[#50b748] uppercase tracking-tight leading-none">
+          <span>{formatDigit(time.getDate())}</span>
+          <span>{time.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+        </div>
       </div>
     </div>
   );
@@ -387,9 +392,11 @@ const AdminDashboard = () => {
 
         <main className="relative flex-1 p-4 sm:p-8 mx-auto max-w-[1400px] w-full flex flex-col gap-8">
           
-          {/* Top Header with Clock */}
-          <div className="relative z-30 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-2">
-            <div>
+          {/* Top Header with Clock and Announcements */}
+          <div className="relative z-30 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 pt-2 md:items-center">
+            
+            {/* Left: Dashboard Title */}
+            <div className="flex flex-col md:items-start justify-center">
               <motion.h1
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -411,14 +418,40 @@ const AdminDashboard = () => {
               </motion.p>
             </div>
             
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="bg-blue-50/50 backdrop-blur-md px-5 py-4 rounded-3xl border border-blue-100/50 shadow-sm self-start md:self-auto"
-            >
-              <DigitalClock />
-            </motion.div>
+            {/* Wrapper for Clock and Announcements on Mobile */}
+            <div className="flex flex-row items-stretch justify-between gap-3 sm:gap-4 md:contents">
+              {/* Middle: Clock */}
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="flex justify-start md:justify-center flex-1 md:flex-none"
+              >
+                <div className="bg-blue-50/50 backdrop-blur-md px-3 sm:px-5 py-3 sm:py-4 rounded-3xl border border-blue-100/50 shadow-sm w-full md:w-auto flex items-center justify-center">
+                  <DigitalClock />
+                </div>
+              </motion.div>
+
+              {/* Right: Announcements Button */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="flex justify-end flex-1 md:flex-none"
+              >
+                <button
+                  onClick={() => navigate("/admin/announcements")}
+                  className="flex items-center justify-center gap-2 sm:gap-4 bg-white hover:bg-rose-50/80 px-3 sm:px-6 py-3 sm:py-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group w-full md:w-auto h-full"
+                >
+                  <div className="relative p-2 sm:p-2.5 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shadow-sm flex-shrink-0">
+                    <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500 group-hover:text-rose-600" />
+                  </div>
+                  <span className="font-bold text-sm sm:text-lg text-slate-700 group-hover:text-rose-600 transition-colors">
+                    Announcements
+                  </span>
+                </button>
+              </motion.div>
+            </div>
           </div>
 
           {/* Search */}

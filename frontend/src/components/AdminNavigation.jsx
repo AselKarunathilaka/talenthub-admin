@@ -16,8 +16,9 @@ import {
   Lightbulb,
   SquarePlay,
   FileText,
-  LogOut,
   Users,
+  Shield,
+  LogOut,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -145,30 +146,58 @@ const AdminNavigation = ({ children }) => {
           </nav>
 
           {/* Footer Actions */}
-          <div className="p-4 border-t border-white/10 space-y-2">
-            <button
-              onClick={handleYouTubeClick}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#ff3333] transition-all duration-200 group"
-            >
-              <SquarePlay className="h-5 w-5 mr-3 group-hover:text-[#ff3333]" />
-              <span className="text-sm font-medium">Digital Serendib</span>
-            </button>
+          <div className="flex flex-col gap-3 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:px-4 lg:pb-4 lg:gap-2 lg:border-t lg:border-white/10 lg:mt-auto lg:pt-4">
+            
+            {/* Digital Serendib + Guidelines - side by side on mobile */}
+            <div className="grid grid-cols-2 gap-3 lg:flex lg:flex-col lg:gap-2">
+              <button
+                onClick={handleYouTubeClick}
+                className="flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:flex-row lg:justify-start lg:p-0 lg:h-12 lg:px-4 lg:rounded-xl lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent transition-all duration-300 group"
+              >
+                <div className="w-10 h-10 lg:w-auto lg:h-auto flex-shrink-0 flex items-center justify-center rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#ff3333]/10 lg:bg-transparent">
+                  <SquarePlay className="h-5 w-5 text-[#ff3333] lg:text-white/60 lg:mr-3 lg:group-hover:text-[#ff3333] transition-colors" />
+                </div>
+                <span className="font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap text-white/80 lg:text-white/70 lg:group-hover:text-white">Digital Serendib</span>
+              </button>
 
-            <button
-              onClick={handleDownloadAgreement}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-white/5 hover:text-[#00b4eb] transition-all duration-200 group"
-            >
-              <FileText className="h-5 w-5 mr-3 group-hover:text-[#00b4eb]" />
-              <span className="text-sm font-medium">Guidelines Agreement</span>
-            </button>
+              <button
+                onClick={handleDownloadAgreement}
+                className="flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:flex-row lg:justify-start lg:p-0 lg:h-12 lg:px-4 lg:rounded-xl lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent transition-all duration-300 group"
+              >
+                <div className="w-10 h-10 lg:w-auto lg:h-auto flex-shrink-0 flex items-center justify-center rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#00b4eb]/10 lg:bg-transparent">
+                  <FileText className="h-5 w-5 text-[#00b4eb] lg:text-white/60 lg:mr-3 lg:group-hover:text-[#00b4eb] transition-colors" />
+                </div>
+                <span className="font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap text-white/80 lg:text-white/70 lg:group-hover:text-white">Guidelines Agreement</span>
+              </button>
+            </div>
 
-            <button
-              onClick={handleLogout}
-              className="flex items-center w-full px-4 py-2.5 text-white/70 rounded-xl hover:bg-red-500/10 hover:text-red-400 transition-all duration-200 group mt-4"
+            {/* User Profile + Logout */}
+            <div 
+              className="relative h-16 lg:h-12 flex items-center transition-all duration-150 lg:mt-2 bg-white/5 border border-white/10 rounded-2xl overflow-hidden"
             >
-              <LogOut className="h-5 w-5 mr-3 group-hover:text-red-400" />
-              <span className="font-medium">Logout</span>
-            </button>
+              <div className="flex items-center h-full w-full justify-between pl-1">
+                {/* Left: Avatar */}
+                <div className="h-11 w-11 lg:h-9 lg:w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium ml-1 lg:ml-2 shadow-md">
+                   <Shield className="h-5 w-5 lg:h-4 lg:w-4 text-white" />
+                </div>
+                
+                {/* Center: Role */}
+                <div className="flex-1 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <span className="text-[13px] font-bold text-white/90 tracking-[0.3em] ml-2">
+                     {getAdminSession()?.user?.role === 'SUPERVISOR' ? 'S U P E R V I S O R' : 'A D M I N'}
+                  </span>
+                </div>
+
+                {/* Right: Logout Button */}
+                <button
+                  onClick={handleLogout}
+                  className="h-full px-5 lg:px-4 flex items-center justify-center bg-rose-500/20 hover:bg-rose-500/80 border-l border-white/10 transition-all duration-200 flex-shrink-0 group"
+                  title="Logout"
+                >
+                  <LogOut className="h-6 w-6 lg:h-5 lg:w-5 text-rose-200 group-hover:text-white transition-colors" />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </aside>
