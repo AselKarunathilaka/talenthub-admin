@@ -962,38 +962,40 @@ const Dashboard = () => {
         <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 24px)', marginTop: 'clamp(16px, 4vw, 32px)' }}>
 
           {/* ── Beautiful External Toggle ── */}
-          <div className="att-toggle-wrap w-full max-w-[400px] mx-auto" style={{ padding: "0 16px" }}>
-            <div className="att-toggle-inner w-full" style={{ display: "flex", flexWrap: "nowrap", gap: 10, background: "#f1f5f9", padding: 6, borderRadius: 18, boxShadow: "inset 0 2px 4px rgba(0,0,0,0.04)" }}>
+          <div className="w-full max-w-[400px] mx-auto px-4">
+            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full relative">
               <button
-                className="att-toggle-btn flex-1"
                 onClick={() => setActiveTab("daily")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "10px 8px", borderRadius: 12, border: "none", cursor: "pointer",
-                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                  background: activeTab === "daily" ? "linear-gradient(135deg,#2563eb,#4f46e5)" : "#ffffff",
-                  color: activeTab === "daily" ? "#fff" : "#64748b",
-                  boxShadow: activeTab === "daily" ? "0 4px 14px rgba(37,99,235,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
-                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  activeTab === "daily"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <BookOpen size={16} className="shrink-0" />
                 <span className="truncate">Daily<span className="hidden sm:inline"> Attendance</span></span>
               </button>
               <button
-                className="att-toggle-btn flex-1"
                 onClick={() => setActiveTab("meeting")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "10px 8px", borderRadius: 12, border: "none", cursor: "pointer",
-                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                  background: activeTab === "meeting" ? "linear-gradient(135deg,#7c3aed,#a855f7)" : "#ffffff",
-                  color: activeTab === "meeting" ? "#fff" : "#64748b",
-                  boxShadow: activeTab === "meeting" ? "0 4px 14px rgba(124,58,237,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
-                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  activeTab === "meeting"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <Users size={16} className="shrink-0" />
                 <span className="truncate">Meeting<span className="hidden sm:inline"> Attendance</span></span>
               </button>
+              <div
+                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-md"
+                style={{
+                  background:
+                    activeTab === "daily"
+                      ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
+                      : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                  left: activeTab === "daily" ? "6px" : "calc(50%)",
+                }}
+              />
             </div>
           </div>
 
@@ -1214,38 +1216,40 @@ const Dashboard = () => {
           </div>
 
           {/* Heatmap External Toggle */}
-          <div className="att-toggle-wrap w-full max-w-[400px] mx-auto" style={{ padding: "0 16px" }}>
-            <div className="att-toggle-inner w-full" style={{ display: "flex", flexWrap: "nowrap", gap: 10, background: "#f1f5f9", padding: 6, borderRadius: 18, boxShadow: "inset 0 2px 4px rgba(0,0,0,0.04)" }}>
+          <div className="w-full max-w-[400px] mx-auto px-4">
+            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full relative">
               <button
-                className="att-toggle-btn flex-1"
                 onClick={() => setHeatmapView("logbook")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "10px 8px", borderRadius: 12, border: "none", cursor: "pointer",
-                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                  background: heatmapView === "logbook" ? "linear-gradient(135deg,#10b981,#059669)" : "#ffffff",
-                  color: heatmapView === "logbook" ? "#fff" : "#64748b",
-                  boxShadow: heatmapView === "logbook" ? "0 4px 14px rgba(16,185,129,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
-                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  heatmapView === "logbook"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <BookOpen size={16} className="shrink-0" />
                 <span className="truncate">Logbook</span>
               </button>
               <button
-                className="att-toggle-btn flex-1"
                 onClick={() => setHeatmapView("commits")}
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "10px 8px", borderRadius: 12, border: "none", cursor: "pointer",
-                  fontSize: 14, fontWeight: 700, transition: "all 0.25s cubic-bezier(0.4,0,0.2,1)",
-                  background: heatmapView === "commits" ? "linear-gradient(135deg,#0ea5e9,#0284c7)" : "#ffffff",
-                  color: heatmapView === "commits" ? "#fff" : "#64748b",
-                  boxShadow: heatmapView === "commits" ? "0 4px 14px rgba(14,165,233,0.35)" : "0 1px 3px rgba(0,0,0,0.05)",
-                }}
+                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  heatmapView === "commits"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 <GitCommit size={16} className="shrink-0" />
                 <span className="truncate">Commits</span>
               </button>
+              <div
+                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-md"
+                style={{
+                  background:
+                    heatmapView === "logbook"
+                      ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
+                      : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                  left: heatmapView === "logbook" ? "6px" : "calc(50%)",
+                }}
+              />
             </div>
           </div>
 
