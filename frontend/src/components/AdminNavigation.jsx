@@ -100,7 +100,7 @@ const AdminNavigation = ({ children }) => {
       {/* Sidebar */}
       {/* Sidebar */}
       <aside
-        className={`fixed lg:sticky top-16 lg:top-0 lg:bottom-0 left-0 right-0 lg:right-auto z-[9995] lg:z-40
+        className={`fixed lg:fixed top-16 lg:top-0 lg:bottom-0 left-0 right-0 lg:right-auto z-[9995] lg:z-40
           bg-gradient-to-b from-[#000066] to-[#006600] shadow-2xl transition-all duration-300 ease-[cubic-bezier(0.2,0.8,0.2,1)] will-change-[width,transform,opacity]
           ${isMobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-4 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto"}
           w-full lg:w-[270px] max-h-[calc(100dvh-64px)] lg:max-h-none lg:h-[100dvh] flex flex-col rounded-b-3xl lg:rounded-none overflow-hidden`}

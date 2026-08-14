@@ -331,7 +331,7 @@ const Login = () => {
                       type="button"
                       onClick={() => googleLogin()}
                       disabled={googleLoading || isLoading}
-                      className="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 px-3.5 py-3.5 sm:py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer disabled:opacity-50"
                       style={{
                         background: "#ffffff",
                         color: "#3c3c3c",
@@ -382,7 +382,7 @@ const Login = () => {
                   {/* Admin Login */}
                   <button
                     onClick={() => navigate("/admin-login")}
-                    className="w-full flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    className="w-full flex items-center justify-center gap-2 px-3.5 py-3.5 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
                     style={{
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
