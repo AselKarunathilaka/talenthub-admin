@@ -199,11 +199,7 @@ const Navigation = ({ children }) => {
   };
 
   const handleAnnouncementsToggle = () => {
-    if (location.pathname === "/announcements") {
-      navigate("/dashboard");
-    } else {
-      navigate("/announcements");
-    }
+    navigate("/announcements");
   };
 
   const handleDownloadLeaveForm = () => {
