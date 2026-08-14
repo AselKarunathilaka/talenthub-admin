@@ -873,8 +873,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           </motion.div>
 
           {/* Active Filter Indicator Bar and Approve All */}
-          <div className="mb-6 flex flex-col md:flex-row items-stretch justify-between gap-4">
-            <div className="flex-1 md:max-w-[50%] bg-white rounded-2xl border border-slate-200/80 p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Filter:</span>
                 {filter === "Pending" && (
@@ -919,7 +919,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             </div>
             
             {canManageLeave && filter === "Pending" && displayedStats.pending > 0 && (
-              <div className="flex-1 md:max-w-[50%] flex items-stretch">
+              <div className="flex items-stretch">
                 <button
                   onClick={handleApproveAll}
                   disabled={processing}

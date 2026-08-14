@@ -425,9 +425,9 @@ const AdminDashboard = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex justify-start md:justify-center flex-1 md:flex-none"
+                className="flex justify-start md:justify-center flex-1 md:flex-none min-w-0"
               >
-                <div className="bg-blue-50/50 backdrop-blur-md px-3 sm:px-5 py-3 sm:py-4 rounded-3xl border border-blue-100/50 shadow-sm w-full md:w-auto flex items-center justify-center">
+                <div className="bg-blue-50/50 backdrop-blur-md px-2 sm:px-5 py-3 sm:py-4 rounded-3xl border border-blue-100/50 shadow-sm w-full md:w-auto flex items-center justify-center min-w-0">
                   <DigitalClock />
                 </div>
               </motion.div>
@@ -437,16 +437,16 @@ const AdminDashboard = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
-                className="flex justify-end flex-1 md:flex-none"
+                className="flex justify-end flex-1 md:flex-none min-w-0"
               >
                 <button
                   onClick={() => navigate("/admin/announcements")}
-                  className="flex items-center justify-center gap-2 sm:gap-4 bg-white hover:bg-rose-50/80 px-3 sm:px-6 py-3 sm:py-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group w-full md:w-auto h-full"
+                  className="flex items-center justify-center gap-1.5 sm:gap-4 bg-white hover:bg-rose-50/80 px-2 sm:px-6 py-3 sm:py-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group w-full md:w-auto h-full min-w-0"
                 >
-                  <div className="relative p-2 sm:p-2.5 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shadow-sm flex-shrink-0">
+                  <div className="relative p-1.5 sm:p-2.5 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shadow-sm flex-shrink-0">
                     <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500 group-hover:text-rose-600" />
                   </div>
-                  <span className="font-bold text-sm sm:text-lg text-slate-700 group-hover:text-rose-600 transition-colors">
+                  <span className="font-bold text-[13px] sm:text-lg text-slate-700 group-hover:text-rose-600 transition-colors truncate">
                     Announcements
                   </span>
                 </button>
