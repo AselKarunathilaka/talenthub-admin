@@ -417,26 +417,26 @@ const Navigation = ({ children }) => {
             {/* User Profile + Logout */}
             <div 
               className={`
-                relative h-12 flex items-center transition-all duration-150
+                relative h-16 lg:h-12 flex items-center transition-all duration-150
                 lg:mt-2 lg:ml-4 lg:rounded-xl overflow-hidden
-                ${effectivelyCollapsed ? "lg:w-12 lg:justify-center lg:cursor-pointer lg:hover:bg-white/10" : "lg:mr-4 lg:pr-2 lg:pl-1 lg:justify-between"}
+                ${effectivelyCollapsed ? "lg:w-12 lg:justify-center lg:cursor-pointer" : "lg:mr-4 lg:pl-1 lg:justify-between lg:pr-0"}
                 /* Mobile */
-                mx-0 px-3 bg-white/5 border border-white/10 rounded-2xl
+                mx-0 pl-4 pr-0 lg:pl-3 bg-white/5 border border-white/10 rounded-2xl
               `}
               onClick={effectivelyCollapsed ? handleLogout : undefined}
               title={effectivelyCollapsed ? "Logout" : ""}
             >
               {/* Collapsed: Logout icon (desktop only) */}
-              <div className={`absolute inset-0 items-center justify-center text-rose-500 hover:text-rose-400 transition-all duration-150 hidden ${effectivelyCollapsed ? "lg:flex" : ""}`}>
-                <LogOut className="h-6 w-6" />
+              <div className={`absolute inset-0 items-center justify-center transition-all duration-150 hidden group ${effectivelyCollapsed ? "lg:flex bg-rose-500/20 hover:bg-rose-500/80" : ""}`}>
+                <LogOut className="h-6 w-6 text-rose-200 group-hover:text-white transition-colors" />
               </div>
               
               {/* Expanded: Avatar + ID + Logout */}
-              <div className={`flex items-center w-full transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:pointer-events-none" : "lg:opacity-100"}`}>
+              <div className={`flex items-center h-full w-full transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:pointer-events-none" : "lg:opacity-100"}`}>
                 {/* Left: Clickable Avatar */}
                 <button
                   onClick={(e) => { e.stopPropagation(); setIsProfileModalOpen(true); }}
-                  className="h-9 w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none relative z-10"
+                  className="h-11 w-11 lg:h-9 lg:w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all shadow-md focus:outline-none relative z-10"
                   title="Profile"
                 >
                   <img
@@ -452,16 +452,16 @@ const Navigation = ({ children }) => {
                 
                 {/* Center: ID */}
                 <div className="flex-1 flex items-center justify-center pointer-events-none overflow-hidden">
-                  <span className="text-[15px] font-bold text-white/90 tracking-[0.4em]" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
+                  <span className="text-[17px] lg:text-[15px] font-bold text-white/90 tracking-[0.4em]" title={displayInternId || traineeId}>{displayInternId || "ID"}</span>
                 </div>
 
                 {/* Right: Logout Button */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-                  className="relative z-10 p-2 text-rose-500 hover:bg-white/10 hover:text-rose-400 rounded-xl transition-all duration-200 flex-shrink-0"
+                  className="relative z-10 h-full px-5 lg:px-4 flex items-center justify-center bg-rose-500/20 lg:hover:bg-rose-500/80 border-l border-white/10 transition-all duration-200 flex-shrink-0 group"
                   title="Logout"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-6 w-6 lg:h-5 lg:w-5 text-rose-200 lg:group-hover:text-white transition-colors" />
                 </button>
               </div>
             </div>
