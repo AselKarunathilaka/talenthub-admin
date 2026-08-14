@@ -177,7 +177,7 @@ const AdminNavigation = ({ children }) => {
             >
               <div className="flex items-center h-full w-full justify-between pl-1">
                 {/* Left: Avatar */}
-                <div className="h-11 w-11 lg:h-9 lg:w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium ml-1 lg:ml-2 shadow-md">
+                <div className="h-11 w-11 lg:h-9 lg:w-9 flex-shrink-0 rounded-full overflow-hidden border-2 border-white/20 hover:border-[#00b4eb] transition-all bg-gradient-to-br from-[#00b4eb] to-[#0056a2] flex items-center justify-center text-white font-medium ml-1 lg:ml-2 shadow-md">
                    <Shield className="h-5 w-5 lg:h-4 lg:w-4 text-white" />
                 </div>
                 

@@ -315,10 +315,10 @@ const Navigation = ({ children }) => {
                   /* Desktop Layout */
                   lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
                   /* Mobile Layout (Glassmorphism Grid) */
-                  flex flex-col items-center justify-center p-4 rounded-2xl border
+                  flex flex-col items-center justify-center p-4 rounded-2xl
                   ${isActive(link.to) 
-                    ? "bg-white/15 border-[var(--hover-color)]/40 shadow-[0_4px_20px_var(--hover-bg)] text-white ring-1 ring-[var(--hover-color)]/20 lg:bg-white/10 lg:border-white/10 lg:shadow-none lg:ring-0" 
-                    : "bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent"}
+                    ? "bg-white/15 shadow-[0_4px_20px_var(--hover-bg)] text-white lg:bg-white/10 lg:shadow-none" 
+                    : "bg-white/5 hover:bg-white/10 text-white/70 lg:text-white/70 lg:bg-transparent lg:hover:bg-white/5"}
                 `}
                 style={{ '--hover-color': link.hoverColor, '--hover-bg': `${link.hoverColor}25` }}
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -359,14 +359,14 @@ const Navigation = ({ children }) => {
                 /* Desktop */
                 lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
                 /* Mobile */
-                flex flex-col items-center justify-center p-4 rounded-2xl border
+                flex flex-col items-center justify-center p-4 rounded-2xl
                 ${isActive("/announcements") 
-                  ? "bg-[#f43f5e]/10 border-[#f43f5e]/40 shadow-[0_4px_20px_rgba(244,63,94,0.15)] text-[#f43f5e] ring-1 ring-[#f43f5e]/20 lg:bg-white/10 lg:border-white/10 lg:shadow-none lg:ring-0" 
-                  : "bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent"}
+                  ? "bg-white/15 shadow-[0_4px_20px_rgba(244,63,94,0.25)] text-white lg:bg-white/10 lg:shadow-none" 
+                  : "bg-white/5 hover:bg-white/10 text-white/70 lg:bg-transparent lg:hover:bg-white/5"}
               `}
               title={effectivelyCollapsed ? "Announcements" : ""}
             >
-              <div className="w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 bg-[#f43f5e]/10 lg:bg-transparent transition-colors">
+              <div className={`w-10 h-10 lg:w-12 lg:h-12 flex-shrink-0 flex items-center justify-center relative rounded-[10px] lg:rounded-none mb-2 lg:mb-0 transition-all duration-300 ${isActive("/announcements") ? "bg-[#f43f5e]/25 lg:bg-transparent" : "bg-[#f43f5e]/10 lg:bg-transparent"}`}>
                 <Bell className="h-5 w-5 text-[#f43f5e]" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 lg:top-2 lg:right-2 h-4 w-4 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full shadow-lg animate-pulse">
@@ -374,7 +374,7 @@ const Navigation = ({ children }) => {
                   </span>
                 )}
               </div>
-              <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} ${isActive("/announcements") ? "text-[#f43f5e]" : "text-white/80"}`}>Announcements</span>
+              <span className={`font-semibold lg:font-medium text-[11px] lg:text-sm whitespace-nowrap lg:pl-2 tracking-tight lg:tracking-normal transition-all duration-150 ${effectivelyCollapsed ? "lg:opacity-0 lg:w-0 lg:overflow-hidden lg:pl-0" : "lg:opacity-100"} ${isActive("/announcements") ? "text-white" : "text-white/80"}`}>Announcements</span>
             </button>
 
             {/* Digital Serendib + Guidelines - side by side on mobile */}
@@ -386,7 +386,7 @@ const Navigation = ({ children }) => {
                   /* Desktop */
                   lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
                   /* Mobile */
-                  flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent
+                  flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 lg:bg-transparent lg:hover:bg-white/5
                 `}
                 title={effectivelyCollapsed ? "Digital Serendib" : ""}
               >
@@ -403,7 +403,7 @@ const Navigation = ({ children }) => {
                   /* Desktop */
                   lg:flex lg:flex-row lg:items-center lg:justify-start lg:h-12 lg:ml-4 lg:overflow-hidden ${effectivelyCollapsed ? "lg:w-12" : "lg:mr-4"} lg:rounded-xl lg:p-0
                   /* Mobile */
-                  flex flex-col items-center justify-center p-4 rounded-2xl border bg-white/5 hover:bg-white/10 hover:border-white/20 border-white/10 text-white/70 lg:bg-transparent lg:border-transparent lg:hover:bg-white/5 lg:hover:border-transparent
+                  flex flex-col items-center justify-center p-4 rounded-2xl bg-white/5 hover:bg-white/10 text-white/70 lg:bg-transparent lg:hover:bg-white/5
                 `}
                 title={effectivelyCollapsed ? "Guidelines Agreement" : ""}
               >
@@ -421,7 +421,7 @@ const Navigation = ({ children }) => {
                 lg:mt-2 lg:ml-4 lg:rounded-xl overflow-hidden
                 ${effectivelyCollapsed ? "lg:w-12 lg:justify-center lg:cursor-pointer" : "lg:mr-4 lg:pl-1 lg:justify-between lg:pr-0"}
                 /* Mobile */
-                mx-0 pl-4 pr-0 lg:pl-3 bg-white/5 border border-white/10 rounded-2xl
+                mx-0 pl-4 pr-0 lg:pl-3 bg-white/5 rounded-2xl lg:border lg:border-white/10
               `}
               onClick={effectivelyCollapsed ? handleLogout : undefined}
               title={effectivelyCollapsed ? "Logout" : ""}
@@ -458,10 +458,10 @@ const Navigation = ({ children }) => {
                 {/* Right: Logout Button */}
                 <button
                   onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-                  className="relative z-10 h-full px-5 lg:px-4 flex items-center justify-center bg-rose-500/20 lg:hover:bg-rose-500/80 border-l border-white/10 transition-all duration-200 flex-shrink-0 group"
+                  className="relative z-10 h-full px-5 lg:px-4 flex items-center justify-center bg-rose-500/80 lg:bg-rose-500/20 lg:hover:bg-rose-500/80 active:bg-rose-600 border-l border-white/10 transition-all duration-200 flex-shrink-0 group"
                   title="Logout"
                 >
-                  <LogOut className="h-6 w-6 lg:h-5 lg:w-5 text-rose-200 lg:group-hover:text-white transition-colors" />
+                  <LogOut className="h-6 w-6 lg:h-5 lg:w-5 text-white lg:text-rose-200 lg:group-hover:text-white transition-colors" />
                 </button>
               </div>
             </div>
