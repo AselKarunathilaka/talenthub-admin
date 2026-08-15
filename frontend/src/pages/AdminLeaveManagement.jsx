@@ -257,6 +257,49 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     }
   };
 
+  const handleApproveAll = async () => {
+    if (!window.confirm(`Are you sure you want to approve ALL ${stats.pending} pending requests?`)) {
+      return;
+    }
+    setProcessing(true);
+    try {
+      const params = {
+        page: 1,
+        limit: 10000,
+        requestType,
+        status: "Pending"
+      };
+      
+      if (selectedDate && isStudyLeave) {
+        params.submittedDate = selectedDate;
+      } else if (selectedDate) {
+        params.date = selectedDate;
+      }
+
+      const response = await getAllLeaveRequests(params);
+      const allPendingIds = response.data.map(req => req._id);
+
+      if (allPendingIds.length === 0) {
+        toast.error("No pending requests to approve.");
+        return;
+      }
+
+      await bulkUpdateLeaveRequestStatus(allPendingIds, {
+        status: "Approved",
+        adminResponse: "Bulk approved by Admin",
+      });
+
+      toast.success(`Successfully approved all ${allPendingIds.length} requests!`);
+      fetchLeaveRequests();
+      fetchStats();
+    } catch (error) {
+      console.error("Error approving all requests:", error);
+      toast.error(error.message || "Failed to approve all requests");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const openReviewModal = (request) => {
     setSelectedRequest(request);
     setAdminResponse("");
@@ -676,44 +719,6 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             transition={{ delay: 0.15, duration: 0.3 }}
             className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4"
           >
-            {/* Total Card */}
-            <div 
-              onClick={() => { setFilter("all"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
-              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
-                filter === "all" 
-                  ? "bg-gradient-to-br from-blue-50/90 via-sky-50 to-indigo-50/80 border-2 border-[#0056a2] shadow-lg shadow-[#0056a2]/15 ring-4 ring-[#0056a2]/15 scale-[1.02] z-10" 
-                  : "bg-white border-slate-200/80 shadow-xs hover:border-[#0056a2]/40 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
-              }`}
-            >
-              <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
-              {filter === "all" && (
-                <div className="absolute top-2.5 right-2.5 z-20">
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#0056a2] text-white shadow-xs flex items-center gap-1">
-                    <FiCheckCircle size={10} /> Active
-                  </span>
-                </div>
-              )}
-              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
-                filter === "all" 
-                  ? "bg-[#0056a2] text-white border-[#0056a2] shadow-sm" 
-                  : "bg-slate-100 text-slate-500 border-slate-200 group-hover:bg-[#0056a2]/10 group-hover:text-[#0056a2]"
-              }`}>
-                <FiFileText className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
-              <div className="z-10 text-left min-w-0 flex-1">
-                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
-                  filter === "all" ? "text-[#0056a2]" : "text-gray-800"
-                }`}>
-                  {displayedStats.total}
-                </div>
-                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
-                  filter === "all" ? "font-black text-[#0056a2]" : "font-bold text-gray-500"
-                }`}>
-                  Total
-                </div>
-              </div>
-            </div>
-
             {/* Pending Card */}
             <div 
               onClick={() => { setFilter("Pending"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
@@ -827,50 +832,103 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </div>
               </div>
             </div>
-          </motion.div>
-
-          {/* Active Filter Indicator Bar */}
-          <div className="mb-6 bg-white rounded-2xl border border-slate-200/80 p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Filter:</span>
-              {filter === "Pending" && (
-                <span className="px-3 py-1 bg-amber-100/90 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                  Pending Requests ({displayedStats.pending})
-                </span>
-              )}
-              {filter === "Approved" && (
-                <span className="px-3 py-1 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded-full text-xs font-extrabold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-600" />
-                  Approved Requests ({displayedStats.approved})
-                </span>
-              )}
-              {filter === "Denied" && (
-                <span className="px-3 py-1 bg-rose-100/90 text-rose-900 border border-rose-300 rounded-full text-xs font-extrabold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-rose-600" />
-                  Denied Requests ({displayedStats.denied})
-                </span>
-              )}
+            {/* Total Card */}
+            <div 
+              onClick={() => { setFilter("all"); setPagination((prev) => ({ ...prev, page: 1 })); setSelectedRequests(new Set()); setIsSelectAll(false); }}
+              className={`rounded-3xl border p-4 sm:p-5 flex items-center gap-3 sm:gap-4 relative overflow-hidden group transition-all duration-200 cursor-pointer ${
+                filter === "all" 
+                  ? "bg-gradient-to-br from-blue-50/90 via-sky-50 to-indigo-50/80 border-2 border-[#0056a2] shadow-lg shadow-[#0056a2]/15 ring-4 ring-[#0056a2]/15 scale-[1.02] z-10" 
+                  : "bg-white border-slate-200/80 shadow-xs hover:border-[#0056a2]/40 hover:bg-slate-50/80 opacity-80 hover:opacity-100"
+              }`}
+            >
+              <div className="absolute -right-6 -top-6 w-24 h-24 bg-gray-50 rounded-full group-hover:scale-110 transition-transform duration-500 z-0"></div>
               {filter === "all" && (
-                <span className="px-3 py-1 bg-blue-100/90 text-[#0056a2] border border-blue-300 rounded-full text-xs font-extrabold flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#0056a2]" />
-                  Total / All Requests ({displayedStats.total})
-                </span>
+                <div className="absolute top-2.5 right-2.5 z-20">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#0056a2] text-white shadow-xs flex items-center gap-1">
+                    <FiCheckCircle size={10} /> Active
+                  </span>
+                </div>
               )}
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 shrink-0 rounded-2xl flex items-center justify-center border z-10 transition-all ${
+                filter === "all" 
+                  ? "bg-[#0056a2] text-white border-[#0056a2] shadow-sm" 
+                  : "bg-slate-100 text-slate-500 border-slate-200 group-hover:bg-[#0056a2]/10 group-hover:text-[#0056a2]"
+              }`}>
+                <FiFileText className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div className="z-10 text-left min-w-0 flex-1">
+                <div className={`text-2xl sm:text-3xl font-extrabold tracking-tight truncate ${
+                  filter === "all" ? "text-[#0056a2]" : "text-gray-800"
+                }`}>
+                  {displayedStats.total}
+                </div>
+                <div className={`text-[10px] sm:text-xs uppercase tracking-wider mt-0.5 leading-tight truncate ${
+                  filter === "all" ? "font-black text-[#0056a2]" : "font-bold text-gray-500"
+                }`}>
+                  Total
+                </div>
+              </div>
             </div>
 
-            {filter !== "Pending" && (
-              <button
-                onClick={() => {
-                  setFilter("Pending");
-                  setPagination((prev) => ({ ...prev, page: 1 }));
-                  setSelectedRequests(new Set());
-                  setIsSelectAll(false);
-                }}
-                className="text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-all border border-amber-200 flex items-center gap-1.5"
-              >
-                <FiClock size={13} /> Switch to Pending Default
-              </button>
+          </motion.div>
+
+          {/* Active Filter Indicator Bar and Approve All */}
+          <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <div className="bg-white rounded-2xl border border-slate-200/80 p-3.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Filter:</span>
+                {filter === "Pending" && (
+                  <span className="px-3 py-1 bg-amber-100/90 text-amber-900 border border-amber-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    Pending Requests ({displayedStats.pending})
+                  </span>
+                )}
+                {filter === "Approved" && (
+                  <span className="px-3 py-1 bg-emerald-100/90 text-emerald-900 border border-emerald-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                    Approved Requests ({displayedStats.approved})
+                  </span>
+                )}
+                {filter === "Denied" && (
+                  <span className="px-3 py-1 bg-rose-100/90 text-rose-900 border border-rose-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-rose-600" />
+                    Denied Requests ({displayedStats.denied})
+                  </span>
+                )}
+                {filter === "all" && (
+                  <span className="px-3 py-1 bg-blue-100/90 text-[#0056a2] border border-blue-300 rounded-full text-xs font-extrabold flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#0056a2]" />
+                    Total / All Requests ({displayedStats.total})
+                  </span>
+                )}
+              </div>
+
+              {filter !== "Pending" && (
+                <button
+                  onClick={() => {
+                    setFilter("Pending");
+                    setPagination((prev) => ({ ...prev, page: 1 }));
+                    setSelectedRequests(new Set());
+                    setIsSelectAll(false);
+                  }}
+                  className="text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 px-3 py-1.5 rounded-xl transition-all border border-amber-200 flex items-center gap-1.5"
+                >
+                  <FiClock size={13} /> Switch to Pending Default
+                </button>
+              )}
+            </div>
+            
+            {canManageLeave && filter === "Pending" && displayedStats.pending > 0 && (
+              <div className="flex items-stretch">
+                <button
+                  onClick={handleApproveAll}
+                  disabled={processing}
+                  className="w-full py-3.5 md:py-0 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold rounded-2xl shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-emerald-400"
+                >
+                  <FiCheckCircle size={22} />
+                  APPROVE ALL {displayedStats.pending} PENDING REQUESTS
+                </button>
+              </div>
             )}
           </div>
 

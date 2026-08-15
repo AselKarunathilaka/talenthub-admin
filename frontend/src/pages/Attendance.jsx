@@ -863,7 +863,7 @@ const Attendance = () => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
 
-      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           <SectionTip sectionKey="attendance" />
           {enrollmentSuccess && (
@@ -879,16 +879,14 @@ const Attendance = () => {
         )}
         
           {/* Header & Status */}
-          <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 logbook-fade-in">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 flex items-center gap-3 tracking-tight">
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <ScanLine className="text-[#0056a2] h-8 w-8" />
-                </div>
+              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                <ScanLine className="text-[#00b4eb] h-8 w-8" />
                 Attendance
               </h1>
-              <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
-                Mark your daily or meeting attendance seamlessly.
+              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                "Mark your daily or meeting attendance seamlessly."
               </p>
             </div>
             <div
