@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
-import { Home, Bell } from "lucide-react";
+import { Home, Bell, CalendarDays } from "lucide-react";
 
 // Digital Clock Component
 const formatDigit = (num) => num.toString().padStart(2, '0');
@@ -31,26 +31,29 @@ const DigitalClock = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const h = formatDigit(time.getHours());
-  const m = formatDigit(time.getMinutes());
-  const s = formatDigit(time.getSeconds());
-
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
-      <div className="flex items-center gap-1 sm:gap-1.5 text-xl sm:text-3xl font-black text-slate-800 tracking-tight">
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{h}</span>
-        <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{m}</span>
-        <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-[#00b4eb]/15 text-[#00b4eb] rounded-xl shadow-sm border border-[#00b4eb]/20 w-9 sm:w-12 h-9 sm:h-12 flex items-center justify-center">{s}</span>
+    <div className="flex items-center justify-center gap-4 sm:gap-8 w-full sm:w-auto">
+      {/* Time */}
+      <div className="flex items-baseline font-light tracking-tighter tabular-nums text-slate-800 drop-shadow-sm">
+        <span className="text-4xl sm:text-6xl">{formatDigit(time.getHours())}</span>
+        <span className="text-3xl sm:text-5xl text-slate-300 mx-1 sm:mx-2 animate-pulse font-normal">:</span>
+        <span className="text-4xl sm:text-6xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-xl sm:text-3xl text-[#00b4eb] font-medium ml-1.5 sm:ml-2.5">
+          {formatDigit(time.getSeconds())}
+        </span>
       </div>
-      <div className="flex flex-col justify-center border-l-2 border-slate-100 pl-3 sm:pl-5">
-        <div className="w-full text-center text-[10px] sm:text-base font-extrabold text-[#2e7d32] uppercase tracking-[0.2em] mb-0.5">
-          {time.toLocaleDateString('en-US', { month: 'long' })}
-        </div>
-        <div className="flex justify-between items-center w-full text-base sm:text-2xl font-black text-[#50b748] uppercase tracking-tight leading-none">
-          <span>{formatDigit(time.getDate())}</span>
-          <span>{time.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+      
+      {/* Divider */}
+      <div className="w-px h-10 sm:h-14 bg-slate-200"></div>
+      
+      {/* Date */}
+      <div className="flex flex-col items-center justify-center min-w-[100px]">
+        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#50b748]">
+          {time.toLocaleDateString("en-US", { weekday: "long" })}
+        </span>
+        <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-slate-500 mt-1">
+          <span>{time.toLocaleDateString("en-US", { month: "long" })}</span>
+          <span>{time.getDate()}</span>
         </div>
       </div>
     </div>
@@ -392,11 +395,11 @@ const AdminDashboard = () => {
 
         <main className="relative flex-1 p-4 sm:p-8 mx-auto max-w-[1400px] w-full flex flex-col gap-8">
           
-          {/* Top Header with Clock and Announcements */}
-          <div className="relative z-30 flex flex-col md:grid md:grid-cols-[1fr_auto_1fr] gap-4 md:gap-6 pt-2 md:items-center">
-            
+          {/* Top header: Title on Left, Clock & Tools on Right */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+
             {/* Left: Dashboard Title */}
-            <div className="flex flex-col md:items-start justify-center">
+            <div className="flex flex-col xl:items-start justify-center">
               <motion.h1
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -418,35 +421,46 @@ const AdminDashboard = () => {
               </motion.p>
             </div>
             
-            {/* Wrapper for Clock and Announcements on Mobile */}
-            <div className="flex flex-row items-stretch justify-between gap-3 sm:gap-4 md:contents">
-              {/* Middle: Clock */}
-              <motion.div 
+            {/* Right: Clock & Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+              
+              {/* Clock Container */}
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex justify-start md:justify-center flex-1 md:flex-none min-w-0"
+                className="flex items-center justify-center bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm px-6 py-4 rounded-[2rem] w-full sm:w-auto"
               >
-                <div className="bg-blue-50/50 backdrop-blur-md px-2 sm:px-5 py-3 sm:py-4 rounded-3xl border border-blue-100/50 shadow-sm w-full md:w-auto flex items-center justify-center min-w-0">
-                  <DigitalClock />
-                </div>
+                <DigitalClock />
               </motion.div>
-
-              {/* Right: Announcements Button */}
+              
+              {/* Action Buttons */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
-                className="flex justify-end flex-1 md:flex-none min-w-0"
+                className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto"
               >
                 <button
-                  onClick={() => navigate("/admin/announcements")}
-                  className="flex items-center justify-center gap-1.5 sm:gap-4 bg-white hover:bg-rose-50/80 px-2 sm:px-6 py-3 sm:py-4 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-all duration-300 group w-full md:w-auto h-full min-w-0"
+                  onClick={() => navigate("/admin/holidays")}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-amber-50 hover:border-amber-200 rounded-[1.5rem] group min-w-0"
                 >
-                  <div className="relative p-1.5 sm:p-2.5 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shadow-sm flex-shrink-0">
-                    <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500 group-hover:text-rose-600" />
+                  <div className="p-1.5 sm:p-2 bg-amber-100 rounded-xl group-hover:bg-amber-200 transition-colors shrink-0">
+                    <CalendarDays className="w-5 h-5 text-amber-600" />
                   </div>
-                  <span className="font-bold text-[13px] sm:text-lg text-slate-700 group-hover:text-rose-600 transition-colors truncate">
+                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-amber-700 transition-colors truncate">
+                    Holidays
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => navigate("/admin/announcements")}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-rose-50 hover:border-rose-200 rounded-[1.5rem] group min-w-0"
+                >
+                  <div className="p-1.5 sm:p-2 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shrink-0">
+                    <Bell className="w-5 h-5 text-rose-500 group-hover:text-rose-600" />
+                  </div>
+                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-rose-600 transition-colors truncate">
                     Announcements
                   </span>
                 </button>

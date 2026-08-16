@@ -27,29 +27,25 @@ const GOOGLE_ICS_URL =
 // ── Providers ───────────────────────────────────────────────────────────────
 
 async function fetchFromGazetteApi(year) {
-  if (!process.env.HOLIDAY_API_URL || !process.env.HOLIDAY_API_KEY) {
-    throw new Error("HOLIDAY_API_URL / HOLIDAY_API_KEY is not configured");
-  }
-
+  // Fetch directly from the open-source repo's JSON data to avoid API key limits/revocations
   const { data } = await axios.get(
-    `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
+    `https://raw.githubusercontent.com/Dilshan-H/srilanka-holidays/main/json/${year}.json`,
     {
-      params: { year, format: "full" },
-      headers: { "X-API-Key": process.env.HOLIDAY_API_KEY },
       timeout: REQUEST_TIMEOUT_MS,
-    },
+    }
   );
 
-  if (!Array.isArray(data?.holidays)) {
-    throw new Error(data?.error || "Response contained no holidays array");
+  if (!Array.isArray(data)) {
+    throw new Error("Response contained no holidays array");
   }
 
-  return data.holidays
-    .filter((h) => h?.date && h?.name)
+  // The GitHub JSON format uses different keys: { "start": "...", "summary": "...", "categories": [...] }
+  return data
+    .filter((h) => h?.start && h?.summary)
     .map((h) => ({
-      date: h.date,
-      name: h.name,
-      type: Array.isArray(h.type) && h.type.length ? h.type : ["Public"],
+      date: h.start,
+      name: h.summary,
+      type: Array.isArray(h.categories) && h.categories.length ? h.categories : ["Public"],
     }));
 }
 
