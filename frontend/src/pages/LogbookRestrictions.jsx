@@ -34,6 +34,7 @@ import autoTable from "jspdf-autotable";
 import Swal from "sweetalert2";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
+import holidayApi from "../api/holidayApi";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Config / helpers                                                           */
@@ -440,6 +441,26 @@ const LogbookRestrictions = () => {
   const [liftTarget, setLiftTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const [toast, setToast] = useState(null);
+  const [holidayGate, setHolidayGate] = useState(null);
+
+  // Whether the current year's holiday data is trustworthy enough for the
+  // Sunday cron to restrict anyone — see backend/utils/holidayStore.js.
+  useEffect(() => {
+    let cancelled = false;
+    holidayApi
+      .getOverview()
+      .then(({ years }) => {
+        if (cancelled) return;
+        const current = years?.find((y) => y.year === new Date().getFullYear());
+        if (current) setHolidayGate(current);
+      })
+      .catch(() => {
+        /* non-blocking: the restriction list still renders */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const exportToPDF = () => {
     const doc = new jsPDF("landscape");
@@ -605,6 +626,35 @@ const LogbookRestrictions = () => {
                 Interns restricted due to submitting fewer than 3 logs in a working week (excluding weekends & public holidays). Lift access after supervisor approval.
               </motion.p>
             </div>
+
+            {/* Holiday data gate — auto-restriction is paused when the working-day
+                window can't be trusted, so admins must know before escalating. */}
+            {holidayGate && !holidayGate.enforcementReady && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+              >
+                <FaExclamationTriangle className="mt-0.5 shrink-0 text-amber-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-amber-800">
+                    Automatic restrictions are paused for {holidayGate.year}
+                  </p>
+                  <p className="mt-1 text-sm text-amber-700">
+                    Public holiday data for {holidayGate.year} is “{holidayGate.dataQuality}”,
+                    so the 5-working-day window may be wrong. The Sunday job is holding
+                    candidates for review instead of restricting them. Confirm the year
+                    under Holidays to resume.
+                  </p>
+                  <button
+                    onClick={() => navigate("/admin/holidays")}
+                    className="mt-2 text-sm font-semibold text-amber-900 underline underline-offset-2"
+                  >
+                    Open Holidays
+                  </button>
+                </div>
+              </motion.div>
+            )}
 
             {/* Stats bar */}
             <motion.div

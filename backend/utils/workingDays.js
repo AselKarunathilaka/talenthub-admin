@@ -1,93 +1,31 @@
 const moment = require("moment-timezone");
-const axios = require("axios");
 
-const { getFallbackHolidayDates } = require("./holidayData");
+const holidayStore = require("./holidayStore");
 
 const TZ = "Asia/Colombo";
 
-// In-memory cache for API holiday responses: year -> { holidays: Set<string>, fetchedAt: number }
-const holidayCache = new Map();
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
-// year -> Promise, so concurrent callers share one outgoing request
-const inFlightRefreshes = new Map();
-// year -> timestamp of the last failed fetch, to avoid retrying on every call
-const failedFetchAt = new Map();
-const FAILURE_BACKOFF_MS = 15 * 60 * 1000; // 15 minutes
-
-// Built-in Sri Lankan Public Holidays fallback, from the bundled dataset
-// (backend/data/holidays) — same source as the holiday API.
-function getBuiltInHolidays(years) {
-  return getFallbackHolidayDates(years);
-}
-
 /**
- * Fetch holidays for a given year using external API if available, fallback to built-in list.
- * Synchronous return using cached data or fallback, with async background refresh.
+ * Sri Lankan public holidays for the given year(s), as a Set of "YYYY-MM-DD".
+ *
+ * Reads our own Holiday collection through the in-memory store — no external
+ * call happens here. holidaySyncService is what talks to providers; see
+ * services/holidaySyncService.js.
  */
 function getSriLankanHolidays(years) {
-  const yearList = Array.isArray(years) ? years : [years];
-  const combinedHolidays = new Set();
-
-  for (const y of yearList) {
-    const cached = holidayCache.get(y);
-    if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-      cached.holidays.forEach((d) => combinedHolidays.add(d));
-    } else {
-      // Return built-in fallback while triggering background API refresh
-      const builtIn = getBuiltInHolidays(y);
-      builtIn.forEach((d) => combinedHolidays.add(d));
-
-      const lastFailure = failedFetchAt.get(y);
-      if (!lastFailure || Date.now() - lastFailure > FAILURE_BACKOFF_MS) {
-        refreshHolidaysFromApi(y).catch(() => {});
-      }
-    }
-  }
-
-  return combinedHolidays;
+  return holidayStore.getHolidayDates(years);
 }
 
 /**
- * Background refresh of Holiday API
+ * How much the stored holiday data for a year can be trusted:
+ * "verified" | "corroborated" | "single-source" | "bundled" | "missing".
+ * Anything that can restrict or terminate an intern must check this first.
  */
-async function refreshHolidaysFromApi(year) {
-  if (!process.env.HOLIDAY_API_URL || !process.env.HOLIDAY_API_KEY) {
-    return;
-  }
-  // One refresh per year at a time — getSriLankanHolidays is called many times
-  // per request, and without this every call fires its own external request.
-  if (inFlightRefreshes.has(year)) return inFlightRefreshes.get(year);
+function getHolidayDataQuality(year) {
+  return holidayStore.getYearQuality(year);
+}
 
-  const refresh = (async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
-        {
-          params: { year, format: "full" },
-          headers: { "X-API-Key": process.env.HOLIDAY_API_KEY },
-          timeout: 5000,
-        },
-      );
-      if (response.data && Array.isArray(response.data.holidays)) {
-        const dates = new Set();
-        response.data.holidays.forEach((item) => {
-          if (item.date) dates.add(item.date);
-        });
-        if (dates.size > 0) {
-          holidayCache.set(year, { holidays: dates, fetchedAt: Date.now() });
-        }
-      }
-    } catch (err) {
-      // Fail quietly and use the bundled fallback; back off before retrying.
-      failedFetchAt.set(year, Date.now());
-    } finally {
-      inFlightRefreshes.delete(year);
-    }
-  })();
-
-  inFlightRefreshes.set(year, refresh);
-  return refresh;
+function isHolidayDataTrusted(year) {
+  return holidayStore.isTrustedForEnforcement(year);
 }
 
 /**
@@ -217,6 +155,8 @@ function getActiveInternsQuery(referenceDate = new Date()) {
 
 module.exports = {
   getSriLankanHolidays,
+  getHolidayDataQuality,
+  isHolidayDataTrusted,
   isWorkingDay,
   getPastWorkingDays,
   getWorkingDaysInRange,

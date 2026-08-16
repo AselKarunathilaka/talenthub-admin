@@ -5,6 +5,8 @@ const {
   getPastWorkingDays,
   isWithinGracePeriod,
   getActiveInternsQuery,
+  getHolidayDataQuality,
+  isHolidayDataTrusted,
 } = require("../utils/workingDays");
 
 // ── Minimum number of daily logs an intern must submit within the check
@@ -15,6 +17,32 @@ const MIN_LOGS_REQUIRED = 3;
 class LogbookRestrictionService {
   static getCheckWindow() {
     return getPastWorkingDays(5);
+  }
+
+  /**
+   * Is the holiday data covering the check window trustworthy enough to
+   * restrict someone on?
+   *
+   * A missing holiday turns a day nobody could have logged into a working day,
+   * pushing an intern who did nothing wrong below the 3-log threshold — and a
+   * restriction is the first step toward termination. So unless every year the
+   * window touches is verified by an admin or corroborated by two independent
+   * providers, we refuse to restrict and ask for a human instead.
+   */
+  static checkHolidayDataQuality(window) {
+    const years = [...new Set(window.map((d) => Number(String(d).slice(0, 4))))];
+    const untrusted = years
+      .filter((year) => !isHolidayDataTrusted(year))
+      .map((year) => ({ year, dataQuality: getHolidayDataQuality(year) }));
+
+    return {
+      trusted: untrusted.length === 0,
+      years: years.map((year) => ({
+        year,
+        dataQuality: getHolidayDataQuality(year),
+      })),
+      untrusted,
+    };
   }
 
   static isNewIntern(intern) {
@@ -56,9 +84,36 @@ class LogbookRestrictionService {
     const periodEnd = moment(window[0]).format("YYYY-MM-DD");
     const weekLabel = `week of ${periodStart}`;
 
+    const holidayData = this.checkHolidayDataQuality(window);
+    const enforcementPaused = !holidayData.trusted;
+
     console.log("\n🔒 Starting weekly logbook restriction enforcement...");
     console.log(`📅 Review period: ${periodStart} to ${periodEnd}`);
     console.log(`✅ Minimum logs required: ${MIN_LOGS_REQUIRED}`);
+    console.log(
+      `🎌 Holiday data: ${holidayData.years
+        .map((y) => `${y.year}=${y.dataQuality}`)
+        .join(", ")}`,
+    );
+
+    if (enforcementPaused) {
+      console.warn("\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+      console.warn("⛔ AUTO-RESTRICTION PAUSED — holiday data is not trustworthy");
+      holidayData.untrusted.forEach(({ year, dataQuality }) =>
+        console.warn(`   ${year}: ${dataQuality}`),
+      );
+      console.warn(
+        "   The 5-working-day window may include real public holidays, which",
+      );
+      console.warn(
+        "   would restrict interns who did nothing wrong. Verify the year at",
+      );
+      console.warn(
+        "   Admin → Holidays, then re-run from the restriction screen.",
+      );
+      console.warn("   Reporting who WOULD be restricted instead.");
+      console.warn("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n");
+    }
 
     const results = {
       total: 0,
@@ -67,6 +122,7 @@ class LogbookRestrictionService {
       skipped: 0, // new interns
       submittedButRestricted: 0, // met requirement this week but still restricted (admin must lift)
       metRequirement: 0, // met requirement, not restricted
+      wouldRestrict: [], // populated instead of restricting when enforcement is paused
       errors: [],
     };
 
@@ -100,6 +156,18 @@ class LogbookRestrictionService {
               results.alreadyRestricted++;
               console.log(
                 `⚠️  ${name} (${tid}) — already restricted, only ${logsSubmitted}/${MIN_LOGS_REQUIRED} log(s) submitted`,
+              );
+            } else if (enforcementPaused) {
+              // Holiday data can't be trusted this week — record the candidate
+              // for admin review instead of restricting on possibly-wrong days.
+              results.wouldRestrict.push({
+                internId: intern._id,
+                name,
+                tid,
+                logsSubmitted,
+              });
+              console.log(
+                `⏸️  ${name} (${tid}) — WOULD be restricted (${logsSubmitted}/${MIN_LOGS_REQUIRED}), held for admin review`,
               );
             } else {
               const now = new Date();
@@ -164,6 +232,11 @@ class LogbookRestrictionService {
         `✅ Met requirement (>=${MIN_LOGS_REQUIRED} logs):        ${results.metRequirement}`,
       );
       console.log(`🔒 Newly restricted:               ${results.restricted}`);
+      if (enforcementPaused) {
+        console.log(
+          `⏸️  Held for admin review:          ${results.wouldRestrict.length} (auto-restriction paused)`,
+        );
+      }
       console.log(
         `⚠️  Already restricted:            ${results.alreadyRestricted}`,
       );
@@ -182,6 +255,8 @@ class LogbookRestrictionService {
         periodStart,
         periodEnd,
         minLogsRequired: MIN_LOGS_REQUIRED,
+        enforcementPaused,
+        holidayData,
         ...results,
       };
     } catch (err) {
