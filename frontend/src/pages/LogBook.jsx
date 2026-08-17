@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 import {
   FiBook,
   FiAlertTriangle,
@@ -29,6 +30,9 @@ import {
   FiCheck,
   FiSend,
   FiLock,
+  FiShield,
+  FiCode,
+  FiDatabase,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
@@ -984,6 +988,22 @@ const Logbook = () => {
       icon: <FiMonitor />,
     },
     { value: "DataScience", label: "Data Science", icon: <FiServer /> },
+    {
+      value: "Business Analyst",
+      label: "Business Analyst",
+      icon: <FiTarget />,
+    },
+    {
+      value: "Cyber Security",
+      label: "Cyber Security",
+      icon: <FiShield />,
+    },
+    { value: "Java", label: "Java", icon: <FiCode /> },
+    {
+      value: "MERN Stack",
+      label: "MERN Stack",
+      icon: <FiDatabase />,
+    },
   ];
 
   /* ──────────────────────────────────────────────────────────────────────── */
@@ -1031,7 +1051,7 @@ const Logbook = () => {
       >
         <Navigation />
 
-        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <SectionTip sectionKey="logbook" />
 
@@ -1039,28 +1059,9 @@ const Logbook = () => {
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
-                  <h1
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: "#1a1a2e",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: "#1a1a2e",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 10,
-                        transition: "all 0.4s ease",
-                      }}
-                    >
-                      <FiBook style={{ color: palette.light }} />
-                      Daily Logbook
-                    </span>
+                  <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                    <BookOpen className="text-[#00b4eb] h-8 w-8" />
+                    Daily Logbook
                   </h1>
                   <p
                     style={{

@@ -1,0 +1,51 @@
+.bunting-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 50px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.bunting-string {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 100%;
+  height: 20px;
+  border-bottom: 2px solid rgba(255,255,255,0.3);
+  border-radius: 50%;
+  transform: scaleY(0.2);
+}
+
+.flags {
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  padding-top: 7px;
+}
+
+.bunting-flag {
+  width: 0;
+  height: 0;
+  border-left: 15px solid transparent;
+  border-right: 15px solid transparent;
+  border-top: 35px solid transparent; /* Color set inline */
+  transform-origin: top center;
+  animation: flag-flap 2s infinite alternate ease-in-out;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.2));
+}
+
+@keyframes flag-flap {
+  0% { transform: rotateX(0deg) rotateZ(-3deg); }
+  100% { transform: rotateX(20deg) rotateZ(3deg); }
+}
+
+@media (max-width: 768px) {
+  .bunting-flag {
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 25px solid transparent;
+  }
+}

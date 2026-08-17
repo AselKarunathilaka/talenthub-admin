@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminApi, csvUtils, notificationUtils } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
-import { Home } from "lucide-react";
+import { Home, Bell, CalendarDays } from "lucide-react";
 
 // Digital Clock Component
 const formatDigit = (num) => num.toString().padStart(2, '0');
@@ -31,22 +31,30 @@ const DigitalClock = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const h = formatDigit(time.getHours());
-  const m = formatDigit(time.getMinutes());
-  const s = formatDigit(time.getSeconds());
-
   return (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1 sm:gap-1.5 text-2xl sm:text-3xl font-black text-slate-800 tracking-tight">
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{h}</span>
-        <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-blue-100/50 text-[#0056a2] rounded-xl shadow-sm border border-blue-200/50 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{m}</span>
-        <span className="text-slate-300 -mt-1">:</span>
-        <span className="bg-[#00b4eb]/15 text-[#00b4eb] rounded-xl shadow-sm border border-[#00b4eb]/20 w-10 sm:w-12 h-10 sm:h-12 flex items-center justify-center">{s}</span>
+    <div className="flex items-center justify-center gap-4 sm:gap-8 w-full sm:w-auto">
+      {/* Time */}
+      <div className="flex items-baseline font-light tracking-tighter tabular-nums text-slate-800 drop-shadow-sm">
+        <span className="text-4xl sm:text-6xl">{formatDigit(time.getHours())}</span>
+        <span className="text-3xl sm:text-5xl text-slate-300 mx-1 sm:mx-2 animate-pulse font-normal">:</span>
+        <span className="text-4xl sm:text-6xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-xl sm:text-3xl text-[#00b4eb] font-medium ml-1.5 sm:ml-2.5">
+          {formatDigit(time.getSeconds())}
+        </span>
       </div>
-      <div className="hidden sm:flex flex-col justify-center border-l-2 border-slate-100 pl-4">
-        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{time.toLocaleDateString('en-US', { weekday: 'short' })}</span>
-        <span className="text-sm font-extrabold text-[#0056a2] uppercase">{time.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+      
+      {/* Divider */}
+      <div className="w-px h-10 sm:h-14 bg-slate-200"></div>
+      
+      {/* Date */}
+      <div className="flex flex-col items-center justify-center min-w-[100px]">
+        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#50b748]">
+          {time.toLocaleDateString("en-US", { weekday: "long" })}
+        </span>
+        <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-slate-500 mt-1">
+          <span>{time.toLocaleDateString("en-US", { month: "long" })}</span>
+          <span>{time.getDate()}</span>
+        </div>
       </div>
     </div>
   );
@@ -387,9 +395,11 @@ const AdminDashboard = () => {
 
         <main className="relative flex-1 p-4 sm:p-8 mx-auto max-w-[1400px] w-full flex flex-col gap-8">
           
-          {/* Top Header with Clock */}
-          <div className="relative z-30 flex flex-col md:flex-row md:items-center justify-between gap-6 pt-2">
-            <div>
+          {/* Top header: Title on Left, Clock & Tools on Right */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+
+            {/* Left: Dashboard Title */}
+            <div className="flex flex-col xl:items-start justify-center">
               <motion.h1
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -411,14 +421,51 @@ const AdminDashboard = () => {
               </motion.p>
             </div>
             
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
-              className="bg-blue-50/50 backdrop-blur-md px-5 py-4 rounded-3xl border border-blue-100/50 shadow-sm self-start md:self-auto"
-            >
-              <DigitalClock />
-            </motion.div>
+            {/* Right: Clock & Action Buttons */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+              
+              {/* Clock Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="flex items-center justify-center bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm px-6 py-4 rounded-[2rem] w-full sm:w-auto"
+              >
+                <DigitalClock />
+              </motion.div>
+              
+              {/* Action Buttons */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.3 }}
+                className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto"
+              >
+                <button
+                  onClick={() => navigate("/admin/holidays")}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-amber-50 hover:border-amber-200 rounded-[1.5rem] group min-w-0"
+                >
+                  <div className="p-1.5 sm:p-2 bg-amber-100 rounded-xl group-hover:bg-amber-200 transition-colors shrink-0">
+                    <CalendarDays className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-amber-700 transition-colors truncate">
+                    Holidays
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => navigate("/admin/announcements")}
+                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-rose-50 hover:border-rose-200 rounded-[1.5rem] group min-w-0"
+                >
+                  <div className="p-1.5 sm:p-2 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shrink-0">
+                    <Bell className="w-5 h-5 text-rose-500 group-hover:text-rose-600" />
+                  </div>
+                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-rose-600 transition-colors truncate">
+                    Announcements
+                  </span>
+                </button>
+              </motion.div>
+            </div>
           </div>
 
           {/* Search */}

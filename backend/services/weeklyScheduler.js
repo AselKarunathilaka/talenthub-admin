@@ -6,7 +6,7 @@ const ScheduledEmailGuard = require("./scheduledEmailGuard");
 
 // ── Single source of truth for recipients ────────────────────────────────
 const DEFAULT_RECIPIENTS = [
-  "dimalshacooray@gmail.com", // Developer
+  "send2liyanapathirana@gmail.com", // Developer
   "mgiri@slt.com.lk", // Supervisor
   "hjanaka@gmail.com", // Supervisor
 ];
@@ -26,7 +26,10 @@ const JOB_MEETING_ATTENDANCE = "weekly-meeting-attendance";
  * switch the real reports off.
  */
 function schedulerEmailsEnabled() {
-  return String(process.env.SCHEDULER_EMAILS_ENABLED ?? "true").toLowerCase() !== "false";
+  return (
+    String(process.env.SCHEDULER_EMAILS_ENABLED ?? "true").toLowerCase() !==
+    "false"
+  );
 }
 
 class WeeklyScheduler {

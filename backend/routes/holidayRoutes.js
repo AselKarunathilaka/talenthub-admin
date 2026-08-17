@@ -1,20 +1,17 @@
 const express = require("express");
-const axios = require("axios");
 
+const Holiday = require("../models/Holiday");
+const HolidayYear = require("../models/HolidayYear");
 const { getFallbackHolidays } = require("../utils/holidayData");
 
 const router = express.Router();
 
-const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
-const FAILURE_BACKOFF_MS = 15 * 60 * 1000; // don't retry a dead API on every page load
-const REQUEST_TIMEOUT_MS = 8000;
-
-// year -> { holidays, fetchedAt }
-const cache = new Map();
-// year -> timestamp of the last failed upstream fetch
-const failedFetchAt = new Map();
-
-//Holiday API GET
+/**
+ * GET /api/holidays/:year — public read used by every calendar in the app.
+ *
+ * Served from our own Holiday collection; no external provider is contacted in
+ * the request path. holidaySyncService keeps the collection fresh.
+ */
 router.get("/:year", async (req, res) => {
   const year = Number(req.params.year);
 
@@ -22,59 +19,42 @@ router.get("/:year", async (req, res) => {
     return res.status(400).json({ error: "Invalid year" });
   }
 
-  const cached = cache.get(year);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
-    return res.json({ year, source: "cache", holidays: cached.holidays });
-  }
-
-  const lastFailure = failedFetchAt.get(year);
-  if (lastFailure && Date.now() - lastFailure < FAILURE_BACKOFF_MS) {
-    return res.json({ year, source: "fallback", holidays: getFallbackHolidays(year) });
-  }
-
   try {
-    if (!process.env.HOLIDAY_API_URL || !process.env.HOLIDAY_API_KEY) {
-      throw new Error("HOLIDAY_API_URL / HOLIDAY_API_KEY is not configured in .env");
+    const [stored, meta] = await Promise.all([
+      Holiday.find({ year }, { _id: 0, date: 1, name: 1, type: 1 })
+        .sort({ date: 1 })
+        .lean(),
+      HolidayYear.findOne({ year }, { dataQuality: 1, lastSyncedAt: 1 }).lean(),
+    ]);
+
+    if (stored.length > 0) {
+      return res.json({
+        year,
+        source: "database",
+        dataQuality: meta?.dataQuality || "single-source",
+        lastSyncedAt: meta?.lastSyncedAt || null,
+        holidays: stored,
+      });
     }
 
-    const response = await axios.get(
-      `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
-      {
-        params: {
-          year,
-          format: "full",
-        },
-        headers: {
-          "X-API-Key": process.env.HOLIDAY_API_KEY,
-        },
-        timeout: REQUEST_TIMEOUT_MS,
-      }
-    );
-
-    // The upstream API answers 200 with an { error } body for some failures,
-    // so check for the payload we actually need rather than the status code.
-    const holidays = response.data?.holidays;
-    if (!Array.isArray(holidays) || holidays.length === 0) {
-      throw new Error(
-        response.data?.error || "Holiday API returned no holidays"
-      );
-    }
-
-    cache.set(year, { holidays, fetchedAt: Date.now() });
-    failedFetchAt.delete(year);
-    res.json({ year, source: "api", holidays });
+    // Nothing stored yet (fresh install, or a year nobody has synced) — serve
+    // the offline seed so calendars still mark holidays.
+    return res.json({
+      year,
+      source: "bundled",
+      dataQuality: "bundled",
+      lastSyncedAt: null,
+      holidays: getFallbackHolidays(year),
+    });
   } catch (error) {
-    console.error(
-      `Holiday API Error (${year}):`,
-      error.response?.status || "",
-      error.response?.data || error.message
-    );
-    failedFetchAt.set(year, Date.now());
-
-    // Never leave the calendars holiday-less because the upstream API is down —
-    // serve the bundled dataset instead and say so in the payload.
-    const holidays = getFallbackHolidays(year);
-    res.json({ year, source: "fallback", holidays });
+    console.error(`Holiday lookup failed (${year}):`, error.message);
+    return res.json({
+      year,
+      source: "bundled",
+      dataQuality: "bundled",
+      lastSyncedAt: null,
+      holidays: getFallbackHolidays(year),
+    });
   }
 });
 
