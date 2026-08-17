@@ -100,6 +100,10 @@ export const SEASON_COMPONENTS = {
     import("./christmas/ChristmasBackground").then((m) => ({
       default: m.default,
     })),
+  "new-year": () =>
+    import("./new-year/NewYearBackground").then((m) => ({
+      default: m.default,
+    })),
   // Future seasons can be added here as they are designed:
 };
 
@@ -115,7 +119,7 @@ export function getActiveSeason(date = new Date()) {
   //return 'halloween'
   //return 'vesak-festival'
   //return 'christmas'
-  return 'independence-day'
+  //return 'independence-day'
   //return 'new-year'
   const month = date.getMonth() + 1; // 1-indexed
   const day = date.getDate();

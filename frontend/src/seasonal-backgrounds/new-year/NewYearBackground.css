@@ -1,0 +1,29 @@
+.new-year-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0; /* Keep it behind the UI */
+  background: radial-gradient(circle at center, #093657 0%, #062844 50%, #03172F 100%);
+  overflow: hidden;
+}
+
+/* Optional star overlay to add some texture */
+.new-year-stars {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: radial-gradient(#FFF7B6 1px, transparent 1px);
+  background-size: 80px 80px;
+  opacity: 0.1;
+  animation: stars-twinkle 10s linear infinite;
+}
+
+@keyframes stars-twinkle {
+  0% { opacity: 0.1; }
+  50% { opacity: 0.2; }
+  100% { opacity: 0.1; }
+}
