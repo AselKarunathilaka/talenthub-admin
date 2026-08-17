@@ -1,0 +1,41 @@
+.spotlights-container {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1; /* Behind skyline, above background */
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.spotlight {
+  position: absolute;
+  bottom: -10vh;
+  width: 50vw;
+  height: 120vh;
+  background: linear-gradient(to top, rgba(255,247,182, 0.15) 0%, rgba(255,247,182, 0) 100%);
+  clip-path: polygon(48% 100%, 52% 100%, 100% 0, 0 0);
+  transform-origin: bottom center;
+  mix-blend-mode: screen;
+}
+
+.left-spotlight {
+  left: -10vw;
+  animation: sweep-left 12s ease-in-out infinite alternate;
+}
+
+.right-spotlight {
+  right: -10vw;
+  animation: sweep-right 14s ease-in-out infinite alternate;
+}
+
+@keyframes sweep-left {
+  0% { transform: rotate(15deg); }
+  100% { transform: rotate(75deg); }
+}
+
+@keyframes sweep-right {
+  0% { transform: rotate(-15deg); }
+  100% { transform: rotate(-75deg); }
+}
