@@ -1,0 +1,57 @@
+.happy-new-year-text-container {
+  position: absolute;
+  top: 15vh; /* Places it well above the login panel on desktop */
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.happy-new-year-text {
+  font-family: 'Arial Black', sans-serif;
+  font-size: 5rem;
+  font-weight: 900;
+  text-align: center;
+  color: transparent;
+  background: linear-gradient(180deg, #FFF7B6 0%, #EFD466 50%, #D7B030 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin: 0;
+  padding: 0 20px;
+  
+  /* Multiple shadows for the glowing neon effect */
+  filter: drop-shadow(0 0 10px rgba(239, 212, 102, 0.6))
+          drop-shadow(0 0 30px rgba(215, 176, 48, 0.4));
+  
+  animation: neon-pulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes neon-pulse {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(239, 212, 102, 0.4))
+            drop-shadow(0 0 20px rgba(215, 176, 48, 0.2));
+    transform: scale(0.98);
+  }
+  100% {
+    filter: drop-shadow(0 0 15px rgba(239, 212, 102, 0.8))
+            drop-shadow(0 0 40px rgba(215, 176, 48, 0.6));
+    transform: scale(1.02);
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .happy-new-year-text-container {
+    top: 5vh; /* Push it to the top on mobile so it's not hidden by login */
+  }
+  
+  .happy-new-year-text {
+    font-size: 2.5rem;
+    letter-spacing: 0.1em;
+  }
+}

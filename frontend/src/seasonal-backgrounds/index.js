@@ -13,18 +13,18 @@
  */
 export const SEASONS = [
   {
+    key: "independence-day",
+    label: "Independence Day",
+    month: 2,
+    day: 1,
+    endDay: 10,
+  },
+  {
     key: "new-year",
     label: "New Year",
     month: 1,
     day: 1,
-    endDay: 1,
-  },
-  {
-    key: "independence-day",
-    label: "Independence Day",
-    month: 2,
-    day: 4,
-    endDay: 4,
+    endDay: 5,
   },
   {
     key: "sinhala-tamil-new-year",
@@ -72,6 +72,10 @@ export const SEASONS = [
  * Seasons without an entry fall back to the default gradient.
  */
 export const SEASON_COMPONENTS = {
+  "independence-day": () =>
+    import("./independence-day/IndependenceBackground").then((m) => ({
+      default: m.default,
+    })),
   "sinhala-tamil-new-year": () =>
     import("./sinhala-tamil-new-year/AvuruduBackground").then((m) => ({
       default: m.default,
@@ -94,6 +98,10 @@ export const SEASON_COMPONENTS = {
     })),
   "christmas": () =>
     import("./christmas/ChristmasBackground").then((m) => ({
+      default: m.default,
+    })),
+  "new-year": () =>
+    import("./new-year/NewYearBackground").then((m) => ({
       default: m.default,
     })),
   // Future seasons can be added here as they are designed:

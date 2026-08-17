@@ -1,0 +1,58 @@
+.balloons-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.balloon-wrapper {
+  position: absolute;
+  bottom: -150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: float-up 20s linear infinite;
+  opacity: 0.85;
+}
+
+.balloon {
+  width: 40px;
+  height: 50px;
+  border-radius: 50% 50% 50% 50% / 40% 40% 60% 60%;
+  position: relative;
+  box-shadow: inset -5px -5px 10px rgba(0,0,0,0.2), inset 2px 2px 5px rgba(255,255,255,0.4);
+}
+
+.balloon::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid inherit;
+}
+
+.string {
+  width: 1px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.5);
+  margin-top: 4px;
+}
+
+.maroon .balloon { background: #8b0000; border-bottom-color: #8b0000; }
+.orange .balloon { background: #ff6600; border-bottom-color: #ff6600; }
+.green .balloon { background: #008000; border-bottom-color: #008000; }
+.gold .balloon { background: #ffcc00; border-bottom-color: #ffcc00; }
+
+@keyframes float-up {
+  0% { transform: translateY(0) rotate(0deg) scale(var(--scale)); }
+  25% { transform: translateY(-30vh) rotate(-5deg) scale(var(--scale)); }
+  50% { transform: translateY(-60vh) rotate(5deg) scale(var(--scale)); }
+  75% { transform: translateY(-90vh) rotate(-2deg) scale(var(--scale)); }
+  100% { transform: translateY(-120vh) rotate(0deg) scale(var(--scale)); }
+}

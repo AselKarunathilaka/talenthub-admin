@@ -1,0 +1,14 @@
+.independence-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.daytime-sky {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, #2b7bc4 0%, #1a5b8f 100%);
+  opacity: 0.95;
+}

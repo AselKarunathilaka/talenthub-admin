@@ -1,0 +1,67 @@
+.airforce-jets-container {
+  position: absolute;
+  top: 55vh;
+  left: -20vw;
+  width: 150vw;
+  height: 200px;
+  z-index: 1;
+  pointer-events: none;
+  transform: rotate(-15deg);
+  transform-origin: left center;
+}
+
+.jet-wrapper {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  animation: fly-across 20s linear infinite;
+  opacity: 0;
+}
+
+.jet-svg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+}
+
+.smoke {
+  position: absolute;
+  left: -380px; /* Overlaps the jet slightly */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 400px;
+  height: 12px;
+  border-radius: 10px;
+  filter: blur(8px);
+  opacity: 0.85;
+  z-index: 1;
+  mask-image: linear-gradient(to right, transparent, black);
+  -webkit-mask-image: linear-gradient(to right, transparent, black);
+}
+
+.smoke-maroon { background: #8b0000; }
+.smoke-orange { background: #ff6600; }
+.smoke-green { background: #008000; }
+.smoke-gold { background: #ffcc00; }
+
+.jet-1 { top: 20px; animation-delay: 2s; }
+.jet-2 { top: 50px; left: -20px; animation-delay: 2.2s; }
+.jet-3 { top: 80px; animation-delay: 2s; }
+.jet-4 { top: 110px; left: -10px; animation-delay: 2.1s; }
+
+@keyframes fly-across {
+  0% { transform: translateX(0); opacity: 0; }
+  5% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateX(180vw); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+  .airforce-jets-container {
+    top: 35vh; /* Starts lower on mobile to pass behind logo */
+    transform: rotate(-25deg); /* Steeper angle for narrower screens to hit top-right */
+  }
+}

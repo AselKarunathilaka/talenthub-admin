@@ -1,0 +1,37 @@
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 10;
+  overflow: hidden;
+}
+
+.confetti-fall-wrapper {
+  position: absolute;
+  top: -40px;
+  animation-name: confetti-fall;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.confetti-piece {
+  opacity: 0.9;
+  animation-name: confetti-spin;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+  animation-duration: 2s; /* Fixed spin speed */
+  box-shadow: 0 0 5px rgba(255, 247, 182, 0.4);
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0); opacity: 1; }
+  100% { transform: translateY(110vh); opacity: 0; }
+}
+
+@keyframes confetti-spin {
+  0% { transform: rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateY(360deg) rotateZ(360deg); }
+}
