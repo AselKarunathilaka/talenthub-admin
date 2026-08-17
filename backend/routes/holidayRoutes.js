@@ -1,40 +1,59 @@
 const express = require("express");
-const axios = require("axios");
+
+const Holiday = require("../models/Holiday");
+const HolidayYear = require("../models/HolidayYear");
+const { getFallbackHolidays } = require("../utils/holidayData");
 
 const router = express.Router();
 
-//Holiday API GET
+/**
+ * GET /api/holidays/:year — public read used by every calendar in the app.
+ *
+ * Served from our own Holiday collection; no external provider is contacted in
+ * the request path. holidaySyncService keeps the collection fresh.
+ */
 router.get("/:year", async (req, res) => {
-  try {
-    const { year } = req.params;
+  const year = Number(req.params.year);
 
-    if (!process.env.HOLIDAY_API_URL) {
-      return res.status(500).json({ error: "HOLIDAY_API_URL is not configured in .env" });
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({ error: "Invalid year" });
+  }
+
+  try {
+    const [stored, meta] = await Promise.all([
+      Holiday.find({ year }, { _id: 0, date: 1, name: 1, type: 1 })
+        .sort({ date: 1 })
+        .lean(),
+      HolidayYear.findOne({ year }, { dataQuality: 1, lastSyncedAt: 1 }).lean(),
+    ]);
+
+    if (stored.length > 0) {
+      return res.json({
+        year,
+        source: "database",
+        dataQuality: meta?.dataQuality || "single-source",
+        lastSyncedAt: meta?.lastSyncedAt || null,
+        holidays: stored,
+      });
     }
 
-    //validate year 
-    const response = await axios.get(
-      `${process.env.HOLIDAY_API_URL}/api/v1/holidays`,
-      {
-        params: {
-          year,
-          format: "full",
-        },
-        headers: {
-          "X-API-Key": process.env.HOLIDAY_API_KEY,
-        },
-      }
-    );
-
-    res.json(response.data);
+    // Nothing stored yet (fresh install, or a year nobody has synced) — serve
+    // the offline seed so calendars still mark holidays.
+    return res.json({
+      year,
+      source: "bundled",
+      dataQuality: "bundled",
+      lastSyncedAt: null,
+      holidays: getFallbackHolidays(year),
+    });
   } catch (error) {
-    console.error(
-      "Holiday API Error:",
-      error.response?.data || error.message
-    );
-    // Error message
-    res.status(500).json({
-      error: "Failed to fetch holidays",
+    console.error(`Holiday lookup failed (${year}):`, error.message);
+    return res.json({
+      year,
+      source: "bundled",
+      dataQuality: "bundled",
+      lastSyncedAt: null,
+      holidays: getFallbackHolidays(year),
     });
   }
 });

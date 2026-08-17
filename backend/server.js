@@ -8,6 +8,7 @@ const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");
 const WeeklyScheduler = require("./services/weeklyScheduler");
+const HolidayScheduler = require("./services/holidayScheduler");
 const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
 const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
@@ -37,6 +38,12 @@ const server = app.listen(PORT, () => {
     .catch((error) => {
       console.error("❌ Auto-sync error:", error.message);
     });
+
+  // Load holidays into memory and keep the providers in sync.
+  // Runs before the weekly scheduler because working-day maths depends on it.
+  HolidayScheduler.init().catch((err) =>
+    console.error("❌ Holiday scheduler failed to start:", err.message),
+  );
 
   // Initialize weekly work log compliance scheduler
   WeeklyScheduler.init();

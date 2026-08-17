@@ -19,6 +19,7 @@ const gateStaffRoutes = require("./routes/gateStaffRoutes");
 const adminSeatRoutes = require("./routes/adminSeatRoutes");
 const internAnnouncementRoutes = require("./routes/internAnnouncementRoutes");
 const holidayRoutes = require("./routes/holidayRoutes");
+const holidayAdminRoutes = require("./routes/holidayAdminRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
@@ -78,8 +79,9 @@ app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
 
-//Sri Lanka Holidays
+//Sri Lanka Holidays (public read; admin management under /api/admin/holidays)
 app.use("/api/holidays", holidayRoutes);
+app.use("/api/admin/holidays", holidayAdminRoutes);
 
 // Seasonal Login Background Override (admin-only write, public read)
 app.use("/api/login-season", seasonOverrideRoutes);

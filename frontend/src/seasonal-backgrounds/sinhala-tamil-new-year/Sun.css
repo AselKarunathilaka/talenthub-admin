@@ -1,0 +1,39 @@
+.avurudu-sun-container {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150px;
+  height: 150px;
+  z-index: 1;
+}
+
+.avurudu-sun-core {
+  position: absolute;
+  inset: 10%;
+  background: radial-gradient(circle at 30% 30%, #fff, #ffcc00, #ff8800);
+  border-radius: 50%;
+  box-shadow: 0 0 30px 10px rgba(255, 136, 0, 0.6);
+}
+
+.avurudu-sun-rays {
+  position: absolute;
+  inset: -20%;
+  background: conic-gradient(from 0deg, transparent 0deg, rgba(255, 204, 0, 0.4) 10deg, transparent 20deg, rgba(255, 204, 0, 0.4) 30deg, transparent 40deg, rgba(255, 204, 0, 0.4) 50deg, transparent 60deg, rgba(255, 204, 0, 0.4) 70deg, transparent 80deg, rgba(255, 204, 0, 0.4) 90deg, transparent 100deg, rgba(255, 204, 0, 0.4) 110deg, transparent 120deg, rgba(255, 204, 0, 0.4) 130deg, transparent 140deg, rgba(255, 204, 0, 0.4) 150deg, transparent 160deg, rgba(255, 204, 0, 0.4) 170deg, transparent 180deg, rgba(255, 204, 0, 0.4) 190deg, transparent 200deg, rgba(255, 204, 0, 0.4) 210deg, transparent 220deg, rgba(255, 204, 0, 0.4) 230deg, transparent 240deg, rgba(255, 204, 0, 0.4) 250deg, transparent 260deg, rgba(255, 204, 0, 0.4) 270deg, transparent 280deg, rgba(255, 204, 0, 0.4) 290deg, transparent 300deg, rgba(255, 204, 0, 0.4) 310deg, transparent 320deg, rgba(255, 204, 0, 0.4) 330deg, transparent 340deg, rgba(255, 204, 0, 0.4) 350deg, transparent 360deg);
+  border-radius: 50%;
+  animation: rotate-rays 30s linear infinite;
+  mask-image: radial-gradient(circle, black 30%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle, black 30%, transparent 70%);
+}
+
+@keyframes rotate-rays {
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .avurudu-sun-container {
+    width: 100px;
+    height: 100px;
+    top: 10%;
+  }
+}

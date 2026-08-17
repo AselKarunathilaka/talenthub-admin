@@ -56,20 +56,7 @@ const PRIORITY_META = {
   },
 };
 
-const READ_KEY = "readAnnouncementIds";
 const PAGE_SIZE = 5;
-
-const getReadIds = () => {
-  try {
-    return new Set(JSON.parse(localStorage.getItem(READ_KEY) || "[]"));
-  } catch {
-    return new Set();
-  }
-};
-
-const saveReadIds = (set) => {
-  localStorage.setItem(READ_KEY, JSON.stringify([...set]));
-};
 
 // ─── Token helper ─────────────────────────────────────────────────────────────
 const getInternToken = () => {
@@ -111,7 +98,6 @@ const InternAnnouncements = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [readIds, setReadIds] = useState(getReadIds);
   const [filterPriority, setFilterPriority] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -147,18 +133,25 @@ const InternAnnouncements = () => {
   }, [filterPriority]);
 
   // Mark an individual announcement as read when expanded
-  const toggleExpand = (id) => {
-    setExpandedId((prev) => {
-      const next = prev === id ? null : id;
-      if (next) {
-        // Mark as read on expand
-        const updated = new Set(readIds);
-        updated.add(id);
-        setReadIds(updated);
-        saveReadIds(updated);
-      }
-      return next;
-    });
+  const toggleExpand = async (id) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      // Remove it from view once it's closed, so it doesn't display again
+      setAnnouncements((prev) => prev.filter((a) => a._id !== id));
+      return;
+    }
+
+    setExpandedId(id);
+    const token = getInternToken();
+    try {
+      await fetch(`${API_BASE_URL}/announcements/${id}/read`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      window.dispatchEvent(new Event('announcementsUpdated'));
+    } catch (e) {
+      console.error("Error marking announcement as read", e);
+    }
   };
 
   // Filter
@@ -191,7 +184,7 @@ const InternAnnouncements = () => {
     return [1, "…", safePage - 1, safePage, safePage + 1, "…", totalPages];
   };
 
-  const unreadCount = announcements.filter((a) => !readIds.has(a._id)).length;
+  const unreadCount = announcements.length;
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -205,36 +198,19 @@ const InternAnnouncements = () => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans text-gray-800">
       <Navigation onLogout={handleLogout} />
 
-      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1200px] w-full">
           <SectionTip sectionKey="announcements" />
           {/* Page Header */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 logbook-fade-in">
             <div>
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-              >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl relative">
-                  <Bell className="text-[#0056a2] h-8 w-8" />
-                  {unreadCount > 0 && (
-                    <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-6 w-6 bg-rose-500 text-white text-xs font-bold rounded-full shadow-sm ring-2 ring-white">
-                      {unreadCount}
-                    </span>
-                  )}
-                </div>
+              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                <Bell className="text-[#00b4eb] h-8 w-8" />
                 Announcements
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.05, duration: 0.2 }}
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                Important notices and updates from management
-              </motion.p>
+              </h1>
+              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                "Important notices and updates from management"
+              </p>
             </div>
           </div>
 
@@ -309,7 +285,7 @@ const InternAnnouncements = () => {
                 {paginated.map((a) => {
                   const meta =
                     PRIORITY_META[a.priority] || PRIORITY_META.normal;
-                  const isRead = readIds.has(a._id);
+                  const isRead = false;
                   const isExpanded = expandedId === a._id;
 
                   return (

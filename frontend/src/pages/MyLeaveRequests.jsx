@@ -235,74 +235,64 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
-      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           <SectionTip sectionKey={isStudyLeave ? "extendedleave" : "shortleave"} />
           {/* Header & Date Picker */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 logbook-fade-in">
             <div>
-              <motion.h1 
-                initial={{ opacity: 0, y: -10 }} 
-                animate={{ opacity: 1, y: 0 }} 
-                transition={{ duration: 0.2 }} 
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-              >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  {isStudyLeave ? (
-                    <GraduationCap className="text-[#0056a2] h-8 w-8" />
-                  ) : (
-                    <Bike className="text-[#0056a2] h-8 w-8" />
-                  )}
-                </div> 
+              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                {isStudyLeave ? (
+                  <GraduationCap className="text-[#00b4eb] h-8 w-8" />
+                ) : (
+                  <Bike className="text-[#00b4eb] h-8 w-8" />
+                )}
                 {pageCopy.title}
-              </motion.h1>
-              <motion.p 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                transition={{ delay: 0.05, duration: 0.2 }} 
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                {pageCopy.description}
-              </motion.p>
+              </h1>
+              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                "{pageCopy.description}"
+              </p>
             </div>
 
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }} 
               animate={{ opacity: 1, scale: 1 }} 
               transition={{ delay: 0.1, duration: 0.2 }} 
-              className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex items-center gap-3 min-w-[280px]"
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 sm:p-2 flex items-center gap-2 min-w-[200px]"
             >
-              <div className="flex-1 bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100">
-                  <FiCalendar className="text-[#00b4eb] h-5 w-5" />
+              <div className="flex-1 bg-slate-50 rounded-xl p-2 flex items-center gap-2 border border-slate-100">
+                <div className="bg-white p-1.5 rounded-lg shadow-sm border border-slate-100">
+                  <FiCalendar className="text-[#00b4eb] h-4 w-4" />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Filter Date</label>
-                  <input 
-                    type="date" 
-                    value={selectedDate} 
-                    max={isStudyLeave ? undefined : todayStr}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value);
-                      setPagination((prev) => ({ ...prev, page: 1 }));
-                      setActiveTab("list");
-                    }} 
-                    className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
-                  />
-                  {selectedDate && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedDate("");
+                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Filter Date</label>
+                  <div className="flex items-center">
+                    <input 
+                      type="date" 
+                      value={selectedDate} 
+                      max={isStudyLeave ? undefined : todayStr}
+                      onChange={(e) => {
+                        setSelectedDate(e.target.value);
                         setPagination((prev) => ({ ...prev, page: 1 }));
                         setActiveTab("list");
-                      }}
-                      className="ml-2 text-gray-400 hover:text-rose-500 transition-colors p-1"
-                      title="Clear date filter"
-                    >
-                      <FiX size={14} />
-                    </button>
-                  )}
+                      }} 
+                      className="bg-transparent text-xs font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
+                    />
+                    {selectedDate && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDate("");
+                          setPagination((prev) => ({ ...prev, page: 1 }));
+                          setActiveTab("list");
+                        }}
+                        className="ml-2 text-gray-400 hover:text-rose-500 transition-colors p-0.5"
+                        title="Clear date filter"
+                      >
+                        <FiX size={12} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

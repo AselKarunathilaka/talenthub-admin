@@ -1,0 +1,35 @@
+.midnight-fireworks-container {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.midnight-firework {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.fw-spark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 200px; /* Blast radius */
+  transform-origin: top center;
+}
+.fw-spark-trail {
+  width: 3px;
+  height: 30px;
+  background-color: var(--fw-color);
+  border-radius: 4px;
+  box-shadow: 0 0 12px 2px var(--fw-color), 0 0 20px 5px rgba(255,255,255,0.4);
+  animation: explode-trail 4s ease-out infinite;
+  opacity: 0;
+  transform: translateY(0);
+}
+
+@keyframes explode-trail {
+  0% { transform: translateY(0) scaleY(1); opacity: 1; }
+  30% { transform: translateY(180px) scaleY(0.2); opacity: 0; }
+  100% { opacity: 0; }
+}

@@ -6,6 +6,7 @@ import React, {
   useMemo,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { BookOpen } from "lucide-react";
 import {
   FiBook,
   FiAlertTriangle,
@@ -29,6 +30,9 @@ import {
   FiCheck,
   FiSend,
   FiLock,
+  FiShield,
+  FiCode,
+  FiDatabase,
 } from "react-icons/fi";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
@@ -379,6 +383,7 @@ const Logbook = () => {
   const [projectAccessBlocked, setProjectAccessBlocked] = useState(null);
   const [extendedLeaveBlocked, setExtendedLeaveBlocked] = useState(null);
   const [activeStep, setActiveStep] = useState(0);
+  const [leaveLimitReached, setLeaveLimitReached] = useState(false);
 
   /* ── ★ New: logbook restriction state ── */
   const [logbookRestriction, setLogbookRestriction] = useState({
@@ -543,8 +548,28 @@ const Logbook = () => {
           } else {
             setExtendedLeaveBlocked(false);
           }
+
+          // Calculate start and end of the current week (Monday-Sunday)
+          const getStartOfWeek = (d) => {
+            const date = new Date(d);
+            const day = date.getDay();
+            const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            return new Date(date.setDate(diff)).setHours(0,0,0,0);
+          };
+          
+          const startOfWeek = getStartOfWeek(sriLankanTime);
+          const endOfWeek = startOfWeek + 7 * 24 * 60 * 60 * 1000 - 1;
+
+          const onLeaveRecordsThisWeek = records.filter(r => {
+            if (r.status !== "leave") return false;
+            const rTime = new Date(r.date).getTime();
+            return rTime >= startOfWeek && rTime <= endOfWeek;
+          });
+
+          setLeaveLimitReached(onLeaveRecordsThisWeek.length >= 2);
         } else {
           setExtendedLeaveBlocked(false);
+          setLeaveLimitReached(false);
         }
       } catch (err) {
         console.error("Extended leave check failed:", err);
@@ -963,6 +988,22 @@ const Logbook = () => {
       icon: <FiMonitor />,
     },
     { value: "DataScience", label: "Data Science", icon: <FiServer /> },
+    {
+      value: "Business Analyst",
+      label: "Business Analyst",
+      icon: <FiTarget />,
+    },
+    {
+      value: "Cyber Security",
+      label: "Cyber Security",
+      icon: <FiShield />,
+    },
+    { value: "Java", label: "Java", icon: <FiCode /> },
+    {
+      value: "MERN Stack",
+      label: "MERN Stack",
+      icon: <FiDatabase />,
+    },
   ];
 
   /* ──────────────────────────────────────────────────────────────────────── */
@@ -989,7 +1030,9 @@ const Logbook = () => {
       description: "Taking time off today",
       icon: FiUmbrella,
       palette: STATUS_PALETTES.leave,
-      disabled: timeRestriction.isAfter10AM,
+      disabled: timeRestriction.isAfter10AM || leaveLimitReached,
+      disabledReason: leaveLimitReached ? "Leave limit reached" : "Closed after 10:00 AM",
+      disabledSubText: leaveLimitReached ? "Maximum 2 leaves per week" : `Now: ${timeRestriction.currentTime}`,
     },
   ];
 
@@ -1008,7 +1051,7 @@ const Logbook = () => {
       >
         <Navigation />
 
-        <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+        <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <SectionTip sectionKey="logbook" />
 
@@ -1016,28 +1059,9 @@ const Logbook = () => {
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
-                  <h1
-                    style={{
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: "#1a1a2e",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        color: "#1a1a2e",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 10,
-                        transition: "all 0.4s ease",
-                      }}
-                    >
-                      <FiBook style={{ color: palette.light }} />
-                      Daily Logbook
-                    </span>
+                  <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                    <BookOpen className="text-[#00b4eb] h-8 w-8" />
+                    Daily Logbook
                   </h1>
                   <p
                     style={{
@@ -1890,8 +1914,13 @@ const Logbook = () => {
                                             gap: 4,
                                           }}
                                         >
-                                          <FiClock size={12} /> Closed after
-                                          10:00 AM
+                                          {opt.disabledReason === "Leave limit reached" ? (
+                                            <FiAlertCircle size={12} />
+                                          ) : (
+                                            <FiClock size={12} />
+                                          )}
+                                          {" "}
+                                          {opt.disabledReason || "Closed after 10:00 AM"}
                                         </span>
                                         <span
                                           style={{
@@ -1901,7 +1930,7 @@ const Logbook = () => {
                                             marginTop: 2,
                                           }}
                                         >
-                                          Now: {timeRestriction.currentTime}
+                                          {opt.disabledSubText || `Now: ${timeRestriction.currentTime}`}
                                         </span>
                                       </div>
                                     )}

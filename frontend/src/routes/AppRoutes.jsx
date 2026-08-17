@@ -1,5 +1,5 @@
-import React from "react";
-import { Routes, Route } from "react-router-dom";
+import React, { useEffect } from "react";
+import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
 import FaceAttendance from "../pages/FaceAttendance";
@@ -34,12 +34,31 @@ import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
+import AdminHolidays from "../pages/AdminHolidays";
 import AdminUserManagement from "../pages/AdminUserManagement";
 import AdminRoute from "../components/AdminRoute";
 
+const ScrollbarThemer = () => {
+  const location = useLocation();
+  
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      document.documentElement.classList.add('admin-theme');
+      document.body.classList.add('admin-theme');
+    } else {
+      document.documentElement.classList.remove('admin-theme');
+      document.body.classList.remove('admin-theme');
+    }
+  }, [location.pathname]);
+
+  return null;
+};
+
 const AppRoutes = () => {
   return (
-    <Routes>
+    <>
+      <ScrollbarThemer />
+      <Routes>
       <Route path="/" element={<Login />} />
 
       {/* Protected Intern Routes - Wrapped with AgreementGuard */}
@@ -195,9 +214,11 @@ const AppRoutes = () => {
         path="/admin/logbook-restrictions"
         element={<LogbookRestrictions />}
       />
+      <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
       </Route>
-    </Routes>
+      </Routes>
+    </>
   );
 };
 

@@ -167,7 +167,7 @@ const Attendance = () => {
   const actualLocationValid = distanceKm !== null && distanceKm <= officeLocation.radiusKm;
   const locationValid = !sltLocationRequired || actualLocationValid;
   const meetingDetailsReadyFace = projectName.trim().length > 0 && /^\d{6}$/.test(meetingPin.trim());
-  const meetingDetailsReadyQr = projectName.trim().length > 0;
+  const meetingDetailsReadyQr = true; // Project name is auto-read from the scanned QR payload
   const attendanceLocationReady = locationValid;
   const dailyAttendanceCompleted =
     activeTab === "daily" && dailyAttendanceStatus.state === "checked_out";
@@ -740,10 +740,7 @@ const Attendance = () => {
   const startQRScanner = async () => {
     if (!requireValidLocation("You must be within SLT office radius to use QR backup.")) return;
 
-    if (activeTab === "meeting" && !projectName.trim()) {
-      toast.error("Enter the project name before scanning.");
-      return;
-    }
+    // For QR method in meeting mode: project name is read from the QR itself, no validation needed here
 
     try {
       processedQrRef.current = false;
@@ -784,7 +781,16 @@ const Attendance = () => {
               body: JSON.stringify(
                 activeTab === "daily"
                   ? { ...payload, scanType: "daily", attendanceAction }
-                  : { ...payload, projectName: projectName.trim() },
+                  : (() => {
+                      // For meeting QR, extract project name from the QR payload itself
+                      let qrProjectName = projectName.trim();
+                      try {
+                        const parsed = JSON.parse(qrData);
+                        const fromQR = (parsed.projectName || parsed.meetingTitle || '').trim();
+                        if (fromQR) qrProjectName = fromQR;
+                      } catch (e) {}
+                      return { ...payload, projectName: qrProjectName };
+                    })()
               ),
             },
           );
@@ -838,7 +844,7 @@ const Attendance = () => {
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
 
-      <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 pb-10">
+      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           <SectionTip sectionKey="attendance" />
           {enrollmentSuccess && (
@@ -854,16 +860,14 @@ const Attendance = () => {
         )}
         
           {/* Header & Status */}
-          <div className="mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 logbook-fade-in">
             <div>
-              <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-950 flex items-center gap-3 tracking-tight">
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <ScanLine className="text-[#0056a2] h-8 w-8" />
-                </div>
+              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+                <ScanLine className="text-[#00b4eb] h-8 w-8" />
                 Attendance
               </h1>
-              <p className="text-slate-500 mt-2 text-sm sm:text-base font-medium max-w-xl">
-                Mark your daily or meeting attendance seamlessly.
+              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
+                "Mark your daily or meeting attendance seamlessly."
               </p>
             </div>
             <div
@@ -1121,15 +1125,16 @@ const Attendance = () => {
                   {activeMethod === "qr" && (
                     <div className="space-y-4">
                       <div className="relative aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner ring-1 ring-slate-200">
+                        <video
+                          ref={qrVideoRef}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          autoPlay
+                          muted
+                          playsInline
+                        />
+                        
                         {qrScanning ? (
                           <>
-                            <video
-                              ref={qrVideoRef}
-                              className="absolute inset-0 h-full w-full object-cover"
-                              autoPlay
-                              muted
-                              playsInline
-                            />
                             {/* Scanning overlay effect */}
                             <div className="absolute inset-0 pointer-events-none">
                               <div className="absolute inset-0 flex items-center justify-center">
@@ -1212,7 +1217,7 @@ const Attendance = () => {
               
               {/* Meeting Inputs */}
               <AnimatePresence>
-                {activeTab === "meeting" && (
+                {activeTab === "meeting" && activeMethod === "face" && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                     animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
@@ -1233,21 +1238,19 @@ const Attendance = () => {
                           className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
                         />
                       </div>
-                      {activeMethod === "face" && (
-                        <div>
-                          <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                            Meeting PIN (6 Digits)
-                          </label>
-                          <input
-                            type="text"
-                            value={meetingPin}
-                            onChange={(e) => setMeetingPin(e.target.value)}
-                            placeholder="Enter PIN..."
-                            maxLength={6}
-                            className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
-                          />
-                        </div>
-                      )}
+                      <div>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
+                          Meeting PIN (6 Digits)
+                        </label>
+                        <input
+                          type="text"
+                          value={meetingPin}
+                          onChange={(e) => setMeetingPin(e.target.value)}
+                          placeholder="Enter PIN..."
+                          maxLength={6}
+                          className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
+                        />
+                      </div>
                     </div>
                   </motion.div>
                 )}

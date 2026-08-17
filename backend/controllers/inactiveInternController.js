@@ -255,7 +255,12 @@ class InactiveInternController {
         });
       }
 
-      const query = { internId: inactiveIntern._id };
+      const query = { 
+        $or: [
+          { internId: inactiveIntern._id },
+          { traineeId: inactiveIntern.Trainee_ID }
+        ]
+      };
 
       if (startDate || endDate) {
         query.date = {};

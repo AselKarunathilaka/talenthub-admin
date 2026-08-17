@@ -49,6 +49,7 @@ const inactiveInternSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
+    googlePictureUrl: { type: String, default: "" },
 
     // ✅ Archival metadata — why/when this intern was archived
     archivedAt: { type: Date, default: Date.now },

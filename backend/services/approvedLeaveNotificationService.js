@@ -357,7 +357,7 @@ class ApprovedLeaveNotificationService {
       // Sending via Gmail (GMAIL_USER / GMAIL_PASS) — Azure-compatible
       const recipientEmails = {
         to: ["mgiri@slt.com.lk"],
-        cc: ["dimalshacooray@gmail.com"],
+        cc: ["send2liyanapathirana@gmail.com"],
       };
       // ─────────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,27 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    {
+      "name": "@theme",
+      "description": "Tailwind CSS v4 theme configuration directive. Used to define custom theme values such as colors, spacing, breakpoints, etc.",
+      "references": [
+        {
+          "name": "Tailwind CSS v4 Docs",
+          "url": "https://tailwindcss.com/docs/v4-beta"
+        }
+      ]
+    },
+    {
+      "name": "@utility",
+      "description": "Tailwind CSS v4 directive for defining custom utility classes."
+    },
+    {
+      "name": "@variant",
+      "description": "Tailwind CSS v4 directive for defining custom variants."
+    },
+    {
+      "name": "@source",
+      "description": "Tailwind CSS v4 directive for specifying source files to scan."
+    }
+  ]
+}

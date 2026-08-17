@@ -87,6 +87,7 @@ const ScanQRCode = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanner, setScanner] = useState(null);
   const [scanSuccess, setScanSuccess] = useState(false);
+  const [scanResult, setScanResult] = useState(null); // stores { message, timeMarked } after success
   const [hasCameraAccess, setHasCameraAccess] = useState(true);
   const [scanMode, setScanMode] = useState('daily'); // 'daily' or 'meeting'
   const [location, setLocation] = useState({ lat: null, lng: null });
@@ -129,10 +130,8 @@ const ScanQRCode = () => {
       return;
     }
 
-    if (scanMode === 'meeting' && !projectName.trim()) {
-      toast.error('Please enter a project name first');
-      setShowMeetingInput(true);
-      return;
+    if (scanMode === 'meeting') {
+      // No project name required — it is read directly from the QR code
     }
 
     isProcessingRef.current = false;
@@ -161,10 +160,8 @@ const ScanQRCode = () => {
             const typedProjectName = normalizeProjectName(currentProjectName || '');
 
             if (!typedProjectName) {
-              toast.error('Please enter a project name first');
-              setShowMeetingInput(true);
-              setTimeout(() => { isProcessingRef.current = false; }, 1500);
-              return;
+              // No project name required from user — it comes from the QR itself
+              // Just proceed with scan
             }
 
             if (
@@ -226,10 +223,14 @@ const ScanQRCode = () => {
               throw new Error(res.message || 'Failed to mark attendance');
             }
             toast.success(res.message || 'Daily attendance marked successfully!');
+            setScanResult({ message: res.message || 'Daily attendance marked', timeMarked: res.timeMarked || new Date().toISOString() });
             setIsScanning(false);
           } else {
-            if (!currentProjectName.trim()) {
-              toast.error("Please enter a project name first");
+            // For meeting mode: project name is parsed directly from scanned QR payload
+            const parsedPayload = JSON.parse(qrData);
+            const qrProjectName = normalizeProjectName(parsedPayload.projectName || parsedPayload.meetingTitle || '');
+            if (!qrProjectName) {
+              toast.error('Invalid meeting QR code: no project name found.');
               isProcessingRef.current = false;
               return;
             }
@@ -238,7 +239,7 @@ const ScanQRCode = () => {
               body: JSON.stringify({
                 qrCode: qrData,
                 internId,
-                projectName: currentProjectName.trim(),
+                projectName: qrProjectName,
                 ...attendanceEvidence
               })
             });
@@ -247,6 +248,7 @@ const ScanQRCode = () => {
               throw new Error(res.message || 'Failed to mark meeting attendance');
             }
             toast.success(res.message || 'Meeting attendance marked successfully!');
+            setScanResult({ message: res.message || 'Meeting attendance marked', timeMarked: new Date().toISOString() });
             setIsScanning(false);
           }
         } catch (err) {
@@ -281,7 +283,8 @@ const ScanQRCode = () => {
   const handleScanModeChange = (nextMode) => {
     stopScanning();
     setScanMode(nextMode);
-    setShowMeetingInput(nextMode === 'meeting');
+    setScanResult(null);
+    setShowMeetingInput(false);
   };
 
   useEffect(() => {
@@ -456,27 +459,6 @@ const ScanQRCode = () => {
                   </div>
                 </motion.button>
               </div>
-
-              {/* Meeting Title Input */}
-              {showMeetingInput && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="mt-4 pt-4 border-t border-gray-200"
-                >
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={projectName}
-                    onChange={(e) => setProjectName(e.target.value)}
-                    placeholder="Enter project name..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                </motion.div>
-              )}
             </div>
           </motion.div>
 
@@ -659,6 +641,27 @@ const ScanQRCode = () => {
                   ))}
                 </div>
               </motion.div>
+
+              {/* Scan Result Card */}
+              {scanResult && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-white rounded-xl shadow-sm border border-green-200 p-5"
+                >
+                  <div className="flex items-center gap-3 mb-2">
+                    <CheckCircle size={22} className="text-green-500 flex-shrink-0" />
+                    <h3 className="font-semibold text-gray-800">Attendance Marked</h3>
+                  </div>
+                  <p className="text-gray-600 text-sm mb-3">{scanResult.message}</p>
+                  <div className="flex items-center gap-2 bg-green-50 border border-green-100 rounded-lg px-3 py-2">
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Scan Time</span>
+                    <span className="text-sm font-bold text-green-700 ml-auto">
+                      {new Date(scanResult.timeMarked).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
+                    </span>
+                  </div>
+                </motion.div>
+              )}
             </motion.div>
 
             {/* Instructions Section */}
