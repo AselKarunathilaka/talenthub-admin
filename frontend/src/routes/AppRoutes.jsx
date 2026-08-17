@@ -36,6 +36,10 @@ import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
 import AdminHolidays from "../pages/AdminHolidays";
 import AdminUserManagement from "../pages/AdminUserManagement";
+import UniversityLogin from "../pages/UniversityLogin";
+import UniversityDashboard from "../pages/UniversityDashboard";
+import UniversityStudentDetails from "../pages/UniversityStudentDetails";
+import AdminUniversityManagement from "../pages/AdminUniversityManagement";
 import AdminRoute from "../components/AdminRoute";
 
 const ScrollbarThemer = () => {
@@ -160,6 +164,14 @@ const AppRoutes = () => {
         }
       />
 
+      {/* University Routes */}
+      <Route path="/university-login" element={<UniversityLogin />} />
+      <Route path="/university/dashboard" element={<UniversityDashboard />} />
+      <Route path="/university-dashboard" element={<UniversityDashboard />} />
+      <Route path="/university/student/:internId" element={<UniversityStudentDetails />} />
+      <Route path="/university/intern/:internId" element={<UniversityStudentDetails />} />
+      <Route path="/university-student/:internId" element={<UniversityStudentDetails />} />
+
       {/* Admin Routes */}
       <Route path="/admin-login" element={<AdminLogin />} />
       <Route path="/gate-staff-login" element={<GateStaffLogin />} />
@@ -216,6 +228,8 @@ const AppRoutes = () => {
       />
       <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
+      <Route path="/admin/university-requests" element={<AdminUniversityManagement />} />
+      <Route path="/admin/university-management" element={<AdminUniversityManagement />} />
       </Route>
       </Routes>
     </>

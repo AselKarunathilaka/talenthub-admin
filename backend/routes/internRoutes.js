@@ -61,11 +61,17 @@ const {
 
   // Tour
   markTourSeen,
+
+  // University Feedback
+  getInternUniversityFeedback,
 } = require("../controllers/internController");
 
 const { getInternGitCommits } = require("../controllers/adminController");
 
 const router = express.Router();
+
+// =========================== UNIVERSITY FEEDBACK ===========================
+router.get("/:id/university-feedback", authenticateUser, getInternUniversityFeedback);
 
 // =========================== ONBOARDING TOUR ===========================
 router.patch("/:id/tour-seen", authenticateUser, markTourSeen);

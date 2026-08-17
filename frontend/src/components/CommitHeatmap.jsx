@@ -108,9 +108,9 @@ function collectAllCommits(data) {
   return all;
 }
 
-const CommitHeatmap = ({ startDate, endDate, internId }) => {
-  const [commitData, setCommitData] = useState(null);
-  const [loading, setLoading] = useState(true);
+const CommitHeatmap = ({ startDate, endDate, internId, commitData: propCommitData }) => {
+  const [commitData, setCommitData] = useState(propCommitData || null);
+  const [loading, setLoading] = useState(propCommitData !== undefined ? false : true);
   const [error, setError] = useState(null);
   const [hovered, setHovered] = useState(null);
   const scrollRef = useRef(null);
@@ -132,9 +132,19 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
     return { rangeStart: fallbackStart, rangeEnd: today, usingFallback: true };
   }, [startDate, endDate]);
 
-  // ── Fetch commits from intern-facing endpoint ─────────────────────────────
+  // ── Fetch commits from intern-facing or university endpoint ───────────────
   useEffect(() => {
-    if (!internId) return;
+    if (propCommitData !== undefined) {
+      setCommitData(propCommitData);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    if (!internId) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
 
     const fetchCommits = async () => {
@@ -142,7 +152,8 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
         setLoading(true);
         setError(null);
 
-        const authToken = localStorage.getItem("authToken") || (() => {
+        const uniToken = localStorage.getItem("universityToken");
+        const authToken = uniToken || localStorage.getItem("authToken") || (() => {
           try { return JSON.parse(localStorage.getItem("studentInfo") || "{}").token; }
           catch { return null; }
         })();
@@ -153,9 +164,12 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
         }
 
         const { API_BASE_URL } = await import("../api/apiConfig");
-        // Use the intern-facing endpoint (authenticateUser only, no requireAdmin)
+        const endpoint = uniToken
+          ? `${API_BASE_URL}/university/students/${internId}/git-commits`
+          : `${API_BASE_URL}/interns/${internId}/git-commits`;
+
         const response = await fetch(
-          `${API_BASE_URL}/interns/${internId}/git-commits`,
+          endpoint,
           {
             method: "GET",
             headers: {
@@ -183,7 +197,7 @@ const CommitHeatmap = ({ startDate, endDate, internId }) => {
 
     fetchCommits();
     return () => { cancelled = true; };
-  }, [internId]);
+  }, [internId, propCommitData]);
 
   // ── Build date → count map from ALL commits (project + module wise) ───────
   const commitsByDate = useMemo(() => {

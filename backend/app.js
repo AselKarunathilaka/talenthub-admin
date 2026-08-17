@@ -25,6 +25,7 @@ const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
+const universityRoutes = require("./routes/universityRoutes");
 const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
@@ -85,6 +86,9 @@ app.use("/api/admin/holidays", holidayAdminRoutes);
 
 // Seasonal Login Background Override (admin-only write, public read)
 app.use("/api/login-season", seasonOverrideRoutes);
+
+// University Portal Routes
+app.use("/api/university", universityRoutes);
 
 app.get("/api/version", (_req, res) => {
   res.json({

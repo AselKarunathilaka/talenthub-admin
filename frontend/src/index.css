@@ -3669,3 +3669,12 @@
   background: linear-gradient(to bottom, #004d00, #00004d);
 }
 
+
+/* Custom half width bento card for Dashboard */
+.bento-card--half { grid-column: span 6; grid-row: span 1; min-height: auto; }
+@media (max-width: 1024px) {
+  .bento-card--half { grid-column: span 6; }
+}
+@media (max-width: 640px) {
+  .bento-card--half { grid-column: span 1; }
+}

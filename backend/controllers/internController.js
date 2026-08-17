@@ -1231,6 +1231,57 @@ const markTourSeen = async (req, res) => {
   }
 };
 
+const getInternUniversityFeedback = async (req, res) => {
+  try {
+    const { id } = req.params;
+    let query = { internId: id };
+
+    const UniversityStudentFeedback = require("../models/UniversityStudentFeedback");
+    const UniversityUser = require("../models/UniversityUser");
+
+    if (!/^[a-f\d]{24}$/i.test(id)) {
+      const intern = await InternService.getInternById(id);
+      if (intern) {
+        query = {
+          $or: [
+            { internId: intern._id },
+            { traineeId: intern.Trainee_ID },
+          ],
+        };
+      }
+    }
+
+    const rawFeedbacks = await UniversityStudentFeedback.find(query)
+      .populate("universitySupervisorId", "picture")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const feedbacks = await Promise.all(
+      (rawFeedbacks || []).map(async (fb) => {
+        let pic = fb.supervisorPicture || fb.universitySupervisorId?.picture || "";
+        if (!pic && fb.supervisorEmail) {
+          const sup = await UniversityUser.findOne({ email: fb.supervisorEmail })
+            .select("picture")
+            .lean();
+          if (sup && sup.picture) pic = sup.picture;
+        }
+        return {
+          ...fb,
+          picture: pic,
+          supervisorPicture: pic,
+        };
+      })
+    );
+
+    return res.status(200).json({ success: true, feedbacks: feedbacks || [] });
+  } catch (error) {
+    console.error("Error fetching university feedback for intern:", error);
+    return res
+      .status(500)
+      .json({ message: "Error fetching university feedback", error: error.message });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -1269,4 +1320,5 @@ module.exports = {
   uploadProfilePicture,
   getProfilePicture,
   markTourSeen,
+  getInternUniversityFeedback,
 };

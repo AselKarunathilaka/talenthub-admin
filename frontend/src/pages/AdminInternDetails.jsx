@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -35,6 +35,9 @@ import {
   FaLayerGroup,
   FaUsers as FaTeam,
   FaClipboardList,
+  FaGraduationCap,
+  FaStar,
+  FaAward,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
@@ -178,6 +181,128 @@ const AdminInternDetails = () => {
   // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
 
+  const intern = internDetails?.intern;
+
+  // ── Synced Metrics Calculations (Exact match with Intern Dashboard & University Dashboard) ──
+  const workingDays = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const endDateVal = intern?.endDate || intern?.Training_EndDate;
+    if (!startDateVal) return 1;
+    const start = new Date(startDateVal);
+    if (isNaN(start.getTime())) return 1;
+    const now = new Date();
+    const endCap = endDateVal
+      ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
+      : now;
+    if (endCap <= start) return 1;
+    let count = 0;
+    const cursor = new Date(start);
+    cursor.setHours(0, 0, 0, 0);
+    const end = new Date(endCap);
+    end.setHours(23, 59, 59, 999);
+    while (cursor <= end) {
+      const dow = cursor.getDay();
+      if (dow !== 0 && dow !== 6) count++;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return Math.max(1, count);
+  }, [intern]);
+
+  const elapsedWeeks = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const endDateVal = intern?.endDate || intern?.Training_EndDate;
+    if (!startDateVal) return 1;
+    const start = new Date(startDateVal);
+    if (isNaN(start.getTime())) return 1;
+    const now = new Date();
+    const endCap = endDateVal
+      ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
+      : now;
+    const msElapsed = endCap - start;
+    if (msElapsed <= 0) return 1;
+    return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+  }, [intern]);
+
+  const attendedDaysCount = useMemo(() => {
+    const records = attendanceData?.dailyAttendance || [];
+    return new Set(
+      records
+        .filter((r) => {
+          const s = (r.status || "").toLowerCase();
+          return (s === "present" || s === "late") && r.date;
+        })
+        .map((r) => {
+          const raw = String(r.date || "");
+          return raw.includes("T") ? raw.slice(0, 10) : raw.slice(0, 10);
+        })
+    ).size;
+  }, [attendanceData]);
+
+  const dailyAttendanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    return Math.min(100, Math.round((attendedDaysCount / workingDays) * 100)) || 0;
+  }, [intern, attendedDaysCount, workingDays]);
+
+  const attendedMeetingWeeksCount = useMemo(() => {
+    return new Set(
+      (attendanceData?.meetingAttendance || [])
+        .filter((r) => {
+          const s = (r.status || "").toLowerCase();
+          return (s === "present" || s === "late") && r.date;
+        })
+        .map((r) => {
+          const d = new Date(r.date);
+          if (isNaN(d.getTime())) return null;
+          const day = d.getDay();
+          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+          const monday = new Date(d);
+          monday.setDate(diff);
+          return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
+        })
+        .filter(Boolean)
+    ).size;
+  }, [attendanceData]);
+
+  const meetingAttendanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    return Math.min(100, Math.round((attendedMeetingWeeksCount / elapsedWeeks) * 100)) || 0;
+  }, [intern, attendedMeetingWeeksCount, elapsedWeeks]);
+
+  const commitsCount = useMemo(() => {
+    if (!gitCommitsData) return 0;
+    if (gitCommitsData.totalCommits !== undefined) {
+      return Number(gitCommitsData.totalCommits) || 0;
+    }
+    let all = [];
+    const projects = Array.isArray(gitCommitsData)
+      ? gitCommitsData
+      : (gitCommitsData.projectCommits || []);
+    function walk(node) {
+      if (!node) return;
+      if (Array.isArray(node.commits)) all.push(...node.commits);
+      if (Array.isArray(node.modules)) node.modules.forEach(walk);
+      if (Array.isArray(node.children)) node.children.forEach(walk);
+      if (Array.isArray(node.subProjects)) node.subProjects.forEach(walk);
+    }
+    projects.forEach(walk);
+    return all.length;
+  }, [gitCommitsData]);
+
+  const workQualityRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    const actualLogbooksCount = (internDetails?.records || []).length;
+    const logbookRate = Math.min(100, Math.round((actualLogbooksCount / workingDays) * 100));
+    
+    // Expected commits = ceil(workingDays / 5) * 2 (2 commits per working week)
+    const expectedCommits = Math.max(1, Math.ceil(workingDays / 5) * 2);
+    const commitRate = commitsCount > 0 ? Math.min(100, Math.round((commitsCount / expectedCommits) * 100)) : 0;
+    
+    return Math.round((dailyAttendanceRate + meetingAttendanceRate + logbookRate + commitRate) / 4);
+  }, [intern, internDetails?.records, workingDays, commitsCount, dailyAttendanceRate, meetingAttendanceRate]);
+
   // ── Holidays ──────────────────────────────────────────────────────────────
   const [holidays, setHolidays] = useState([]);
 
@@ -223,23 +348,6 @@ const AdminInternDetails = () => {
     },
     [holidays],
   );
-
-  useEffect(() => {
-    fetchInternDetails();
-    fetchAttendance();
-    fetchGitCommits();
-    fetchCertAttendanceCount();
-    fetchHolidays(new Date().getFullYear());
-  }, [internId]);
-
-  // Re-fetch holidays when calendar months change to a different year
-  useEffect(() => {
-    const years = new Set([
-      calendarMonth.getFullYear(),
-      logbookCalMonth.getFullYear(),
-    ]);
-    years.forEach((y) => fetchHolidays(y));
-  }, [calendarMonth, logbookCalMonth, fetchHolidays]);
 
   const fetchGitCommits = useCallback(async () => {
     if (gitCommitsData) return;
@@ -292,7 +400,7 @@ const AdminInternDetails = () => {
     }
   }, [internId]);
 
-  const fetchInternDetails = async () => {
+  const fetchInternDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -309,14 +417,31 @@ const AdminInternDetails = () => {
     } catch (error) {
       console.error("Error fetching intern details:", error);
       setError("Failed to load intern details");
-      if (error.message.includes("403") || error.message.includes("401")) {
+      if (error.message && (error.message.includes("403") || error.message.includes("401"))) {
         localStorage.removeItem("adminInfo");
         navigate("/admin-login");
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [internId, navigate]);
+
+  useEffect(() => {
+    fetchInternDetails();
+    fetchAttendance();
+    fetchGitCommits();
+    fetchCertAttendanceCount();
+    fetchHolidays(new Date().getFullYear());
+  }, [internId, fetchInternDetails, fetchAttendance, fetchGitCommits, fetchCertAttendanceCount, fetchHolidays]);
+
+  // Re-fetch holidays when calendar months change to a different year
+  useEffect(() => {
+    const years = new Set([
+      calendarMonth.getFullYear(),
+      logbookCalMonth.getFullYear(),
+    ]);
+    years.forEach((y) => fetchHolidays(y));
+  }, [calendarMonth, logbookCalMonth, fetchHolidays]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -411,7 +536,7 @@ const AdminInternDetails = () => {
     );
   }
 
-  const { intern, statistics } = internDetails;
+  const { statistics } = internDetails;
 
   return (
     <AdminNavigation>
@@ -616,194 +741,146 @@ const AdminInternDetails = () => {
                             </div>
                           </div>
 
-                          {/* Meeting Attendance % = weeks attended ÷ total weeks (start date to end date) */}
-                          {attendanceData &&
-                            intern.startDate &&
-                            (() => {
-                              let present = 0;
-                              if (
-                                attendanceData.meetingAttendance &&
-                                Array.isArray(attendanceData.meetingAttendance)
-                              ) {
-                                const weeks = new Set();
-                                attendanceData.meetingAttendance.forEach(
-                                  (entry) => {
-                                    if (
-                                      entry.status === "Present" &&
-                                      entry.date
-                                    ) {
-                                      const d = new Date(entry.date);
-                                      if (!isNaN(d.getTime())) {
-                                        const day = d.getDay();
-                                        const diff =
-                                          d.getDate() -
-                                          day +
-                                          (day === 0 ? -6 : 1);
-                                        const monday = new Date(
-                                          new Date(d).setDate(diff),
-                                        );
-                                        weeks.add(
-                                          `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`,
-                                        );
-                                      }
-                                    }
-                                  },
-                                );
-                                present = weeks.size;
-                              } else {
-                                present = attendanceData?.stats?.present ?? 0;
-                              }
-                              const start = new Date(intern.startDate);
-                              const end = intern.endDate
-                                ? new Date(intern.endDate)
-                                : null;
-                              const now = new Date();
-                              // Total weeks across the full internship duration (start date to end date)
-                              const measureTo = now;
-                              if (isNaN(start) || measureTo <= start)
-                                return null;
-                              const weeksHeld = Math.max(
-                                1,
-                                Math.ceil(
-                                  (measureTo - start) /
-                                    (1000 * 60 * 60 * 24 * 7),
-                                ),
-                              );
-                              const pct = Math.min(
-                                100,
-                                Math.round((present / weeksHeld) * 100),
-                              );
-                              const color =
-                                pct >= 80
-                                  ? "#22c55e"
-                                  : pct >= 50
-                                    ? "#f59e0b"
-                                    : "#ef4444";
-                              const textColor =
-                                pct >= 80
-                                  ? "text-emerald-600"
-                                  : pct >= 50
-                                    ? "text-amber-500"
-                                    : "text-red-500";
-                              return (
-                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
-                                      <FaChartPie className="text-slate-400" />{" "}
-                                      Meeting Attendance Rate
-                                    </p>
-                                    <span
-                                      className={`text-sm font-black ${textColor}`}
-                                    >
-                                      {pct}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div
-                                      className="h-2 rounded-full transition-all duration-700"
-                                      style={{
-                                        width: `${pct}%`,
-                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-slate-400 mt-1">
-                                    {present} weeks attended out of {weeksHeld}{" "}
-                                    weeks so far (1 meeting per week)
-                                  </p>
-                                </div>
-                              );
-                            })()}
+                          {/* Meeting Attendance Rate */}
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaChartPie className="text-slate-400" />{" "}
+                                  Meeting Attendance Rate
+                                </p>
+                                <span
+                                  className={`text-sm font-black ${
+                                    meetingAttendanceRate >= 80
+                                      ? "text-emerald-600"
+                                      : meetingAttendanceRate >= 50
+                                        ? "text-amber-500"
+                                        : "text-red-500"
+                                  }`}
+                                >
+                                  {meetingAttendanceRate}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${meetingAttendanceRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      meetingAttendanceRate >= 80
+                                        ? "#22c55e"
+                                        : meetingAttendanceRate >= 50
+                                          ? "#f59e0b"
+                                          : "#ef4444"
+                                    }, ${
+                                      meetingAttendanceRate >= 80
+                                        ? "#22c55ecc"
+                                        : meetingAttendanceRate >= 50
+                                          ? "#f59e0bcc"
+                                          : "#ef4444cc"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {attendedMeetingWeeksCount} weeks attended out of {elapsedWeeks} weeks elapsed (1 meeting per week)
+                              </p>
+                            </div>
+                          )}
 
                           {/* Daily Attendance Rate */}
-                          {attendanceData &&
-                            intern.startDate &&
-                            (() => {
-                              // attendanceData.dailyAttendance is already the authoritative merged list from backend:
-                              // It combines DailyRecord logbook submissions + FaceAttendanceLog face scans + intern.attendance daily entries
-                              // Each entry: { date, status: "Present"|"Late"|"Absent", ... }
-                              const toDayKey = (dateVal) => {
-                                const date = dateVal ? new Date(dateVal) : null;
-                                if (!date || isNaN(date.getTime())) return null;
-                                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                              };
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaChartLine className="text-slate-400" />{" "}
+                                  Daily Attendance Rate
+                                </p>
+                                <span
+                                  className={`text-sm font-black ${
+                                    dailyAttendanceRate >= 80
+                                      ? "text-blue-500"
+                                      : dailyAttendanceRate >= 50
+                                        ? "text-purple-500"
+                                        : "text-pink-500"
+                                  }`}
+                                >
+                                  {dailyAttendanceRate}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${dailyAttendanceRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      dailyAttendanceRate >= 80
+                                        ? "#3b82f6"
+                                        : dailyAttendanceRate >= 50
+                                          ? "#8b5cf6"
+                                          : "#ec4899"
+                                    }, ${
+                                      dailyAttendanceRate >= 80
+                                        ? "#3b82f6cc"
+                                        : dailyAttendanceRate >= 50
+                                          ? "#8b5cf6cc"
+                                          : "#ec4899cc"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {attendedDaysCount} day{attendedDaysCount !== 1 ? "s" : ""} attended out of {workingDays} expected working days
+                              </p>
+                            </div>
+                          )}
 
-                              // Count unique days where intern was present (Present or Late counts as attended)
-                              const daysPresent = new Set(
-                                (attendanceData.dailyAttendance || [])
-                                  .filter((e) => {
-                                    const s = (e.status || "").toLowerCase();
-                                    return s === "present" || s === "late";
-                                  })
-                                  .map((e) => toDayKey(e.date))
-                                  .filter(Boolean),
-                              ).size;
-
-                              const start = new Date(intern.startDate);
-                              const end = intern.endDate
-                                ? new Date(intern.endDate)
-                                : null;
-                              const now = new Date();
-                              const measureTo = end && now > end ? end : now;
-                              if (isNaN(start.getTime()) || measureTo <= start) return null;
-
-                              // Count weekdays (Mon–Fri) from training start to today (or end date)
-                              let expectedDays = 0;
-                              let curDate = new Date(start);
-                              curDate.setHours(0, 0, 0, 0);
-                              const endCap = new Date(measureTo);
-                              endCap.setHours(0, 0, 0, 0);
-                              while (curDate <= endCap) {
-                                const day = curDate.getDay();
-                                if (day !== 0 && day !== 6) expectedDays++;
-                                curDate.setDate(curDate.getDate() + 1);
-                              }
-                              expectedDays = Math.max(1, expectedDays);
-
-                              const pct = Math.min(
-                                100,
-                                Math.round((daysPresent / expectedDays) * 100),
-                              );
-                              const color =
-                                pct >= 80
-                                  ? "#3b82f6"
-                                  : pct >= 50
-                                    ? "#8b5cf6"
-                                    : "#ec4899";
-                              const textColor =
-                                pct >= 80
-                                  ? "text-blue-500"
-                                  : pct >= 50
-                                    ? "text-purple-500"
-                                    : "text-pink-500";
-                              return (
-                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
-                                      <FaChartLine className="text-slate-400" />{" "}
-                                      Daily Attendance Rate
-                                    </p>
-                                    <span
-                                      className={`text-sm font-black ${textColor}`}
-                                    >
-                                      {pct}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div
-                                      className="h-2 rounded-full transition-all duration-700"
-                                      style={{
-                                        width: `${pct}%`,
-                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-slate-400 mt-1">
-                                    {daysPresent} day{daysPresent !== 1 ? "s" : ""} attended out of {expectedDays} expected working days
-                                  </p>
-                                </div>
-                              );
-                            })()}
+                          {/* Work Quality Rate */}
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaAward className="text-blue-500" />{" "}
+                                  Work Quality Rate
+                                </p>
+                                <span
+                                  className={`text-sm font-black ${
+                                    workQualityRate >= 75
+                                      ? "text-blue-600"
+                                      : workQualityRate >= 50
+                                        ? "text-amber-600"
+                                        : "text-red-600"
+                                  }`}
+                                >
+                                  {workQualityRate}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${workQualityRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      workQualityRate >= 75
+                                        ? "#2563eb"
+                                        : workQualityRate >= 50
+                                          ? "#d97706"
+                                          : "#dc2626"
+                                    }, ${
+                                      workQualityRate >= 75
+                                        ? "#2563ebcc"
+                                        : workQualityRate >= 50
+                                          ? "#d97706cc"
+                                          : "#dc2626cc"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                Composite score of Daily Attendance ({dailyAttendanceRate}%), Meeting Attendance ({meetingAttendanceRate}%), Logbooks ({Math.min(100, Math.round(((internDetails?.records?.length || 0) / workingDays) * 100))}%), and GitHub Commits ({commitsCount > 0 ? Math.min(100, Math.round((commitsCount / Math.max(1, Math.ceil(workingDays / 5) * 2)) * 100)) : 0}%)
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -987,6 +1064,128 @@ const AdminInternDetails = () => {
                           <FaLayerGroup className="text-4xl mb-2 opacity-30" />
                           <p className="text-sm">
                             No project assignments synced from TalentTrail
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* University Supervisor Feedback Section */}
+                    <motion.div
+                      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm mt-4 sm:mt-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.85, duration: 0.3 }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                          <FaGraduationCap className="mr-2 text-emerald-600" />
+                          University Supervisor Feedback
+                        </h3>
+                        {(internDetails?.universityFeedbacks || []).length > 0 && (
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {(internDetails?.universityFeedbacks || []).length} Feedback{(internDetails?.universityFeedbacks || []).length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
+
+                      {(internDetails?.universityFeedbacks || []).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {internDetails.universityFeedbacks.map((fb, fi) => (
+                            <motion.div
+                              key={fb._id || fi}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.05 * fi }}
+                              className="border border-slate-100 rounded-xl p-4 sm:p-5 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-3 mb-2.5">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#50b748] to-[#00b4eb] text-white font-bold text-xs flex items-center justify-center shadow-sm shrink-0 overflow-hidden border border-slate-200">
+                                      {fb.picture || fb.supervisorPicture ? (
+                                        <img
+                                          src={fb.picture || fb.supervisorPicture}
+                                          alt={fb.supervisorName}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            e.target.style.display = "none";
+                                            if (e.target.nextSibling) e.target.nextSibling.style.display = "flex";
+                                          }}
+                                        />
+                                      ) : null}
+                                      <span style={{ display: fb.picture || fb.supervisorPicture ? "none" : "flex" }} className="w-full h-full items-center justify-center">
+                                        {(fb.supervisorName || "U")[0].toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-slate-800 text-sm leading-tight">
+                                        {fb.supervisorName}
+                                      </div>
+                                      <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
+                                        <FaBuilding className="text-[10px]" />
+                                        <span>{fb.universityName || intern.institute || "University"}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Rating */}
+                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 shrink-0">
+                                    <div className="flex">
+                                      {[1, 2, 3, 4, 5].map((s) => (
+                                        <FaStar
+                                          key={s}
+                                          className={`text-[10px] ${s <= (fb.rating || 5) ? "text-amber-400" : "text-slate-200"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="text-[11px] font-extrabold text-amber-700 ml-0.5">
+                                      {fb.rating || 5}.0
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Comment */}
+                                <div className="relative pl-3 border-l-2 border-emerald-400 my-2.5">
+                                  <p className="text-xs text-slate-600 leading-relaxed italic">
+                                    "{fb.comment}"
+                                  </p>
+                                </div>
+
+                                {/* Tags */}
+                                {Array.isArray(fb.tags) && fb.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {fb.tags.map((tag, ti) => (
+                                      <span
+                                        key={ti}
+                                        className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60"
+                                      >
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="flex items-center gap-1">
+                                  <FaCalendarAlt className="text-[9px]" />
+                                  {fb.createdAt ? formatDate(fb.createdAt) : "Recent"}
+                                </span>
+                                {fb.supervisorEmail && (
+                                  <span className="truncate max-w-[150px]">{fb.supervisorEmail}</span>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                          <FaGraduationCap className="text-3xl mb-2 text-slate-300" />
+                          <p className="text-xs font-medium text-slate-600">
+                            No university supervisor feedback recorded yet
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Evaluations and comments submitted via the University Portal will be visible here.
                           </p>
                         </div>
                       )}
