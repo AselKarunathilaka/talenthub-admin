@@ -13,18 +13,18 @@
  */
 export const SEASONS = [
   {
+    key: "independence-day",
+    label: "Independence Day",
+    month: 2,
+    day: 1,
+    endDay: 10,
+  },
+  {
     key: "new-year",
     label: "New Year",
     month: 1,
     day: 1,
-    endDay: 1,
-  },
-  {
-    key: "independence-day",
-    label: "Independence Day",
-    month: 2,
-    day: 4,
-    endDay: 4,
+    endDay: 5,
   },
   {
     key: "sinhala-tamil-new-year",
@@ -72,6 +72,10 @@ export const SEASONS = [
  * Seasons without an entry fall back to the default gradient.
  */
 export const SEASON_COMPONENTS = {
+  "independence-day": () =>
+    import("./independence-day/IndependenceBackground").then((m) => ({
+      default: m.default,
+    })),
   "sinhala-tamil-new-year": () =>
     import("./sinhala-tamil-new-year/AvuruduBackground").then((m) => ({
       default: m.default,
@@ -111,7 +115,7 @@ export function getActiveSeason(date = new Date()) {
   //return 'halloween'
   //return 'vesak-festival'
   //return 'christmas'
-  //return 'independence-day'
+  return 'independence-day'
   //return 'new-year'
   const month = date.getMonth() + 1; // 1-indexed
   const day = date.getDate();
