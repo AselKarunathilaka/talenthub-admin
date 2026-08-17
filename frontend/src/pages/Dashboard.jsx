@@ -1389,33 +1389,21 @@ const Dashboard = () => {
         </div>{/* end deep dive container */}
 
         {/* ===== University Supervisor Feedback Section ===== */}
-        <div style={{ marginTop: 'clamp(20px, 4vw, 36px)' }}>
-          <div className="bento-card" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
-            <div className="bento-card-header" style={{ marginBottom: 16 }}>
-              <h2 className="bento-card-title" style={{ fontSize: 'clamp(15px, 3vw, 18px)' }}>
-                <div className="bento-card-icon" style={{ width: 34, height: 34, background: "linear-gradient(135deg, rgba(80, 183, 72, 0.15) 0%, rgba(0, 180, 235, 0.15) 100%)", color: "#2e7d32" }}>
-                  <GraduationCap size={18} />
-                </div>
-                University Supervisor Feedback
-              </h2>
-              {universityFeedbacks.length > 0 && (
+        {universityFeedbacks && universityFeedbacks.length > 0 && (
+          <div style={{ marginTop: 'clamp(20px, 4vw, 36px)' }}>
+            <div className="bento-card" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
+              <div className="bento-card-header" style={{ marginBottom: 16 }}>
+                <h2 className="bento-card-title" style={{ fontSize: 'clamp(15px, 3vw, 18px)' }}>
+                  <div className="bento-card-icon" style={{ width: 34, height: 34, background: "linear-gradient(135deg, rgba(80, 183, 72, 0.15) 0%, rgba(0, 180, 235, 0.15) 100%)", color: "#2e7d32" }}>
+                    <GraduationCap size={18} />
+                  </div>
+                  University Supervisor Feedback
+                </h2>
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                   {universityFeedbacks.length} Feedback{universityFeedbacks.length === 1 ? "" : "s"}
                 </span>
-              )}
-            </div>
-
-            {universityFeedbacks.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-10 px-4 text-center rounded-2xl bg-slate-50/70 border border-dashed border-slate-200">
-                <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-100 flex items-center justify-center mb-3 text-slate-400">
-                  <GraduationCap size={24} />
-                </div>
-                <h4 className="text-sm font-bold text-slate-700 mb-1">No University Supervisor Feedback Yet</h4>
-                <p className="text-xs text-slate-400 max-w-md">
-                  Official academic evaluations, reviews, and ratings from your university supervisor will appear here once submitted.
-                </p>
               </div>
-            ) : (
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {universityFeedbacks.map((fb, idx) => (
                   <div
@@ -1505,9 +1493,9 @@ const Dashboard = () => {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     );
   };
