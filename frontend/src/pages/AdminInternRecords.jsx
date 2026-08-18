@@ -10,6 +10,13 @@ import {
   FaTimes,
   FaRegClock,
 } from "react-icons/fa";
+import {
+  FiUser,
+  FiCalendar,
+  FiCheckSquare,
+  FiAlertTriangle,
+  FiPlus,
+} from "react-icons/fi";
 import { motion } from "framer-motion";
 import { adminApi } from "../api/adminApi";
 
@@ -214,79 +221,116 @@ const AdminInternRecords = () => {
                   return (
                     <motion.div
                       key={record._id}
-                      className="overflow-hidden rounded-[20px] border border-[#dfe8ee] bg-white shadow-[0_8px_18px_rgba(15,23,42,0.08)]"
+                      className="flex min-w-0 flex-col overflow-hidden bg-white transition-all duration-300 hover:bg-indigo-50"
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.05, duration: 0.3 }}
+                      style={{
+                        borderRadius: 20,
+                        border: "1.5px solid rgba(0, 180, 235, 0.2)",
+                        boxShadow: "0 10px 30px rgba(0,0,0,0.03)",
+                      }}
                     >
-                      <div className="bg-gradient-to-r from-[#083f4e] via-[#0f4967] to-[#0a4462] px-4 py-3 text-white">
-                        <div className="mb-2 flex items-center gap-2">
-                          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-white/10 ring-1 ring-white/10">
-                            <FaEye className="text-[11px]" />
+                      <div className="flex-shrink-0 bg-gradient-to-r from-[#006600] to-[#000066] p-4 text-white md:p-5">
+                        <div className="mb-3 flex items-center gap-2 md:gap-3">
+                          <div className="rounded-lg bg-white/15 p-1.5 md:p-2 backdrop-blur-sm">
+                            <FiUser className="flex-shrink-0 text-xs text-white md:text-sm" />
                           </div>
-                          <h3 className="text-lg font-bold leading-none">My Record</h3>
-                        </div>
-
-                        <div className="flex items-center justify-between gap-2 text-sm text-white/90">
-                          <span>
-                            Trainee ID: <span className="font-bold text-white">{intern.traineeId || intern.Trainee_ID || "N/A"}</span>
+                          <span className="truncate text-sm font-semibold text-white md:text-base">
+                            My Record
                           </span>
                         </div>
 
-                        <div className="mt-3 flex items-center gap-2 text-[11px] text-white/80">
-                          <FaRegClock className="text-[10px]" />
-                          <span>{getRelativeTime(record.createdAt)}</span>
+                        <div className="mt-3 flex flex-col gap-2 text-white/80 sm:flex-row sm:items-center sm:gap-3">
+                          <span className="text-xs font-medium text-white/90 md:text-sm">
+                            Trainee ID:
+                          </span>
+                          <span className="rounded-lg border border-white/10 bg-white/15 px-2 py-1 font-mono text-xs font-semibold text-white shadow-sm md:text-sm">
+                            {intern.traineeId || intern.Trainee_ID || "No ID Available"}
+                          </span>
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between text-white/80">
+                          <div className="flex items-center gap-2 text-xs md:text-sm">
+                            <FiCalendar className="flex-shrink-0 text-white/70" />
+                            <span className="truncate font-medium text-white/90">
+                              {new Date(record.createdAt || record.date).toLocaleDateString("en-GB", {
+                                day: "2-digit",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                          <div className="text-xs font-medium text-white/70 md:text-sm">
+                            {getRelativeTime(record.createdAt || record.date)}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="bg-[#edf3f6] p-4">
-                        <div className="mb-4 flex flex-wrap gap-2">
-                          <span className="inline-flex items-center rounded-full border border-[#d0e1f9] bg-[#dfeefa] px-3 py-1 text-[11px] font-semibold text-[#2a4f7d]">
-                            {record.stack || "Full-stack Development"}
-                          </span>
+                      <div className="flex flex-1 flex-col space-y-4 p-4 md:p-5">
+                        <div className="mb-2 flex flex-wrap gap-2">
+                          {record.stack && !(record.status === "leave" && record.stack === "On Leave") && (
+                            <span className="inline-block rounded-full border border-blue-100 bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 md:px-3">
+                              {record.stack}
+                            </span>
+                          )}
                           {record.status === "wfh" && (
-                            <span className="inline-flex items-center rounded-full border border-[#ddd2ff] bg-[#ece3ff] px-3 py-1 text-[11px] font-semibold text-[#5d4ec4]">
+                            <span className="inline-block rounded-full border border-purple-100 bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-700 md:px-3">
                               Work From Home
                             </span>
                           )}
                           {record.status === "leave" && (
-                            <span className="inline-flex items-center rounded-full border border-[#ffd9d9] bg-[#ffe9e9] px-3 py-1 text-[11px] font-semibold text-[#b93d3d]">
+                            <span className="inline-block rounded-full border border-blue-100 bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700 md:px-3">
                               On Leave
                             </span>
                           )}
                         </div>
 
-                        <div className="space-y-3">
-                          <div className="rounded-xl border border-[#d9e6f2] bg-[#dfeaf8] px-3 py-2.5">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              <FaTasks className="text-xs text-[#4d75f2]" />
-                              <span>Tasks Completed</span>
+                        <div className="space-y-2 md:space-y-3">
+                          <h4 className="flex items-center gap-2 font-semibold text-gray-800 md:gap-3">
+                            <div className="flex-shrink-0 rounded-lg bg-blue-100 p-1.5 md:p-2">
+                              <FiCheckSquare className="flex-shrink-0 text-xs text-blue-600 md:text-sm" />
                             </div>
-                            <div className="text-sm leading-relaxed text-gray-700">
+                            <span className="text-sm md:text-lg">Tasks Completed</span>
+                          </h4>
+                          <div className="rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-5">
+                            <p className="overflow-wrap-anywhere whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700 md:text-sm">
                               {taskText}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl border border-[#f0df9f] bg-[#f9f0c9] px-3 py-2.5">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              <FaExclamationTriangle className="text-[11px] text-[#d18a00]" />
-                              <span>Challenges Faced</span>
-                            </div>
-                            <div className="text-sm leading-relaxed text-gray-700">
-                              {challengesText}
-                            </div>
-                          </div>
-
-                          <div className="rounded-xl border border-[#bfe7d1] bg-[#d9f0e2] px-3 py-2.5">
-                            <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-800">
-                              <FaEye className="text-[11px] text-[#1f9c69]" />
-                              <span>Plans for Tomorrow</span>
-                            </div>
-                            <div className="text-sm leading-relaxed text-gray-700">
-                              {plansText}
-                            </div>
+                            </p>
                           </div>
                         </div>
+
+                        {record.progress && (
+                          <div className="space-y-2 md:space-y-3">
+                            <h4 className="flex items-center gap-2 font-semibold text-gray-800 md:gap-3">
+                              <div className="flex-shrink-0 rounded-lg bg-amber-100 p-1.5 md:p-2">
+                                <FiAlertTriangle className="flex-shrink-0 text-xs text-amber-600 md:text-sm" />
+                              </div>
+                              <span className="text-sm md:text-lg">Challenges Faced</span>
+                            </h4>
+                            <div className="rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-amber-100 p-3 md:p-5">
+                              <p className="overflow-wrap-anywhere whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700 md:text-sm">
+                                {challengesText}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {record.blockers && (
+                          <div className="space-y-2 md:space-y-3">
+                            <h4 className="flex items-center gap-2 font-semibold text-gray-800 md:gap-3">
+                              <div className="flex-shrink-0 rounded-lg bg-emerald-100 p-1.5 md:p-2">
+                                <FiPlus className="flex-shrink-0 text-xs text-emerald-600 md:text-sm" />
+                              </div>
+                              <span className="text-sm md:text-lg">Plans for Tomorrow</span>
+                            </h4>
+                            <div className="rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 md:p-5">
+                              <p className="overflow-wrap-anywhere whitespace-pre-wrap break-words text-xs leading-relaxed text-gray-700 md:text-sm">
+                                {plansText}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   );
