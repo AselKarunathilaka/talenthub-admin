@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
@@ -40,6 +40,8 @@ import UniversityLogin from "../pages/UniversityLogin";
 import UniversityDashboard from "../pages/UniversityDashboard";
 import UniversityStudentDetails from "../pages/UniversityStudentDetails";
 import AdminUniversityManagement from "../pages/AdminUniversityManagement";
+// Lazy-loaded — splits AdminInternPerformance into its own JS chunk
+const AdminInternPerformance = lazy(() => import("../pages/AdminInternPerformance"));
 import AdminRoute from "../components/AdminRoute";
 
 const ScrollbarThemer = () => {
@@ -230,6 +232,14 @@ const AppRoutes = () => {
       <Route path="/admin/users" element={<AdminUserManagement />} />
       <Route path="/admin/university-requests" element={<AdminUniversityManagement />} />
       <Route path="/admin/university-management" element={<AdminUniversityManagement />} />
+      <Route
+        path="/admin/intern-performance"
+        element={
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-[#000066]/30 border-t-[#000066] rounded-full animate-spin" /></div>}>
+            <AdminInternPerformance />
+          </Suspense>
+        }
+      />
       </Route>
       </Routes>
     </>

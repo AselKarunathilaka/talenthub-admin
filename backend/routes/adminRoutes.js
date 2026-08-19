@@ -29,6 +29,9 @@ const {
   getInternGitCommits,
 } = require("../controllers/adminController");
 const {
+  getInternPerformance,
+} = require("../controllers/internPerformanceController");
+const {
   getPastInternLocations,
   getPastInternDistrictCounts,
   getPastInternSyncStats,
@@ -100,6 +103,9 @@ router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveE
 
 // Dashboard statistics
 router.get("/dashboard/stats", getDashboardStats);
+
+// Active intern performance overview
+router.get("/intern-performance", getInternPerformance);
 
 // Search interns
 router.get("/search/interns", searchInterns);
