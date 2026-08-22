@@ -75,6 +75,10 @@ const DailyRecordSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isAutoCheckout: {
+      type: Boolean,
+      default: false,
+    },
     meetingAttendance: {
       type: [MeetingAttendanceSchema],
       default: [],

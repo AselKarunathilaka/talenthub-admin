@@ -67,17 +67,22 @@ const verifyFaceAttendance = async (req, res) => {
         attendanceAction = "check_in",
       } = req.body;
 
-      // Allow `internId` to be provided from body/params when the mobile client
-      // doesn't have a login flow. Resolve string trainee IDs to ObjectId when possible.
+      // Enforce 1-to-1 matching: internId MUST be provided
       const expectedInternIdRaw = resolveInternId(req);
+      if (!expectedInternIdRaw) {
+        return res.status(401).json({ message: "Authentication required. Please log in to mark attendance." });
+      }
+
       let expectedInternId = null;
-      if (expectedInternIdRaw) {
-        if (mongoose.Types.ObjectId.isValid(expectedInternIdRaw)) {
-          expectedInternId = expectedInternIdRaw;
-        } else {
-          const internRecord = await Intern.findOne({ Trainee_ID: expectedInternIdRaw });
-          if (internRecord) expectedInternId = internRecord._id;
-        }
+      if (mongoose.Types.ObjectId.isValid(expectedInternIdRaw)) {
+        expectedInternId = expectedInternIdRaw;
+      } else {
+        const internRecord = await Intern.findOne({ Trainee_ID: expectedInternIdRaw });
+        if (internRecord) expectedInternId = internRecord._id;
+      }
+
+      if (!expectedInternId) {
+         return res.status(404).json({ message: "Intern record not found." });
       }
 
       // Ensure metadata carries the submitted intern identifier for logging/debugging

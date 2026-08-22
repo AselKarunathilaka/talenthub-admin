@@ -64,6 +64,8 @@ const {
 
   // University Feedback
   getInternUniversityFeedback,
+  
+  submitManualCheckInRequest,
 } = require("../controllers/internController");
 
 const { getInternGitCommits } = require("../controllers/adminController");
@@ -125,6 +127,7 @@ router.put(
 router.get("/attendance/:id", getAttendanceByInternId);
 router.post("/mark-attendance/:id", authenticateUser, markAttendance);
 router.post("/mark-attendance", authenticateUser, markAttendance);
+router.post("/manual-checkin-request", authenticateUser, submitManualCheckInRequest);
 router.put("/update-attendance/:id", authenticateUser, updateAttendance);
 
 // =========================== INTERN MANAGEMENT ===========================

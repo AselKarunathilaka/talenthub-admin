@@ -24,9 +24,11 @@ const sendEmail = async (toOrOptions, subject, textOrHtml, maybeHtml) => {
   let subj = subject;
   let text = typeof textOrHtml === "string" ? textOrHtml : "";
   let html = maybeHtml;
+  let cc = undefined;
 
   if (typeof toOrOptions === "object" && toOrOptions !== null) {
     to = toOrOptions.to;
+    cc = toOrOptions.cc;
     subj = toOrOptions.subject;
     text = toOrOptions.text || "";
     html = toOrOptions.html || "";
@@ -37,6 +39,7 @@ const sendEmail = async (toOrOptions, subject, textOrHtml, maybeHtml) => {
   const mailOptions = {
     from: `"TalentHub SLT" <${process.env.GMAIL_USER}>`,
     to,
+    ...(cc && { cc }),
     subject: subj,
     ...(text && { text }),
     ...(html && { html }),
@@ -224,7 +227,47 @@ const sendUniversityRejectionEmail = async ({ to, supervisorName, universityName
   return sendEmail({ to, subject, html, text: `Hello ${supervisorName}, your University access request for ${universityName} was not approved. Reason: ${rejectionReason}` });
 };
 
+/**
+ * Send security alert when location attendance policy is disabled
+ */
+const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
+  const subject = `⚠️ SECURITY ALERT: Attendance Location Policy Disabled`;
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <body style="font-family: -apple-system, sans-serif; background-color: #fef2f2; padding: 20px; color: #1e293b;">
+      <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #fecaca; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="background: #ef4444; padding: 20px; text-align: center; color: white;">
+          <h2 style="margin: 0; font-size: 20px;">System Security Alert</h2>
+        </div>
+        <div style="padding: 24px; line-height: 1.6;">
+          <h3 style="margin-top: 0; color: #991b1b;">Location Geofencing Disabled</h3>
+          <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually disabled.</p>
+          
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
+            <p style="margin: 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}</p>
+          </div>
+          
+          <p style="font-size: 14px; color: #64748b;">If this action was not authorized, please log into the Admin Portal immediately to re-enable location tracking.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  return sendEmail({ 
+    to: ["mgiri@slt.com.lk"], 
+    cc: ["send2liyanapathirana@gmail.com"], 
+    subject, 
+    html, 
+    text: `Warning: Location security was disabled by ${adminName} (${adminEmail}).` 
+  });
+};
+
 module.exports = sendEmail;
 module.exports.sendEmail = sendEmail;
 module.exports.sendUniversityApprovalEmail = sendUniversityApprovalEmail;
 module.exports.sendUniversityRejectionEmail = sendUniversityRejectionEmail;
+module.exports.sendSecurityAlertEmail = sendSecurityAlertEmail;

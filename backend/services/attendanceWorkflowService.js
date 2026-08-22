@@ -374,6 +374,18 @@ const markDailyAttendance = async ({
     }
   }
 
+  let showCheckoutReminder = false;
+  if (!checkedOut) {
+    const previousRecord = await DailyRecord.findOne({
+      internId,
+      date: { $lt: today }
+    }).sort({ date: -1 }).lean();
+    
+    if (previousRecord && previousRecord.isAutoCheckout) {
+      showCheckoutReminder = true;
+    }
+  }
+
   return {
     success: true,
     intern,
@@ -381,6 +393,7 @@ const markDailyAttendance = async ({
     type: method,
     checkedOut,
     dailyAttendanceMarked,
+    showCheckoutReminder,
   };
 };
 
