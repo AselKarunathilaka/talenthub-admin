@@ -1288,6 +1288,67 @@ const getInternUniversityFeedback = async (req, res) => {
   }
 };
 
+const submitManualCheckInRequest = async (req, res) => {
+  try {
+    const internId = req.user?.id || req.body?.internId;
+    if (!internId) {
+      return res.status(401).json({ message: "Unauthorized: intern identity not found." });
+    }
+
+    const { requestType = "check_in", attendanceType = "daily", projectName, reason, location } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ message: "Reason is required for manual check-in request." });
+    }
+
+    if (!["check_in", "check_out"].includes(requestType)) {
+      return res.status(400).json({ message: "Invalid requestType. Must be 'check_in' or 'check_out'." });
+    }
+
+    if (!["daily", "meeting"].includes(attendanceType)) {
+      return res.status(400).json({ message: "Invalid attendanceType. Must be 'daily' or 'meeting'." });
+    }
+
+    const Intern = require("../models/Intern");
+    const ManualCheckInRequest = require("../models/ManualCheckInRequest");
+
+    const intern = await Intern.findById(internId);
+    if (!intern) {
+      return res.status(404).json({ message: "Intern not found." });
+    }
+
+    const newRequest = new ManualCheckInRequest({
+      internId: intern._id,
+      requestType,
+      attendanceType,
+      projectName: attendanceType === "meeting" ? projectName?.trim() || null : null,
+      reason: reason.trim(),
+      location: location ? {
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+        accuracy: location.accuracy ?? null,
+        capturedAt: location.capturedAt ? new Date(location.capturedAt) : new Date(),
+      } : undefined,
+      status: "pending",
+      requestedAt: new Date(),
+    });
+
+    await newRequest.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Manual check-in request submitted successfully.",
+      request: newRequest,
+    });
+  } catch (error) {
+    console.error("Error in submitManualCheckInRequest:", error);
+    return res.status(500).json({
+      message: "Failed to submit manual check-in request.",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   addIntern,
   addExternalIntern,
@@ -1327,4 +1388,6 @@ module.exports = {
   getProfilePicture,
   markTourSeen,
   getInternUniversityFeedback,
+  submitManualCheckInRequest,
 };
+

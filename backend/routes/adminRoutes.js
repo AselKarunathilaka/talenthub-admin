@@ -83,6 +83,9 @@ const {
   bulkMarkAttendance,
   uploadAttendancePdf,
   extractIdsFromImages,
+  getPendingManualRequests,
+  approveManualRequest,
+  rejectManualRequest,
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
@@ -240,6 +243,10 @@ router.post(
   upload.array("images", 20),
   extractIdsFromImages
 );
+
+router.get("/manual-attendance/requests/pending", getPendingManualRequests);
+router.post("/manual-attendance/requests/:id/approve", approveManualRequest);
+router.post("/manual-attendance/requests/:id/reject", rejectManualRequest);
 
 // Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {
