@@ -26,6 +26,8 @@ const DAILY_ATTENDANCE_TYPES = new Set([
   "daily_qr",
   "face",
   "manual_daily",
+  "manual",  // matches AdminAnalytics
+  "qr",      // matches AdminAnalytics
 ]);
 
 const MEETING_ATTENDANCE_TYPES = new Set([
@@ -36,13 +38,12 @@ const MEETING_ATTENDANCE_TYPES = new Set([
   "manual",
 ]);
 
+const { getColomboDateKey, getDailyTypePriority } = require("../utils/attendanceHistory");
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const getDateKey = (date) => {
-  const parsed = date ? new Date(date) : null;
-  return parsed && !Number.isNaN(parsed.getTime())
-    ? parsed.toISOString().slice(0, 10)
-    : String(date || "");
+  return getColomboDateKey(date);
 };
 
 /** Format a Date (or date-string/timestamp) as hh:mm AM/PM in Sri Lanka time. */
@@ -78,8 +79,6 @@ const normalizeAttendanceMethod = (type) => {
  *
  * Returns { dailyAttendance, meetingAttendance, attendance (combined), stats }
  */
-const { getDailyTypePriority } = require("../utils/attendanceHistory");
-
 const formatAttendanceTypeLabel = (type, isMeeting = false) => {
   const t = String(type || "").toLowerCase();
   if (t === "face") return "Face Attendance";
@@ -120,16 +119,9 @@ const getAdminInternAttendance = async (req, res) => {
     ]);
 
     // Build a set of ISO date keys where a genuine face (non-QR-backup) daily scan exists
+    // (Matches AdminAnalytics which includes all valid face attendance logs)
     const faceDates = new Set(
-      successfulFaceLogs
-        .filter((log) => {
-          const attendanceType = String(
-            log.metadata?.attendanceType || "daily",
-          ).toLowerCase();
-          // Include if explicitly typed "daily" or no type set (defaults to daily context)
-          return attendanceType === "daily" || !log.metadata?.attendanceType;
-        })
-        .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
+      successfulFaceLogs.map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
     );
 
     const dailyAttendance = [];
@@ -204,7 +196,9 @@ const getAdminInternAttendance = async (req, res) => {
         const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         const isMeetingEntry = MEETING_ATTENDANCE_TYPES.has(type);
 
-        if (isDailyEntry) return; // handled in Step 6 fallback
+        // Skip purely-daily types that are NOT also meeting types (daily, daily_qr, face, manual_daily).
+        // "qr" and "manual" are in BOTH sets (like AdminAnalytics) — they count for daily AND meeting.
+        if (isDailyEntry && !isMeetingEntry) return; // purely daily — handled in Step 6 fallback
         if (!isMeetingEntry) return; // unknown type — skip
 
         const legacyName =

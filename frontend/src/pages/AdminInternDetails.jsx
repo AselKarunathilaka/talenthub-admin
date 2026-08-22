@@ -43,6 +43,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
+import {
+  isNoCommitSpecialization,
+  calcWorkingDays as calcWorkingDaysUtil,
+  calcElapsedWeeks as calcElapsedWeeksUtil,
+  calcDailyAttendanceRate,
+  calcMeetingAttendanceRate,
+  calcLogbookRate,
+  calcPerformanceRate,
+  getPerformanceStatus,
+  getMondayWeekKey,
+  toDateStr,
+} from "../utils/analyticsCalculations";
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
 const getCalendarDays = (year, month) => {
@@ -183,65 +195,62 @@ const AdminInternDetails = () => {
 
   const intern = internDetails?.intern;
 
+  // ── Holidays (must be declared before metrics useMemos that depend on it) ──
+  const [holidays, setHolidays] = useState([]);
+  const fetchedHolidayYears = useRef(new Set());
+
   // ── Synced Metrics Calculations (Exact match with Intern Dashboard & University Dashboard) ──
   const workingDays = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
     const endDateVal = intern?.endDate || intern?.Training_EndDate;
     if (!startDateVal) return 1;
-    const start = new Date(startDateVal);
-    if (isNaN(start.getTime())) return 1;
     const now = new Date();
     const endCap = endDateVal
       ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
       : now;
-    if (endCap <= start) return 1;
-    let count = 0;
-    const cursor = new Date(start);
-    cursor.setHours(0, 0, 0, 0);
-    const end = new Date(endCap);
-    end.setHours(23, 59, 59, 999);
-    while (cursor <= end) {
-      const dow = cursor.getDay();
-      if (dow !== 0 && dow !== 6) count++;
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return Math.max(1, count);
-  }, [intern]);
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
+    return calcWorkingDaysUtil(startDateVal, endCap, holidaySet);
+  }, [intern, holidays]);
 
   const elapsedWeeks = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
     const endDateVal = intern?.endDate || intern?.Training_EndDate;
     if (!startDateVal) return 1;
-    const start = new Date(startDateVal);
-    if (isNaN(start.getTime())) return 1;
     const now = new Date();
     const endCap = endDateVal
       ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
       : now;
-    const msElapsed = endCap - start;
-    if (msElapsed <= 0) return 1;
-    return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+    return calcElapsedWeeksUtil(startDateVal, endCap);
   }, [intern]);
 
   const attendedDaysCount = useMemo(() => {
     const records = attendanceData?.dailyAttendance || [];
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
     return new Set(
       records
         .filter((r) => {
+          if (!r.date) return false;
           const s = (r.status || "").toLowerCase();
-          return (s === "present" || s === "late") && r.date;
+          // AdminAnalytics: isPresent = status === "present" || status === "late" || !entry.status
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent) return false;
+          const dStr = toDateStr(r.date); // Colombo YYYY-MM-DD
+          if (!dStr) return false;
+          // Derive day-of-week from the Colombo date string (noon UTC avoids any tz shift)
+          const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+          const isWeekend = dow === 0 || dow === 6;
+          const isHoliday = holidaySet.has(dStr);
+          return !isWeekend && !isHoliday;
         })
-        .map((r) => {
-          const raw = String(r.date || "");
-          return raw.includes("T") ? raw.slice(0, 10) : raw.slice(0, 10);
-        })
+        .map((r) => toDateStr(r.date))
+        .filter(Boolean)
     ).size;
-  }, [attendanceData]);
+  }, [attendanceData, holidays]);
 
   const dailyAttendanceRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
     if (!startDateVal) return 0;
-    return Math.min(100, Math.round((attendedDaysCount / workingDays) * 100)) || 0;
+    return calcDailyAttendanceRate(attendedDaysCount, workingDays);
   }, [intern, attendedDaysCount, workingDays]);
 
   const attendedMeetingWeeksCount = useMemo(() => {
@@ -251,15 +260,7 @@ const AdminInternDetails = () => {
           const s = (r.status || "").toLowerCase();
           return (s === "present" || s === "late") && r.date;
         })
-        .map((r) => {
-          const d = new Date(r.date);
-          if (isNaN(d.getTime())) return null;
-          const day = d.getDay();
-          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-          const monday = new Date(d);
-          monday.setDate(diff);
-          return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
-        })
+        .map((r) => getMondayWeekKey(r.date))
         .filter(Boolean)
     ).size;
   }, [attendanceData]);
@@ -267,47 +268,72 @@ const AdminInternDetails = () => {
   const meetingAttendanceRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
     if (!startDateVal) return 0;
-    return Math.min(100, Math.round((attendedMeetingWeeksCount / elapsedWeeks) * 100)) || 0;
+    return calcMeetingAttendanceRate(attendedMeetingWeeksCount, elapsedWeeks);
   }, [intern, attendedMeetingWeeksCount, elapsedWeeks]);
 
   const commitsCount = useMemo(() => {
-    if (!gitCommitsData) return 0;
-    if (gitCommitsData.totalCommits !== undefined) {
-      return Number(gitCommitsData.totalCommits) || 0;
+    if (gitCommitsData) {
+      if (gitCommitsData.totalCommits !== undefined) {
+        return Number(gitCommitsData.totalCommits) || 0;
+      }
+      let all = [];
+      const projects = Array.isArray(gitCommitsData)
+        ? gitCommitsData
+        : (gitCommitsData.projectCommits || []);
+      function walk(node) {
+        if (!node) return;
+        if (Array.isArray(node.commits)) all.push(...node.commits);
+        if (Array.isArray(node.modules)) node.modules.forEach(walk);
+        if (Array.isArray(node.children)) node.children.forEach(walk);
+        if (Array.isArray(node.subProjects)) node.subProjects.forEach(walk);
+      }
+      projects.forEach(walk);
+      return all.length;
     }
-    let all = [];
-    const projects = Array.isArray(gitCommitsData)
-      ? gitCommitsData
-      : (gitCommitsData.projectCommits || []);
-    function walk(node) {
-      if (!node) return;
-      if (Array.isArray(node.commits)) all.push(...node.commits);
-      if (Array.isArray(node.modules)) node.modules.forEach(walk);
-      if (Array.isArray(node.children)) node.children.forEach(walk);
-      if (Array.isArray(node.subProjects)) node.subProjects.forEach(walk);
+    if (typeof intern?.commitsCount === "number") {
+      return intern.commitsCount;
     }
-    projects.forEach(walk);
-    return all.length;
-  }, [gitCommitsData]);
+    if (Array.isArray(intern?.gitCommits)) {
+      return intern.gitCommits.length;
+    }
+    return 0;
+  }, [gitCommitsData, intern]);
 
-  const workQualityRate = useMemo(() => {
+  const logbookCount = useMemo(() => {
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
+    const records = internDetails?.records || attendanceData?.dailyAttendance || [];
+    return records.filter((r) => {
+      if (!r.date) return false;
+      const status = (r.recordStatus || r.status || "working").toLowerCase();
+      if (status === "leave" || status === "study_leave") return false;
+      const dStr = toDateStr(r.date);
+      if (!dStr) return false;
+      const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isHoliday = holidaySet.has(dStr);
+      return !isWeekend && !isHoliday;
+    }).length;
+  }, [internDetails?.records, attendanceData, holidays]);
+
+  const logbookRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
     if (!startDateVal) return 0;
-    const actualLogbooksCount = (internDetails?.records || []).length;
-    const logbookRate = Math.min(100, Math.round((actualLogbooksCount / workingDays) * 100));
-    
-    // Expected commits = ceil(workingDays / 5) * 2 (2 commits per working week)
-    const expectedCommits = Math.max(1, Math.ceil(workingDays / 5) * 2);
-    const commitRate = commitsCount > 0 ? Math.min(100, Math.round((commitsCount / expectedCommits) * 100)) : 0;
-    
-    return Math.round((dailyAttendanceRate + meetingAttendanceRate + logbookRate + commitRate) / 4);
-  }, [intern, internDetails?.records, workingDays, commitsCount, dailyAttendanceRate, meetingAttendanceRate]);
+    return calcLogbookRate(logbookCount, workingDays);
+  }, [intern, logbookCount, workingDays]);
 
-  // ── Holidays ──────────────────────────────────────────────────────────────
-  const [holidays, setHolidays] = useState([]);
+  const performanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    const spec = intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "";
+    return calcPerformanceRate({
+      logbookRate,
+      meetingAttendanceRate,
+      commitsCount,
+      specialization: spec,
+    });
+  }, [intern, logbookRate, meetingAttendanceRate, commitsCount]);
 
-  // Years already requested, so month navigation does not refire the request
-  const fetchedHolidayYears = useRef(new Set());
+  const workQualityRate = performanceRate;
 
   const fetchHolidays = useCallback(async (year) => {
     if (!year || fetchedHolidayYears.current.has(year)) return;
@@ -835,49 +861,64 @@ const AdminInternDetails = () => {
                             </div>
                           )}
 
-                          {/* Work Quality Rate */}
+                          {/* Performance / Work Quality Rate */}
                           {attendanceData && (
                             <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
                               <div className="flex items-center justify-between mb-1.5">
                                 <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
                                   <FaAward className="text-blue-500" />{" "}
-                                  Work Quality Rate
+                                  Performance Rate
                                 </p>
-                                <span
-                                  className={`text-sm font-black ${
-                                    workQualityRate >= 75
-                                      ? "text-blue-600"
-                                      : workQualityRate >= 50
-                                        ? "text-amber-600"
-                                        : "text-red-600"
-                                  }`}
-                                >
-                                  {workQualityRate}%
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                      performanceRate >= 80
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                        : performanceRate >= 60
+                                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                          : "bg-rose-50 text-rose-700 border border-rose-200"
+                                    }`}
+                                  >
+                                    {getPerformanceStatus(performanceRate)}
+                                  </span>
+                                  <span
+                                    className={`text-sm font-black ${
+                                      performanceRate >= 80
+                                        ? "text-emerald-600"
+                                        : performanceRate >= 60
+                                          ? "text-amber-600"
+                                          : "text-rose-600"
+                                    }`}
+                                  >
+                                    {performanceRate}%
+                                  </span>
+                                </div>
                               </div>
                               <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                                 <div
                                   className="h-2 rounded-full transition-all duration-700"
                                   style={{
-                                    width: `${workQualityRate}%`,
+                                    width: `${performanceRate}%`,
                                     background: `linear-gradient(90deg, ${
-                                      workQualityRate >= 75
-                                        ? "#2563eb"
-                                        : workQualityRate >= 50
+                                      performanceRate >= 80
+                                        ? "#059669"
+                                        : performanceRate >= 60
                                           ? "#d97706"
                                           : "#dc2626"
                                     }, ${
-                                      workQualityRate >= 75
-                                        ? "#2563ebcc"
-                                        : workQualityRate >= 50
-                                          ? "#d97706cc"
-                                          : "#dc2626cc"
+                                      performanceRate >= 80
+                                        ? "#10b981"
+                                        : performanceRate >= 60
+                                          ? "#f59e0b"
+                                          : "#ef4444"
                                     })`,
                                   }}
                                 />
                               </div>
                               <p className="text-[10px] text-slate-400 mt-1">
-                                Composite score of Daily Attendance ({dailyAttendanceRate}%), Meeting Attendance ({meetingAttendanceRate}%), Logbooks ({Math.min(100, Math.round(((internDetails?.records?.length || 0) / workingDays) * 100))}%), and GitHub Commits ({commitsCount > 0 ? Math.min(100, Math.round((commitsCount / Math.max(1, Math.ceil(workingDays / 5) * 2)) * 100)) : 0}%)
+                                {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization)
+                                  ? `Calculated from Logbooks (${logbookRate}%) and Meeting Attendance (${meetingAttendanceRate}%) for ${intern?.field_of_spec_name || "Specialization"}`
+                                  : `Calculated from Logbooks (${logbookRate}%), Meeting Attendance (${meetingAttendanceRate}%), and GitHub Commits (${commitsCount} commits)`}
                               </p>
                             </div>
                           )}

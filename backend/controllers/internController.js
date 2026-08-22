@@ -22,6 +22,8 @@ const DAILY_ATTENDANCE_TYPES = new Set([
   "daily_qr",
   "face",
   "manual_daily",
+  "manual",  // matches AdminAnalytics
+  "qr",      // matches AdminAnalytics
 ]);
 
 const MEETING_ATTENDANCE_TYPES = new Set([
@@ -513,12 +515,16 @@ const getAttendanceByInternId = async (req, res) => {
     });
 
     // Add legacy meeting attendance from intern.attendance when no DailyRecord meeting exists.
-    // Skip daily/face attendance entries so they do not appear as meetings.
+    // Skip purely-daily entries (daily, daily_qr, face, manual_daily) that are NOT also meeting types.
+    // "qr" and "manual" are in BOTH sets (like AdminAnalytics) — they count for daily AND meeting.
     if (intern.attendance && intern.attendance.length > 0) {
       intern.attendance.forEach((entry) => {
         const type = (entry.type || "").toLowerCase();
         const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
-        if (isDailyEntry) return; // skip daily QR/daily entries
+        const isMeetingEntry = MEETING_ATTENDANCE_TYPES.has(type);
+        // Skip if it's purely daily (not a meeting type) OR unknown type
+        if (isDailyEntry && !isMeetingEntry) return;
+        if (!isMeetingEntry) return;
 
         // All other legacy entries are preserved as meeting attendance
         const legacyMeetingName =

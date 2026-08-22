@@ -96,6 +96,10 @@ const internSchema = new mongoose.Schema(
       type: [restrictionHistorySchema],
       default: [],
     },
+    commitsCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );

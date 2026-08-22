@@ -34,7 +34,7 @@ const routePermission = (req) => {
     return req.method === "GET" ? "attendance.view" : "attendance.manage";
   }
   if (path.includes("issue-certificate") || path.startsWith("/sync/") || path.startsWith("/trigger/")) return "interns.manage";
-  if (path.startsWith("/intern") || path.includes("district") || path.includes("location") || path.startsWith("/past-intern")) return "interns.view";
+  if (path.startsWith("/intern") || path.includes("district") || path.includes("location") || path.startsWith("/past-intern") || path.startsWith("/analytics")) return "interns.view";
   return "dashboard.view";
 };
 

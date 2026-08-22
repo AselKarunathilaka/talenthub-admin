@@ -46,6 +46,9 @@ const internTalentTrailSyncSchema = new mongoose.Schema(
     // Derived helper — true when intern has at least one active project
     hasActiveProject: { type: Boolean, default: false, index: true },
 
+    // Commits count synced from TalentTrail/GitHub
+    commitsCount: { type: Number, default: 0 },
+
     // Sync metadata
     lastSyncedAt: { type: Date, default: null },
     syncError: { type: String, default: null }, // store last error message if sync failed

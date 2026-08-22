@@ -43,6 +43,18 @@ import { formatDate } from "../utils/formatDate";
 import { calculateInternshipEndNotification } from "../utils/internshipNotification";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import {
+  isNoCommitSpecialization,
+  calcWorkingDays as calcWorkingDaysUtil,
+  calcElapsedWeeks as calcElapsedWeeksUtil,
+  calcDailyAttendanceRate,
+  calcMeetingAttendanceRate,
+  calcLogbookRate,
+  calcPerformanceRate,
+  getPerformanceStatus,
+  getMondayWeekKey,
+  toDateStr,
+} from "../utils/analyticsCalculations";
 
 const getPerformanceColors = (percentage) => {
   const cleanPct = Math.min(100, Math.max(0, Number(percentage) || 0));
@@ -91,6 +103,7 @@ const Dashboard = () => {
   const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [isNewIntern, setIsNewIntern] = useState(false);
+  const [holidays, setHolidays] = useState([]);
   const rowsPerPage = 10;
   const initialLoadStartedRef = useRef(false);
   const faceModalOpenRef = useRef(false);
@@ -111,6 +124,11 @@ const Dashboard = () => {
 
       if (response) {
         setInternData(response);
+        if (typeof response.commitsCount === "number") {
+          setCommitsCount((prev) => prev || response.commitsCount);
+        } else if (Array.isArray(response.gitCommits)) {
+          setCommitsCount((prev) => prev || response.gitCommits.length);
+        }
 
         // Check if internship end date notification should be shown
         if (response.Training_EndDate) {
@@ -279,6 +297,19 @@ const Dashboard = () => {
     }
   };
 
+  const loadHolidays = async () => {
+    try {
+      const year = new Date().getFullYear();
+      const res = await fetch(`${API_BASE_URL}/holidays/${year}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHolidays(Array.isArray(data) ? data : (data.holidays || []));
+      }
+    } catch (err) {
+      console.error("Error fetching holidays:", err);
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     const [fetchedInternData] = await Promise.all([
@@ -287,6 +318,7 @@ const Dashboard = () => {
       loadGitCommitsData(), // Load git commits data
       loadLogbooksData(), // Load actual logbooks count
       loadUniversityFeedbacks(), // Load university supervisor feedbacks
+      loadHolidays(), // Load holidays
     ]);
     setLoading(false);
 
@@ -578,58 +610,53 @@ const Dashboard = () => {
   };
 
 
-  // ── Synced Metrics Calculations (Exact match with University Dashboard & Backend) ──
+  // ── Synced Metrics Calculations (Exact match with AdminAnalytics & University Dashboard) ──
   const workingDays = useMemo(() => {
     if (!internData?.Training_StartDate) return 1;
-    const start = new Date(internData.Training_StartDate);
-    if (isNaN(start.getTime())) return 1;
+    const start = internData.Training_StartDate;
     const now = new Date();
     const endCap = internData.Training_EndDate
       ? new Date(Math.min(now.getTime(), new Date(internData.Training_EndDate).getTime()))
       : now;
-    if (endCap <= start) return 1;
-    let count = 0;
-    const cursor = new Date(start);
-    cursor.setHours(0, 0, 0, 0);
-    const end = new Date(endCap);
-    end.setHours(23, 59, 59, 999);
-    while (cursor <= end) {
-      const dow = cursor.getDay();
-      if (dow !== 0 && dow !== 6) count++;
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return Math.max(1, count);
-  }, [internData]);
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
+    return calcWorkingDaysUtil(start, endCap, holidaySet);
+  }, [internData, holidays]);
 
   const elapsedWeeks = useMemo(() => {
     if (!internData?.Training_StartDate) return 1;
-    const start = new Date(internData.Training_StartDate);
-    if (isNaN(start.getTime())) return 1;
+    const start = internData.Training_StartDate;
     const now = new Date();
     const endCap = internData.Training_EndDate
       ? new Date(Math.min(now.getTime(), new Date(internData.Training_EndDate).getTime()))
       : now;
-    const msElapsed = endCap - start;
-    if (msElapsed <= 0) return 1;
-    return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+    return calcElapsedWeeksUtil(start, endCap);
   }, [internData]);
 
   const dailyAttendanceRate = useMemo(() => {
     if (!internData?.Training_StartDate) return 0;
     const records = attendanceHistory.length > 0 ? attendanceHistory : dailyRecords;
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
     const attendedDays = new Set(
       records
         .filter((r) => {
+          if (!r.date) return false;
           const s = (r.status || "").toLowerCase();
-          return (s === "present" || s === "late") && r.date;
+          // AdminAnalytics: isPresent = status === "present" || status === "late" || !entry.status
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent) return false;
+          const dStr = toDateStr(r.date); // Colombo YYYY-MM-DD
+          if (!dStr) return false;
+          // Derive day-of-week from Colombo date string (noon UTC avoids tz shift)
+          const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+          const isWeekend = dow === 0 || dow === 6;
+          const isHoliday = holidaySet.has(dStr);
+          return !isWeekend && !isHoliday;
         })
-        .map((r) => {
-          const raw = String(r.date || "");
-          return raw.includes("T") ? raw.slice(0, 10) : raw;
-        })
+        .map((r) => toDateStr(r.date))
+        .filter(Boolean)
     ).size;
-    return Math.min(100, Math.round((attendedDays / workingDays) * 100)) || 0;
-  }, [internData, attendanceHistory, dailyRecords, workingDays]);
+    return calcDailyAttendanceRate(attendedDays, workingDays);
+  }, [internData, attendanceHistory, dailyRecords, workingDays, holidays]);
 
   const meetingAttendanceRate = useMemo(() => {
     if (!internData?.Training_StartDate) return 0;
@@ -639,31 +666,45 @@ const Dashboard = () => {
           const s = (r.status || "").toLowerCase();
           return (s === "present" || s === "late") && r.date;
         })
-        .map((r) => {
-          const d = new Date(r.date);
-          if (isNaN(d.getTime())) return null;
-          const day = d.getDay();
-          const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-          const monday = new Date(d);
-          monday.setDate(diff);
-          return `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`;
-        })
+        .map((r) => getMondayWeekKey(r.date))
         .filter(Boolean)
     ).size;
-    return Math.min(100, Math.round((attendedWeeks / elapsedWeeks) * 100)) || 0;
+    return calcMeetingAttendanceRate(attendedWeeks, elapsedWeeks);
   }, [internData, meetingAttendance, elapsedWeeks]);
 
-  const workQualityRate = useMemo(() => {
+  const validLogbookCount = useMemo(() => {
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
+    const records = dailyRecords.length > 0 ? dailyRecords : attendanceHistory;
+    return records.filter((r) => {
+      if (!r.date) return false;
+      const status = (r.recordStatus || r.status || "working").toLowerCase();
+      if (status === "leave" || status === "study_leave") return false;
+      const dStr = toDateStr(r.date);
+      if (!dStr) return false;
+      const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isHoliday = holidaySet.has(dStr);
+      return !isWeekend && !isHoliday;
+    }).length;
+  }, [dailyRecords, attendanceHistory, holidays]);
+
+  const logbookRate = useMemo(() => {
     if (!internData?.Training_StartDate) return 0;
-    const actualLogbooksCount = logbooksCount > 0 ? logbooksCount : (dailyRecords?.length || 0);
-    const logbookRate = Math.min(100, Math.round((actualLogbooksCount / workingDays) * 100));
-    
-    // Expected commits = ceil(workingDays / 5) * 2 (2 commits per working week)
-    const expectedCommits = Math.max(1, Math.ceil(workingDays / 5) * 2);
-    const commitRate = commitsCount > 0 ? Math.min(100, Math.round((commitsCount / expectedCommits) * 100)) : 0;
-    
-    return Math.round((dailyAttendanceRate + meetingAttendanceRate + logbookRate + commitRate) / 4);
-  }, [internData, logbooksCount, dailyRecords, workingDays, commitsCount, dailyAttendanceRate, meetingAttendanceRate]);
+    return calcLogbookRate(validLogbookCount, workingDays);
+  }, [internData, validLogbookCount, workingDays]);
+
+  const performanceRate = useMemo(() => {
+    if (!internData?.Training_StartDate) return 0;
+    const spec = internData.field_of_spec_name || internData.specialization || "";
+    return calcPerformanceRate({
+      logbookRate,
+      meetingAttendanceRate,
+      commitsCount,
+      specialization: spec,
+    });
+  }, [internData, logbookRate, meetingAttendanceRate, commitsCount]);
+
+  const workQualityRate = performanceRate;
 
   const [expandedGroups, setExpandedGroups] = useState({});
   const toggleGroup = (dateKey) => {

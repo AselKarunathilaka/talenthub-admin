@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-08-22T17:35:04.608Z",
+  "failed": [
+    {
+      "traineeId": "3645",
+      "name": "A.W.I SAHANJITH",
+      "address": "242/16 mukalanhena bingiriya"
+    },
+    {
+      "traineeId": "3704",
+      "name": "Tharindu Dilshan Wickramasinghe",
+      "address": "No:129/3, Dewalagodella, Akaragama"
+    },
+    {
+      "traineeId": "3707",
+      "name": "R.P. Nilukshi Kaushalya Wijerathne",
+      "address": "Pahalawaththa, Ambanpola"
+    },
+    {
+      "traineeId": "3730",
+      "name": "Mithila Rasanjith Wickramatunge",
+      "address": "163/2/1, Walpitamulla, Devalapola"
+    },
+    {
+      "traineeId": "3858",
+      "name": "Ethugal Pedige Ravindu Sachintha Dissanayaka",
+      "address": "C 8/3 Minimaruwa Alwathura"
+    },
+    {
+      "traineeId": "3868",
+      "name": "Bodawaththe Gedara Nimesha Nethmina Samarathunge",
+      "address": "178 Bodawaththa Udagunnepana"
+    }
+  ]
+}

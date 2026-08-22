@@ -32,6 +32,9 @@ const {
   getInternPerformance,
 } = require("../controllers/internPerformanceController");
 const {
+  getAdminAnalytics,
+} = require("../controllers/adminAnalyticsController");
+const {
   getPastInternLocations,
   getPastInternDistrictCounts,
   getPastInternSyncStats,
@@ -106,6 +109,9 @@ router.get("/dashboard/stats", getDashboardStats);
 
 // Active intern performance overview
 router.get("/intern-performance", getInternPerformance);
+
+// Intern analytics overview
+router.get("/analytics", getAdminAnalytics);
 
 // Search interns
 router.get("/search/interns", searchInterns);

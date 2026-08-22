@@ -1890,14 +1890,16 @@ const fetchInternGitCommitsData = async (internId) => {
       });
     });
 
+  const totalCommits = projectCommits.reduce((sum, p) => sum + p.totalCommits, 0);
   const responseData = {
     githubUsername,
     internEmail: intern.Trainee_Email,
     projectCommits,
-    totalCommits: projectCommits.reduce((sum, p) => sum + p.totalCommits, 0),
+    totalCommits,
   };
 
   gitCommitsCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+  Intern.findByIdAndUpdate(internId, { commitsCount: totalCommits }).catch(() => {});
   return responseData;
 };
 

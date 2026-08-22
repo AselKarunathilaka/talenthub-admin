@@ -25,12 +25,44 @@ const {
   fetchInternGitCommitsData,
   gitCommitsCache,
 } = require("./adminController");
+const { getSriLankanHolidays } = require("../utils/workingDays");
+
+/**
+ * Specialization classifier for non-coding roles (QA, BA, PM, DevOps, AI)
+ * Exact match with AdminAnalytics.jsx and adminAnalyticsController.js
+ */
+const isNoCommitSpecialization = (specName) => {
+  if (!specName) return false;
+  const s = String(specName).trim().toLowerCase();
+  return (
+    s === "qa" ||
+    s.includes("quality assurance") ||
+    s.includes("qa engineer") ||
+    s === "ba" ||
+    s.includes("business analyst") ||
+    s.includes("business analysis") ||
+    s === "pm" ||
+    s.includes("project manager") ||
+    s.includes("project management") ||
+    s === "devops" ||
+    s.includes("devops") ||
+    s === "ai" ||
+    s.includes("artificial intelligence") ||
+    s.includes("machine learning") ||
+    s.includes("data science") ||
+    s.startsWith("ai ") ||
+    s.endsWith(" ai") ||
+    s.includes(" ai ")
+  );
+};
 
 const DAILY_ATTENDANCE_TYPES = new Set([
   "daily",
   "daily_qr",
   "face",
   "manual_daily",
+  "manual",  // matches AdminAnalytics
+  "qr",      // matches AdminAnalytics
 ]);
 
 const MEETING_ATTENDANCE_TYPES = new Set([
@@ -60,22 +92,36 @@ const formatAttendanceTypeLabel = (type, isMeeting = false) => {
   return isMeeting ? "Meeting Attendance" : "Daily Attendance";
 };
 
-// Helper for Mon-Fri working days elapsed
-const calcWorkingDays = (startDate, endDate = new Date()) => {
+// Helper for Mon-Fri working days elapsed excluding weekends and Sri Lankan public holidays
+const COLOMBO_OFFSET_MS = 5.5 * 60 * 60 * 1000; // +05:30
+
+const calcWorkingDays = (startDate, endDate = new Date(), holidays = null) => {
   if (!startDate) return 1;
   const start = new Date(startDate);
   if (isNaN(start.getTime())) return 1;
   const now = new Date(endDate);
-  if (now <= start) return 1;
+  if (isNaN(now.getTime())) return 1;
+
+  // Shift both to Colombo time to do date-aware cursor math
+  const startColombo = new Date(start.getTime() + COLOMBO_OFFSET_MS);
+  const endColombo = new Date(now.getTime() + COLOMBO_OFFSET_MS);
+  startColombo.setUTCHours(0, 0, 0, 0);
+  endColombo.setUTCHours(23, 59, 59, 999);
+
+  if (endColombo <= startColombo) return 1;
   let count = 0;
-  const cursor = new Date(start);
-  cursor.setHours(0, 0, 0, 0);
-  const endCap = new Date(now);
-  endCap.setHours(23, 59, 59, 999);
-  while (cursor <= endCap) {
-    const dow = cursor.getDay();
-    if (dow !== 0 && dow !== 6) count++;
-    cursor.setDate(cursor.getDate() + 1);
+  const cursor = new Date(startColombo);
+
+  while (cursor <= endColombo) {
+    const dow = cursor.getUTCDay(); // day of week in Colombo
+    const y = cursor.getUTCFullYear();
+    const m = String(cursor.getUTCMonth() + 1).padStart(2, "0");
+    const d = String(cursor.getUTCDate()).padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
+    const isWeekend = dow === 0 || dow === 6;
+    const isHoliday = holidays ? holidays.has(dateStr) : false;
+    if (!isWeekend && !isHoliday) count++;
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return Math.max(1, count);
 };
@@ -90,46 +136,82 @@ const calcElapsedWeeks = (startDate, endDate = new Date()) => {
   return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
 };
 
-// Canonical attendance calculation helper matching Dashboard.jsx exactly
-const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Date()) => {
+// Canonical attendance calculation helper matching AdminAnalytics exactly
+const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Date(), holidays = null) => {
   const workingDays = calcWorkingDays(
     intern.Training_StartDate,
-    intern.Training_EndDate ? Math.min(new Date(endDate), new Date(intern.Training_EndDate)) : new Date(endDate)
+    intern.Training_EndDate ? Math.min(new Date(endDate), new Date(intern.Training_EndDate)) : new Date(endDate),
+    holidays
   );
   const elapsedWeeks = calcElapsedWeeks(
     intern.Training_StartDate,
     intern.Training_EndDate ? Math.min(new Date(endDate), new Date(intern.Training_EndDate)) : new Date(endDate)
   );
 
-  // 1. Daily Attended Days
+  // 1. Daily Attended Days (Valid working days only)
   const dailyAttendedDays = new Set();
 
   // From DailyRecords (logbooks: working / wfh → Present, leave / study_leave → Absent)
+  let logbookCount = 0;
   studentRecords.forEach((r) => {
     const recordStatus = (r.status || "working").toLowerCase();
     if (recordStatus !== "leave" && recordStatus !== "study_leave") {
       if (r.date) {
-        const raw = String(r.date);
-        dailyAttendedDays.add(raw.includes("T") ? raw.slice(0, 10) : raw);
+        const dateStr = getColomboDateKey(r.date); // Colombo-aware YYYY-MM-DD
+        if (dateStr) {
+          // Derive day-of-week from Colombo date string at noon UTC (no tz shift)
+          const dow = new Date(dateStr + "T12:00:00Z").getUTCDay();
+          const isWeekend = dow === 0 || dow === 6;
+          const isHoliday = holidays ? holidays.has(dateStr) : false;
+          if (!isWeekend && !isHoliday) {
+            logbookCount++;
+            dailyAttendedDays.add(dateStr);
+          }
+        }
       }
     }
   });
 
-  // From intern.attendance (daily types)
+  // From intern.attendance (daily types on working days)
   const attendanceEntries = intern.attendance || [];
   attendanceEntries.forEach((entry) => {
     const type = (entry.type || "").toLowerCase();
     const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
     const s = (entry.status || "").toLowerCase();
-    if (isDaily && (s === "present" || s === "late") && entry.date) {
-      dailyAttendedDays.add(getColomboDateKey(entry.date));
+    // AdminAnalytics: isPresent = status === "present" || status === "late" || !entry.status
+    const isPresent = s === "present" || s === "late" || !entry.status;
+    if (isDaily && isPresent && entry.date) {
+      const dateKey = getColomboDateKey(entry.date); // already Colombo YYYY-MM-DD
+      if (dateKey) {
+        // Derive day-of-week from Colombo date string at noon UTC (no tz shift)
+        const dow = new Date(dateKey + "T12:00:00Z").getUTCDay();
+        const isWeekend = dow === 0 || dow === 6;
+        const isHoliday = holidays ? holidays.has(dateKey) : false;
+        if (!isWeekend && !isHoliday) {
+          dailyAttendedDays.add(dateKey);
+        }
+      }
     }
   });
 
   const dailyAttendanceRate = Math.min(100, Math.round((dailyAttendedDays.size / workingDays) * 100)) || 0;
+  const logbookRecordRate = Math.min(100, Math.round((logbookCount / workingDays) * 100)) || 0;
 
   // 2. Meeting Attended Weeks (distinct calendar Monday week keys)
   const attendedMeetingWeeks = new Set();
+
+  // Helper: get monday week key from a Colombo YYYY-MM-DD string
+  const getMondayKeyFromColomboStr = (dateStr) => {
+    if (!dateStr) return null;
+    // Parse at noon UTC from Colombo date string (safe, no tz shift)
+    const d = new Date(dateStr + "T12:00:00Z");
+    if (isNaN(d.getTime())) return null;
+    const day = d.getUTCDay();
+    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(d);
+    monday.setUTCDate(diff);
+    return `${monday.getUTCFullYear()}-${monday.getUTCMonth()}-${monday.getUTCDate()}`;
+  };
 
   // From DailyRecord.meetingAttendance
   studentRecords.forEach((r) => {
@@ -137,33 +219,24 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
       r.meetingAttendance.forEach((m) => {
         const dVal = m.attendanceTime || r.date;
         if (dVal) {
-          const d = new Date(dVal);
-          if (!isNaN(d.getTime())) {
-            const day = d.getDay();
-            const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-            const monday = new Date(d);
-            monday.setDate(diff);
-            attendedMeetingWeeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
-          }
+          const dateStr = getColomboDateKey(dVal); // Colombo YYYY-MM-DD
+          const wk = getMondayKeyFromColomboStr(dateStr);
+          if (wk) attendedMeetingWeeks.add(wk);
         }
       });
     }
   });
 
-  // From intern.attendance (all non-daily meeting attendance types: qr, manual, manual_meeting, face_meeting, meeting)
+  // From intern.attendance (meeting types: qr, manual, manual_meeting, face_meeting, meeting)
+  // Note: "qr" and "manual" are in BOTH DAILY and MEETING sets (like AdminAnalytics)
   attendanceEntries.forEach((entry) => {
     const type = (entry.type || "").toLowerCase();
-    const isDaily = DAILY_ATTENDANCE_TYPES.has(type);
+    const isMeeting = MEETING_ATTENDANCE_TYPES.has(type);
     const s = (entry.status || "").toLowerCase();
-    if (!isDaily && s === "present" && entry.date) {
-      const d = new Date(entry.date);
-      if (!isNaN(d.getTime())) {
-        const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d);
-        monday.setDate(diff);
-        attendedMeetingWeeks.add(`${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`);
-      }
+    if (isMeeting && s === "present" && entry.date) {
+      const dateStr = getColomboDateKey(entry.date); // Colombo YYYY-MM-DD
+      const wk = getMondayKeyFromColomboStr(dateStr);
+      if (wk) attendedMeetingWeeks.add(wk);
     }
   });
 
@@ -172,6 +245,8 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
   return {
     dailyAttendanceRate,
     meetingAttendanceRate,
+    logbookRecordRate,
+    logbookCount,
     presentDays: dailyAttendedDays.size,
     workingDays,
     elapsedWeeks,
@@ -885,6 +960,9 @@ const getUniversityStudents = async (req, res) => {
       }
     });
 
+    const currentYear = new Date().getFullYear();
+    const holidays = getSriLankanHolidays([currentYear - 2, currentYear - 1, currentYear, currentYear + 1]) || new Set();
+
     const todayStr = new Date().toISOString().slice(0, 10);
     let activeTodayCount = 0;
     let totalQualitySum = 0;
@@ -901,8 +979,8 @@ const getUniversityStudents = async (req, res) => {
       const cached = gitCommitsCache ? gitCommitsCache.get(`git_commits_${intern._id}`) : null;
       let gitCommitsData = cached ? cached.data : null;
 
-      // 1 & 2. Compute attendance metrics using exact Dashboard.jsx calculation
-      const attMetrics = computeAttendanceMetrics(intern, studentRecords);
+      // 1 & 2. Compute attendance metrics using exact AdminAnalytics calculation
+      const attMetrics = computeAttendanceMetrics(intern, studentRecords, new Date(), holidays);
 
       // 3. Logbook Submissions Count
       const logbookCount = studentRecords.length;
@@ -945,7 +1023,7 @@ const getUniversityStudents = async (req, res) => {
       const enrolledProjects = Array.from(combinedProjectsMap.values());
       const projectsCount = enrolledProjects.length;
 
-      // 5. GitHub Commits Count (matching Dashboard.jsx method)
+      // 5. GitHub Commits Count (matching AdminAnalytics method)
       let commitsCount = 0;
       if (gitCommitsData) {
         if (gitCommitsData.totalCommits !== undefined) {
@@ -963,18 +1041,31 @@ const getUniversityStudents = async (req, res) => {
           projects.forEach(walk);
           commitsCount = all.length;
         }
-      } else if (Array.isArray(intern.gitCommits)) {
+      } else if (typeof intern.commitsCount === "number" && intern.commitsCount > 0) {
+        commitsCount = intern.commitsCount;
+      } else if (Array.isArray(intern.gitCommits) && intern.gitCommits.length > 0) {
         commitsCount = intern.gitCommits.length;
       } else if (typeof intern.commitsCount === "number") {
         commitsCount = intern.commitsCount;
       }
 
-      // 6. Work Quality Rate (Average rate from Logbooks and GitHub commits)
-      const logbookRate = Math.min(100, Math.round((logbookCount / attMetrics.workingDays) * 100));
-      const expectedCommits = Math.max(1, Math.ceil(attMetrics.workingDays / 5) * 2);
-      const commitRate = commitsCount > 0 ? Math.min(100, Math.round((commitsCount / expectedCommits) * 100)) : 0;
-      const workQualityRate = Math.round((attMetrics.meetingAttendanceRate + attMetrics.dailyAttendanceRate + logbookRate + commitRate) / 4);
-      totalQualitySum += workQualityRate;
+      // 6. Performance Rate (Exact match with AdminAnalytics)
+      const logbookRate = attMetrics.logbookRecordRate;
+      const baseAvg = (logbookRate + attMetrics.meetingAttendanceRate) / 2;
+      let performanceRate = 0;
+      const specName = intern.field_of_spec_name || intern.fieldOfSpecialization;
+      if (isNoCommitSpecialization(specName)) {
+        performanceRate = Math.min(100, Math.round(baseAvg));
+      } else {
+        performanceRate = Math.min(100, Math.round(baseAvg + commitsCount));
+      }
+
+      let internStatus = "Good";
+      if (performanceRate < 60) internStatus = "Poor";
+      else if (performanceRate < 80) internStatus = "At Risk";
+
+      const workQualityRate = performanceRate;
+      totalQualitySum += performanceRate;
 
       // Check if active today
       const attendanceEntries = intern.attendance || [];
@@ -1202,8 +1293,11 @@ const getUniversityStudentDetails = async (req, res) => {
       supervisorPicture: fb.supervisorPicture || fb.universitySupervisorId?.picture || "",
     }));
 
-    // Compute attendance metrics using exact Dashboard.jsx calculation
-    const attMetrics = computeAttendanceMetrics(intern, dailyRecords);
+    const currentYear = new Date().getFullYear();
+    const holidays = getSriLankanHolidays([currentYear - 2, currentYear - 1, currentYear, currentYear + 1]) || new Set();
+
+    // Compute attendance metrics using exact AdminAnalytics calculation
+    const attMetrics = computeAttendanceMetrics(intern, dailyRecords, new Date(), holidays);
 
     // Matching local and talentTrail projects
     const localProjects = (allProjects || []).filter((p) => {
@@ -1241,7 +1335,7 @@ const getUniversityStudentDetails = async (req, res) => {
     const enrolledProjects = Array.from(combinedProjectsMap.values());
     const projectsCount = enrolledProjects.length;
 
-    // GitHub Commits Count (matching Dashboard.jsx method)
+    // GitHub Commits Count (matching AdminAnalytics method)
     let commitsCount = 0;
     if (gitCommitsData) {
       if (gitCommitsData.totalCommits !== undefined) {
@@ -1259,16 +1353,25 @@ const getUniversityStudentDetails = async (req, res) => {
         projects.forEach(walk);
         commitsCount = all.length;
       }
-    } else if (Array.isArray(intern.gitCommits)) {
+    } else if (typeof intern.commitsCount === "number" && intern.commitsCount > 0) {
+      commitsCount = intern.commitsCount;
+    } else if (Array.isArray(intern.gitCommits) && intern.gitCommits.length > 0) {
       commitsCount = intern.gitCommits.length;
+    } else if (typeof intern.commitsCount === "number") {
+      commitsCount = intern.commitsCount;
     }
 
-    // Work Quality Rate (Average rate from Logbooks and GitHub commits)
-    const logbookCount = dailyRecords.length;
-    const logbookRate = Math.min(100, Math.round((logbookCount / attMetrics.workingDays) * 100));
-    const expectedCommits = Math.max(1, Math.ceil(attMetrics.workingDays / 5) * 2);
-    const commitRate = commitsCount > 0 ? Math.min(100, Math.round((commitsCount / expectedCommits) * 100)) : 0;
-    const workQualityRate = Math.round((attMetrics.meetingAttendanceRate + attMetrics.dailyAttendanceRate + logbookRate + commitRate) / 4);
+    // Performance Rate (Exact match with AdminAnalytics)
+    const logbookRate = attMetrics.logbookRecordRate;
+    const baseAvg = (logbookRate + attMetrics.meetingAttendanceRate) / 2;
+    let performanceRate = 0;
+    const specName = intern.field_of_spec_name || intern.fieldOfSpecialization;
+    if (isNoCommitSpecialization(specName)) {
+      performanceRate = Math.min(100, Math.round(baseAvg));
+    } else {
+      performanceRate = Math.min(100, Math.round(baseAvg + commitsCount));
+    }
+    const workQualityRate = performanceRate;
 
     // ── Build Comprehensive Attendance Records (Reconciling intern.attendance + faceLogs + dailyRecords) ──
     const dailyEntriesByDate = buildDailyAttendanceByDate(

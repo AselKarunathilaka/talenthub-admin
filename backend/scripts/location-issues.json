@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-08-22T17:52:55.991Z",
+  "issues": [
+    {
+      "id": "3791",
+      "name": "Sineth Ransen De Silva",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "No.08,George Jayasinha mw,Polhena,Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3844",
+      "name": "Hewa Batuwitage Dewmi Sandothma",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "Dalugama, Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3645",
+      "name": "A.W.I SAHANJITH",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "242/16 mukalanhena bingiriya",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3704",
+      "name": "Tharindu Dilshan Wickramasinghe",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "No:129/3, Dewalagodella, Akaragama",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3707",
+      "name": "R.P. Nilukshi Kaushalya Wijerathne",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Pahalawaththa, Ambanpola",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3730",
+      "name": "Mithila Rasanjith Wickramatunge",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "163/2/1, Walpitamulla, Devalapola",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3858",
+      "name": "Ethugal Pedige Ravindu Sachintha Dissanayaka",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "C 8/3 Minimaruwa Alwathura",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3868",
+      "name": "Bodawaththe Gedara Nimesha Nethmina Samarathunge",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "178 Bodawaththa Udagunnepana",
+      "action": "geocode failed"
+    }
+  ]
+}
