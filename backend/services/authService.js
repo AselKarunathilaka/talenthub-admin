@@ -217,7 +217,19 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      message: "Login successful!",
+    };
   }
 
   async internLogin(email, password) {
@@ -247,7 +259,19 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      message: "Login successful!",
+    };
   }
 
   // Gate Staff Login

@@ -337,6 +337,14 @@ async function syncTalentTrailData() {
     console.warn("[TalentTrailSync] Git commit sync failed:", e.message);
   });
 
+  // Background evaluate TalentHub restrictions
+  try {
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    talentHubRestrictionService.syncAllRestrictions().catch((e) => {
+      console.warn("[TalentTrailSync] Restriction sync error:", e.message);
+    });
+  } catch (_) {}
+
   return { processed: updated, errors, duration };
 }
 

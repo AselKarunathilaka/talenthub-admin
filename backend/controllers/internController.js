@@ -171,7 +171,21 @@ const getInternByIdEach = async (req, res) => {
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
-    res.status(200).json(intern);
+
+    // Evaluate TalentHub project restriction in real-time
+    const talentHubRestrictionService = require("../services/talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+
+    const internObj = intern.toObject ? intern.toObject() : { ...intern };
+    internObj.talentHubRestricted = access.restricted;
+    internObj.talentHubRestrictionReason = access.reason;
+    internObj.talentHubOverride = access.isOverride;
+    internObj.talentHubOverrideExpiresAt = access.overrideExpiresAt || intern.talentHubOverrideExpiresAt || null;
+    internObj.daysRemaining = access.daysRemaining || null;
+    internObj.enrolledProjects = access.projects || [];
+    internObj.enrolledProjectCount = access.projectCount || 0;
+
+    res.status(200).json(internObj);
   } catch (error) {
     res
       .status(500)

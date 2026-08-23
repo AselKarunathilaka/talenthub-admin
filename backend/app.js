@@ -23,6 +23,7 @@ const holidayAdminRoutes = require("./routes/holidayAdminRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
+const talentHubRestrictionRoutes = require("./routes/talentHubRestrictionRoutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
 const universityRoutes = require("./routes/universityRoutes");
@@ -79,6 +80,7 @@ app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
+app.use("/api/admin/talenthub-restrictions", talentHubRestrictionRoutes);
 
 //Sri Lanka Holidays (public read; admin management under /api/admin/holidays)
 app.use("/api/holidays", holidayRoutes);

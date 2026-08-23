@@ -22,6 +22,7 @@ import {
   Building2,
   BarChart2,
   TrendingUp,
+  ShieldAlert,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import AdminNavbar from "./AdminNavbar";
@@ -60,6 +61,7 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/analytics", label: "Analytics", icon: <TrendingUp className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.view" },
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/talenthub-restrictions", label: "Hub Restrictions", icon: <ShieldAlert className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     { to: "/admin/university-requests", label: "University Access", icon: <Building2 className="h-[18px] w-[18px]" />, hoverColor: "#ffffff" },
     // Holidays is reached from the Dashboard header, not the sidebar — an odd
     // number of links would break the 2-column grid on mobile.

@@ -34,6 +34,7 @@ import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
 import LogbookRestrictions from "../pages/LogbookRestrictions";
+import TalentHubRestrictions from "../pages/TalentHubRestrictions";
 import AdminHolidays from "../pages/AdminHolidays";
 import AdminUserManagement from "../pages/AdminUserManagement";
 import UniversityLogin from "../pages/UniversityLogin";
@@ -228,6 +229,10 @@ const AppRoutes = () => {
       <Route
         path="/admin/logbook-restrictions"
         element={<LogbookRestrictions />}
+      />
+      <Route
+        path="/admin/talenthub-restrictions"
+        element={<TalentHubRestrictions />}
       />
       <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
