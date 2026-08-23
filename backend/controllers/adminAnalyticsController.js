@@ -212,7 +212,7 @@ const getAdminAnalytics = async (req, res) => {
     const [dailyRecords, faceLogs, talentTrailSyncRecords, projectRecords] = await Promise.all([
       // (A) DailyRecords
       DailyRecord.find({ internId: { $in: internIds } })
-        .select("internId date status meetingAttendance")
+        .select("internId date status meetingAttendance task")
         .lean(),
 
       // (B) FaceAttendanceLog (authoritative audit for face scans)
@@ -225,19 +225,14 @@ const getAdminAnalytics = async (req, res) => {
         .select("internId attendanceDate attendanceTime")
         .lean(),
 
-      // (C) TalentTrail sync projects
-      InternTalentTrailSync.find({
-        $or: [
-          { internRef: { $in: internIds } },
-          { email: { $in: internEmails } },
-        ],
-      })
-        .select("internRef email projects")
+      // (C) TalentTrail sync projects (retrieve all to avoid case sensitivity / missing internRef drops)
+      InternTalentTrailSync.find({})
+        .select("internRef email internCode name talentTrailInternId projects")
         .lean(),
 
       // (D) System projects
       Project.find({})
-        .select("projectName status team tasks.assignedTo")
+        .select("projectName status description team tasks.assignedTo feedback.internId")
         .lean(),
     ]);
 
@@ -261,41 +256,74 @@ const getAdminAnalytics = async (req, res) => {
       }
     }
 
-    const talentTrailMap = new Map();
-    const talentTrailByEmail = new Map();
+    // Build TalentTrail lookup maps supporting all identifiers (aggregates multiple sync records)
+    const ttByInternRef = new Map();
+    const ttByEmail = new Map();
+    const ttByInternCode = new Map();
+    const ttByNumericId = new Map();
+    const ttByName = new Map();
+
+    const appendToMap = (map, key, items) => {
+      if (!key || !Array.isArray(items) || items.length === 0) return;
+      const k = String(key).trim().toLowerCase();
+      if (!k) return;
+      if (!map.has(k)) map.set(k, []);
+      map.get(k).push(...items);
+    };
+
     for (const sync of talentTrailSyncRecords) {
+      const syncProjects = Array.isArray(sync.projects) ? sync.projects : [];
+      if (syncProjects.length === 0) continue;
+
       if (sync.internRef) {
-        talentTrailMap.set(sync.internRef.toString(), sync.projects || []);
+        appendToMap(ttByInternRef, String(sync.internRef), syncProjects);
       }
       if (sync.email) {
-        talentTrailByEmail.set(sync.email.toLowerCase(), sync.projects || []);
+        appendToMap(ttByEmail, sync.email, syncProjects);
+      }
+      if (sync.internCode) {
+        appendToMap(ttByInternCode, sync.internCode, syncProjects);
+      }
+      if (sync.talentTrailInternId !== undefined && sync.talentTrailInternId !== null) {
+        appendToMap(ttByNumericId, String(sync.talentTrailInternId), syncProjects);
+      }
+      if (sync.name) {
+        appendToMap(ttByName, sync.name, syncProjects);
       }
     }
 
-    // Map projects by team and assigned intern
+    // Map projects by intern ID and feedback intern ID
     const projectsByInternId = new Map();
-    const projectsByTeam = new Map();
+    const projectsByFeedbackInternId = new Map();
+
+    const addProjectForIntern = (map, internId, projObj) => {
+      const id = String(internId);
+      if (!map.has(id)) map.set(id, []);
+      map.get(id).push(projObj);
+    };
 
     for (const proj of projectRecords) {
       const formattedStatus = formatProjectStatus(proj.status);
-      if (proj.team) {
-        if (!projectsByTeam.has(proj.team)) projectsByTeam.set(proj.team, []);
-        projectsByTeam.get(proj.team).push({
-          name: proj.projectName,
-          status: formattedStatus,
-        });
-      }
+      const projObj = {
+        name: proj.projectName,
+        status: formattedStatus,
+        description: proj.description || "",
+      };
+
       if (Array.isArray(proj.tasks)) {
         for (const task of proj.tasks) {
           if (Array.isArray(task.assignedTo)) {
             for (const assignedId of task.assignedTo) {
-              const idStr = assignedId.toString();
-              if (!projectsByInternId.has(idStr)) projectsByInternId.set(idStr, []);
-              projectsByInternId.get(idStr).push({
-                name: proj.projectName,
-                status: formattedStatus,
-              });
+              if (assignedId) addProjectForIntern(projectsByInternId, assignedId, projObj);
             }
+          }
+        }
+      }
+
+      if (Array.isArray(proj.feedback)) {
+        for (const fb of proj.feedback) {
+          if (fb && fb.internId) {
+            addProjectForIntern(projectsByFeedbackInternId, fb.internId, projObj);
           }
         }
       }
@@ -458,45 +486,115 @@ const getAdminAnalytics = async (req, res) => {
       const projectsList = [];
       const seenProjectNames = new Set();
 
-      // 1. From TalentTrail sync
-      const ttProjects =
-        talentTrailMap.get(idStr) ||
-        talentTrailByEmail.get((intern.Trainee_Email || "").toLowerCase()) ||
-        [];
-      ttProjects.forEach((p) => {
-        if (p.projectName && !seenProjectNames.has(p.projectName)) {
-          seenProjectNames.add(p.projectName);
-          const pStatus = formatProjectStatus(p.status);
-          projectsList.push({ name: p.projectName, status: pStatus });
-        }
-      });
-
-      // 2. From assigned tasks in Project model
-      const assignedProjects = projectsByInternId.get(idStr) || [];
-      assignedProjects.forEach((p) => {
-        if (p.name && !seenProjectNames.has(p.name)) {
-          seenProjectNames.add(p.name);
-          projectsList.push(p);
-        }
-      });
-
-      // 3. From team in Project model
-      if (intern.team) {
-        const teamProjects = projectsByTeam.get(intern.team) || [];
-        teamProjects.forEach((p) => {
-          if (p.name && !seenProjectNames.has(p.name)) {
-            seenProjectNames.add(p.name);
-            projectsList.push(p);
-          }
+      const addProject = (pName, pStatus) => {
+        if (!pName) return;
+        const trimmedName = String(pName).trim();
+        if (!trimmedName) return;
+        const normalizedKey = trimmedName.toLowerCase();
+        if (seenProjectNames.has(normalizedKey)) return;
+        seenProjectNames.add(normalizedKey);
+        projectsList.push({
+          name: trimmedName,
+          status: formatProjectStatus(pStatus),
         });
+      };
+
+      // 1. From TalentTrail sync (combine all matched sources)
+      const internEmailNorm = (intern.Trainee_Email || "").trim().toLowerCase();
+      const internIdNorm = String(intern.Trainee_ID || "").trim().toLowerCase();
+      const internDigits = String(intern.Trainee_ID || "").replace(/\D/g, "");
+      const internNameNorm = (intern.Trainee_Name || "").trim().toLowerCase();
+      const internTeamNorm = (intern.team || "").trim().toLowerCase();
+
+      const allMatchedTTProjects = [
+        ...(ttByInternRef.get(idStr.toLowerCase()) || []),
+        ...(internEmailNorm ? (ttByEmail.get(internEmailNorm) || []) : []),
+        ...(internIdNorm ? (ttByInternCode.get(internIdNorm) || []) : []),
+        ...(internDigits ? (ttByNumericId.get(internDigits) || []) : []),
+        ...(internNameNorm ? (ttByName.get(internNameNorm) || []) : []),
+      ];
+
+      for (const p of allMatchedTTProjects) {
+        if (p && p.projectName) {
+          addProject(p.projectName, p.status);
+        }
       }
 
-      // Default project badge if none found
-      if (projectsList.length === 0 && intern.team) {
-        projectsList.push({
-          name: `${intern.team} Project`,
-          status: "In Progress",
-        });
+      // 2. From assigned tasks in Project model
+      const assignedTaskProjects = projectsByInternId.get(idStr) || [];
+      for (const p of assignedTaskProjects) {
+        addProject(p.name, p.status);
+      }
+
+      // 3. From feedback in Project model
+      const assignedFeedbackProjects = projectsByFeedbackInternId.get(idStr) || [];
+      for (const p of assignedFeedbackProjects) {
+        addProject(p.name, p.status);
+      }
+
+      // 4. From team in Project model
+      if (internTeamNorm || internIdNorm || internNameNorm) {
+        for (const proj of projectRecords) {
+          if (!proj.team) continue;
+          const projTeamRaw = String(proj.team).trim().toLowerCase();
+          const teamTokens = projTeamRaw.split(/[,;\/|]+/).map((t) => t.trim()).filter(Boolean);
+
+          const isTeamMatch =
+            (internTeamNorm && (teamTokens.includes(internTeamNorm) || projTeamRaw === internTeamNorm || internTeamNorm.includes(projTeamRaw))) ||
+            (internIdNorm && (teamTokens.includes(internIdNorm) || projTeamRaw === internIdNorm)) ||
+            (internNameNorm && (teamTokens.includes(internNameNorm) || projTeamRaw === internNameNorm));
+
+          if (isTeamMatch && proj.projectName) {
+            addProject(proj.projectName, proj.status);
+          }
+        }
+      }
+
+      // 5. From Git Commits Cache if available
+      const gitCached = gitCommitsCache ? gitCommitsCache.get(`git_commits_${intern._id}`) : null;
+      if (gitCached && gitCached.data) {
+        const pCommits = Array.isArray(gitCached.data)
+          ? gitCached.data
+          : (gitCached.data.projectCommits || []);
+        for (const p of pCommits) {
+          if (p && (p.projectName || p.name)) {
+            addProject(p.projectName || p.name, p.status || "In Progress");
+          }
+        }
+      }
+
+      // 6. From meeting attendance / logbook records with specific non-generic project names
+      const GENERIC_MEETING_NAMES = new Set([
+        "general meeting",
+        "daily standup",
+        "daily stand-up",
+        "weekly meeting",
+        "all hands",
+        "all-hands",
+        "orientation",
+        "standup",
+        "review meeting",
+        "daily check-in",
+        "check-in",
+        "meeting",
+      ]);
+
+      for (const dr of internDrs) {
+        if (Array.isArray(dr.meetingAttendance)) {
+          for (const m of dr.meetingAttendance) {
+            const pName = m.projectName || m.projectKey;
+            if (pName && !GENERIC_MEETING_NAMES.has(pName.trim().toLowerCase())) {
+              addProject(pName, "In Progress");
+            }
+          }
+        }
+      }
+
+      for (const entry of attList) {
+        const pName = entry.projectName || entry.projectKey;
+        if (pName && !GENERIC_MEETING_NAMES.has(pName.trim().toLowerCase())) {
+          addProject(pName, "In Progress");
+        }
       }
 
       return {

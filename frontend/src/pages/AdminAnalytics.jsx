@@ -105,26 +105,43 @@ const getRateTextColor = (rate) => {
 };
 
 const getStatusBadge = (status) => {
-  switch (status) {
+  const s = String(status || "").trim();
+  switch (s) {
     case "In Progress":
     case "Active":
     case "On Track":
+    case "IN_PROGRESS":
+    case "INPROGRESS":
+    case "ACTIVE":
       return "bg-blue-50 text-blue-700 border-blue-200";
     case "Completed":
     case "Good":
+    case "COMPLETE":
+    case "COMPLETED":
+    case "DONE":
       return "bg-emerald-50 text-emerald-700 border-emerald-200";
     case "On Hold":
+    case "ON_HOLD":
+    case "ONHOLD":
+    case "HOLD":
       return "bg-amber-50 text-amber-700 border-amber-200";
     case "At Risk":
     case "Delayed":
+    case "AT_RISK":
+    case "DELAYED":
       return "bg-orange-50 text-orange-700 border-orange-200";
     case "Planning":
     case "Testing":
+    case "PLANNING":
+    case "TESTING":
       return "bg-purple-50 text-purple-700 border-purple-200";
     case "Retired":
+    case "RETIRED":
       return "bg-slate-100 text-slate-600 border-slate-300";
     case "Cancelled":
     case "Canceled":
+    case "CANCELLED":
+    case "CANCELED":
     case "Poor":
     case "Inactive":
       return "bg-rose-50 text-rose-700 border-rose-200";
@@ -397,12 +414,19 @@ const AdminAnalytics = () => {
         const spec = (item.specialization || "").toLowerCase();
         const institute = (item.institute || item.university || "").toLowerCase();
 
+        const projectMatches = (item.projects || []).some(
+          (p) =>
+            (p?.name || p?.projectName || "").toLowerCase().includes(term) ||
+            (p?.status || "").toLowerCase().includes(term)
+        );
+
         const matches =
           name.includes(term) ||
           email.includes(term) ||
           traineeId.includes(term) ||
           spec.includes(term) ||
-          institute.includes(term);
+          institute.includes(term) ||
+          projectMatches;
 
         if (!matches) return false;
       }
@@ -524,7 +548,7 @@ const AdminAnalytics = () => {
       item.meetingAttendanceCount,
       item.logbookCount,
       isNoCommitSpecialization(item.specialization) ? "N/A" : item.commitCount,
-      `"${(item.projects || []).map((p) => p.name).join(", ")}"`
+      `"${(item.projects || []).map((p) => p?.name || p?.projectName || String(p)).join(", ")}"`
     ]);
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -584,7 +608,7 @@ const AdminAnalytics = () => {
           item.institute || item.university || "Not Specified",
           item.specialization || "",
           formatDate(item.startDate) || "",
-          (item.projects || []).map(p => p.name).join("\n"),
+          (item.projects || []).map(p => p?.name || p?.projectName || String(p)).join("\n"),
           `${item.dailyAttendanceRate}%`,
           `${item.meetingAttendanceRate}%`,
           `${item.performanceRate}%`,
@@ -762,10 +786,10 @@ const AdminAnalytics = () => {
                         <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-100 rounded-lg p-2.5">
                           <div className="flex items-center gap-2 truncate pr-2">
                             <Briefcase className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
-                            <span className="text-xs font-semibold text-slate-700 truncate">{proj.name}</span>
+                            <span className="text-xs font-semibold text-slate-700 truncate">{proj?.name || proj?.projectName || String(proj)}</span>
                           </div>
-                          <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj.status)}`}>
-                            {proj.status}
+                          <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
+                            {proj?.status || "In Progress"}
                           </span>
                         </div>
                       ))
@@ -1377,10 +1401,10 @@ const AdminAnalytics = () => {
                                                   <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3 hover:bg-slate-100/70 transition-colors">
                                                     <div className="flex items-center gap-2 truncate pr-2">
                                                       <Briefcase className="w-4 h-4 text-indigo-500 flex-shrink-0" />
-                                                      <span className="text-sm font-semibold text-slate-700 truncate">{proj.name}</span>
+                                                      <span className="text-sm font-semibold text-slate-700 truncate">{proj?.name || proj?.projectName || String(proj)}</span>
                                                     </div>
-                                                    <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj.status)}`}>
-                                                      {proj.status}
+                                                    <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
+                                                      {proj?.status || "In Progress"}
                                                     </span>
                                                   </div>
                                                 ))
