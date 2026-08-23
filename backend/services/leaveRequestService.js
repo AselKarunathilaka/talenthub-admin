@@ -756,13 +756,21 @@ class LeaveRequestService {
     });
 
     for (const date of workingDates) {
+      const internObj = leaveRequest.intern;
+      const internId = internObj._id || internObj;
+      const traineeId =
+        internObj.Trainee_ID ||
+        internObj.traineeId ||
+        leaveRequest.internTraineeId;
+
       await DailyRecord.findOneAndUpdate(
         {
-          internId: leaveRequest.intern._id || leaveRequest.intern,
+          internId,
           date,
         },
         {
           $set: {
+            ...(traineeId ? { traineeId } : {}),
             stack: "Formal Extended Leave",
             task: `Formal extended leave approved. Reason: ${leaveRequest.reason}`,
             progress: "Approved extended leave with proof document submitted.",

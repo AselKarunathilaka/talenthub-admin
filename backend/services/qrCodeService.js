@@ -6,6 +6,7 @@ const dotenv = require("../config/dotenv");
 const sendEmail = require("../utils/emailSender");
 const AttendanceWorkflowService = require("./attendanceWorkflowService");
 const externalConfig = require("../config/externalSystems");
+const { recordDailyAttendance } = require("./dailyAttendanceLogService");
 
 // Generate QR Code for marking attendance
 const generateQRCode = async (internId) => {
@@ -159,6 +160,21 @@ const markInternDailyAttendanceLegacy = async (internId, qrCode = null) => {
   }
   // Note: We don't create a new daily record if one doesn't exist
   // The intern should fill their daily log first
+
+  // ── Write to dedicated daily attendance log collection ─────────────────────
+  recordDailyAttendance({
+    internId,
+    traineeId: intern.Trainee_ID || intern.traineeId || "",
+    traineeName: intern.Trainee_Name || "",
+    date: today,
+    attendanceTime: new Date(),
+    markType: "daily_qr",
+    status: "present",
+    isCheckout: false,
+    checkOutTime: null,
+    sessionId: qrCode || null,
+    source: "qr",
+  });
 };
   
 // Mark meeting attendance

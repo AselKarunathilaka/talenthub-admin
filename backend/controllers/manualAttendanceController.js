@@ -1,6 +1,8 @@
 const Intern = require("../models/Intern");
 const moment = require("moment-timezone");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { recordDailyAttendance } = require("../services/dailyAttendanceLogService");
+const { recordMeetingAttendance } = require("../services/meetingAttendanceLogService");
 
 const TZ = "Asia/Colombo";
 
@@ -127,6 +129,39 @@ exports.markManualAttendance = async (req, res) => {
 
     await intern.save();
 
+    // ── Write to dedicated daily attendance log collection (daily marks only) ──
+    if (mode === "daily") {
+      const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+      recordDailyAttendance({
+        internId: intern._id,
+        traineeId: intern.Trainee_ID || intern.traineeId || "",
+        traineeName: intern.Trainee_Name || "",
+        date: dateStr,
+        attendanceTime: now,
+        markType: type, // "manual_daily"
+        status: status.toLowerCase(),
+        isCheckout: false,
+        checkOutTime: null,
+        sessionId: null,
+        source: "manual",
+      });
+    } else if (mode === "meeting") {
+      const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+      recordMeetingAttendance({
+        internId: intern._id,
+        traineeId: intern.Trainee_ID || intern.traineeId || "",
+        traineeName: intern.Trainee_Name || "",
+        date: dateStr,
+        attendanceTime: now,
+        markType: type, // "manual_meeting"
+        projectName: meetingName ? meetingName.trim() : "",
+        meetingTitle: meetingName ? meetingName.trim() : "",
+        status: status.toLowerCase(),
+        sessionId: null,
+        source: "manual",
+      });
+    }
+
     return res.json({
       success: true,
       message: `${status} marked as ${type} for ${intern.Trainee_Name}`,
@@ -242,6 +277,38 @@ exports.bulkMarkAttendance = async (req, res) => {
         }
 
         await intern.save();
+
+        if (mode === "daily") {
+          const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+          recordDailyAttendance({
+            internId: intern._id,
+            traineeId: intern.Trainee_ID || intern.traineeId || "",
+            traineeName: intern.Trainee_Name || "",
+            date: dateStr,
+            attendanceTime: now,
+            markType: type,
+            status: status.toLowerCase(),
+            isCheckout: false,
+            checkOutTime: null,
+            sessionId: null,
+            source: "manual",
+          });
+        } else if (mode === "meeting") {
+          const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+          recordMeetingAttendance({
+            internId: intern._id,
+            traineeId: intern.Trainee_ID || intern.traineeId || "",
+            traineeName: intern.Trainee_Name || "",
+            date: dateStr,
+            attendanceTime: now,
+            markType: type,
+            projectName: meetingName ? meetingName.trim() : "",
+            meetingTitle: meetingName ? meetingName.trim() : "",
+            status: status.toLowerCase(),
+            sessionId: null,
+            source: "manual",
+          });
+        }
 
         results.push({
           internId: intern.Trainee_ID,
@@ -443,6 +510,21 @@ exports.approveManualRequest = async (req, res) => {
        };
        intern.attendance.push(record);
        await intern.save();
+
+       const dateStr = moment().tz(TZ).format("YYYY-MM-DD");
+       recordMeetingAttendance({
+         internId: intern._id,
+         traineeId: intern.Trainee_ID || intern.traineeId || "",
+         traineeName: intern.Trainee_Name || "",
+         date: dateStr,
+         attendanceTime: new Date(),
+         markType: "meeting",
+         projectName: request.projectName || "Manual Request Meeting",
+         meetingTitle: request.projectName || "Manual Request Meeting",
+         status: "present",
+         sessionId: null,
+         source: "manual",
+       });
     }
 
     // Update request status
