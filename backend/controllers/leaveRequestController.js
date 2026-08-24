@@ -1,6 +1,7 @@
 const leaveRequestService = require("../services/leaveRequestService");
 const User = require("../models/User");
 const fs = require("fs");
+const { validateLeaveReason } = require("../utils/leaveValidation");
 
 class LeaveRequestController {
   // Create a new leave request (Intern only)
@@ -25,6 +26,15 @@ class LeaveRequestController {
           success: false,
           message:
             "All fields are required: leaveDate, leaveTime, purpose, reason, National ID",
+        });
+      }
+
+      // Validate reason pattern (reject repeated single characters / gibberish)
+      const reasonValidation = validateLeaveReason(reason);
+      if (!reasonValidation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: reasonValidation.error,
         });
       }
 

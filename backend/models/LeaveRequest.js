@@ -54,8 +54,21 @@ const leaveRequestSchema = new mongoose.Schema(
     },
     reason: {
       type: String,
-      required: true,
-      minlength: 10,
+      required: [true, "Reason is required"],
+      minlength: [10, "Reason must be at least 10 characters long"],
+      trim: true,
+      validate: {
+        validator: function (value) {
+          const { validateLeaveReason } = require("../utils/leaveValidation");
+          const result = validateLeaveReason(value);
+          return result.isValid;
+        },
+        message: (props) => {
+          const { validateLeaveReason } = require("../utils/leaveValidation");
+          const result = validateLeaveReason(props.value);
+          return result.error || "Reason contains invalid characters or repetitive pattern";
+        },
+      },
     },
     proofDocument: {
       data: {
