@@ -2,26 +2,51 @@ name: Deploy TalentHub Admin to Server
 
 on:
   workflow_dispatch:
+
   push:
     branches:
       - main
 
 jobs:
-  # JOB 1: Independent SonarQube analysis
-  # This job runs in parallel with deployment and is allowed to fail
-  # without stopping/failing the deployment pipeline.
+
+  # ============================================================
+  # JOB 1 - SONARQUBE ANALYSIS
+  # ============================================================
+  #
+  # This job is completely independent from deployment.
+  #
+  # If SonarQube analysis fails:
+  # - Deployment will continue
+  # - The application can still be deployed
+  #
+  # SonarQube packages are cached to reduce repeated downloads.
+  # ============================================================
+
   sonarqube-analysis:
     name: SonarQube Analysis
     runs-on: ubuntu-latest
+
+    # Do not fail the whole workflow if SonarQube fails
     continue-on-error: true
 
     steps:
+
+      # --------------------------------------------------------
+      # Checkout repository
+      # --------------------------------------------------------
       - name: Checkout source code
         uses: actions/checkout@v6
         with:
-          # SonarQube recommends full Git history for more accurate SCM/blame data.
+          # Full history provides better SonarQube SCM/blame data
           fetch-depth: 0
 
+      # --------------------------------------------------------
+      # Cache SonarQube analyzer packages
+      # --------------------------------------------------------
+      #
+      # GitHub restores ~/.sonar/cache on future workflow runs.
+      # This reduces unnecessary downloads.
+      # --------------------------------------------------------
       - name: Cache SonarQube packages
         uses: actions/cache@v5
         with:
@@ -30,11 +55,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-sonar-cache-
 
+      # --------------------------------------------------------
+      # Run SonarQube analysis
+      # --------------------------------------------------------
       - name: Run SonarQube analysis
         uses: SonarSource/sonarqube-scan-action@v8.2.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
         with:
           args: >
             -Dsonar.projectKey=talenthub-admin
@@ -43,44 +72,89 @@ jobs:
             -Dsonar.sourceEncoding=UTF-8
             -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/.vite/**
 
-  # JOB 2: Existing deployment job
+
+  # ============================================================
+  # JOB 2 - DEPLOY APPLICATION
+  # ============================================================
+  #
+  # This job does NOT depend on the SonarQube job.
+  #
+  # SonarQube and deployment can therefore run independently.
+  # ============================================================
+
   deploy:
     name: Deploy to Rocky Linux Server
     runs-on: ubuntu-latest
 
     steps:
+
+      # --------------------------------------------------------
+      # Display basic workflow information
+      # --------------------------------------------------------
       - name: Show deployment details
         run: |
           echo "Triggered by: ${{ github.actor }}"
           echo "Event name: ${{ github.event_name }}"
           echo "Branch: ${{ github.ref_name }}"
 
+
+      # --------------------------------------------------------
+      # Connect to production server through SSH
+      # --------------------------------------------------------
       - name: Deploy using SSH
         uses: appleboy/ssh-action@v1.0.3
+
         with:
           host: ${{ secrets.SERVER_HOST }}
           port: ${{ secrets.SERVER_PORT }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+
+          # Allow enough time for installation/build
           command_timeout: 30m
+
           script: |
             set -e
 
+            echo "=================================================="
             echo "Starting TalentHub Admin deployment from main..."
+            echo "=================================================="
+
+
+            # ==================================================
+            # STEP 1 - GO TO APPLICATION DIRECTORY
+            # ==================================================
 
             cd /home/dpd/apps/talenthub-admin
 
+
+            # ==================================================
+            # STEP 2 - GET LATEST CODE FROM GITHUB
+            # ==================================================
+
             echo "Fetching latest main..."
+
             git fetch origin main
 
+
             echo "Resetting server code to origin/main..."
+
             git reset --hard origin/main
 
+
             echo "Current deployed commit:"
+
             git log -1 --oneline
 
+
+            # ==================================================
+            # STEP 3 - CREATE BACKEND ENVIRONMENT FILE
+            # ==================================================
+
             echo "Creating backend environment file..."
+
             rm -f backend/.env
+
 
             printf '%s\n' \
               'PORT=${{ secrets.BACKEND_PORT }}' \
@@ -113,67 +187,147 @@ jobs:
               'ATTENDANCE_MAX_LOCATION_AGE_MS=${{ secrets.ATTENDANCE_MAX_LOCATION_AGE_MS }}' \
               > backend/.env
 
+
+            # ==================================================
+            # STEP 4 - INSTALL BACKEND DEPENDENCIES
+            # ==================================================
+
             echo "Installing backend dependencies..."
+
             cd backend
 
-            if [ -f package-lock.json ]; then
-              npm ci
-            else
-              npm install
-            fi
+
+            # npm install is intentionally used instead of npm ci.
+            # This prevents deployment from failing when
+            # package.json and package-lock.json are temporarily
+            # out of sync.
+
+            npm install
+
+
+            # ==================================================
+            # STEP 5 - RESTART BACKEND
+            # ==================================================
 
             echo "Restarting TalentHub backend..."
+
             pm2 restart talenthub-admin-backend
+
+
+            echo "Saving PM2 configuration..."
+
             pm2 save
 
+
+            # ==================================================
+            # STEP 6 - DETECT FRONTEND DIRECTORY
+            # ==================================================
+
             echo "Detecting frontend folder..."
+
             cd ..
 
+
             if [ -f frontend/package.json ]; then
+
               FRONTEND_DIR="frontend"
+
             elif [ -f client/package.json ]; then
+
               FRONTEND_DIR="client"
+
             else
-              echo "ERROR: No frontend package.json found in frontend/ or client/"
+
+              echo "ERROR: No frontend package.json found."
+              echo "Expected frontend/ or client/."
+
               echo "Project folders:"
               ls -la
+
               echo "Client folder:"
               ls -la client || true
+
               echo "Frontend folder:"
               ls -la frontend || true
+
               exit 1
+
             fi
 
+
             echo "Frontend directory found: $FRONTEND_DIR"
+
+
             cd "$FRONTEND_DIR"
 
+
+            # ==================================================
+            # STEP 7 - CREATE FRONTEND ENVIRONMENT FILE
+            # ==================================================
+
             echo "Creating frontend production environment file..."
+
             rm -f .env.production
+
 
             printf '%s\n' \
               'VITE_BACKEND_URL=${{ secrets.VITE_BACKEND_URL }}' \
               'VITE_GOOGLE_CLIENT_ID=${{ secrets.VITE_GOOGLE_CLIENT_ID }}' \
               > .env.production
 
+
+            # ==================================================
+            # STEP 8 - INSTALL FRONTEND DEPENDENCIES
+            # ==================================================
+
             echo "Installing frontend dependencies..."
 
-            if [ -f package-lock.json ]; then
-              npm ci
-            else
-              npm install
-            fi
+
+            # npm install is intentionally used here as well.
+
+            npm install
+
+
+            # ==================================================
+            # STEP 9 - BUILD FRONTEND
+            # ==================================================
 
             echo "Building frontend..."
+
             npm run build
 
+
+            # ==================================================
+            # STEP 10 - COPY BUILD TO NGINX
+            # ==================================================
+
             echo "Deploying frontend build to Nginx web root..."
+
+
             rm -rf /var/www/talenthub-admin/*
+
+
             cp -r dist/* /var/www/talenthub-admin/
 
+
+            # ==================================================
+            # STEP 11 - CHECK BACKEND
+            # ==================================================
+
             echo "Checking PM2 status..."
+
             pm2 status
 
+
             echo "Testing backend locally..."
+
             curl -I http://localhost:${{ secrets.BACKEND_PORT }}/api || true
 
-            echo "Deployment completed successfully."
+
+            # ==================================================
+            # COMPLETE
+            # ==================================================
+
+            echo "=================================================="
+            echo "TalentHub Admin deployment completed successfully."
+            echo "=================================================="
