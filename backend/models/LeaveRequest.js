@@ -1,6 +1,16 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 
+const isGibberishReason = (text) => {
+  const cleaned = (text || "").trim().replace(/\s+/g, "");
+  if (!cleaned) return false;
+  if (/^(.)\1*$/i.test(cleaned)) return true; // whole string is one repeated char
+  if (/(.)\1{3,}/i.test(cleaned)) return true; // 4+ same char in a row anywhere
+  const uniqueChars = new Set(cleaned.toLowerCase()).size;
+  if (cleaned.length >= 10 && uniqueChars <= 2) return true; // e.g. "ababababab"
+  return false;
+};
+
 const leaveRequestSchema = new mongoose.Schema(
   {
     intern: {
@@ -54,20 +64,16 @@ const leaveRequestSchema = new mongoose.Schema(
     },
     reason: {
       type: String,
-      required: [true, "Reason is required"],
-      minlength: [10, "Reason must be at least 10 characters long"],
-      trim: true,
+      required: true,
+      minlength: 10,
       validate: {
         validator: function (value) {
-          const { validateLeaveReason } = require("../utils/leaveValidation");
-          const result = validateLeaveReason(value);
-          return result.isValid;
+          // Only enforce gibberish check for Extended Leave
+          if (this.requestType !== "study_leave") return true;
+          return !isGibberishReason(value);
         },
-        message: (props) => {
-          const { validateLeaveReason } = require("../utils/leaveValidation");
-          const result = validateLeaveReason(props.value);
-          return result.error || "Reason contains invalid characters or repetitive pattern";
-        },
+        message:
+          "repeated/gibberish text detected. Please provide a meaningful reason for extended leave.",
       },
     },
     proofDocument: {

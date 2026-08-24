@@ -112,13 +112,6 @@ class LeaveRequestService {
         throw new Error("Intern not found");
       }
 
-      // Validate reason pattern
-      const { validateLeaveReason } = require("../utils/leaveValidation");
-      const reasonValidation = validateLeaveReason(leaveRequestData.reason);
-      if (!reasonValidation.isValid) {
-        throw new Error(reasonValidation.error);
-      }
-
       // Validate leave date is not in the past
       const leaveDate = new Date(leaveRequestData.leaveDate);
       const requestType = leaveRequestData.requestType || "short_leave";
