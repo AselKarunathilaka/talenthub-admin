@@ -1,11 +1,49 @@
 name: Deploy TalentHub Admin to Server
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
 
 jobs:
+  # JOB 1: Independent SonarQube analysis
+  # This job runs in parallel with deployment and is allowed to fail
+  # without stopping/failing the deployment pipeline.
+  sonarqube-analysis:
+    name: SonarQube Analysis
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v6
+        with:
+          # SonarQube recommends full Git history for more accurate SCM/blame data.
+          fetch-depth: 0
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@v5
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar-cache-v1
+          restore-keys: |
+            ${{ runner.os }}-sonar-cache-
+
+      - name: Run SonarQube analysis
+        uses: SonarSource/sonarqube-scan-action@v8.2.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.projectKey=talenthub-admin
+            "-Dsonar.projectName=TalentHub Admin"
+            -Dsonar.sources=backend,client
+            -Dsonar.sourceEncoding=UTF-8
+            -Dsonar.exclusions=**/node_modules/**,**/dist/**,**/build/**,**/coverage/**,**/.vite/**
+
+  # JOB 2: Existing deployment job
   deploy:
     name: Deploy to Rocky Linux Server
     runs-on: ubuntu-latest
@@ -79,7 +117,7 @@ jobs:
             cd backend
 
             if [ -f package-lock.json ]; then
-              npm ci || npm install
+              npm ci
             else
               npm install
             fi
@@ -120,7 +158,7 @@ jobs:
             echo "Installing frontend dependencies..."
 
             if [ -f package-lock.json ]; then
-              npm ci || npm install
+              npm ci
             else
               npm install
             fi
