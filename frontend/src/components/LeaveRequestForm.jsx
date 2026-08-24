@@ -171,10 +171,17 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       return;
     }
 
-    const reasonValidation = validateLeaveReason(formData.reason);
-    if (!reasonValidation.isValid) {
-      toast.error(reasonValidation.error);
+    if (formData.reason.length < 10) {
+      toast.error("Reason must be at least 10 characters long");
       return;
+    }
+
+    if (isStudyLeave) {
+      const reasonValidation = validateLeaveReason(formData.reason);
+      if (!reasonValidation.isValid) {
+        toast.error(reasonValidation.error);
+        return;
+      }
     }
 
     const today = new Date().toISOString().split("T")[0];
@@ -408,25 +415,31 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
             rows="3"
             minLength="10"
             required
-            placeholder="Please provide a detailed reason (e.g., preparing for semester exams)..."
+            placeholder={
+              isStudyLeave
+                ? "Please provide a detailed reason (e.g., preparing for semester exams)..."
+                : "Please provide a detailed reason..."
+            }
             className={`${inputClasses} resize-none ${
-              formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
+              isStudyLeave && formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
                 ? "border-rose-300 focus:border-rose-500 focus:ring-rose-200"
                 : ""
             }`}
           />
           <div className="flex justify-between items-center mt-1.5 gap-2">
             <p className={`text-[10px] font-bold ${
-              formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
+              isStudyLeave && formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
                 ? "text-rose-500"
                 : "text-gray-400 uppercase"
             }`}>
-              {formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
+              {isStudyLeave && formData.reason.length > 0 && !validateLeaveReason(formData.reason).isValid
                 ? validateLeaveReason(formData.reason).error
                 : "10 characters minimum"}
             </p>
             <p className={`text-[10px] font-bold shrink-0 ${
-              !validateLeaveReason(formData.reason).isValid ? 'text-rose-400' : 'text-[#50b748]'
+              (isStudyLeave ? !validateLeaveReason(formData.reason).isValid : formData.reason.length < 10)
+                ? 'text-rose-400'
+                : 'text-[#50b748]'
             }`}>
               {formData.reason.length} chars
             </p>
