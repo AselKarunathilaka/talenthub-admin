@@ -92,6 +92,7 @@ const {
 const {
   resolveInternId,
   getAdminInternAttendance,
+  getInternRecordCounts,
 } = require("../controllers/adminInternDetailsController");
 
 // ── All routes below require authentication ───────────────────────────────────
@@ -142,6 +143,9 @@ router.get(
   resolveInternId,
   getAdminInternAttendance,
 );
+
+// Get direct collection counts (daily attendance, meeting attendance, logbook)
+router.get("/intern/:internId/record-counts", getInternRecordCounts);
 
 // Get individual intern's real GitHub commits (per TalentTrail project repos)
 router.get("/intern/:internId/git-commits", getInternGitCommits);

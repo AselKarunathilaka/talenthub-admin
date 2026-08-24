@@ -126,14 +126,34 @@ const calcWorkingDays = (startDate, endDate = new Date(), holidays = null) => {
   return Math.max(1, count);
 };
 
-// Helper for elapsed weeks
+const getMondayWeekKey = (dateVal) => {
+  if (!dateVal) return null;
+  const raw = dateVal instanceof Date ? dateVal : new Date(dateVal);
+  if (isNaN(raw.getTime())) return null;
+  const colombo = new Date(raw.getTime() + COLOMBO_OFFSET_MS);
+  const day = colombo.getUTCDay();
+  const diff = colombo.getUTCDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(colombo);
+  monday.setUTCDate(diff);
+  const y = monday.getUTCFullYear();
+  const m = String(monday.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(monday.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+// Helper for elapsed weeks (expected meetings anchored to calendar Mondays)
 const calcElapsedWeeks = (startDate, endDate = new Date()) => {
   if (!startDate) return 1;
-  const start = new Date(startDate);
-  if (isNaN(start.getTime())) return 1;
-  const msElapsed = new Date(endDate) - start;
-  if (msElapsed <= 0) return 1;
-  return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+  const startMondayKey = getMondayWeekKey(startDate);
+  const endMondayKey = getMondayWeekKey(endDate);
+  if (!startMondayKey || !endMondayKey) return 1;
+
+  const startMon = new Date(startMondayKey + "T12:00:00Z");
+  const endMon = new Date(endMondayKey + "T12:00:00Z");
+  if (endMon < startMon) return 1;
+
+  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, diffWeeks);
 };
 
 // Canonical attendance calculation helper matching AdminAnalytics exactly
@@ -1055,9 +1075,12 @@ const getUniversityStudents = async (req, res) => {
       let performanceRate = 0;
       const specName = intern.field_of_spec_name || intern.fieldOfSpecialization;
       if (isNoCommitSpecialization(specName)) {
-        performanceRate = Math.min(100, Math.round(baseAvg));
+        performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg)));
+      } else if (commitsCount === 0) {
+        performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg)));
       } else {
-        performanceRate = Math.min(100, Math.round(baseAvg + commitsCount));
+        const B = commitsCount - attMetrics.workingDays;
+        performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg + B)));
       }
 
       let internStatus = "Good";
@@ -1257,12 +1280,31 @@ const getUniversityStudentDetails = async (req, res) => {
   try {
     const { internId } = req.params;
 
-    // Fetch intern by ID (active or inactive)
-    let intern = await Intern.findById(internId);
+    // Fetch intern by ID (active or inactive, by ObjectId, Trainee_ID, or Email)
+    let intern = null;
     let isInactiveIntern = false;
-
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        intern = await InactiveIntern.findById(internId);
+        if (intern) isInactiveIntern = true;
+      }
+    }
     if (!intern) {
-      intern = await InactiveIntern.findById(internId);
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
       if (intern) isInactiveIntern = true;
     }
 
@@ -1272,12 +1314,18 @@ const getUniversityStudentDetails = async (req, res) => {
       });
     }
 
+    const idOr = [
+      { internId: intern._id },
+      ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+    ];
+
     // Load DailyRecords, FaceAttendanceLogs (all audit logs including checkout), Projects, Feedback, TalentTrail sync, and Git commits concurrently
     const [dailyRecords, faceLogs, allProjects, rawFeedbackList, syncRecord, gitCommitsData] = await Promise.all([
-      DailyRecord.find({ internId: intern._id }).sort({ date: -1 }).lean(),
-      FaceAttendanceLog.find({ internId: intern._id }).sort({ attendanceDate: -1 }).lean(),
+      DailyRecord.find({ $or: idOr }).sort({ date: -1 }).lean(),
+      FaceAttendanceLog.find({ $or: idOr }).sort({ attendanceDate: -1 }).lean(),
       Project.find({}).lean(),
-      UniversityStudentFeedback.find({ internId: intern._id })
+      UniversityStudentFeedback.find({ $or: idOr })
         .populate("universitySupervisorId", "picture")
         .sort({ createdAt: -1 })
         .lean(),
@@ -1367,9 +1415,12 @@ const getUniversityStudentDetails = async (req, res) => {
     let performanceRate = 0;
     const specName = intern.field_of_spec_name || intern.fieldOfSpecialization;
     if (isNoCommitSpecialization(specName)) {
-      performanceRate = Math.min(100, Math.round(baseAvg));
+      performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg)));
+    } else if (commitsCount === 0) {
+      performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg)));
     } else {
-      performanceRate = Math.min(100, Math.round(baseAvg + commitsCount));
+      const B = commitsCount - attMetrics.workingDays;
+      performanceRate = Math.max(0, Math.min(100, Math.round(baseAvg + B)));
     }
     const workQualityRate = performanceRate;
 

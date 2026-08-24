@@ -251,12 +251,19 @@ const AdminAnalytics = () => {
   const navigate = useNavigate();
 
   const [analyticsData, setAnalyticsData] = useState([]);
+  const [summaryStats, setSummaryStats] = useState({ total: 0, good: 0, atRisk: 0, poor: 0 });
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [uniqueSpecializations, setUniqueSpecializations] = useState([]);
+
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState(null);
 
   // Filters and Sorting
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [specFilter, setSpecFilter] = useState("all");
   const [monthSelection, setMonthSelection] = useState("all");
@@ -268,9 +275,18 @@ const AdminAnalytics = () => {
   const [sortConfig, setSortConfig] = useState({ key: "traineeId", direction: "asc" });
   const [expandedRowId, setExpandedRowId] = useState(null);
 
-  // Pagination (default 10)
+  // Server-Side Pagination (default 25 items per page for ultra-fast loading)
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Debounce search term to prevent rapid requests while typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
 
   // Active month range computation
   const activeMonthRange = useMemo(() => {
@@ -304,22 +320,59 @@ const AdminAnalytics = () => {
       }
 
       const range = computeMonthRange(monthSelection, includeCurrentMonth);
-      let url = `${API_BASE_URL}/admin/analytics${isRefresh ? "?refresh=true" : "?"}`;
+      const params = new URLSearchParams();
+      if (isRefresh) params.set("refresh", "true");
       if (range.startDate && range.endDate) {
-        url += `&startDate=${range.startDate}&endDate=${range.endDate}&useInternStartDate=${useInternStartDate}`;
+        params.set("startDate", range.startDate);
+        params.set("endDate", range.endDate);
+        params.set("useInternStartDate", String(useInternStartDate));
+      }
+      params.set("page", String(currentPage));
+      params.set("limit", String(pageSize));
+      if (debouncedSearchTerm.trim()) params.set("search", debouncedSearchTerm.trim());
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (specFilter !== "all") params.set("specialization", specFilter);
+      if (sortConfig.key) {
+        params.set("sortBy", sortConfig.key);
+        params.set("sortOrder", sortConfig.direction);
       }
 
-      const res = await axios.get(url, {
+      const res = await axios.get(`${API_BASE_URL}/admin/analytics?${params.toString()}`, {
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
       });
 
-      if (Array.isArray(res.data)) {
-        setAnalyticsData(res.data);
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setAnalyticsData(res.data);
+          setTotalEntries(res.data.length);
+          setTotalPages(Math.max(1, Math.ceil(res.data.length / pageSize)));
+          const good = res.data.filter((i) => (Number(i.performanceRate) || 0) >= 80).length;
+          const atRisk = res.data.filter((i) => (Number(i.performanceRate) || 0) >= 60 && (Number(i.performanceRate) || 0) < 80).length;
+          const poor = res.data.filter((i) => (Number(i.performanceRate) || 0) < 60).length;
+          setSummaryStats({ total: res.data.length, good, atRisk, poor });
+        } else {
+          setAnalyticsData(res.data.interns || []);
+          if (res.data.summary) {
+            setSummaryStats(res.data.summary);
+          }
+          if (res.data.pagination) {
+            setTotalEntries(res.data.pagination.total);
+            setTotalPages(res.data.pagination.totalPages);
+          } else if (typeof res.data.total === "number") {
+            setTotalEntries(res.data.total);
+            setTotalPages(Math.max(1, Math.ceil(res.data.total / pageSize)));
+          }
+          if (Array.isArray(res.data.specializations)) {
+            setUniqueSpecializations(res.data.specializations);
+          }
+        }
       } else {
         setAnalyticsData([]);
+        setTotalEntries(0);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Error fetching admin analytics:", err);
@@ -333,45 +386,22 @@ const AdminAnalytics = () => {
       setIsLoading(false);
       setIsRefreshing(false);
     }
-  }, [navigate, monthSelection, includeCurrentMonth, useInternStartDate]);
+  }, [
+    navigate,
+    monthSelection,
+    includeCurrentMonth,
+    useInternStartDate,
+    currentPage,
+    pageSize,
+    debouncedSearchTerm,
+    statusFilter,
+    specFilter,
+    sortConfig,
+  ]);
 
   useEffect(() => {
     fetchAnalytics();
   }, [fetchAnalytics]);
-
-  // Extract unique specializations for filter dropdown
-  const uniqueSpecializations = useMemo(() => {
-    const specs = new Set();
-    analyticsData.forEach((item) => {
-      if (item.specialization) specs.add(item.specialization);
-    });
-    return Array.from(specs).sort();
-  }, [analyticsData]);
-
-  // Overall summary statistics
-  const summaryStats = useMemo(() => {
-    const total = analyticsData.length;
-    if (total === 0) {
-      return { total: 0, good: 0, atRisk: 0, poor: 0 };
-    }
-    let good = 0;
-    let atRisk = 0;
-    let poor = 0;
-
-    analyticsData.forEach((item) => {
-      const perf = Number(item.performanceRate) || 0;
-      if (perf >= 80) good++;
-      else if (perf >= 60) atRisk++;
-      else poor++;
-    });
-
-    return {
-      total,
-      good,
-      atRisk,
-      poor,
-    };
-  }, [analyticsData]);
 
   const handleSort = (key) => {
     let direction = "asc";
@@ -386,7 +416,6 @@ const AdminAnalytics = () => {
     setExpandedRowId((prev) => (prev === id ? null : id));
   };
 
-  // Reset page to 1 whenever filters change
   const handleSearchChange = (val) => {
     setSearchTerm(val);
     setCurrentPage(1);
@@ -402,94 +431,40 @@ const AdminAnalytics = () => {
     setCurrentPage(1);
   };
 
-  // Master filtered and sorted dataset
-  const sortedAndFilteredData = useMemo(() => {
-    let filterData = analyticsData.filter((item) => {
-      // 1. Search term
-      if (searchTerm.trim()) {
-        const term = searchTerm.trim().toLowerCase();
-        const name = (item.name || "").toLowerCase();
-        const email = (item.email || "").toLowerCase();
-        const traineeId = String(item.traineeId || "").toLowerCase();
-        const spec = (item.specialization || "").toLowerCase();
-        const institute = (item.institute || item.university || "").toLowerCase();
+  // Helper to fetch all matching users for PDF and CSV export
+  const fetchAllMatchingDataForExport = async () => {
+    const token = getAuthToken();
+    if (!token) return [];
 
-        const projectMatches = (item.projects || []).some(
-          (p) =>
-            (p?.name || p?.projectName || "").toLowerCase().includes(term) ||
-            (p?.status || "").toLowerCase().includes(term)
-        );
-
-        const matches =
-          name.includes(term) ||
-          email.includes(term) ||
-          traineeId.includes(term) ||
-          spec.includes(term) ||
-          institute.includes(term) ||
-          projectMatches;
-
-        if (!matches) return false;
-      }
-
-      // 2. Status filter
-      if (statusFilter !== "all") {
-        const perf = Number(item.performanceRate) || 0;
-        if (statusFilter === "Good" && perf < 80) return false;
-        if (statusFilter === "At Risk" && (perf < 60 || perf >= 80)) return false;
-        if (statusFilter === "Poor" && perf >= 60) return false;
-      }
-
-      // 3. Specialization filter
-      if (specFilter !== "all") {
-        if ((item.specialization || "").toLowerCase() !== specFilter.toLowerCase()) return false;
-      }
-
-      return true;
-    });
-
-    // Sort data
+    const range = computeMonthRange(monthSelection, includeCurrentMonth);
+    const params = new URLSearchParams();
+    params.set("exportAll", "true");
+    if (range.startDate && range.endDate) {
+      params.set("startDate", range.startDate);
+      params.set("endDate", range.endDate);
+      params.set("useInternStartDate", String(useInternStartDate));
+    }
+    if (searchTerm.trim()) params.set("search", searchTerm.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (specFilter !== "all") params.set("specialization", specFilter);
     if (sortConfig.key) {
-      filterData.sort((a, b) => {
-        let aValue = a[sortConfig.key];
-        let bValue = b[sortConfig.key];
-
-        // Trainee ID sorting (numeric comparison if numeric digits)
-        if (sortConfig.key === "traineeId") {
-          const aNum = parseInt(aValue, 10);
-          const bNum = parseInt(bValue, 10);
-          if (!isNaN(aNum) && !isNaN(bNum)) {
-            return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
-          }
-        }
-
-        // String sorting
-        if (typeof aValue === "string" || typeof bValue === "string") {
-          aValue = String(aValue || "").toLowerCase();
-          bValue = String(bValue || "").toLowerCase();
-          return sortConfig.direction === "asc"
-            ? aValue.localeCompare(bValue)
-            : bValue.localeCompare(aValue);
-        }
-
-        // Numeric sorting
-        const aNum = Number(aValue) || 0;
-        const bNum = Number(bValue) || 0;
-        return sortConfig.direction === "asc" ? aNum - bNum : bNum - aNum;
-      });
+      params.set("sortBy", sortConfig.key);
+      params.set("sortOrder", sortConfig.direction);
     }
 
-    return filterData;
-  }, [analyticsData, searchTerm, statusFilter, specFilter, sortConfig]);
+    const res = await axios.get(`${API_BASE_URL}/admin/analytics?${params.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-  // Paginated slice
-  const totalEntries = sortedAndFilteredData.length;
-  const totalPages = Math.max(1, Math.ceil(totalEntries / pageSize));
-  const effectiveCurrentPage = Math.min(currentPage, totalPages);
-
-  const paginatedData = useMemo(() => {
-    const start = (effectiveCurrentPage - 1) * pageSize;
-    return sortedAndFilteredData.slice(start, start + pageSize);
-  }, [sortedAndFilteredData, effectiveCurrentPage, pageSize]);
+    if (res.data) {
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data.interns)) return res.data.interns;
+    }
+    return analyticsData;
+  };
 
   const SortIcon = ({ columnKey }) => {
     const isSorted = sortConfig.key === columnKey;
@@ -504,68 +479,80 @@ const AdminAnalytics = () => {
     );
   };
 
-  // CSV Export Handler
-  const exportToCSV = () => {
-    if (!sortedAndFilteredData.length) return;
-    const headers = [
-      "Trainee ID",
-      "Intern Name",
-      "Email",
-      "University / Institute",
-      "Specialization",
-      "Start Date",
-      "End Date",
-      "Working Days",
-      "Expected Meetings",
-      "Daily Attendance %",
-      "Meeting Attendance %",
-      "Logbook %",
-      "Performance %",
-      "Status",
-      "Daily Att. Count",
-      "Meeting Att. Count",
-      "Logbook Count",
-      "Git Commits",
-      "Assigned Projects"
-    ];
+  // CSV Export Handler - Fetches all matching users
+  const exportToCSV = async () => {
+    try {
+      setIsExporting(true);
+      const allMatching = await fetchAllMatchingDataForExport();
+      if (!allMatching || allMatching.length === 0) return;
 
-    const rows = sortedAndFilteredData.map((item) => [
-      `"${item.traineeId || ""}"`,
-      `"${item.name || ""}"`,
-      `"${item.email || ""}"`,
-      `"${item.institute || item.university || "Not Specified"}"`,
-      `"${item.specialization || ""}"`,
-      `"${formatDate(item.startDate)}"`,
-      `"${formatDate(item.endDate)}"`,
-      item.workingDays ?? 0,
-      item.expectedMeetings ?? 0,
-      item.dailyAttendanceRate,
-      item.meetingAttendanceRate,
-      item.logbookRecordRate,
-      item.performanceRate,
-      `"${item.internStatus || ""}"`,
-      item.dailyAttendanceCount,
-      item.meetingAttendanceCount,
-      item.logbookCount,
-      isNoCommitSpecialization(item.specialization) ? "N/A" : item.commitCount,
-      `"${(item.projects || []).map((p) => p?.name || p?.projectName || String(p)).join(", ")}"`
-    ]);
+      const headers = [
+        "Trainee ID",
+        "Intern Name",
+        "Email",
+        "University / Institute",
+        "Specialization",
+        "Start Date",
+        "End Date",
+        "Working Days",
+        "Expected Meetings",
+        "Daily Attendance %",
+        "Meeting Attendance %",
+        "Logbook %",
+        "Performance %",
+        "Status",
+        "Daily Att. Count",
+        "Meeting Att. Count",
+        "Logbook Count",
+        "Git Commits",
+        "Assigned Projects"
+      ];
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    const safeMonthLabel = activeMonthRange.label.replace(/[^a-zA-Z0-9]/g, "_");
-    link.setAttribute("download", `TalentHub_Analytics_${safeMonthLabel}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      const rows = allMatching.map((item) => [
+        `"${item.traineeId || ""}"`,
+        `"${item.name || ""}"`,
+        `"${item.email || ""}"`,
+        `"${item.institute || item.university || "Not Specified"}"`,
+        `"${item.specialization || ""}"`,
+        `"${formatDate(item.startDate)}"`,
+        `"${formatDate(item.endDate)}"`,
+        item.workingDays ?? 0,
+        item.expectedMeetings ?? 0,
+        item.dailyAttendanceRate,
+        item.meetingAttendanceRate,
+        item.logbookRecordRate,
+        item.performanceRate,
+        `"${item.internStatus || ""}"`,
+        item.dailyAttendanceCount,
+        item.meetingAttendanceCount,
+        item.logbookCount,
+        isNoCommitSpecialization(item.specialization) ? "N/A" : item.commitCount,
+        `"${(item.projects || []).map((p) => p?.name || p?.projectName || String(p)).join(", ")}"`
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      const safeMonthLabel = activeMonthRange.label.replace(/[^a-zA-Z0-9]/g, "_");
+      link.setAttribute("download", `TalentHub_Analytics_${safeMonthLabel}_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export CSV:", err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
-  // PDF Export Handler
+  // PDF Export Handler - Fetches all matching users
   const exportToPDF = async () => {
-    if (!sortedAndFilteredData.length) return;
     try {
+      setIsExporting(true);
+      const allMatching = await fetchAllMatchingDataForExport();
+      if (!allMatching || allMatching.length === 0) return;
+
       const doc = new jsPDF("landscape");
       
       // Title
@@ -601,7 +588,7 @@ const AdminAnalytics = () => {
       
       const tableRows = [];
 
-      sortedAndFilteredData.forEach(item => {
+      allMatching.forEach(item => {
         const rowData = [
           item.traineeId || "",
           item.name || "",
@@ -650,10 +637,12 @@ const AdminAnalytics = () => {
         }
       });
 
-      doc.save(`TalentHub_Analytics_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+      const safeMonthLabel = activeMonthRange.label.replace(/[^a-zA-Z0-9]/g, "_");
+      doc.save(`TalentHub_Analytics_${safeMonthLabel}_${new Date().toISOString().slice(0, 10)}.pdf`);
     } catch (err) {
-      console.error("Error generating PDF:", err);
-      setError("Failed to generate PDF. Please try again.");
+      console.error("Failed to generate PDF:", err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -827,17 +816,17 @@ const AdminAnalytics = () => {
               <div className="flex items-center gap-2.5">
                 <button
                   onClick={exportToPDF}
-                  disabled={isLoading || sortedAndFilteredData.length === 0}
-                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50"
+                  disabled={isLoading || isExporting || totalEntries === 0}
+                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
                   title="Export to PDF"
                 >
                   <FileText className="w-4 h-4 text-rose-500" />
-                  <span>Export PDF</span>
+                  <span>{isExporting ? "Exporting..." : "Export PDF"}</span>
                 </button>
                 <button
                   onClick={exportToCSV}
-                  disabled={isLoading || sortedAndFilteredData.length === 0}
-                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50"
+                  disabled={isLoading || isExporting || totalEntries === 0}
+                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
                   title="Export to CSV"
                 >
                   <Download className="w-4 h-4 text-slate-500" />
@@ -847,7 +836,7 @@ const AdminAnalytics = () => {
                   onClick={() => fetchAnalytics(true)}
                   disabled={isLoading || isRefreshing}
                   title="Refresh Data"
-                  className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0 disabled:opacity-50 shadow-sm"
+                  className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0 disabled:opacity-50 shadow-sm cursor-pointer"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#000066]' : ''}`} />
                 </button>
@@ -1123,24 +1112,24 @@ const AdminAnalytics = () => {
                     Retry
                   </button>
                 </div>
-              ) : paginatedData.length > 0 ? (
+              ) : analyticsData.length > 0 ? (
                 <>
-                  {paginatedData.map((row) => <MobileCard key={row.id} row={row} />)}
+                  {analyticsData.map((row) => <MobileCard key={row.id} row={row} />)}
                   {/* Mobile Pagination */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between shadow-sm text-xs font-medium text-slate-600">
-                    <span>Page {effectiveCurrentPage} of {totalPages} ({totalEntries} items)</span>
+                    <span>Page {currentPage} of {totalPages} ({totalEntries} items)</span>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={effectiveCurrentPage <= 1}
-                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold"
+                        disabled={currentPage <= 1}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold cursor-pointer"
                       >
                         Prev
                       </button>
                       <button
                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={effectiveCurrentPage >= totalPages}
-                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold"
+                        disabled={currentPage >= totalPages}
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold cursor-pointer"
                       >
                         Next
                       </button>
@@ -1160,8 +1149,9 @@ const AdminAnalytics = () => {
                         setSearchTerm("");
                         setStatusFilter("all");
                         setSpecFilter("all");
+                        setCurrentPage(1);
                       }}
-                      className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                      className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
                     >
                       Clear All Filters
                     </button>
@@ -1233,15 +1223,15 @@ const AdminAnalytics = () => {
                             <p className="text-sm font-bold text-slate-700 mb-2">{error}</p>
                             <button
                               onClick={() => fetchAnalytics(true)}
-                              className="mt-2 px-4 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg transition-colors"
+                              className="mt-2 px-4 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg transition-colors cursor-pointer"
                             >
                               Retry
                             </button>
                           </div>
                         </td>
                       </tr>
-                    ) : paginatedData.length > 0 ? (
-                      paginatedData.map((row) => {
+                    ) : analyticsData.length > 0 ? (
+                      analyticsData.map((row) => {
                         const isNoCommit = isNoCommitSpecialization(row.specialization);
 
                         return (
@@ -1257,7 +1247,7 @@ const AdminAnalytics = () => {
                             >
                               <td className="px-2 py-3 text-slate-400 group-hover:text-[#000066] transition-colors text-center align-middle">
                                 <motion.div animate={{ rotate: expandedRowId === row.id ? 90 : 0 }}>
-                                  <ChevronRight className="w-4 h-4 mx-auto" />
+                                   <ChevronRight className="w-4 h-4 mx-auto" />
                                 </motion.div>
                               </td>
 
@@ -1441,8 +1431,9 @@ const AdminAnalytics = () => {
                                   setSearchTerm("");
                                   setStatusFilter("all");
                                   setSpecFilter("all");
+                                  setCurrentPage(1);
                                 }}
-                                className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
                               >
                                 Clear All Filters
                               </button>
@@ -1459,24 +1450,23 @@ const AdminAnalytics = () => {
               {totalEntries > 0 && (
                 <div className="bg-gradient-to-r from-[#000066] to-[#006600] px-4 md:px-6 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-4 text-[13px] font-medium text-white/90 shadow-inner">
                   <span>
-                    Showing <strong className="text-white font-bold">{(effectiveCurrentPage - 1) * pageSize + 1}</strong> to{" "}
-                    <strong className="text-white font-bold">{Math.min(effectiveCurrentPage * pageSize, totalEntries)}</strong> of{" "}
-                    <strong className="text-white font-bold">{totalEntries}</strong> entries
-                    {totalEntries !== analyticsData.length && ` (filtered from ${analyticsData.length} total)`}
+                    Showing <strong className="text-white font-bold">{(currentPage - 1) * pageSize + 1}</strong> to{" "}
+                    <strong className="text-white font-bold">{Math.min(currentPage * pageSize, totalEntries)}</strong> of{" "}
+                    <strong className="text-white font-bold">{totalEntries}</strong> matching interns
                   </span>
 
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={effectiveCurrentPage <= 1}
-                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent"
+                      disabled={currentPage <= 1}
+                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                     >
                       Prev
                     </button>
 
                     {/* Page Numbers */}
                     {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - effectiveCurrentPage) <= 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
                       .reduce((acc, p, idx, arr) => {
                         if (idx > 0 && p - arr[idx - 1] > 1) {
                           acc.push("...");
@@ -1491,8 +1481,8 @@ const AdminAnalytics = () => {
                           <button
                             key={p}
                             onClick={() => setCurrentPage(p)}
-                            className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all ${
-                              effectiveCurrentPage === p
+                            className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all cursor-pointer ${
+                              currentPage === p
                                 ? "bg-white text-[#000066] shadow-md"
                                 : "border border-white/20 hover:bg-white/10 text-white"
                             }`}
@@ -1504,8 +1494,8 @@ const AdminAnalytics = () => {
 
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={effectiveCurrentPage >= totalPages}
-                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent"
+                      disabled={currentPage >= totalPages}
+                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
                     >
                       Next
                     </button>

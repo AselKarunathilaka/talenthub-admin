@@ -66,7 +66,9 @@ const getPerformanceColors = (percentage) => {
   return { track: "#fee2e2", stroke: "#ef4444", text: "#dc2626" }; // red
 };
 
-const Dashboard = () => {
+const Dashboard = ({ previewInternId = null, isPreview = false }) => {
+  const effectiveInternId = previewInternId || localStorage.getItem("internId");
+
   const [attendanceStats, setAttendanceStats] = useState({
     present: 0,
     absent: 0,
@@ -84,6 +86,9 @@ const Dashboard = () => {
   });
   const [commitsCount, setCommitsCount] = useState(0);
   const [logbooksCount, setLogbooksCount] = useState(0);
+  const [logbookRecords, setLogbookRecords] = useState([]);
+  const [recordCounts, setRecordCounts] = useState(null);
+  const [gitCommitsData, setGitCommitsData] = useState(null);
   const [activeTab, setActiveTab] = useState("daily");
   const [heatmapView, setHeatmapView] = useState("logbook");
   const [universityFeedbacks, setUniversityFeedbacks] = useState([]);
@@ -114,7 +119,7 @@ const Dashboard = () => {
 
   const loadInternData = async () => {
     try {
-      const internId = localStorage.getItem("internId");
+      const internId = effectiveInternId;
 
       if (!internId) {
         throw new Error("Authentication error: missing internId");
@@ -124,6 +129,10 @@ const Dashboard = () => {
 
       if (response) {
         setInternData(response);
+        if (response.records && Array.isArray(response.records)) {
+          setLogbooksCount(response.records.length);
+          setLogbookRecords(response.records);
+        }
         if (typeof response.commitsCount === "number") {
           setCommitsCount((prev) => prev || response.commitsCount);
         } else if (Array.isArray(response.gitCommits)) {
@@ -167,7 +176,7 @@ const Dashboard = () => {
 
   const loadAttendanceData = async () => {
     try {
-      const internId = localStorage.getItem("internId");
+      const internId = effectiveInternId;
 
       if (!internId) {
         throw new Error("Authentication error: missing internId");
@@ -238,10 +247,11 @@ const Dashboard = () => {
 
   const loadGitCommitsData = async () => {
     try {
-      const internId = localStorage.getItem("internId");
+      const internId = effectiveInternId;
       if (!internId) return;
       const data = await api.get(`/interns/${internId}/git-commits`);
       if (data) {
+        setGitCommitsData(data);
         if (data.totalCommits !== undefined) {
           setCommitsCount(data.totalCommits);
         } else {
@@ -275,9 +285,29 @@ const Dashboard = () => {
 
   const loadLogbooksData = async () => {
     try {
-      const data = await api.get("/records");
-      if (Array.isArray(data)) {
-        setLogbooksCount(data.length);
+      const internId = effectiveInternId;
+      if (internId) {
+        let records = [];
+        try {
+          const res = await api.get(`/interns/${internId}`);
+          if (res && Array.isArray(res.records)) {
+            records = res.records;
+          }
+        } catch {}
+
+        if (!records.length) {
+          try {
+            const data = await api.get("/records");
+            if (Array.isArray(data)) {
+              records = data;
+            }
+          } catch {}
+        }
+
+        if (records.length > 0) {
+          setLogbooksCount(records.length);
+          setLogbookRecords(records);
+        }
       }
     } catch (error) {
       console.error("Error fetching logbooks count:", error);
@@ -286,7 +316,7 @@ const Dashboard = () => {
 
   const loadUniversityFeedbacks = async () => {
     try {
-      const internId = localStorage.getItem("internId");
+      const internId = effectiveInternId;
       if (!internId) return;
       const data = await api.get(`/interns/${internId}/university-feedback`);
       if (data && Array.isArray(data.feedbacks)) {
@@ -310,6 +340,28 @@ const Dashboard = () => {
     }
   };
 
+  const loadRecordCounts = async () => {
+    try {
+      const internId = effectiveInternId;
+      if (!internId) return;
+      let data = null;
+      try {
+        data = await api.get(`/interns/${internId}/record-counts`);
+      } catch {
+        try {
+          data = await api.get(`/admin/intern/${internId}/record-counts`);
+        } catch {
+          data = null;
+        }
+      }
+      if (data) {
+        setRecordCounts(data);
+      }
+    } catch (err) {
+      console.error("Error fetching record counts:", err);
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     const [fetchedInternData] = await Promise.all([
@@ -317,22 +369,15 @@ const Dashboard = () => {
       loadAttendanceData(), // Load attendance data
       loadGitCommitsData(), // Load git commits data
       loadLogbooksData(), // Load actual logbooks count
+      loadRecordCounts(), // Load direct collection counts
       loadUniversityFeedbacks(), // Load university supervisor feedbacks
       loadHolidays(), // Load holidays
     ]);
     setLoading(false);
 
-    const internId = localStorage.getItem("internId");
-    const shouldPromptFace = Boolean(
-      internId && !(await checkFaceEnrollment()),
-    );
+    const internId = effectiveInternId;
 
-    if (shouldPromptFace) {
-      faceModalOpenRef.current = true;
-      setShowFaceModal(true);
-    }
-
-    // Check if intern has a project — show popup every time if not assigned
+    // Always fetch projects (needed for both intern and admin preview)
     try {
       if (internId) {
         const projectCheck = await api.get(
@@ -341,48 +386,64 @@ const Dashboard = () => {
         if (projectCheck?.projects) {
           setInternProjects(projectCheck.projects);
         }
-        const hasProject =
-          projectCheck?.hasProject === true ||
-          (Array.isArray(projectCheck?.projects) &&
-            projectCheck.projects.length > 0);
-        if (projectCheck && !hasProject) {
-          if (shouldPromptFace || faceModalOpenRef.current) {
-            setProjectPopupPending(true);
-          } else {
-            setShowNoProjectPopup(true);
+        if (!isPreview) {
+          const hasProject =
+            projectCheck?.hasProject === true ||
+            (Array.isArray(projectCheck?.projects) &&
+              projectCheck.projects.length > 0);
+          if (projectCheck && !hasProject) {
+            if (faceModalOpenRef.current) {
+              setProjectPopupPending(true);
+            } else {
+              setShowNoProjectPopup(true);
+            }
           }
         }
       }
     } catch (err) {
       console.error("Error checking intern projects:", err);
     }
-    // Show onboarding tour after all other modals are settled
-    // (face modal takes priority; if no face modal, show tour immediately after load)
-    try {
-      if (internId && fetchedInternData) {
-        const TOUR_VERSION = "v1.0-initial";
-        const seenVersion = fetchedInternData.tourSeenVersion ?? null;
-        if (seenVersion === null || seenVersion !== TOUR_VERSION) {
-          const isNew = seenVersion === null;
-          setIsNewIntern(isNew);
-          if (!shouldPromptFace) {
-            setShowTour(true);
+
+    if (!isPreview) {
+      const shouldPromptFace = Boolean(
+        internId && !(await checkFaceEnrollment()),
+      );
+
+      if (shouldPromptFace) {
+        faceModalOpenRef.current = true;
+        setShowFaceModal(true);
+      }
+
+      // Show onboarding tour after all other modals are settled
+      try {
+        if (internId && fetchedInternData) {
+          const TOUR_VERSION = "v1.0-initial";
+          const seenVersion = fetchedInternData.tourSeenVersion ?? null;
+          if (seenVersion === null || seenVersion !== TOUR_VERSION) {
+            const isNew = seenVersion === null;
+            setIsNewIntern(isNew);
+            if (!shouldPromptFace) {
+              setShowTour(true);
+            }
           }
         }
+      } catch (err) {
+        // Non-critical
       }
-    } catch (err) {
-      // Non-critical
     }
   };
 
   useEffect(() => {
-    const internId = localStorage.getItem("internId");
-    if (!internId) {
-      navigate("/");
+    if (!isPreview) {
+      const internId = localStorage.getItem("internId");
+      if (!internId) {
+        navigate("/");
+      }
     }
-  }, [navigate]);
+  }, [navigate, isPreview]);
 
   useEffect(() => {
+    if (isPreview) return;
     const deadline = new Date("2025-12-31T23:59:59");
     const now = new Date();
     const dismissedUntil = localStorage.getItem("cricketFiestaDismissed");
@@ -390,16 +451,11 @@ const Dashboard = () => {
     if (now <= deadline && dismissedUntil !== "2025-12-31") {
       setShowCricketPopup(true);
     }
-  }, []);
+  }, [isPreview]);
 
   useEffect(() => {
-    if (initialLoadStartedRef.current) {
-      return;
-    }
-
-    initialLoadStartedRef.current = true;
     loadAllData();
-  }, []);
+  }, [effectiveInternId]);
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
@@ -610,43 +666,39 @@ const Dashboard = () => {
   };
 
 
-  // ── Synced Metrics Calculations (Exact match with AdminAnalytics & University Dashboard) ──
+  // ── Synced Metrics Calculations (Exact match with AdminInternDetails & AdminAnalytics) ──
   const workingDays = useMemo(() => {
-    if (!internData?.Training_StartDate) return 1;
-    const start = internData.Training_StartDate;
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 1;
     const now = new Date();
-    const endCap = internData.Training_EndDate
-      ? new Date(Math.min(now.getTime(), new Date(internData.Training_EndDate).getTime()))
-      : now;
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
-    return calcWorkingDaysUtil(start, endCap, holidaySet);
+    return calcWorkingDaysUtil(startDateVal, now, holidaySet);
   }, [internData, holidays]);
 
   const elapsedWeeks = useMemo(() => {
-    if (!internData?.Training_StartDate) return 1;
-    const start = internData.Training_StartDate;
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 1;
     const now = new Date();
-    const endCap = internData.Training_EndDate
-      ? new Date(Math.min(now.getTime(), new Date(internData.Training_EndDate).getTime()))
-      : now;
-    return calcElapsedWeeksUtil(start, endCap);
+    return calcElapsedWeeksUtil(startDateVal, now);
   }, [internData]);
 
-  const dailyAttendanceRate = useMemo(() => {
-    if (!internData?.Training_StartDate) return 0;
+  const attendedDaysCount = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
     const records = attendanceHistory.length > 0 ? attendanceHistory : dailyRecords;
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
-    const attendedDays = new Set(
+    return new Set(
       records
         .filter((r) => {
           if (!r.date) return false;
           const s = (r.status || "").toLowerCase();
-          // AdminAnalytics: isPresent = status === "present" || status === "late" || !entry.status
           const isPresent = s === "present" || s === "late" || !r.status;
           if (!isPresent) return false;
           const dStr = toDateStr(r.date); // Colombo YYYY-MM-DD
           if (!dStr) return false;
-          // Derive day-of-week from Colombo date string (noon UTC avoids tz shift)
+          if (startDStr && dStr < startDStr) return false;
+          if (todayDStr && dStr > todayDStr) return false;
           const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
           const isWeekend = dow === 0 || dow === 6;
           const isHoliday = holidaySet.has(dStr);
@@ -655,56 +707,101 @@ const Dashboard = () => {
         .map((r) => toDateStr(r.date))
         .filter(Boolean)
     ).size;
-    return calcDailyAttendanceRate(attendedDays, workingDays);
-  }, [internData, attendanceHistory, dailyRecords, workingDays, holidays]);
+  }, [internData, attendanceHistory, dailyRecords, holidays]);
 
-  const meetingAttendanceRate = useMemo(() => {
-    if (!internData?.Training_StartDate) return 0;
-    const attendedWeeks = new Set(
-      meetingAttendance
+  const dailyAttendanceRate = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 0;
+    return calcDailyAttendanceRate(attendedDaysCount, workingDays);
+  }, [internData, attendedDaysCount, workingDays]);
+
+  const attendedMeetingWeeksCount = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    const startMonKey = getMondayWeekKey(startDateVal);
+    const todayMonKey = getMondayWeekKey(new Date());
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
+    const isWorkingDay = (dateVal) => {
+      if (!dateVal) return false;
+      const dStr = toDateStr(dateVal);
+      if (!dStr) return false;
+      const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+      return dow !== 0 && dow !== 6 && !holidaySet.has(dStr);
+    };
+
+    return new Set(
+      (meetingAttendance || [])
         .filter((r) => {
           const s = (r.status || "").toLowerCase();
-          return (s === "present" || s === "late") && r.date;
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent || !r.date || !isWorkingDay(r.date)) return false;
+          const wKey = getMondayWeekKey(r.date);
+          if (!wKey) return false;
+          if (startMonKey && wKey < startMonKey) return false;
+          if (todayMonKey && wKey > todayMonKey) return false;
+          return true;
         })
         .map((r) => getMondayWeekKey(r.date))
         .filter(Boolean)
     ).size;
-    return calcMeetingAttendanceRate(attendedWeeks, elapsedWeeks);
-  }, [internData, meetingAttendance, elapsedWeeks]);
+  }, [internData, meetingAttendance, holidays]);
+
+  const meetingAttendanceRate = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 0;
+    return calcMeetingAttendanceRate(attendedMeetingWeeksCount, elapsedWeeks);
+  }, [internData, attendedMeetingWeeksCount, elapsedWeeks]);
 
   const validLogbookCount = useMemo(() => {
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === "string" ? h : h.date)));
-    const records = dailyRecords.length > 0 ? dailyRecords : attendanceHistory;
+    // Use actual logbook records (DailyRecord entries) — same source as AdminInternDetails
+    // Falls back to daily attendance records if logbook records not yet loaded
+    const records = logbookRecords.length > 0 ? logbookRecords : (dailyRecords.length > 0 ? dailyRecords : attendanceHistory);
     return records.filter((r) => {
       if (!r.date) return false;
-      const status = (r.recordStatus || r.status || "working").toLowerCase();
+      const status = (r.status || r.recordStatus || "working").toLowerCase();
       if (status === "leave" || status === "study_leave") return false;
       const dStr = toDateStr(r.date);
       if (!dStr) return false;
+      if (startDStr && dStr < startDStr) return false;
+      if (todayDStr && dStr > todayDStr) return false;
       const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
       const isWeekend = dow === 0 || dow === 6;
       const isHoliday = holidaySet.has(dStr);
       return !isWeekend && !isHoliday;
     }).length;
-  }, [dailyRecords, attendanceHistory, holidays]);
+  }, [internData, logbookRecords, dailyRecords, attendanceHistory, holidays]);
 
   const logbookRate = useMemo(() => {
-    if (!internData?.Training_StartDate) return 0;
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 0;
     return calcLogbookRate(validLogbookCount, workingDays);
   }, [internData, validLogbookCount, workingDays]);
 
   const performanceRate = useMemo(() => {
-    if (!internData?.Training_StartDate) return 0;
-    const spec = internData.field_of_spec_name || internData.specialization || "";
+    const startDateVal = internData?.Training_StartDate || internData?.startDate;
+    if (!startDateVal) return 0;
+    const spec = internData?.field_of_spec_name || internData?.specialization || "";
     return calcPerformanceRate({
       logbookRate,
       meetingAttendanceRate,
       commitsCount,
+      workingDays,
       specialization: spec,
     });
-  }, [internData, logbookRate, meetingAttendanceRate, commitsCount]);
+  }, [internData, logbookRate, meetingAttendanceRate, commitsCount, workingDays]);
 
   const workQualityRate = performanceRate;
+
+  const totalDailyCount =
+    recordCounts?.totalDailyAttendance ?? (attendanceHistory || []).length;
+  const totalMeetingCount =
+    recordCounts?.totalMeetingAttendance ?? (meetingAttendance || []).length;
+  const totalLogbookCount =
+    recordCounts?.totalLogbook ??
+    (logbookRecords.length > 0 ? logbookRecords.length : logbooksCount);
 
   const [expandedGroups, setExpandedGroups] = useState({});
   const toggleGroup = (dateKey) => {
@@ -718,25 +815,26 @@ const Dashboard = () => {
     const endDate = new Date(internData.Training_EndDate);
     const tick = () => {
       const msLeft = endDate - new Date();
-      if (msLeft <= 0) { setCountdownTime(null); return; }
-      const days = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((msLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const mins = Math.floor((msLeft % (1000 * 60 * 60)) / (1000 * 60));
-      const secs = Math.floor((msLeft % (1000 * 60)) / 1000);
+      if (msLeft <= 0) {
+        setCountdownTime(null);
+        return;
+      }
+      const days = Math.floor(msLeft / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((msLeft / (1000 * 60 * 60)) % 24);
+      const mins = Math.floor((msLeft / (1000 * 60)) % 60);
+      const secs = Math.floor((msLeft / 1000) % 60);
       setCountdownTime({ days, hours, mins, secs });
     };
     tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
   }, [internData?.Training_EndDate]);
-
-
 
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="w-full flex flex-col items-center justify-center" style={{ minHeight: "calc(100vh - 64px)" }}>
-          <Loader2 className="h-10 w-10 animate-spin mb-4" style={{ color: "#00b4eb" }} />
+        <div className="flex flex-col items-center justify-center min-h-[60vh]">
+          <Loader2 className="w-10 h-10 animate-spin text-blue-600 mb-4" />
           <p className="text-gray-500 font-medium">Loading your dashboard...</p>
         </div>
       );
@@ -765,7 +863,7 @@ const Dashboard = () => {
       ? new Date(internData.updatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
       : null;
 
-    const traineeId = localStorage.getItem("internId");
+    const traineeId = effectiveInternId;
     const profilePicUrl = traineeId
       ? `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${traineeId}/profile-picture`
       : "";
@@ -1159,12 +1257,36 @@ const Dashboard = () => {
           {/* Heatmap Card */}
           <div className="bento-deep-content" style={{ margin: 0 }}>
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <h3 style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>Activity Heatmap</h3>
-              <p style={{ fontSize: 'clamp(11px, 3vw, 13px)', color: "#64748b", marginBottom: 'clamp(12px, 3vw, 24px)' }}>Visualize your performance over time</p>
+              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                <div>
+                  <h3 style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+                    {heatmapView === "logbook" ? "Daily Logbook Activity Heatmap" : "GitHub Code Commit Activity Heatmap"}
+                  </h3>
+                  <p style={{ fontSize: 'clamp(11px, 3vw, 13px)', color: "#64748b", margin: 0 }}>
+                    {heatmapView === "logbook"
+                      ? "Visualize your daily logbook submissions throughout your internship"
+                      : "Visualize your GitHub code commits across assigned projects"}
+                  </p>
+                </div>
+                {heatmapView === "commits" && gitCommitsData?.githubUsername && (
+                  <span className="text-xs font-mono text-slate-600 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                    GitHub: @{gitCommitsData.githubUsername}
+                  </span>
+                )}
+              </div>
               {heatmapView === "logbook" ? (
-                <DailyRecordsHeatmap startDate={internData?.Training_StartDate} endDate={internData?.Training_EndDate} />
+                <DailyRecordsHeatmap
+                  startDate={internData?.Training_StartDate}
+                  endDate={internData?.Training_EndDate}
+                  records={logbookRecords}
+                />
               ) : (
-                <CommitHeatmap startDate={internData?.Training_StartDate} endDate={internData?.Training_EndDate} internId={localStorage.getItem("internId")} />
+                <CommitHeatmap
+                  startDate={internData?.Training_StartDate}
+                  endDate={internData?.Training_EndDate}
+                  internId={effectiveInternId}
+                  commitData={gitCommitsData}
+                />
               )}
             </motion.div>
           </div>
@@ -1228,7 +1350,7 @@ const Dashboard = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider m-0">Present</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-emerald-900 m-0 leading-none">{dailyRecords?.filter(r => r.status === "Present").length || 0}</p>
+                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-emerald-900 m-0 leading-none">{attendedDaysCount}</p>
                         </div>
                       </div>
                       <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
@@ -1237,7 +1359,7 @@ const Dashboard = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{dailyRecords?.filter(r => r.status !== "Present").length || 0}</p>
+                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, workingDays - attendedDaysCount)}</p>
                         </div>
                       </div>
                       <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-blue-200 flex-1 sm:flex-none">
@@ -1341,7 +1463,7 @@ const Dashboard = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-violet-900 m-0 leading-none">{meetingAttendance?.filter(r => r.status === "Present").length || 0}</p>
+                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-violet-900 m-0 leading-none">{attendedMeetingWeeksCount}</p>
                         </div>
                       </div>
                       <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
@@ -1350,7 +1472,7 @@ const Dashboard = () => {
                         </div>
                         <div className="text-left">
                           <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{meetingAttendance?.filter(r => r.status !== "Present").length || 0}</p>
+                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, elapsedWeeks - attendedMeetingWeeksCount)}</p>
                         </div>
                       </div>
                       <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-purple-200 flex-1 sm:flex-none">
@@ -1541,6 +1663,20 @@ const Dashboard = () => {
     );
   };
 
+  if (isPreview) {
+    return (
+      <div className="bento-page-bg cursor-default select-none rounded-2xl overflow-hidden p-2 sm:p-4">
+        <div className="bento-page-content w-full">
+          <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column" }}>
+            <div style={{ flex: 1, paddingBottom: 16 }}>
+              {renderContent()}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bento-page-bg cursor-default select-none">
       <Navigation onLogout={handleLogout} />
@@ -1559,7 +1695,7 @@ const Dashboard = () => {
         {showTour && (
           <OnboardingTour
             internData={internData}
-            internId={localStorage.getItem("internId")}
+            internId={effectiveInternId}
             isNewIntern={isNewIntern}
           />
         )}

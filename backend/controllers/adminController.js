@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const User = require("../models/User");
@@ -283,14 +284,46 @@ const getInternDetails = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get intern details
-    const intern = await Intern.findById(internId);
+    // Get intern details (search by ObjectId, Trainee_ID, Trainee_Email or in InactiveIntern)
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+
     if (!intern) {
       return res.status(404).json({ error: "Intern not found" });
     }
 
-    // Get intern's records
-    const recordsRaw = await DailyRecord.find({ internId: internId })
+    // Get intern's records (match by ObjectId or traineeId)
+    const recordQuery = {
+      $or: [
+        { internId: intern._id },
+        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+        ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ],
+    };
+    const recordsRaw = await DailyRecord.find(recordQuery)
       .populate("internId", "traineeName traineeId email")
       .sort({ createdAt: -1 });
 
@@ -1551,7 +1584,31 @@ const fetchInternGitCommitsData = async (internId) => {
     return cached.data;
   }
 
-  const intern = await Intern.findById(internId);
+  let intern = null;
+  if (mongoose.Types.ObjectId.isValid(internId)) {
+    intern = await Intern.findById(internId);
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findById(internId);
+    }
+  }
+  if (!intern) {
+    intern = await Intern.findOne({
+      $or: [
+        { Trainee_ID: internId },
+        { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+      ],
+    });
+  }
+  if (!intern) {
+    const InactiveIntern = require("../models/InactiveIntern");
+    intern = await InactiveIntern.findOne({
+      $or: [
+        { Trainee_ID: internId },
+        { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+      ],
+    });
+  }
   if (!intern) return null;
 
   const syncRecord = await InternTalentTrailSync.findOne({

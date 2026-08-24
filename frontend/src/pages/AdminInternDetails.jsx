@@ -43,6 +43,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
+import Dashboard from "./Dashboard";
 import {
   isNoCommitSpecialization,
   calcWorkingDays as calcWorkingDaysUtil,
@@ -192,6 +193,8 @@ const AdminInternDetails = () => {
   const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
   // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
+  // Direct collection counts (dailyattendance, meetingattendance, dailyrecords)
+  const [recordCounts, setRecordCounts] = useState(null);
 
   const intern = internDetails?.intern;
 
@@ -202,28 +205,25 @@ const AdminInternDetails = () => {
   // ── Synced Metrics Calculations (Exact match with Intern Dashboard & University Dashboard) ──
   const workingDays = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
-    const endDateVal = intern?.endDate || intern?.Training_EndDate;
     if (!startDateVal) return 1;
     const now = new Date();
-    const endCap = endDateVal
-      ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
-      : now;
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
-    return calcWorkingDaysUtil(startDateVal, endCap, holidaySet);
+    // Always calculate from internship start date to current date
+    return calcWorkingDaysUtil(startDateVal, now, holidaySet);
   }, [intern, holidays]);
 
   const elapsedWeeks = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
-    const endDateVal = intern?.endDate || intern?.Training_EndDate;
     if (!startDateVal) return 1;
     const now = new Date();
-    const endCap = endDateVal
-      ? new Date(Math.min(now.getTime(), new Date(endDateVal).getTime()))
-      : now;
-    return calcElapsedWeeksUtil(startDateVal, endCap);
+    // Always calculate from internship start date to current date
+    return calcElapsedWeeksUtil(startDateVal, now);
   }, [intern]);
 
   const attendedDaysCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
     const records = attendanceData?.dailyAttendance || [];
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
     return new Set(
@@ -231,11 +231,13 @@ const AdminInternDetails = () => {
         .filter((r) => {
           if (!r.date) return false;
           const s = (r.status || "").toLowerCase();
-          // AdminAnalytics: isPresent = status === "present" || status === "late" || !entry.status
           const isPresent = s === "present" || s === "late" || !r.status;
           if (!isPresent) return false;
           const dStr = toDateStr(r.date); // Colombo YYYY-MM-DD
           if (!dStr) return false;
+          // Filter out dates before internship start date or after today
+          if (startDStr && dStr < startDStr) return false;
+          if (todayDStr && dStr > todayDStr) return false;
           // Derive day-of-week from the Colombo date string (noon UTC avoids any tz shift)
           const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
           const isWeekend = dow === 0 || dow === 6;
@@ -245,7 +247,7 @@ const AdminInternDetails = () => {
         .map((r) => toDateStr(r.date))
         .filter(Boolean)
     ).size;
-  }, [attendanceData, holidays]);
+  }, [attendanceData, holidays, intern]);
 
   const dailyAttendanceRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
@@ -254,16 +256,27 @@ const AdminInternDetails = () => {
   }, [intern, attendedDaysCount, workingDays]);
 
   const attendedMeetingWeeksCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startMonKey = getMondayWeekKey(startDateVal);
+    const todayMonKey = getMondayWeekKey(new Date());
+
     return new Set(
       (attendanceData?.meetingAttendance || [])
         .filter((r) => {
           const s = (r.status || "").toLowerCase();
-          return (s === "present" || s === "late") && r.date;
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent || !r.date) return false;
+          const wKey = getMondayWeekKey(r.date);
+          if (!wKey) return false;
+          // Ignore previous weeks before the internship start week
+          if (startMonKey && wKey < startMonKey) return false;
+          if (todayMonKey && wKey > todayMonKey) return false;
+          return true;
         })
         .map((r) => getMondayWeekKey(r.date))
         .filter(Boolean)
     ).size;
-  }, [attendanceData]);
+  }, [attendanceData, intern]);
 
   const meetingAttendanceRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
@@ -299,21 +312,45 @@ const AdminInternDetails = () => {
     return 0;
   }, [gitCommitsData, intern]);
 
+  const projectsCount = useMemo(() => {
+    if (gitCommitsData) {
+      if (gitCommitsData.totalProjects !== undefined) {
+        return Number(gitCommitsData.totalProjects) || 0;
+      }
+      const projects = Array.isArray(gitCommitsData)
+        ? gitCommitsData
+        : (gitCommitsData.projectCommits || []);
+      return projects.length;
+    }
+    if (typeof intern?.projectsCount === "number") {
+      return intern.projectsCount;
+    }
+    if (Array.isArray(intern?.projects)) {
+      return intern.projects.length;
+    }
+    return 0;
+  }, [gitCommitsData, intern]);
+
   const logbookCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
     const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
     const records = internDetails?.records || attendanceData?.dailyAttendance || [];
     return records.filter((r) => {
       if (!r.date) return false;
-      const status = (r.recordStatus || r.status || "working").toLowerCase();
+      const status = (r.status || r.recordStatus || "working").toLowerCase();
       if (status === "leave" || status === "study_leave") return false;
       const dStr = toDateStr(r.date);
       if (!dStr) return false;
+      if (startDStr && dStr < startDStr) return false;
+      if (todayDStr && dStr > todayDStr) return false;
       const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
       const isWeekend = dow === 0 || dow === 6;
       const isHoliday = holidaySet.has(dStr);
       return !isWeekend && !isHoliday;
     }).length;
-  }, [internDetails?.records, attendanceData, holidays]);
+  }, [internDetails?.records, attendanceData, holidays, intern]);
 
   const logbookRate = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
@@ -329,9 +366,10 @@ const AdminInternDetails = () => {
       logbookRate,
       meetingAttendanceRate,
       commitsCount,
+      workingDays,
       specialization: spec,
     });
-  }, [intern, logbookRate, meetingAttendanceRate, commitsCount]);
+  }, [intern, logbookRate, meetingAttendanceRate, commitsCount, workingDays]);
 
   const workQualityRate = performanceRate;
 
@@ -376,7 +414,6 @@ const AdminInternDetails = () => {
   );
 
   const fetchGitCommits = useCallback(async () => {
-    if (gitCommitsData) return;
     try {
       setGitCommitsLoading(true);
       const data = await adminApi.getInternGitCommits(internId);
@@ -386,10 +423,9 @@ const AdminInternDetails = () => {
     } finally {
       setGitCommitsLoading(false);
     }
-  }, [internId, gitCommitsData]);
+  }, [internId]);
 
   const fetchAttendance = useCallback(async () => {
-    if (attendanceData) return;
     try {
       setAttendanceLoading(true);
       setAttendanceError(null);
@@ -401,16 +437,14 @@ const AdminInternDetails = () => {
     } finally {
       setAttendanceLoading(false);
     }
-  }, [internId, attendanceData]);
+  }, [internId]);
 
-  // Fetch the same certificate-data endpoint used by the certificate page
-  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
   const fetchCertAttendanceCount = useCallback(async () => {
     try {
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
       if (!adminInfo.token) return;
       const res = await fetch(
-        `${(await import("../api/apiConfig")).API_BASE_URL}/admin/intern/${internId}/certificate-data`,
+        `${API_BASE_URL}/admin/intern/${internId}/certificate-data`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -452,13 +486,31 @@ const AdminInternDetails = () => {
     }
   }, [internId, navigate]);
 
+  const fetchRecordCounts = useCallback(async () => {
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(
+        `${API_BASE_URL}/admin/intern/${internId}/record-counts`,
+        { headers: { Authorization: `Bearer ${adminInfo.token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setRecordCounts(data);
+      }
+    } catch (err) {
+      console.warn("Could not fetch record counts:", err);
+    }
+  }, [internId]);
+
+  // Load all initial data once when internId changes
   useEffect(() => {
     fetchInternDetails();
     fetchAttendance();
     fetchGitCommits();
     fetchCertAttendanceCount();
+    fetchRecordCounts();
     fetchHolidays(new Date().getFullYear());
-  }, [internId, fetchInternDetails, fetchAttendance, fetchGitCommits, fetchCertAttendanceCount, fetchHolidays]);
+  }, [internId]);
 
   // Re-fetch holidays when calendar months change to a different year
   useEffect(() => {
@@ -591,15 +643,17 @@ const AdminInternDetails = () => {
               </div>
             </motion.div>
 
-            {/* Tabs — modern pill style */}
-            <div className="mb-4 sm:mb-6">
-              <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 border border-gray-200/60">
-                {["overview", "records", "attendance"].map((tab) => (
+            {/* Tabs — modern pill style & Meta Tags */}
+            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 border border-gray-200/60 overflow-x-auto max-w-full">
+                {["overview", "records", "attendance", "details", "preview"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => {
                       setActiveTab(tab);
-                      if (tab === "attendance") fetchAttendance();
+                      if (tab === "attendance" || tab === "details" || tab === "preview") {
+                        fetchAttendance();
+                      }
                     }}
                     className={`px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab
@@ -607,9 +661,34 @@ const AdminInternDetails = () => {
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {tab === "overview" && "Overview"}
+                    {tab === "records" && "Records"}
+                    {tab === "attendance" && "Attendance"}
+                    {tab === "details" && "Details"}
+                    {tab === "preview" && "Preview"}
                   </button>
                 ))}
+              </div>
+
+              {/* Meta Tags (Started & Working Days) */}
+              <div className="flex flex-wrap items-center gap-2">
+                {(intern?.startDate || intern?.Training_StartDate) && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold border border-indigo-100 shadow-sm">
+                    <FaCalendarAlt className="text-indigo-500" />
+                    <span>
+                      Started:{" "}
+                      {new Date(intern?.startDate || intern?.Training_StartDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold border border-blue-100 shadow-sm">
+                  <FaCalendarDay className="text-blue-500" />
+                  <span>{workingDays} Total Working Days</span>
+                </div>
               </div>
             </div>
 
@@ -2606,6 +2685,824 @@ const AdminInternDetails = () => {
                       </>
                     );
                   })()}
+
+                {/* ══ DETAILS TAB ══ */}
+                {activeTab === "details" && (() => {
+                  const dailyList = attendanceData?.dailyAttendance || [];
+                  const meetingList = attendanceData?.meetingAttendance || [];
+                  const logbookList = internDetails?.records || [];
+
+                  // Use direct collection counts from backend (most accurate)
+                  const totalDailyCount = recordCounts?.totalDailyAttendance ?? dailyList.length;
+                  const totalMeetingCount = recordCounts?.totalMeetingAttendance ?? meetingList.length;
+                  const totalLogbookCount = recordCounts?.totalLogbook ?? logbookList.length;
+
+                  // ── Working-day filtered counts (Mon–Fri, excl. Sri Lanka holidays) ──
+                  const holidaySet = new Set(
+                    (holidays || []).map((h) => (typeof h === "string" ? h : h.date))
+                  );
+                  const isWorkingDay = (dateVal) => {
+                    if (!dateVal) return false;
+                    const dStr = toDateStr(dateVal);
+                    if (!dStr) return false;
+                    const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+                    return dow !== 0 && dow !== 6 && !holidaySet.has(dStr);
+                  };
+
+                  const startDateVal = intern?.startDate || intern?.Training_StartDate;
+                  const startDStr = toDateStr(startDateVal);
+                  const todayDStr = toDateStr(new Date());
+                  const startMonKey = getMondayWeekKey(startDateVal);
+                  const todayMonKey = getMondayWeekKey(new Date());
+
+                  // Working-day daily attendance count (unique dates, present only, strictly start date -> today)
+                  const workingDayDailyCount = new Set(
+                    dailyList
+                      .filter((e) => {
+                        const s = (e.status || "").toLowerCase();
+                        const isPresent = s === "present" || s === "late" || !e.status;
+                        if (!isPresent || !e.date) return false;
+                        const dStr = toDateStr(e.date);
+                        if (!dStr) return false;
+                        if (startDStr && dStr < startDStr) return false;
+                        if (todayDStr && dStr > todayDStr) return false;
+                        return isWorkingDay(e.date);
+                      })
+                      .map((e) => toDateStr(e.date))
+                      .filter(Boolean)
+                  ).size;
+
+                  // Working-day meeting attendance count (unique week keys on working days, strictly start week -> today)
+                  const workingDayMeetingCount = new Set(
+                    meetingList
+                      .filter((e) => {
+                        const s = (e.status || "").toLowerCase();
+                        const isPresent = s === "present" || s === "late" || !e.status;
+                        if (!isPresent || !e.date || !isWorkingDay(e.date)) return false;
+                        const wKey = getMondayWeekKey(e.date);
+                        if (!wKey) return false;
+                        if (startMonKey && wKey < startMonKey) return false;
+                        if (todayMonKey && wKey > todayMonKey) return false;
+                        return true;
+                      })
+                      .map((e) => getMondayWeekKey(e.date))
+                      .filter(Boolean)
+                  ).size;
+
+                  // Working-day logbook count (excluding leave/study_leave, strictly start date -> today)
+                  const workingDayLogbookCount = logbookList.filter((r) => {
+                    const status = (r.recordStatus || r.status || "working").toLowerCase();
+                    if (status === "leave" || status === "study_leave" || !r.date) return false;
+                    const dStr = toDateStr(r.date);
+                    if (!dStr) return false;
+                    if (startDStr && dStr < startDStr) return false;
+                    if (todayDStr && dStr > todayDStr) return false;
+                    return isWorkingDay(r.date);
+                  }).length;
+
+                  const totalDailyPresent = dailyList.filter(
+                    (e) => (e.status || "").toLowerCase() === "present" || !e.status
+                  ).length;
+
+                  const totalMeetingPresent = meetingList.filter(
+                    (e) => (e.status || "").toLowerCase() === "present" || !e.status
+                  ).length;
+
+                  // Breakdowns
+                  const qrCount = dailyList.filter((e) =>
+                    ["daily_qr", "qr"].includes(String(e.rawType || e.type || e.markType || "").toLowerCase())
+                  ).length;
+                  const faceCount = dailyList.filter((e) =>
+                    ["face"].includes(String(e.rawType || e.type || e.markType || "").toLowerCase())
+                  ).length;
+                  const manualDailyCount = dailyList.filter((e) =>
+                    String(e.rawType || e.type || e.markType || "").toLowerCase().includes("manual")
+                  ).length;
+                  const otherDailyCount = Math.max(0, totalDailyCount - qrCount - faceCount - manualDailyCount);
+
+                  const workingRecords = logbookList.filter(
+                    (r) => (r.status || "working").toLowerCase() === "working"
+                  ).length;
+                  const wfhRecords = logbookList.filter(
+                    (r) => (r.status || "").toLowerCase() === "wfh"
+                  ).length;
+                  const leaveRecords = logbookList.filter((r) => {
+                    const st = (r.status || "").toLowerCase();
+                    return st === "leave" || st === "study_leave";
+                  }).length;
+
+                  // ── Working-day missing daily attendance, logbook & meeting weeks ──
+                  const missingDailyDates = [];
+                  const missingLogbookDates = [];
+                  const missingMeetingWeeks = [];
+                  const expectedMeetingWeekKeys = [];
+
+                  if (startDateVal) {
+                    const start = new Date(startDateVal);
+                    const today = new Date();
+                    start.setHours(0, 0, 0, 0);
+                    today.setHours(0, 0, 0, 0);
+
+                    // 1. Set of dates with daily attendance marked as present
+                    const presentDailySet = new Set(
+                      dailyList
+                        .filter((e) => {
+                          const s = (e.status || "").toLowerCase();
+                          return s === "present" || s === "late" || !e.status;
+                        })
+                        .map((e) => toDateStr(e.date))
+                        .filter(Boolean)
+                    );
+
+                    // 2. Set of dates with submitted logbook record (excluding leave / study_leave)
+                    const submittedLogbookSet = new Set(
+                      logbookList
+                        .filter((r) => {
+                          const s = (r.recordStatus || r.status || "working").toLowerCase();
+                          return s !== "leave" && s !== "study_leave" && r.date;
+                        })
+                        .map((r) => toDateStr(r.date))
+                        .filter(Boolean)
+                    );
+
+                    // Day-by-day iteration for daily attendance and logbooks
+                    const cur = new Date(start);
+                    while (cur <= today) {
+                      const y = cur.getFullYear();
+                      const m = String(cur.getMonth() + 1).padStart(2, "0");
+                      const d = String(cur.getDate()).padStart(2, "0");
+                      const dStr = `${y}-${m}-${d}`;
+                      const dow = cur.getDay(); // 0 = Sun, 6 = Sat
+
+                      if (dow !== 0 && dow !== 6 && !holidaySet.has(dStr)) {
+                        if (!presentDailySet.has(dStr)) {
+                          missingDailyDates.push(dStr);
+                        }
+                        if (!submittedLogbookSet.has(dStr)) {
+                          missingLogbookDates.push(dStr);
+                        }
+                      }
+                      cur.setDate(cur.getDate() + 1);
+                    }
+
+                    // 3. Set of attended meeting week keys (strictly on or after start week)
+                    const attendedMeetingWeekSet = new Set(
+                      meetingList
+                        .filter((e) => {
+                          const s = (e.status || "").toLowerCase();
+                          const isPresent = s === "present" || s === "late" || !e.status;
+                          if (!isPresent || !e.date) return false;
+                          const wKey = getMondayWeekKey(e.date);
+                          if (!wKey) return false;
+                          if (startMonKey && wKey < startMonKey) return false;
+                          if (todayMonKey && wKey > todayMonKey) return false;
+                          return true;
+                        })
+                        .map((e) => getMondayWeekKey(e.date))
+                        .filter(Boolean)
+                    );
+
+                    // Monday-by-Monday calendar week iteration from start date to today
+                    if (startMonKey && todayMonKey) {
+                      let weekCursor = new Date(startMonKey + "T12:00:00Z");
+                      const endMondayDate = new Date(todayMonKey + "T12:00:00Z");
+
+                      while (weekCursor <= endMondayDate) {
+                        const wKey = getMondayWeekKey(weekCursor);
+                        if (wKey) {
+                          expectedMeetingWeekKeys.push(wKey);
+                          if (!attendedMeetingWeekSet.has(wKey)) {
+                            const mon = new Date(weekCursor);
+                            const fri = new Date(weekCursor);
+                            fri.setUTCDate(fri.getUTCDate() + 4);
+                            missingMeetingWeeks.push({
+                              weekKey: wKey,
+                              monday: mon,
+                              friday: fri,
+                            });
+                          }
+                        }
+                        weekCursor.setUTCDate(weekCursor.getUTCDate() + 7);
+                      }
+                    }
+                  }
+
+                  const totalExpectedMeetingWeeks = Math.max(1, expectedMeetingWeekKeys.length || elapsedWeeks);
+                  const effectiveMeetingRate = Math.min(
+                    100,
+                    Math.round((attendedMeetingWeeksCount / totalExpectedMeetingWeeks) * 100)
+                  ) || 0;
+
+                  missingDailyDates.sort((a, b) => new Date(b) - new Date(a));
+                  missingLogbookDates.sort((a, b) => new Date(b) - new Date(a));
+                  missingMeetingWeeks.sort((a, b) => new Date(b.monday) - new Date(a.monday));
+
+                  const formattedStartDate = startDateVal
+                    ? new Date(startDateVal).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "";
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Section Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                            Intern Attendance & Record Details
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            Summary of all recorded submissions and working-day performance metrics for {intern?.traineeName} ({intern?.traineeId})
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 5 Main Total Metric Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {/* 1. Daily Attendance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaCalendarCheck size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaCalendarCheck className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-blue-100">
+                                Daily Attendance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {dailyAttendanceRate}%
+                            </h4>
+                            <p className="text-[11px] text-blue-100 mb-3">
+                              Daily Attendance Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalDailyCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Valid submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayDailyCount} days
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Working Days:</span>
+                              <span className="font-semibold text-white">
+                                {workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-blue-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Working Days) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 2. Meeting Attendance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-purple-500 to-indigo-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaUsers size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaUsers className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-purple-100">
+                                Meeting Attendance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {effectiveMeetingRate}%
+                            </h4>
+                            <p className="text-[11px] text-purple-100 mb-3">
+                              Meeting Attendance Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalMeetingCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Valid Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayMeetingCount} weeks
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Expected Meetings:</span>
+                              <span className="font-semibold text-white">
+                                {totalExpectedMeetingWeeks} weeks
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-purple-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Expected Meetings) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 3. Logbook Records */}
+                        <motion.div
+                          className="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaClipboardList size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaClipboardList className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-emerald-100">
+                                Logbook Records
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {logbookRate}%
+                            </h4>
+                            <p className="text-[11px] text-emerald-100 mb-3">
+                              Logbook Submission Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalLogbookCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Valid Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayLogbookCount} entries
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Working Days:</span>
+                              <span className="font-semibold text-white">
+                                {workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-emerald-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Working Days) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 4. Git Commits */}
+                        {!isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "") && (
+                          <motion.div
+                            className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                            whileHover={{ y: -3 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="absolute right-2 top-2 opacity-10">
+                              <FaCodeBranch size={80} />
+                            </div>
+                            <div className="relative z-10">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                  <FaCodeBranch className="text-white text-base" />
+                                </span>
+                                <span className="text-xs font-bold tracking-wider uppercase text-amber-100">
+                                  Git Commits
+                                </span>
+                              </div>
+                              <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                                {commitsCount}
+                              </h4>
+                              <p className="text-[11px] text-amber-100 mb-3">
+                                Total repository commits recorded
+                              </p>
+                            </div>
+                            <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Tracked Commits:</span>
+                                <span className="font-semibold text-white">
+                                  {commitsCount} commits
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Working Days:</span>
+                                <span className="font-semibold text-white">
+                                  {workingDays} days
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Projects:</span>
+                                <span className="font-semibold text-white">
+                                  {projectsCount} project{projectsCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* 5. Overall Performance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaAward size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaAward className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-rose-100">
+                                Performance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {performanceRate}%
+                            </h4>
+                            <p className="text-[11px] text-rose-100 mb-3">
+                              Composite performance score
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Status:</span>
+                              <span className="font-semibold text-white">
+                                {getPerformanceStatus(performanceRate)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Quality Score:</span>
+                              <span className="font-semibold text-white">
+                                {workQualityRate}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Evaluation:</span>
+                              <span className="font-semibold text-white">
+                                {performanceRate >= 80 ? "Good" : performanceRate >= 60 ? "Average" : "Needs Attention"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-rose-200/80 leading-relaxed font-mono italic">
+                              {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.specialization || intern?.fieldOfSpecialization || "") || !commitsCount || commitsCount === 0
+                                ? "Formula: (Meeting Attendance Rate + Logbook Rate) / 2"
+                                : "Formula: (Meeting Attendance Rate + Logbook Rate) / 2 + (Commits Count - Working Days)"}
+                            </p>
+                          </div>
+                        </motion.div>
+                      </div>
+
+                      {/* ══ NOT SUBMITTED DATES & WEEKS HUB (Before Daily Attendance Types) ══ */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                              <FaExclamationTriangle className="text-amber-500" />
+                              Missing Submissions & Pending Records
+                            </h4>
+                            <p className="text-xs text-gray-500">
+                              Unrecorded working days and missed weekly meeting sessions between internship start date and current date
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                          {/* 1. Missing Daily Attendance */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                                    <FaCalendarCheck className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missing Daily Attendance
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Working days without check-in</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingDailyDates.length > 0
+                                      ? "bg-red-50 text-red-700 border border-red-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingDailyDates.length} {missingDailyDates.length === 1 ? "Day" : "Days"}
+                                </span>
+                              </div>
+
+                              {missingDailyDates.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All working day daily check-ins completed!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingDailyDates.map((dateStr) => {
+                                    const dObj = new Date(dateStr + "T12:00:00Z");
+                                    const dayName = dObj.toLocaleDateString("en-US", { weekday: "short" });
+                                    const formatted = dObj.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={dateStr}
+                                        className="flex items-center justify-between p-2 bg-red-50/70 hover:bg-red-100/70 text-red-900 border border-red-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{formatted}</span>
+                                        <span className="text-[11px] text-red-600 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          {dayName}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Excludes weekends and Sri Lanka public holidays
+                            </p>
+                          </div>
+
+                          {/* 2. Missing Logbook Submissions */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                                    <FaClipboardList className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missing Logbook Entries
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Working days without logbook</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingLogbookDates.length > 0
+                                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingLogbookDates.length} {missingLogbookDates.length === 1 ? "Day" : "Days"}
+                                </span>
+                              </div>
+
+                              {missingLogbookDates.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All working day logbook submissions completed!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingLogbookDates.map((dateStr) => {
+                                    const dObj = new Date(dateStr + "T12:00:00Z");
+                                    const dayName = dObj.toLocaleDateString("en-US", { weekday: "short" });
+                                    const formatted = dObj.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={dateStr}
+                                        className="flex items-center justify-between p-2 bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 border border-amber-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{formatted}</span>
+                                        <span className="text-[11px] text-amber-700 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          {dayName}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Excludes weekends, holidays & approved leaves
+                            </p>
+                          </div>
+
+                          {/* 3. Missed Meeting Weeks */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                                    <FaUsers className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missed Meeting Weeks
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Weeks without meeting attendance</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingMeetingWeeks.length > 0
+                                      ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingMeetingWeeks.length} {missingMeetingWeeks.length === 1 ? "Week" : "Weeks"}
+                                </span>
+                              </div>
+
+                              {missingMeetingWeeks.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All weekly meetings attended!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingMeetingWeeks.map((item) => {
+                                    const monStr = item.monday.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    });
+                                    const friStr = item.friday.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={item.weekKey}
+                                        className="flex items-center justify-between p-2 bg-purple-50/70 hover:bg-purple-100/70 text-purple-900 border border-purple-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{monStr} – {friStr}</span>
+                                        <span className="text-[11px] text-purple-700 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          Week {item.weekKey.split("-W")[1] || ""}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Expected minimum 1 meeting session per calendar week
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed Breakdown Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                        {/* Daily Attendance Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaCalendarCheck className="text-blue-500" />
+                              Daily Attendance Types
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                              {totalDailyCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                QR Scans
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{qrCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                Biometric Face
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{faceCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                Admin Manual Marks
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{manualDailyCount}</span>
+                            </div>
+                            {otherDailyCount > 0 && (
+                              <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                                <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                  Logbook / Direct
+                                </span>
+                                <span className="text-xs font-bold text-gray-900">{otherDailyCount}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Meeting Attendance Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaUsers className="text-purple-500" />
+                              Meeting Attendance
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
+                              {totalMeetingCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Present Marks</span>
+                              <span className="text-xs font-bold text-emerald-600">{totalMeetingPresent}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Distinct Meeting Weeks</span>
+                              <span className="text-xs font-bold text-purple-600">{attendedMeetingWeeksCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Expected Weeks</span>
+                              <span className="text-xs font-bold text-gray-900">{elapsedWeeks}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Logbook Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaClipboardList className="text-emerald-500" />
+                              Logbook Submissions
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                              {totalLogbookCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                Office Working
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{workingRecords}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                Work From Home
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{wfhRecords}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                Leave / Study Leave
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{leaveRecords}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ══ PREVIEW TAB (Intern-Side Portal Preview using Dashboard.jsx) ══ */}
+                {activeTab === "preview" && (
+                  <div className="rounded-2xl overflow-hidden border border-gray-200 bg-[#f8fafc] shadow-sm">
+                    <Dashboard previewInternId={internId} isPreview={true} />
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

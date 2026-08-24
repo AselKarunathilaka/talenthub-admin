@@ -1,4 +1,4 @@
-// At the top of adminInternDetailsController.js, add this helper:
+const mongoose = require("mongoose");
 const Intern = require("../models/Intern");
 
 const resolveInternId = async (req, res, next) => {
@@ -16,6 +16,8 @@ const resolveInternId = async (req, res, next) => {
 
 const InternService = require("../services/internService");
 const DailyRecord = require("../models/DailyRecord");
+const DailyAttendanceLog = require("../models/DailyAttendanceLog");
+const MeetingAttendance = require("../models/MeetingAttendance");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const TalentTrailService = require("../services/talentTrailService");
 
@@ -97,25 +99,57 @@ const getAdminInternAttendance = async (req, res) => {
   const { internId } = req.params;
 
   try {
-    // 1. Load intern document
-    const intern = await InternService.getInternById(internId);
+    // 1. Load intern document (by ObjectId, Trainee_ID, Trainee_Email, or InactiveIntern)
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    // 2. Load DailyRecord entries and FaceAttendanceLog (authoritative audit for face scans)
-    const [dailyRecords, successfulFaceLogs] = await Promise.all([
-      DailyRecord.find({ internId }).sort({
+    const idOr = [
+      { internId: intern._id },
+      ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+    ];
+
+    // 2. Load DailyRecord entries, FaceAttendanceLog, DailyAttendanceLog, and MeetingAttendance
+    const [dailyRecords, successfulFaceLogs, standaloneDailyLogs, standaloneMeetingLogs] = await Promise.all([
+      DailyRecord.find({ $or: idOr }).sort({
         date: -1,
       }),
       FaceAttendanceLog.find({
-        internId,
+        $or: idOr,
         status: "present",
         method: "face",
         qrBackupUsed: { $ne: true },
       })
         .select("attendanceDate attendanceTime method qrBackupUsed metadata")
         .lean(),
+      DailyAttendanceLog.find({ $or: idOr }).sort({ date: -1 }).lean().catch(() => []),
+      MeetingAttendance.find({ $or: idOr }).sort({ date: -1 }).lean().catch(() => []),
     ]);
 
     // Build a set of ISO date keys where a genuine face (non-QR-backup) daily scan exists
@@ -369,6 +403,28 @@ const getAdminInternAttendance = async (req, res) => {
         });
       }
 
+      // Also merge standalone MeetingAttendance documents if not already in meetingAttendance
+      (standaloneMeetingLogs || []).forEach((entry) => {
+        const at = entry.date ? new Date(entry.date) : (entry.attendanceTime ? new Date(entry.attendanceTime) : new Date());
+        const meetingName = entry.projectName || entry.meetingTitle || "General Meeting";
+        const meetingKey = getMeetingKey(at, meetingName);
+        if (dailyRecordMeetingKeys.has(meetingKey)) return;
+
+        meetingAttendance.push({
+          date: at,
+          status: (entry.status || "present").toLowerCase() === "absent" ? "Absent" : "Present",
+          meetingName,
+          projectName: meetingName,
+          type: "Meeting",
+          rawType: entry.markType || "meeting",
+          attendanceTypeLabel: formatAttendanceTypeLabel(entry.markType || "meeting", true),
+          attendanceMethod: normalizeAttendanceMethod(entry.markType || "meeting"),
+          time: formatColomboTime(entry.attendanceTime || at),
+          isMeeting: true,
+        });
+        dailyRecordMeetingKeys.add(meetingKey);
+      });
+
       // Also ensure all faceDates are present even if not in DailyRecord or intern.attendance
       faceDates.forEach((faceDateKey) => {
         const currentCovered = new Set(
@@ -392,7 +448,30 @@ const getAdminInternAttendance = async (req, res) => {
             checkOutTime: formatColomboTime(matchingMethodInfo?.checkOutTime),
             attendanceTime: checkInTime || faceDateKey,
           });
+          coveredDates.add(faceDateKey);
         }
+      });
+
+      // Also merge standalone DailyAttendanceLog entries if date not yet covered
+      (standaloneDailyLogs || []).forEach((entry) => {
+        const entryDate = entry.date ? new Date(entry.date) : (entry.attendanceTime ? new Date(entry.attendanceTime) : null);
+        if (!entryDate || isNaN(entryDate.getTime())) return;
+        const dayKey = getDateKey(entryDate);
+        if (coveredDates.has(dayKey)) return;
+
+        const rawType = entry.markType || "daily";
+        dailyAttendance.push({
+          date: dayKey,
+          status: (entry.status || "present").toLowerCase() === "absent" ? "Absent" : "Present",
+          type: "Daily",
+          rawType,
+          attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
+          attendanceMethod: normalizeAttendanceMethod(rawType),
+          time: formatColomboTime(entry.attendanceTime || entryDate),
+          checkOutTime: formatColomboTime(entry.checkOutTime),
+          attendanceTime: entry.attendanceTime || entryDate,
+        });
+        coveredDates.add(dayKey);
       });
     } catch (_) {
       // Non-fatal
@@ -446,4 +525,65 @@ const getAdminInternAttendance = async (req, res) => {
   }
 };
 
-module.exports = { getAdminInternAttendance, resolveInternId };
+/**
+ * GET /admin/intern/:internId/record-counts
+ *
+ * Returns direct collection counts:
+ *  { totalDailyAttendance, totalMeetingAttendance, totalLogbook }
+ */
+const getInternRecordCounts = async (req, res) => {
+  const { internId } = req.params;
+  try {
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+
+    const idOr = [
+      ...(intern ? [{ internId: intern._id }] : []),
+      ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ...(intern?.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : [{ traineeId: internId }]),
+    ];
+
+    const [dailyCount, meetingCount, logbookCount] = await Promise.all([
+      DailyAttendanceLog.countDocuments({ $or: idOr }),
+      MeetingAttendance.countDocuments({ $or: idOr }),
+      DailyRecord.countDocuments({ $or: idOr }),
+    ]);
+
+    return res.status(200).json({
+      totalDailyAttendance: dailyCount,
+      totalMeetingAttendance: meetingCount,
+      totalLogbook: logbookCount,
+    });
+  } catch (error) {
+    console.error("[AdminInternDetails] Error fetching record counts:", error);
+    return res.status(500).json({
+      message: "Error fetching intern record counts",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { getAdminInternAttendance, resolveInternId, getInternRecordCounts };

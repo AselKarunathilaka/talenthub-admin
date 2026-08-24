@@ -153,10 +153,18 @@ const CommitHeatmap = ({ startDate, endDate, internId, commitData: propCommitDat
         setError(null);
 
         const uniToken = localStorage.getItem("universityToken");
-        const authToken = uniToken || localStorage.getItem("authToken") || (() => {
-          try { return JSON.parse(localStorage.getItem("studentInfo") || "{}").token; }
-          catch { return null; }
-        })();
+        const authToken =
+          uniToken ||
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("token") ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("studentInfo") || "{}").token; }
+            catch { return null; }
+          })() ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("adminInfo") || "{}").token; }
+            catch { return null; }
+          })();
 
         if (!authToken) {
           if (!cancelled) { setError("Authentication required."); setLoading(false); }

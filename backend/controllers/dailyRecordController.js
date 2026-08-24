@@ -235,13 +235,21 @@ const getDailyRecords = async (req, res) => {
 
     if (!adminUser) {
       // This is likely an intern login, filter by their records
-
-      // Try to find intern by ID first (Google login case)
-      let intern = await Intern.findById(userId);
-
-      if (!intern) {
-        // Try to find by email (backup case)
-        intern = await Intern.findOne({ email: userEmail });
+      let intern = null;
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        intern = await Intern.findById(userId);
+      }
+      if (!intern && userEmail) {
+        intern = await Intern.findOne({
+          $or: [
+            { Trainee_Email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+            { email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+          ],
+        });
+      }
+      if (!intern && userId) {
+        intern = await Intern.findOne({ Trainee_ID: userId });
       }
 
       if (!intern) {
@@ -250,7 +258,10 @@ const getDailyRecords = async (req, res) => {
           details: `No intern found for email: ${userEmail}`,
         });
       }
-      query.internId = intern._id;
+      query.$or = [
+        { internId: intern._id },
+        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+      ];
     }
 
     const records = await DailyRecord.find(query)

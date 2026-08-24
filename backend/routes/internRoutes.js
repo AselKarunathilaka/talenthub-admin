@@ -125,6 +125,11 @@ router.put(
   updateAttendanceForSpecificDate,
 );
 router.get("/attendance/:id", getAttendanceByInternId);
+const { getInternRecordCounts } = require("../controllers/adminInternDetailsController");
+router.get("/:id/record-counts", authenticateUser, (req, res) => {
+  req.params.internId = req.params.id;
+  return getInternRecordCounts(req, res);
+});
 router.post("/mark-attendance/:id", authenticateUser, markAttendance);
 router.post("/mark-attendance", authenticateUser, markAttendance);
 router.post("/manual-checkin-request", authenticateUser, submitManualCheckInRequest);

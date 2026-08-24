@@ -113,17 +113,20 @@ export function calcWorkingDays(startDate, endDate = new Date(), holidaySet = nu
 }
 
 /**
- * Calculate elapsed calendar weeks (expected meetings)
+ * Calculate elapsed calendar weeks (expected meetings) from start date to end date
  */
 export function calcElapsedWeeks(startDate, endDate = new Date()) {
   if (!startDate) return 1;
-  const start = new Date(startDate);
-  if (isNaN(start.getTime())) return 1;
-  const end = new Date(endDate);
-  if (isNaN(end.getTime())) return 1;
-  const msElapsed = end - start;
-  if (msElapsed <= 0) return 1;
-  return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+  const startMondayKey = getMondayWeekKey(startDate);
+  const endMondayKey = getMondayWeekKey(endDate);
+  if (!startMondayKey || !endMondayKey) return 1;
+
+  const startMon = new Date(startMondayKey + "T12:00:00Z");
+  const endMon = new Date(endMondayKey + "T12:00:00Z");
+  if (endMon < startMon) return 1;
+
+  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
+  return Math.max(1, diffWeeks);
 }
 
 /**
@@ -153,24 +156,27 @@ export function calcLogbookRate(logbookCount, workingDays) {
   return Math.min(100, Math.round((count / wDays) * 100)) || 0;
 }
 
-/**
- * Performance Rate percentage (0-100)
- * baseAvg = (logbookRate + meetingAttendanceRate) / 2
- * - For non-coding roles (QA, BA, PM, DevOps, AI, UI/UX, etc.): Math.min(100, Math.round(baseAvg))
- * - For coding roles (FullStack, Java, Mobile, etc.): Math.min(100, Math.round(baseAvg + commitsCount))
- */
 export function calcPerformanceRate({
   logbookRate = 0,
   meetingAttendanceRate = 0,
   commitsCount = 0,
+  workingDays = 0,
   specialization = "",
 }) {
-  const baseAvg = (Number(logbookRate) + Number(meetingAttendanceRate)) / 2;
+  const A = (Number(logbookRate) + Number(meetingAttendanceRate)) / 2;
   if (isNoCommitSpecialization(specialization)) {
-    return Math.min(100, Math.round(baseAvg)) || 0;
+    return Math.max(0, Math.min(100, Math.round(A))) || 0;
   }
+  
   const commits = Number(commitsCount) || 0;
-  return Math.min(100, Math.round(baseAvg + commits)) || 0;
+  if (commits === 0) {
+    return Math.max(0, Math.min(100, Math.round(A))) || 0;
+  }
+  
+  const wDays = Number(workingDays) || 0;
+  const B = commits - wDays;
+  
+  return Math.max(0, Math.min(100, Math.round(A + B))) || 0;
 }
 
 /**

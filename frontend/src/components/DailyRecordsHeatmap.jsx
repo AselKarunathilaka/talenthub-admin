@@ -138,7 +138,15 @@ const DailyRecordsHeatmap = ({ startDate, endDate, records: propRecords }) => {
         setLoading(true);
         const authToken =
           localStorage.getItem("authToken") ||
-          JSON.parse(localStorage.getItem("studentInfo") || "{}").token;
+          localStorage.getItem("token") ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("studentInfo") || "{}").token; }
+            catch { return null; }
+          })() ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("adminInfo") || "{}").token; }
+            catch { return null; }
+          })();
 
         if (!authToken) {
           if (!cancelled) {
