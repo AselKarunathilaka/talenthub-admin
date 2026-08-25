@@ -29,7 +29,14 @@ const AgreementGuard = ({ children }) => {
       const intern = response.data;
       setInternData(intern);
 
-      if (!intern.agreementAccepted) {
+      // Check if intern has signed the digital agreement
+      const isAgreed = Boolean(
+        intern.agreementAccepted &&
+        intern.digitalAgreement &&
+        (intern.digitalAgreement.agreed === true || intern.digitalAgreement.status === "agree")
+      );
+
+      if (!isAgreed) {
         setShowAgreement(true);
       }
     } catch (error) {
@@ -56,12 +63,18 @@ const AgreementGuard = ({ children }) => {
     checkAgreementStatus();
   }, [checkAgreementStatus]);
 
-  const handleAcceptAgreement = async () => {
+  const handleAcceptAgreement = async (digitalAgreementPayload) => {
     try {
       await axios.put(
-        `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${internId}/accept-agreement`
+        `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${internId}/accept-agreement`,
+        { digitalAgreement: digitalAgreementPayload }
       );
-      toast.success("Agreement accepted successfully!");
+      toast.success("Digital agreement accepted successfully!");
+      setInternData((prev) => ({
+        ...prev,
+        agreementAccepted: true,
+        digitalAgreement: digitalAgreementPayload,
+      }));
       setShowAgreement(false);
     } catch (error) {
       console.error("Error accepting agreement:", error);
@@ -106,10 +119,22 @@ const AgreementGuard = ({ children }) => {
   // 2. Agreement Acceptance check
   if (showAgreement) {
     return (
-      <AgreementModal
-        onAccept={handleAcceptAgreement}
-        internName={internData?.Trainee_Name || internData?.traineeName || "User"}
-      />
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Hardware-isolated blurred Dashboard background */}
+        <div
+          className="fixed inset-0 pointer-events-none select-none opacity-30 filter blur-xs overflow-hidden transform-gpu will-change-transform z-0"
+          aria-hidden="true"
+          tabIndex={-1}
+        >
+          {children}
+        </div>
+        {/* Professional Horizontal Agreement Modal */}
+        <AgreementModal
+          onAccept={handleAcceptAgreement}
+          internName={internData?.Trainee_Name || internData?.traineeName || "User"}
+          internData={internData}
+        />
+      </div>
     );
   }
 

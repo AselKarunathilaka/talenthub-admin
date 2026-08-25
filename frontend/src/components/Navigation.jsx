@@ -53,6 +53,7 @@ const Navigation = ({ children }) => {
   const [internName, setInternName] = useState("");
   const [displayInternId, setDisplayInternId] = useState("");
   const [unreadCount, setUnreadCount] = useState(0);
+  const [profileImgError, setProfileImgError] = useState(false);
 
   // Profile picture state
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
@@ -60,9 +61,12 @@ const Navigation = ({ children }) => {
   const [profilePicHash, setProfilePicHash] = useState(Date.now());
 
   const traineeId = localStorage.getItem("internId");
+  // Primary URL: backend endpoint (serves uploaded pic or redirects to Google pic)
   const profilePicUrl = traineeId
     ? `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${traineeId}/profile-picture?t=${profilePicHash}`
     : "";
+  // Guaranteed fallback: ui-avatars with intern's initials
+  const avatarFallbackUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(internName || "Intern")}&background=000066&color=ffffff&bold=true`;
 
 
 
@@ -160,6 +164,7 @@ const Navigation = ({ children }) => {
       );
       toast.success("Profile picture updated!");
       setProfilePicHash(Date.now());
+      setProfileImgError(false); // reset error so new image is loaded
       setIsProfileModalOpen(false);
     } catch (error) {
       console.error("Error uploading image:", error);
@@ -440,14 +445,11 @@ const Navigation = ({ children }) => {
                   title="Profile"
                 >
                   <img
-                    src={profilePicUrl}
-                    alt="Profile"
+                    src={profileImgError ? avatarFallbackUrl : (profilePicUrl || avatarFallbackUrl)}
+                    alt={internName || "Profile"}
                     className="h-full w-full object-cover"
-                    onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                    onError={() => setProfileImgError(true)}
                   />
-                  <div className="hidden h-full w-full bg-gradient-to-br from-[#00b4eb] to-[#0056a2] items-center justify-center text-white font-medium">
-                    {internName ? internName.split(" ").map((n) => n[0]).join("") : "U"}
-                  </div>
                 </button>
                 
                 {/* Center: ID */}

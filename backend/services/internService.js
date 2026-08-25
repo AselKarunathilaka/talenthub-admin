@@ -546,14 +546,41 @@ class InternService {
     }
   }
 
-  async acceptAgreement(internId) {
+  async acceptAgreement(internId, digitalAgreementData = null) {
     const intern = await InternRepository.getInternById(internId);
     if (!intern) {
       throw new Error("Intern not found");
     }
 
+    const now = new Date();
     intern.agreementAccepted = true;
-    intern.agreementAcceptedDate = new Date();
+    intern.agreementAcceptedDate = now;
+    if (digitalAgreementData && typeof digitalAgreementData === "object") {
+      intern.digitalAgreement = {
+        agreed: true,
+        agreedAt: now,
+        status: "agree",
+        items: Array.isArray(digitalAgreementData.items) ? digitalAgreementData.items : [],
+        version: digitalAgreementData.version || "1.0",
+      };
+    } else {
+      intern.digitalAgreement = {
+        agreed: true,
+        agreedAt: now,
+        status: "agree",
+        items: [
+          "Full-Week Attendance",
+          "Working Hours",
+          "Knowledge Sharing",
+          "Meetings",
+          "Dress Code",
+          "Workplace Cleanliness",
+          "Early Leave",
+          "Internship Termination"
+        ],
+        version: "1.0",
+      };
+    }
     await intern.save();
 
     return intern;

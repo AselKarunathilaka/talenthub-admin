@@ -443,6 +443,7 @@ const getInternDetails = async (req, res) => {
         availableDays: intern.availableDays,
         agreementAccepted: intern.agreementAccepted,
         agreementAcceptedDate: intern.agreementAcceptedDate,
+        digitalAgreement: intern.digitalAgreement,
         projects,
       },
       records,

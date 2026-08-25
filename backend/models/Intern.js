@@ -82,6 +82,13 @@ const internSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
+    digitalAgreement: {
+      agreed: { type: Boolean, default: false },
+      agreedAt: { type: Date },
+      status: { type: String, default: "pending" },
+      items: { type: [String], default: [] },
+      version: { type: String, default: "1.0" },
+    },
     isTestAccount: { type: Boolean, default: false },
     password: { type: String, default: "" },
     googlePictureUrl: { type: String, default: "" },

@@ -773,11 +773,13 @@ const triggerComprehensiveUpdate = async (req, res) => {
 const acceptAgreement = async (req, res) => {
   try {
     const internId = req.params.id;
-    const updatedIntern = await InternService.acceptAgreement(internId);
+    const { digitalAgreement } = req.body;
+    const updatedIntern = await InternService.acceptAgreement(internId, digitalAgreement);
     res.status(200).json({
       message: "Agreement accepted successfully",
       agreementAccepted: updatedIntern.agreementAccepted,
       agreementAcceptedDate: updatedIntern.agreementAcceptedDate,
+      digitalAgreement: updatedIntern.digitalAgreement,
     });
   } catch (error) {
     res

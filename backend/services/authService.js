@@ -228,6 +228,8 @@ class AuthService {
       talentHubOverride: access.isOverride,
       talentHubOverrideExpiresAt: access.overrideExpiresAt,
       daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
       message: "Login successful!",
     };
   }
@@ -270,6 +272,8 @@ class AuthService {
       talentHubOverride: access.isOverride,
       talentHubOverrideExpiresAt: access.overrideExpiresAt,
       daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
       message: "Login successful!",
     };
   }
