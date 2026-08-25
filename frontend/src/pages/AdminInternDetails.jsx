@@ -38,8 +38,11 @@ import {
   FaGraduationCap,
   FaStar,
   FaAward,
+  FaFilePdf,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
@@ -56,6 +59,41 @@ import {
   getMondayWeekKey,
   toDateStr,
 } from "../utils/analyticsCalculations";
+
+// ─── Helper: load profile image as Base64 for jsPDF ─────────────────────────
+const loadProfileImageBase64 = (url) => {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width || 140;
+        canvas.height = img.naturalHeight || img.height || 140;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+        resolve(dataURL);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+};
+
+// ─── Helper: draw initials avatar on PDF if image unavailable ───────────────
+const drawPdfFallbackAvatar = (doc, x, y, size, intern) => {
+  doc.setFillColor(0, 0, 102);
+  doc.roundedRect(x, y, size, size, 2.5, 2.5, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const initial = ((intern?.traineeName || intern?.name || "?").charAt(0) || "?").toUpperCase();
+  doc.text(initial, x + size / 2, y + size / 2 + 3.5, { align: "center" });
+};
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
 const getCalendarDays = (year, month) => {
@@ -195,8 +233,454 @@ const AdminInternDetails = () => {
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
   // Direct collection counts (dailyattendance, meetingattendance, dailyrecords)
   const [recordCounts, setRecordCounts] = useState(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
   const intern = internDetails?.intern;
+
+  const handleExportMissingRecordsPDF = useCallback(async ({
+    intern,
+    dailyAttendanceRate,
+    meetingAttendanceRate,
+    performanceRate,
+    missingDailyDates = [],
+    missingLogbookDates = [],
+    missingMeetingWeeks = [],
+    startDateVal,
+    formattedStartDate,
+    workingDays,
+    elapsedWeeks,
+  }) => {
+    setIsExportingPDF(true);
+    try {
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const contentWidth = pageWidth - margin * 2;
+
+      // ── 1. Header Banner (Corporate Dark Blue to Emerald Accent) ──
+      doc.setFillColor(0, 0, 102); // #000066 Navy
+      doc.rect(0, 0, pageWidth, 22, "F");
+
+      doc.setFillColor(0, 102, 0); // #006600 Emerald
+      doc.rect(0, 22, pageWidth, 2.5, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("TALENTHUB  •  INTERN ATTENDANCE & AUDIT REPORT", margin, 12);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(203, 213, 225);
+      doc.text(
+        `Official Internship Missing Submissions & Compliance Audit  |  Generated on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`,
+        margin,
+        17.5
+      );
+
+      // ── 2. Profile Card (Top Area) ──
+      let cardY = 28;
+      const cardHeight = 38;
+
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, cardY, contentWidth, cardHeight, 3, 3, "F");
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, cardY, contentWidth, cardHeight, 3, 3, "S");
+
+      // Profile Image loading
+      const photoUrl = intern?._id ? `${API_BASE_URL}/interns/${intern._id}/profile-picture` : null;
+      let photoData = null;
+      if (photoUrl) {
+        photoData = await loadProfileImageBase64(photoUrl);
+      }
+
+      const avatarSize = 28;
+      const avatarX = margin + 5;
+      const avatarY = cardY + 5;
+
+      if (photoData) {
+        try {
+          doc.addImage(photoData, "JPEG", avatarX, avatarY, avatarSize, avatarSize);
+          doc.setDrawColor(203, 213, 225);
+          doc.setLineWidth(0.4);
+          doc.roundedRect(avatarX, avatarY, avatarSize, avatarSize, 2, 2, "S");
+        } catch {
+          drawPdfFallbackAvatar(doc, avatarX, avatarY, avatarSize, intern);
+        }
+      } else {
+        drawPdfFallbackAvatar(doc, avatarX, avatarY, avatarSize, intern);
+      }
+
+      // Profile Text info with perfectly aligned 2-column layout
+      const col1X = avatarX + avatarSize + 6;
+      const col2X = col1X + 66;
+      const internName = intern?.traineeName || intern?.name || intern?.Trainee_Name || "Intern";
+      const traineeId = intern?.traineeId || intern?.Trainee_ID || "N/A";
+      const spec = intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "Not Specified";
+      const institute = intern?.institute || intern?.university || intern?.Institute || "Not Specified";
+      const startDisplay = formattedStartDate || (startDateVal ? new Date(startDateVal).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A");
+      const endDisplay = intern?.endDate || intern?.Training_EndDate ? new Date(intern?.endDate || intern?.Training_EndDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
+
+      // Intern Name (Title)
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12.5);
+      doc.text(internName, col1X, cardY + 9);
+
+      // Helper for clean, perfectly aligned key-value pair
+      const renderField = (label, val, x, y, valColor = [15, 23, 42]) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(label, x, y);
+        const labelWidth = doc.getTextWidth(label);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...valColor);
+        doc.text(String(val || "N/A"), x + labelWidth + 1.2, y);
+      };
+
+      // Row 1: Trainee ID & Specialization
+      renderField("Trainee ID: ", traineeId, col1X, cardY + 16.5, [0, 0, 102]);
+      renderField("Specialization: ", spec, col2X, cardY + 16.5, [2, 132, 199]);
+
+      // Row 2: Institute & Target End Date
+      renderField("Institute: ", institute, col1X, cardY + 23.5, [30, 41, 59]);
+      renderField("Target End Date: ", endDisplay, col2X, cardY + 23.5, [30, 41, 59]);
+
+      // Row 3: Start Date & Working Days
+      renderField("Start Date: ", startDisplay, col1X, cardY + 30.5, [30, 41, 59]);
+      renderField("Working Days: ", `${workingDays} Days`, col2X, cardY + 30.5, [30, 41, 59]);
+
+      // ── 3. KPI Rate & Missing Summary Grid (6 Cards) ──
+      let kpiY = cardY + cardHeight + 5.5;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("ATTENDANCE & MISSING SUBMISSION METRICS", margin, kpiY);
+
+      kpiY += 3.5;
+      const cardGap = 3.5;
+      const colW = (contentWidth - cardGap * 2) / 3;
+      const rowH = 19;
+
+      const kpis = [
+        {
+          label: "Daily Attendance Rate",
+          val: `${dailyAttendanceRate}%`,
+          sub: `${workingDays} Total Working Days`,
+          borderCol: [191, 219, 254],
+          bgCol: [239, 246, 255],
+          textCol: [29, 78, 216],
+        },
+        {
+          label: "Meeting Attendance Rate",
+          val: `${meetingAttendanceRate}%`,
+          sub: `${elapsedWeeks || 0} Expected Meetings`,
+          borderCol: [221, 214, 254],
+          bgCol: [245, 243, 255],
+          textCol: [109, 40, 217],
+        },
+        {
+          label: "Performance Rate",
+          val: `${performanceRate}%`,
+          sub: `Status: ${getPerformanceStatus(performanceRate)}`,
+          borderCol: performanceRate >= 80 ? [167, 243, 208] : performanceRate >= 60 ? [254, 215, 170] : [254, 205, 211],
+          bgCol: performanceRate >= 80 ? [236, 253, 245] : performanceRate >= 60 ? [255, 251, 235] : [255, 241, 242],
+          textCol: performanceRate >= 80 ? [4, 120, 87] : performanceRate >= 60 ? [180, 83, 9] : [190, 18, 60],
+        },
+        {
+          label: "Missing Daily Attendance",
+          val: `${missingDailyDates.length} Days`,
+          sub: missingDailyDates.length === 0 ? "100% Complete" : "Working days unrecorded",
+          borderCol: missingDailyDates.length > 0 ? [254, 205, 211] : [167, 243, 208],
+          bgCol: missingDailyDates.length > 0 ? [255, 241, 242] : [236, 253, 245],
+          textCol: missingDailyDates.length > 0 ? [225, 29, 72] : [4, 120, 87],
+        },
+        {
+          label: "Missing Logbook Entries",
+          val: `${missingLogbookDates.length} Days`,
+          sub: missingLogbookDates.length === 0 ? "100% Complete" : "Working days unsubmitted",
+          borderCol: missingLogbookDates.length > 0 ? [254, 215, 170] : [167, 243, 208],
+          bgCol: missingLogbookDates.length > 0 ? [255, 251, 235] : [236, 253, 245],
+          textCol: missingLogbookDates.length > 0 ? [217, 119, 6] : [4, 120, 87],
+        },
+        {
+          label: "Missed Meeting Weeks",
+          val: `${missingMeetingWeeks.length} Weeks`,
+          sub: missingMeetingWeeks.length === 0 ? "100% Complete" : "Weekly meetings missed",
+          borderCol: missingMeetingWeeks.length > 0 ? [221, 214, 254] : [167, 243, 208],
+          bgCol: missingMeetingWeeks.length > 0 ? [245, 243, 255] : [236, 253, 245],
+          textCol: missingMeetingWeeks.length > 0 ? [124, 58, 237] : [4, 120, 87],
+        },
+      ];
+
+      // Render Row 1 (3 items)
+      kpis.slice(0, 3).forEach((item, idx) => {
+        const x = margin + idx * (colW + cardGap);
+        const y = kpiY;
+        doc.setFillColor(...item.bgCol);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "F");
+        doc.setDrawColor(...item.borderCol);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "S");
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.label, x + 3.5, y + 5.2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11.5);
+        doc.setTextColor(...item.textCol);
+        doc.text(item.val, x + 3.5, y + 11.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.sub, x + 3.5, y + 15.8);
+      });
+
+      // Render Row 2 (3 items)
+      kpis.slice(3, 6).forEach((item, idx) => {
+        const x = margin + idx * (colW + cardGap);
+        const y = kpiY + rowH + cardGap;
+        doc.setFillColor(...item.bgCol);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "F");
+        doc.setDrawColor(...item.borderCol);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "S");
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.label, x + 3.5, y + 5.2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11.5);
+        doc.setTextColor(...item.textCol);
+        doc.text(item.val, x + 3.5, y + 11.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.sub, x + 3.5, y + 15.8);
+      });
+
+      let currentY = kpiY + rowH * 2 + cardGap + 7.5;
+
+      // ── Helper to format dates for table ──
+      const formatRowDate = (dateStr) => {
+        if (!dateStr) return { date: "N/A", day: "N/A" };
+        const dObj = new Date(dateStr + "T12:00:00Z");
+        return {
+          date: dObj.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+          day: dObj.toLocaleDateString("en-US", { weekday: "long" }),
+        };
+      };
+
+      // ── 4. Detailed Table 1: Missing Daily Attendance Working Days ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`1. MISSING DAILY ATTENDANCE (${missingDailyDates.length} WORKING DAYS)`, margin, currentY);
+
+      if (missingDailyDates.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All working day daily attendance check-ins are recorded and verified.", margin + 4, currentY + 7.5);
+        currentY += 14.5;
+      } else {
+        const dailyRows = missingDailyDates.map((dateStr, idx) => {
+          const info = formatRowDate(dateStr);
+          return [idx + 1, dateStr, info.date, info.day, "Unrecorded Daily Check-in"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Date (YYYY-MM-DD)", "Formatted Date", "Day of Week", "Status"]],
+          body: dailyRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [225, 29, 72],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 62, fontStyle: "bold", textColor: [190, 18, 60] },
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 6.5;
+      }
+
+      // Check page break before Table 2
+      if (currentY > pageHeight - 45) {
+        doc.addPage();
+        currentY = 16;
+      }
+
+      // ── 5. Detailed Table 2: Missing Logbook Submissions ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`2. MISSING LOGBOOK ENTRIES (${missingLogbookDates.length} WORKING DAYS)`, margin, currentY);
+
+      if (missingLogbookDates.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All working day logbook submissions are recorded and up to date.", margin + 4, currentY + 7.5);
+        currentY += 14.5;
+      } else {
+        const logbookRows = missingLogbookDates.map((dateStr, idx) => {
+          const info = formatRowDate(dateStr);
+          return [idx + 1, dateStr, info.date, info.day, "Missing Daily Work Log"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Date (YYYY-MM-DD)", "Formatted Date", "Day of Week", "Status"]],
+          body: logbookRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [217, 119, 6],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 62, fontStyle: "bold", textColor: [180, 83, 9] },
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 6.5;
+      }
+
+      // Check page break before Table 3
+      if (currentY > pageHeight - 45) {
+        doc.addPage();
+        currentY = 16;
+      }
+
+      // ── 6. Detailed Table 3: Missed Weekly Meeting Sessions ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`3. MISSED WEEKLY MEETING SESSIONS (${missingMeetingWeeks.length} WEEKS)`, margin, currentY);
+
+      if (missingMeetingWeeks.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All weekly team meeting sessions were attended as scheduled.", margin + 4, currentY + 7.5);
+      } else {
+        const meetingRows = missingMeetingWeeks.map((weekObj, idx) => {
+          const monStr = weekObj.monday instanceof Date
+            ? weekObj.monday.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : String(weekObj.weekKey || "N/A");
+          const friStr = weekObj.friday instanceof Date
+            ? weekObj.friday.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "N/A";
+          return [idx + 1, weekObj.weekKey || "N/A", `${monStr} – ${friStr}`, "Missed Weekly Meeting Session"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Week Reference Key", "Week Period (Monday – Friday)", "Status"]],
+          body: meetingRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [109, 40, 217],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 45 },
+            2: { cellWidth: 65 },
+            3: { cellWidth: 62, fontStyle: "bold", textColor: [109, 40, 217] },
+          },
+        });
+      }
+
+      // ── 7. Add Footers and Page Numbers on all pages ──
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text("TalentHub  •  SLT Mobitel Digital Platforms  •  Official Compliance & Attendance Audit", margin, pageHeight - 7);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: "right" });
+      }
+
+      const safeName = (intern?.traineeName || intern?.name || "Intern").replace(/[^a-zA-Z0-9]/g, "_");
+      const safeId = String(intern?.traineeId || intern?.Trainee_ID || "3548").replace(/[^a-zA-Z0-9]/g, "_");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      doc.save(`TalentHub_Missing_Records_${safeId}_${safeName}_${dateStamp}.pdf`);
+    } catch (err) {
+      console.error("Error generating Missing Records PDF:", err);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  }, []);
 
   // ── Holidays (must be declared before metrics useMemos that depend on it) ──
   const [holidays, setHolidays] = useState([]);
@@ -3183,16 +3667,44 @@ const AdminInternDetails = () => {
 
                       {/* ══ NOT SUBMITTED DATES & WEEKS HUB (Before Daily Attendance Types) ══ */}
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
                           <div>
                             <h4 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
                               <FaExclamationTriangle className="text-amber-500" />
                               Missing Submissions & Pending Records
                             </h4>
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-gray-500 mt-0.5">
                               Unrecorded working days and missed weekly meeting sessions between internship start date and current date
                             </p>
                           </div>
+
+                          {/* ── Export Missing Records PDF Button ── */}
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={() =>
+                              handleExportMissingRecordsPDF({
+                                intern,
+                                dailyAttendanceRate,
+                                meetingAttendanceRate,
+                                performanceRate,
+                                missingDailyDates,
+                                missingLogbookDates,
+                                missingMeetingWeeks,
+                                startDateVal,
+                                formattedStartDate,
+                                workingDays,
+                                elapsedWeeks,
+                              })
+                            }
+                            disabled={isExportingPDF}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#000066] to-[#006600] hover:from-[#000088] hover:to-[#008800] active:scale-95 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+                            title="Export clean PDF report with profile, rates, and detailed missing submissions breakdown"
+                          >
+                            <FaFilePdf className="text-sm text-rose-300" />
+                            <span>{isExportingPDF ? "Generating PDF..." : "Export PDF"}</span>
+                          </motion.button>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
