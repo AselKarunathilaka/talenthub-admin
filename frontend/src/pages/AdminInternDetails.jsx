@@ -995,9 +995,9 @@ const AdminInternDetails = () => {
                                 />
                               </div>
                               <p className="text-[10px] text-slate-400 mt-1">
-                                {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization)
-                                  ? `Calculated from Logbooks (${logbookRate}%) and Meeting Attendance (${meetingAttendanceRate}%) for ${intern?.field_of_spec_name || "Specialization"}`
-                                  : `Calculated from Logbooks (${logbookRate}%), Meeting Attendance (${meetingAttendanceRate}%), and GitHub Commits (${commitsCount} commits)`}
+                                {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "")
+                                  ? `Calculated from Logbooks (${logbookRate}%) and Meeting Attendance (${meetingAttendanceRate}%) for ${intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "Specialization"}`
+                                  : `Calculated from Logbooks (${logbookRate}%), Meeting Attendance (${meetingAttendanceRate}%), and GitHub Commit Balance (+${Math.max(0, commitsCount - workingDays)}% from ${commitsCount} commits / ${workingDays} working days)`}
                               </p>
                             </div>
                           )}
@@ -3173,9 +3173,9 @@ const AdminInternDetails = () => {
                           </div>
                           <div className="mt-4 pt-3 border-t border-white/20">
                             <p className="text-[10px] text-rose-200/80 leading-relaxed font-mono italic">
-                              {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.specialization || intern?.fieldOfSpecialization || "") || !commitsCount || commitsCount === 0
+                              {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.specialization || intern?.fieldOfSpecialization || "")
                                 ? "Formula: (Meeting Attendance Rate + Logbook Rate) / 2"
-                                : "Formula: (Meeting Attendance Rate + Logbook Rate) / 2 + (Commits Count - Working Days)"}
+                                : "Formula: (Meeting Attendance Rate + Logbook Rate) / 2 + max(0, Commits Count - Working Days)"}
                             </p>
                           </div>
                         </motion.div>

@@ -146,9 +146,15 @@ async function buildInternProjectMap(token) {
 }
 
 async function resolveLocalInternRef(talentTrailIntern) {
-  const local = await Intern.findOne({
-    Trainee_Email: talentTrailIntern.email,
-  }).select("_id");
+  const code = String(talentTrailIntern.internCode || talentTrailIntern.id || "").trim();
+  const email = String(talentTrailIntern.email || "").trim();
+
+  const query = [];
+  if (code) query.push({ Trainee_ID: code });
+  if (email) query.push({ Trainee_Email: new RegExp("^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i") });
+  if (query.length === 0) return null;
+
+  const local = await Intern.findOne({ $or: query }).select("_id");
   return local ? local._id : null;
 }
 
@@ -252,7 +258,16 @@ async function syncGitCommits(token, ttInterns, ttProjects, ttModules) {
 
       await Promise.all([
         InternTalentTrailSync.updateOne({ _id: syncRec._id }, { $set: { commitsCount: totalCommits } }),
-        syncRec.internRef ? Intern.updateOne({ _id: syncRec.internRef }, { $set: { commitsCount: totalCommits } }) : Promise.resolve(),
+        Intern.updateMany(
+          {
+            $or: [
+              ...(syncRec.internRef ? [{ _id: syncRec.internRef }] : []),
+              ...(syncRec.internCode ? [{ Trainee_ID: String(syncRec.internCode).trim() }] : []),
+              ...(syncRec.email ? [{ Trainee_Email: new RegExp("^" + syncRec.email.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", "i") }] : []),
+            ],
+          },
+          { $set: { commitsCount: totalCommits } }
+        ),
       ]);
     }
   } catch (err) {

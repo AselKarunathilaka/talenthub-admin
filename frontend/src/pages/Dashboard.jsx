@@ -783,7 +783,7 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
   const performanceRate = useMemo(() => {
     const startDateVal = internData?.Training_StartDate || internData?.startDate;
     if (!startDateVal) return 0;
-    const spec = internData?.field_of_spec_name || internData?.specialization || "";
+    const spec = internData?.field_of_spec_name || internData?.fieldOfSpecialization || internData?.specialization || "";
     return calcPerformanceRate({
       logbookRate,
       meetingAttendanceRate,

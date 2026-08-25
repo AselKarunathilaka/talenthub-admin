@@ -75,25 +75,41 @@ const formatDate = (dateStr) => {
 const isNoCommitSpecialization = (spec) => {
   if (!spec) return false;
   const s = spec.trim().toLowerCase();
+
+  if (/\b(qa|sqa|ba|pm|apm|devops|ai|ml|genai|sre|nlp)\b/i.test(s)) {
+    return true;
+  }
+
   return (
     s === "qa" ||
     s.includes("quality assurance") ||
+    s.includes("software quality") ||
     s.includes("qa engineer") ||
     s === "ba" ||
     s.includes("business analyst") ||
     s.includes("business analysis") ||
+    s.includes("business analytics") ||
     s === "pm" ||
     s.includes("project manager") ||
     s.includes("project management") ||
+    s.includes("product manager") ||
+    s.includes("product management") ||
     s === "devops" ||
     s.includes("devops") ||
+    s.includes("dev ops") ||
     s === "ai" ||
     s.includes("artificial intelligence") ||
     s.includes("machine learning") ||
     s.includes("data science") ||
+    s.includes("data scientist") ||
+    s.includes("deep learning") ||
+    s.includes("computer vision") ||
+    s.includes("generative ai") ||
     s.startsWith("ai ") ||
     s.endsWith(" ai") ||
-    s.includes(" ai ")
+    s.includes(" ai ") ||
+    s.includes("ai/") ||
+    s.includes("/ai")
   );
 };
 

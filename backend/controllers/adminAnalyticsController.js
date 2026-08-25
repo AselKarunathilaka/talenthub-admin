@@ -108,25 +108,41 @@ function calcElapsedWeeks(startDate, endDate = new Date()) {
 function isNoCommitSpecialization(specName) {
   if (!specName) return false;
   const s = String(specName).trim().toLowerCase();
+
+  if (/\b(qa|sqa|ba|pm|apm|devops|ai|ml|genai|sre|nlp)\b/i.test(s)) {
+    return true;
+  }
+
   return (
     s === "qa" ||
     s.includes("quality assurance") ||
+    s.includes("software quality") ||
     s.includes("qa engineer") ||
     s === "ba" ||
     s.includes("business analyst") ||
     s.includes("business analysis") ||
+    s.includes("business analytics") ||
     s === "pm" ||
     s.includes("project manager") ||
     s.includes("project management") ||
+    s.includes("product manager") ||
+    s.includes("product management") ||
     s === "devops" ||
     s.includes("devops") ||
+    s.includes("dev ops") ||
     s === "ai" ||
     s.includes("artificial intelligence") ||
     s.includes("machine learning") ||
     s.includes("data science") ||
+    s.includes("data scientist") ||
+    s.includes("deep learning") ||
+    s.includes("computer vision") ||
+    s.includes("generative ai") ||
     s.startsWith("ai ") ||
     s.endsWith(" ai") ||
-    s.includes(" ai ")
+    s.includes(" ai ") ||
+    s.includes("ai/") ||
+    s.includes("/ai")
   );
 }
 
@@ -141,20 +157,16 @@ function calcPerformanceRate({
   workingDays = 0,
   specialization = "",
 }) {
-  const A = (Number(logbookRate) + Number(meetingAttendanceRate)) / 2;
+  const baseAvg = (Number(logbookRate) + Number(meetingAttendanceRate)) / 2;
   if (isNoCommitSpecialization(specialization)) {
-    return Math.max(0, Math.min(100, Math.round(A))) || 0;
+    return Math.max(0, Math.min(100, Math.round(baseAvg))) || 0;
   }
 
   const commits = Number(commitsCount) || 0;
-  if (commits === 0) {
-    return Math.max(0, Math.min(100, Math.round(A))) || 0;
-  }
-
   const wDays = Number(workingDays) || 0;
-  const B = commits - wDays;
+  const commitBonus = Math.max(0, commits - wDays);
 
-  return Math.max(0, Math.min(100, Math.round(A + B))) || 0;
+  return Math.max(0, Math.min(100, Math.round(baseAvg + commitBonus))) || 0;
 }
 
 /**
