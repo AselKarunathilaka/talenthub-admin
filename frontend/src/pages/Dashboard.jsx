@@ -1214,6 +1214,191 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
         {/* ===== Deep Dive Content Container ===== */}
         <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 24px)', marginTop: 'clamp(16px, 4vw, 32px)' }}>
 
+          {/* ══ Intern Valid Submissions & Attendance Overview Cards ══ */}
+          {(() => {
+            const internSpec =
+              internData?.field_of_spec_name ||
+              internData?.fieldOfSpecialization ||
+              internData?.specialization ||
+              "";
+            const isNoCommitRole = isNoCommitSpecialization(internSpec);
+
+            return (
+              <motion.div
+                className="w-full"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+              >
+                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 ${isNoCommitRole ? 'xl:grid-cols-5' : 'xl:grid-cols-6'} gap-4`}>
+                  {/* 1. Working Days */}
+                  <motion.div
+                    className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="absolute right-2 top-2 opacity-10">
+                      <Calendar size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                          <Calendar className="text-white w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold tracking-wider uppercase text-slate-200">
+                          Working Days
+                        </span>
+                      </div>
+                      <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                        {workingDays}
+                      </h4>
+                      <p className="text-[11px] text-slate-300">
+                        Total Working Days
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* 2. Expected Meetings */}
+                  <motion.div
+                    className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="absolute right-2 top-2 opacity-10">
+                      <Users size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                          <Users className="text-white w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold tracking-wider uppercase text-cyan-100">
+                          Expected Meetings
+                        </span>
+                      </div>
+                      <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                        {elapsedWeeks}
+                      </h4>
+                      <p className="text-[11px] text-cyan-100">
+                        Total Expected Weeks
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* 3. Daily Attendance */}
+                  <motion.div
+                    className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="absolute right-2 top-2 opacity-10">
+                      <CheckCircle size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                          <CheckCircle className="text-white w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold tracking-wider uppercase text-blue-100">
+                          Daily Attendance
+                        </span>
+                      </div>
+                      <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                        {attendedDaysCount}
+                      </h4>
+                      <p className="text-[11px] text-blue-100">
+                        Valid Submissions
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* 4. Meeting Attendance */}
+                  <motion.div
+                    className="bg-gradient-to-br from-purple-500 to-indigo-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="absolute right-2 top-2 opacity-10">
+                      <Users size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                          <Users className="text-white w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold tracking-wider uppercase text-purple-100">
+                          Meeting Attendance
+                        </span>
+                      </div>
+                      <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                        {attendedMeetingWeeksCount}
+                      </h4>
+                      <p className="text-[11px] text-purple-100">
+                        Valid Submissions
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* 5. Logbook Records */}
+                  <motion.div
+                    className="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                    whileHover={{ y: -3 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <div className="absolute right-2 top-2 opacity-10">
+                      <BookOpen size={80} />
+                    </div>
+                    <div className="relative z-10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                          <BookOpen className="text-white w-4 h-4" />
+                        </span>
+                        <span className="text-xs font-bold tracking-wider uppercase text-emerald-100">
+                          Logbook Records
+                        </span>
+                      </div>
+                      <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                        {validLogbookCount}
+                      </h4>
+                      <p className="text-[11px] text-emerald-100">
+                        Valid Submissions
+                      </p>
+                    </div>
+                  </motion.div>
+
+                  {/* 6. Git Commits */}
+                  {!isNoCommitRole && (
+                    <motion.div
+                      className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                      whileHover={{ y: -3 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="absolute right-2 top-2 opacity-10">
+                        <GitCommit size={80} />
+                      </div>
+                      <div className="relative z-10">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                            <GitCommit className="text-white w-4 h-4" />
+                          </span>
+                          <span className="text-xs font-bold tracking-wider uppercase text-amber-100">
+                            Git Commits
+                          </span>
+                        </div>
+                        <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                          {commitsCount}
+                        </h4>
+                        <p className="text-[11px] text-amber-100">
+                          Valid Submissions
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })()}
+
           {/* ── Logbook / Commits Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', padding: 'clamp(12px, 3vw, 20px) 0' }}>
           {/* Heatmap External Toggle */}
