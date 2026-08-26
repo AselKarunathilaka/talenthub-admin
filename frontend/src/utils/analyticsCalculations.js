@@ -130,19 +130,20 @@ export function calcWorkingDays(startDate, endDate = new Date(), holidaySet = nu
 
 /**
  * Calculate elapsed calendar weeks (expected meetings) from start date to end date
+ * Counts completed full weeks elapsed up to the current week.
  */
 export function calcElapsedWeeks(startDate, endDate = new Date()) {
-  if (!startDate) return 1;
+  if (!startDate) return 0;
   const startMondayKey = getMondayWeekKey(startDate);
   const endMondayKey = getMondayWeekKey(endDate);
-  if (!startMondayKey || !endMondayKey) return 1;
+  if (!startMondayKey || !endMondayKey) return 0;
 
   const startMon = new Date(startMondayKey + "T12:00:00Z");
   const endMon = new Date(endMondayKey + "T12:00:00Z");
-  if (endMon < startMon) return 1;
+  if (endMon < startMon) return 0;
 
-  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  return Math.max(1, diffWeeks);
+  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return Math.max(0, diffWeeks);
 }
 
 /**
@@ -158,8 +159,11 @@ export function calcDailyAttendanceRate(dailyCount, workingDays) {
  * Meeting Attendance Rate percentage (0-100) based on calendar weeks
  */
 export function calcMeetingAttendanceRate(attendedMeetingWeeksCount, expectedMeetings) {
-  const expMeets = Math.max(1, Number(expectedMeetings) || 1);
+  const expMeets = Number(expectedMeetings) || 0;
   const count = Number(attendedMeetingWeeksCount) || 0;
+  if (expMeets <= 0) {
+    return 100;
+  }
   return Math.min(100, Math.round((count / expMeets) * 100)) || 0;
 }
 

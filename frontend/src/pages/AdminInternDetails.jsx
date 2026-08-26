@@ -698,7 +698,7 @@ const AdminInternDetails = () => {
 
   const elapsedWeeks = useMemo(() => {
     const startDateVal = intern?.startDate || intern?.Training_StartDate;
-    if (!startDateVal) return 1;
+    if (!startDateVal) return 0;
     const now = new Date();
     // Always calculate from internship start date to current date
     return calcElapsedWeeksUtil(startDateVal, now);
@@ -3346,12 +3346,12 @@ const AdminInternDetails = () => {
                         .filter(Boolean)
                     );
 
-                    // Monday-by-Monday calendar week iteration from start date to today
+                    // Monday-by-Monday calendar week iteration for completed weeks up to current week
                     if (startMonKey && todayMonKey) {
                       let weekCursor = new Date(startMonKey + "T12:00:00Z");
                       const endMondayDate = new Date(todayMonKey + "T12:00:00Z");
 
-                      while (weekCursor <= endMondayDate) {
+                      while (weekCursor < endMondayDate) {
                         const wKey = getMondayWeekKey(weekCursor);
                         if (wKey) {
                           expectedMeetingWeekKeys.push(wKey);
@@ -3371,11 +3371,11 @@ const AdminInternDetails = () => {
                     }
                   }
 
-                  const totalExpectedMeetingWeeks = Math.max(1, expectedMeetingWeekKeys.length || elapsedWeeks);
-                  const effectiveMeetingRate = Math.min(
-                    100,
-                    Math.round((attendedMeetingWeeksCount / totalExpectedMeetingWeeks) * 100)
-                  ) || 0;
+                  const totalExpectedMeetingWeeks = expectedMeetingWeekKeys.length;
+                  const effectiveMeetingRate = calcMeetingAttendanceRate(
+                    attendedMeetingWeeksCount,
+                    totalExpectedMeetingWeeks
+                  );
 
                   missingDailyDates.sort((a, b) => new Date(b) - new Date(a));
                   missingLogbookDates.sort((a, b) => new Date(b) - new Date(a));

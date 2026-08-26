@@ -89,17 +89,17 @@ function calcWorkingDays(startDate, endDate = new Date(), holidaySet = null) {
  * Exact match with analyticsCalculations.js & AdminInternDetails.jsx
  */
 function calcElapsedWeeks(startDate, endDate = new Date()) {
-  if (!startDate) return 1;
+  if (!startDate) return 0;
   const startMondayKey = getMondayWeekKey(startDate);
   const endMondayKey = getMondayWeekKey(endDate);
-  if (!startMondayKey || !endMondayKey) return 1;
+  if (!startMondayKey || !endMondayKey) return 0;
 
   const startMon = new Date(startMondayKey + "T12:00:00Z");
   const endMon = new Date(endMondayKey + "T12:00:00Z");
-  if (endMon < startMon) return 1;
+  if (endMon < startMon) return 0;
 
-  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000)) + 1;
-  return Math.max(1, diffWeeks);
+  const diffWeeks = Math.round((endMon.getTime() - startMon.getTime()) / (7 * 24 * 60 * 60 * 1000));
+  return Math.max(0, diffWeeks);
 }
 
 /**
@@ -631,7 +631,7 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
 
     // ── Rates ──
     const dailyAttendanceRate = Math.min(100, Math.round((dailyAttendanceCount / workingDays) * 100)) || 0;
-    const meetingAttendanceRate = Math.min(100, Math.round((meetingAttendanceCount / expectedMeetings) * 100)) || 0;
+    const meetingAttendanceRate = expectedMeetings <= 0 ? 100 : Math.min(100, Math.round((meetingAttendanceCount / expectedMeetings) * 100)) || 0;
     const logbookRecordRate = Math.min(100, Math.round((logbookCount / workingDays) * 100)) || 0;
 
     // Specialization-based performance rate

@@ -677,7 +677,7 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
 
   const elapsedWeeks = useMemo(() => {
     const startDateVal = internData?.Training_StartDate || internData?.startDate;
-    if (!startDateVal) return 1;
+    if (!startDateVal) return 0;
     const now = new Date();
     return calcElapsedWeeksUtil(startDateVal, now);
   }, [internData]);

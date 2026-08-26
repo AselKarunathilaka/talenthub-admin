@@ -31,12 +31,12 @@ const calcWorkingDays = (startDate, endDate = new Date()) => {
 
 // ── Exact elapsed weeks matching Dashboard.jsx ──────────────────────────────
 const calcElapsedWeeks = (startDate, endDate = new Date()) => {
-  if (!startDate) return 1;
+  if (!startDate) return 0;
   const start = new Date(startDate);
-  if (isNaN(start.getTime())) return 1;
+  if (isNaN(start.getTime())) return 0;
   const msElapsed = new Date(endDate) - start;
-  if (msElapsed <= 0) return 1;
-  return Math.max(1, Math.ceil(msElapsed / (1000 * 60 * 60 * 24 * 7)));
+  if (msElapsed <= 0) return 0;
+  return Math.max(0, Math.floor(msElapsed / (1000 * 60 * 60 * 24 * 7)));
 };
 
 // ── Week key (Monday of the week) ────────────────────────────────────────────
@@ -218,7 +218,7 @@ function buildMetrics(intern, drMap, attMap) {
   // Meeting rate: unique weeks with ≥1 meeting / elapsed weeks
   const meetingWeeks = new Set();
   for (const d of meetingDateSet) { const wk = weekKey(d); if (wk) meetingWeeks.add(wk); }
-  const meetingAttendanceRate = Math.min(100, Math.round((meetingWeeks.size / weeks) * 100)) || 0;
+  const meetingAttendanceRate = weeks <= 0 ? 100 : Math.min(100, Math.round((meetingWeeks.size / weeks) * 100)) || 0;
 
   // Work quality rate: Average of daily, meeting, logbook, and commits rates (matches UniversityDashboard EXACTLY)
   const logbookRate = Math.min(100, Math.round((dr.logbookCount / weekdays) * 100)) || 0;
