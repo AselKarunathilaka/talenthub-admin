@@ -556,7 +556,7 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
       // Matches adminInternDetailsController.js Step 4 lines 306-325
       if (Array.isArray(record.meetingAttendance) && record.meetingAttendance.length > 0) {
         const wKey = getMondayWeekKey(record.date);
-        if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey <= endMondayKey)) {
+        if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey < endMondayKey)) {
           meetingWeeksSet.add(wKey);
         }
       }
@@ -585,7 +585,7 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
         // Matches adminInternDetailsController.js Step 3
         if (MEETING_ATTENDANCE_TYPES.has(type)) {
           const wKey = getMondayWeekKey(entry.date);
-          if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey <= endMondayKey)) {
+          if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey < endMondayKey)) {
             meetingWeeksSet.add(wKey);
           }
         }
@@ -620,7 +620,7 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
       const s = (ma.status || "present").toLowerCase();
       if (s === "absent") continue;
       const wKey = getMondayWeekKey(ma.date);
-      if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey <= endMondayKey)) {
+      if (wKey && (!startMondayKey || wKey >= startMondayKey) && (!endMondayKey || wKey < endMondayKey)) {
         meetingWeeksSet.add(wKey);
       }
     }

@@ -216,8 +216,12 @@ function buildMetrics(intern, drMap, attMap) {
   const dailyAttendanceRate = Math.min(100, Math.round((dailyDateSet.size / weekdays) * 100)) || 0;
 
   // Meeting rate: unique weeks with ≥1 meeting / elapsed weeks
+  const currentWk = weekKey(endDate);
   const meetingWeeks = new Set();
-  for (const d of meetingDateSet) { const wk = weekKey(d); if (wk) meetingWeeks.add(wk); }
+  for (const d of meetingDateSet) {
+    const wk = weekKey(d);
+    if (wk && (!currentWk || wk < currentWk)) meetingWeeks.add(wk);
+  }
   const meetingAttendanceRate = weeks <= 0 ? 100 : Math.min(100, Math.round((meetingWeeks.size / weeks) * 100)) || 0;
 
   // Work quality rate: Average of daily, meeting, logbook, and commits rates (matches UniversityDashboard EXACTLY)

@@ -737,7 +737,7 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
           const wKey = getMondayWeekKey(r.date);
           if (!wKey) return false;
           if (startMonKey && wKey < startMonKey) return false;
-          if (todayMonKey && wKey > todayMonKey) return false;
+          if (todayMonKey && wKey >= todayMonKey) return false;
           return true;
         })
         .map((r) => getMondayWeekKey(r.date))

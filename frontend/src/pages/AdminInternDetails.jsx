@@ -752,9 +752,9 @@ const AdminInternDetails = () => {
           if (!isPresent || !r.date) return false;
           const wKey = getMondayWeekKey(r.date);
           if (!wKey) return false;
-          // Ignore previous weeks before the internship start week
+          // Ignore previous weeks before the internship start week or current incomplete week
           if (startMonKey && wKey < startMonKey) return false;
-          if (todayMonKey && wKey > todayMonKey) return false;
+          if (todayMonKey && wKey >= todayMonKey) return false;
           return true;
         })
         .map((r) => getMondayWeekKey(r.date))
@@ -3226,7 +3226,7 @@ const AdminInternDetails = () => {
                         const wKey = getMondayWeekKey(e.date);
                         if (!wKey) return false;
                         if (startMonKey && wKey < startMonKey) return false;
-                        if (todayMonKey && wKey > todayMonKey) return false;
+                        if (todayMonKey && wKey >= todayMonKey) return false;
                         return true;
                       })
                       .map((e) => getMondayWeekKey(e.date))
@@ -3339,7 +3339,7 @@ const AdminInternDetails = () => {
                           const wKey = getMondayWeekKey(e.date);
                           if (!wKey) return false;
                           if (startMonKey && wKey < startMonKey) return false;
-                          if (todayMonKey && wKey > todayMonKey) return false;
+                          if (todayMonKey && wKey >= todayMonKey) return false;
                           return true;
                         })
                         .map((e) => getMondayWeekKey(e.date))

@@ -233,21 +233,10 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
   const dailyAttendanceRate = Math.min(100, Math.round((dailyAttendedDays.size / workingDays) * 100)) || 0;
   const logbookRecordRate = Math.min(100, Math.round((logbookCount / workingDays) * 100)) || 0;
 
-  // 2. Meeting Attended Weeks (distinct calendar Monday week keys)
+  // 2. Meeting Attended Weeks (distinct calendar Monday week keys for completed weeks)
   const attendedMeetingWeeks = new Set();
-
-  // Helper: get monday week key from a Colombo YYYY-MM-DD string
-  const getMondayKeyFromColomboStr = (dateStr) => {
-    if (!dateStr) return null;
-    // Parse at noon UTC from Colombo date string (safe, no tz shift)
-    const d = new Date(dateStr + "T12:00:00Z");
-    if (isNaN(d.getTime())) return null;
-    const day = d.getUTCDay();
-    const diff = d.getUTCDate() - day + (day === 0 ? -6 : 1);
-    const monday = new Date(d);
-    monday.setUTCDate(diff);
-    return `${monday.getUTCFullYear()}-${monday.getUTCMonth()}-${monday.getUTCDate()}`;
-  };
+  const startMondayKey = getMondayWeekKey(intern.Training_StartDate);
+  const currentMondayKey = getMondayWeekKey(endDate);
 
   // From DailyRecord.meetingAttendance
   studentRecords.forEach((r) => {
@@ -255,9 +244,10 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
       r.meetingAttendance.forEach((m) => {
         const dVal = m.attendanceTime || r.date;
         if (dVal) {
-          const dateStr = getColomboDateKey(dVal); // Colombo YYYY-MM-DD
-          const wk = getMondayKeyFromColomboStr(dateStr);
-          if (wk) attendedMeetingWeeks.add(wk);
+          const wk = getMondayWeekKey(dVal);
+          if (wk && (!startMondayKey || wk >= startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
+            attendedMeetingWeeks.add(wk);
+          }
         }
       });
     }
@@ -269,10 +259,12 @@ const computeAttendanceMetrics = (intern, studentRecords = [], endDate = new Dat
     const type = (entry.type || "").toLowerCase();
     const isMeeting = MEETING_ATTENDANCE_TYPES.has(type);
     const s = (entry.status || "").toLowerCase();
-    if (isMeeting && s === "present" && entry.date) {
-      const dateStr = getColomboDateKey(entry.date); // Colombo YYYY-MM-DD
-      const wk = getMondayKeyFromColomboStr(dateStr);
-      if (wk) attendedMeetingWeeks.add(wk);
+    const isPresent = s === "present" || s === "late" || !entry.status;
+    if (isMeeting && isPresent && entry.date) {
+      const wk = getMondayWeekKey(entry.date);
+      if (wk && (!startMondayKey || wk >= startMondayKey) && (!currentMondayKey || wk < currentMondayKey)) {
+        attendedMeetingWeeks.add(wk);
+      }
     }
   });
 
