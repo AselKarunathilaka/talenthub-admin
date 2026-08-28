@@ -548,8 +548,8 @@ class LeaveRequestService {
   async updateLeaveRequestStatus(id, status, adminResponse, reviewedBy) {
     try {
       // Validate status
-      if (!["Approved", "Denied"].includes(status)) {
-        throw new Error("Invalid status. Must be Approved or Denied");
+      if (!["Approved", "Denied", "Pending"].includes(status)) {
+        throw new Error("Invalid status. Must be Approved, Denied, or Pending");
       }
 
       // Update leave request
@@ -665,13 +665,17 @@ class LeaveRequestService {
       }
 
       const statusText =
-        leaveRequest.status === "Approved" ? "Approved" : "Denied";
+        leaveRequest.status === "Approved"
+          ? "Approved"
+          : leaveRequest.status === "Denied"
+            ? "Denied"
+            : "Restored to Pending";
       const requestLabel = getRequestLabel(leaveRequest.requestType);
       const subject = `${requestLabel} Request ${statusText} - TalentHub`;
 
       const html = `
         <h2>${requestLabel} Request ${statusText}</h2>
-        <p>Your ${requestLabel.toLowerCase()} request has been ${statusText.toLowerCase()}.</p>
+        <p>Your ${requestLabel.toLowerCase()} request has been ${leaveRequest.status === "Pending" ? "restored to pending" : statusText.toLowerCase()}.</p>
         <h3>Request Details:</h3>
         <ul>
           <li><strong>Leave Date:</strong> ${new Date(leaveRequest.leaveDate).toLocaleDateString()}</li>
@@ -698,8 +702,8 @@ class LeaveRequestService {
   async updateLeaveRequestStatus(id, status, adminResponse, reviewedBy) {
     try {
       // Validate status
-      if (!["Approved", "Denied"].includes(status)) {
-        throw new Error("Invalid status. Must be Approved or Denied");
+      if (!["Approved", "Denied", "Pending"].includes(status)) {
+        throw new Error("Invalid status. Must be Approved, Denied, or Pending");
       }
 
       // Update leave request

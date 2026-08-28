@@ -22,6 +22,7 @@ import {
   FiCheckCircle,
   FiSend,
   FiSearch,
+  FiRotateCcw,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -83,6 +84,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [triggeringEmail, setTriggeringEmail] = useState(false);
+
+  // Single Action Popup Modal
+  const [actionModal, setActionModal] = useState({
+    open: false,
+    action: "",
+    requestId: null,
+    requestName: "",
+    adminResponse: "",
+  });
 
   // Search
   const [searchQuery, setSearchQuery] = useState("");
@@ -244,7 +254,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         adminResponse: response.trim() || undefined,
       });
 
-      toast.success(`Leave request ${status.toLowerCase()} successfully`);
+      toast.success(
+        status === "Pending"
+          ? "Leave request restored to pending successfully"
+          : `Leave request ${status.toLowerCase()} successfully`,
+      );
       setSelectedRequest(null);
       setAdminResponse("");
       fetchLeaveRequests();
@@ -327,12 +341,13 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
       setIsSelectAll(false);
     } else {
       setProcessing(true);
-      const toastId = toast.loading("Selecting all pending requests...");
+      const targetStatus = filter === "Denied" ? "Denied" : "Pending";
+      const toastId = toast.loading(`Selecting all ${targetStatus.toLowerCase()} requests...`);
       try {
         const params = {
           limit: 10000,
           requestType,
-          status: "Pending",
+          status: targetStatus,
         };
         
         if (selectedDate && isStudyLeave) {
@@ -344,14 +359,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         const response = await getAllLeaveRequests(params);
         
         const allIds = response.data
-          .filter((request) => request.status === "Pending")
+          .filter((request) => request.status === targetStatus)
           .map((request) => request._id);
           
         setSelectedRequests(new Set(allIds));
         setIsSelectAll(true);
-        toast.success(`Selected ${allIds.length} pending requests`, { id: toastId });
+        toast.success(`Selected ${allIds.length} ${targetStatus.toLowerCase()} requests`, { id: toastId });
       } catch (error) {
-        console.error("Error fetching all pending requests for selection:", error);
+        console.error(`Error fetching all ${targetStatus.toLowerCase()} requests for selection:`, error);
         toast.error("Failed to select all requests", { id: toastId });
       } finally {
         setProcessing(false);
@@ -381,13 +396,24 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
         `Processing ${selectedRequests.size} request(s)...`,
       );
 
+      let targetStatus = "Approved";
+      if (bulkAction === "deny") targetStatus = "Denied";
+      else if (bulkAction === "restore") targetStatus = "Pending";
+
       const response = await bulkUpdateLeaveRequestStatus(requestsArray, {
-        status: bulkAction === "approve" ? "Approved" : "Denied",
+        status: targetStatus,
         adminResponse: bulkAdminResponse.trim() || undefined,
       });
 
+      const actionText =
+        bulkAction === "restore"
+          ? "restored to pending"
+          : bulkAction === "approve"
+            ? "approved"
+            : "denied";
+
       toast.success(
-        `Successfully ${bulkAction === "approve" ? "approved" : "denied"} ${selectedRequests.size} request(s)${
+        `Successfully ${actionText} ${selectedRequests.size} request(s)${
           !isStudyLeave && bulkAction === "approve" && response.data.updated > 0
             ? " - Email notification sent!"
             : ""
@@ -473,26 +499,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     }
   };
 
-  const handleQuickAction = async (requestId, action) => {
-    if (!window.confirm(`Are you sure you want to ${action} this request?`)) {
-      return;
-    }
-
-    setProcessing(true);
-    try {
-      await updateLeaveRequestStatus(requestId, {
-        status: action === "approve" ? "Approved" : "Denied",
-      });
-
-      toast.success(`Leave request ${action}d successfully`);
-      fetchLeaveRequests();
-      fetchStats();
-    } catch (error) {
-      console.error("Error in quick action:", error);
-      toast.error(error.message || "Failed to update leave request");
-    } finally {
-      setProcessing(false);
-    }
+  const handleQuickAction = (requestId, action, requestName = "") => {
+    setActionModal({
+      open: true,
+      action,
+      requestId,
+      requestName,
+      adminResponse: "",
+    });
   };
 
   const isUrgentRequest = (leaveDate) => {
@@ -936,44 +950,60 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
           {/* Bulk Actions Bar */}
           <AnimatePresence>
-            {canManageLeave && filter === "Pending" && selectedRequests.size > 0 && (
+            {canManageLeave && (filter === "Pending" || filter === "Denied") && selectedRequests.size > 0 && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-6 bg-[#0056a2]/5 border border-[#0056a2]/20 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden"
+                className="mb-6 bg-[#0056a2]/5 border border-[#0056a2]/20 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 overflow-hidden shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className="bg-[#0056a2] text-white w-8 h-8 rounded-full flex items-center justify-center font-bold">
+                  <div className="bg-[#0056a2] text-white w-9 h-9 rounded-2xl flex items-center justify-center font-extrabold text-sm shadow-md shadow-blue-500/20">
                     {selectedRequests.size}
                   </div>
-                  <span className="text-[#0056a2] font-bold">
+                  <span className="text-[#0056a2] font-extrabold text-sm sm:text-base">
                     Request{selectedRequests.size > 1 ? "s" : ""} Selected
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto mt-2 sm:mt-0">
-                  <button
-                    onClick={() => handleBulkAction("approve")}
-                    disabled={processing}
-                    className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 bg-green-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:bg-green-700 transition-all disabled:opacity-50 w-full"
-                  >
-                    <FiCheckCircle className="text-base sm:text-lg shrink-0" /> 
-                    <span className="truncate">Approve <span className="hidden sm:inline">Selected</span></span>
-                  </button>
-                  <button
-                    onClick={() => handleBulkAction("deny")}
-                    disabled={processing}
-                    className="flex items-center justify-center gap-1 sm:gap-2 px-2 sm:px-5 py-2.5 bg-rose-600 text-white rounded-xl font-bold text-xs sm:text-sm shadow-sm hover:bg-rose-700 transition-all disabled:opacity-50 w-full"
-                  >
-                    <FiX className="text-base sm:text-lg shrink-0" /> 
-                    <span className="truncate">Deny <span className="hidden sm:inline">Selected</span></span>
-                  </button>
+                <div className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-4 sm:gap-5 w-full sm:w-auto mt-2 sm:mt-0">
+                  {filter === "Pending" ? (
+                    <>
+                      {/* Deny Selected on LEFT */}
+                      <button
+                        onClick={() => handleBulkAction("deny")}
+                        disabled={processing}
+                        className="flex items-center justify-center gap-2 px-5 sm:px-7 py-3 bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-700 hover:to-red-600 text-white rounded-2xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg shadow-red-500/20 transition-all disabled:opacity-50 w-full"
+                      >
+                        <FiX className="text-lg shrink-0" />
+                        <span className="truncate">Deny <span className="hidden sm:inline">Selected</span></span>
+                      </button>
+                      {/* Approve Selected on RIGHT */}
+                      <button
+                        onClick={() => handleBulkAction("approve")}
+                        disabled={processing}
+                        className="flex items-center justify-center gap-2 px-5 sm:px-7 py-3 bg-gradient-to-r from-[#15803d] to-[#50b748] hover:from-[#136b33] hover:to-[#439e3c] text-white rounded-2xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg shadow-green-500/20 transition-all disabled:opacity-50 w-full"
+                      >
+                        <FiCheckCircle className="text-lg shrink-0" />
+                        <span className="truncate">Approve <span className="hidden sm:inline">Selected</span></span>
+                      </button>
+                    </>
+                  ) : (
+                    /* Restore Selected for Denied tab */
+                    <button
+                      onClick={() => handleBulkAction("restore")}
+                      disabled={processing}
+                      className="flex items-center justify-center gap-2 px-6 sm:px-8 py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-2xl font-extrabold text-sm sm:text-base shadow-md hover:shadow-lg shadow-amber-500/20 transition-all disabled:opacity-50 w-full"
+                    >
+                      <FiRotateCcw className="text-lg shrink-0" />
+                      <span className="truncate">Restore <span className="hidden sm:inline">Selected</span></span>
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setSelectedRequests(new Set());
                       setIsSelectAll(false);
                     }}
-                    className="col-span-2 sm:col-span-1 px-4 py-2.5 bg-gray-200/50 sm:bg-transparent text-gray-600 sm:text-gray-500 hover:bg-gray-200 sm:hover:bg-transparent hover:text-gray-800 rounded-xl sm:rounded-none font-bold text-xs sm:text-sm transition-colors text-center w-full sm:w-auto"
+                    className="col-span-2 sm:col-span-1 px-5 py-3 bg-gray-200/60 sm:bg-transparent text-gray-600 sm:text-gray-500 hover:bg-gray-200 sm:hover:bg-slate-200/50 hover:text-gray-800 rounded-2xl font-bold text-sm transition-colors text-center w-full sm:w-auto"
                   >
                     Clear <span className="sm:hidden">Selection</span>
                   </button>
@@ -1090,7 +1120,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   <table className="min-w-full block md:table divide-y divide-gray-100">
                     <thead className="hidden md:table-header-group bg-slate-50/50">
                       <tr>
-                        {canManageLeave && filter === "Pending" && (
+                        {canManageLeave && (filter === "Pending" || filter === "Denied") && (
                           <th className="px-6 py-4 text-center w-12">
                             <button
                               onClick={handleSelectAll}
@@ -1149,7 +1179,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                     : ""
                               }`}
                             >
-                              {canManageLeave && filter === "Pending" && (
+                              {canManageLeave && (filter === "Pending" || filter === "Denied") && (
                                 <td className="col-span-2 md:table-cell px-4 py-3 md:px-6 md:py-6 text-left md:text-center border-b border-gray-50 md:border-none">
                                   <div className="flex items-center gap-3 md:block">
                                     <input
@@ -1159,7 +1189,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                         handleSelectRequest(request._id)
                                       }
                                       className="w-4 h-4 text-[#0056a2] border-gray-300 rounded focus:ring-[#0056a2] cursor-pointer"
-                                      disabled={request.status !== "Pending"}
+                                      disabled={request.status !== filter}
                                     />
                                     <span className="md:hidden text-sm font-bold text-gray-700">Select Request</span>
                                   </div>
@@ -1253,6 +1283,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                             handleQuickAction(
                                               request._id,
                                               "approve",
+                                              request.internName,
                                             )
                                           }
                                           disabled={processing}
@@ -1263,7 +1294,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                         </button>
                                         <button
                                           onClick={() =>
-                                            handleQuickAction(request._id, "deny")
+                                            handleQuickAction(
+                                              request._id,
+                                              "deny",
+                                              request.internName,
+                                            )
                                           }
                                           disabled={processing}
                                           className="p-2 flex justify-center bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-xl transition-all disabled:opacity-50 border border-rose-200 hover:border-transparent"
@@ -1278,6 +1313,30 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                         title="Review Details"
                                       >
                                         Review
+                                      </button>
+                                    </div>
+                                  ) : request.status === "Denied" && canManageLeave ? (
+                                    <div className="flex flex-col sm:flex-row md:flex-col lg:flex-row gap-2 w-full md:w-auto items-stretch md:items-end">
+                                      <button
+                                        onClick={() => openReviewModal(request)}
+                                        className="px-3 py-2 w-full md:w-auto bg-white md:bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm md:shadow-none"
+                                      >
+                                        Details
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleQuickAction(
+                                            request._id,
+                                            "restore",
+                                            request.internName,
+                                          )
+                                        }
+                                        disabled={processing}
+                                        className="px-3 py-2 w-full md:w-auto flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-transparent rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                        title="Restore to Pending"
+                                      >
+                                        <FiRotateCcw size={13} />
+                                        Restore
                                       </button>
                                     </div>
                                   ) : (
@@ -1578,6 +1637,211 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     </div>
                   </div>
                 )}
+
+                {selectedRequest.status === "Denied" && canManageLeave && (
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() =>
+                        handleStatusUpdate(
+                          selectedRequest._id,
+                          "Pending",
+                          adminResponse || selectedRequest.adminResponse,
+                        )
+                      }
+                      disabled={processing}
+                      className={`w-full flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-white transition-all shadow-md ${
+                        processing
+                          ? "bg-gray-400 cursor-not-allowed"
+                          : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-lg hover:shadow-amber-500/30 ring-1 ring-amber-400/50 transform hover:-translate-y-0.5"
+                      }`}
+                    >
+                      <FiRotateCcw size={18} />{" "}
+                      {processing ? "Restoring..." : "Restore to Pending"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Single Action Confirmation Modal */}
+      <AnimatePresence>
+        {actionModal.open && canManageLeave && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[9999]"
+            onClick={() =>
+              !processing &&
+              setActionModal({
+                open: false,
+                action: "",
+                requestId: null,
+                requestName: "",
+                adminResponse: "",
+              })
+            }
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl shadow-2xl max-w-md w-full relative overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className={`absolute top-0 left-0 w-full h-1 ${
+                  actionModal.action === "approve"
+                    ? "bg-green-500"
+                    : actionModal.action === "deny"
+                      ? "bg-rose-500"
+                      : "bg-amber-500"
+                }`}
+              ></div>
+
+              <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
+                <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                  {actionModal.action === "approve" ? (
+                    <FiCheckCircle className="text-green-600" />
+                  ) : actionModal.action === "deny" ? (
+                    <FiX className="text-rose-600" />
+                  ) : (
+                    <FiRotateCcw className="text-amber-600" />
+                  )}
+                  {actionModal.action === "approve"
+                    ? "Approve Leave Request"
+                    : actionModal.action === "deny"
+                      ? "Deny Leave Request"
+                      : "Restore Leave Request"}
+                </h2>
+                <button
+                  onClick={() =>
+                    !processing &&
+                    setActionModal({
+                      open: false,
+                      action: "",
+                      requestId: null,
+                      requestName: "",
+                      adminResponse: "",
+                    })
+                  }
+                  className="text-gray-400 hover:text-gray-700 p-2 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-gray-200 shadow-sm"
+                  disabled={processing}
+                >
+                  <FiX size={20} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div
+                  className={`p-4 rounded-xl border ${
+                    actionModal.action === "approve"
+                      ? "bg-green-50 border-green-100 text-green-800"
+                      : actionModal.action === "deny"
+                        ? "bg-rose-50 border-rose-100 text-rose-800"
+                        : "bg-amber-50 border-amber-100 text-amber-800"
+                  }`}
+                >
+                  <p className="text-sm font-bold">
+                    Are you sure you want to{" "}
+                    <span className="underline">
+                      {actionModal.action === "restore"
+                        ? "restore to pending"
+                        : actionModal.action}
+                    </span>{" "}
+                    the leave request
+                    {actionModal.requestName ? (
+                      <>
+                        {" "}
+                        for{" "}
+                        <span className="font-extrabold">
+                          {actionModal.requestName}
+                        </span>
+                      </>
+                    ) : null}
+                    ?
+                  </p>
+                </div>
+
+                <div>
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest block mb-2">
+                    Admin Response (Optional)
+                  </span>
+                  <textarea
+                    value={actionModal.adminResponse}
+                    onChange={(e) =>
+                      setActionModal((prev) => ({
+                        ...prev,
+                        adminResponse: e.target.value,
+                      }))
+                    }
+                    placeholder={`Add an optional comment or reason...`}
+                    rows="3"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all resize-none text-sm font-medium text-gray-800"
+                    disabled={processing}
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() =>
+                      !processing &&
+                      setActionModal({
+                        open: false,
+                        action: "",
+                        requestId: null,
+                        requestName: "",
+                        adminResponse: "",
+                      })
+                    }
+                    disabled={processing}
+                    className="flex-1 px-4 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const { requestId, action, adminResponse } = actionModal;
+                      const status =
+                        action === "approve"
+                          ? "Approved"
+                          : action === "deny"
+                            ? "Denied"
+                            : "Pending";
+                      setActionModal({
+                        open: false,
+                        action: "",
+                        requestId: null,
+                        requestName: "",
+                        adminResponse: "",
+                      });
+                      await handleStatusUpdate(requestId, status, adminResponse);
+                    }}
+                    disabled={processing}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl font-bold text-white transition-all shadow-md ${
+                      processing
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : actionModal.action === "approve"
+                          ? "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30"
+                          : actionModal.action === "deny"
+                            ? "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-lg hover:shadow-red-500/30"
+                            : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-lg hover:shadow-amber-500/30"
+                    }`}
+                  >
+                    {processing
+                      ? "Processing..."
+                      : `Confirm ${
+                          actionModal.action === "approve"
+                            ? "Approve"
+                            : actionModal.action === "deny"
+                              ? "Deny"
+                              : "Restore"
+                        }`}
+                  </button>
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -1602,17 +1866,30 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               onClick={(e) => e.stopPropagation()}
             >
               <div
-                className={`absolute top-0 left-0 w-full h-1 ${bulkAction === "approve" ? "bg-green-500" : "bg-rose-500"}`}
+                className={`absolute top-0 left-0 w-full h-1 ${
+                  bulkAction === "approve"
+                    ? "bg-green-500"
+                    : bulkAction === "deny"
+                      ? "bg-rose-500"
+                      : "bg-amber-500"
+                }`}
               ></div>
 
               <div className="p-6 border-b border-gray-100 bg-slate-50/50 flex justify-between items-center">
                 <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
                   {bulkAction === "approve" ? (
                     <FiCheckCircle className="text-green-600" />
-                  ) : (
+                  ) : bulkAction === "deny" ? (
                     <FiX className="text-rose-600" />
+                  ) : (
+                    <FiRotateCcw className="text-amber-600" />
                   )}
-                  Bulk {bulkAction === "approve" ? "Approve" : "Deny"}
+                  Bulk{" "}
+                  {bulkAction === "approve"
+                    ? "Approve"
+                    : bulkAction === "deny"
+                      ? "Deny"
+                      : "Restore"}
                 </h2>
                 <button
                   onClick={() => !processing && setIsBulkModalOpen(false)}
@@ -1625,15 +1902,32 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
               <div className="p-6 space-y-4">
                 <div
-                  className={`p-4 rounded-xl border ${bulkAction === "approve" ? "bg-green-50 border-green-100" : "bg-rose-50 border-rose-100"}`}
+                  className={`p-4 rounded-xl border ${
+                    bulkAction === "approve"
+                      ? "bg-green-50 border-green-100"
+                      : bulkAction === "deny"
+                        ? "bg-rose-50 border-rose-100"
+                        : "bg-amber-50 border-amber-100"
+                  }`}
                 >
                   <p
-                    className={`text-sm font-bold ${bulkAction === "approve" ? "text-green-800" : "text-rose-800"}`}
+                    className={`text-sm font-bold ${
+                      bulkAction === "approve"
+                        ? "text-green-800"
+                        : bulkAction === "deny"
+                          ? "text-rose-800"
+                          : "text-amber-800"
+                    }`}
                   >
                     You are about to{" "}
-                    {bulkAction === "approve" ? "approve" : "deny"}{" "}
+                    {bulkAction === "approve"
+                      ? "approve"
+                      : bulkAction === "deny"
+                        ? "deny"
+                        : "restore"}{" "}
                     <span className="text-lg">{selectedRequests.size}</span>{" "}
-                    request(s).
+                    request(s)
+                    {bulkAction === "restore" ? " back to pending" : ""}.
                   </p>
                 </div>
 
@@ -1644,7 +1938,13 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   <textarea
                     value={bulkAdminResponse}
                     onChange={(e) => setBulkAdminResponse(e.target.value)}
-                    placeholder={`Add a comment for ${bulkAction === "approve" ? "approving" : "denying"} these requests...`}
+                    placeholder={`Add a comment for ${
+                      bulkAction === "approve"
+                        ? "approving"
+                        : bulkAction === "deny"
+                          ? "denying"
+                          : "restoring"
+                    } these requests...`}
                     rows="3"
                     className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all resize-none text-sm font-medium"
                     disabled={processing}
@@ -1667,12 +1967,20 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                         ? "bg-gray-400 cursor-not-allowed"
                         : bulkAction === "approve"
                           ? "bg-gradient-to-r from-[#15803d] to-[#50b748]"
-                          : "bg-gradient-to-r from-rose-600 to-red-500"
+                          : bulkAction === "deny"
+                            ? "bg-gradient-to-r from-rose-600 to-red-500"
+                            : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
                     }`}
                   >
                     {processing
                       ? "Processing..."
-                      : `Confirm ${bulkAction === "approve" ? "Approve" : "Deny"}`}
+                      : `Confirm ${
+                          bulkAction === "approve"
+                            ? "Approve"
+                            : bulkAction === "deny"
+                              ? "Deny"
+                              : "Restore"
+                        }`}
                   </button>
                 </div>
               </div>
