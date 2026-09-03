@@ -885,10 +885,8 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, ease: "easeOut" }}
         >
-          {/* Decorative Glows */}
+          {/* Decorative Glows (Optimized for performance) */}
           <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-            <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl mix-blend-screen" />
-            <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl mix-blend-screen" />
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle,rgba(0,180,235,0.05)_0%,transparent_60%)]" />
           </div>
 
@@ -1863,10 +1861,8 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
   }
 
   return (
-    <div className="bento-page-bg cursor-default select-none">
-      <Navigation onLogout={handleLogout} />
-      <div className="bento-page-content">
-        <AnnouncementPopup />
+    <Navigation onLogout={handleLogout}>
+      <AnnouncementPopup />
         {showFaceModal && (
           <FaceRegistrationModal
             isOpen={showFaceModal}
@@ -1929,8 +1925,7 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
           </div>
         </div>
         <FeatureTipModal />
-      </div>
-    </div>
+    </Navigation>
   );
 };
 

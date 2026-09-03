@@ -42,6 +42,7 @@ import {
 import { API_BASE_URL } from "../api/apiConfig";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
+import Layout from "../components/Layout";
 
 // Roles that should display N/A for commits
 const NO_COMMITS_ROLES = ["qa", "pm", "ba", "ai/ml", "devops", "cyber security", "cayber security"];
@@ -423,172 +424,23 @@ const UniversityDashboard = () => {
   // Google Profile Picture resolution
   const profilePictureUrl = supervisor?.picture || supervisor?.googlePictureUrl || "";
 
+  const userData = {
+    name: supervisor?.supervisorName || "Supervisor",
+    email: supervisor?.email || "Academic Supervisor",
+    role: "Authorized Supervisor",
+    profilePicUrl: profilePictureUrl,
+  };
+
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none">
-      {/* ─── Top Brand Navigation Bar (Exact TalentHub Gradient) ─── */}
-      <header
-        className="sticky top-0 z-40 shadow-lg text-white select-none"
-        style={{
-          background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
-        }}
-      >
-        <div className="w-full px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            {/* ─── LEFT CORNER: SLT Logo + TalentHub Logo + Title & Subtitle + University & Supervisor Info ─── */}
-            <div className="flex items-center gap-2.5 sm:gap-4">
-              <div className="flex items-center gap-2 sm:gap-2.5">
-                <img
-                  src={sltLogo}
-                  alt="SLT Mobitel"
-                  className="h-8 sm:h-10 w-auto object-contain select-none"
-                />
-                <img
-                  src={talentHubLogo}
-                  alt="TalentHub"
-                  className="h-8 sm:h-10 w-auto rounded-md object-contain select-none"
-                />
-              </div>
+    <Layout
+      navLinks={[]}
+      user={userData}
+      onLogout={handleLogout}
+      activeTitle="University Portal"
+    >
+      <div className="flex-1 max-w-7xl w-full mx-auto space-y-8 select-none">
 
-              <div className="flex flex-col justify-center">
-                <span className="text-xl sm:text-2xl font-extrabold tracking-tight leading-none text-white">
-                  <span className="text-[#00b4eb]">Talent</span>
-                  <span className="text-[#50b748]">Hub</span>
-                </span>
-                <span className="text-xs sm:text-[13px] text-white/80 font-normal mt-1 leading-none tracking-normal">
-                  University Portal
-                </span>
-              </div>
 
-              {/* Divider */}
-              <div className="h-10 sm:h-11 w-px bg-white/25 hidden md:block mx-1.5 sm:mx-2" />
-
-              {/* University Name & Supervisor Name */}
-              <div className="hidden md:flex flex-col justify-center leading-tight">
-                <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[220px] lg:max-w-[380px]">
-                  {supervisor?.universityName || "University Supervision"}
-                </span>
-                <span className="text-[11px] text-white/70 mt-0.5 truncate max-w-[220px] lg:max-w-[380px]">
-                  {supervisor?.supervisorName
-                    ? `Supervisor: ${supervisor.supervisorName}`
-                    : "Academic Supervision"}
-                </span>
-              </div>
-            </div>
-
-            {/* ─── RIGHT CORNER: Profile Button with Google Image & Dropdown ─── */}
-            <div className="flex items-center gap-2 sm:gap-3.5">
-              {/* Profile Avatar / Trigger Button */}
-              <div className="relative" ref={profileRef}>
-                <button
-                  onClick={() => setIsProfileOpen((prev) => !prev)}
-                  className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full sm:rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 transition-all cursor-pointer"
-                >
-                  {profilePictureUrl ? (
-                    <img
-                      src={profilePictureUrl}
-                      alt={supervisor?.supervisorName || "Supervisor"}
-                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
-                    />
-                  ) : (
-                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#50b748] flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow ring-2 ring-white/30">
-                      {(supervisor?.supervisorName || "U")[0].toUpperCase()}
-                    </div>
-                  )}
-
-                  <div className="hidden md:flex flex-col text-left leading-tight pr-1">
-                    <span className="text-xs font-bold text-white max-w-[130px] truncate">
-                      {supervisor?.supervisorName || "Supervisor"}
-                    </span>
-                    <span className="text-[10px] text-white/70 max-w-[130px] truncate">
-                      {supervisor?.universityName || "University"}
-                    </span>
-                  </div>
-
-                  <ChevronDown
-                    className={`h-3.5 w-3.5 text-white/70 transition-transform ${
-                      isProfileOpen ? "rotate-180" : ""
-                    }`}
-                  />
-                </button>
-
-                {/* Profile & Logout Dropdown Menu */}
-                <AnimatePresence>
-                  {isProfileOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                      transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200 overflow-hidden z-50"
-                    >
-                      {/* Dropdown Header with Profile Picture */}
-                      <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 flex items-center gap-3">
-                        {profilePictureUrl ? (
-                          <img
-                            src={profilePictureUrl}
-                            alt={supervisor?.supervisorName || "Supervisor"}
-                            className="w-12 h-12 rounded-full object-cover ring-2 ring-emerald-500 shadow-sm flex-shrink-0"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#000066] to-[#006600] text-white flex items-center justify-center font-bold text-lg shadow-sm flex-shrink-0">
-                            {(supervisor?.supervisorName || "U")[0].toUpperCase()}
-                          </div>
-                        )}
-
-                        <div className="overflow-hidden">
-                          <h4 className="font-bold text-sm text-slate-900 truncate">
-                            {supervisor?.supervisorName || "University Supervisor"}
-                          </h4>
-                          <p className="text-xs text-slate-500 truncate">
-                            {supervisor?.email || "Academic Supervisor"}
-                          </p>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                            Authorized Supervisor
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* University Details */}
-                      <div className="p-3.5 space-y-2 text-xs border-b border-slate-100">
-                        <div className="flex items-center gap-2 text-slate-600">
-                          <Building2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
-                          <span className="font-semibold text-slate-800 truncate">
-                            {supervisor?.universityName || "NSBM Green University"}
-                          </span>
-                        </div>
-                        {supervisor?.department && (
-                          <div className="flex items-center gap-2 text-slate-600 pl-6">
-                            <span>Department: {supervisor.department}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Dropdown Actions */}
-                      <div className="p-2">
-                        <button
-                          onClick={() => {
-                            setIsProfileOpen(false);
-                            handleLogout();
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer"
-                        >
-                          <LogOut className="h-4 w-4" />
-                          <span>Sign Out</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ─── Main White Page Body ─── */}
-      {/* ─── Main White Page Body ─── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 select-none">
         
         {/* Header Section */}
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200">
@@ -860,7 +712,7 @@ const UniversityDashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </main>
+      </div>
 
       {/* Fullscreen Image Lightbox */}
       <AnimatePresence>
@@ -893,18 +745,7 @@ const UniversityDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* ─── Footer ─── */}
-      <footer
-        className="text-white/80 py-4 mt-auto"
-        style={{ background: "linear-gradient(135deg, #000066 0%, #006600 100%)" }}
-      >
-        <div className="px-4 sm:px-6 flex items-center justify-between gap-4">
-          <p className="text-xs">© {new Date().getFullYear()} TalentHub . SLT Mobitel . All rights reserved.</p>
-          <p className="text-xs text-white/60">TalentHub University Portal System</p>
-        </div>
-      </footer>
-    </div>
+    </Layout>
   );
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
@@ -59,7 +59,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
-  // Date filter — defaults to today for short leave, empty (all) for study leave
+  // Date filter â€” defaults to today for short leave, empty (all) for study leave
   const todayStr = new Date().toISOString().split("T")[0];
   const [selectedDate, setSelectedDate] = useState(isStudyLeave ? "" : todayStr);
 
@@ -233,8 +233,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
-      <Navigation />
+    <Navigation>
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
           <SectionTip sectionKey={isStudyLeave ? "extendedleave" : "shortleave"} />
@@ -459,7 +458,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                       <div className="space-y-3">
                                         <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
                                           <span className="text-xs font-bold text-gray-500 uppercase">National ID</span>
-                                          <span className="text-sm font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "—"}</span>
+                                          <span className="text-sm font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
                                         </div>
                                         
                                         <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
@@ -630,8 +629,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Navigation>
   );
 };
 
 export default MyLeaveRequests;
+

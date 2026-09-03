@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
 import Navigation from "../components/Navigation";
@@ -125,7 +125,7 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
               </div>
             </div>
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100/50 flex items-start gap-3">
-              <span className="text-lg leading-none shrink-0 mt-0.5">⚠</span>
+              <span className="text-lg leading-none shrink-0 mt-0.5">âš </span>
               <span className="text-sm text-amber-800 font-medium leading-tight">One seat per intern per day is allowed. Make sure this is the seat you want!</span>
             </div>
             <div className="flex gap-3 pt-5">
@@ -312,8 +312,7 @@ const InternSeatManagement = () => {
 
   return (
     <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
-      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
-        <Navigation />
+      <Navigation>
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <SectionTip sectionKey="seat" />
@@ -366,7 +365,7 @@ const InternSeatManagement = () => {
           </main>
         </div>
         {showModal && <BookingModal currentSeat={currentSeat} formatDisplayDate={formatDisplayDate} selectedDate={selectedDate} handleModalClose={handleModalClose} handleDateBookingConfirm={handleDateBookingConfirm} />}
-      </div>
+      </Navigation>
     </SeatContext.Provider>
   );
 };

@@ -1,121 +1,112 @@
-// Navbar.jsx - Redesigned
-import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, LogIn, UserPlus } from "lucide-react";
-import logo from "../assets/sltlogo.jpg";
+import React, { useState, useEffect, useRef } from "react";
+import { Menu, LogOut, User, ChevronDown } from "lucide-react";
 
-const Navbar = () => {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const location = useLocation();
+const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
-  // Close mobile menu when route changes
+  const getInitials = (name) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase();
+  };
+
+  const userName = user?.name || user?.supervisorName || user?.Trainee_Name || user?.email || "User";
+  const userPic = user?.picture || user?.profilePicUrl;
+
   useEffect(() => {
-    setIsMobileMenuOpen(false);
-  }, [location]);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (isMobileMenuOpen && !e.target.closest('.mobile-menu-container')) {
-        setIsMobileMenuOpen(false);
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
       }
     };
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [isMobileMenuOpen]);
-
-  const navLinks = [
-    { to: "/", label: "Home", icon: <Home className="h-5 w-5" /> },
-    { to: "/login", label: "Login", icon: <LogIn className="h-5 w-5" /> },
-    { to: "/register", label: "Register", icon: <UserPlus className="h-5 w-5" /> },
-  ];
-
-  const isActive = (path) => location.pathname === path;
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <header className="fixed top-0 w-full z-50 shadow-2xl bg-gradient-to-b from-[#006600] to-[#000066] select-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-20">
-          {/* Logo + TalentHub Brand */}
-          <div className="flex items-center gap-3">
-            <Link to="/" className="flex items-center gap-2 group">
-              <span className="text-2xl font-extrabold tracking-tight">
-                <span className="text-[#00b4eb]">Talent</span>
-                <span className="text-[#50b748]">Hub</span>
-              </span>
-              <div className="h-8 w-px bg-white/20 group-hover:bg-white/40 transition" />
-              <img
-                src={logo}
-                alt="SLT Logo"
-                className="h-9 w-auto rounded-md border border-white/10 shadow-lg group-hover:border-[#00b4eb]/50 transition-all duration-300"
-              />
-            </Link>
-          </div>
-
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-2">
-            {navLinks.map((link) => (
-              <Link
-                key={link.to}
-                to={link.to}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-200
-                  ${isActive(link.to)
-                    ? "bg-white/10 text-white shadow-lg backdrop-blur-sm"
-                    : "text-white/80 hover:text-white hover:bg-white/5"
-                  }`}
-              >
-                {link.icon}
-                <span>{link.label}</span>
-              </Link>
-            ))}
-          </nav>
-
-          {/* Mobile Menu Button */}
-          <div className="lg:hidden">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsMobileMenuOpen(!isMobileMenuOpen);
-              }}
-              className="mobile-menu-container relative inline-flex items-center justify-center p-2.5 rounded-xl
-                bg-white/5 backdrop-blur-sm border border-white/10
-                text-white hover:text-[#00b4eb] hover:bg-white/10
-                focus:outline-none focus:ring-2 focus:ring-[#00b4eb]/50 transition-all duration-200"
-              aria-expanded={isMobileMenuOpen}
-            >
-              <span className="sr-only">Open main menu</span>
-              {isMobileMenuOpen ? (
-                <X className="h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Menu className="h-6 w-6" aria-hidden="true" />
-              )}
-            </button>
-          </div>
-        </div>
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between bg-gradient-to-r from-[#000066] to-[#006600] px-4 shadow-md border-b border-white/10 sm:px-6 lg:px-8">
+      {/* Left side: Mobile menu button & Title */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onMenuClick}
+          className="inline-flex items-center justify-center rounded-md p-2 text-white/80 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#00b4eb] lg:hidden transition-colors"
+          aria-expanded="false"
+        >
+          <span className="sr-only">Open sidebar</span>
+          <Menu className="h-6 w-6" aria-hidden="true" />
+        </button>
+        <h1 className="text-xl font-bold text-white tracking-tight hidden sm:block drop-shadow-sm">
+          {activeTitle}
+        </h1>
       </div>
 
-      {/* Mobile Menu */}
-      <div
-        className={`lg:hidden fixed inset-x-0 top-16 bg-gradient-to-b from-[#006600] to-[#000066] shadow-2xl
-          transition-all duration-300 ease-out z-40 border-t border-white/10
-          ${isMobileMenuOpen ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"}`}
-      >
-        <div className="px-4 py-6 space-y-2">
-          {navLinks.map((link) => (
-            <Link
-              key={link.to}
-              to={link.to}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200
-                ${isActive(link.to)
-                  ? "bg-white/10 text-white shadow-md"
-                  : "text-white/80 hover:text-white hover:bg-white/5"
-                }`}
-            >
-              {link.icon}
-              <span>{link.label}</span>
-            </Link>
-          ))}
+      {/* Right side: Custom Actions & Profile */}
+      <div className="flex items-center gap-3 sm:gap-4">
+        {/* Render any passed custom actions (like YouTube link, download agreement) */}
+        {customActions && (
+          <div className="flex items-center gap-1 sm:gap-2">
+            {customActions}
+          </div>
+        )}
+
+
+        {/* Profile Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="flex items-center gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 md:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] md:min-w-[160px] justify-center md:justify-between pointer-events-none md:pointer-events-auto"
+          >
+            {userPic ? (
+              <img
+                src={userPic}
+                alt="Profile"
+                className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full object-cover border border-slate-200 shadow-sm"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=000066&color=ffffff&bold=true`;
+                }}
+              />
+            ) : (
+              <div className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-[#000066] to-[#00b4eb] flex items-center justify-center text-white font-bold shadow-sm text-xs sm:text-sm md:text-base">
+                {getInitials(userName)}
+              </div>
+            )}
+            
+            <div className="hidden md:flex md:flex-col md:items-start text-left flex-1 min-w-[120px] px-1">
+              <span className="text-sm font-semibold text-white truncate w-full">
+                {userName}
+              </span>
+              <span className="text-xs text-white/70 truncate w-full">
+                {user?.role || user?.designation || "Member"}
+              </span>
+            </div>
+            <ChevronDown className="h-4 w-4 text-white/80 hidden md:block shrink-0" />
+          </button>
+
+          {/* Dropdown Menu */}
+          {dropdownOpen && (
+            <div className="hidden md:block absolute right-0 mt-3 w-full min-w-[160px] md:min-w-full origin-top-right rounded-2xl bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5 focus:outline-none p-1.5 transform transition-all duration-200 z-[100]">
+              <div className="px-3 py-2.5 border-b border-slate-100 mb-1.5 md:hidden">
+                <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
+                <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onLogout) onLogout();
+                }}
+                className="group flex w-full items-center justify-center md:justify-start gap-2.5 rounded-xl px-4 py-2.5 text-sm font-bold text-[#ef4444] bg-red-50/50 hover:bg-[#ef4444] hover:text-white transition-all duration-300"
+              >
+                <LogOut className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+                Sign Out
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </header>

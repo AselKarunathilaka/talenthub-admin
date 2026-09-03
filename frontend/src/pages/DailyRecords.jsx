@@ -22,7 +22,7 @@ import {
 import Navigation from "../components/Navigation";
 import ExportModal from "../components/ExportModal";
 
-// ── Main Component ────────────────────────────────────────────────────────────
+// â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const DailyRecords = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -46,7 +46,7 @@ const DailyRecords = () => {
   const isAdmin = location.pathname.includes("/admin/");
   const studentInfo = JSON.parse(localStorage.getItem("studentInfo") || "{}");
 
-  // ── Calendar helpers ────────────────────────────────────────
+  // â”€â”€ Calendar helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const getCalendarDays = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -112,7 +112,7 @@ const DailyRecords = () => {
     setSelectedDate(new Date());
   };
 
-  // ── Fetch records ───────────────────────────────────────────
+  // â”€â”€ Fetch records â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const fetchDailyRecords = useCallback(async () => {
     try {
       setLoading(true);
@@ -175,7 +175,7 @@ const DailyRecords = () => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
 
-  //──Fetch Holidays From Backend──────────────────────────────────────────────
+  //â”€â”€Fetch Holidays From Backendâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Years already requested, so paging through months does not refire the request
   const fetchedHolidayYears = useRef(new Set());
   const calendarYear = currentMonth.getFullYear();
@@ -215,7 +215,7 @@ useEffect(() => {
   fetchHolidays(calendarYear);
 }, [fetchHolidays, calendarYear]);
 
-  // ── Export PDF ──────────────────────────────────────────────
+  // â”€â”€ Export PDF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleExportPDF = async (params) => {
     setIsExporting(true);
     setExportError(null);
@@ -232,7 +232,7 @@ useEffect(() => {
 
       const { API_BASE_URL, API_ENDPOINTS } = await import("../api/apiConfig");
 
-      // Build query string — now includes `template`
+      // Build query string â€” now includes `template`
       const qs = new URLSearchParams();
       if (params.date) qs.set("date", params.date);
       if (params.startDate) qs.set("startDate", params.startDate);
@@ -280,7 +280,7 @@ useEffect(() => {
     }
   };
 
-  // ── Filter / sort ───────────────────────────────────────────
+  // â”€â”€ Filter / sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredRecords = records
     .filter((record) => {
       const matchesSearch =
@@ -406,11 +406,10 @@ useEffect(() => {
     return `${diffInWeeks} week${diffInWeeks > 1 ? "s" : ""} ago`;
   };
 
-  // ── Loading / Error states ──────────────────────────────────
+  // â”€â”€ Loading / Error states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
     return (
-      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
-        <Navigation />
+      <Navigation>
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
           <div className="text-center bg-white rounded-2xl shadow-sm p-8 md:p-12 border border-gray-200 max-w-md w-full" style={{ borderRadius: 20 }}>
             <div className="bg-indigo-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
@@ -424,14 +423,13 @@ useEffect(() => {
             </p>
           </div>
         </div>
-      </div>
+      </Navigation>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
-        <Navigation />
+      <Navigation>
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
           <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12 max-w-md w-full text-center border border-gray-200" style={{ borderRadius: 20 }}>
             <div className="bg-red-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
@@ -452,14 +450,13 @@ useEffect(() => {
             </button>
           </div>
         </div>
-      </div>
+      </Navigation>
     );
   }
 
-  // ── Render ──────────────────────────────────────────────────
+  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans" style={{ background: "#f0f4f8" }}>
-      <Navigation />
+    <Navigation>
 
       {/* Export Modal */}
       {showExportModal && (
@@ -634,7 +631,7 @@ useEffect(() => {
             </div>
           )}
 
-          {/* ───── Page Header ───── */}
+          {/* â”€â”€â”€â”€â”€ Page Header â”€â”€â”€â”€â”€ */}
           <div style={{ marginBottom: 32 }}>
             <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
               {/* Title Section (with Mobile Switcher) */}
@@ -1184,8 +1181,9 @@ useEffect(() => {
             </div>
         </main>
       </div>
-    </div>
+    </Navigation>
   );
 };
 
 export default DailyRecords;
+

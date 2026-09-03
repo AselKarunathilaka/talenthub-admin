@@ -1,116 +1,237 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Home, QrCode, Calendar, LogOut } from "lucide-react";
+import logo from "../assets/talenthubwhitebg.jpeg";
+import { LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 
-const Sidebar = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid", isCollapsed = false, onToggleCollapse }) => {
   const location = useLocation();
-
-  // Close sidebar on route change (mobile only)
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        // Don't auto-close on large screens
-        return;
-      }
-      setIsSidebarOpen(false);
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Close sidebar when route changes (mobile only)
-  useEffect(() => {
-    if (window.innerWidth < 1024) {
-      setIsSidebarOpen(false);
-    }
-  }, [location]);
-
-  const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
-    { to: "/scan-qr", label: "QR Attendance", icon: <QrCode className="h-5 w-5" /> },
-    { to: "/availability", label: "Availability", icon: <Calendar className="h-5 w-5" /> }
-  ];
 
   const isActive = (path) => location.pathname === path;
 
-  // Calculate dynamic classes for the sidebar
-  const sidebarClasses = `
-    fixed inset-y-0 left-0 z-40 w-64 bg-[#00102F] transition-transform duration-300 ease-in-out transform 
-    ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}
-    lg:translate-x-0 lg:static lg:inset-auto lg:h-screen
-  `;
-
-  // Overlay for mobile
-  const overlayClasses = `
-    fixed inset-0 bg-black bg-opacity-50 z-30 transition-opacity duration-300
-    ${isSidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"}
-    lg:hidden
-  `;
+  // Separate regular links from external/document links
+  const regularLinks = navLinks.filter(link => !link.isExternal);
+  const externalLinks = navLinks.filter(link => link.isExternal);
 
   return (
-    <>
-      {/* Mobile Toggle Button */}
-      <div className="fixed top-4 left-4 z-50 lg:hidden">
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="p-2 rounded-md text-white bg-[#00102F] hover:bg-[#001a4d] focus:outline-none focus:ring-2 focus:ring-green-500"
-          aria-expanded={isSidebarOpen}
+    <aside
+      onClick={(e) => {
+        // Only toggle if clicking on the sidebar background, not interactive elements
+        if (e.target.closest('button') || e.target.closest('a')) return;
+        if (onToggleCollapse) onToggleCollapse();
+      }}
+      className={`fixed inset-y-0 left-0 z-[100] bg-gradient-to-b from-[#000066] to-[#006600] shadow-2xl flex flex-col transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:translate-x-0 lg:static cursor-pointer lg:cursor-default
+      ${isCollapsed ? "lg:w-[90px] w-[260px]" : "lg:w-[260px] w-[260px]"}
+      ${isOpen ? "translate-x-0" : "-translate-x-full"}`}
+    >
+      {/* Header - perfectly matched to Navbar h-16 and color */}
+      <div className="flex items-center gap-3 px-6 h-16 border-b border-white/10 shrink-0 bg-transparent relative z-10">
+        <Link to={navLinks[0]?.to || "#"} onClick={onClose} className="flex-shrink-0 flex items-center justify-center">
+          <img
+            src={logo}
+            alt="TalentHub Logo"
+            className="h-8 w-auto rounded-lg border border-white/10 shadow-md hover:border-[#00b4eb]/50 transition-colors duration-300"
+          />
+        </Link>
+        {!isCollapsed && (
+          <span className="text-xl font-extrabold tracking-tight text-white select-none whitespace-nowrap overflow-hidden transition-opacity duration-300">
+            TalentHub
+          </span>
+        )}
+        <button 
+          onClick={onToggleCollapse} 
+          className="hidden lg:flex ml-auto text-white/50 hover:text-white transition-colors"
+          title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
-          <span className="sr-only">Open sidebar</span>
-          {isSidebarOpen ? (
-            <X className="h-6 w-6" aria-hidden="true" />
-          ) : (
-            <Menu className="h-6 w-6" aria-hidden="true" />
-          )}
+          {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
       </div>
 
-      {/* Overlay */}
-      <div 
-        className={overlayClasses}
-        onClick={() => setIsSidebarOpen(false)}
-        aria-hidden="true"
-      />
+      {/* Navigation Links */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+        <div className={isCollapsed ? "flex flex-col gap-1.5" : (mode === "grid" ? "grid grid-cols-3 gap-2" : "flex flex-col gap-1.5")}>
+          {regularLinks.map((link, index) => {
+            const active = isActive(link.to);
+            
+            const content = (!isCollapsed && mode === "grid") ? (
+              <>
+                <div
+                  className={`mb-1 flex items-center justify-center p-2 rounded-full transition-transform duration-300 ${
+                    active ? "bg-[#00b4eb]/20 text-[#00b4eb] scale-110" : "bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white"
+                  }`}
+                >
+                  {link.icon}
+                </div>
+                <span className="text-[9px] font-semibold text-center leading-[1.1] tracking-wide px-0.5">
+                  {link.label}
+                </span>
+                {/* Active Indicator Border */}
+                {active && (
+                  <div className="absolute inset-0 border-[1.5px] border-[#00b4eb] rounded-xl pointer-events-none" />
+                )}
+              </>
+            ) : (
+              <>
+                <div
+                  className={`flex items-center justify-center p-2 rounded-full transition-transform duration-300 shrink-0 ${
+                    active ? "bg-[#00b4eb]/20 text-[#00b4eb] scale-110" : "bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white"
+                  }`}
+                >
+                  {link.icon}
+                </div>
+                {!isCollapsed && (
+                  <span className={`text-xs font-bold leading-[1.1] tracking-wide px-3 truncate w-full text-left transition-colors duration-300 ${active ? "text-white" : "text-white/70 group-hover:text-white"}`}>
+                    {link.label}
+                  </span>
+                )}
+                {/* Active Indicator Border */}
+                {active && (
+                  <div className="absolute inset-0 border-[1.5px] border-[#00b4eb] rounded-xl pointer-events-none" />
+                )}
+              </>
+            );
 
-      {/* Sidebar */}
-      <aside className={sidebarClasses}>
-        <div className="flex flex-col h-full">
-          {/* Sidebar Header */}
-          <div className="px-4 py-6 border-b border-gray-700">
-            <h2 className="text-xl font-bold text-white">SLT Dashboard</h2>
-          </div>
+            const className = (!isCollapsed && mode === "grid")
+              ? `group flex flex-col items-center justify-center p-1.5 h-20 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20
+              ${
+                active
+                  ? "text-white shadow-[0_4px_20px_rgba(255,255,255,0.15)] bg-white/15 border-white/30"
+                  : "text-white/70 hover:text-white"
+              }`
+              : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20
+              ${
+                active
+                  ? "shadow-[0_4px_20px_rgba(255,255,255,0.15)] bg-white/15 border-white/30"
+                  : ""
+              }`;
 
-          {/* Nav Links */}
-          <nav className="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
-            {navLinks.map((link) => (
+            if (link.onClick) {
+              return (
+                <button
+                  key={index}
+                  onClick={(e) => {
+                    link.onClick(e);
+                    if (onClose) onClose();
+                  }}
+                  className={className}
+                  title={link.label}
+                >
+                  {content}
+                </button>
+              );
+            }
+
+            return (
               <Link
-                key={link.to}
-                to={link.to}
-                className={`flex items-center px-4 py-3 rounded-md transition-colors duration-200 ${
-                  isActive(link.to)
-                    ? "bg-gray-800 text-green-500"
-                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
-                }`}
-                aria-current={isActive(link.to) ? "page" : undefined}
+                key={link.to || index}
+                to={link.to || "#"}
+                onClick={onClose}
+                className={className}
+                title={link.label}
               >
-                <span className="mr-3">{link.icon}</span>
-                <span className="font-medium">{link.label}</span>
+                {content}
               </Link>
-            ))}
-          </nav>
+            );
+          })}
+        </div>
+      </nav>
 
-          {/* Footer Section */}
-          <div className="p-4 border-t border-gray-700">
-            <button className="flex items-center w-full px-4 py-2 text-gray-300 rounded-md hover:bg-gray-700 hover:text-white transition-colors duration-200">
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Logout</span>
+      {/* Bottom Actions Section */}
+      <div className="px-3 pb-3 mt-auto flex flex-col shrink-0">
+        
+        {/* Separator for external documents / Serendib */}
+        {externalLinks.length > 0 && (
+          <div className="mb-1">
+            <hr className="border-white/10 mb-3 mx-2" />
+            <div className={isCollapsed ? "flex flex-col gap-1.5" : (mode === "grid" ? "grid grid-cols-2 gap-2" : "flex flex-col gap-1.5")}>
+              {externalLinks.map((link, index) => {
+                const content = (!isCollapsed && mode === "grid") ? (
+                  <>
+                    <div
+                      className="mb-1 flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300"
+                    >
+                      {link.icon}
+                    </div>
+                    <span className="text-[9px] font-semibold text-center leading-[1.1] tracking-wide px-0.5 text-white/70 group-hover:text-white">
+                      {link.label}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <div
+                      className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300 shrink-0"
+                    >
+                      {link.icon}
+                    </div>
+                    {!isCollapsed && (
+                      <span className="text-xs font-bold leading-[1.1] tracking-wide px-3 truncate w-full text-left text-white/70 group-hover:text-white transition-colors duration-300">
+                        {link.label}
+                      </span>
+                    )}
+                  </>
+                );
+
+                const className = (!isCollapsed && mode === "grid")
+                  ? `group flex flex-col items-center justify-center p-1.5 h-20 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`
+                  : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`;
+
+                return (
+                  <button
+                    key={`ext-${index}`}
+                    onClick={(e) => {
+                      if (link.onClick) link.onClick(e);
+                      if (onClose) onClose();
+                    }}
+                    className={className}
+                    title={link.label}
+                  >
+                    {content}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        
+        {/* Sign Out Button */}
+        {onLogout && (
+          <div className="mt-1 w-full">
+            <hr className="border-white/10 my-3 mx-2 lg:hidden" />
+            <button
+              onClick={() => {
+                if (onClose) onClose();
+                onLogout();
+              }}
+              className={`group flex items-center w-full rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-red-500/10 hover:border-red-500/30 text-white/70 hover:text-red-400 ${isCollapsed ? "justify-center p-2 h-14" : "justify-between p-3"}`}
+              title="Sign Out"
+            >
+              {!isCollapsed && (
+                <div className="flex flex-col items-start text-left truncate max-w-[75%]">
+                  <span className="text-xs font-bold text-white/90 truncate w-full text-left group-hover:text-red-400 transition-colors">
+                    Sign Out
+                  </span>
+                  {user?.email && (
+                    <span className="text-[10px] text-white/50 truncate w-full text-left group-hover:text-red-400/70 transition-colors mt-0.5">
+                      {user.email}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-red-500/20 group-hover:text-red-400 transition-transform duration-300 shrink-0">
+                <LogOut className="h-4 w-4" />
+              </div>
             </button>
           </div>
+        )}
+
+      </div>
+
+      {/* Bottom section - perfectly matched to Footer left color */}
+      <div className="border-t border-white/10 shrink-0 mt-auto bg-transparent px-6 py-2 flex items-center justify-center shadow-[0_-4px_10px_rgba(0,0,0,0.1)] relative z-10">
+        <div className="text-[10px] text-center text-white/60 w-full font-medium">
+          Powered by <span className="font-semibold text-white/90 drop-shadow-sm">Sri Lanka Telecom</span>
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 };
 

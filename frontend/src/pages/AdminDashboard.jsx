@@ -32,29 +32,18 @@ const DigitalClock = () => {
   }, []);
 
   return (
-    <div className="flex items-center justify-center gap-4 sm:gap-8 w-full sm:w-auto">
-      {/* Time */}
-      <div className="flex items-baseline font-light tracking-tighter tabular-nums text-slate-800 drop-shadow-sm">
-        <span className="text-4xl sm:text-6xl">{formatDigit(time.getHours())}</span>
-        <span className="text-3xl sm:text-5xl text-slate-300 mx-1 sm:mx-2 animate-pulse font-normal">:</span>
-        <span className="text-4xl sm:text-6xl">{formatDigit(time.getMinutes())}</span>
-        <span className="text-xl sm:text-3xl text-[#00b4eb] font-medium ml-1.5 sm:ml-2.5">
-          {formatDigit(time.getSeconds())}
-        </span>
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 w-full">
+      <div className="flex items-baseline font-bold tracking-tight text-slate-800 tabular-nums">
+        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getHours())}</span>
+        <span className="text-xl sm:text-2xl md:text-3xl text-slate-400 mx-0.5 sm:mx-1 animate-pulse font-medium">:</span>
+        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-xs sm:text-sm md:text-base text-[#006600] font-bold ml-1 sm:ml-1.5">{formatDigit(time.getSeconds())}</span>
       </div>
-      
-      {/* Divider */}
-      <div className="w-px h-10 sm:h-14 bg-slate-200"></div>
-      
-      {/* Date */}
-      <div className="flex flex-col items-center justify-center min-w-[100px]">
-        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-[#50b748]">
-          {time.toLocaleDateString("en-US", { weekday: "long" })}
-        </span>
-        <div className="flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold text-slate-500 mt-1">
-          <span>{time.toLocaleDateString("en-US", { month: "long" })}</span>
-          <span>{time.getDate()}</span>
-        </div>
+      <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+      <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm md:text-base font-bold text-slate-600 mt-0.5 sm:mt-0">
+        <span className="text-[#000066] uppercase">{time.toLocaleDateString("en-US", { weekday: "short" })}</span>
+        <span>{time.getDate()}</span>
+        <span>{time.toLocaleDateString("en-US", { month: "short" })}</span>
       </div>
     </div>
   );
@@ -376,8 +365,8 @@ const AdminDashboard = () => {
 
   return (
     <AdminNavigation>
-      {/* Background using pure Tailwind */}
-      <div className="min-h-screen relative overflow-hidden bg-white font-sans text-slate-800 pb-16 flex flex-col">
+      {/* Background using transparent to blend with Layout */}
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         
         {/* Blur Overlay when Searching */}
         <AnimatePresence>
@@ -393,35 +382,42 @@ const AdminDashboard = () => {
           )}
         </AnimatePresence>
 
-        <main className="relative flex-1 p-4 sm:p-8 mx-auto max-w-[1400px] w-full flex flex-col gap-8">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
           
           {/* Top header: Title on Left, Clock & Tools on Right */}
           <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
 
             {/* Left: Dashboard Title */}
-            <div className="flex flex-col xl:items-start justify-center">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="text-4xl sm:text-5xl font-extrabold text-slate-900 flex items-center gap-4 tracking-tight"
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
-                <div className="p-3.5 bg-white shadow-sm shadow-[#0056a2]/10 rounded-2xl border border-slate-100">
-                  <Home className="text-[#0056a2] h-8 w-8" />
-                </div>
-                Dashboard
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1, duration: 0.3 }}
-                className="text-slate-500 mt-3 text-base sm:text-lg font-medium max-w-xl"
-              >
-                Overview of intern attendance, logbook submissions, and statistics
-              </motion.p>
+                <Home className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Dashboard
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Intern attendance, logbook & statistics overview
+                </motion.p>
+              </div>
             </div>
             
-            {/* Right: Clock & Action Buttons */}
+            {/* Right: Clock */}
             <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
               
               {/* Clock Container */}
@@ -429,67 +425,35 @@ const AdminDashboard = () => {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex items-center justify-center bg-white/70 backdrop-blur-xl border border-slate-200/60 shadow-sm px-6 py-4 rounded-[2rem] w-full sm:w-auto"
+                className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-xl md:rounded-[16px] w-full xl:w-auto"
               >
                 <DigitalClock />
-              </motion.div>
-              
-              {/* Action Buttons */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.2, duration: 0.3 }}
-                className="grid grid-cols-2 sm:flex sm:flex-row items-center gap-2 sm:gap-3 w-full sm:w-auto"
-              >
-                <button
-                  onClick={() => navigate("/admin/holidays")}
-                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-amber-50 hover:border-amber-200 rounded-[1.5rem] group min-w-0"
-                >
-                  <div className="p-1.5 sm:p-2 bg-amber-100 rounded-xl group-hover:bg-amber-200 transition-colors shrink-0">
-                    <CalendarDays className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-amber-700 transition-colors truncate">
-                    Holidays
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => navigate("/admin/announcements")}
-                  className="flex items-center justify-center gap-2 px-3 sm:px-5 py-3 sm:py-3.5 transition-all duration-300 bg-white border border-slate-200/60 shadow-sm hover:shadow-md hover:bg-rose-50 hover:border-rose-200 rounded-[1.5rem] group min-w-0"
-                >
-                  <div className="p-1.5 sm:p-2 bg-rose-100 rounded-xl group-hover:bg-rose-200 transition-colors shrink-0">
-                    <Bell className="w-5 h-5 text-rose-500 group-hover:text-rose-600" />
-                  </div>
-                  <span className="font-bold text-sm sm:text-base text-slate-700 group-hover:text-rose-600 transition-colors truncate">
-                    Announcements
-                  </span>
-                </button>
               </motion.div>
             </div>
           </div>
 
           {/* Search */}
-          <section className="w-full z-50 mt-4 relative">
+          <section className="w-full z-20 mt-4 relative">
             <motion.div
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.4 }}
             >
               <div
-                className={`relative bg-blue-50/80 backdrop-blur-2xl rounded-3xl border-2 transition-all duration-200 ease-out flex items-center px-6 py-5 shadow-lg hover:scale-[1.015] ${
+                className={`relative group bg-white rounded-lg sm:rounded-xl border border-slate-200/80 transition-all duration-300 ease-out flex items-center px-3 sm:px-4 md:px-5 py-2.5 sm:py-3 md:py-3.5 shadow-md hover:shadow-lg w-full ${
                   searchTerm 
-                    ? 'border-[#00b4eb] shadow-[0_8px_30px_rgb(0,180,235,0.2)] bg-white scale-[1.015]' 
-                    : 'border-blue-100 hover:border-[#00b4eb]/50 hover:shadow-[0_8px_30px_rgb(0,180,235,0.12)]'
+                    ? 'border-[#000066]/40 ring-2 ring-[#000066]/5' 
+                    : 'border-slate-200 focus-within:border-[#000066]/40 focus-within:ring-2 focus-within:ring-[#000066]/5'
                 }`}
               >
-                <FaSearch className={`text-2xl mr-4 flex-shrink-0 transition-colors ${searchTerm ? 'text-[#00b4eb]' : 'text-slate-400'}`} />
+                <FaSearch className={`text-lg sm:text-xl md:text-2xl mr-2.5 sm:mr-3 md:mr-4 flex-shrink-0 transition-colors ${searchTerm ? 'text-[#000066]' : 'text-slate-400 group-focus-within:text-[#000066]/70'}`} />
                 <input
                   ref={searchInputRef}
                   type="text"
                   placeholder="Search interns by name, ID, or email..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full text-xl sm:text-2xl font-semibold text-slate-800 placeholder-slate-400 outline-none bg-transparent"
+                  className="w-full text-sm sm:text-base md:text-lg lg:text-xl font-semibold text-slate-800 placeholder-slate-400 outline-none bg-transparent"
                   aria-label="Search interns"
                   role="combobox"
                   aria-expanded={searchTerm.length >= 2}
@@ -592,26 +556,26 @@ const AdminDashboard = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.4 }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 z-10"
+            className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 z-10 w-full relative"
           >
             {[
               {
                 label: "Total Interns",
                 value: loading ? "..." : dashboardStats?.totalInterns || 0,
                 icon: FaUsers,
-                color: "#0056a2", // Primary
-                bg: "bg-[#0056a2]/5",
-                border: "border-[#0056a2]/10",
-                hoverBorder: "hover:border-[#0056a2]/30",
+                color: "#000066", // Brand Primary
+                bg: "bg-[#000066]/5",
+                border: "border-[#000066]/10",
+                hoverBorder: "hover:border-[#000066]/30 hover:shadow-[#000066]/10",
               },
               {
                 label: "Total Records",
                 value: loading ? "..." : dashboardStats?.totalRecords || 0,
                 icon: FaTasks,
-                color: "#00b4eb", // Accent
-                bg: "bg-[#00b4eb]/5",
-                border: "border-[#00b4eb]/10",
-                hoverBorder: "hover:border-[#00b4eb]/30",
+                color: "#006600", // Brand Secondary
+                bg: "bg-[#006600]/5",
+                border: "border-[#006600]/10",
+                hoverBorder: "hover:border-[#006600]/30 hover:shadow-[#006600]/10",
               },
               {
                 label: "Submitted",
@@ -634,18 +598,18 @@ const AdminDashboard = () => {
             ].map((stat, idx) => (
               <div
                 key={stat.label}
-                className={`group bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 transition-all duration-300 flex flex-col justify-between hover:bg-blue-50 ${stat.border} ${stat.hoverBorder} shadow-sm hover:shadow-md cursor-default`}
+                className={`group bg-white p-3 sm:p-4 md:p-5 lg:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 transition-all duration-300 flex flex-col justify-between hover:bg-slate-50 ${stat.hoverBorder} shadow-md hover:shadow-lg cursor-default will-change-transform`}
               >
-                <div className="flex justify-between items-start mb-4">
-                  <div className={`p-3 rounded-2xl ${stat.bg} transition-transform group-hover:scale-110 duration-300`}>
-                    <stat.icon size={22} style={{ color: stat.color }} />
+                <div className="flex justify-between items-start mb-2 sm:mb-3 md:mb-4">
+                  <div className={`p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl ${stat.bg} transition-transform group-hover:scale-110 duration-300 flex items-center justify-center`}>
+                    <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" style={{ color: stat.color }} />
                   </div>
                 </div>
                 <div>
-                  <div className="text-4xl font-extrabold text-slate-900 tracking-tight" style={{ color: stat.color }}>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight" style={{ color: stat.color }}>
                     {stat.value}
                   </div>
-                  <div className="text-sm font-semibold text-slate-500 mt-1">
+                  <div className="text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-semibold text-slate-500 mt-0.5 sm:mt-1 uppercase tracking-wider line-clamp-1">
                     {stat.label}
                   </div>
                 </div>
@@ -658,92 +622,97 @@ const AdminDashboard = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.4, duration: 0.4 }}
-            className="z-10 mt-2"
+            className="z-10 mt-6 sm:mt-8 w-full"
           >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3 px-1">
-                <div className="p-2.5 bg-slate-900 text-white rounded-xl shadow-md">
-                  <FaDownload className="text-sm" />
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <div className="flex items-center gap-2 sm:gap-3 px-1">
+                <div className="p-2 sm:p-2.5 bg-gradient-to-br from-[#000066] to-[#006600] text-white rounded-lg sm:rounded-xl shadow-[0_4px_12px_rgba(0,102,0,0.2)]">
+                  <FaDownload className="text-xs sm:text-sm" />
                 </div>
-                <h3 className="text-2xl font-extrabold text-slate-900">Reports & Exports</h3>
+                <h3 className="text-lg sm:text-xl md:text-2xl font-extrabold text-slate-900">Reports & Exports</h3>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
               
               <button
                 onClick={handleExportSubmittedCSV}
-                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#50b748]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#50b748]/10 transition-all duration-300 text-left overflow-hidden"
+                className="group relative bg-white p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#50b748]/50 hover:bg-slate-50 shadow-md hover:shadow-lg transition-all duration-300 text-left overflow-hidden flex flex-col will-change-transform"
               >
-                <div className="absolute top-4 right-5 text-[#50b748]/40 group-hover:text-[#50b748] transition-colors z-20"><FaDownload className="text-xl" /></div>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#50b748]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
-                <FaRegFileExcel className="text-3xl text-[#50b748] mb-4 relative z-20" />
-                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Submissions</h4>
-                <p className="text-sm font-medium text-slate-500 relative z-20">Export a complete CSV of all currently submitted interns.</p>
+                <div className="absolute top-3 sm:top-4 right-3 sm:right-5 text-[#50b748]/40 group-hover:text-[#50b748] transition-colors z-20"><FaDownload className="text-sm sm:text-xl" /></div>
+                <div className="absolute top-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-[#50b748]/10 to-transparent rounded-bl-[100px] -mr-2 -mt-2 sm:-mr-4 sm:-mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaRegFileExcel className="text-2xl sm:text-3xl text-[#50b748] mb-2 sm:mb-4 relative z-20" />
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 relative z-20 mb-0.5 sm:mb-1">Submissions</h4>
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-500 relative z-20">Export a complete CSV of all currently submitted interns.</p>
               </button>
 
               <button
                 onClick={handleDownloadOnLeaveExcel}
-                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-purple-400/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-purple-400/10 transition-all duration-300 text-left overflow-hidden"
+                className="group relative bg-white p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-purple-400/50 hover:bg-slate-50 shadow-md hover:shadow-lg transition-all duration-300 text-left overflow-hidden flex flex-col will-change-transform"
               >
-                <div className="absolute top-4 right-5 text-purple-500/40 group-hover:text-purple-500 transition-colors z-20"><FaDownload className="text-xl" /></div>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-purple-400/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
-                <FaRegFileExcel className="text-3xl text-purple-500 mb-4 relative z-20" />
-                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">On-Leave</h4>
-                <p className="text-sm font-medium text-slate-500 relative z-20">Download Excel report of interns currently on leave.</p>
+                <div className="absolute top-3 sm:top-4 right-3 sm:right-5 text-purple-500/40 group-hover:text-purple-500 transition-colors z-20"><FaDownload className="text-sm sm:text-xl" /></div>
+                <div className="absolute top-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-purple-400/10 to-transparent rounded-bl-[100px] -mr-2 -mt-2 sm:-mr-4 sm:-mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaRegFileExcel className="text-2xl sm:text-3xl text-purple-500 mb-2 sm:mb-4 relative z-20" />
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 relative z-20 mb-0.5 sm:mb-1">On-Leave</h4>
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-500 relative z-20">Download Excel report of interns currently on leave.</p>
               </button>
 
               <button
                 onClick={handleExportWeeklyNonSubmissionsWithinWeek}
-                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#ef4444]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#ef4444]/10 transition-all duration-300 text-left overflow-hidden"
+                className="group relative bg-white p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#ef4444]/50 hover:bg-slate-50 shadow-md hover:shadow-lg transition-all duration-300 text-left overflow-hidden flex flex-col will-change-transform"
               >
-                <div className="absolute top-4 right-5 text-[#ef4444]/40 group-hover:text-[#ef4444] transition-colors z-20"><FaDownload className="text-xl" /></div>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#ef4444]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
-                <FaExclamationTriangle className="text-3xl text-[#ef4444] mb-4 relative z-20" />
-                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Non-Submissions</h4>
-                <p className="text-sm font-medium text-slate-500 relative z-20">Last 5 working days non-submissions report.</p>
+                <div className="absolute top-3 sm:top-4 right-3 sm:right-5 text-[#ef4444]/40 group-hover:text-[#ef4444] transition-colors z-20"><FaDownload className="text-sm sm:text-xl" /></div>
+                <div className="absolute top-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-[#ef4444]/10 to-transparent rounded-bl-[100px] -mr-2 -mt-2 sm:-mr-4 sm:-mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaExclamationTriangle className="text-2xl sm:text-3xl text-[#ef4444] mb-2 sm:mb-4 relative z-20" />
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 relative z-20 mb-0.5 sm:mb-1">Non-Submissions</h4>
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-500 relative z-20">Last 5 working days non-submissions report.</p>
               </button>
 
               <button
                 onClick={handleExportPreviousDayNonSubmissions}
-                className="group relative bg-blue-50/50 backdrop-blur-xl p-6 rounded-3xl border-2 border-blue-100 hover:border-[#0056a2]/50 hover:bg-blue-50 hover:shadow-xl hover:shadow-[#0056a2]/10 transition-all duration-300 text-left overflow-hidden"
+                className="group relative bg-white p-4 sm:p-5 md:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#0056a2]/50 hover:bg-slate-50 shadow-md hover:shadow-lg transition-all duration-300 text-left overflow-hidden flex flex-col will-change-transform"
               >
-                <div className="absolute top-4 right-5 text-[#0056a2]/40 group-hover:text-[#0056a2] transition-colors z-20"><FaDownload className="text-xl" /></div>
-                <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-[#0056a2]/10 to-transparent rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110 z-10"></div>
-                <FaClock className="text-3xl text-[#0056a2] mb-4 relative z-20" />
-                <h4 className="text-xl font-bold text-slate-900 relative z-20 mb-1">Previous Day</h4>
-                <p className="text-sm font-medium text-slate-500 relative z-20">Non-submissions report for the previous working day.</p>
+                <div className="absolute top-3 sm:top-4 right-3 sm:right-5 text-[#0056a2]/40 group-hover:text-[#0056a2] transition-colors z-20"><FaDownload className="text-sm sm:text-xl" /></div>
+                <div className="absolute top-0 right-0 w-16 h-16 sm:w-24 sm:h-24 bg-gradient-to-br from-[#0056a2]/10 to-transparent rounded-bl-[100px] -mr-2 -mt-2 sm:-mr-4 sm:-mt-4 transition-transform group-hover:scale-110 z-10"></div>
+                <FaClock className="text-2xl sm:text-3xl text-[#0056a2] mb-2 sm:mb-4 relative z-20" />
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-900 relative z-20 mb-0.5 sm:mb-1">Previous Day</h4>
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-500 relative z-20">Non-submissions report for the previous working day.</p>
               </button>
 
             </div>
 
             {/* Custom Date Range */}
-            <div className="mt-6 bg-blue-50/50 backdrop-blur-xl p-6 md:p-8 rounded-3xl border-2 border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
-              <div>
-                <h4 className="text-xl font-bold text-slate-900">Custom Date Range Export</h4>
-                <p className="text-sm font-medium text-slate-500 mt-1">Export non-submission data between specific dates.</p>
+            <div className="mt-4 sm:mt-6 bg-white p-4 sm:p-5 md:p-6 lg:p-8 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-5 sm:gap-6 shadow-md w-full">
+              <div className="w-full xl:w-auto">
+                <h4 className="text-base sm:text-lg md:text-xl font-bold text-slate-900">Custom Date Range Export</h4>
+                <p className="text-[10px] sm:text-xs md:text-sm font-medium text-slate-500 mt-0.5 sm:mt-1">Export non-submission data between specific dates.</p>
               </div>
-              <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                <div className="flex items-center bg-white/80 border-2 border-blue-200 rounded-2xl p-1.5 focus-within:border-[#00b4eb] transition-colors w-full sm:w-auto shadow-inner">
+              <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-3 sm:gap-4 w-full xl:w-auto">
+                <div className="flex flex-col sm:flex-row items-center bg-slate-50 border border-slate-300/80 rounded-lg sm:rounded-xl md:rounded-2xl p-1 sm:p-1.5 focus-within:border-[#00b4eb] focus-within:bg-white transition-all w-full xl:w-auto shadow-inner gap-1 sm:gap-0">
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="px-3 py-2 outline-none text-sm font-bold text-slate-700 bg-transparent"
+                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 sm:px-3 py-2 sm:py-2.5 outline-none text-xs sm:text-sm font-bold text-slate-700 bg-transparent cursor-pointer w-full text-center sm:text-left select-none"
                     aria-label="Start date"
                   />
-                  <span className="text-slate-300 mx-2 font-bold px-1">→</span>
+                  <span className="hidden sm:block text-slate-300 mx-1 sm:mx-2 font-bold px-0.5 sm:px-1 text-xs sm:text-sm">→</span>
+                  <span className="sm:hidden text-slate-300 font-bold text-[10px] py-1">↓</span>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="px-3 py-2 outline-none text-sm font-bold text-slate-700 bg-transparent"
+                    onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                    onMouseDown={(e) => e.preventDefault()}
+                    className="px-2 sm:px-3 py-2 sm:py-2.5 outline-none text-xs sm:text-sm font-bold text-slate-700 bg-transparent cursor-pointer w-full text-center sm:text-left select-none"
                     aria-label="End date"
                   />
                 </div>
                 <button
                   onClick={handleExportWeeklyNonSubmissionsCSV}
-                  className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 w-full sm:w-auto flex items-center justify-center gap-2 whitespace-nowrap"
+                  className="px-5 sm:px-8 py-3 sm:py-3.5 bg-gradient-to-r from-[#000066] to-[#006600] text-white rounded-lg sm:rounded-xl md:rounded-2xl text-sm sm:text-base font-bold hover:opacity-95 transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] w-full md:w-auto flex items-center justify-center gap-2 whitespace-nowrap flex-shrink-0"
                 >
                   <FaDownload /> Download Range
                 </button>

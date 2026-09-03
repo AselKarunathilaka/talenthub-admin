@@ -44,9 +44,9 @@ import {
 } from "../utils/entryHeuristics";
 import { rateLimitedBatchValidate } from "../utils/batchValidation";
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/*  Utility – check if current time is after 10 AM (Sri Lankan time)         */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*  Utility â€“ check if current time is after 10 AM (Sri Lankan time)         */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const checkLeaveTimeRestriction = () => {
   try {
     const now = new Date();
@@ -80,9 +80,9 @@ const checkLeaveTimeRestriction = () => {
   }
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Color palettes keyed by status                                           */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const STATUS_PALETTES = {
   working: {
     primary: "#0056a2",
@@ -122,9 +122,9 @@ const STATUS_PALETTES = {
   },
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Motivational quotes                                                      */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const MOTIVATIONAL_QUOTES = [
   "Small daily improvements lead to staggering results.",
   "Your logbook tells the story of your growth.",
@@ -136,18 +136,18 @@ const MOTIVATIONAL_QUOTES = [
   "Progress, not perfection. Log what matters.",
 ];
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Stepper Steps                                                            */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const STEPS = [
   { id: 0, label: "Status", icon: FiUmbrella },
   { id: 1, label: "Stack", icon: FiMonitor },
   { id: 2, label: "Details", icon: FiBook },
 ];
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/*  ★ LogbookRestricted — shown when the intern's logbook is locked          */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*  â˜… LogbookRestricted â€” shown when the intern's logbook is locked          */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const LogbookRestricted = ({ reason, restrictedAt }) => {
   const fmtDate = (d) => {
     if (!d) return null;
@@ -242,7 +242,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
                 margin: "0 0 6px",
               }}
             >
-              🔒 Restricted on {fmtDate(restrictedAt)}
+              ðŸ”’ Restricted on {fmtDate(restrictedAt)}
             </p>
           )}
           {reason && (
@@ -355,9 +355,9 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
   );
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Main Component                                                           */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const Logbook = () => {
   const navigate = useNavigate();
 
@@ -385,7 +385,7 @@ const Logbook = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [leaveLimitReached, setLeaveLimitReached] = useState(false);
 
-  /* ── ★ New: logbook restriction state ── */
+  /* â”€â”€ â˜… New: logbook restriction state â”€â”€ */
   const [logbookRestriction, setLogbookRestriction] = useState({
     checking: true,
     restricted: false,
@@ -408,7 +408,7 @@ const Logbook = () => {
   // Current palette
   const palette = STATUS_PALETTES[formData.status] || STATUS_PALETTES.working;
 
-  /* ── Progress bar calculation ─────────────────────────────────────────── */
+  /* â”€â”€ Progress bar calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const completionProgress = useMemo(() => {
     if (formData.status === "leave") return 100;
 
@@ -427,7 +427,7 @@ const Logbook = () => {
     return filled * 20;
   }, [formData]);
 
-  /* ── ★ Check logbook restriction on mount ── */
+  /* â”€â”€ â˜… Check logbook restriction on mount â”€â”€ */
   useEffect(() => {
     const checkRestriction = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -476,7 +476,7 @@ const Logbook = () => {
     checkRestriction();
   }, []);
 
-  /* ── Check project access on mount ────────────────────────────────────── */
+  /* â”€â”€ Check project access on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkAccess = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -512,7 +512,7 @@ const Logbook = () => {
     checkAccess();
   }, []);
 
-  /* ── Check for extended leave on mount ────────────────────────────────── */
+  /* â”€â”€ Check for extended leave on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkExtendedLeave = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -609,7 +609,7 @@ const Logbook = () => {
         });
         setActiveStep(0);
       } else if (data.code === "LOGBOOK_RESTRICTED") {
-        /* ── ★ Handle restriction returned from server mid-session ── */
+        /* â”€â”€ â˜… Handle restriction returned from server mid-session â”€â”€ */
         setLogbookRestriction({
           checking: false,
           restricted: true,
@@ -715,7 +715,7 @@ const Logbook = () => {
       return;
     }
 
-    // ── Mandatory field check for all three fields ──
+    // â”€â”€ Mandatory field check for all three fields â”€â”€
     if (formData.status !== "leave") {
       if (
         !formData.tasks.trim() ||
@@ -875,7 +875,7 @@ const Logbook = () => {
     }
   };
 
-  /* ── Stepper navigation ───────────────────────────────────────────────── */
+  /* â”€â”€ Stepper navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const isOnLeave = formData.status === "leave";
 
   // Determine which steps are reachable
@@ -903,7 +903,7 @@ const Logbook = () => {
     if (activeStep > 0) setActiveStep((s) => s - 1);
   };
 
-  /* ── Derived states ───────────────────────────────────────────────────── */
+  /* â”€â”€ Derived states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const isSubmitDisabled =
     projectAccessBlocked !== false ||
     extendedLeaveBlocked !== false ||
@@ -1006,9 +1006,9 @@ const Logbook = () => {
     },
   ];
 
-  /* ──────────────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   /*  STATUS OPTIONS (styled cards)                                          */
-  /* ──────────────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const statusOptions = [
     {
       value: "working",
@@ -1036,26 +1036,22 @@ const Logbook = () => {
     },
   ];
 
-  /* ════════════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   /*  RENDER                                                                 */
-  /* ════════════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
     <>
       {showSuccessAnimation && (
         <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
       )}
 
-      <div
-        className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans"
-        style={{ background: "#f0f4f8" }}
-      >
-        <Navigation />
+      <Navigation>
 
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <SectionTip sectionKey="logbook" />
 
-            {/* ───── Page Header ───── */}
+            {/* â”€â”€â”€â”€â”€ Page Header â”€â”€â”€â”€â”€ */}
             <div style={{ marginBottom: 32 }} className="logbook-fade-in">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
                 <div>
@@ -1099,7 +1095,7 @@ const Logbook = () => {
               </div>
             </div>
 
-            {/* ───── ★ Step 1: Restriction check loading ───── */}
+            {/* â”€â”€â”€â”€â”€ â˜… Step 1: Restriction check loading â”€â”€â”€â”€â”€ */}
             {logbookRestriction.checking && (
               <div
                 className="logbook-fade-in"
@@ -1121,7 +1117,7 @@ const Logbook = () => {
                   style={{ color: "#ef4444", marginBottom: 16 }}
                 />
                 <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>
-                  Checking logbook access…
+                  Checking logbook accessâ€¦
                 </p>
                 <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
                   Verifying your submission status
@@ -1129,7 +1125,7 @@ const Logbook = () => {
               </div>
             )}
 
-            {/* ───── ★ Step 2: Logbook Restricted UI ───── */}
+            {/* â”€â”€â”€â”€â”€ â˜… Step 2: Logbook Restricted UI â”€â”€â”€â”€â”€ */}
             {!logbookRestriction.checking && logbookRestriction.restricted && (
               <div className="logbook-fade-in">
                 <LogbookRestricted
@@ -1139,10 +1135,10 @@ const Logbook = () => {
               </div>
             )}
 
-            {/* ───── Step 3: Normal form flow (only when not restricted) ───── */}
+            {/* â”€â”€â”€â”€â”€ Step 3: Normal form flow (only when not restricted) â”€â”€â”€â”€â”€ */}
             {!logbookRestriction.checking && !logbookRestriction.restricted && (
               <>
-                {/* ───── Project Access Blocked — Standalone Instruction Card ───── */}
+                {/* â”€â”€â”€â”€â”€ Project Access Blocked â€” Standalone Instruction Card â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === true && (
                   <div
                     className="logbook-card logbook-fade-in"
@@ -1361,7 +1357,7 @@ const Logbook = () => {
                           }}
                         >
                           Already joined a team? Team data is synced every 5
-                          minutes — please wait a moment and refresh, or contact
+                          minutes â€” please wait a moment and refresh, or contact
                           your administrator if the issue persists.
                         </p>
                       </div>
@@ -1397,7 +1393,7 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Extended Leave Blocked — Standalone Instruction Card ───── */}
+                {/* â”€â”€â”€â”€â”€ Extended Leave Blocked â€” Standalone Instruction Card â”€â”€â”€â”€â”€ */}
                 {extendedLeaveBlocked === true && (
                   <div
                     className="logbook-card logbook-fade-in"
@@ -1495,7 +1491,7 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Loading state while checking access ───── */}
+                {/* â”€â”€â”€â”€â”€ Loading state while checking access â”€â”€â”€â”€â”€ */}
                 {(projectAccessBlocked === null ||
                   extendedLeaveBlocked === null) && (
                   <div
@@ -1532,7 +1528,7 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Main Form Card (only when access is granted) ───── */}
+                {/* â”€â”€â”€â”€â”€ Main Form Card (only when access is granted) â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === false &&
                   extendedLeaveBlocked === false && (
                     <div
@@ -1548,7 +1544,7 @@ const Logbook = () => {
                         position: "relative",
                       }}
                     >
-                      {/* ── Progress bar (top border) ── */}
+                      {/* â”€â”€ Progress bar (top border) â”€â”€ */}
                       <div
                         style={{
                           height: 4,
@@ -1584,7 +1580,7 @@ const Logbook = () => {
                         )}
                       </div>
 
-                      {/* ── Stepper Header ── */}
+                      {/* â”€â”€ Stepper Header â”€â”€ */}
                       <div
                         style={{
                           padding: "20px 24px 16px",
@@ -1729,12 +1725,12 @@ const Logbook = () => {
                         </div>
                       </div>
 
-                      {/* ── Form Body ── */}
+                      {/* â”€â”€ Form Body â”€â”€ */}
                       <div style={{ padding: "24px" }}>
                         <form onSubmit={handleSubmit}>
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 0 — Status Selection                   ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 0 â€” Status Selection                   â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -1975,9 +1971,9 @@ const Logbook = () => {
                             </div>
                           </div>
 
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 1 — Task Stack                         ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 1 â€” Task Stack                         â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -2168,9 +2164,9 @@ const Logbook = () => {
                             </div>
                           </div>
 
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 2 — The Three Fields (or Leave msg)    ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 2 â€” The Three Fields (or Leave msg)    â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -2234,7 +2230,7 @@ const Logbook = () => {
                                 </div>
                               </div>
                             ) : (
-                              /* ── Working / WFH mode — all three fields ── */
+                              /* â”€â”€ Working / WFH mode â€” all three fields â”€â”€ */
                               <>
                                 <div
                                   style={{
@@ -2257,7 +2253,7 @@ const Logbook = () => {
                                   </p>
                                 </div>
 
-                                {/* ── Tasks Completed ── */}
+                                {/* â”€â”€ Tasks Completed â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
@@ -2317,7 +2313,7 @@ const Logbook = () => {
                                   />
                                 </div>
 
-                                {/* ── Challenges Faced ── */}
+                                {/* â”€â”€ Challenges Faced â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
@@ -2377,7 +2373,7 @@ const Logbook = () => {
                                   />
                                 </div>
 
-                                {/* ── Plans for Tomorrow ── */}
+                                {/* â”€â”€ Plans for Tomorrow â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
@@ -2439,7 +2435,7 @@ const Logbook = () => {
                               </>
                             )}
 
-                            {/* ── Status / error messages ── */}
+                            {/* â”€â”€ Status / error messages â”€â”€ */}
                             {statusMessage && (
                               <div
                                 className="logbook-fade-in"
@@ -2586,7 +2582,7 @@ const Logbook = () => {
                                         }}
                                       >
                                         Already joined a team? Team data is
-                                        synced every 5 minutes — please wait a
+                                        synced every 5 minutes â€” please wait a
                                         moment and refresh, or contact your
                                         administrator if the issue persists.
                                       </p>
@@ -2622,7 +2618,7 @@ const Logbook = () => {
                               </div>
                             )}
 
-                            {/* ── Nav & Submit buttons ── */}
+                            {/* â”€â”€ Nav & Submit buttons â”€â”€ */}
                             <div
                               style={{
                                 display: "flex",
@@ -2721,7 +2717,7 @@ const Logbook = () => {
                     </div>
                   )}
 
-                {/* ───── Info Cards (only when access is granted) ───── */}
+                {/* â”€â”€â”€â”€â”€ Info Cards (only when access is granted) â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === false && (
                   <div style={{ marginTop: 24 }} className="logbook-fade-in">
                     <div className="grid gap-4 md:grid-cols-2">
@@ -2758,7 +2754,7 @@ const Logbook = () => {
                                   marginTop: 2,
                                 }}
                               >
-                                •
+                                â€¢
                               </span>
                               {tip}
                             </li>
@@ -2814,14 +2810,14 @@ const Logbook = () => {
             )}
           </main>
         </div>
-      </div>
+      </Navigation>
     </>
   );
 };
 
-/* ════════════════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 /*  Sub-Components                                                            */
-/* ════════════════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /** Static info card for sidebar info */
 const InfoCard = ({ icon, title, palette, children }) => {
@@ -2890,3 +2886,4 @@ const SummaryRow = ({ label, value }) => (
 );
 
 export default Logbook;
+

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
@@ -826,8 +826,7 @@ const FaceAttendance = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50">
-      <Navigation />
+    <Navigation>
 
       <main className="flex-1 w-full lg:mt-20 lg:px-10">
         {enrollmentSuccess && (
@@ -1287,8 +1286,9 @@ const FaceAttendance = () => {
           )}
         </div>
       </main>
-    </div>
+    </Navigation>
   );
 };
 
 export default FaceAttendance;
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { BrowserMultiFormatReader } from '@zxing/library';
 import { apiFetch } from '../utils/api';
@@ -131,7 +131,7 @@ const ScanQRCode = () => {
     }
 
     if (scanMode === 'meeting') {
-      // No project name required — it is read directly from the QR code
+      // No project name required â€” it is read directly from the QR code
     }
 
     isProcessingRef.current = false;
@@ -160,7 +160,7 @@ const ScanQRCode = () => {
             const typedProjectName = normalizeProjectName(currentProjectName || '');
 
             if (!typedProjectName) {
-              // No project name required from user — it comes from the QR itself
+              // No project name required from user â€” it comes from the QR itself
               // Just proceed with scan
             }
 
@@ -373,8 +373,7 @@ const ScanQRCode = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-white">
-      <Navigation />
+    <Navigation>
 
       <motion.div
         className="flex-1 w-full lg:mt-20 lg:px-10"
@@ -629,10 +628,10 @@ const ScanQRCode = () => {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {[
-                    { icon: '🔍', text: 'Hold steady 15-50cm from code' },
-                    { icon: '💡', text: 'Ensure good lighting' },
-                    { icon: '📱', text: 'Clean camera lens' },
-                    { icon: '🔄', text: 'Try different angles if needed' }
+                    { icon: 'ðŸ”', text: 'Hold steady 15-50cm from code' },
+                    { icon: 'ðŸ’¡', text: 'Ensure good lighting' },
+                    { icon: 'ðŸ“±', text: 'Clean camera lens' },
+                    { icon: 'ðŸ”„', text: 'Try different angles if needed' }
                   ].map((tip, index) => (
                     <motion.div key={index} className="flex items-start gap-2 animate-fade-in" variants={itemVariants} style={{ transitionDelay: `${0.2 + index * 0.05}s` }}>
                       <span className="text-lg mt-0.5 animate-icon-bounce">{tip.icon}</span>
@@ -731,8 +730,9 @@ const ScanQRCode = () => {
           </div>
         </motion.main>
       </motion.div>
-    </div>
+    </Navigation>
   );
 };
 
 export default ScanQRCode;
+

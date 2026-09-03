@@ -195,10 +195,8 @@ const InternAnnouncements = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans text-gray-800">
-      <Navigation onLogout={handleLogout} />
-
-      <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
+    <Navigation onLogout={handleLogout}>
+      <div className="w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1200px] w-full">
           <SectionTip sectionKey="announcements" />
           {/* Page Header */}
@@ -473,7 +471,7 @@ const InternAnnouncements = () => {
           )}
         </main>
       </div>
-    </div>
+    </Navigation>
   );
 };
 
