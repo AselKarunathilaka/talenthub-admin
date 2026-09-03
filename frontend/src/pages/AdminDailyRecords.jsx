@@ -24,6 +24,7 @@ import {
 } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { adminApi, notificationUtils } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 
 
 const LIMIT = 50;
@@ -301,20 +302,20 @@ const AdminDailyRecords = () => {
         onClick={onClick}
         disabled={disabled || pageLoading}
         title={title}
-        className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition"
+        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none"
       >
         {icon}
       </button>
     );
 
     return (
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60 rounded-b-2xl">
-        <p className="text-xs sm:text-sm text-gray-500">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl">
+        <p className="text-xs sm:text-sm text-slate-500 font-medium">
           Showing{" "}
-          <span className="font-semibold text-gray-700">
-            {from}–{to}
+          <span className="font-bold text-slate-700">
+            {from} - {to}
           </span>{" "}
-          of <span className="font-semibold text-gray-700">{total}</span>{" "}
+          of <span className="font-bold text-slate-700">{total}</span>{" "}
           records
         </p>
         <div className="flex items-center gap-1">
@@ -333,12 +334,12 @@ const AdminDailyRecords = () => {
           {pageNums.map((p, idx, arr) => (
             <React.Fragment key={p}>
               {arr[idx - 1] && p - arr[idx - 1] > 1 && (
-                <span className="px-1 text-gray-400 text-xs">…</span>
+                <span className="px-1 text-slate-400 text-xs font-bold">…</span>
               )}
               <button
                 onClick={() => goToPage(p)}
                 disabled={pageLoading}
-                className={`w-8 h-8 rounded-lg text-xs font-medium transition ${p === page ? "bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-sm" : "text-gray-600 hover:bg-gray-200"}`}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all focus:outline-none ${p === page ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20" : "text-slate-600 hover:bg-slate-200"}`}
               >
                 {p}
               </button>
@@ -389,92 +390,112 @@ const AdminDailyRecords = () => {
   // Main render
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            {/* Header Section */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+          {/* Header Section */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+            {/* Left: Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+              >
+                <BookOpen className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
                 <motion.h1
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
                 >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <BookOpen className="text-[#0056a2] h-8 w-8" />
-                  </div>
                   Daily Logs
                 </motion.h1>
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
                 >
                   Browse daily logbook submissions
                 </motion.p>
               </div>
+            </div>
 
-              {/* Stats & Date Filter */}
-              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1, duration: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-3">
-                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-2xl p-3 flex items-center gap-3 border border-slate-100">
-                  <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100"><FaCalendarAlt className="text-[#00b4eb] h-5 w-5" /></div>
+            {/* Right: Stats & Date Filter */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.15, duration: 0.3 }} className="bg-white rounded-xl md:rounded-[16px] shadow-sm border border-slate-200/80 px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-4 flex flex-wrap sm:flex-nowrap items-center gap-3 w-full xl:w-auto">
+                <div className="flex-1 min-w-[200px] bg-slate-50 rounded-lg sm:rounded-xl p-2 sm:p-2.5 flex items-center gap-2 sm:gap-3 border border-slate-200/60 focus-within:border-[#000066]/40 focus-within:bg-white transition-all">
+                  <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm border border-slate-200/60">
+                    <FaCalendarAlt className="text-[#000066] h-4 w-4 sm:h-5 sm:w-5" />
+                  </div>
                   <div className="flex-1">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-0.5">Select Date</label>
-                    <input type="date" value={selectedDate} max={todayStr} onChange={handleDateChange} className="bg-transparent text-sm font-bold text-gray-800 w-full focus:outline-none cursor-pointer" />
+                    <label className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5 cursor-pointer">Select Date</label>
+                    <input 
+                      type="date" 
+                      value={selectedDate} 
+                      max={todayStr} 
+                      onChange={handleDateChange} 
+                      onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                      onMouseDown={(e) => e.preventDefault()}
+                      style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
+                      className="bg-transparent text-xs sm:text-sm font-bold text-slate-800 w-full focus:outline-none focus:ring-0 cursor-pointer" 
+                    />
                   </div>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <div className="flex-1 sm:w-32 text-center p-3 bg-blue-50/80 rounded-2xl border border-blue-100">
-                    <div className="text-2xl font-black text-cyan-600 leading-none mb-1">{loading ? "-" : pagination.total}</div>
-                    <div className="text-[10px] font-bold text-blue-500/80 uppercase tracking-wider">Submissions</div>
+                  <div className="flex-1 sm:w-32 text-center p-2 sm:p-3 bg-[#006600]/5 rounded-lg sm:rounded-xl border border-[#006600]/10">
+                    <div className="text-xl sm:text-2xl font-black text-[#006600] leading-none mb-1">{loading ? "-" : pagination.total}</div>
+                    <div className="text-[9px] sm:text-[10px] font-bold text-[#006600]/70 uppercase tracking-wider">Submissions</div>
                   </div>
                 </div>
               </motion.div>
             </div>
+          </div>
 
             {/* Search Bar */}
             <motion.div
-              className="bg-white p-4 md:p-6 rounded-3xl border border-gray-100 shadow-sm mb-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15, duration: 0.3 }}
+              className="bg-white p-4 md:p-5 lg:p-6 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 shadow-md mb-4 sm:mb-6 z-20 relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
             >
               <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between space-y-3 lg:space-y-0 lg:space-x-4">
                 <div className="flex-1">
-                  <label htmlFor="search-input" className="block text-sm font-bold text-gray-700 mb-2">Search Records</label>
+                  <label htmlFor="search-input" className="block text-[10px] sm:text-xs lg:text-sm font-bold text-slate-700 mb-1.5 sm:mb-2">Search Records</label>
                   <div className="flex items-center space-x-2">
-                    <div className="relative flex-1">
-                      <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <div className="relative flex-1 group">
+                      <FaSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-[#000066]/70 transition-colors h-3.5 w-3.5 sm:h-4 sm:w-5" />
                       <input
                         id="search-input"
                         type="text"
                         value={searchTerm}
                         onChange={handleSearchChange}
                         placeholder="Search by name or Trainee ID within this day..."
-                        className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent text-gray-900 text-sm shadow-sm transition-all"
+                        className="w-full pl-8 sm:pl-11 pr-3 sm:pr-4 py-2 sm:py-2.5 lg:py-3 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl focus:ring-0 focus:outline-none focus:border-[#000066]/40 text-slate-900 text-xs sm:text-sm shadow-sm transition-all"
                       />
                       {searchTerm && (
-                        <button onClick={() => { setSearchTerm(''); fetchRecords({ page: 1, date: selectedDate, search: '' }); }} className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 bg-white p-1 rounded-full shadow-sm">
-                          <FaTimes className="h-3 w-3" />
+                        <button onClick={() => { setSearchTerm(''); fetchRecords({ page: 1, date: selectedDate, search: '' }); }} className="absolute right-2.5 sm:right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full shadow-sm focus:outline-none">
+                          <FaTimes className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
                         </button>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-3 pt-6 lg:pt-0">
+                <div className="flex gap-2 sm:gap-3 pt-2 lg:pt-0 w-full lg:w-auto">
                   <motion.button
                     onClick={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
-                    className="flex items-center space-x-2 px-5 py-3 bg-white border border-gray-200 text-gray-700 rounded-2xl text-sm font-bold transition-all shadow-sm hover:bg-gray-50"
+                    className="flex-1 lg:flex-none justify-center flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 lg:px-5 py-2 sm:py-2.5 lg:py-3 bg-white border border-slate-200/80 text-slate-700 rounded-lg sm:rounded-xl text-[10px] sm:text-xs lg:text-sm font-bold transition-all shadow-sm hover:bg-slate-50 hover:border-slate-300 hover:shadow-md focus:outline-none"
                   >
-                    <FaSort className="text-blue-400 h-4 w-4" />
+                    <FaSort className="text-[#000066] h-2.5 w-2.5 sm:h-3 sm:w-4" />
                     <span>{sortOrder === "desc" ? "↓ Newest" : "↑ Oldest"}</span>
                   </motion.button>
                   <motion.button
                     onClick={handleExportCSV}
                     disabled={pagination.total === 0 || loading || exporting}
-                    className="flex items-center space-x-2 px-5 py-3 bg-[#50b748] hover:bg-[#43a03c] disabled:bg-gray-300 disabled:text-gray-500 text-white rounded-2xl text-sm font-bold transition-all shadow-md shadow-[#50b748]/20 disabled:shadow-none disabled:cursor-not-allowed"
+                    className="flex-1 lg:flex-none justify-center flex items-center space-x-1 sm:space-x-2 px-2 sm:px-4 lg:px-5 py-2 sm:py-2.5 lg:py-3 bg-gradient-to-r from-[#006600] to-[#008800] hover:opacity-95 disabled:opacity-50 disabled:from-slate-400 disabled:to-slate-500 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs lg:text-sm font-bold transition-all shadow-md shadow-[#006600]/20 disabled:shadow-none disabled:cursor-not-allowed"
                   >
                     {exporting ? (
                       <motion.span
@@ -482,17 +503,17 @@ const AdminDailyRecords = () => {
                         transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
                         className="inline-flex"
                       >
-                        <FaSpinner className="h-4 w-4" />
+                        <FaSpinner className="h-2.5 w-2.5 sm:h-3 sm:w-4" />
                       </motion.span>
                     ) : (
-                      <FaDownload className="h-4 w-4" />
+                      <FaDownload className="h-2.5 w-2.5 sm:h-3 sm:w-4" />
                     )}
                     <span>{exporting ? "Exporting..." : "Export CSV"}</span>
                   </motion.button>
                 </div>
               </div>
 
-              <p className="text-xs text-gray-400 mt-3 font-medium">
+              <p className="text-[9px] sm:text-[10px] lg:text-xs text-slate-500 mt-2 sm:mt-3 font-medium">
                 {loading
                   ? "Loading records..."
                   : pagination.total === 0
@@ -504,24 +525,24 @@ const AdminDailyRecords = () => {
 
             {/* Records Table */}
             <motion.div
-              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 shadow-md overflow-hidden relative z-10"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3, duration: 0.3 }}
             >
               {/* Table title bar */}
-              <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
+              <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-200/80 flex items-center justify-between bg-white">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 tracking-tight">
-                    Submissions —{" "}
-                    <span className="text-blue-600">
+                  <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
+                    Submissions - {" "}
+                    <span className="text-[#000066]">
                       {new Date(selectedDate + "T00:00:00").toLocaleDateString(
                         "en-US",
                         { month: "long", day: "numeric", year: "numeric" },
                       )}
                     </span>
                   </h2>
-                  <p className="text-sm text-gray-500 font-medium mt-0.5">
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-semibold mt-0.5">
                     {loading ? "Loading..." : `${pagination.total} record${pagination.total !== 1 ? "s" : ""} total`}
                   </p>
                 </div>
@@ -534,7 +555,7 @@ const AdminDailyRecords = () => {
                       ease: "linear",
                     }}
                   >
-                    <FaSpinner className="text-[#00b4eb] h-5 w-5" />
+                    <FaSpinner className="text-[#000066] h-4 w-4 sm:h-5 sm:w-5" />
                   </motion.div>
                 )}
               </div>
@@ -551,7 +572,7 @@ const AdminDailyRecords = () => {
                         repeat: Infinity,
                         ease: "linear",
                       }}
-                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full"
+                      className="w-10 h-10 border-t-4 border-b-4 border-[#000066] rounded-full"
                     />
                   </div>
                 )}
@@ -559,7 +580,7 @@ const AdminDailyRecords = () => {
                 {!loading && !pageLoading && displayedRecords.length === 0 ? (
                   /* Empty state */
                   <motion.div
-                    className="text-center py-16 px-4"
+                    className="text-center py-12 sm:py-16 px-4"
                     initial={{ opacity: 0, scale: 0.92 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
@@ -571,12 +592,12 @@ const AdminDailyRecords = () => {
                         ease: "easeInOut",
                       }}
                     >
-                      <FaCalendarDay className="mx-auto h-12 w-12 text-gray-200 mb-4" />
+                      <FaCalendarDay className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-slate-200 mb-3 sm:mb-4" />
                     </motion.div>
-                    <h3 className="text-base font-semibold text-gray-500 mb-1">
+                    <h3 className="text-sm sm:text-base font-bold text-slate-500 mb-1">
                       No submissions for this day
                     </h3>
-                    <p className="text-sm text-gray-400">
+                    <p className="text-xs sm:text-sm text-slate-400 font-medium max-w-sm mx-auto">
                       {searchTerm
                         ? "No interns match your search for this date."
                         : selectedDate === todayStr
@@ -586,7 +607,7 @@ const AdminDailyRecords = () => {
                     {selectedDate !== todayStr && (
                       <motion.button
                         onClick={handleGoToToday}
-                        className="mt-5 px-5 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white text-sm rounded-xl shadow-sm"
+                        className="mt-4 sm:mt-5 px-4 sm:px-5 py-2 sm:py-2.5 bg-gradient-to-r from-[#000066] to-[#006600] text-white text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl shadow-md shadow-[#006600]/20 focus:outline-none"
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                       >
@@ -597,7 +618,7 @@ const AdminDailyRecords = () => {
                 ) : (
                   <>
                     {/* Mobile cards */}
-                    <div className="block lg:hidden divide-y divide-gray-100">
+                    <div className="block xl:hidden divide-y divide-slate-200/60">
                       {displayedRecords.map((record, idx) => {
                         const name =
                           record.internId?.Trainee_Name ||
@@ -611,79 +632,85 @@ const AdminDailyRecords = () => {
                         const status = record.status || "working";
                         const rowNum = (pagination.page - 1) * LIMIT + idx + 1;
                         return (
-                          <motion.div
+                          <div
                             key={record._id}
-                            className="p-4 hover:bg-gray-50/60 transition-colors"
-                            whileHover={{ y: -1 }}
+                            className="p-4 hover:bg-slate-50/80 transition-all hover:-translate-y-px"
                           >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center gap-3">
-                                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
-                                  <FaUser className="text-blue-600 h-4 w-4" />
-                                </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-900">
-                                    {rowNum}. {name}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    ID: {tid}
-                                  </p>
+                            <div className="flex items-start mb-3 gap-3">
+                              <div className="h-10 w-10 rounded-full bg-[#000066]/10 text-[#000066] flex items-center justify-center font-bold text-lg flex-shrink-0 overflow-hidden shadow-inner relative mt-1">
+                                <img
+                                  src={`${API_BASE_URL}/interns/${iid}/profile-picture`}
+                                  alt={name}
+                                  className="absolute inset-0 w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div className="w-full h-full flex items-center justify-center hidden bg-gradient-to-br from-[#000066]/20 to-[#006600]/20">
+                                  {(name || "?")[0].toUpperCase()}
                                 </div>
                               </div>
-                              <span
-                                className={`text-xs px-2 py-0.5 rounded-full font-medium border ${statusBadgeClass(status)}`}
-                              >
-                                {statusLabel(status)}
-                              </span>
+                              <div className="min-w-0 flex-1 flex flex-col items-start">
+                                <span
+                                  className={`flex-shrink-0 text-[9px] sm:text-[10px] lg:text-xs px-2 py-0.5 rounded-full font-bold border uppercase tracking-wider mb-1.5 ${statusBadgeClass(status)}`}
+                                >
+                                  {statusLabel(status)}
+                                </span>
+                                <p className="text-xs sm:text-sm lg:text-base font-bold text-slate-900 break-words w-full">
+                                  {name}
+                                </p>
+                                <p className="text-[10px] sm:text-xs lg:text-sm font-medium text-slate-500 truncate w-full">
+                                  ID: {tid}
+                                </p>
+                              </div>
                             </div>
                             <div className="flex items-center justify-between">
-                              <p className="text-xs text-gray-400">
+                              <p className="text-[10px] sm:text-xs lg:text-sm font-medium text-slate-400">
                                 <FaRegClock className="inline mr-1" />
                                 {new Date(record.createdAt).toLocaleTimeString(
                                   "en-US",
                                   { hour: "2-digit", minute: "2-digit" },
                                 )}
                               </p>
-                              <motion.button
+                              <button
                                 onClick={() =>
                                   navigate(`/admin/intern/${iid}/records`, {
                                     state: { from: "daily-records" },
                                   })
                                 }
-                                className="flex items-center text-cyan-600 hover:bg-cyan-50 px-2 py-1 rounded-xl text-xs"
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
+                                className="flex items-center text-[#000066] hover:bg-[#000066]/10 px-3 py-1.5 rounded-lg text-[10px] sm:text-xs lg:text-sm font-bold transition-all hover:scale-105 active:scale-95"
                               >
-                                <FaEye className="mr-1 h-3 w-3" /> View
-                              </motion.button>
+                                <FaEye className="mr-1.5 h-3 w-3" /> View
+                              </button>
                             </div>
-                          </motion.div>
+                          </div>
                         );
                       })}
                     </div>
 
                     {/* Desktop table */}
-                    <div className="hidden lg:block overflow-x-auto">
+                    <div className="hidden xl:block overflow-x-auto">
                       <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50/80 border-b border-gray-100">
+                        <thead className="bg-slate-50/80">
                           <tr>
                             {[
-                              "#",
-                              "Intern",
-                              "Status",
-                              "Submitted At",
-                              "Actions",
+                              { label: "#", align: "left" },
+                              { label: "Intern", align: "left" },
+                              { label: "Status", align: "center" },
+                              { label: "Submitted At", align: "center" },
+                              { label: "Actions", align: "center" },
                             ].map((h) => (
                               <th
-                                key={h}
-                                className="px-6 py-4 font-bold text-gray-500 uppercase tracking-wider text-xs"
+                                key={h.label}
+                                className={`px-5 py-3.5 font-bold text-slate-500 uppercase tracking-wider text-[9px] sm:text-[10px] md:text-xs lg:text-sm text-${h.align}`}
                               >
-                                {h}
+                                {h.label}
                               </th>
                             ))}
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
+                        <tbody>
                           {displayedRecords.map((record, idx) => {
                             const name =
                               record.internId?.Trainee_Name ||
@@ -698,36 +725,47 @@ const AdminDailyRecords = () => {
                             const rowNum =
                               (pagination.page - 1) * LIMIT + idx + 1;
                             return (
-                              <motion.tr
+                              <tr
                                 key={record._id}
-                                className="hover:bg-slate-50/50 transition-colors group"
+                                className="hover:bg-slate-50/80 transition-colors group"
                               >
-                                <td className="px-6 py-4 text-sm text-gray-400 w-12">
+                                <td className="px-5 py-4 text-xs sm:text-sm lg:text-base font-medium text-slate-400 w-12">
                                   {rowNum}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-100 to-cyan-100 flex items-center justify-center shadow-sm flex-shrink-0">
-                                      <FaUser className="text-blue-600" />
+                                <td className="px-5 py-4 min-w-[200px] max-w-[250px] sm:max-w-[300px]">
+                                  <div className="flex items-center gap-3 min-w-0">
+                                    <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-[#000066]/10 text-[#000066] flex items-center justify-center font-bold text-lg flex-shrink-0 overflow-hidden shadow-inner relative border border-slate-200">
+                                      <img
+                                        src={`${API_BASE_URL}/interns/${iid}/profile-picture`}
+                                        alt={name}
+                                        className="absolute inset-0 w-full h-full object-cover"
+                                        onError={(e) => {
+                                          e.target.style.display = 'none';
+                                          if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                                        }}
+                                      />
+                                      <div className="w-full h-full flex items-center justify-center hidden bg-gradient-to-br from-[#000066]/20 to-[#006600]/20">
+                                        {(name || "?")[0].toUpperCase()}
+                                      </div>
                                     </div>
-                                    <div>
-                                      <p className="text-sm font-semibold text-gray-900">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-xs sm:text-sm lg:text-base font-bold text-slate-900 group-hover:text-[#000066] transition-colors break-words">
                                         {name}
                                       </p>
-                                      <p className="text-xs text-gray-500">
+                                      <p className="text-[9px] sm:text-[10px] lg:text-xs font-semibold text-slate-500 truncate">
                                         ID: {tid}
                                       </p>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
+                                <td className="px-5 py-4 whitespace-nowrap text-center">
                                   <span
-                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${statusBadgeClass(status)}`}
+                                    className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] sm:text-[10px] lg:text-xs font-bold uppercase tracking-wider border ${statusBadgeClass(status)}`}
                                   >
                                     {statusLabel(status)}
                                   </span>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <td className="px-5 py-4 whitespace-nowrap text-xs sm:text-sm lg:text-base font-medium text-slate-500 text-center">
                                   {new Date(
                                     record.createdAt,
                                   ).toLocaleTimeString("en-US", {
@@ -736,22 +774,19 @@ const AdminDailyRecords = () => {
                                     second: "2-digit",
                                   })}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <motion.button
+                                <td className="px-5 py-4 whitespace-nowrap text-center">
+                                  <button
                                     onClick={() =>
                                       navigate(`/admin/intern/${iid}/records`, {
                                         state: { from: "daily-records" },
                                       })
                                     }
-                                    className="inline-flex items-center gap-1.5 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50 px-3 py-1.5 rounded-xl text-sm transition-colors shadow-sm"
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
+                                    className="inline-flex items-center gap-1.5 text-[#000066] hover:text-white hover:bg-[#000066] px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs lg:text-sm font-bold transition-all shadow-sm border border-[#000066]/20 hover:border-[#000066] hover:shadow-md focus:outline-none hover:scale-105 active:scale-95"
                                   >
-                                    <FaEye className="h-3.5 w-3.5" /> View
-                                    Records
-                                  </motion.button>
+                                    <FaEye className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> View
+                                  </button>
                                 </td>
-                              </motion.tr>
+                              </tr>
                             );
                           })}
                         </tbody>
@@ -764,7 +799,6 @@ const AdminDailyRecords = () => {
               <PaginationBar />
             </motion.div>
           </main>
-        </div>
       </div>
     </AdminNavigation>
   );
