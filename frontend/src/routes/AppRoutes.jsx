@@ -40,7 +40,6 @@ import AdminUserManagement from "../pages/AdminUserManagement";
 import UniversityLogin from "../pages/UniversityLogin";
 import UniversityDashboard from "../pages/UniversityDashboard";
 import UniversityStudentDetails from "../pages/UniversityStudentDetails";
-import AdminUniversityManagement from "../pages/AdminUniversityManagement";
 import AdminAnalytics from "../pages/AdminAnalytics";
 // Lazy-loaded — splits AdminInternPerformance into its own JS chunk
 const AdminInternPerformance = lazy(() => import("../pages/AdminInternPerformance"));
@@ -236,8 +235,6 @@ const AppRoutes = () => {
       />
       <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
-      <Route path="/admin/university-requests" element={<AdminUniversityManagement />} />
-      <Route path="/admin/university-management" element={<AdminUniversityManagement />} />
       <Route path="/admin/analytics" element={<AdminAnalytics />} />
       <Route
         path="/admin/intern-performance"

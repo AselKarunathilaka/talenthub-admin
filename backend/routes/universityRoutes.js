@@ -6,11 +6,6 @@ const {
   universityGoogleLogin,
   registerUniversityRequest,
   checkUniversityStatus,
-  getAdminUniversityRequests,
-  approveUniversityRequest,
-  rejectUniversityRequest,
-  revokeUniversityAccess,
-  deleteUniversityRequest,
   getSupervisorProfile,
   getUniversityStudents,
   getUniversityStudentDetails,
@@ -36,13 +31,5 @@ router.put("/students/:internId/feedback/:feedbackId", universityAuth, updateStu
 router.delete("/students/:internId/feedback/:feedbackId", universityAuth, deleteStudentFeedback);
 router.put("/feedback/:feedbackId", universityAuth, updateStudentFeedback);
 router.delete("/feedback/:feedbackId", universityAuth, deleteStudentFeedback);
-
-// ─── Admin Management Routes ────────────────────────────────────────────────
-// Supports admin auth or authMiddleware
-router.get("/admin/requests", authMiddleware, getAdminUniversityRequests);
-router.post("/admin/requests/:id/approve", authMiddleware, approveUniversityRequest);
-router.post("/admin/requests/:id/reject", authMiddleware, rejectUniversityRequest);
-router.post("/admin/requests/:id/revoke", authMiddleware, revokeUniversityAccess);
-router.delete("/admin/requests/:id", authMiddleware, deleteUniversityRequest);
 
 module.exports = router;

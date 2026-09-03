@@ -688,186 +688,7 @@ const checkUniversityStatus = async (req, res) => {
   }
 };
 
-// ─── Admin Controller Functions ─────────────────────────────────────────────
 
-/**
- * Admin: Get all university registration requests & supervisors
- */
-const getAdminUniversityRequests = async (req, res) => {
-  try {
-    const { status, search } = req.query;
-    const filter = {};
-
-    if (status && status !== "all") {
-      filter.status = status;
-    }
-
-    if (search && search.trim()) {
-      const s = search.trim();
-      filter.$or = [
-        { supervisorName: new RegExp(s, "i") },
-        { universityName: new RegExp(s, "i") },
-        { email: new RegExp(s, "i") },
-        { department: new RegExp(s, "i") },
-      ];
-    }
-
-    const [requests, totalCount, pendingCount, approvedCount, rejectedCount, revokedCount] =
-      await Promise.all([
-        UniversityUser.find(filter).sort({ requestedAt: -1, createdAt: -1 }),
-        UniversityUser.countDocuments(),
-        UniversityUser.countDocuments({ status: "pending" }),
-        UniversityUser.countDocuments({ status: "approved" }),
-        UniversityUser.countDocuments({ status: "rejected" }),
-        UniversityUser.countDocuments({ status: "revoked" }),
-      ]);
-
-    return res.status(200).json({
-      requests,
-      counts: {
-        total: totalCount,
-        pending: pendingCount,
-        approved: approvedCount,
-        rejected: rejectedCount,
-        revoked: revokedCount,
-      },
-    });
-  } catch (error) {
-    console.error("[AdminUniversity] Fetch requests error:", error);
-    return res.status(500).json({ message: "Failed to fetch university requests." });
-  }
-};
-
-/**
- * Admin: Approve a university registration request
- */
-const approveUniversityRequest = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const supervisor = await UniversityUser.findById(id);
-
-    if (!supervisor) {
-      return res.status(404).json({ message: "University request not found." });
-    }
-
-    supervisor.status = "approved";
-    supervisor.approvedAt = new Date();
-    supervisor.approvedBy = req.user?.email || "admin";
-    supervisor.rejectionReason = "";
-    await supervisor.save();
-
-    // Auto-send approval email
-    try {
-      await sendUniversityApprovalEmail({
-        to: supervisor.email,
-        supervisorName: supervisor.supervisorName,
-        universityName: supervisor.universityName,
-      });
-      console.log(`[AdminUniversity] Approval email sent to ${supervisor.email}`);
-    } catch (emailErr) {
-      console.error("[AdminUniversity] Email sending error:", emailErr.message);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `Access approved for ${supervisor.supervisorName} (${supervisor.universityName}). Approval email sent.`,
-      supervisor,
-    });
-  } catch (error) {
-    console.error("[AdminUniversity] Approve error:", error);
-    return res.status(500).json({ message: "Failed to approve request." });
-  }
-};
-
-/**
- * Admin: Reject a university registration request with reason
- */
-const rejectUniversityRequest = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { rejectionReason } = req.body;
-
-    const supervisor = await UniversityUser.findById(id);
-    if (!supervisor) {
-      return res.status(404).json({ message: "University request not found." });
-    }
-
-    supervisor.status = "rejected";
-    supervisor.rejectedAt = new Date();
-    supervisor.rejectedBy = req.user?.email || "admin";
-    supervisor.rejectionReason =
-      rejectionReason?.trim() || "Verification could not be confirmed with institutional records.";
-    await supervisor.save();
-
-    // Auto-send rejection email
-    try {
-      await sendUniversityRejectionEmail({
-        to: supervisor.email,
-        supervisorName: supervisor.supervisorName,
-        universityName: supervisor.universityName,
-        rejectionReason: supervisor.rejectionReason,
-      });
-      console.log(`[AdminUniversity] Rejection email sent to ${supervisor.email}`);
-    } catch (emailErr) {
-      console.error("[AdminUniversity] Email sending error:", emailErr.message);
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: `Request for ${supervisor.supervisorName} was rejected. Notification email sent.`,
-      supervisor,
-    });
-  } catch (error) {
-    console.error("[AdminUniversity] Reject error:", error);
-    return res.status(500).json({ message: "Failed to reject request." });
-  }
-};
-
-/**
- * Admin: Revoke access for an approved supervisor
- */
-const revokeUniversityAccess = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const supervisor = await UniversityUser.findById(id);
-
-    if (!supervisor) {
-      return res.status(404).json({ message: "University request not found." });
-    }
-
-    supervisor.status = "revoked";
-    await supervisor.save();
-
-    return res.status(200).json({
-      success: true,
-      message: `Access revoked for ${supervisor.supervisorName}.`,
-      supervisor,
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Failed to revoke access." });
-  }
-};
-
-/**
- * Admin: Delete a university supervisor record
- */
-const deleteUniversityRequest = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const deleted = await UniversityUser.findByIdAndDelete(id);
-
-    if (!deleted) {
-      return res.status(404).json({ message: "University request not found." });
-    }
-
-    return res.status(200).json({
-      success: true,
-      message: "University supervisor record deleted successfully.",
-    });
-  } catch (error) {
-    return res.status(500).json({ message: "Failed to delete record." });
-  }
-};
 
 // ─── University Supervisor Portal Endpoints ─────────────────────────────────
 
@@ -1038,6 +859,8 @@ const getUniversityStudents = async (req, res) => {
           name: p.projectName,
           status: p.status || "IN_PROGRESS",
           description: p.description || "",
+          supervisorName: p.supervisorName || "",
+          projectManagerName: p.projectManagerName || "",
         }))
         : [];
 
@@ -1377,6 +1200,8 @@ const getUniversityStudentDetails = async (req, res) => {
         name: p.projectName,
         status: p.status || "IN_PROGRESS",
         description: p.description || "",
+        supervisorName: p.supervisorName || "",
+        projectManagerName: p.projectManagerName || "",
       }))
       : [];
 
@@ -1750,11 +1575,6 @@ module.exports = {
   universityGoogleLogin,
   registerUniversityRequest,
   checkUniversityStatus,
-  getAdminUniversityRequests,
-  approveUniversityRequest,
-  rejectUniversityRequest,
-  revokeUniversityAccess,
-  deleteUniversityRequest,
   getSupervisorProfile,
   getUniversityStudents,
   getUniversityStudentDetails,
