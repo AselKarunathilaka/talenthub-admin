@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import {
@@ -138,11 +138,10 @@ const adminFaceApi = {
 // ── Components ────────────────────────────────────────────────────────────────
 const InternCard = ({ intern, onSelect, selected }) => {
   return (
-    <motion.button
-      whileHover={{ scale: 1.01 }}
-      whileTap={{ scale: 0.99 }}
+    <button
+      type="button"
       onClick={() => onSelect(intern)}
-      className={`w-full text-left p-3 rounded-2xl border transition-all flex items-center gap-4 group ${
+      className={`w-full text-left p-3 rounded-2xl border transition-all duration-200 hover:scale-[1.01] active:scale-[0.99] flex items-center gap-4 group touch-manipulation ${
         selected
           ? "border-blue-400 bg-blue-50/80 shadow-md ring-4 ring-blue-50"
           : "border-slate-100 bg-white hover:border-blue-200 hover:bg-slate-50 hover:shadow-sm"
@@ -168,7 +167,7 @@ const InternCard = ({ intern, onSelect, selected }) => {
           {intern.Trainee_ID}
         </p>
       </div>
-    </motion.button>
+    </button>
   );
 };
 
@@ -240,24 +239,28 @@ const AdminFaceAttendance = () => {
     adminApi.getFaceEnrollmentProfiles().then(data => setEnrollmentData(data)).catch(console.error);
   };
 
-  const filteredProfiles = enrollmentData.profiles.filter((profile) => {
-    const query = profileSearch.trim().toLowerCase();
-    const matchesSearch = !query || [
-      profile.traineeName,
-      profile.traineeId,
-      profile.email,
-      profile.team,
-      profile.institute,
-    ].some((value) => String(value || '').toLowerCase().includes(query));
-    const matchesFilter =
-      profileFilter === 'all' ||
-      (profileFilter === 'complete' && profile.isComplete) ||
-      (profileFilter === 'incomplete' && profile.isActive && !profile.isComplete) ||
-      (profileFilter === 'inactive' && !profile.isActive);
-    return matchesSearch && matchesFilter;
-  });
+  const filteredProfiles = useMemo(() => {
+    return enrollmentData.profiles.filter((profile) => {
+      const query = profileSearch.trim().toLowerCase();
+      const matchesSearch = !query || [
+        profile.traineeName,
+        profile.traineeId,
+        profile.email,
+        profile.team,
+        profile.institute,
+      ].some((value) => String(value || '').toLowerCase().includes(query));
+      const matchesFilter =
+        profileFilter === 'all' ||
+        (profileFilter === 'complete' && profile.isComplete) ||
+        (profileFilter === 'incomplete' && profile.isActive && !profile.isComplete) ||
+        (profileFilter === 'inactive' && !profile.isActive);
+      return matchesSearch && matchesFilter;
+    });
+  }, [enrollmentData.profiles, profileSearch, profileFilter]);
 
-  const paginatedProfiles = filteredProfiles.slice(0, profilePage * PROFILES_PER_PAGE);
+  const paginatedProfiles = useMemo(() => {
+    return filteredProfiles.slice(0, profilePage * PROFILES_PER_PAGE);
+  }, [filteredProfiles, profilePage]);
 
   useEffect(() => {
     // Reset pagination when search or filter changes
@@ -299,7 +302,9 @@ const AdminFaceAttendance = () => {
         toast.error("Failed to load face recognition models.");
       }
     };
-    loadModels();
+    // Defer heavy model loading to let initial UI paint smoothly
+    const timer = setTimeout(loadModels, 400);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -312,13 +317,12 @@ const AdminFaceAttendance = () => {
         if (!response.ok) throw new Error(result.message || "Failed to load attendance settings.");
         setSltLocationRequired(result.settings?.sltLocationRequired !== false);
       } catch (error) {
-        // Keep the secure default when settings cannot be loaded. The backend
-        // remains the authority and will return a useful location error.
         console.error("Failed to load attendance settings:", error);
       }
     };
 
-    loadAttendanceSettings();
+    const timer = setTimeout(loadAttendanceSettings, 150);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -335,10 +339,14 @@ const AdminFaceAttendance = () => {
         console.error("Failed to load projects", err);
       }
     };
-    loadProjects();
     
-    // Pre-load enrollment profiles for instant display
-    fetchEnrollmentProfiles();
+    const timer = setTimeout(() => {
+      loadProjects();
+      // Pre-load enrollment profiles for instant display
+      fetchEnrollmentProfiles();
+    }, 250);
+    
+    return () => clearTimeout(timer);
   }, [fetchEnrollmentProfiles]);
 
   useEffect(() => {
@@ -762,20 +770,16 @@ const AdminFaceAttendance = () => {
               </div>
             </div>
 
-            <motion.button
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.15, duration: 0.4 }}
+            <button
               type="button"
               onClick={openProfilesModal}
-              className="inline-flex items-center justify-center gap-2.5 bg-white border border-slate-200 shadow-sm px-6 py-3.5 rounded-xl md:rounded-[16px] text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 hover:shadow group w-full xl:w-auto"
-              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center justify-center gap-2.5 bg-white border border-slate-200 shadow-sm px-6 py-3.5 rounded-xl md:rounded-[16px] text-sm font-bold text-slate-700 transition-all hover:bg-slate-50 hover:border-slate-300 hover:shadow hover:scale-[1.02] active:scale-[0.98] group w-full xl:w-auto touch-manipulation"
             >
               <div className="p-1.5 rounded-lg bg-[#000066]/10 text-[#000066] group-hover:bg-[#000066]/20 transition-colors">
                 <FaUsers className="h-4 w-4" />
               </div>
               <span>Enrollment Profiles</span>
-            </motion.button>
+            </button>
           </div>
 
           <div className="grid gap-6 xl:grid-cols-12 items-stretch z-10 relative flex-1">
@@ -1131,7 +1135,7 @@ const AdminFaceAttendance = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="fixed inset-0 z-[25] bg-slate-900/60 backdrop-blur-sm pointer-events-auto" 
+              className="fixed inset-0 z-[25] bg-slate-900/80 xl:bg-slate-900/60 xl:backdrop-blur-sm pointer-events-auto transition-opacity" 
               onClick={() => setShowProfilesModal(false)}
             />
             
