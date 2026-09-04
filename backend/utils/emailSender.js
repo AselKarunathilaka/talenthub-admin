@@ -231,39 +231,57 @@ const sendUniversityRejectionEmail = async ({ to, supervisorName, universityName
  * Send security alert when location attendance policy is disabled
  */
 const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
-  const subject = `⚠️ SECURITY ALERT: Attendance Location Policy Disabled`;
+  const SecurityAlert = require("../models/SecurityAlert");
   
-  const html = `
-    <!DOCTYPE html>
-    <html>
-    <body style="font-family: -apple-system, sans-serif; background-color: #fef2f2; padding: 20px; color: #1e293b;">
-      <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #fecaca; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-        <div style="background: #ef4444; padding: 20px; text-align: center; color: white;">
-          <h2 style="margin: 0; font-size: 20px;">System Security Alert</h2>
-        </div>
-        <div style="padding: 24px; line-height: 1.6;">
-          <h3 style="margin-top: 0; color: #991b1b;">Location Geofencing Disabled</h3>
-          <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually disabled.</p>
-          
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
-            <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
-            <p style="margin: 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}</p>
-          </div>
-          
-          <p style="font-size: 14px; color: #64748b;">If this action was not authorized, please log into the Admin Portal immediately to re-enable location tracking.</p>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
+  try {
+    const alerts = await SecurityAlert.find({});
+    if (!alerts || alerts.length === 0) {
+      console.warn("No security alert recipients configured in the database.");
+      return;
+    }
 
-  return sendEmail({ 
-    to: ["[EMAIL_ADDRESS]"], 
-    cc: ["[EMAIL_ADDRESS]", "[EMAIL_ADDRESS]"], 
-    subject, 
-    html, 
-    text: `Warning: Location security was disabled by ${adminName} (${adminEmail}).` 
-  });
+    const emails = alerts.map(alert => alert.email).filter(Boolean);
+    if (emails.length === 0) {
+      console.warn("No valid email addresses found in security alerts configuration.");
+      return;
+    }
+
+    const to = emails; // sendEmail supports array of strings
+    const subject = `⚠️ SECURITY ALERT: Attendance Location Policy Disabled`;
+    
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <body style="font-family: -apple-system, sans-serif; background-color: #fef2f2; padding: 20px; color: #1e293b;">
+        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #fecaca; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+          <div style="background: #ef4444; padding: 20px; text-align: center; color: white;">
+            <h2 style="margin: 0; font-size: 20px;">System Security Alert</h2>
+          </div>
+          <div style="padding: 24px; line-height: 1.6;">
+            <h3 style="margin-top: 0; color: #991b1b;">Location Geofencing Disabled</h3>
+            <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually disabled.</p>
+            
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+              <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
+              <p style="margin: 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}</p>
+            </div>
+            
+            <p style="font-size: 14px; color: #64748b;">If this action was not authorized, please log into the Admin Portal immediately to re-enable location tracking.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    return await sendEmail({ 
+      to, 
+      subject, 
+      html, 
+      text: `Warning: Location security was disabled by ${adminName} (${adminEmail}).` 
+    });
+  } catch (error) {
+    console.error("Failed to dynamically send security alert email:", error);
+  }
 };
 
 module.exports = sendEmail;

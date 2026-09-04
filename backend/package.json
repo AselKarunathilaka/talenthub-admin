@@ -41,7 +41,10 @@
     "passport-google-oauth20": "^2.0.0",
     "pdfkit": "^0.17.2",
     "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0",
+    "twilio": "^6.1.0",
     "uuid": "^14.0.0",
+    "whatsapp-web.js": "^1.34.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

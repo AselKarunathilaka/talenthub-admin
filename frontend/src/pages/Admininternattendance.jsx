@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { ScanLine } from "lucide-react";
@@ -31,6 +31,9 @@ import {
   FaTimesCircle,
   FaEye,
   FaEyeSlash,
+  FaGraduationCap,
+  FaUniversity,
+  FaCheck,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -216,7 +219,7 @@ const TypeBadge = ({ type }) => {
   };
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}
+      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-lg sm:rounded-full text-[10px] sm:text-xs font-medium border ${cls}`}
     >
       {label}
     </span>
@@ -323,7 +326,7 @@ const AttendanceTable = ({
   if (filtered.length === 0) {
     return (
       <div className="text-center py-16 bg-gray-50 px-4">
-        <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+        <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-3 sm:mb-4" />
         <h3 className="text-base font-medium text-gray-600 mb-1">
           No attendance records
         </h3>
@@ -337,7 +340,7 @@ const AttendanceTable = ({
   return (
     <>
       {/* ── Mobile cards ── */}
-      <div className="block lg:hidden divide-y divide-gray-100">
+      <div className="block xl:hidden divide-y divide-gray-100">
         {paginated.map((intern) => (
           <motion.div
             key={intern._id}
@@ -346,32 +349,43 @@ const AttendanceTable = ({
             transition={{ duration: 0.1 }}
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center space-x-3">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="flex items-start space-x-3">
+                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
                   <FaUser className="text-indigo-600 text-xs" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-tight">
                     {intern.name}
                   </p>
-                  <p className="text-xs text-gray-500">{intern.id}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="inline-flex text-[10px] sm:text-xs text-slate-600 sm:text-slate-500 bg-slate-100 sm:bg-transparent px-2 sm:px-0 py-0.5 sm:py-0 rounded-lg sm:rounded-none border border-slate-200/60 sm:border-transparent font-medium">
+                      {intern.id}
+                    </span>
+                    <div className="sm:hidden">
+                      <TypeBadge type={intern.type} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <TypeBadge type={intern.type} />
+              <div className="hidden sm:block">
+                <TypeBadge type={intern.type} />
+              </div>
             </div>
             <div className="ml-12 space-y-0.5">
-              <p className="text-xs text-gray-500">
-                🎓 {intern.fieldOfSpecialization}
+              <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                <FaGraduationCap className="text-gray-400" /> {intern.fieldOfSpecialization}
               </p>
-              <p className="text-xs text-gray-500">🏛️ {intern.institute}</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                <FaUniversity className="text-gray-400" /> {intern.institute}
+              </p>
               {!isMeeting && intern.timeMarked !== "—" && (
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-xs text-gray-500">
-                    🕐 {intern.timeMarked} (In)
+                  <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                    <FaClock className="text-gray-400" /> {intern.timeMarked} (In)
                   </p>
                   {intern.checkOutTime && (
-                    <p className="text-xs text-gray-500">
-                      🕐 {intern.checkOutTime} (Out)
+                    <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                      <FaClock className="text-gray-400" /> {intern.checkOutTime} (Out)
                     </p>
                   )}
                 </div>
@@ -381,7 +395,7 @@ const AttendanceTable = ({
                   <button
                     type="button"
                     onClick={() => toggleInternMeetings(intern._id)}
-                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
+                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-blue-700"
                   >
                     <span>
                       {intern.meetingCount || intern.meetings?.length || 0}{" "}
@@ -420,7 +434,7 @@ const AttendanceTable = ({
       </div>
 
       {/* ── Desktop table ── */}
-      <div className="hidden xl:block w-full">
+      <div className="hidden xl:block overflow-x-auto w-full">
         <table className="w-full text-left text-sm divide-y divide-gray-100">
           <thead className="bg-slate-50/80 border-b border-gray-100">
             <tr>
@@ -476,7 +490,7 @@ const AttendanceTable = ({
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <span className="text-[10px] sm:text-xs lg:text-sm font-bold text-slate-900 group-hover:text-[#000066] transition-colors break-words">
+                        <span className="text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#000066] transition-colors break-words">
                           {intern.name}
                         </span>
                       </div>
@@ -500,7 +514,7 @@ const AttendanceTable = ({
                       <button
                         type="button"
                         onClick={() => toggleInternMeetings(intern._id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#000066]/5 px-2 py-1 text-[10px] sm:text-xs lg:text-sm font-semibold text-[#000066] hover:bg-[#000066]/10 transition-colors focus:outline-none"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#000066]/5 px-2 py-1 text-[10px] sm:text-xs lg:text-xs sm:text-sm font-semibold text-[#000066] hover:bg-[#000066]/10 transition-colors focus:outline-none"
                       >
                         <span>
                           {intern.meetingCount || intern.meetings?.length || 0}
@@ -594,6 +608,14 @@ const AdminInternAttendance = () => {
   const [triggering, setTriggering] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
   const [toast, setToast] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -713,7 +735,7 @@ const AdminInternAttendance = () => {
       if (result.success) {
         showToast(
           result.result?.emailSent
-            ? `Report sent to ${recipients.length} recipient(s) ✓`
+            ? `Report sent to ${recipients.length} recipient(s)`
             : "Check complete — all interns attended",
           "success",
         );
@@ -729,15 +751,19 @@ const AdminInternAttendance = () => {
   };
 
   const activeData = activeTab === "meeting" ? meetingData : dailyData;
-  const filtered = (activeData?.interns || []).filter((intern) => {
+  const filtered = useMemo(() => {
+    if (!activeData?.interns) return [];
+    if (!searchTerm) return activeData.interns;
     const q = searchTerm.toLowerCase();
-    return (
-      intern.name.toLowerCase().includes(q) ||
-      String(intern.id).toLowerCase().includes(q) ||
-      (intern.fieldOfSpecialization || "").toLowerCase().includes(q) ||
-      (intern.institute || "").toLowerCase().includes(q)
-    );
-  });
+    return activeData.interns.filter((intern) => {
+      return (
+        intern.name.toLowerCase().includes(q) ||
+        String(intern.id).toLowerCase().includes(q) ||
+        (intern.fieldOfSpecialization || "").toLowerCase().includes(q) ||
+        (intern.institute || "").toLowerCase().includes(q)
+      );
+    });
+  }, [activeData, searchTerm]);
 
   const formatDateLabel = (dateStr) =>
     new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -750,7 +776,7 @@ const AdminInternAttendance = () => {
   return (
     <AdminNavigation>
       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
-        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-4 sm:gap-6 min-w-0">
           <AnimatePresence>
             {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
           </AnimatePresence>
@@ -774,7 +800,7 @@ const AdminInternAttendance = () => {
                   exit={{ scale: 0.92, opacity: 0, y: 20 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-5">
                     <div className="flex items-center space-x-3">
                       <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
                         <FaBell className="h-4 w-4 text-indigo-600" />
@@ -783,7 +809,7 @@ const AdminInternAttendance = () => {
                         <h3 className="text-base font-semibold text-gray-900">
                           Send Non-Attendance Report
                         </h3>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-[10px] sm:text-xs text-gray-500">
                           Triggers the weekly email + Excel attachment
                         </p>
                       </div>
@@ -796,7 +822,7 @@ const AdminInternAttendance = () => {
                     </button>
                   </div>
 
-                  <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
+                  <div className="mb-3 sm:mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
                     This will check all active interns for meeting attendance
                     over the <strong>past 14 days</strong> and email a
                     non-attendance report to the recipients below.
@@ -827,7 +853,7 @@ const AdminInternAttendance = () => {
                     )}
                   </div>
 
-                  <div className="flex space-x-2 mb-5">
+                  <div className="flex space-x-2 mb-3 sm:mb-5">
                     <input
                       type="email"
                       value={recipientInput}
@@ -860,7 +886,7 @@ const AdminInternAttendance = () => {
                       disabled={triggering || recipients.length === 0}
                       whileHover={{ scale: triggering ? 1 : 1.02 }}
                       whileTap={{ scale: triggering ? 1 : 0.98 }}
-                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
+                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
                     >
                       {triggering ? (
                         <>
@@ -881,7 +907,7 @@ const AdminInternAttendance = () => {
           </AnimatePresence>
 
           {/* Header Section */}
-          <div className="flex flex-col gap-5 sm:gap-6 transition-all duration-300">
+          <div className="flex flex-col gap-4 sm:gap-6 transition-all duration-300">
             <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
             {/* Left: Title */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
@@ -898,7 +924,7 @@ const AdminInternAttendance = () => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  className="text-xl sm:text-3xl md:text-4xl leading-tight font-extrabold text-slate-900 tracking-tight"
                 >
                   Attendance
                 </motion.h1>
@@ -961,8 +987,8 @@ const AdminInternAttendance = () => {
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
                 {/* Top Toolbar Row: Tabs & Reports */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
-                  {/* Tabs */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-1">
+              {/* Tabs */}
                   <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
                     <button
                       onClick={() => {
@@ -970,13 +996,13 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "meeting"
                           ? "text-white"
                           : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <FaUsers className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <FaUsers className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
                       <span className="whitespace-nowrap">
                         Meeting {meetingData ? `(${meetingData.count})` : ""}
                       </span>
@@ -987,7 +1013,7 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "daily"
                           ? "text-white"
                           : "text-slate-600 hover:bg-slate-100"
@@ -1012,8 +1038,8 @@ const AdminInternAttendance = () => {
                   </div>
 
                   {/* Reports Actions */}
-                  <div className="flex w-full lg:w-auto mt-2 lg:mt-0">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-auto gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
+                <div className="flex w-full md:w-auto mt-2 md:mt-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-[320px] gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
                       <div className="flex items-center justify-center px-2 py-1 sm:py-0">
                         <span className="text-[10px] sm:text-xs font-bold text-red-600 uppercase tracking-wider whitespace-nowrap">
                           Absentees List
@@ -1067,11 +1093,11 @@ const AdminInternAttendance = () => {
                 <hr className="border-gray-100 m-0" />
 
                 {/* Bottom Toolbar Row: Filters */}
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-4 p-1">
-                  <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full lg:w-auto">
+                <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-4 p-1">
+                  <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full md:w-auto">
                     {/* Date Selector */}
                     <div className="flex-1 sm:flex-none">
-                      <label className="block text-[10px] sm:text-xs lg:text-sm font-bold text-slate-700 mb-1.5">Select Date</label>
+                      <label className="block text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Select Date</label>
                       <div className="flex gap-2 h-[42px] sm:h-[46px] lg:h-[48px]">
                         <div 
                           className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl px-3 w-full sm:w-auto relative cursor-pointer focus-within:border-[#000066]/40 transition-colors flex-1 shadow-sm" 
@@ -1085,14 +1111,14 @@ const AdminInternAttendance = () => {
                             onChange={(e) => setSelectedDate(e.target.value)}
                             onClick={(e) => e.target.showPicker && e.target.showPicker()}
                             onMouseDown={(e) => e.preventDefault()}
-                            className="bg-transparent text-xs sm:text-sm font-bold text-slate-800 w-full focus:outline-none cursor-pointer"
+                            className="bg-transparent text-xs sm:text-xs sm:text-sm font-bold text-slate-800 w-full focus:outline-none cursor-pointer"
                             style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
                           />
                         </div>
                         {selectedDate !== today && (
                           <button
                             onClick={() => setSelectedDate(today)}
-                            className="px-4 h-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap shadow-sm"
+                            className="px-4 h-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold transition-all whitespace-nowrap shadow-sm"
                           >
                             Today
                           </button>
@@ -1103,21 +1129,21 @@ const AdminInternAttendance = () => {
 
                   {/* Search Bar */}
                   <div className="flex-1 w-full lg:min-w-[400px]">
-                    <label htmlFor="search-input" className="block text-[10px] sm:text-xs lg:text-sm font-bold text-slate-700 mb-1.5">Search Records</label>
+                    <label htmlFor="search-input" className="block text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Search Records</label>
                     <div className="flex items-center space-x-2">
                       <div className="relative flex-1 group h-[42px] sm:h-[46px] lg:h-[48px]">
                         <FaSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-[#000066]/70 transition-colors h-3.5 w-3.5 sm:h-4 sm:w-5" />
                         <input
                           id="search-input"
                           type="text"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
                           placeholder="Search by name, ID, field, or institute..."
                           className="w-full h-full pl-8 sm:pl-11 pr-3 sm:pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl focus:ring-0 focus:outline-none focus:border-[#000066]/40 text-slate-900 text-xs sm:text-sm shadow-sm transition-all"
                         />
-                        {searchTerm && (
+                        {searchInput && (
                           <button
-                            onClick={() => setSearchTerm("")}
+                            onClick={() => setSearchInput("")}
                             className="absolute right-2.5 sm:right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full shadow-sm focus:outline-none"
                           >
                             <FaTimes className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
@@ -1131,7 +1157,7 @@ const AdminInternAttendance = () => {
 
               {/* ── Meeting Without Daily Report ── */}
               <motion.div
-                className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
+                className="bg-white p-3 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25, duration: 0.3 }}
@@ -1142,10 +1168,10 @@ const AdminInternAttendance = () => {
                       <FaUsers className="text-amber-600 h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900">
                         Meeting Attendance Without Daily Check-in
                       </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                         Interns who attended a meeting but didn't mark daily
                         attendance on {formatDateLabel(selectedDate)}
                       </p>
@@ -1174,7 +1200,7 @@ const AdminInternAttendance = () => {
                       }
                     }}
                     disabled={exportingMissingDaily || !meetingData || meetingData.count === 0}
-                    className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
+                    className="flex items-center gap-1.5 px-3 sm:px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
                   >
                     {exportingMissingDaily ? (
                       <FaSpinner className="h-3.5 w-3.5 animate-spin" />
@@ -1193,9 +1219,9 @@ const AdminInternAttendance = () => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.3 }}
               >
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
+                <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50/80">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-snug">
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-snug">
                       {loading ? (
                         "Loading…"
                       ) : activeData ? (
@@ -1214,9 +1240,9 @@ const AdminInternAttendance = () => {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-2 sm:mt-0">
                     {loading && (
-                      <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
+                      <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5 self-center" />
                     )}
                     <motion.button
                       onClick={async () => {
@@ -1264,7 +1290,7 @@ const AdminInternAttendance = () => {
                           ? meetingData?.count
                           : dailyData?.count) === 0
                       }
-                      className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-[#000066] hover:bg-[#000066]/90 text-white rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
+                      className="flex items-center gap-1.5 px-3 sm:px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-[#000066] hover:bg-[#000066]/90 text-white rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
                     >
                       {(
                         activeTab === "meeting"
@@ -1289,13 +1315,13 @@ const AdminInternAttendance = () => {
                         repeat: Infinity,
                         ease: "linear",
                       }}
-                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-4"
+                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-3 sm:mb-4"
                     />
                     <p className="text-sm">Fetching attendance…</p>
                   </div>
                 ) : filtered.length === 0 && searchTerm ? (
                   <div className="text-center py-16 bg-gray-50 px-4">
-                    <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-4" />
+                    <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-3 sm:mb-4" />
                     <h3 className="text-base font-medium text-gray-600 mb-1">
                       No results
                     </h3>
@@ -1335,7 +1361,7 @@ const AdminInternAttendance = () => {
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
                     className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="flex justify-between items-start mb-3 sm:mb-4">
                       <div>
                         <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
                         <p className="text-xs text-slate-500 mt-1">Enter password to disable location requirement</p>
@@ -1348,7 +1374,7 @@ const AdminInternAttendance = () => {
                       </button>
                     </div>
 
-                    <div className="mb-5 relative">
+                    <div className="mb-3 sm:mb-5 relative">
                       <input
                         type={showPassword ? "text" : "password"}
                         value={securityPassword}
@@ -1373,14 +1399,14 @@ const AdminInternAttendance = () => {
                     <div className="flex gap-3">
                       <button
                         onClick={() => setShowPasswordPopup(false)}
-                        className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                        className="flex-1 px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={() => submitLocationToggle(false, securityPassword)}
                         disabled={settingsSaving || !securityPassword}
-                        className="flex-1 flex items-center justify-center px-4 py-2 bg-[#000066] text-white rounded-xl text-sm font-bold hover:bg-[#000066]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                        className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-[#000066] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#000066]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                       >
                         {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                       </button>

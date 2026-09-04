@@ -13,6 +13,7 @@ const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
 const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
 const { initSeatBookingScheduler } = require("./services/seatBookingSchedulerService");
+const { initializeWhatsApp } = require("./utils/whatsappSender");
 
 connectDB();
 
@@ -56,6 +57,9 @@ const server = app.listen(PORT, () => {
 
   // Initialize daily 4:30 PM seat booking expiration scheduler
   initSeatBookingScheduler();
+
+  // Initialize automated WhatsApp background sender
+  initializeWhatsApp();
 
   // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
   console.log("⏳ Starting TalentTrail sync job...");

@@ -43,6 +43,10 @@ const updateAttendanceSettings = async (req, res) => {
       }
     }
 
+    // Fetch current settings to check if it's a state transition
+    const currentSettings = await AttendanceSettingsService.getAttendanceSettings();
+    const wasLocationRequired = currentSettings.sltLocationRequired !== false;
+
     const settings = await AttendanceSettingsService.updateAttendanceSettings({
       sltLocationRequired,
       updatedBy: req.user?.id || null,
@@ -81,13 +85,29 @@ const updateAttendanceSettings = async (req, res) => {
     });
     await securityConfig.save();
 
-    // Send high-priority alert email when disabled
+    // Send high-priority alert email and WhatsApp message when disabled
     if (sltLocationRequired === false) {
       const { sendSecurityAlertEmail } = require("../utils/emailSender");
+      const { sendWhatsAppMessage } = require("../utils/whatsappSender");
+      const SecurityAlert = require("../models/SecurityAlert");
+
+      // Send Email (which dynamically fetches from SecurityAlert)
       sendSecurityAlertEmail({
         adminName: adminName,
         adminEmail: adminEmail,
       }).catch((err) => console.error("Failed to send security alert email:", err));
+
+      // Fetch recipients for WhatsApp and send
+      SecurityAlert.find({}).then(alerts => {
+        alerts.forEach(alert => {
+          if (alert.phoneNumber) {
+            const message = `⚠️ *SECURITY ALERT*\nLocation Geofencing Disabled\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+            sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
+              console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+            );
+          }
+        });
+      }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
     }
 
     return res.status(200).json({
