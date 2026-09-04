@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
+import { BookOpen } from "lucide-react";
 import {
   FaSearch,
   FaSort,
@@ -9,6 +10,7 @@ import {
   FaEye,
   FaTimes,
   FaRegClock,
+  FaChevronLeft,
 } from "react-icons/fa";
 import {
   FiUser,
@@ -142,21 +144,51 @@ const AdminInternRecords = () => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-7xl w-full">
-            {/* Header Section */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight"
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none bg-slate-50">
+          <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+            {/* Normal Flow Back Button */}
+            <div className="w-full -mt-2 sm:-mt-4 mb-1">
+              <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-slate-500 hover:text-[#000066] transition-colors w-fit px-3 py-1.5 -ml-3 rounded-lg hover:bg-slate-200/50"
               >
-                Logbook Records
-              </motion.h1>
+                <FaChevronLeft className="h-3.5 w-3.5" />
+                <span className="text-sm font-bold">Back to Daily Logs</span>
+              </button>
+            </div>
+            {/* Header Section */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2 mb-8">
+            {/* Left: Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+              >
+                <BookOpen className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Logbook Records
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Browse all intern logbook submissions
+                </motion.p>
+              </div>
+            </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full xl:w-auto">
                 {/* Search */}
                 <div className="relative flex-1 sm:w-64">
                   <FaSearch className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -337,8 +369,7 @@ const AdminInternRecords = () => {
                 })
               )}
             </motion.div>
-          </main>
-        </div>
+        </main>
       </div>
     </AdminNavigation>
   );
