@@ -4,7 +4,7 @@ const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const Intern = require("../models/Intern");
 
 const BASE_URL = "https://talenttrail.slt.lk/api";
-const SERVICE_TOKEN = "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
+const SERVICE_TOKEN = process.env.TALENTHUB_FEDERATION_SECRET || "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
 const FEDERATED_EMAIL = "admin@slt.lk";
 
 const sslAgent = new https.Agent({ rejectUnauthorized: false });
@@ -134,6 +134,31 @@ async function buildInternProjectMap(token) {
         teamLeaderId: team.teamLeaderId,
         teamLeaderName: team.teamLeaderName,
       });
+    }
+  }
+
+  // Handle direct assignment to projects (no team)
+  for (const project of projects) {
+    const directInternIds = project.assignedInternIds || project.internIds || project.interns || project.assignedMembers || [];
+    for (const internId of directInternIds) {
+      if (!internProjectMap.has(internId)) {
+        internProjectMap.set(internId, new Map());
+      }
+      const projectsForIntern = internProjectMap.get(internId);
+      
+      if (!projectsForIntern.has(project.projectId)) {
+        projectsForIntern.set(project.projectId, {
+          projectId: project.projectId,
+          projectName: project.projectName,
+          description: project.description,
+          status: project.status,
+          startDate: project.startDate ? new Date(project.startDate) : null,
+          targetDate: project.targetDate ? new Date(project.targetDate) : null,
+          supervisorName: project.supervisorName,
+          projectManagerName: project.projectManagerName,
+          teams: [],
+        });
+      }
     }
   }
 
@@ -275,9 +300,25 @@ async function syncGitCommits(token, ttInterns, ttProjects, ttModules) {
   }
 }
 
-async function syncTalentTrailData() {
-  console.log("[TalentTrailSync] Starting sync…");
-  const startedAt = new Date();
+let isSyncing = false;
+let lastSyncTime = 0;
+const SYNC_COOLDOWN_MS = 15 * 1000;
+
+async function syncTalentTrailData(options = {}) {
+  const force = options.force || false;
+  if (!force && Date.now() - lastSyncTime < SYNC_COOLDOWN_MS) {
+    console.log("[TalentTrailSync] Skipped (cooldown)");
+    return { skipped: true };
+  }
+  if (isSyncing) {
+    console.log("[TalentTrailSync] Sync already in progress, skipping duplicate call...");
+    return { skipped: true, inProgress: true };
+  }
+  isSyncing = true;
+
+  try {
+    console.log("[TalentTrailSync] Starting sync…");
+    const startedAt = new Date();
 
   let token;
   try {
@@ -353,14 +394,20 @@ async function syncTalentTrailData() {
   });
 
   // Background evaluate TalentHub restrictions
-  try {
-    const talentHubRestrictionService = require("./talentHubRestrictionService");
-    talentHubRestrictionService.syncAllRestrictions().catch((e) => {
-      console.warn("[TalentTrailSync] Restriction sync error:", e.message);
-    });
-  } catch (_) {}
+  if (!options.skipRestrictionSync) {
+    try {
+      const talentHubRestrictionService = require("./talentHubRestrictionService");
+      talentHubRestrictionService.syncAllRestrictions().catch((e) => {
+        console.warn("[TalentTrailSync] Restriction sync error:", e.message);
+      });
+    } catch (_) {}
+  }
 
   return { processed: updated, errors, duration };
+  } finally {
+    isSyncing = false;
+    lastSyncTime = Date.now();
+  }
 }
 
 module.exports = { syncTalentTrailData, syncGitCommits };

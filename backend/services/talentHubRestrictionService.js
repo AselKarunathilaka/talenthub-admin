@@ -7,6 +7,13 @@ const { gitCommitsCache } = require("../controllers/adminController");
 const OVERRIDE_DEFAULT_DAYS = 5;
 
 /**
+ * Escape special characters for regex matching
+ */
+function escapeRegex(string) {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Format project status consistently.
  */
 function formatProjectStatus(status) {
@@ -42,8 +49,8 @@ async function getInternProjects(intern) {
     InternTalentTrailSync.find({
       $or: [
         ...(idStr ? [{ internRef: intern._id }] : []),
-        ...(internEmailNorm ? [{ email: { $regex: new RegExp(`^${internEmailNorm}$`, "i") } }] : []),
-        ...(internIdNorm ? [{ internCode: { $regex: new RegExp(`^${internIdNorm}$`, "i") } }] : []),
+        ...(internEmailNorm ? [{ email: { $regex: new RegExp(`^${escapeRegex(internEmailNorm)}$`, "i") } }] : []),
+        ...(internIdNorm ? [{ internCode: { $regex: new RegExp(`^${escapeRegex(internIdNorm)}$`, "i") } }] : []),
         ...(internDigits ? [{ talentTrailInternId: Number(internDigits) || -1 }] : []),
       ],
     }).lean().catch(() => []),
@@ -156,8 +163,23 @@ async function evaluateInternAccess(internDocOrId) {
     return { restricted: true, reason: "Intern not found", projects: [], projectCount: 0 };
   }
 
-  const projects = await getInternProjects(intern);
-  const hasProjects = projects.length > 0;
+  let projects = await getInternProjects(intern);
+  let hasProjects = projects.length > 0;
+
+  if (!hasProjects) {
+    try {
+      // Re-fetch from Talent Trail to ensure we have the absolute latest data before restricting
+      const { syncTalentTrailData } = require("./talentTrailSyncService");
+      const syncRes = await syncTalentTrailData({ skipRestrictionSync: true });
+      if (!syncRes.skipped) {
+        projects = await getInternProjects(intern);
+        hasProjects = projects.length > 0;
+      }
+    } catch (e) {
+      console.warn("Failed to retrieve latest Talent Trail data during evaluation:", e.message);
+    }
+  }
+
   const now = new Date();
 
   let stateChanged = false;

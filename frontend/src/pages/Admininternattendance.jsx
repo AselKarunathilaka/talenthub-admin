@@ -29,6 +29,8 @@ import {
   FaEnvelope,
   FaCheckCircle,
   FaTimesCircle,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -596,6 +598,10 @@ const AdminInternAttendance = () => {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [expandedInterns, setExpandedInterns] = useState({});
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
@@ -642,23 +648,38 @@ const AdminInternAttendance = () => {
   }, []);
 
   const handleToggleLocationRequirement = async () => {
-    const nextValue = !sltLocationRequired;
-    setSltLocationRequired(nextValue);
+    if (sltLocationRequired) {
+      setShowPasswordPopup(true);
+      setSecurityPassword("");
+      setPasswordError("");
+      return;
+    }
+    await submitLocationToggle(true, null);
+  };
+
+  const submitLocationToggle = async (required, password) => {
     setSettingsSaving(true);
+    setPasswordError("");
     try {
-      const result = await attendanceApi.updateSettings({
-        sltLocationRequired: nextValue,
-      });
+      const payload = { sltLocationRequired: required };
+      if (!required) {
+        if (!password) {
+          setPasswordError("Password is required");
+          setSettingsSaving(false);
+          return;
+        }
+        payload.securityPin = password;
+      }
+      const result = await attendanceApi.updateSettings(payload);
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
-      showToast(
-        nextValue
-          ? "SLT Location Requirement ON"
-          : "SLT Location Requirement OFF",
-        nextValue ? "success" : "error",
-      );
+      if (!required) setShowPasswordPopup(false);
+      showToast(`Location checking ${required ? "enabled" : "disabled"}`, "success");
     } catch (err) {
-      setSltLocationRequired(!nextValue);
-      showToast(err.message || "Failed to update location setting", "error");
+      if (!required) {
+        setPasswordError(err.message || "Invalid password");
+      } else {
+        showToast(err.message || "Failed to update settings", "error");
+      }
     } finally {
       setSettingsSaving(false);
     }
@@ -860,7 +881,8 @@ const AdminInternAttendance = () => {
           </AnimatePresence>
 
           {/* Header Section */}
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+          <div className="flex flex-col gap-5 sm:gap-6 transition-all duration-300">
+            <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
             {/* Left: Title */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <motion.div
@@ -948,20 +970,16 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "meeting"
                           ? "text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>Meeting</span>
-                      {meetingData?.count != null && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "meeting" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
-                        >
-                          {meetingData.count}
-                        </span>
-                      )}
+                      <FaUsers className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="whitespace-nowrap">
+                        Meeting {meetingData ? `(${meetingData.count})` : ""}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
@@ -969,20 +987,16 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "daily"
                           ? "text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>Daily</span>
-                      {dailyData?.count != null && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "daily" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
-                        >
-                          {dailyData.count}
-                        </span>
-                      )}
+                      <FaCalendarCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="whitespace-nowrap">
+                        Daily {dailyData ? `(${dailyData.count})` : ""}
+                      </span>
                     </button>
 
                     <div
@@ -1007,7 +1021,7 @@ const AdminInternAttendance = () => {
                       </div>
 
                       <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                        <motion.button
+                        <button
                           onClick={async () => {
                             setExportingNonAttendance(true);
                             try {
@@ -1026,8 +1040,6 @@ const AdminInternAttendance = () => {
                             }
                           }}
                           disabled={exportingNonAttendance}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                           className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
                           title="Export non-attendance report (last 14 days)"
                         >
@@ -1037,18 +1049,16 @@ const AdminInternAttendance = () => {
                             <FaFileExcel className="h-3 w-3" />
                           )}
                           <span>Excel</span>
-                        </motion.button>
+                        </button>
 
-                        <motion.button
+                        <button
                           onClick={() => setShowTriggerModal(true)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                           className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
                           title="Email non-attendance report to managers"
                         >
                           <FaEnvelope className="h-3 w-3" />
                           <span>Email</span>
-                        </motion.button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1142,7 +1152,7 @@ const AdminInternAttendance = () => {
                     </div>
                   </div>
 
-                  <motion.button
+                  <button
                     onClick={async () => {
                       if (!meetingData || meetingData.count === 0) {
                         showToast("No records to export", "info");
@@ -1172,7 +1182,7 @@ const AdminInternAttendance = () => {
                       <FaFileExcel className="h-3.5 w-3.5 text-white/90" />
                     )}
                     <span>Download Excel</span>
-                  </motion.button>
+                  </button>
                 </div>
               </motion.div>
 
@@ -1303,7 +1313,84 @@ const AdminInternAttendance = () => {
                   />
                 )}
               </motion.div>
+            </div> {/* End of blur wrapper */}
         </main>
+        
+        {/* Password Modal placed outside main but inside relative container to cover everything except navbar/sidebar */}
+        <AnimatePresence>
+          {showPasswordPopup && (
+            <>
+              {/* Overlay covering full screen, under navbar/sidebar */}
+              <div 
+                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+                onClick={() => setShowPasswordPopup(false)}
+              />
+              
+              {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
+              <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
+                <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                        <p className="text-xs text-slate-500 mt-1">Enter password to disable location requirement</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-5 relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={securityPassword}
+                        onChange={(e) => setSecurityPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && submitLocationToggle(false, securityPassword)}
+                        placeholder="Enter password..."
+                        autoFocus
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000066]/20 focus:border-[#000066]/40 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      >
+                        {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                      </button>
+                      {passwordError && (
+                        <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => submitLocationToggle(false, securityPassword)}
+                        disabled={settingsSaving || !securityPassword}
+                        className="flex-1 flex items-center justify-center px-4 py-2 bg-[#000066] text-white rounded-xl text-sm font-bold hover:bg-[#000066]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </AdminNavigation>
   );

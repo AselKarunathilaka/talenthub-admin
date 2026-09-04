@@ -258,8 +258,8 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
   `;
 
   return sendEmail({ 
-    to: ["mgiri@slt.com.lk"], 
-    cc: ["send2liyanapathirana@gmail.com"], 
+    to: ["[EMAIL_ADDRESS]"], 
+    cc: ["[EMAIL_ADDRESS]", "[EMAIL_ADDRESS]"], 
     subject, 
     html, 
     text: `Warning: Location security was disabled by ${adminName} (${adminEmail}).` 
