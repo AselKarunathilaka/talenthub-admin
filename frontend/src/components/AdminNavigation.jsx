@@ -102,9 +102,10 @@ const AdminNavigation = ({ children }) => {
   const customActions = null;
 
   const userData = {
-    name: adminSession?.user?.email,
+    name: adminSession?.user?.name || adminSession?.user?.email,
     email: adminSession?.user?.email,
     role: adminSession?.user?.role === 'SUPERVISOR' ? 'SUPERVISOR' : 'ADMIN',
+    picture: adminSession?.user?.picture || null,
   };
 
   return (

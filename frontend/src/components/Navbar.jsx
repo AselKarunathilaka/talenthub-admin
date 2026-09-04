@@ -65,6 +65,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => 
               <img
                 src={userPic}
                 alt="Profile"
+                referrerPolicy="no-referrer"
                 className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full object-cover border border-slate-200 shadow-sm"
                 onError={(e) => {
                   e.target.onerror = null;
