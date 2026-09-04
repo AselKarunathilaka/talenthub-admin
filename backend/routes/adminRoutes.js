@@ -262,4 +262,25 @@ router.post("/sync/talent-trail", async (req, res) => {
   }
 });
 
+// Get all unique synced TalentTrail projects
+router.get("/talenttrail/projects", async (req, res) => {
+  try {
+    const InternTalentTrailSync = require("../models/InternTalentTrailSync");
+    const syncs = await InternTalentTrailSync.find({}).lean();
+    const projectsMap = new Map();
+    for (const sync of syncs) {
+      if (sync.projects) {
+        for (const proj of sync.projects) {
+          if (!projectsMap.has(proj.projectId)) {
+            projectsMap.set(proj.projectId, proj);
+          }
+        }
+      }
+    }
+    res.json(Array.from(projectsMap.values()));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
