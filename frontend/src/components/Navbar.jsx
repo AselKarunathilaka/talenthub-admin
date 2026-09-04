@@ -59,7 +59,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => 
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 md:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] md:min-w-[160px] justify-center md:justify-between pointer-events-none md:pointer-events-auto"
+            className="flex items-center gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 pr-3 sm:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] min-w-[125px] md:min-w-[160px] justify-between pointer-events-auto"
           >
             {userPic ? (
               <img
@@ -78,24 +78,20 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => 
               </div>
             )}
             
-            <div className="hidden md:flex md:flex-col md:items-start text-left flex-1 min-w-[120px] px-1">
-              <span className="text-sm font-semibold text-white truncate w-full">
+            <div className="flex flex-col items-start text-left flex-1 min-w-[75px] md:min-w-[120px] px-1">
+              <span className="text-xs sm:text-sm font-semibold text-white truncate w-full leading-tight">
                 {userName}
               </span>
-              <span className="text-xs text-white/70 truncate w-full">
+              <span className="text-[10px] sm:text-xs text-white/70 truncate w-full leading-tight">
                 {user?.role || user?.designation || "Member"}
               </span>
             </div>
-            <ChevronDown className="h-4 w-4 text-white/80 hidden md:block shrink-0" />
+            <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 shrink-0" />
           </button>
 
           {/* Dropdown Menu */}
           {dropdownOpen && (
-            <div className="hidden md:block absolute right-0 mt-3 w-full min-w-[160px] md:min-w-full origin-top-right rounded-2xl bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5 focus:outline-none p-1.5 transform transition-all duration-200 z-[100]">
-              <div className="px-3 py-2.5 border-b border-slate-100 mb-1.5 md:hidden">
-                <p className="text-sm font-bold text-slate-900 truncate">{userName}</p>
-                <p className="text-xs text-slate-500 truncate mt-0.5">{user?.email}</p>
-              </div>
+            <div className="absolute right-0 mt-3 w-full min-w-[180px] md:min-w-full origin-top-right rounded-2xl bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5 focus:outline-none p-1.5 transform transition-all duration-200 z-[100]">
               <button
                 onClick={() => {
                   setDropdownOpen(false);
