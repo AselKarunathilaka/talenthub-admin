@@ -442,6 +442,25 @@ export const adminApi = {
     }
   },
 
+  rotateQrSession: async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/qrcode/session/${sessionId}/rotate`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to rotate session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error rotating QR session:", error);
+      throw error;
+    }
+  },
+
+
   getFaceMeetingPin: async (projectName = "", options = {}) => {
     try {
       const query = new URLSearchParams({
