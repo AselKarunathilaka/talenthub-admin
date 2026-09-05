@@ -1,6 +1,7 @@
 const moment = require("moment-timezone");
 const sendEmail = require("../utils/emailSender");
 const InternService = require("../services/internService");
+const { recordDailyAttendance } = require("./dailyAttendanceLogService");
 
 const markAttendanceAndNotify = async (internId, status, date) => {
   try {
@@ -22,6 +23,24 @@ const markAttendanceAndNotify = async (internId, status, date) => {
     }
 
     console.log("Attendance marked:", updatedIntern);
+
+    // ── Write to dedicated daily attendance collection ─────────────────────────
+    const dateStr = date
+      ? moment.tz(date, "Asia/Colombo").format("YYYY-MM-DD")
+      : moment.tz("Asia/Colombo").format("YYYY-MM-DD");
+    recordDailyAttendance({
+      internId: updatedIntern._id || internId,
+      traineeId: updatedIntern.traineeId || updatedIntern.Trainee_ID || "",
+      traineeName: updatedIntern.traineeName || updatedIntern.Trainee_Name || "",
+      date: dateStr,
+      attendanceTime: new Date(),
+      markType: "manual",
+      status: String(status || "present").toLowerCase(),
+      isCheckout: false,
+      checkOutTime: null,
+      sessionId: null,
+      source: "manual",
+    });
 
     // Prepare the email content (only if email exists)
     const internEmail = updatedIntern.email;

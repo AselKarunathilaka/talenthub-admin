@@ -1,6 +1,8 @@
 const Intern = require("../models/Intern");
 const moment = require("moment-timezone");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { recordDailyAttendance } = require("../services/dailyAttendanceLogService");
+const { recordMeetingAttendance } = require("../services/meetingAttendanceLogService");
 
 const TZ = "Asia/Colombo";
 
@@ -127,6 +129,39 @@ exports.markManualAttendance = async (req, res) => {
 
     await intern.save();
 
+    // ── Write to dedicated daily attendance log collection (daily marks only) ──
+    if (mode === "daily") {
+      const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+      recordDailyAttendance({
+        internId: intern._id,
+        traineeId: intern.Trainee_ID || intern.traineeId || "",
+        traineeName: intern.Trainee_Name || "",
+        date: dateStr,
+        attendanceTime: now,
+        markType: type, // "manual_daily"
+        status: status.toLowerCase(),
+        isCheckout: false,
+        checkOutTime: null,
+        sessionId: null,
+        source: "manual",
+      });
+    } else if (mode === "meeting") {
+      const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+      recordMeetingAttendance({
+        internId: intern._id,
+        traineeId: intern.Trainee_ID || intern.traineeId || "",
+        traineeName: intern.Trainee_Name || "",
+        date: dateStr,
+        attendanceTime: now,
+        markType: type, // "manual_meeting"
+        projectName: meetingName ? meetingName.trim() : "",
+        meetingTitle: meetingName ? meetingName.trim() : "",
+        status: status.toLowerCase(),
+        sessionId: null,
+        source: "manual",
+      });
+    }
+
     return res.json({
       success: true,
       message: `${status} marked as ${type} for ${intern.Trainee_Name}`,
@@ -242,6 +277,38 @@ exports.bulkMarkAttendance = async (req, res) => {
         }
 
         await intern.save();
+
+        if (mode === "daily") {
+          const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+          recordDailyAttendance({
+            internId: intern._id,
+            traineeId: intern.Trainee_ID || intern.traineeId || "",
+            traineeName: intern.Trainee_Name || "",
+            date: dateStr,
+            attendanceTime: now,
+            markType: type,
+            status: status.toLowerCase(),
+            isCheckout: false,
+            checkOutTime: null,
+            sessionId: null,
+            source: "manual",
+          });
+        } else if (mode === "meeting") {
+          const dateStr = moment(attendanceDate).tz(TZ).format("YYYY-MM-DD");
+          recordMeetingAttendance({
+            internId: intern._id,
+            traineeId: intern.Trainee_ID || intern.traineeId || "",
+            traineeName: intern.Trainee_Name || "",
+            date: dateStr,
+            attendanceTime: now,
+            markType: type,
+            projectName: meetingName ? meetingName.trim() : "",
+            meetingTitle: meetingName ? meetingName.trim() : "",
+            status: status.toLowerCase(),
+            sessionId: null,
+            source: "manual",
+          });
+        }
 
         results.push({
           internId: intern.Trainee_ID,
@@ -388,5 +455,117 @@ exports.extractIdsFromImages = async (req, res) => {
   } catch (error) {
     console.error("extractIdsFromImages error:", error);
     return res.status(500).json({ error: "Failed to extract IDs" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// GET /admin/manual-attendance/requests/pending
+// ---------------------------------------------------------------------------
+exports.getPendingManualRequests = async (req, res) => {
+  try {
+    const ManualCheckInRequest = require("../models/ManualCheckInRequest");
+    
+    const requests = await ManualCheckInRequest.find({ status: "pending" })
+      .populate("internId", "Trainee_ID Trainee_Name Trainee_Email")
+      .sort({ requestedAt: -1 });
+
+    return res.json({ success: true, requests });
+  } catch (error) {
+    console.error("getPendingManualRequests error:", error);
+    return res.status(500).json({ error: "Failed to fetch pending requests" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// POST /admin/manual-attendance/requests/:id/approve
+// ---------------------------------------------------------------------------
+exports.approveManualRequest = async (req, res) => {
+  try {
+    const ManualCheckInRequest = require("../models/ManualCheckInRequest");
+    const attendanceService = require("../services/attendanceService");
+
+    const { id } = req.params;
+    const request = await ManualCheckInRequest.findById(id).populate("internId");
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+    
+    if (request.status !== "pending") {
+      return res.status(400).json({ error: "Request is already resolved" });
+    }
+
+    // Call attendanceService to mark the attendance officially
+    const intern = request.internId;
+    if (request.attendanceType === "daily") {
+       await attendanceService.markAttendanceAndNotify(intern._id, "Present");
+    } else if (request.attendanceType === "meeting") {
+       // Manual meeting logic - pushing directly for simplicity as per manual controller
+       const record = {
+         date: new Date(),
+         status: "Present",
+         type: "meeting",
+         timeMarked: new Date(),
+         meetingName: request.projectName || "Manual Request Meeting"
+       };
+       intern.attendance.push(record);
+       await intern.save();
+
+       const dateStr = moment().tz(TZ).format("YYYY-MM-DD");
+       recordMeetingAttendance({
+         internId: intern._id,
+         traineeId: intern.Trainee_ID || intern.traineeId || "",
+         traineeName: intern.Trainee_Name || "",
+         date: dateStr,
+         attendanceTime: new Date(),
+         markType: "meeting",
+         projectName: request.projectName || "Manual Request Meeting",
+         meetingTitle: request.projectName || "Manual Request Meeting",
+         status: "present",
+         sessionId: null,
+         source: "manual",
+       });
+    }
+
+    // Update request status
+    request.status = "approved";
+    request.resolvedAt = new Date();
+    request.resolvedBy = req.user.email;
+    await request.save();
+
+    return res.json({ success: true, message: "Request approved and attendance marked." });
+  } catch (error) {
+    console.error("approveManualRequest error:", error);
+    return res.status(500).json({ error: "Failed to approve request" });
+  }
+};
+
+// ---------------------------------------------------------------------------
+// POST /admin/manual-attendance/requests/:id/reject
+// ---------------------------------------------------------------------------
+exports.rejectManualRequest = async (req, res) => {
+  try {
+    const ManualCheckInRequest = require("../models/ManualCheckInRequest");
+
+    const { id } = req.params;
+    const request = await ManualCheckInRequest.findById(id);
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    if (request.status !== "pending") {
+      return res.status(400).json({ error: "Request is already resolved" });
+    }
+
+    request.status = "rejected";
+    request.resolvedAt = new Date();
+    request.resolvedBy = req.user.email;
+    await request.save();
+
+    return res.json({ success: true, message: "Request rejected." });
+  } catch (error) {
+    console.error("rejectManualRequest error:", error);
+    return res.status(500).json({ error: "Failed to reject request" });
   }
 };

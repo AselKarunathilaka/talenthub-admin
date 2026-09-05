@@ -34,25 +34,16 @@ import {
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { enrollFaceSamples } from "../utils/faceEnrollment";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  evaluateFacePlacement,
-  faceRuntimeProfile,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { checkLighting } from "../utils/faceQuality";
 
 const SLT_OFFICE = {
-  latitude: 6.9271,
-  longitude: 79.8612,
-  radiusKm: 2,
+  latitude: 6.9346212,
+  longitude: 79.8468999,
+  radiusKm: 0.1,
 };
 
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+const MODEL_URL = "/models/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -62,10 +53,14 @@ const ENROLLMENT_PROMPTS = [
   "Turn your head slightly to the right.",
   "Return to the center for the final scan.",
 ];
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
-const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
-const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
-const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
+const FACE_DETECTOR_OPTIONS = new faceapi.SsdMobilenetv1Options({
+  minConfidence: 0.5,
+});
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.SsdMobilenetv1Options({
+  minConfidence: 0.5,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -141,6 +136,9 @@ const Attendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const [showCheckoutReminder, setShowCheckoutReminder] = useState(false);
+  const [manualReason, setManualReason] = useState("");
+  const [manualRequesting, setManualRequesting] = useState(false);
   const {
     attendanceAction,
     setAttendanceAction,
@@ -205,8 +203,10 @@ const Attendance = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
+        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.ready();
         await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
@@ -404,12 +404,13 @@ const Attendance = () => {
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    if (!checkLighting(videoRef.current)) {
+      return { error: "Too dark! Please move to a brighter area." };
+    }
 
     try {
       const detections = await faceapi
@@ -429,8 +430,21 @@ const Attendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) return { error: quality.error };
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - 320) <= 105 &&
+        Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) {
+        return { error: "Move your face into the center oval." };
+      }
+
+      if (!largeEnough) {
+        return { error: "Move a little closer to the camera." };
+      }
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (error) {
@@ -442,12 +456,13 @@ const Attendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting..." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    if (!checkLighting(videoRef.current)) {
+      return { error: "Too dark! Please move to a brighter area." };
+    }
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -464,7 +479,16 @@ const Attendance = () => {
         };
       }
 
-      return evaluateFacePlacement(detections[0], dimensions);
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
     } catch (error) {
       console.error("Error inspecting face position:", error);
       return { error: "Could not read the camera frame." };
@@ -556,7 +580,14 @@ const Attendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
+        const isDistinct =
+          !previousFrame ||
+          Math.sqrt(
+            previousFrame.reduce((sum, value, index) => {
+              const difference = value - frameData.descriptor[index];
+              return sum + difference * difference;
+            }, 0),
+          ) >= 0.035;
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
@@ -715,6 +746,11 @@ const Attendance = () => {
         stopCamera();
         setCooldown(true);
         if (activeTab === "daily") await refreshDailyStatus();
+        
+        if (result.showCheckoutReminder) {
+          setShowCheckoutReminder(true);
+        }
+        
         window.setTimeout(() => setCooldown(false), 60000);
         return;
       }
@@ -813,6 +849,10 @@ const Attendance = () => {
           );
           stopQRScanner();
           if (activeTab === "daily") await refreshDailyStatus();
+
+          if (data.showCheckoutReminder) {
+            setShowCheckoutReminder(true);
+          }
         } catch (error) {
           console.error("QR backup error:", error);
           toast.error("QR backup failed. Please try again.");
@@ -840,6 +880,36 @@ const Attendance = () => {
     animate: { opacity: 1, y: 0, transition: { duration: 0.2 } },
   };
 
+  const handleManualRequestSubmit = async () => {
+    if (!manualReason.trim()) {
+      toast.error("Please provide a reason for the manual check-in request.");
+      return;
+    }
+    setManualRequesting(true);
+    try {
+      const response = await apiFetch("/interns/manual-checkin-request", {
+        method: "POST",
+        body: JSON.stringify({
+          requestType: attendanceAction || "check_in",
+          attendanceType: activeTab,
+          projectName: activeTab === "meeting" ? projectName : undefined,
+          reason: manualReason.trim(),
+          location: location || null,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to submit request.");
+      }
+      toast.success("Manual check-in request submitted successfully.");
+      setManualReason("");
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setManualRequesting(false);
+    }
+  };
+
   return (
     <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
       <Navigation />
@@ -855,6 +925,26 @@ const Attendance = () => {
               </div>
               <h2 className="mt-4 text-xl font-bold text-slate-900">Face Enrollment Complete</h2>
               <p className="mt-2 text-sm text-slate-500">Your refreshed biometric profile is ready.</p>
+            </div>
+          </div>
+        )}
+        
+        {showCheckoutReminder && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
+            <div className="animate-[fadeIn_0.25s_ease-out] rounded-2xl border border-amber-400/30 bg-white px-8 py-7 text-center shadow-2xl max-w-sm w-full relative">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 mb-4">
+                <AlertCircle className="h-9 w-9 text-amber-500" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Check-out Reminder</h2>
+              <p className="mt-3 text-slate-600 font-medium leading-relaxed">
+                It looks like you forgot to check out yesterday. Please don't forget to check out on TalentHub before you leave today!
+              </p>
+              <button
+                onClick={() => setShowCheckoutReminder(false)}
+                className="mt-6 w-full rounded-xl bg-amber-500 py-3 font-bold text-white transition-all hover:bg-amber-600 active:scale-95 shadow-lg shadow-amber-500/30"
+              >
+                Got it!
+              </button>
             </div>
           </div>
         )}
@@ -1070,6 +1160,27 @@ const Attendance = () => {
                               Stop
                             </button>
                           </>
+                        ) : !locationValid && mode !== "enroll" && activeTab === "daily" ? (
+                          <div className="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm text-center">
+                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                            <h3 className="text-amber-800 font-bold mb-1">Request Off-Site Check-in</h3>
+                            <p className="text-amber-700/80 text-xs mb-4">You are outside the approved radius. If you are on official duty, please request an off-site check-in.</p>
+                            <textarea
+                              value={manualReason}
+                              onChange={(e) => setManualReason(e.target.value)}
+                              placeholder="Reason (e.g., At client site, GPS issue)"
+                              className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none mb-3 resize-none"
+                              rows={2}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleManualRequestSubmit}
+                              disabled={manualRequesting}
+                              className="w-full py-3 px-4 rounded-xl font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-50 shadow-sm"
+                            >
+                              {manualRequesting ? "Submitting..." : "Submit Check-in Request"}
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"
@@ -1190,6 +1301,27 @@ const Attendance = () => {
                           >
                             <XCircle size={20} /> Stop Scanner
                           </button>
+                        ) : !locationValid && activeTab === "daily" ? (
+                          <div className="flex-1 bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm text-center">
+                            <AlertCircle className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                            <h3 className="text-amber-800 font-bold mb-1">Request Off-Site Check-in</h3>
+                            <p className="text-amber-700/80 text-xs mb-4">You are outside the approved radius. If you are on official duty, please request an off-site check-in.</p>
+                            <textarea
+                              value={manualReason}
+                              onChange={(e) => setManualReason(e.target.value)}
+                              placeholder="Reason (e.g., At client site, GPS issue)"
+                              className="w-full bg-white border border-amber-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none mb-3 resize-none"
+                              rows={2}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleManualRequestSubmit}
+                              disabled={manualRequesting}
+                              className="w-full py-3 px-4 rounded-xl font-bold text-white bg-amber-500 hover:bg-amber-600 transition-colors disabled:opacity-50 shadow-sm"
+                            >
+                              {manualRequesting ? "Submitting..." : "Submit Check-in Request"}
+                            </button>
+                          </div>
                         ) : (
                           <button
                             type="button"

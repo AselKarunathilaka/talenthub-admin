@@ -9,12 +9,12 @@ const {
   validateWithGemini,
   validateBatchWithGemini,
 } = require("../utils/llmValidator");
-
 const {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
 } = require("../utils/attendanceHistory");
+const { recordDailyAttendance } = require("../services/dailyAttendanceLogService");
 
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
 
@@ -47,13 +47,29 @@ function hasDailyAttendanceForDate(intern, dateStr) {
 async function ensureDailyAttendance(intern, dateStr) {
   if (hasDailyAttendanceForDate(intern, dateStr)) return;
 
+  const now = new Date();
   intern.attendance.push({
     date: new Date(dateStr),
     status: "Present",
     type: "daily",
-    timeMarked: new Date(),
+    timeMarked: now,
   });
   await intern.save();
+
+  // ── Write to dedicated daily attendance log collection ─────────────────────
+  recordDailyAttendance({
+    internId: intern._id,
+    traineeId: intern.Trainee_ID || intern.traineeId || "",
+    traineeName: intern.Trainee_Name || "",
+    date: dateStr,
+    attendanceTime: now,
+    markType: "daily",
+    status: "present",
+    isCheckout: false,
+    checkOutTime: null,
+    sessionId: null,
+    source: "logbook",
+  });
 }
 
 // ── Shared helper: resolve internId from request user ────────────────────────
@@ -95,6 +111,7 @@ const createDailyRecord = async (req, res) => {
     }
 
     const internId = intern._id;
+    const traineeId = intern.Trainee_ID || intern.traineeId || "";
 
     // ★ Only mark daily attendance for working / wfh submissions
     const effectiveStatus = status || "working";
@@ -117,7 +134,7 @@ const createDailyRecord = async (req, res) => {
       existing.task = task;
       existing.progress = progress || "No challenges faced";
       existing.blockers = blockers || "No specific plans";
-      existing.traineeId = intern.Trainee_ID; // ★ keep in sync
+      existing.traineeId = traineeId || existing.traineeId; // ★ keep in sync
       if (status) existing.status = status;
       if (!existing.attendanceTime) {
         existing.attendanceTime = existingAttendance?.timeMarked || now;
@@ -135,7 +152,7 @@ const createDailyRecord = async (req, res) => {
 
     const newRecord = new DailyRecord({
       internId,
-      traineeId: intern.Trainee_ID, // ★ New
+      traineeId,
       date,
       stack,
       task,
@@ -218,13 +235,21 @@ const getDailyRecords = async (req, res) => {
 
     if (!adminUser) {
       // This is likely an intern login, filter by their records
-
-      // Try to find intern by ID first (Google login case)
-      let intern = await Intern.findById(userId);
-
-      if (!intern) {
-        // Try to find by email (backup case)
-        intern = await Intern.findOne({ email: userEmail });
+      let intern = null;
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        intern = await Intern.findById(userId);
+      }
+      if (!intern && userEmail) {
+        intern = await Intern.findOne({
+          $or: [
+            { Trainee_Email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+            { email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+          ],
+        });
+      }
+      if (!intern && userId) {
+        intern = await Intern.findOne({ Trainee_ID: userId });
       }
 
       if (!intern) {
@@ -233,7 +258,10 @@ const getDailyRecords = async (req, res) => {
           details: `No intern found for email: ${userEmail}`,
         });
       }
-      query.internId = intern._id;
+      query.$or = [
+        { internId: intern._id },
+        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+      ];
     }
 
     const records = await DailyRecord.find(query)

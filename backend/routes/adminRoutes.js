@@ -29,6 +29,12 @@ const {
   getInternGitCommits,
 } = require("../controllers/adminController");
 const {
+  getInternPerformance,
+} = require("../controllers/internPerformanceController");
+const {
+  getAdminAnalytics,
+} = require("../controllers/adminAnalyticsController");
+const {
   getPastInternLocations,
   getPastInternDistrictCounts,
   getPastInternSyncStats,
@@ -77,12 +83,16 @@ const {
   bulkMarkAttendance,
   uploadAttendancePdf,
   extractIdsFromImages,
+  getPendingManualRequests,
+  approveManualRequest,
+  rejectManualRequest,
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
 const {
   resolveInternId,
   getAdminInternAttendance,
+  getInternRecordCounts,
 } = require("../controllers/adminInternDetailsController");
 
 // ── All routes below require authentication ───────────────────────────────────
@@ -100,6 +110,12 @@ router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveE
 
 // Dashboard statistics
 router.get("/dashboard/stats", getDashboardStats);
+
+// Active intern performance overview
+router.get("/intern-performance", getInternPerformance);
+
+// Intern analytics overview
+router.get("/analytics", getAdminAnalytics);
 
 // Search interns
 router.get("/search/interns", searchInterns);
@@ -127,6 +143,9 @@ router.get(
   resolveInternId,
   getAdminInternAttendance,
 );
+
+// Get direct collection counts (daily attendance, meeting attendance, logbook)
+router.get("/intern/:internId/record-counts", getInternRecordCounts);
 
 // Get individual intern's real GitHub commits (per TalentTrail project repos)
 router.get("/intern/:internId/git-commits", getInternGitCommits);
@@ -228,6 +247,10 @@ router.post(
   upload.array("images", 20),
   extractIdsFromImages
 );
+
+router.get("/manual-attendance/requests/pending", getPendingManualRequests);
+router.post("/manual-attendance/requests/:id/approve", approveManualRequest);
+router.post("/manual-attendance/requests/:id/reject", rejectManualRequest);
 
 // Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {

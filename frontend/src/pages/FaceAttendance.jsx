@@ -27,25 +27,16 @@ import {
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { enrollFaceSamples } from "../utils/faceEnrollment";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  evaluateFacePlacement,
-  faceRuntimeProfile,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { checkLighting } from "../utils/faceQuality";
 
 const SLT_OFFICE = {
-  latitude: 6.9271,
-  longitude: 79.8612,
-  radiusKm: 2,
+  latitude: 6.9346212,
+  longitude: 79.8468999,
+  radiusKm: 0.1,
 };
 
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+const MODEL_URL = "/models/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -56,10 +47,16 @@ const ENROLLMENT_PROMPTS = [
   "Return to the center for the final scan.",
 ];
 const ENROLLMENT_DIRECTIONS = ["center", "left", "center", "right", "center"];
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
-const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
-const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
-const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
+const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 416,
+  scoreThreshold: 0.5,
+});
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 224,
+  scoreThreshold: 0.5,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -110,6 +107,41 @@ const getDistanceKm = (fromLocation, officeLocation = SLT_OFFICE) => {
   return earthRadiusKm * c;
 };
 
+const fetchWithRetry = async (url, options, maxRetries = 2) => {
+  let lastError;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiFetch(url, options);
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
+    }
+  }
+  throw lastError;
+};
+
+const PermissionErrorGuide = ({ type, onRetry }) => (
+  <div className="flex flex-col items-center justify-center p-6 bg-red-50 text-red-800 rounded-lg shadow-sm border border-red-200 mt-4 animate-in fade-in zoom-in duration-300">
+    <AlertCircle className="w-12 h-12 mb-3 text-red-500" />
+    <h3 className="text-lg font-bold mb-2">
+      {type === "camera" ? "Camera" : "Location"} Access Blocked
+    </h3>
+    <p className="text-center text-sm mb-4 leading-relaxed">
+      We need access to your {type} to mark attendance securely.<br/>
+      Please click the lock icon <span className="inline-flex items-center justify-center bg-white rounded shadow-sm w-6 h-6 border border-slate-200 mx-1">🔒</span> in your browser's address bar,<br/>
+      allow {type} access, and then try again.
+    </p>
+    <button
+      onClick={onRetry}
+      className="px-5 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm shadow-sm"
+    >
+      I've allowed it, try again
+    </button>
+  </div>
+);
+
 const FaceAttendance = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("face");
@@ -136,6 +168,9 @@ const FaceAttendance = () => {
     message: "Center your face inside the oval",
   });
   const [enrollmentSuccess, setEnrollmentSuccess] = useState(false);
+  const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
+  const [locationPermissionDenied, setLocationPermissionDenied] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
   const {
     attendanceAction,
     setAttendanceAction,
@@ -191,6 +226,8 @@ const FaceAttendance = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
+        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.ready();
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
@@ -232,20 +269,32 @@ const FaceAttendance = () => {
       .then((freshLocation) => {
         setLocation(freshLocation);
         setLocationError("");
+        setLocationPermissionDenied(false);
       })
       .catch((error) => {
         console.warn("Geolocation error:", error);
         setLocationError(error.message);
+        if (error.message.toLowerCase().includes("permission") || error.message.toLowerCase().includes("denied")) {
+           setLocationPermissionDenied(true);
+        }
       });
   }, []);
 
   const getFreshAttendanceLocation = async () => {
     if (!sltLocationRequired) return location;
 
-    const freshLocation = await requestFreshLocation();
-    setLocation(freshLocation);
-    setLocationError("");
-    return freshLocation;
+    try {
+      const freshLocation = await requestFreshLocation();
+      setLocation(freshLocation);
+      setLocationError("");
+      setLocationPermissionDenied(false);
+      return freshLocation;
+    } catch (error) {
+      if (error.message.toLowerCase().includes("permission") || error.message.toLowerCase().includes("denied")) {
+         setLocationPermissionDenied(true);
+      }
+      throw error;
+    }
   };
 
   const stopCamera = () => {
@@ -259,6 +308,7 @@ const FaceAttendance = () => {
     }
 
     setCameraActive(false);
+    setAttendanceError(null);
     liveDescriptorRef.current = null;
     stableFaceChecksRef.current = 0;
     clearFaceMesh(meshCanvasRef.current);
@@ -366,23 +416,30 @@ const FaceAttendance = () => {
       streamRef.current = stream;
       lastAutoCaptureRef.current = Date.now();
       enrollmentSubmitStartedRef.current = false;
+      setCameraPermissionDenied(false);
+      setAttendanceError(null);
       setCameraActive(true);
       await attachStreamToVideo();
     } catch (error) {
       console.error("Camera access error:", error);
-      toast.error(getCameraErrorMessage(error));
+      const errorMsg = getCameraErrorMessage(error);
+      toast.error(errorMsg);
+      if (errorMsg.toLowerCase().includes("permission") || errorMsg.toLowerCase().includes("blocked")) {
+        setCameraPermissionDenied(true);
+      }
       setCameraActive(false);
     }
   };
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    if (!checkLighting(videoRef.current)) {
+      return { error: "Too dark! Please move to a brighter area." };
+    }
 
     try {
       const detections = await faceapi
@@ -402,8 +459,21 @@ const FaceAttendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) return { error: quality.error };
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - 320) <= 105 &&
+        Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) {
+        return { error: "Move your face into the center oval." };
+      }
+
+      if (!largeEnough) {
+        return { error: "Move a little closer to the camera." };
+      }
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (error) {
@@ -415,12 +485,13 @@ const FaceAttendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting..." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    if (!checkLighting(videoRef.current)) {
+      return { error: "Too dark! Please move to a brighter area." };
+    }
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -437,7 +508,16 @@ const FaceAttendance = () => {
         };
       }
 
-      return evaluateFacePlacement(detections[0], dimensions);
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
     } catch (error) {
       console.error("Error inspecting face position:", error);
       return { error: "Could not read the camera frame." };
@@ -529,7 +609,14 @@ const FaceAttendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
+        const isDistinct =
+          !previousFrame ||
+          Math.sqrt(
+            previousFrame.reduce((sum, value, index) => {
+              const difference = value - frameData.descriptor[index];
+              return sum + difference * difference;
+            }, 0),
+          ) >= 0.035;
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
@@ -570,9 +657,10 @@ const FaceAttendance = () => {
     setLoading(true);
     try {
       for (const [index, descriptor] of enrollmentFrames.entries()) {
-        const response = await apiFetch("/face-attendance/enroll", {
+        const response = await fetchWithRetry("/face-attendance/enroll", {
           method: "POST",
           body: JSON.stringify({
+            internId: localStorage.getItem("internId") || undefined,
             descriptor,
             metadata: {
               location: location || null,
@@ -639,18 +727,20 @@ const FaceAttendance = () => {
 
     // Always use a fresh, full-quality descriptor for verification. The live
     // loop only checks positioning so it cannot submit an old camera frame.
+    setAttendanceError(null);
     const frameData = await captureFreshDescriptorForVerification();
 
     if (!frameData || frameData.error) {
-      toast.error(frameData?.error || "No face detected.");
+      setAttendanceError(frameData?.error || "No face detected.");
       setLoading(false);
       return;
     }
 
     try {
-      const response = await apiFetch("/face-attendance/scan", {
+      const response = await fetchWithRetry("/face-attendance/scan", {
         method: "POST",
         body: JSON.stringify({
+          internId: localStorage.getItem("internId") || undefined,
           descriptor: frameData.descriptor,
           attendanceType,
           attendanceAction:
@@ -699,10 +789,10 @@ const FaceAttendance = () => {
         return;
       }
 
-      toast.error(result.message || "Face was not recognized. Try again or use QR backup.");
+      setAttendanceError(result.message || "Face was not recognized.");
     } catch (error) {
       console.error("Face recognition error:", error);
-      toast.error("Face recognition failed. Please try again.");
+      setAttendanceError("Network error or server unreachable. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -995,12 +1085,32 @@ const FaceAttendance = () => {
                     </div>
                   )}
 
-                  {!cameraActive && (
+                  {locationPermissionDenied && (
+                    <PermissionErrorGuide
+                      type="location"
+                      onRetry={() => {
+                        setLocationPermissionDenied(false);
+                        getFreshAttendanceLocation().catch(() => {});
+                      }}
+                    />
+                  )}
+
+                  {cameraPermissionDenied && (
+                    <PermissionErrorGuide
+                      type="camera"
+                      onRetry={() => {
+                        setCameraPermissionDenied(false);
+                        startCamera();
+                      }}
+                    />
+                  )}
+
+                  {!cameraActive && !cameraPermissionDenied && !locationPermissionDenied && (
                     <button
                       type="button"
                       onClick={startCamera}
                       disabled={loading || !canStartCamera}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300"
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white disabled:bg-slate-300 transition-colors hover:bg-blue-700"
                     >
                       <Camera className="w-5 h-5" />
                       Start Camera
@@ -1107,6 +1217,24 @@ const FaceAttendance = () => {
                           className="h-full rounded-full bg-blue-600 transition-all"
                           style={{ width: `${(enrollmentProgress / REQUIRED_ENROLLMENT_SAMPLES) * 100}%` }}
                         />
+                      </div>
+                    </div>
+                  )}
+
+                  {attendanceError && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 animate-in fade-in zoom-in duration-300">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <h4 className="font-bold text-red-800">Scan Failed</h4>
+                          <p className="text-sm text-red-700 mt-1">{attendanceError}</p>
+                          <ul className="text-sm text-red-700 mt-3 list-disc pl-4 space-y-1.5 font-medium">
+                            <li>Move to a brighter area with good lighting.</li>
+                            <li>Ensure there is no bright window directly behind you.</li>
+                            <li>Look directly at the camera and hold still.</li>
+                            <li>If this persists, close the camera and use QR Attendance.</li>
+                          </ul>
+                        </div>
                       </div>
                     </div>
                   )}

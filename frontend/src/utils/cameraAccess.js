@@ -1,18 +1,12 @@
-const isLowPowerCameraDevice =
-  Number(navigator.hardwareConcurrency || 4) <= 4 ||
-  Number(navigator.deviceMemory || 4) <= 4 ||
-  window.matchMedia?.("(max-width: 768px)")?.matches === true;
-
-const faceCameraConstraints = (facingMode, lowPower = false) => ({
+const FACE_CAMERA_CONSTRAINTS = {
   video: {
-    width: { ideal: lowPower ? 480 : 640 },
-    height: { ideal: lowPower ? 360 : 480 },
+    width: { ideal: 640 },
+    height: { ideal: 480 },
     aspectRatio: { ideal: 4 / 3 },
-    facingMode: { ideal: facingMode },
-    frameRate: { ideal: lowPower ? 24 : 30, max: 30 },
+    facingMode: { ideal: "user" },
   },
   audio: false,
-});
+};
 
 const FALLBACK_CAMERA_CONSTRAINTS = {
   video: {
@@ -23,25 +17,9 @@ const FALLBACK_CAMERA_CONSTRAINTS = {
   audio: false,
 };
 
-const BASIC_CAMERA_CONSTRAINTS = { video: true, audio: false };
-const CAMERA_START_TIMEOUT_MS = 15000;
-
-const getStreamWithTimeout = (constraints) => {
-  let timedOut = false;
-  let timeoutId;
-  const streamPromise = navigator.mediaDevices.getUserMedia(constraints).then((stream) => {
-    if (timedOut) stream.getTracks().forEach((track) => track.stop());
-    return stream;
-  });
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      timedOut = true;
-      const error = new Error("Camera took too long to start.");
-      error.name = "CameraTimeoutError";
-      reject(error);
-    }, CAMERA_START_TIMEOUT_MS);
-  });
-  return Promise.race([streamPromise, timeoutPromise]).finally(() => window.clearTimeout(timeoutId));
+const ANY_RESOLUTION_FALLBACK = {
+  video: { facingMode: "user" },
+  audio: false,
 };
 
 export const getCameraErrorMessage = (error) => {
@@ -63,10 +41,6 @@ export const getCameraErrorMessage = (error) => {
     return "This device camera does not support the requested settings. Trying another camera mode may help.";
   }
 
-  if (name === "CameraTimeoutError" || name === "AbortError") {
-    return "Camera took too long to start. Close other camera apps, then retry.";
-  }
-
   if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") {
     return "Camera access requires HTTPS. Please open TalentHub using the secure site link.";
   }
@@ -74,48 +48,27 @@ export const getCameraErrorMessage = (error) => {
   return "Camera access failed. Please allow camera permission and try again.";
 };
 
-export const requestFaceCameraStream = async ({ facingMode = "user" } = {}) => {
+export const requestFaceCameraStream = async () => {
   if (!navigator.mediaDevices?.getUserMedia) {
     const error = new Error("Camera access requires a supported browser on HTTPS or localhost.");
     error.name = "UnsupportedBrowser";
     throw error;
   }
 
-  const constraintLevels = [
-    faceCameraConstraints(facingMode, isLowPowerCameraDevice),
-    faceCameraConstraints(facingMode, false),
-    FALLBACK_CAMERA_CONSTRAINTS,
-    BASIC_CAMERA_CONSTRAINTS,
-  ];
-  let lastError;
-  for (const constraints of constraintLevels) {
-    try {
-      return await getStreamWithTimeout(constraints);
-    } catch (error) {
-      lastError = error;
-      if (["NotAllowedError", "PermissionDeniedError", "NotFoundError", "DevicesNotFoundError", "NotReadableError", "TrackStartError"].includes(error?.name)) throw error;
+  try {
+    return await navigator.mediaDevices.getUserMedia(FACE_CAMERA_CONSTRAINTS);
+  } catch (primaryError) {
+    if (
+      primaryError?.name === "OverconstrainedError" ||
+      primaryError?.name === "ConstraintNotSatisfiedError"
+    ) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(FALLBACK_CAMERA_CONSTRAINTS);
+      } catch (fallbackError) {
+        return await navigator.mediaDevices.getUserMedia(ANY_RESOLUTION_FALLBACK);
+      }
     }
-  }
-  throw lastError;
-};
 
-export const waitForPlayableVideo = async (video, timeoutMs = 8000) => {
-  if (!video) throw new Error("Camera preview is unavailable.");
-  if (video.readyState >= 2 && video.videoWidth > 0) {
-    await video.play();
-    return;
+    throw primaryError;
   }
-  await new Promise((resolve, reject) => {
-    const cleanup = () => {
-      window.clearTimeout(timer);
-      video.removeEventListener("loadeddata", ready);
-      video.removeEventListener("error", failed);
-    };
-    const ready = () => { cleanup(); resolve(); };
-    const failed = () => { cleanup(); reject(new Error("Camera preview could not start.")); };
-    const timer = window.setTimeout(() => { cleanup(); reject(new Error("Camera preview took too long to start.")); }, timeoutMs);
-    video.addEventListener("loadeddata", ready, { once: true });
-    video.addEventListener("error", failed, { once: true });
-  });
-  await video.play();
 };

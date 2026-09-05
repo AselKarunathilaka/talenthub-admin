@@ -61,11 +61,19 @@ const {
 
   // Tour
   markTourSeen,
+
+  // University Feedback
+  getInternUniversityFeedback,
+  
+  submitManualCheckInRequest,
 } = require("../controllers/internController");
 
 const { getInternGitCommits } = require("../controllers/adminController");
 
 const router = express.Router();
+
+// =========================== UNIVERSITY FEEDBACK ===========================
+router.get("/:id/university-feedback", authenticateUser, getInternUniversityFeedback);
 
 // =========================== ONBOARDING TOUR ===========================
 router.patch("/:id/tour-seen", authenticateUser, markTourSeen);
@@ -117,8 +125,14 @@ router.put(
   updateAttendanceForSpecificDate,
 );
 router.get("/attendance/:id", getAttendanceByInternId);
+const { getInternRecordCounts } = require("../controllers/adminInternDetailsController");
+router.get("/:id/record-counts", authenticateUser, (req, res) => {
+  req.params.internId = req.params.id;
+  return getInternRecordCounts(req, res);
+});
 router.post("/mark-attendance/:id", authenticateUser, markAttendance);
 router.post("/mark-attendance", authenticateUser, markAttendance);
+router.post("/manual-checkin-request", authenticateUser, submitManualCheckInRequest);
 router.put("/update-attendance/:id", authenticateUser, updateAttendance);
 
 // =========================== INTERN MANAGEMENT ===========================

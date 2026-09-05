@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   FaUser,
@@ -35,11 +35,65 @@ import {
   FaLayerGroup,
   FaUsers as FaTeam,
   FaClipboardList,
+  FaGraduationCap,
+  FaStar,
+  FaAward,
+  FaFilePdf,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
+import Dashboard from "./Dashboard";
+import {
+  isNoCommitSpecialization,
+  calcWorkingDays as calcWorkingDaysUtil,
+  calcElapsedWeeks as calcElapsedWeeksUtil,
+  calcDailyAttendanceRate,
+  calcMeetingAttendanceRate,
+  calcLogbookRate,
+  calcPerformanceRate,
+  getPerformanceStatus,
+  getMondayWeekKey,
+  toDateStr,
+} from "../utils/analyticsCalculations";
+
+// ─── Helper: load profile image as Base64 for jsPDF ─────────────────────────
+const loadProfileImageBase64 = (url) => {
+  return new Promise((resolve) => {
+    if (!url) return resolve(null);
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.naturalWidth || img.width || 140;
+        canvas.height = img.naturalHeight || img.height || 140;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const dataURL = canvas.toDataURL("image/jpeg", 0.9);
+        resolve(dataURL);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+};
+
+// ─── Helper: draw initials avatar on PDF if image unavailable ───────────────
+const drawPdfFallbackAvatar = (doc, x, y, size, intern) => {
+  doc.setFillColor(0, 0, 102);
+  doc.roundedRect(x, y, size, size, 2.5, 2.5, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  const initial = ((intern?.traineeName || intern?.name || "?").charAt(0) || "?").toUpperCase();
+  doc.text(initial, x + size / 2, y + size / 2 + 3.5, { align: "center" });
+};
 
 // ─── Helper: get all calendar days for a given month ───────────────────────
 const getCalendarDays = (year, month) => {
@@ -177,12 +231,631 @@ const AdminInternDetails = () => {
   const [gitCommitsLoading, setGitCommitsLoading] = useState(false);
   // Unified attendance count — same source as the certificate page (TalentTrail-enriched)
   const [certAttendanceCount, setCertAttendanceCount] = useState(null);
+  // Direct collection counts (dailyattendance, meetingattendance, dailyrecords)
+  const [recordCounts, setRecordCounts] = useState(null);
+  const [isExportingPDF, setIsExportingPDF] = useState(false);
 
-  // ── Holidays ──────────────────────────────────────────────────────────────
+  const intern = internDetails?.intern;
+
+  const handleExportMissingRecordsPDF = useCallback(async ({
+    intern,
+    dailyAttendanceRate,
+    meetingAttendanceRate,
+    performanceRate,
+    missingDailyDates = [],
+    missingLogbookDates = [],
+    missingMeetingWeeks = [],
+    startDateVal,
+    formattedStartDate,
+    workingDays,
+    elapsedWeeks,
+  }) => {
+    setIsExportingPDF(true);
+    try {
+      const doc = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 14;
+      const contentWidth = pageWidth - margin * 2;
+
+      // ── 1. Header Banner (Corporate Dark Blue to Emerald Accent) ──
+      doc.setFillColor(0, 0, 102); // #000066 Navy
+      doc.rect(0, 0, pageWidth, 22, "F");
+
+      doc.setFillColor(0, 102, 0); // #006600 Emerald
+      doc.rect(0, 22, pageWidth, 2.5, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(13);
+      doc.text("TALENTHUB  •  INTERN ATTENDANCE & AUDIT REPORT", margin, 12);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8.5);
+      doc.setTextColor(203, 213, 225);
+      doc.text(
+        `Official Internship Missing Submissions & Compliance Audit  |  Generated on ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`,
+        margin,
+        17.5
+      );
+
+      // ── 2. Profile Card (Top Area) ──
+      let cardY = 28;
+      const cardHeight = 38;
+
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, cardY, contentWidth, cardHeight, 3, 3, "F");
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(margin, cardY, contentWidth, cardHeight, 3, 3, "S");
+
+      // Profile Image loading
+      const photoUrl = intern?._id ? `${API_BASE_URL}/interns/${intern._id}/profile-picture` : null;
+      let photoData = null;
+      if (photoUrl) {
+        photoData = await loadProfileImageBase64(photoUrl);
+      }
+
+      const avatarSize = 28;
+      const avatarX = margin + 5;
+      const avatarY = cardY + 5;
+
+      if (photoData) {
+        try {
+          doc.addImage(photoData, "JPEG", avatarX, avatarY, avatarSize, avatarSize);
+          doc.setDrawColor(203, 213, 225);
+          doc.setLineWidth(0.4);
+          doc.roundedRect(avatarX, avatarY, avatarSize, avatarSize, 2, 2, "S");
+        } catch {
+          drawPdfFallbackAvatar(doc, avatarX, avatarY, avatarSize, intern);
+        }
+      } else {
+        drawPdfFallbackAvatar(doc, avatarX, avatarY, avatarSize, intern);
+      }
+
+      // Profile Text info with perfectly aligned 2-column layout
+      const col1X = avatarX + avatarSize + 6;
+      const col2X = col1X + 66;
+      const internName = intern?.traineeName || intern?.name || intern?.Trainee_Name || "Intern";
+      const traineeId = intern?.traineeId || intern?.Trainee_ID || "N/A";
+      const spec = intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "Not Specified";
+      const institute = intern?.institute || intern?.university || intern?.Institute || "Not Specified";
+      const startDisplay = formattedStartDate || (startDateVal ? new Date(startDateVal).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A");
+      const endDisplay = intern?.endDate || intern?.Training_EndDate ? new Date(intern?.endDate || intern?.Training_EndDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }) : "N/A";
+
+      // Intern Name (Title)
+      doc.setTextColor(15, 23, 42);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(12.5);
+      doc.text(internName, col1X, cardY + 9);
+
+      // Helper for clean, perfectly aligned key-value pair
+      const renderField = (label, val, x, y, valColor = [15, 23, 42]) => {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(label, x, y);
+        const labelWidth = doc.getTextWidth(label);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(...valColor);
+        doc.text(String(val || "N/A"), x + labelWidth + 1.2, y);
+      };
+
+      // Row 1: Trainee ID & Specialization
+      renderField("Trainee ID: ", traineeId, col1X, cardY + 16.5, [0, 0, 102]);
+      renderField("Specialization: ", spec, col2X, cardY + 16.5, [2, 132, 199]);
+
+      // Row 2: Institute & Target End Date
+      renderField("Institute: ", institute, col1X, cardY + 23.5, [30, 41, 59]);
+      renderField("Target End Date: ", endDisplay, col2X, cardY + 23.5, [30, 41, 59]);
+
+      // Row 3: Start Date & Working Days
+      renderField("Start Date: ", startDisplay, col1X, cardY + 30.5, [30, 41, 59]);
+      renderField("Working Days: ", `${workingDays} Days`, col2X, cardY + 30.5, [30, 41, 59]);
+
+      // ── 3. KPI Rate & Missing Summary Grid (6 Cards) ──
+      let kpiY = cardY + cardHeight + 5.5;
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(30, 41, 59);
+      doc.text("ATTENDANCE & MISSING SUBMISSION METRICS", margin, kpiY);
+
+      kpiY += 3.5;
+      const cardGap = 3.5;
+      const colW = (contentWidth - cardGap * 2) / 3;
+      const rowH = 19;
+
+      const kpis = [
+        {
+          label: "Daily Attendance Rate",
+          val: `${dailyAttendanceRate}%`,
+          sub: `${workingDays} Total Working Days`,
+          borderCol: [191, 219, 254],
+          bgCol: [239, 246, 255],
+          textCol: [29, 78, 216],
+        },
+        {
+          label: "Meeting Attendance Rate",
+          val: `${meetingAttendanceRate}%`,
+          sub: `${elapsedWeeks || 0} Expected Meetings`,
+          borderCol: [221, 214, 254],
+          bgCol: [245, 243, 255],
+          textCol: [109, 40, 217],
+        },
+        {
+          label: "Performance Rate",
+          val: `${performanceRate}%`,
+          sub: `Status: ${getPerformanceStatus(performanceRate)}`,
+          borderCol: performanceRate >= 80 ? [167, 243, 208] : performanceRate >= 60 ? [254, 215, 170] : [254, 205, 211],
+          bgCol: performanceRate >= 80 ? [236, 253, 245] : performanceRate >= 60 ? [255, 251, 235] : [255, 241, 242],
+          textCol: performanceRate >= 80 ? [4, 120, 87] : performanceRate >= 60 ? [180, 83, 9] : [190, 18, 60],
+        },
+        {
+          label: "Missing Daily Attendance",
+          val: `${missingDailyDates.length} Days`,
+          sub: missingDailyDates.length === 0 ? "100% Complete" : "Working days unrecorded",
+          borderCol: missingDailyDates.length > 0 ? [254, 205, 211] : [167, 243, 208],
+          bgCol: missingDailyDates.length > 0 ? [255, 241, 242] : [236, 253, 245],
+          textCol: missingDailyDates.length > 0 ? [225, 29, 72] : [4, 120, 87],
+        },
+        {
+          label: "Missing Logbook Entries",
+          val: `${missingLogbookDates.length} Days`,
+          sub: missingLogbookDates.length === 0 ? "100% Complete" : "Working days unsubmitted",
+          borderCol: missingLogbookDates.length > 0 ? [254, 215, 170] : [167, 243, 208],
+          bgCol: missingLogbookDates.length > 0 ? [255, 251, 235] : [236, 253, 245],
+          textCol: missingLogbookDates.length > 0 ? [217, 119, 6] : [4, 120, 87],
+        },
+        {
+          label: "Missed Meeting Weeks",
+          val: `${missingMeetingWeeks.length} Weeks`,
+          sub: missingMeetingWeeks.length === 0 ? "100% Complete" : "Weekly meetings missed",
+          borderCol: missingMeetingWeeks.length > 0 ? [221, 214, 254] : [167, 243, 208],
+          bgCol: missingMeetingWeeks.length > 0 ? [245, 243, 255] : [236, 253, 245],
+          textCol: missingMeetingWeeks.length > 0 ? [124, 58, 237] : [4, 120, 87],
+        },
+      ];
+
+      // Render Row 1 (3 items)
+      kpis.slice(0, 3).forEach((item, idx) => {
+        const x = margin + idx * (colW + cardGap);
+        const y = kpiY;
+        doc.setFillColor(...item.bgCol);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "F");
+        doc.setDrawColor(...item.borderCol);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "S");
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.label, x + 3.5, y + 5.2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11.5);
+        doc.setTextColor(...item.textCol);
+        doc.text(item.val, x + 3.5, y + 11.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.sub, x + 3.5, y + 15.8);
+      });
+
+      // Render Row 2 (3 items)
+      kpis.slice(3, 6).forEach((item, idx) => {
+        const x = margin + idx * (colW + cardGap);
+        const y = kpiY + rowH + cardGap;
+        doc.setFillColor(...item.bgCol);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "F");
+        doc.setDrawColor(...item.borderCol);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(x, y, colW, rowH, 2, 2, "S");
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7.5);
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.label, x + 3.5, y + 5.2);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11.5);
+        doc.setTextColor(...item.textCol);
+        doc.text(item.val, x + 3.5, y + 11.5);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.8);
+        doc.setTextColor(100, 116, 139);
+        doc.text(item.sub, x + 3.5, y + 15.8);
+      });
+
+      let currentY = kpiY + rowH * 2 + cardGap + 7.5;
+
+      // ── Helper to format dates for table ──
+      const formatRowDate = (dateStr) => {
+        if (!dateStr) return { date: "N/A", day: "N/A" };
+        const dObj = new Date(dateStr + "T12:00:00Z");
+        return {
+          date: dObj.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" }),
+          day: dObj.toLocaleDateString("en-US", { weekday: "long" }),
+        };
+      };
+
+      // ── 4. Detailed Table 1: Missing Daily Attendance Working Days ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`1. MISSING DAILY ATTENDANCE (${missingDailyDates.length} WORKING DAYS)`, margin, currentY);
+
+      if (missingDailyDates.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All working day daily attendance check-ins are recorded and verified.", margin + 4, currentY + 7.5);
+        currentY += 14.5;
+      } else {
+        const dailyRows = missingDailyDates.map((dateStr, idx) => {
+          const info = formatRowDate(dateStr);
+          return [idx + 1, dateStr, info.date, info.day, "Unrecorded Daily Check-in"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Date (YYYY-MM-DD)", "Formatted Date", "Day of Week", "Status"]],
+          body: dailyRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [225, 29, 72],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 62, fontStyle: "bold", textColor: [190, 18, 60] },
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 6.5;
+      }
+
+      // Check page break before Table 2
+      if (currentY > pageHeight - 45) {
+        doc.addPage();
+        currentY = 16;
+      }
+
+      // ── 5. Detailed Table 2: Missing Logbook Submissions ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`2. MISSING LOGBOOK ENTRIES (${missingLogbookDates.length} WORKING DAYS)`, margin, currentY);
+
+      if (missingLogbookDates.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All working day logbook submissions are recorded and up to date.", margin + 4, currentY + 7.5);
+        currentY += 14.5;
+      } else {
+        const logbookRows = missingLogbookDates.map((dateStr, idx) => {
+          const info = formatRowDate(dateStr);
+          return [idx + 1, dateStr, info.date, info.day, "Missing Daily Work Log"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Date (YYYY-MM-DD)", "Formatted Date", "Day of Week", "Status"]],
+          body: logbookRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [217, 119, 6],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 40 },
+            3: { cellWidth: 35 },
+            4: { cellWidth: 62, fontStyle: "bold", textColor: [180, 83, 9] },
+          },
+        });
+
+        currentY = doc.lastAutoTable.finalY + 6.5;
+      }
+
+      // Check page break before Table 3
+      if (currentY > pageHeight - 45) {
+        doc.addPage();
+        currentY = 16;
+      }
+
+      // ── 6. Detailed Table 3: Missed Weekly Meeting Sessions ──
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+      doc.text(`3. MISSED WEEKLY MEETING SESSIONS (${missingMeetingWeeks.length} WEEKS)`, margin, currentY);
+
+      if (missingMeetingWeeks.length === 0) {
+        doc.setFillColor(240, 253, 244);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "F");
+        doc.setDrawColor(187, 247, 208);
+        doc.roundedRect(margin, currentY + 2.5, contentWidth, 8, 1.5, 1.5, "S");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(7.8);
+        doc.setTextColor(22, 101, 52);
+        doc.text("✓ Excellent! All weekly team meeting sessions were attended as scheduled.", margin + 4, currentY + 7.5);
+      } else {
+        const meetingRows = missingMeetingWeeks.map((weekObj, idx) => {
+          const monStr = weekObj.monday instanceof Date
+            ? weekObj.monday.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : String(weekObj.weekKey || "N/A");
+          const friStr = weekObj.friday instanceof Date
+            ? weekObj.friday.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+            : "N/A";
+          return [idx + 1, weekObj.weekKey || "N/A", `${monStr} – ${friStr}`, "Missed Weekly Meeting Session"];
+        });
+
+        autoTable(doc, {
+          startY: currentY + 2.5,
+          margin: { left: margin, right: margin },
+          head: [["#", "Week Reference Key", "Week Period (Monday – Friday)", "Status"]],
+          body: meetingRows,
+          theme: "striped",
+          headStyles: {
+            fillColor: [109, 40, 217],
+            textColor: [255, 255, 255],
+            fontSize: 7.5,
+            fontStyle: "bold",
+            halign: "left",
+          },
+          styles: {
+            fontSize: 7.2,
+            cellPadding: 1.8,
+            textColor: [30, 41, 59],
+          },
+          columnStyles: {
+            0: { cellWidth: 10, halign: "center" },
+            1: { cellWidth: 45 },
+            2: { cellWidth: 65 },
+            3: { cellWidth: 62, fontStyle: "bold", textColor: [109, 40, 217] },
+          },
+        });
+      }
+
+      // ── 7. Add Footers and Page Numbers on all pages ──
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.3);
+        doc.line(margin, pageHeight - 11, pageWidth - margin, pageHeight - 11);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(148, 163, 184);
+        doc.text("TalentHub  •  SLT Mobitel Digital Platforms  •  Official Compliance & Attendance Audit", margin, pageHeight - 7);
+        doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: "right" });
+      }
+
+      const safeName = (intern?.traineeName || intern?.name || "Intern").replace(/[^a-zA-Z0-9]/g, "_");
+      const safeId = String(intern?.traineeId || intern?.Trainee_ID || "3548").replace(/[^a-zA-Z0-9]/g, "_");
+      const dateStamp = new Date().toISOString().slice(0, 10);
+      doc.save(`TalentHub_Missing_Records_${safeId}_${safeName}_${dateStamp}.pdf`);
+    } catch (err) {
+      console.error("Error generating Missing Records PDF:", err);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setIsExportingPDF(false);
+    }
+  }, []);
+
+  // ── Holidays (must be declared before metrics useMemos that depend on it) ──
   const [holidays, setHolidays] = useState([]);
-
-  // Years already requested, so month navigation does not refire the request
   const fetchedHolidayYears = useRef(new Set());
+
+  // ── Synced Metrics Calculations (Exact match with Intern Dashboard & University Dashboard) ──
+  const workingDays = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 1;
+    const now = new Date();
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
+    // Always calculate from internship start date to current date
+    return calcWorkingDaysUtil(startDateVal, now, holidaySet);
+  }, [intern, holidays]);
+
+  const elapsedWeeks = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    const now = new Date();
+    // Always calculate from internship start date to current date
+    return calcElapsedWeeksUtil(startDateVal, now);
+  }, [intern]);
+
+  const attendedDaysCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
+    const records = attendanceData?.dailyAttendance || [];
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
+    return new Set(
+      records
+        .filter((r) => {
+          if (!r.date) return false;
+          const s = (r.status || "").toLowerCase();
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent) return false;
+          const dStr = toDateStr(r.date); // Colombo YYYY-MM-DD
+          if (!dStr) return false;
+          // Filter out dates before internship start date or after today
+          if (startDStr && dStr < startDStr) return false;
+          if (todayDStr && dStr > todayDStr) return false;
+          // Derive day-of-week from the Colombo date string (noon UTC avoids any tz shift)
+          const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+          const isWeekend = dow === 0 || dow === 6;
+          const isHoliday = holidaySet.has(dStr);
+          return !isWeekend && !isHoliday;
+        })
+        .map((r) => toDateStr(r.date))
+        .filter(Boolean)
+    ).size;
+  }, [attendanceData, holidays, intern]);
+
+  const dailyAttendanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    return calcDailyAttendanceRate(attendedDaysCount, workingDays);
+  }, [intern, attendedDaysCount, workingDays]);
+
+  const attendedMeetingWeeksCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startMonKey = getMondayWeekKey(startDateVal);
+    const todayMonKey = getMondayWeekKey(new Date());
+
+    return new Set(
+      (attendanceData?.meetingAttendance || [])
+        .filter((r) => {
+          const s = (r.status || "").toLowerCase();
+          const isPresent = s === "present" || s === "late" || !r.status;
+          if (!isPresent || !r.date) return false;
+          const wKey = getMondayWeekKey(r.date);
+          if (!wKey) return false;
+          // Ignore previous weeks before the internship start week or current incomplete week
+          if (startMonKey && wKey < startMonKey) return false;
+          if (todayMonKey && wKey >= todayMonKey) return false;
+          return true;
+        })
+        .map((r) => getMondayWeekKey(r.date))
+        .filter(Boolean)
+    ).size;
+  }, [attendanceData, intern]);
+
+  const meetingAttendanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    return calcMeetingAttendanceRate(attendedMeetingWeeksCount, elapsedWeeks);
+  }, [intern, attendedMeetingWeeksCount, elapsedWeeks]);
+
+  const commitsCount = useMemo(() => {
+    if (gitCommitsData) {
+      if (gitCommitsData.totalCommits !== undefined) {
+        return Number(gitCommitsData.totalCommits) || 0;
+      }
+      let all = [];
+      const projects = Array.isArray(gitCommitsData)
+        ? gitCommitsData
+        : (gitCommitsData.projectCommits || []);
+      function walk(node) {
+        if (!node) return;
+        if (Array.isArray(node.commits)) all.push(...node.commits);
+        if (Array.isArray(node.modules)) node.modules.forEach(walk);
+        if (Array.isArray(node.children)) node.children.forEach(walk);
+        if (Array.isArray(node.subProjects)) node.subProjects.forEach(walk);
+      }
+      projects.forEach(walk);
+      return all.length;
+    }
+    if (typeof intern?.commitsCount === "number") {
+      return intern.commitsCount;
+    }
+    if (Array.isArray(intern?.gitCommits)) {
+      return intern.gitCommits.length;
+    }
+    return 0;
+  }, [gitCommitsData, intern]);
+
+  const projectsCount = useMemo(() => {
+    if (gitCommitsData) {
+      if (gitCommitsData.totalProjects !== undefined) {
+        return Number(gitCommitsData.totalProjects) || 0;
+      }
+      const projects = Array.isArray(gitCommitsData)
+        ? gitCommitsData
+        : (gitCommitsData.projectCommits || []);
+      return projects.length;
+    }
+    if (typeof intern?.projectsCount === "number") {
+      return intern.projectsCount;
+    }
+    if (Array.isArray(intern?.projects)) {
+      return intern.projects.length;
+    }
+    return 0;
+  }, [gitCommitsData, intern]);
+
+  const logbookCount = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    const startDStr = toDateStr(startDateVal);
+    const todayDStr = toDateStr(new Date());
+    const holidaySet = new Set((holidays || []).map((h) => (typeof h === 'string' ? h : h.date)));
+    const records = internDetails?.records || attendanceData?.dailyAttendance || [];
+    return records.filter((r) => {
+      if (!r.date) return false;
+      const status = (r.status || r.recordStatus || "working").toLowerCase();
+      if (status === "leave" || status === "study_leave") return false;
+      const dStr = toDateStr(r.date);
+      if (!dStr) return false;
+      if (startDStr && dStr < startDStr) return false;
+      if (todayDStr && dStr > todayDStr) return false;
+      const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+      const isWeekend = dow === 0 || dow === 6;
+      const isHoliday = holidaySet.has(dStr);
+      return !isWeekend && !isHoliday;
+    }).length;
+  }, [internDetails?.records, attendanceData, holidays, intern]);
+
+  const logbookRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    return calcLogbookRate(logbookCount, workingDays);
+  }, [intern, logbookCount, workingDays]);
+
+  const performanceRate = useMemo(() => {
+    const startDateVal = intern?.startDate || intern?.Training_StartDate;
+    if (!startDateVal) return 0;
+    const spec = intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "";
+    return calcPerformanceRate({
+      logbookRate,
+      meetingAttendanceRate,
+      commitsCount,
+      workingDays,
+      specialization: spec,
+    });
+  }, [intern, logbookRate, meetingAttendanceRate, commitsCount, workingDays]);
+
+  const workQualityRate = performanceRate;
 
   const fetchHolidays = useCallback(async (year) => {
     if (!year || fetchedHolidayYears.current.has(year)) return;
@@ -224,25 +897,7 @@ const AdminInternDetails = () => {
     [holidays],
   );
 
-  useEffect(() => {
-    fetchInternDetails();
-    fetchAttendance();
-    fetchGitCommits();
-    fetchCertAttendanceCount();
-    fetchHolidays(new Date().getFullYear());
-  }, [internId]);
-
-  // Re-fetch holidays when calendar months change to a different year
-  useEffect(() => {
-    const years = new Set([
-      calendarMonth.getFullYear(),
-      logbookCalMonth.getFullYear(),
-    ]);
-    years.forEach((y) => fetchHolidays(y));
-  }, [calendarMonth, logbookCalMonth, fetchHolidays]);
-
   const fetchGitCommits = useCallback(async () => {
-    if (gitCommitsData) return;
     try {
       setGitCommitsLoading(true);
       const data = await adminApi.getInternGitCommits(internId);
@@ -252,10 +907,9 @@ const AdminInternDetails = () => {
     } finally {
       setGitCommitsLoading(false);
     }
-  }, [internId, gitCommitsData]);
+  }, [internId]);
 
   const fetchAttendance = useCallback(async () => {
-    if (attendanceData) return;
     try {
       setAttendanceLoading(true);
       setAttendanceError(null);
@@ -267,16 +921,14 @@ const AdminInternDetails = () => {
     } finally {
       setAttendanceLoading(false);
     }
-  }, [internId, attendanceData]);
+  }, [internId]);
 
-  // Fetch the same certificate-data endpoint used by the certificate page
-  // so the attendance count matches what the certificate shows (TalentTrail-enriched)
   const fetchCertAttendanceCount = useCallback(async () => {
     try {
       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
       if (!adminInfo.token) return;
       const res = await fetch(
-        `${(await import("../api/apiConfig")).API_BASE_URL}/admin/intern/${internId}/certificate-data`,
+        `${API_BASE_URL}/admin/intern/${internId}/certificate-data`,
         {
           headers: {
             "Content-Type": "application/json",
@@ -292,7 +944,7 @@ const AdminInternDetails = () => {
     }
   }, [internId]);
 
-  const fetchInternDetails = async () => {
+  const fetchInternDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -309,14 +961,49 @@ const AdminInternDetails = () => {
     } catch (error) {
       console.error("Error fetching intern details:", error);
       setError("Failed to load intern details");
-      if (error.message.includes("403") || error.message.includes("401")) {
+      if (error.message && (error.message.includes("403") || error.message.includes("401"))) {
         localStorage.removeItem("adminInfo");
         navigate("/admin-login");
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [internId, navigate]);
+
+  const fetchRecordCounts = useCallback(async () => {
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(
+        `${API_BASE_URL}/admin/intern/${internId}/record-counts`,
+        { headers: { Authorization: `Bearer ${adminInfo.token}` } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setRecordCounts(data);
+      }
+    } catch (err) {
+      console.warn("Could not fetch record counts:", err);
+    }
+  }, [internId]);
+
+  // Load all initial data once when internId changes
+  useEffect(() => {
+    fetchInternDetails();
+    fetchAttendance();
+    fetchGitCommits();
+    fetchCertAttendanceCount();
+    fetchRecordCounts();
+    fetchHolidays(new Date().getFullYear());
+  }, [internId]);
+
+  // Re-fetch holidays when calendar months change to a different year
+  useEffect(() => {
+    const years = new Set([
+      calendarMonth.getFullYear(),
+      logbookCalMonth.getFullYear(),
+    ]);
+    years.forEach((y) => fetchHolidays(y));
+  }, [calendarMonth, logbookCalMonth, fetchHolidays]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -411,7 +1098,7 @@ const AdminInternDetails = () => {
     );
   }
 
-  const { intern, statistics } = internDetails;
+  const { statistics } = internDetails;
 
   return (
     <AdminNavigation>
@@ -440,15 +1127,17 @@ const AdminInternDetails = () => {
               </div>
             </motion.div>
 
-            {/* Tabs — modern pill style */}
-            <div className="mb-4 sm:mb-6">
-              <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 border border-gray-200/60">
-                {["overview", "records", "attendance"].map((tab) => (
+            {/* Tabs — modern pill style & Meta Tags */}
+            <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="inline-flex items-center rounded-xl bg-gray-100 p-1 border border-gray-200/60 overflow-x-auto max-w-full">
+                {["overview", "records", "attendance", "details", "preview"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => {
                       setActiveTab(tab);
-                      if (tab === "attendance") fetchAttendance();
+                      if (tab === "attendance" || tab === "details" || tab === "preview") {
+                        fetchAttendance();
+                      }
                     }}
                     className={`px-4 sm:px-5 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
                       activeTab === tab
@@ -456,9 +1145,34 @@ const AdminInternDetails = () => {
                         : "text-gray-500 hover:text-gray-700"
                     }`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    {tab === "overview" && "Overview"}
+                    {tab === "records" && "Records"}
+                    {tab === "attendance" && "Attendance"}
+                    {tab === "details" && "Details"}
+                    {tab === "preview" && "Preview"}
                   </button>
                 ))}
+              </div>
+
+              {/* Meta Tags (Started & Working Days) */}
+              <div className="flex flex-wrap items-center gap-2">
+                {(intern?.startDate || intern?.Training_StartDate) && (
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold border border-indigo-100 shadow-sm">
+                    <FaCalendarAlt className="text-indigo-500" />
+                    <span>
+                      Started:{" "}
+                      {new Date(intern?.startDate || intern?.Training_StartDate).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </span>
+                  </div>
+                )}
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-xs font-semibold border border-blue-100 shadow-sm">
+                  <FaCalendarDay className="text-blue-500" />
+                  <span>{workingDays} Total Working Days</span>
+                </div>
               </div>
             </div>
 
@@ -616,194 +1330,161 @@ const AdminInternDetails = () => {
                             </div>
                           </div>
 
-                          {/* Meeting Attendance % = weeks attended ÷ total weeks (start date to end date) */}
-                          {attendanceData &&
-                            intern.startDate &&
-                            (() => {
-                              let present = 0;
-                              if (
-                                attendanceData.meetingAttendance &&
-                                Array.isArray(attendanceData.meetingAttendance)
-                              ) {
-                                const weeks = new Set();
-                                attendanceData.meetingAttendance.forEach(
-                                  (entry) => {
-                                    if (
-                                      entry.status === "Present" &&
-                                      entry.date
-                                    ) {
-                                      const d = new Date(entry.date);
-                                      if (!isNaN(d.getTime())) {
-                                        const day = d.getDay();
-                                        const diff =
-                                          d.getDate() -
-                                          day +
-                                          (day === 0 ? -6 : 1);
-                                        const monday = new Date(
-                                          new Date(d).setDate(diff),
-                                        );
-                                        weeks.add(
-                                          `${monday.getFullYear()}-${monday.getMonth()}-${monday.getDate()}`,
-                                        );
-                                      }
-                                    }
-                                  },
-                                );
-                                present = weeks.size;
-                              } else {
-                                present = attendanceData?.stats?.present ?? 0;
-                              }
-                              const start = new Date(intern.startDate);
-                              const end = intern.endDate
-                                ? new Date(intern.endDate)
-                                : null;
-                              const now = new Date();
-                              // Total weeks across the full internship duration (start date to end date)
-                              const measureTo = now;
-                              if (isNaN(start) || measureTo <= start)
-                                return null;
-                              const weeksHeld = Math.max(
-                                1,
-                                Math.ceil(
-                                  (measureTo - start) /
-                                    (1000 * 60 * 60 * 24 * 7),
-                                ),
-                              );
-                              const pct = Math.min(
-                                100,
-                                Math.round((present / weeksHeld) * 100),
-                              );
-                              const color =
-                                pct >= 80
-                                  ? "#22c55e"
-                                  : pct >= 50
-                                    ? "#f59e0b"
-                                    : "#ef4444";
-                              const textColor =
-                                pct >= 80
-                                  ? "text-emerald-600"
-                                  : pct >= 50
-                                    ? "text-amber-500"
-                                    : "text-red-500";
-                              return (
-                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
-                                      <FaChartPie className="text-slate-400" />{" "}
-                                      Meeting Attendance Rate
-                                    </p>
-                                    <span
-                                      className={`text-sm font-black ${textColor}`}
-                                    >
-                                      {pct}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div
-                                      className="h-2 rounded-full transition-all duration-700"
-                                      style={{
-                                        width: `${pct}%`,
-                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-slate-400 mt-1">
-                                    {present} weeks attended out of {weeksHeld}{" "}
-                                    weeks so far (1 meeting per week)
-                                  </p>
-                                </div>
-                              );
-                            })()}
+                          {/* Meeting Attendance Rate */}
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaChartPie className="text-slate-400" />{" "}
+                                  Meeting Attendance Rate
+                                </p>
+                                <span
+                                  className={`text-sm font-black ${
+                                    meetingAttendanceRate >= 80
+                                      ? "text-emerald-600"
+                                      : meetingAttendanceRate >= 50
+                                        ? "text-amber-500"
+                                        : "text-red-500"
+                                  }`}
+                                >
+                                  {meetingAttendanceRate}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${meetingAttendanceRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      meetingAttendanceRate >= 80
+                                        ? "#22c55e"
+                                        : meetingAttendanceRate >= 50
+                                          ? "#f59e0b"
+                                          : "#ef4444"
+                                    }, ${
+                                      meetingAttendanceRate >= 80
+                                        ? "#22c55ecc"
+                                        : meetingAttendanceRate >= 50
+                                          ? "#f59e0bcc"
+                                          : "#ef4444cc"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {attendedMeetingWeeksCount} weeks attended out of {elapsedWeeks} weeks elapsed (1 meeting per week)
+                              </p>
+                            </div>
+                          )}
 
                           {/* Daily Attendance Rate */}
-                          {attendanceData &&
-                            intern.startDate &&
-                            (() => {
-                              // attendanceData.dailyAttendance is already the authoritative merged list from backend:
-                              // It combines DailyRecord logbook submissions + FaceAttendanceLog face scans + intern.attendance daily entries
-                              // Each entry: { date, status: "Present"|"Late"|"Absent", ... }
-                              const toDayKey = (dateVal) => {
-                                const date = dateVal ? new Date(dateVal) : null;
-                                if (!date || isNaN(date.getTime())) return null;
-                                return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                              };
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaChartLine className="text-slate-400" />{" "}
+                                  Daily Attendance Rate
+                                </p>
+                                <span
+                                  className={`text-sm font-black ${
+                                    dailyAttendanceRate >= 80
+                                      ? "text-blue-500"
+                                      : dailyAttendanceRate >= 50
+                                        ? "text-purple-500"
+                                        : "text-pink-500"
+                                  }`}
+                                >
+                                  {dailyAttendanceRate}%
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${dailyAttendanceRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      dailyAttendanceRate >= 80
+                                        ? "#3b82f6"
+                                        : dailyAttendanceRate >= 50
+                                          ? "#8b5cf6"
+                                          : "#ec4899"
+                                    }, ${
+                                      dailyAttendanceRate >= 80
+                                        ? "#3b82f6cc"
+                                        : dailyAttendanceRate >= 50
+                                          ? "#8b5cf6cc"
+                                          : "#ec4899cc"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {attendedDaysCount} day{attendedDaysCount !== 1 ? "s" : ""} attended out of {workingDays} expected working days
+                              </p>
+                            </div>
+                          )}
 
-                              // Count unique days where intern was present (Present or Late counts as attended)
-                              const daysPresent = new Set(
-                                (attendanceData.dailyAttendance || [])
-                                  .filter((e) => {
-                                    const s = (e.status || "").toLowerCase();
-                                    return s === "present" || s === "late";
-                                  })
-                                  .map((e) => toDayKey(e.date))
-                                  .filter(Boolean),
-                              ).size;
-
-                              const start = new Date(intern.startDate);
-                              const end = intern.endDate
-                                ? new Date(intern.endDate)
-                                : null;
-                              const now = new Date();
-                              const measureTo = end && now > end ? end : now;
-                              if (isNaN(start.getTime()) || measureTo <= start) return null;
-
-                              // Count weekdays (Mon–Fri) from training start to today (or end date)
-                              let expectedDays = 0;
-                              let curDate = new Date(start);
-                              curDate.setHours(0, 0, 0, 0);
-                              const endCap = new Date(measureTo);
-                              endCap.setHours(0, 0, 0, 0);
-                              while (curDate <= endCap) {
-                                const day = curDate.getDay();
-                                if (day !== 0 && day !== 6) expectedDays++;
-                                curDate.setDate(curDate.getDate() + 1);
-                              }
-                              expectedDays = Math.max(1, expectedDays);
-
-                              const pct = Math.min(
-                                100,
-                                Math.round((daysPresent / expectedDays) * 100),
-                              );
-                              const color =
-                                pct >= 80
-                                  ? "#3b82f6"
-                                  : pct >= 50
-                                    ? "#8b5cf6"
-                                    : "#ec4899";
-                              const textColor =
-                                pct >= 80
-                                  ? "text-blue-500"
-                                  : pct >= 50
-                                    ? "text-purple-500"
-                                    : "text-pink-500";
-                              return (
-                                <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
-                                  <div className="flex items-center justify-between mb-1.5">
-                                    <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
-                                      <FaChartLine className="text-slate-400" />{" "}
-                                      Daily Attendance Rate
-                                    </p>
-                                    <span
-                                      className={`text-sm font-black ${textColor}`}
-                                    >
-                                      {pct}%
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                    <div
-                                      className="h-2 rounded-full transition-all duration-700"
-                                      style={{
-                                        width: `${pct}%`,
-                                        background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                                      }}
-                                    />
-                                  </div>
-                                  <p className="text-[10px] text-slate-400 mt-1">
-                                    {daysPresent} day{daysPresent !== 1 ? "s" : ""} attended out of {expectedDays} expected working days
-                                  </p>
+                          {/* Performance / Work Quality Rate */}
+                          {attendanceData && (
+                            <div className="sm:col-span-2 lg:col-span-4 pt-4 border-t border-slate-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 flex items-center gap-1.5">
+                                  <FaAward className="text-blue-500" />{" "}
+                                  Performance Rate
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                      performanceRate >= 80
+                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                        : performanceRate >= 60
+                                          ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                          : "bg-rose-50 text-rose-700 border border-rose-200"
+                                    }`}
+                                  >
+                                    {getPerformanceStatus(performanceRate)}
+                                  </span>
+                                  <span
+                                    className={`text-sm font-black ${
+                                      performanceRate >= 80
+                                        ? "text-emerald-600"
+                                        : performanceRate >= 60
+                                          ? "text-amber-600"
+                                          : "text-rose-600"
+                                    }`}
+                                  >
+                                    {performanceRate}%
+                                  </span>
                                 </div>
-                              );
-                            })()}
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="h-2 rounded-full transition-all duration-700"
+                                  style={{
+                                    width: `${performanceRate}%`,
+                                    background: `linear-gradient(90deg, ${
+                                      performanceRate >= 80
+                                        ? "#059669"
+                                        : performanceRate >= 60
+                                          ? "#d97706"
+                                          : "#dc2626"
+                                    }, ${
+                                      performanceRate >= 80
+                                        ? "#10b981"
+                                        : performanceRate >= 60
+                                          ? "#f59e0b"
+                                          : "#ef4444"
+                                    })`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "")
+                                  ? `Calculated from Logbooks (${logbookRate}%) and Meeting Attendance (${meetingAttendanceRate}%) for ${intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "Specialization"}`
+                                  : `Calculated from Logbooks (${logbookRate}%), Meeting Attendance (${meetingAttendanceRate}%), and GitHub Commit Balance (+${Math.max(0, commitsCount - workingDays)}% from ${commitsCount} commits / ${workingDays} working days)`}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </motion.div>
@@ -987,6 +1668,128 @@ const AdminInternDetails = () => {
                           <FaLayerGroup className="text-4xl mb-2 opacity-30" />
                           <p className="text-sm">
                             No project assignments synced from TalentTrail
+                          </p>
+                        </div>
+                      )}
+                    </motion.div>
+
+                    {/* University Supervisor Feedback Section */}
+                    <motion.div
+                      className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-100 p-4 sm:p-6 shadow-sm mt-4 sm:mt-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.85, duration: 0.3 }}
+                    >
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center">
+                          <FaGraduationCap className="mr-2 text-emerald-600" />
+                          University Supervisor Feedback
+                        </h3>
+                        {(internDetails?.universityFeedbacks || []).length > 0 && (
+                          <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {(internDetails?.universityFeedbacks || []).length} Feedback{(internDetails?.universityFeedbacks || []).length === 1 ? "" : "s"}
+                          </span>
+                        )}
+                      </div>
+
+                      {(internDetails?.universityFeedbacks || []).length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {internDetails.universityFeedbacks.map((fb, fi) => (
+                            <motion.div
+                              key={fb._id || fi}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: 0.05 * fi }}
+                              className="border border-slate-100 rounded-xl p-4 sm:p-5 bg-white shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-3 mb-2.5">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#50b748] to-[#00b4eb] text-white font-bold text-xs flex items-center justify-center shadow-sm shrink-0 overflow-hidden border border-slate-200">
+                                      {fb.picture || fb.supervisorPicture ? (
+                                        <img
+                                          src={fb.picture || fb.supervisorPicture}
+                                          alt={fb.supervisorName}
+                                          className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            e.target.style.display = "none";
+                                            if (e.target.nextSibling) e.target.nextSibling.style.display = "flex";
+                                          }}
+                                        />
+                                      ) : null}
+                                      <span style={{ display: fb.picture || fb.supervisorPicture ? "none" : "flex" }} className="w-full h-full items-center justify-center">
+                                        {(fb.supervisorName || "U")[0].toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <div className="font-bold text-slate-800 text-sm leading-tight">
+                                        {fb.supervisorName}
+                                      </div>
+                                      <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1 mt-0.5">
+                                        <FaBuilding className="text-[10px]" />
+                                        <span>{fb.universityName || intern.institute || "University"}</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Rating */}
+                                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 shrink-0">
+                                    <div className="flex">
+                                      {[1, 2, 3, 4, 5].map((s) => (
+                                        <FaStar
+                                          key={s}
+                                          className={`text-[10px] ${s <= (fb.rating || 5) ? "text-amber-400" : "text-slate-200"}`}
+                                        />
+                                      ))}
+                                    </div>
+                                    <span className="text-[11px] font-extrabold text-amber-700 ml-0.5">
+                                      {fb.rating || 5}.0
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Comment */}
+                                <div className="relative pl-3 border-l-2 border-emerald-400 my-2.5">
+                                  <p className="text-xs text-slate-600 leading-relaxed italic">
+                                    "{fb.comment}"
+                                  </p>
+                                </div>
+
+                                {/* Tags */}
+                                {Array.isArray(fb.tags) && fb.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 mt-2">
+                                    {fb.tags.map((tag, ti) => (
+                                      <span
+                                        key={ti}
+                                        className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60"
+                                      >
+                                        #{tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                                <span className="flex items-center gap-1">
+                                  <FaCalendarAlt className="text-[9px]" />
+                                  {fb.createdAt ? formatDate(fb.createdAt) : "Recent"}
+                                </span>
+                                {fb.supervisorEmail && (
+                                  <span className="truncate max-w-[150px]">{fb.supervisorEmail}</span>
+                                )}
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                          <FaGraduationCap className="text-3xl mb-2 text-slate-300" />
+                          <p className="text-xs font-medium text-slate-600">
+                            No university supervisor feedback recorded yet
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">
+                            Evaluations and comments submitted via the University Portal will be visible here.
                           </p>
                         </div>
                       )}
@@ -2366,6 +3169,852 @@ const AdminInternDetails = () => {
                       </>
                     );
                   })()}
+
+                {/* ══ DETAILS TAB ══ */}
+                {activeTab === "details" && (() => {
+                  const dailyList = attendanceData?.dailyAttendance || [];
+                  const meetingList = attendanceData?.meetingAttendance || [];
+                  const logbookList = internDetails?.records || [];
+
+                  // Use direct collection counts from backend (most accurate)
+                  const totalDailyCount = recordCounts?.totalDailyAttendance ?? dailyList.length;
+                  const totalMeetingCount = recordCounts?.totalMeetingAttendance ?? meetingList.length;
+                  const totalLogbookCount = recordCounts?.totalLogbook ?? logbookList.length;
+
+                  // ── Working-day filtered counts (Mon–Fri, excl. Sri Lanka holidays) ──
+                  const holidaySet = new Set(
+                    (holidays || []).map((h) => (typeof h === "string" ? h : h.date))
+                  );
+                  const isWorkingDay = (dateVal) => {
+                    if (!dateVal) return false;
+                    const dStr = toDateStr(dateVal);
+                    if (!dStr) return false;
+                    const dow = new Date(dStr + "T12:00:00Z").getUTCDay();
+                    return dow !== 0 && dow !== 6 && !holidaySet.has(dStr);
+                  };
+
+                  const startDateVal = intern?.startDate || intern?.Training_StartDate;
+                  const startDStr = toDateStr(startDateVal);
+                  const todayDStr = toDateStr(new Date());
+                  const startMonKey = getMondayWeekKey(startDateVal);
+                  const todayMonKey = getMondayWeekKey(new Date());
+
+                  // Working-day daily attendance count (unique dates, present only, strictly start date -> today)
+                  const workingDayDailyCount = new Set(
+                    dailyList
+                      .filter((e) => {
+                        const s = (e.status || "").toLowerCase();
+                        const isPresent = s === "present" || s === "late" || !e.status;
+                        if (!isPresent || !e.date) return false;
+                        const dStr = toDateStr(e.date);
+                        if (!dStr) return false;
+                        if (startDStr && dStr < startDStr) return false;
+                        if (todayDStr && dStr > todayDStr) return false;
+                        return isWorkingDay(e.date);
+                      })
+                      .map((e) => toDateStr(e.date))
+                      .filter(Boolean)
+                  ).size;
+
+                  // Working-day meeting attendance count (unique week keys on working days, strictly start week -> today)
+                  const workingDayMeetingCount = new Set(
+                    meetingList
+                      .filter((e) => {
+                        const s = (e.status || "").toLowerCase();
+                        const isPresent = s === "present" || s === "late" || !e.status;
+                        if (!isPresent || !e.date || !isWorkingDay(e.date)) return false;
+                        const wKey = getMondayWeekKey(e.date);
+                        if (!wKey) return false;
+                        if (startMonKey && wKey < startMonKey) return false;
+                        if (todayMonKey && wKey >= todayMonKey) return false;
+                        return true;
+                      })
+                      .map((e) => getMondayWeekKey(e.date))
+                      .filter(Boolean)
+                  ).size;
+
+                  // Working-day logbook count (excluding leave/study_leave, strictly start date -> today)
+                  const workingDayLogbookCount = logbookList.filter((r) => {
+                    const status = (r.recordStatus || r.status || "working").toLowerCase();
+                    if (status === "leave" || status === "study_leave" || !r.date) return false;
+                    const dStr = toDateStr(r.date);
+                    if (!dStr) return false;
+                    if (startDStr && dStr < startDStr) return false;
+                    if (todayDStr && dStr > todayDStr) return false;
+                    return isWorkingDay(r.date);
+                  }).length;
+
+                  const totalDailyPresent = dailyList.filter(
+                    (e) => (e.status || "").toLowerCase() === "present" || !e.status
+                  ).length;
+
+                  const totalMeetingPresent = meetingList.filter(
+                    (e) => (e.status || "").toLowerCase() === "present" || !e.status
+                  ).length;
+
+                  // Breakdowns
+                  const qrCount = dailyList.filter((e) =>
+                    ["daily_qr", "qr"].includes(String(e.rawType || e.type || e.markType || "").toLowerCase())
+                  ).length;
+                  const faceCount = dailyList.filter((e) =>
+                    ["face"].includes(String(e.rawType || e.type || e.markType || "").toLowerCase())
+                  ).length;
+                  const manualDailyCount = dailyList.filter((e) =>
+                    String(e.rawType || e.type || e.markType || "").toLowerCase().includes("manual")
+                  ).length;
+                  const otherDailyCount = Math.max(0, totalDailyCount - qrCount - faceCount - manualDailyCount);
+
+                  const workingRecords = logbookList.filter(
+                    (r) => (r.status || "working").toLowerCase() === "working"
+                  ).length;
+                  const wfhRecords = logbookList.filter(
+                    (r) => (r.status || "").toLowerCase() === "wfh"
+                  ).length;
+                  const leaveRecords = logbookList.filter((r) => {
+                    const st = (r.status || "").toLowerCase();
+                    return st === "leave" || st === "study_leave";
+                  }).length;
+
+                  // ── Working-day missing daily attendance, logbook & meeting weeks ──
+                  const missingDailyDates = [];
+                  const missingLogbookDates = [];
+                  const missingMeetingWeeks = [];
+                  const expectedMeetingWeekKeys = [];
+
+                  if (startDateVal) {
+                    const start = new Date(startDateVal);
+                    const today = new Date();
+                    start.setHours(0, 0, 0, 0);
+                    today.setHours(0, 0, 0, 0);
+
+                    // 1. Set of dates with daily attendance marked as present
+                    const presentDailySet = new Set(
+                      dailyList
+                        .filter((e) => {
+                          const s = (e.status || "").toLowerCase();
+                          return s === "present" || s === "late" || !e.status;
+                        })
+                        .map((e) => toDateStr(e.date))
+                        .filter(Boolean)
+                    );
+
+                    // 2. Set of dates with submitted logbook record (excluding leave / study_leave)
+                    const submittedLogbookSet = new Set(
+                      logbookList
+                        .filter((r) => {
+                          const s = (r.recordStatus || r.status || "working").toLowerCase();
+                          return s !== "leave" && s !== "study_leave" && r.date;
+                        })
+                        .map((r) => toDateStr(r.date))
+                        .filter(Boolean)
+                    );
+
+                    // Day-by-day iteration for daily attendance and logbooks
+                    const cur = new Date(start);
+                    while (cur <= today) {
+                      const y = cur.getFullYear();
+                      const m = String(cur.getMonth() + 1).padStart(2, "0");
+                      const d = String(cur.getDate()).padStart(2, "0");
+                      const dStr = `${y}-${m}-${d}`;
+                      const dow = cur.getDay(); // 0 = Sun, 6 = Sat
+
+                      if (dow !== 0 && dow !== 6 && !holidaySet.has(dStr)) {
+                        if (!presentDailySet.has(dStr)) {
+                          missingDailyDates.push(dStr);
+                        }
+                        if (!submittedLogbookSet.has(dStr)) {
+                          missingLogbookDates.push(dStr);
+                        }
+                      }
+                      cur.setDate(cur.getDate() + 1);
+                    }
+
+                    // 3. Set of attended meeting week keys (strictly on or after start week)
+                    const attendedMeetingWeekSet = new Set(
+                      meetingList
+                        .filter((e) => {
+                          const s = (e.status || "").toLowerCase();
+                          const isPresent = s === "present" || s === "late" || !e.status;
+                          if (!isPresent || !e.date) return false;
+                          const wKey = getMondayWeekKey(e.date);
+                          if (!wKey) return false;
+                          if (startMonKey && wKey < startMonKey) return false;
+                          if (todayMonKey && wKey >= todayMonKey) return false;
+                          return true;
+                        })
+                        .map((e) => getMondayWeekKey(e.date))
+                        .filter(Boolean)
+                    );
+
+                    // Monday-by-Monday calendar week iteration for completed weeks up to current week
+                    if (startMonKey && todayMonKey) {
+                      let weekCursor = new Date(startMonKey + "T12:00:00Z");
+                      const endMondayDate = new Date(todayMonKey + "T12:00:00Z");
+
+                      while (weekCursor < endMondayDate) {
+                        const wKey = getMondayWeekKey(weekCursor);
+                        if (wKey) {
+                          expectedMeetingWeekKeys.push(wKey);
+                          if (!attendedMeetingWeekSet.has(wKey)) {
+                            const mon = new Date(weekCursor);
+                            const fri = new Date(weekCursor);
+                            fri.setUTCDate(fri.getUTCDate() + 4);
+                            missingMeetingWeeks.push({
+                              weekKey: wKey,
+                              monday: mon,
+                              friday: fri,
+                            });
+                          }
+                        }
+                        weekCursor.setUTCDate(weekCursor.getUTCDate() + 7);
+                      }
+                    }
+                  }
+
+                  const totalExpectedMeetingWeeks = expectedMeetingWeekKeys.length;
+                  const effectiveMeetingRate = calcMeetingAttendanceRate(
+                    attendedMeetingWeeksCount,
+                    totalExpectedMeetingWeeks
+                  );
+
+                  missingDailyDates.sort((a, b) => new Date(b) - new Date(a));
+                  missingLogbookDates.sort((a, b) => new Date(b) - new Date(a));
+                  missingMeetingWeeks.sort((a, b) => new Date(b.monday) - new Date(a.monday));
+
+                  const formattedStartDate = startDateVal
+                    ? new Date(startDateVal).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "";
+
+                  return (
+                    <div className="space-y-6">
+                      {/* Section Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div>
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-900">
+                            Intern Attendance & Record Details
+                          </h3>
+                          <p className="text-xs sm:text-sm text-gray-500">
+                            Summary of all recorded submissions and working-day performance metrics for {intern?.traineeName} ({intern?.traineeId})
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 5 Main Total Metric Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        {/* 1. Daily Attendance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaCalendarCheck size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaCalendarCheck className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-blue-100">
+                                Daily Attendance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {dailyAttendanceRate}%
+                            </h4>
+                            <p className="text-[11px] text-blue-100 mb-3">
+                              Daily Attendance Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalDailyCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Valid submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayDailyCount} days
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-blue-100">Working Days:</span>
+                              <span className="font-semibold text-white">
+                                {workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-blue-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Working Days) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 2. Meeting Attendance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-purple-500 to-indigo-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaUsers size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaUsers className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-purple-100">
+                                Meeting Attendance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {effectiveMeetingRate}%
+                            </h4>
+                            <p className="text-[11px] text-purple-100 mb-3">
+                              Meeting Attendance Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalMeetingCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Valid Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayMeetingCount} weeks
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-purple-100">Expected Meetings:</span>
+                              <span className="font-semibold text-white">
+                                {totalExpectedMeetingWeeks} weeks
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-purple-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Expected Meetings) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 3. Logbook Records */}
+                        <motion.div
+                          className="bg-gradient-to-br from-emerald-500 to-teal-700 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaClipboardList size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaClipboardList className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-emerald-100">
+                                Logbook Records
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {logbookRate}%
+                            </h4>
+                            <p className="text-[11px] text-emerald-100 mb-3">
+                              Logbook Submission Rate
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Total Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {totalLogbookCount}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Valid Submissions:</span>
+                              <span className="font-semibold text-white">
+                                {workingDayLogbookCount} entries
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-emerald-100">Working Days:</span>
+                              <span className="font-semibold text-white">
+                                {workingDays} days
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-emerald-200/80 leading-relaxed font-mono italic">
+                              Formula: (Valid Submissions / Working Days) × 100
+                            </p>
+                          </div>
+                        </motion.div>
+
+                        {/* 4. Git Commits */}
+                        {!isNoCommitSpecialization(intern?.field_of_spec_name || intern?.fieldOfSpecialization || intern?.specialization || "") && (
+                          <motion.div
+                            className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                            whileHover={{ y: -3 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="absolute right-2 top-2 opacity-10">
+                              <FaCodeBranch size={80} />
+                            </div>
+                            <div className="relative z-10">
+                              <div className="flex items-center gap-2 mb-3">
+                                <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                  <FaCodeBranch className="text-white text-base" />
+                                </span>
+                                <span className="text-xs font-bold tracking-wider uppercase text-amber-100">
+                                  Git Commits
+                                </span>
+                              </div>
+                              <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                                {commitsCount}
+                              </h4>
+                              <p className="text-[11px] text-amber-100 mb-3">
+                                Total repository commits recorded
+                              </p>
+                            </div>
+                            <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Tracked Commits:</span>
+                                <span className="font-semibold text-white">
+                                  {commitsCount} commits
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Working Days:</span>
+                                <span className="font-semibold text-white">
+                                  {workingDays} days
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-amber-100">Projects:</span>
+                                <span className="font-semibold text-white">
+                                  {projectsCount} project{projectsCount !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            </div>
+                          </motion.div>
+                        )}
+
+                        {/* 5. Overall Performance */}
+                        <motion.div
+                          className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg relative overflow-hidden flex flex-col justify-between"
+                          whileHover={{ y: -3 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <div className="absolute right-2 top-2 opacity-10">
+                            <FaAward size={80} />
+                          </div>
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-2 mb-3">
+                              <span className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                <FaAward className="text-white text-base" />
+                              </span>
+                              <span className="text-xs font-bold tracking-wider uppercase text-rose-100">
+                                Performance
+                              </span>
+                            </div>
+                            <h4 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1">
+                              {performanceRate}%
+                            </h4>
+                            <p className="text-[11px] text-rose-100 mb-3">
+                              Composite performance score
+                            </p>
+                          </div>
+                          <div className="relative z-10 pt-3 border-t border-white/20 space-y-1.5 text-xs">
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Status:</span>
+                              <span className="font-semibold text-white">
+                                {getPerformanceStatus(performanceRate)}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Quality Score:</span>
+                              <span className="font-semibold text-white">
+                                {workQualityRate}%
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-rose-100">Evaluation:</span>
+                              <span className="font-semibold text-white">
+                                {performanceRate >= 80 ? "Good" : performanceRate >= 60 ? "Average" : "Needs Attention"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-white/20">
+                            <p className="text-[10px] text-rose-200/80 leading-relaxed font-mono italic">
+                              {isNoCommitSpecialization(intern?.field_of_spec_name || intern?.specialization || intern?.fieldOfSpecialization || "")
+                                ? "Formula: (Meeting Attendance Rate + Logbook Rate) / 2"
+                                : "Formula: (Meeting Attendance Rate + Logbook Rate) / 2 + max(0, Commits Count - Working Days)"}
+                            </p>
+                          </div>
+                        </motion.div>
+                      </div>
+
+                      {/* ══ NOT SUBMITTED DATES & WEEKS HUB (Before Daily Attendance Types) ══ */}
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm">
+                          <div>
+                            <h4 className="text-base sm:text-lg font-bold text-gray-900 flex items-center gap-2">
+                              <FaExclamationTriangle className="text-amber-500" />
+                              Missing Submissions & Pending Records
+                            </h4>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                              Unrecorded working days and missed weekly meeting sessions between internship start date and current date
+                            </p>
+                          </div>
+
+                          {/* ── Export Missing Records PDF Button ── */}
+                          <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            type="button"
+                            onClick={() =>
+                              handleExportMissingRecordsPDF({
+                                intern,
+                                dailyAttendanceRate,
+                                meetingAttendanceRate,
+                                performanceRate,
+                                missingDailyDates,
+                                missingLogbookDates,
+                                missingMeetingWeeks,
+                                startDateVal,
+                                formattedStartDate,
+                                workingDays,
+                                elapsedWeeks,
+                              })
+                            }
+                            disabled={isExportingPDF}
+                            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#000066] to-[#006600] hover:from-[#000088] hover:to-[#008800] active:scale-95 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shrink-0"
+                            title="Export clean PDF report with profile, rates, and detailed missing submissions breakdown"
+                          >
+                            <FaFilePdf className="text-sm text-rose-300" />
+                            <span>{isExportingPDF ? "Generating PDF..." : "Export PDF"}</span>
+                          </motion.button>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                          {/* 1. Missing Daily Attendance */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                                    <FaCalendarCheck className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missing Daily Attendance
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Working days without check-in</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingDailyDates.length > 0
+                                      ? "bg-red-50 text-red-700 border border-red-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingDailyDates.length} {missingDailyDates.length === 1 ? "Day" : "Days"}
+                                </span>
+                              </div>
+
+                              {missingDailyDates.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All working day daily check-ins completed!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingDailyDates.map((dateStr) => {
+                                    const dObj = new Date(dateStr + "T12:00:00Z");
+                                    const dayName = dObj.toLocaleDateString("en-US", { weekday: "short" });
+                                    const formatted = dObj.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={dateStr}
+                                        className="flex items-center justify-between p-2 bg-red-50/70 hover:bg-red-100/70 text-red-900 border border-red-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{formatted}</span>
+                                        <span className="text-[11px] text-red-600 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          {dayName}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Excludes weekends and Sri Lanka public holidays
+                            </p>
+                          </div>
+
+                          {/* 2. Missing Logbook Submissions */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                                    <FaClipboardList className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missing Logbook Entries
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Working days without logbook</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingLogbookDates.length > 0
+                                      ? "bg-amber-50 text-amber-700 border border-amber-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingLogbookDates.length} {missingLogbookDates.length === 1 ? "Day" : "Days"}
+                                </span>
+                              </div>
+
+                              {missingLogbookDates.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All working day logbook submissions completed!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingLogbookDates.map((dateStr) => {
+                                    const dObj = new Date(dateStr + "T12:00:00Z");
+                                    const dayName = dObj.toLocaleDateString("en-US", { weekday: "short" });
+                                    const formatted = dObj.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={dateStr}
+                                        className="flex items-center justify-between p-2 bg-amber-50/70 hover:bg-amber-100/70 text-amber-900 border border-amber-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{formatted}</span>
+                                        <span className="text-[11px] text-amber-700 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          {dayName}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Excludes weekends, holidays & approved leaves
+                            </p>
+                          </div>
+
+                          {/* 3. Missed Meeting Weeks */}
+                          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                            <div>
+                              <div className="flex items-center justify-between pb-3 mb-3 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  <span className="p-2 rounded-xl bg-purple-50 text-purple-600">
+                                    <FaUsers className="text-sm" />
+                                  </span>
+                                  <div>
+                                    <h5 className="text-xs font-bold text-gray-900">
+                                      Missed Meeting Weeks
+                                    </h5>
+                                    <p className="text-[10px] text-gray-500">Weeks without meeting attendance</p>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                                    missingMeetingWeeks.length > 0
+                                      ? "bg-purple-50 text-purple-700 border border-purple-200"
+                                      : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                  }`}
+                                >
+                                  {missingMeetingWeeks.length} {missingMeetingWeeks.length === 1 ? "Week" : "Weeks"}
+                                </span>
+                              </div>
+
+                              {missingMeetingWeeks.length === 0 ? (
+                                <div className="flex items-center gap-2 p-3 bg-emerald-50 text-emerald-800 rounded-xl text-xs font-medium border border-emerald-100">
+                                  <FaCheckCircle className="text-emerald-600 text-sm flex-shrink-0" />
+                                  <span>All weekly meetings attended!</span>
+                                </div>
+                              ) : (
+                                <div className="space-y-1 max-h-52 overflow-y-auto pr-1">
+                                  {missingMeetingWeeks.map((item) => {
+                                    const monStr = item.monday.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                    });
+                                    const friStr = item.friday.toLocaleDateString("en-US", {
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                    });
+                                    return (
+                                      <div
+                                        key={item.weekKey}
+                                        className="flex items-center justify-between p-2 bg-purple-50/70 hover:bg-purple-100/70 text-purple-900 border border-purple-100 rounded-xl text-xs transition-colors"
+                                      >
+                                        <span className="font-semibold">{monStr} – {friStr}</span>
+                                        <span className="text-[11px] text-purple-700 font-medium px-2 py-0.5 bg-white/70 rounded-md">
+                                          Week {item.weekKey.split("-W")[1] || ""}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 mt-3 pt-2 border-t border-gray-100">
+                              * Expected minimum 1 meeting session per calendar week
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed Breakdown Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+                        {/* Daily Attendance Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaCalendarCheck className="text-blue-500" />
+                              Daily Attendance Types
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">
+                              {totalDailyCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                QR Scans
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{qrCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                                Biometric Face
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{faceCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                Admin Manual Marks
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{manualDailyCount}</span>
+                            </div>
+                            {otherDailyCount > 0 && (
+                              <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                                <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                  Logbook / Direct
+                                </span>
+                                <span className="text-xs font-bold text-gray-900">{otherDailyCount}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Meeting Attendance Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaUsers className="text-purple-500" />
+                              Meeting Attendance
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full">
+                              {totalMeetingCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Present Marks</span>
+                              <span className="text-xs font-bold text-emerald-600">{totalMeetingPresent}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Distinct Meeting Weeks</span>
+                              <span className="text-xs font-bold text-purple-600">{attendedMeetingWeeksCount}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700">Expected Weeks</span>
+                              <span className="text-xs font-bold text-gray-900">{elapsedWeeks}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Logbook Breakdown Card */}
+                        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                              <FaClipboardList className="text-emerald-500" />
+                              Logbook Submissions
+                            </h4>
+                            <span className="text-xs font-semibold px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-full">
+                              {totalLogbookCount} Total
+                            </span>
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                Office Working
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{workingRecords}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                Work From Home
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{wfhRecords}</span>
+                            </div>
+                            <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl">
+                              <span className="text-xs font-medium text-gray-700 flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                Leave / Study Leave
+                              </span>
+                              <span className="text-xs font-bold text-gray-900">{leaveRecords}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* ══ PREVIEW TAB (Intern-Side Portal Preview using Dashboard.jsx) ══ */}
+                {activeTab === "preview" && (
+                  <div className="rounded-2xl overflow-hidden border border-gray-200 bg-[#f8fafc] shadow-sm">
+                    <Dashboard previewInternId={internId} isPreview={true} />
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           </div>

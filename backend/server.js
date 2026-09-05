@@ -13,6 +13,9 @@ const SLTApiScheduler = require("./services/sltApiScheduler");
 const { initScheduler } = require("./services/shortLeaveSchedulerService");
 const { startTalentTrailSyncJob } = require("./services/talentTrailSyncJob");
 const { initSeatBookingScheduler } = require("./services/seatBookingSchedulerService");
+const AutoCheckoutScheduler = require("./services/autoCheckoutScheduler");
+const StudyLeaveDailyNotifier = require("./services/studyLeaveDailyNotifier");
+const PendingExtendedLeaveNotifier = require("./services/pendingExtendedLeaveNotifier");
 
 connectDB();
 
@@ -53,9 +56,18 @@ const server = app.listen(PORT, () => {
 
   // Initialize daily 4 PM approved leave report scheduler
   initScheduler();
+  
+  // Initialize daily 9 AM pending extended leave notifier
+  PendingExtendedLeaveNotifier.init();
 
   // Initialize daily 4:30 PM seat booking expiration scheduler
   initSeatBookingScheduler();
+
+  // Initialize daily 4:30 PM auto-checkout scheduler
+  AutoCheckoutScheduler.init();
+
+  // Initialize daily 8:00 AM study leave reminder
+  StudyLeaveDailyNotifier.start();
 
   // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
   console.log("⏳ Starting TalentTrail sync job...");

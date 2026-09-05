@@ -67,17 +67,22 @@ const verifyFaceAttendance = async (req, res) => {
         attendanceAction = "check_in",
       } = req.body;
 
-      // Allow `internId` to be provided from body/params when the mobile client
-      // doesn't have a login flow. Resolve string trainee IDs to ObjectId when possible.
+      // Enforce 1-to-1 matching: internId MUST be provided
       const expectedInternIdRaw = resolveInternId(req);
+      if (!expectedInternIdRaw) {
+        return res.status(401).json({ message: "Authentication required. Please log in to mark attendance." });
+      }
+
       let expectedInternId = null;
-      if (expectedInternIdRaw) {
-        if (mongoose.Types.ObjectId.isValid(expectedInternIdRaw)) {
-          expectedInternId = expectedInternIdRaw;
-        } else {
-          const internRecord = await Intern.findOne({ Trainee_ID: expectedInternIdRaw });
-          if (internRecord) expectedInternId = internRecord._id;
-        }
+      if (mongoose.Types.ObjectId.isValid(expectedInternIdRaw)) {
+        expectedInternId = expectedInternIdRaw;
+      } else {
+        const internRecord = await Intern.findOne({ Trainee_ID: expectedInternIdRaw });
+        if (internRecord) expectedInternId = internRecord._id;
+      }
+
+      if (!expectedInternId) {
+         return res.status(404).json({ message: "Intern record not found." });
       }
 
       // Ensure metadata carries the submitted intern identifier for logging/debugging
@@ -102,7 +107,6 @@ const verifyFaceAttendance = async (req, res) => {
         profile_missing: "No active face profile found. Please enroll your face first.",
         profile_has_no_embeddings: "Your face profile is incomplete. Please re-enroll your face.",
         face_not_recognized: "Face did not match your registered profile. Try again with better lighting or re-enroll your face.",
-        face_match_ambiguous: "The face match was uncertain. Ensure only you are visible and try again.",
       };
 
       return res.status(404).json({
@@ -417,7 +421,6 @@ const scanInternFaceByAdmin = async (req, res) => {
         profile_missing: "No active face profile found.",
         profile_has_no_embeddings: "The intern's face profile is incomplete. Please have them re-enroll.",
         face_not_recognized: "Face did not match the registered profile for this intern. Try again with better lighting.",
-        face_match_ambiguous: "The face match was uncertain. Ensure only the selected intern is visible and try again.",
       };
 
       return res.status(404).json({

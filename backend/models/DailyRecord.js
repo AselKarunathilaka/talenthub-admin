@@ -24,6 +24,8 @@ const DailyRecordSchema = new mongoose.Schema(
     },
     traineeId: {
       type: String,
+      trim: true,
+      index: true,
     },
     date: {
       type: String,
@@ -75,6 +77,10 @@ const DailyRecordSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isAutoCheckout: {
+      type: Boolean,
+      default: false,
+    },
     meetingAttendance: {
       type: [MeetingAttendanceSchema],
       default: [],
@@ -89,5 +95,21 @@ const DailyRecordSchema = new mongoose.Schema(
 DailyRecordSchema.index({ internId: 1, date: 1 }, { unique: true });
 DailyRecordSchema.index({ internId: 1, createdAt: -1 });
 DailyRecordSchema.index({ createdAt: -1 }); // Standalone index for fast date range queries
+
+// Automatically populate traineeId from Intern if not provided
+DailyRecordSchema.pre("save", async function (next) {
+  if (!this.traineeId && this.internId) {
+    try {
+      const Intern = mongoose.model("Intern");
+      const intern = await Intern.findById(this.internId).select("Trainee_ID traineeId");
+      if (intern) {
+        this.traineeId = intern.Trainee_ID || intern.traineeId || "";
+      }
+    } catch (err) {
+      // Continue even if lookup fails
+    }
+  }
+  next();
+});
 
 module.exports = mongoose.model("DailyRecord", DailyRecordSchema);

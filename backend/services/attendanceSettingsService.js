@@ -114,7 +114,7 @@ function validateLocationEvidence({ lat, lng, accuracy, capturedAt, label = "Att
     throw error;
   }
 
-  if (!Number.isFinite(capturedAtDate.getTime()) || ageMs < -30000 || ageMs > MAX_LOCATION_AGE_MS) {
+  if (!Number.isFinite(capturedAtDate.getTime()) || ageMs < -300000 || ageMs > MAX_LOCATION_AGE_MS) {
     const error = new Error("Your location reading is stale. Refresh your location and try again.");
     error.statusCode = 400;
     error.locationRequired = true;
