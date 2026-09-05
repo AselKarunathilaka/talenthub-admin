@@ -17,6 +17,7 @@ import {
   Maximize2,
   Minimize2,
   Shield,
+  Building2,
 } from "lucide-react";
 import { api } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
@@ -382,7 +383,7 @@ const Login = () => {
                   {/* Admin Login */}
                   <button
                     onClick={() => navigate("/admin-login")}
-                    className="w-full flex items-center justify-center gap-2 px-3.5 py-3.5 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    className="w-full flex items-center justify-center gap-2 px-3.5 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group mb-2"
                     style={{
                       background: "rgba(255,255,255,0.04)",
                       border: "1px solid rgba(255,255,255,0.08)",
@@ -403,6 +404,34 @@ const Login = () => {
                     <Shield className="h-4 w-4 text-[#00b4eb] group-hover:text-[#00b4eb]" />
                     <span className="text-white/70 group-hover:text-white">
                       Login as Admin
+                    </span>
+                    <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
+                  </button>
+
+                  {/* University Login */}
+                  <button
+                    onClick={() => navigate("/university-login")}
+                    className="w-full flex items-center justify-center gap-2 px-3.5 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 cursor-pointer group"
+                    style={{
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.08)",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(80,183,72,0.15)";
+                      e.currentTarget.style.borderColor =
+                        "rgba(80,183,72,0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background =
+                        "rgba(255,255,255,0.04)";
+                      e.currentTarget.style.borderColor =
+                        "rgba(255,255,255,0.08)";
+                    }}
+                  >
+                    <Building2 className="h-4 w-4 text-[#50b748] group-hover:text-[#50b748]" />
+                    <span className="text-white/70 group-hover:text-white">
+                      Login as University
                     </span>
                     <ArrowRight className="h-3.5 w-3.5 text-white/30 group-hover:text-white/60 ml-auto transition-transform group-hover:translate-x-0.5" />
                   </button>

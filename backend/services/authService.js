@@ -51,27 +51,11 @@ class AuthService {
   // Admin Login
   async login(email, password) {
     const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
-    const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
-    const projectAdminEmail = String(process.env.PROJECT_ADMIN_EMAIL || "").trim().toLowerCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const isDeveloper = normalizedEmail === developerEmail;
-    const isTestingAdmin = Boolean(testingAdminEmail) && normalizedEmail === testingAdminEmail;
-    const isProjectAdmin = Boolean(projectAdminEmail) && normalizedEmail === projectAdminEmail;
-    if (!isDeveloper && !isTestingAdmin && !isProjectAdmin) {
-      return { error: "Email/password login is not enabled for this account." };
-    }
 
     const user = await UserRepository.findByEmail(normalizedEmail);
     if (!user || !user.password) return { error: "Invalid email or password" };
-    if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
-      return { error: "Testing admin has not been securely provisioned." };
-    }
-    // Permit the configured legacy project administrator to use the password
-    // already stored on the account. A successful login below normalizes the
-    // provider to developer_password without replacing that password.
-    if (isProjectAdmin && user.role !== "admin") {
-      return { error: "Project administrator has not been securely provisioned." };
-    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -81,17 +65,14 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : (user.role || "admin");
     user.authProvider = "developer_password";
-    if (isDeveloper) {
-      user.permissions = permissionsForRole("super_admin");
-    } else {
-      const defaultPermissions = isTestingAdmin
-        ? permissionsForRole("admin").filter((permission) => permission !== "users.manage")
-        : permissionsForRole("admin");
-      user.permissions = permissionsForUser(
+    user.permissions = isDeveloper
+      ? permissionsForRole("super_admin")
+      : permissionsForUser(
         user,
-        user.permissions?.length ? user.permissions : defaultPermissions,
+        user.permissions?.length
+          ? user.permissions
+          : permissionsForRole(user.role).filter((permission) => permission !== "users.manage"),
       );
-    }
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);
@@ -236,7 +217,21 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
+      message: "Login successful!",
+    };
   }
 
   async internLogin(email, password) {
@@ -266,7 +261,21 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
+      message: "Login successful!",
+    };
   }
 
   // Gate Staff Login

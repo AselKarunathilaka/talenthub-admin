@@ -11,6 +11,8 @@ const {
   findExplicitAuditCheckout,
   normalizeAttendanceAction,
 } = require("../utils/attendancePolicy");
+const { recordDailyAttendance } = require("./dailyAttendanceLogService");
+const { recordMeetingAttendance } = require("./meetingAttendanceLogService");
 
 const DAILY_ATTENDANCE_TYPES = ["daily_qr", "face"];
 const MEETING_ATTENDANCE_TYPES = ["qr", "face_meeting", "meeting"];
@@ -182,7 +184,10 @@ const markDailyAttendance = async ({
               // on checkout scans, and checkout has its own checkOutTime field.
               attendanceTime:
                 existingDailyRecord.attendanceTime || attendanceTime,
-              traineeId: intern.Trainee_ID,
+              traineeId:
+                intern.Trainee_ID ||
+                intern.traineeId ||
+                existingDailyRecord.traineeId,
             },
           },
           { session },
@@ -374,6 +379,35 @@ const markDailyAttendance = async ({
     }
   }
 
+  // ── Write to dedicated daily attendance log collection ─────────────────────
+  if (dailyAttendanceMarked || checkedOut) {
+    recordDailyAttendance({
+      internId,
+      traineeId: intern.Trainee_ID || intern.traineeId || "",
+      traineeName: intern.Trainee_Name || "",
+      date: today,
+      attendanceTime,
+      markType: method,
+      status: "present",
+      isCheckout: checkedOut,
+      checkOutTime: checkedOut ? attendanceTime : null,
+      sessionId: sessionId || null,
+      source: method === "face" ? "face" : "qr",
+    });
+  }
+
+  let showCheckoutReminder = false;
+  if (!checkedOut) {
+    const previousRecord = await DailyRecord.findOne({
+      internId,
+      date: { $lt: today }
+    }).sort({ date: -1 }).lean();
+    
+    if (previousRecord && previousRecord.isAutoCheckout) {
+      showCheckoutReminder = true;
+    }
+  }
+
   return {
     success: true,
     intern,
@@ -381,6 +415,7 @@ const markDailyAttendance = async ({
     type: method,
     checkedOut,
     dailyAttendanceMarked,
+    showCheckoutReminder,
   };
 };
 
@@ -642,6 +677,22 @@ const markMeetingAttendance = async ({
     endpoint: syncEndpoint,
     sessionId: sessionId || meetingSessionId,
     traineeId: intern.Trainee_ID,
+  });
+
+  // ── Write to dedicated meeting attendance collection ─────────────────────
+  recordMeetingAttendance({
+    internId,
+    traineeId: intern.Trainee_ID || intern.traineeId || "",
+    traineeName: intern.Trainee_Name || "",
+    date: today,
+    attendanceTime,
+    markType: method,
+    projectName: normalizedProjectName,
+    meetingTitle: normalizedProjectName,
+    projectKey,
+    status: "present",
+    sessionId: sessionId || meetingSessionId || null,
+    source: method === "face_meeting" ? "face" : "qr",
   });
 
   let dailyAttendanceMarked = false;

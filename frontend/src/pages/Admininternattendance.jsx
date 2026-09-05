@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { ScanLine } from "lucide-react";
+import SecurityPinModal from "../components/SecurityPinModal";
 import {
   FaArrowLeft,
   FaCalendarCheck,
@@ -135,6 +136,32 @@ const attendanceApi = {
     });
     if (!res.ok)
       throw new Error((await res.json()).message || "Settings update failed");
+    return res.json();
+  },
+
+  getPendingManualRequests: async () => {
+    const res = await fetch(`${API_BASE_URL}/admin/manual-attendance/requests/pending`, {
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to fetch pending manual requests");
+    return res.json();
+  },
+
+  approveManualRequest: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/manual-attendance/requests/${id}/approve`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to approve manual request");
+    return res.json();
+  },
+
+  rejectManualRequest: async (id) => {
+    const res = await fetch(`${API_BASE_URL}/admin/manual-attendance/requests/${id}/reject`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    if (!res.ok) throw new Error("Failed to reject manual request");
     return res.json();
   },
 };
@@ -589,6 +616,7 @@ const AdminInternAttendance = () => {
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [expandedInterns, setExpandedInterns] = useState({});
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
@@ -615,6 +643,50 @@ const AdminInternAttendance = () => {
     }
   };
 
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [showRequestsModal, setShowRequestsModal] = useState(false);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [processingRequestId, setProcessingRequestId] = useState(null);
+
+  const fetchPendingRequests = async () => {
+    try {
+      setRequestsLoading(true);
+      const data = await attendanceApi.getPendingManualRequests();
+      setPendingRequests(data.requests || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const handleApproveRequest = async (id) => {
+    try {
+      setProcessingRequestId(id);
+      await attendanceApi.approveManualRequest(id);
+      showToast("Request approved successfully", "success");
+      fetchPendingRequests();
+      fetchAttendance(selectedDate); // refresh current view
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
+  const handleRejectRequest = async (id) => {
+    try {
+      setProcessingRequestId(id);
+      await attendanceApi.rejectManualRequest(id);
+      showToast("Request rejected", "success");
+      fetchPendingRequests();
+    } catch (err) {
+      showToast(err.message, "error");
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   useEffect(() => {
     fetchAttendance(selectedDate);
   }, [selectedDate]);
@@ -634,23 +706,34 @@ const AdminInternAttendance = () => {
     fetchSettings();
   }, []);
 
-  const handleToggleLocationRequirement = async () => {
-    const nextValue = !sltLocationRequired;
-    setSltLocationRequired(nextValue);
+  const handleToggleLocationRequirement = () => {
+    if (sltLocationRequired) {
+      setIsPinModalOpen(true);
+    } else {
+      executeLocationToggle(true, "");
+    }
+  };
+
+  const handlePinSubmit = (pin) => {
+    executeLocationToggle(false, pin);
+  };
+
+  const executeLocationToggle = async (nextValue, pin) => {
     setSettingsSaving(true);
     try {
       const result = await attendanceApi.updateSettings({
         sltLocationRequired: nextValue,
+        securityPin: pin,
       });
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
+      if (!nextValue) setIsPinModalOpen(false);
       showToast(
         nextValue
           ? "SLT Location Requirement ON"
           : "SLT Location Requirement OFF",
-        nextValue ? "success" : "error",
+        "success",
       );
     } catch (err) {
-      setSltLocationRequired(!nextValue);
       showToast(err.message || "Failed to update location setting", "error");
     } finally {
       setSettingsSaving(false);
@@ -727,7 +810,6 @@ const AdminInternAttendance = () => {
             {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
           </AnimatePresence>
 
-          {/* ── Send Report Modal ── */}
           <AnimatePresence>
             {showTriggerModal && (
               <motion.div
@@ -852,10 +934,8 @@ const AdminInternAttendance = () => {
             )}
           </AnimatePresence>
 
-          {/* ── Page ── */}
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
             <div className="space-y-4 md:space-y-5">
-              {/* ── Header Row ── */}
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <motion.h1
@@ -885,7 +965,6 @@ const AdminInternAttendance = () => {
                   transition={{ delay: 0.1, duration: 0.2 }}
                   className="flex flex-row items-center gap-2 sm:gap-3 w-full md:w-auto"
                 >
-                  {/* SLT Location Toggle */}
                   <div className="flex-1 flex items-center justify-between gap-1 sm:gap-3 rounded-xl border border-gray-200 bg-white px-2.5 sm:px-3 py-2 shadow-sm">
                     <div className="flex items-center gap-1.5 sm:gap-2">
                       <FaMapMarkerAlt
@@ -910,6 +989,24 @@ const AdminInternAttendance = () => {
                   </div>
 
                   <button
+                    onClick={() => setShowRequestsModal(true)}
+                    className="flex-1 bg-amber-50 border border-amber-200 text-amber-600 px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:bg-amber-100 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                  >
+                    <div className="relative">
+                      <FaBell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      {pendingRequests.length > 0 && (
+                        <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                        </span>
+                      )}
+                    </div>
+                    <span className="whitespace-nowrap">
+                      Requests
+                      {pendingRequests.length > 0 && ` (${pendingRequests.length})`}
+                    </span>
+                  </button>
+                  <button
                     onClick={() => navigate("/admin/manual-attendance")}
                     className="flex-1 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
                   >
@@ -919,16 +1016,39 @@ const AdminInternAttendance = () => {
                 </motion.div>
               </div>
 
-              {/* ── Unified Toolbar ── */}
+              {pendingRequests.length > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="bg-amber-100 p-2 rounded-lg text-amber-600">
+                      <FaBell className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-amber-800 font-bold">Action Required: Manual Check-ins</h3>
+                      <p className="text-amber-700 text-sm">
+                        There are {pendingRequests.length} pending manual check-in requests that require your approval.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowRequestsModal(true)}
+                    className="whitespace-nowrap px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-sm rounded-lg shadow-sm transition-colors"
+                  >
+                    Review Requests
+                  </button>
+                </motion.div>
+              )}
+
               <motion.div
                 className="bg-white p-2.5 rounded-2xl border border-gray-200 shadow-sm flex flex-col gap-2.5"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
-                {/* Top Toolbar Row: Tabs & Reports */}
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
-                  {/* Tabs */}
                   <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
                     <button
                       onClick={() => {
@@ -985,7 +1105,6 @@ const AdminInternAttendance = () => {
                     />
                   </div>
 
-                  {/* Reports Actions */}
                   <div className="flex w-full lg:w-auto mt-2 lg:mt-0">
                     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-auto gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
                       <div className="flex items-center justify-center px-2 py-1 sm:py-0">
@@ -1044,9 +1163,7 @@ const AdminInternAttendance = () => {
 
                 <hr className="border-gray-100 m-0" />
 
-                {/* Bottom Toolbar Row: Filters */}
                 <div className="flex flex-col sm:flex-row items-center gap-3 p-1">
-                  {/* Date Selector */}
                   <div className="flex items-center gap-2 bg-slate-50 border border-gray-100 rounded-xl px-3 py-2 w-full sm:w-auto">
                     <FaCalendarDay className="text-[#00b4eb] h-4 w-4" />
                     <input
@@ -1065,7 +1182,6 @@ const AdminInternAttendance = () => {
                     </button>
                   )}
 
-                  {/* Search Bar */}
                   <div className="relative w-full flex-1">
                     <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <input
@@ -1087,7 +1203,6 @@ const AdminInternAttendance = () => {
                 </div>
               </motion.div>
 
-              {/* ── Meeting Without Daily Report ── */}
               <motion.div
                 className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
                 initial={{ opacity: 0, y: 10 }}
@@ -1142,7 +1257,6 @@ const AdminInternAttendance = () => {
                 </div>
               </motion.div>
 
-              {/* ── Attendance Table ── */}
               <motion.div
                 className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
                 initial={{ opacity: 0 }}
@@ -1277,6 +1391,103 @@ const AdminInternAttendance = () => {
           </main>
         </div>
       </div>
+      
+      {/* Security PIN Modal for Location Toggle */}
+      <SecurityPinModal
+        isOpen={isPinModalOpen}
+        onClose={() => setIsPinModalOpen(false)}
+        onSubmit={handlePinSubmit}
+        loading={settingsSaving}
+      />
+
+      {/* Manual Requests Modal */}
+      <AnimatePresence>
+        {showRequestsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="flex justify-between items-center p-5 border-b border-gray-100 bg-gray-50/50">
+                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <FaMapMarkerAlt className="text-amber-500" /> Location Override Requests
+                </h2>
+                <button
+                  onClick={() => setShowRequestsModal(false)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <FaTimes />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {requestsLoading ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                    <FaSpinner className="h-8 w-8 animate-spin text-amber-500 mb-3" />
+                    <p>Loading requests...</p>
+                  </div>
+                ) : pendingRequests.length === 0 ? (
+                  <div className="text-center py-10 text-gray-500">
+                    <FaCheckCircle className="h-10 w-10 text-green-400 mx-auto mb-3" />
+                    <p className="font-medium">All caught up!</p>
+                    <p className="text-sm">There are no pending requests.</p>
+                  </div>
+                ) : (
+                  pendingRequests.map((req) => (
+                    <div key={req._id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-amber-400" />
+                      <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                        <div className="space-y-1">
+                          <h4 className="font-bold text-gray-900">{req.internId?.Trainee_Name}</h4>
+                          <div className="text-xs text-gray-500 font-medium">
+                            {req.internId?.Trainee_ID} &bull; {req.internId?.Trainee_Email}
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <span className="bg-gray-100 text-gray-700 text-xs px-2 py-1 rounded-md font-medium uppercase">
+                              {req.attendanceType} {req.requestType.replace("_", " ")}
+                            </span>
+                            {req.projectName && (
+                              <span className="bg-blue-50 text-blue-700 border border-blue-100 text-xs px-2 py-1 rounded-md font-medium">
+                                {req.projectName}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm text-gray-700">
+                            <span className="font-semibold text-gray-900 block mb-1">Reason:</span>
+                            "{req.reason}"
+                          </div>
+                          <div className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+                            <FaClock /> Requested at: {new Date(req.requestedAt).toLocaleString()}
+                          </div>
+                        </div>
+
+                        <div className="flex sm:flex-col gap-2 shrink-0 justify-center">
+                          <button
+                            onClick={() => handleApproveRequest(req._id)}
+                            disabled={processingRequestId === req._id}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
+                          >
+                            {processingRequestId === req._id ? <FaSpinner className="animate-spin" /> : <FaCheckCircle />} Approve
+                          </button>
+                          <button
+                            onClick={() => handleRejectRequest(req._id)}
+                            disabled={processingRequestId === req._id}
+                            className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold text-sm transition-colors disabled:opacity-50"
+                          >
+                            {processingRequestId === req._id ? <FaSpinner className="animate-spin" /> : <FaTimesCircle />} Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </AdminNavigation>
   );
 };

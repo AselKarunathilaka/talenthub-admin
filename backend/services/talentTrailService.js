@@ -1,7 +1,10 @@
 const axios = require("axios");
+const https = require("https");
 
 const TALENTTRAIL_BASE_URL = "https://talenttrail.slt.lk/api";
-const SERVICE_TOKEN = "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
+const SERVICE_TOKEN = process.env.TALENTHUB_FEDERATION_SECRET || "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
+
+const sslAgent = new https.Agent({ rejectUnauthorized: false });
 
 /**
  * Service to interact with the TalentTrail API.
@@ -13,6 +16,7 @@ class TalentTrailService {
     this._tokenExpiry = null;
     this.client = axios.create({
       baseURL: TALENTTRAIL_BASE_URL,
+      httpsAgent: sslAgent,
       timeout: 15000,
       headers: { "Content-Type": "application/json" },
     });

@@ -9,9 +9,9 @@ import { requestFreshLocation, toAttendanceEvidence } from '../utils/attendanceE
 import WhatsAppSupportButton from '../components/WhatsAppSupportButton';
 
 const SLT_OFFICE = {
-  latitude: 6.9271,
-  longitude: 79.8612,
-  radiusKm: 2,
+  latitude: 6.9346212,
+  longitude: 79.8468999,
+  radiusKm: 0.1,
 };
 
 const normalizeProjectName = (value) => String(value || '').trim().replace(/\s+/g, ' ');

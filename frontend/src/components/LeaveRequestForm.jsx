@@ -17,6 +17,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
     leaveTime: isStudyLeave ? "Full Day" : "",
     nationalId: "",
     purpose: isStudyLeave ? "Academic Exams / Study" : "Personal",
+    otherPurpose: "",
     reason: "",
   });
 
@@ -130,7 +131,12 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
       }
       submitData.append("leaveTime", isStudyLeave ? "Full Day" : formData.leaveTime);
       submitData.append("nationalId", formData.nationalId);
-      submitData.append("purpose", formData.purpose);
+      
+      const finalPurpose = formData.purpose === "Other" && formData.otherPurpose?.trim()
+        ? `Other: ${formData.otherPurpose.trim()}`
+        : formData.purpose;
+      submitData.append("purpose", finalPurpose);
+      
       submitData.append("reason", formData.reason);
       submitData.append("requestType", requestType);
       if (proofDocument) {
@@ -150,6 +156,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
         leaveTime: isStudyLeave ? "Full Day" : "",
         nationalId: "",
         purpose: isStudyLeave ? "Academic Exams / Study" : "Personal",
+        otherPurpose: "",
         reason: "",
       });
 
@@ -300,13 +307,19 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               Purpose *
             </label>
             {isStudyLeave ? (
-              <input
-                type="text"
+              <select
                 name="purpose"
-                value="Academic Exams / Study"
-                readOnly
-                className={`${inputClasses} appearance-none opacity-70 cursor-not-allowed pointer-events-none`}
-              />
+                value={formData.purpose}
+                onChange={handleChange}
+                required
+                className={`${inputClasses} appearance-none cursor-pointer`}
+                style={{ backgroundImage: "url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e\")", backgroundPosition: "right 0.5rem center", backgroundRepeat: "no-repeat", backgroundSize: "1.5em 1.5em" }}
+              >
+                <option value="Academic Exams / Study">Academic Exams / Study</option>
+                <option value="Medical Leave">Medical Leave</option>
+                <option value="Personal / Family Reasons">Personal / Family Reasons</option>
+                <option value="Other">Other</option>
+              </select>
             ) : (
               <select
                 name="purpose"
@@ -318,8 +331,31 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               >
                 <option value="Personal">Personal</option>
                 <option value="Official">Official</option>
+                <option value="Medical">Medical</option>
+                <option value="Other">Other</option>
               </select>
             )}
+            
+            <AnimatePresence>
+              {formData.purpose === "Other" && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }} 
+                  animate={{ opacity: 1, height: "auto" }} 
+                  exit={{ opacity: 0, height: 0 }}
+                  className="mt-3"
+                >
+                  <input
+                    type="text"
+                    name="otherPurpose"
+                    value={formData.otherPurpose || ""}
+                    onChange={handleChange}
+                    placeholder="Please specify purpose..."
+                    required
+                    className={inputClasses}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         </div>
 

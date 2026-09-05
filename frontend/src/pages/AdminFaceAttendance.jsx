@@ -19,21 +19,9 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 import { adminApi } from "../api/adminApi";
-import {
-  getDeviceTimeEvidence,
-  requestFreshLocation,
-} from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  evaluateFacePlacement,
-  faceRuntimeProfile,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getDeviceTimeEvidence, requestFreshLocation } from "../utils/attendanceEvidence";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { checkLighting } from "../utils/faceQuality";
 import {
   FaCheckCircle,
   FaRedo,
@@ -46,7 +34,7 @@ import {
 } from "react-icons/fa";
 
 // ── Shared Utils & Constants ──────────────────────────────────────────────────
-const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+const MODEL_URL = "/models/";
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -57,10 +45,14 @@ const ENROLLMENT_PROMPTS = [
   "Return to the center for the final scan.",
 ];
 
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
-const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
-const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
-const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
+const FACE_DETECTOR_OPTIONS = new faceapi.SsdMobilenetv1Options({
+  minConfidence: 0.5,
+});
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.SsdMobilenetv1Options({
+  minConfidence: 0.5,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 
 const getAuthHeaders = () => {
   const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
@@ -71,6 +63,41 @@ const getAuthHeaders = () => {
 };
 
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+// Simplified drawing function to avoid external dependency
+const drawFaceMesh = (canvas, landmarks) => {
+  if (!canvas || !landmarks) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Draw an oval guide at the center of the canvas
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const radiusX = canvas.width * 0.16; // proportional to width
+  const radiusY = canvas.height * 0.28; // proportional to height
+
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Draw landmarks
+  ctx.fillStyle = "#3b82f6";
+  landmarks.positions.forEach((pt) => {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+};
+
+const clearFaceMesh = (canvas) => {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const adminFaceApi = {
@@ -166,6 +193,7 @@ const AdminFaceAttendance = () => {
   const [enrollmentFrames, setEnrollmentFrames] = useState([]);
   const [faceGuide, setFaceGuide] = useState({ ready: false, message: "Center face in the oval" });
   const [meetingTitle, setMeetingTitle] = useState("");
+  const [videoDims, setVideoDims] = useState({ width: 640, height: 480 });
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
 
   const videoRef = useRef(null);
@@ -228,8 +256,10 @@ const AdminFaceAttendance = () => {
   useEffect(() => {
     const loadModels = async () => {
       try {
+        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.ready();
         await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
@@ -353,12 +383,18 @@ const AdminFaceAttendance = () => {
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
+    const ctx = canvasRef.current.getContext("2d");
+    
+    // Ensure canvas matches video native dimensions to prevent squishing on mobile portrait
+    const vWidth = videoRef.current.videoWidth || 640;
+    const vHeight = videoRef.current.videoHeight || 480;
+    
+    if (canvasRef.current.width !== vWidth) canvasRef.current.width = vWidth;
+    if (canvasRef.current.height !== vHeight) canvasRef.current.height = vHeight;
+    if (meshCanvasRef.current.width !== vWidth) meshCanvasRef.current.width = vWidth;
+    if (meshCanvasRef.current.height !== vHeight) meshCanvasRef.current.height = vHeight;
+
+    ctx.drawImage(videoRef.current, 0, 0, vWidth, vHeight);
     
     try {
       const detections = await faceapi
@@ -373,8 +409,19 @@ const AdminFaceAttendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) return { error: quality.error };
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      
+      const targetCenterX = vWidth / 2;
+      const targetCenterY = vHeight / 2;
+      
+      // Dynamic center threshold based on video size
+      const centered = Math.abs(centerX - targetCenterX) <= (vWidth * 0.2) && Math.abs(centerY - targetCenterY) <= (vHeight * 0.2);
+      const largeEnough = box.width >= (vWidth * 0.2) && box.height >= (vHeight * 0.2);
+
+      if (!centered) return { error: "Move face into the center." };
+      if (!largeEnough) return { error: "Move closer to the camera." };
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (err) {
@@ -385,12 +432,18 @@ const AdminFaceAttendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting..." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    const vWidth = videoRef.current.videoWidth || 640;
+    const vHeight = videoRef.current.videoHeight || 480;
+
+    if (canvasRef.current.width !== vWidth) canvasRef.current.width = vWidth;
+    if (canvasRef.current.height !== vHeight) canvasRef.current.height = vHeight;
+    ctx.drawImage(videoRef.current, 0, 0, vWidth, vHeight);
+
+    if (!checkLighting(videoRef.current)) {
+      return { error: "Too dark! Please move to a brighter area." };
+    }
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -407,7 +460,18 @@ const AdminFaceAttendance = () => {
         };
       }
 
-      return evaluateFacePlacement(detections[0], dimensions);
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - vWidth / 2) <= vWidth * 0.2 &&
+        Math.abs(centerY - vHeight / 2) <= vHeight * 0.2;
+      const largeEnough = box.width >= vWidth * 0.2 && box.height >= vHeight * 0.2;
+
+      if (!centered) return { error: "Move face into the center." };
+      if (!largeEnough) return { error: "Move closer to the camera." };
+
+      return { ready: true };
     } catch (error) {
       console.error("Error inspecting face position:", error);
       return { error: "Could not read the camera frame." };
@@ -491,7 +555,12 @@ const AdminFaceAttendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
+        const isDistinct = !previousFrame || Math.sqrt(
+          previousFrame.reduce((sum, val, idx) => {
+            const diff = val - frameData.descriptor[idx];
+            return sum + diff * diff;
+          }, 0)
+        ) >= 0.035;
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
@@ -821,17 +890,23 @@ const AdminFaceAttendance = () => {
                           style={{ transform: "scaleX(-1)" }}
                           playsInline
                           muted
+                          onLoadedMetadata={(e) => {
+                            setVideoDims({
+                              width: e.target.videoWidth || 640,
+                              height: e.target.videoHeight || 480
+                            });
+                          }}
                         />
                         <canvas
                           ref={canvasRef}
-                          width={640}
-                          height={480}
+                          width={videoDims.width}
+                          height={videoDims.height}
                           className="hidden"
                         />
                         <canvas
                           ref={meshCanvasRef}
-                          width={640}
-                          height={480}
+                          width={videoDims.width}
+                          height={videoDims.height}
                           className="absolute inset-0 w-full h-full object-cover z-10"
                           style={{ transform: "scaleX(-1)" }}
                         />

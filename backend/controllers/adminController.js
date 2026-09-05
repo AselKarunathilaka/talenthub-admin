@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
 const User = require("../models/User");
@@ -283,14 +284,46 @@ const getInternDetails = async (req, res) => {
       return res.status(403).json({ error: "Admin access required" });
     }
 
-    // Get intern details
-    const intern = await Intern.findById(internId);
+    // Get intern details (search by ObjectId, Trainee_ID, Trainee_Email or in InactiveIntern)
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+
     if (!intern) {
       return res.status(404).json({ error: "Intern not found" });
     }
 
-    // Get intern's records
-    const recordsRaw = await DailyRecord.find({ internId: internId })
+    // Get intern's records (match by ObjectId or traineeId)
+    const recordQuery = {
+      $or: [
+        { internId: intern._id },
+        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+        ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ],
+    };
+    const recordsRaw = await DailyRecord.find(recordQuery)
       .populate("internId", "traineeName traineeId email")
       .sort({ createdAt: -1 });
 
@@ -351,6 +384,37 @@ const getInternDetails = async (req, res) => {
     }).lean();
     const projects = syncRecord ? syncRecord.projects || [] : [];
 
+    // Fetch university supervisor feedbacks
+    const UniversityStudentFeedback = require("../models/UniversityStudentFeedback");
+    const UniversityUser = require("../models/UniversityUser");
+    const rawFeedbacks = await UniversityStudentFeedback.find({
+      $or: [
+        { internId: intern._id },
+        { traineeId: intern.Trainee_ID },
+      ],
+    })
+      .populate("universitySupervisorId", "picture")
+      .sort({ createdAt: -1 })
+      .lean()
+      .catch(() => []);
+
+    const universityFeedbacks = await Promise.all(
+      (rawFeedbacks || []).map(async (fb) => {
+        let pic = fb.supervisorPicture || fb.universitySupervisorId?.picture || "";
+        if (!pic && fb.supervisorEmail) {
+          const sup = await UniversityUser.findOne({ email: fb.supervisorEmail })
+            .select("picture")
+            .lean();
+          if (sup && sup.picture) pic = sup.picture;
+        }
+        return {
+          ...fb,
+          picture: pic,
+          supervisorPicture: pic,
+        };
+      })
+    );
+
     // New-intern grace period: interns still within their first 5
     // working days are never marked overdue.
     const todayEnd = new Date();
@@ -379,6 +443,7 @@ const getInternDetails = async (req, res) => {
         availableDays: intern.availableDays,
         agreementAccepted: intern.agreementAccepted,
         agreementAcceptedDate: intern.agreementAcceptedDate,
+        digitalAgreement: intern.digitalAgreement,
         projects,
       },
       records,
@@ -393,6 +458,7 @@ const getInternDetails = async (req, res) => {
         isWithinGracePeriod: !!isWithinGracePeriod,
         averageSubmissionsPerWeek: monthlyRecords.length / 4,
       },
+      universityFeedbacks: universityFeedbacks || [],
     };
 
     res.status(200).json(internDetails);
@@ -1512,378 +1578,395 @@ const triggerApprovedShortLeaveEmail = async (req, res) => {
 const gitCommitsCache = new Map();
 const GIT_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
-const getInternGitCommits = async (req, res) => {
-  try {
-    const { internId } = req.params;
+const fetchInternGitCommitsData = async (internId) => {
+  const cacheKey = `git_commits_${internId}`;
+  const cached = gitCommitsCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < GIT_CACHE_TTL) {
+    return cached.data;
+  }
 
-    // Check cache
-    const cacheKey = `git_commits_${internId}`;
-    const cached = gitCommitsCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < GIT_CACHE_TTL) {
-      return res.status(200).json(cached.data);
+  let intern = null;
+  if (mongoose.Types.ObjectId.isValid(internId)) {
+    intern = await Intern.findById(internId);
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findById(internId);
     }
-
-    // Load intern
-    const intern = await Intern.findById(internId);
-    if (!intern) return res.status(404).json({ error: "Intern not found" });
-
-    // Load TalentTrail sync record to get projects + talentTrailInternId
-    const syncRecord = await InternTalentTrailSync.findOne({
-      email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
-    }).lean();
-
-    if (
-      !syncRecord ||
-      !syncRecord.projects ||
-      syncRecord.projects.length === 0
-    ) {
-      return res.status(200).json({
-        commits: [],
-        message: "No TalentTrail projects found for this intern",
-      });
-    }
-
-    // Authenticate with TalentTrail to get project repo details (including tokens)
-    const sslAgent = new https.Agent({ rejectUnauthorized: false });
-    const ttClient = axios.create({
-      baseURL: "https://talenttrail.slt.lk/api",
-      httpsAgent: sslAgent,
-      timeout: 20000,
+  }
+  if (!intern) {
+    intern = await Intern.findOne({
+      $or: [
+        { Trainee_ID: internId },
+        { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+      ],
     });
+  }
+  if (!intern) {
+    const InactiveIntern = require("../models/InactiveIntern");
+    intern = await InactiveIntern.findOne({
+      $or: [
+        { Trainee_ID: internId },
+        { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+      ],
+    });
+  }
+  if (!intern) return null;
 
-    let ttToken;
-    try {
-      const loginRes = await ttClient.post(
-        "/auth/federated-login",
-        {
-          email: "admin@slt.lk",
-          source: "talenthub",
-          timestamp: Date.now(),
+  const syncRecord = await InternTalentTrailSync.findOne({
+    email: { $regex: new RegExp(`^${intern.Trainee_Email}$`, "i") },
+  }).lean();
+
+  if (
+    !syncRecord ||
+    !syncRecord.projects ||
+    syncRecord.projects.length === 0
+  ) {
+    const data = {
+      githubUsername: null,
+      internEmail: intern.Trainee_Email,
+      projectCommits: [],
+      totalCommits: 0,
+      message: "No TalentTrail projects found for this intern",
+    };
+    gitCommitsCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
+  }
+
+  const sslAgent = new https.Agent({ rejectUnauthorized: false });
+  const ttClient = axios.create({
+    baseURL: "https://talenttrail.slt.lk/api",
+    httpsAgent: sslAgent,
+    timeout: 20000,
+  });
+
+  let ttToken;
+  try {
+    const loginRes = await ttClient.post(
+      "/auth/federated-login",
+      {
+        email: "admin@slt.lk",
+        source: "talenthub",
+        timestamp: Date.now(),
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Service-Token": "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0",
         },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            "X-Service-Token": "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0",
-          },
-        },
-      );
-      ttToken = loginRes.data.token;
-    } catch (err) {
-      console.error("[GitCommits] TalentTrail auth failed:", err.message);
-      return res
-        .status(200)
-        .json({ commits: [], message: "TalentTrail authentication failed" });
-    }
+      },
+    );
+    ttToken = loginRes.data.token;
+  } catch (err) {
+    console.error("[GitCommits] TalentTrail auth failed:", err.message);
+    return {
+      githubUsername: null,
+      internEmail: intern.Trainee_Email,
+      projectCommits: [],
+      totalCommits: 0,
+      message: "TalentTrail authentication failed",
+    };
+  }
 
-    const authHeader = { Authorization: `Bearer ${ttToken}` };
+  const authHeader = { Authorization: `Bearer ${ttToken}` };
 
-    // Fetch intern's GitHub username from TalentTrail /interns
-    let githubUsername = null;
-    try {
-      const internsRes = await ttClient.get("/interns", {
-        headers: authHeader,
+  let githubUsername = null;
+  try {
+    const internsRes = await ttClient.get("/interns", {
+      headers: authHeader,
+    });
+    const ttIntern = Array.isArray(internsRes.data)
+      ? internsRes.data.find(
+          (i) =>
+            i.email?.toLowerCase() === intern.Trainee_Email?.toLowerCase(),
+        )
+      : null;
+    githubUsername = ttIntern?.githubUsername || null;
+  } catch (err) {
+    console.warn(
+      "[GitCommits] Could not fetch TalentTrail intern list:",
+      err.message,
+    );
+  }
+
+  let ttProjects = [];
+  let ttModules = [];
+  try {
+    const [projRes, modRes] = await Promise.all([
+      ttClient.get("/projects", { headers: authHeader }).catch((e) => {
+        console.warn("[GitCommits] Could not fetch TalentTrail projects:", e.message);
+        return { data: [] };
+      }),
+      ttClient.get("/modules", { headers: authHeader }).catch((e) => {
+        console.warn("[GitCommits] Could not fetch TalentTrail modules:", e.message);
+        return { data: [] };
+      }),
+    ]);
+    ttProjects = Array.isArray(projRes.data) ? projRes.data : [];
+    ttModules = Array.isArray(modRes.data) ? modRes.data : [];
+  } catch (err) {
+    console.warn(
+      "[GitCommits] Could not fetch TalentTrail projects/modules:",
+      err.message,
+    );
+  }
+
+  const syncProjectIds = new Set(syncRecord.projects.map((p) => p.projectId));
+  const getSyncProj = (id) =>
+    syncRecord.projects.find((sp) => sp.projectId === id);
+
+  const repoTargets = [];
+
+  for (const proj of ttProjects) {
+    const isDirectProject = syncProjectIds.has(proj.projectId);
+    const parentId =
+      proj.parentProjectId ?? proj.parentId ?? proj.projectParentId ?? null;
+    const isChildProject =
+      !isDirectProject &&
+      parentId !== null &&
+      syncProjectIds.has(parentId) &&
+      proj.repoName &&
+      proj.repoAccessToken;
+
+    const syncProj =
+      getSyncProj(proj.projectId) || (parentId ? getSyncProj(parentId) : null);
+    const projStatus = syncProj?.status || proj.status;
+
+    if (isDirectProject && proj.repoName && proj.repoAccessToken) {
+      repoTargets.push({
+        key: `proj-${proj.projectId}`,
+        projectId: proj.projectId,
+        projectName: proj.projectName,
+        repoName: proj.repoName,
+        repoAccessToken: proj.repoAccessToken,
+        status: projStatus,
+        moduleName: null,
+        moduleId: null,
       });
-      const ttIntern = Array.isArray(internsRes.data)
-        ? internsRes.data.find(
-            (i) =>
-              i.email?.toLowerCase() === intern.Trainee_Email?.toLowerCase(),
-          )
-        : null;
-      githubUsername = ttIntern?.githubUsername || null;
-    } catch (err) {
-      console.warn(
-        "[GitCommits] Could not fetch TalentTrail intern list:",
-        err.message,
-      );
     }
 
-    // Fetch full project list and modules from TalentTrail to get repoName + repoAccessToken
-    let ttProjects = [];
-    let ttModules = [];
-    try {
-      const [projRes, modRes] = await Promise.all([
-        ttClient.get("/projects", { headers: authHeader }).catch((e) => {
-          console.warn("[GitCommits] Could not fetch TalentTrail projects:", e.message);
-          return { data: [] };
-        }),
-        ttClient.get("/modules", { headers: authHeader }).catch((e) => {
-          console.warn("[GitCommits] Could not fetch TalentTrail modules:", e.message);
-          return { data: [] };
-        })
-      ]);
-      ttProjects = Array.isArray(projRes.data) ? projRes.data : [];
-      ttModules = Array.isArray(modRes.data) ? modRes.data : [];
-    } catch (err) {
-      console.warn(
-        "[GitCommits] Could not fetch TalentTrail projects/modules:",
-        err.message,
-      );
+    if (isChildProject) {
+      const parentProj = ttProjects.find((p) => p.projectId === parentId);
+      repoTargets.push({
+        key: `child-${proj.projectId}`,
+        projectId: parentId,
+        projectName: parentProj?.projectName || `Project ${parentId}`,
+        repoName: proj.repoName,
+        repoAccessToken: proj.repoAccessToken,
+        status: projStatus,
+        moduleName: proj.projectName || proj.moduleName || proj.name || proj.repoName,
+        moduleId: proj.projectId,
+      });
     }
 
-    // ── 1. Build the set of this intern's project IDs ─────────────────────
-    const syncProjectIds = new Set(syncRecord.projects.map((p) => p.projectId));
-    const getSyncProj = (id) =>
-      syncRecord.projects.find((sp) => sp.projectId === id);
+    if (isDirectProject) {
+      const modules =
+        proj.modules ||
+        proj.projectModules ||
+        proj.moduleList ||
+        proj.subModules ||
+        proj.children ||
+        [];
 
-    // ── 2. Collect ALL repo targets (project-wise + module-wise + child projects) ─
-    const repoTargets = [];
-
-    for (const proj of ttProjects) {
-      const isDirectProject = syncProjectIds.has(proj.projectId);
-
-      // Child project = a separate TalentTrail project whose parent is in sync record
-      const parentId =
-        proj.parentProjectId ?? proj.parentId ?? proj.projectParentId ?? null;
-      const isChildProject =
-        !isDirectProject &&
-        parentId !== null &&
-        syncProjectIds.has(parentId) &&
-        proj.repoName &&
-        proj.repoAccessToken;
-
-      const syncProj =
-        getSyncProj(proj.projectId) || (parentId ? getSyncProj(parentId) : null);
-      const projStatus = syncProj?.status || proj.status;
-
-      // 2a. Direct project repo
-      if (isDirectProject && proj.repoName && proj.repoAccessToken) {
-        repoTargets.push({
-          key: `proj-${proj.projectId}`,
-          projectId: proj.projectId,
-          projectName: proj.projectName,
-          repoName: proj.repoName,
-          repoAccessToken: proj.repoAccessToken,
-          status: projStatus,
-          moduleName: null,
-          moduleId: null,
-        });
-      }
-
-      // 2b. Child project (module stored as a separate project with parentProjectId)
-      if (isChildProject) {
-        const parentProj = ttProjects.find((p) => p.projectId === parentId);
-        repoTargets.push({
-          key: `child-${proj.projectId}`,
-          projectId: parentId,
-          projectName: parentProj?.projectName || `Project ${parentId}`,
-          repoName: proj.repoName,
-          repoAccessToken: proj.repoAccessToken,
-          status: projStatus,
-          moduleName: proj.projectName || proj.moduleName || proj.name || proj.repoName,
-          moduleId: proj.projectId,
-        });
-      }
-
-      // 2c. Nested modules inside the project object (try all known field names)
-      if (isDirectProject) {
-        const modules =
-          proj.modules ||
-          proj.projectModules ||
-          proj.moduleList ||
-          proj.subModules ||
-          proj.children ||
-          [];
-
-        for (const mod of modules) {
-          if (mod.repoName && mod.repoAccessToken) {
-            repoTargets.push({
-              key: `mod-${proj.projectId}-${mod.moduleId || mod.id || mod.repoName}`,
-              projectId: proj.projectId,
-              projectName: proj.projectName,
-              repoName: mod.repoName,
-              repoAccessToken: mod.repoAccessToken,
-              status: projStatus,
-              moduleName: mod.moduleName || mod.name || mod.repoName,
-              moduleId: mod.moduleId || mod.id || null,
-            });
-          }
-        }
-      }
-    }
-
-    // 2d. Separate module entities owned by the intern or assigned to their projects
-    const talentTrailInternId = syncRecord.talentTrailInternId;
-    for (const mod of ttModules) {
-      // Include module if intern owns it OR if it belongs to a project the intern is assigned to
-      const isOwner = mod.ownerInternId === talentTrailInternId;
-      const isProjectMod = mod.projectId && syncProjectIds.has(mod.projectId);
-      
-      if ((isOwner || isProjectMod) && mod.repoName && mod.repoAccessToken) {
-        // Prevent duplicates if already added via nested project modules
-        if (!repoTargets.some((t) => t.repoName === mod.repoName)) {
-          const modKey = `mod-endpoint-${mod.moduleId || mod.id || mod.repoName}`;
-          const parentProj = ttProjects.find((p) => p.projectId === mod.projectId);
-          const syncProj = mod.projectId ? getSyncProj(mod.projectId) : null;
-          
+      for (const mod of modules) {
+        if (mod.repoName && mod.repoAccessToken) {
           repoTargets.push({
-            key: modKey,
-            projectId: mod.projectId || `mod-${mod.moduleId || Date.now()}`,
-            projectName: parentProj?.projectName || mod.projectName || `Module ${mod.moduleName || mod.repoName}`,
+            key: `mod-${proj.projectId}-${mod.moduleId || mod.id || mod.repoName}`,
+            projectId: proj.projectId,
+            projectName: proj.projectName,
             repoName: mod.repoName,
             repoAccessToken: mod.repoAccessToken,
-            status: mod.status || syncProj?.status || parentProj?.status || "IN_PROGRESS",
+            status: projStatus,
             moduleName: mod.moduleName || mod.name || mod.repoName,
             moduleId: mod.moduleId || mod.id || null,
           });
         }
       }
     }
+  }
 
-    if (repoTargets.length === 0) {
-      return res.status(200).json({
-        githubUsername,
-        internEmail: intern.Trainee_Email,
-        projectCommits: [],
-        totalCommits: 0,
-        message: "No projects with GitHub repositories configured",
-      });
-    }
-
-    // ── 3. GitHub client ───────────────────────────────────────────────────
-    const ghClient = axios.create({
-      baseURL: "https://api.github.com",
-      timeout: 15000,
-      headers: {
-        Accept: "application/vnd.github.v3+json",
-        "User-Agent": "TalentHub-SLT",
-      },
-    });
-
-    // ── 4. Fetch commits for every repo target in parallel ─────────────────
-    const commitResults = await Promise.all(
-      repoTargets.map(async (target) => {
-        try {
-          const params = { per_page: 100 };
-          if (githubUsername) params.author = githubUsername;
-
-          let allCommits = [];
-          let page = 1;
-          let hasMore = true;
-
-          while (hasMore) {
-            const ghRes = await ghClient.get(
-              `/repos/${target.repoName}/commits`,
-              {
-                headers: { Authorization: `token ${target.repoAccessToken}` },
-                params: { ...params, page },
-              },
-            );
-            const pageCommits = Array.isArray(ghRes.data) ? ghRes.data : [];
-            allCommits = allCommits.concat(pageCommits);
-            if (pageCommits.length < 100 || page >= 10) hasMore = false;
-            else page++;
-          }
-
-          const commits = allCommits.map((c) => ({
-            sha: c.sha,
-            shortSha: c.sha.slice(0, 7),
-            message: c.commit.message.split("\n")[0],
-            authorName: c.commit.author.name,
-            authorEmail: c.commit.author.email,
-            authorLogin: c.author?.login || null,
-            authorAvatar: c.author?.avatar_url || null,
-            date: c.commit.author.date,
-            url: c.html_url,
-          }));
-
-          // Filter by intern: by GitHub username (if known) or by email fallback
-          const filtered = githubUsername
-            ? commits
-            : commits.filter(
-                (c) =>
-                  c.authorEmail?.toLowerCase() ===
-                  intern.Trainee_Email?.toLowerCase(),
-              );
-
-          return { ...target, commits: filtered, totalCommits: filtered.length, error: null };
-        } catch (err) {
-          console.warn(
-            `[GitCommits] Failed for repo ${target.repoName} (${target.key}):`,
-            err.message,
-          );
-          return {
-            ...target,
-            commits: [],
-            totalCommits: 0,
-            error:
-              err.response?.status === 403
-                ? "repository_access_denied"
-                : "fetch_failed",
-          };
-        }
-      }),
-    );
-
-    // ── 5. Group results by projectId ──────────────────────────────────────
-    const projectMap = new Map();
-
-    for (const result of commitResults) {
-      const { projectId, projectName, status } = result;
-      if (!projectMap.has(projectId)) {
-        projectMap.set(projectId, {
-          projectId,
-          projectName,
-          status,
-          repoName: null,
-          commits: [],
-          totalCommits: 0,
-          modules: [],
+  const talentTrailInternId = syncRecord.talentTrailInternId;
+  for (const mod of ttModules) {
+    const isOwner = mod.ownerInternId === talentTrailInternId;
+    const isProjectMod = mod.projectId && syncProjectIds.has(mod.projectId);
+    
+    if ((isOwner || isProjectMod) && mod.repoName && mod.repoAccessToken) {
+      if (!repoTargets.some((t) => t.repoName === mod.repoName)) {
+        const modKey = `mod-endpoint-${mod.moduleId || mod.id || mod.repoName}`;
+        const parentProj = ttProjects.find((p) => p.projectId === mod.projectId);
+        const syncProj = mod.projectId ? getSyncProj(mod.projectId) : null;
+        
+        repoTargets.push({
+          key: modKey,
+          projectId: mod.projectId || `mod-${mod.moduleId || Date.now()}`,
+          projectName: parentProj?.projectName || mod.projectName || `Module ${mod.moduleName || mod.repoName}`,
+          repoName: mod.repoName,
+          repoAccessToken: mod.repoAccessToken,
+          status: mod.status || syncProj?.status || parentProj?.status || "IN_PROGRESS",
+          moduleName: mod.moduleName || mod.name || mod.repoName,
+          moduleId: mod.moduleId || mod.id || null,
         });
       }
-
-      const entry = projectMap.get(projectId);
-
-      if (result.moduleName) {
-        // Module or child project — keep as sub-entry AND merge commits up
-        entry.modules.push({
-          moduleId: result.moduleId,
-          moduleName: result.moduleName,
-          repoName: result.repoName,
-          commits: result.commits,
-          totalCommits: result.totalCommits,
-          error: result.error,
-        });
-        entry.commits.push(...result.commits);
-        entry.totalCommits += result.totalCommits;
-      } else {
-        // Direct project repo
-        entry.repoName = result.repoName;
-        entry.commits.push(...result.commits);
-        entry.totalCommits += result.totalCommits;
-        if (result.error) entry.error = result.error;
-      }
     }
+  }
 
-    const projectCommits = Array.from(projectMap.values());
-
-    // Include sync projects that had no repo at all (for admin UI completeness)
-    const coveredProjectIds = new Set(repoTargets.map((t) => t.projectId));
-    syncRecord.projects
-      .filter((sp) => !coveredProjectIds.has(sp.projectId))
-      .forEach((sp) => {
-        projectCommits.push({
-          projectId: sp.projectId,
-          projectName: sp.projectName,
-          repoName: null,
-          status: sp.status,
-          commits: [],
-          totalCommits: 0,
-          modules: [],
-          error: "no_repo_configured",
-        });
-      });
-
-    const responseData = {
+  if (repoTargets.length === 0) {
+    const data = {
       githubUsername,
       internEmail: intern.Trainee_Email,
-      projectCommits,
-      totalCommits: projectCommits.reduce((sum, p) => sum + p.totalCommits, 0),
+      projectCommits: [],
+      totalCommits: 0,
+      message: "No projects with GitHub repositories configured",
     };
+    gitCommitsCache.set(cacheKey, { data, timestamp: Date.now() });
+    return data;
+  }
 
-    // Update cache
-    gitCommitsCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+  const ghClient = axios.create({
+    baseURL: "https://api.github.com",
+    timeout: 15000,
+    headers: {
+      Accept: "application/vnd.github.v3+json",
+      "User-Agent": "TalentHub-SLT",
+    },
+  });
 
-    return res.status(200).json(responseData);
+  const commitResults = await Promise.all(
+    repoTargets.map(async (target) => {
+      try {
+        const params = { per_page: 100 };
+        if (githubUsername) params.author = githubUsername;
+
+        let allCommits = [];
+        let page = 1;
+        let hasMore = true;
+
+        while (hasMore) {
+          const ghRes = await ghClient.get(
+            `/repos/${target.repoName}/commits`,
+            {
+              headers: { Authorization: `token ${target.repoAccessToken}` },
+              params: { ...params, page },
+            },
+          );
+          const pageCommits = Array.isArray(ghRes.data) ? ghRes.data : [];
+          allCommits = allCommits.concat(pageCommits);
+          if (pageCommits.length < 100 || page >= 10) hasMore = false;
+          else page++;
+        }
+
+        const commits = allCommits.map((c) => ({
+          sha: c.sha,
+          shortSha: c.sha.slice(0, 7),
+          message: c.commit.message.split("\n")[0],
+          authorName: c.commit.author.name,
+          authorEmail: c.commit.author.email,
+          authorLogin: c.author?.login || null,
+          authorAvatar: c.author?.avatar_url || null,
+          date: c.commit.author.date,
+          url: c.html_url,
+        }));
+
+        const filtered = githubUsername
+          ? commits
+          : commits.filter(
+              (c) =>
+                c.authorEmail?.toLowerCase() ===
+                intern.Trainee_Email?.toLowerCase(),
+            );
+
+        return { ...target, commits: filtered, totalCommits: filtered.length, error: null };
+      } catch (err) {
+        console.warn(
+          `[GitCommits] Failed for repo ${target.repoName} (${target.key}):`,
+          err.message,
+        );
+        return {
+          ...target,
+          commits: [],
+          totalCommits: 0,
+          error:
+            err.response?.status === 403
+              ? "repository_access_denied"
+              : "fetch_failed",
+        };
+      }
+    }),
+  );
+
+  const projectMap = new Map();
+
+  for (const result of commitResults) {
+    const { projectId, projectName, status } = result;
+    if (!projectMap.has(projectId)) {
+      projectMap.set(projectId, {
+        projectId,
+        projectName,
+        status,
+        repoName: null,
+        commits: [],
+        totalCommits: 0,
+        modules: [],
+      });
+    }
+
+    const entry = projectMap.get(projectId);
+
+    if (result.moduleName) {
+      entry.modules.push({
+        moduleId: result.moduleId,
+        moduleName: result.moduleName,
+        repoName: result.repoName,
+        commits: result.commits,
+        totalCommits: result.totalCommits,
+        error: result.error,
+      });
+      entry.commits.push(...result.commits);
+      entry.totalCommits += result.totalCommits;
+    } else {
+      entry.repoName = result.repoName;
+      entry.commits.push(...result.commits);
+      entry.totalCommits += result.totalCommits;
+      if (result.error) entry.error = result.error;
+    }
+  }
+
+  const projectCommits = Array.from(projectMap.values());
+
+  const coveredProjectIds = new Set(repoTargets.map((t) => t.projectId));
+  syncRecord.projects
+    .filter((sp) => !coveredProjectIds.has(sp.projectId))
+    .forEach((sp) => {
+      projectCommits.push({
+        projectId: sp.projectId,
+        projectName: sp.projectName,
+        repoName: null,
+        status: sp.status,
+        commits: [],
+        totalCommits: 0,
+        modules: [],
+        error: "no_repo_configured",
+      });
+    });
+
+  const totalCommits = projectCommits.reduce((sum, p) => sum + p.totalCommits, 0);
+  const responseData = {
+    githubUsername,
+    internEmail: intern.Trainee_Email,
+    projectCommits,
+    totalCommits,
+  };
+
+  gitCommitsCache.set(cacheKey, { data: responseData, timestamp: Date.now() });
+  Intern.findByIdAndUpdate(internId, { commitsCount: totalCommits }).catch(() => {});
+  return responseData;
+};
+
+const getInternGitCommits = async (req, res) => {
+  try {
+    const { internId } = req.params;
+    const data = await fetchInternGitCommitsData(internId);
+    if (!data) return res.status(404).json({ error: "Intern not found" });
+    return res.status(200).json(data);
   } catch (error) {
     console.error("[getInternGitCommits] Error:", error);
     return res.status(500).json({ error: error.message });
@@ -1906,4 +1989,6 @@ module.exports = {
   getInternLocationById,
   triggerApprovedShortLeaveEmail,
   getInternGitCommits,
+  fetchInternGitCommitsData,
+  gitCommitsCache,
 };

@@ -2,19 +2,15 @@ import React, { useState, useRef, useEffect } from "react";
 import { Camera, Check, Loader, ShieldCheck, X } from "lucide-react";
 import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
+import { apiFetch } from "../utils/api";
 import FaceScanGuide from "./FaceScanGuide";
 import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { enrollFaceSamples } from "../utils/faceEnrollment";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
+import { checkLighting } from "../utils/faceQuality";
 
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
+const FACE_DETECTOR_OPTIONS = new faceapi.SsdMobilenetv1Options({
+  minConfidence: 0.5,
+});
 const REQUIRED_ENROLLMENT_SAMPLES = 5;
 const ENROLLMENT_CAPTURE_DELAY_MS = 1900;
 const ENROLLMENT_PROMPTS = [
@@ -62,9 +58,11 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
   useEffect(() => {
     const loadModels = async () => {
       try {
-        const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+        const MODEL_URL = "/models/";
+        await faceapi.tf.setBackend('webgl');
+        await faceapi.tf.ready();
         await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
           faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ]);
@@ -117,14 +115,13 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
     if (!videoRef.current || !canvasRef.current || captureBusyRef.current) return;
     if (Date.now() - lastCaptureRef.current < ENROLLMENT_CAPTURE_DELAY_MS) return;
     captureBusyRef.current = true;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) {
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
+
+    if (!checkLighting(videoRef.current)) {
+      setFaceGuide("Too dark! Please move to a brighter area.");
       captureBusyRef.current = false;
-      setFaceGuide("Camera is still starting...");
       return;
     }
 
@@ -146,15 +143,28 @@ const FaceRegistrationModal = ({ isOpen, onClose, onEnrollmentComplete }) => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) {
-        setFaceGuide(quality.error);
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      if (Math.abs(centerX - 320) > 105 || Math.abs(centerY - 240) > 95) {
+        setFaceGuide("Move your face into the center oval");
+        return;
+      }
+      if (box.width < 135 || box.height < 150) {
+        setFaceGuide("Move a little closer to the camera");
         return;
       }
 
       const descriptor = Array.from(detection.descriptor);
       const previousFrame = framesRef.current[framesRef.current.length - 1];
-      const isDistinct = isDistinctFaceDescriptor(descriptor, previousFrame);
+      const isDistinct =
+        !previousFrame ||
+        Math.sqrt(
+          previousFrame.reduce((sum, value, index) => {
+            const difference = value - descriptor[index];
+            return sum + difference * difference;
+          }, 0),
+        ) >= 0.035;
 
       if (!isDistinct) {
         setFaceGuide(ENROLLMENT_PROMPTS[frameCountRef.current]);

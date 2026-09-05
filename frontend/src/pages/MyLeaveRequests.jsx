@@ -56,6 +56,9 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   // Tabs: "list" | "new"
   const [activeTab, setActiveTab] = useState("new");
   
+  // Delete Modal State
+  const [requestToDelete, setRequestToDelete] = useState(null);
+
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
@@ -117,18 +120,22 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this leave request?")) {
-      return;
-    }
+  const handleDelete = (id) => {
+    setRequestToDelete(id);
+  };
 
+  const confirmDelete = async () => {
+    if (!requestToDelete) return;
+    
     try {
-      await deleteLeaveRequest(id);
-      toast.success("Leave request deleted successfully");
+      await deleteLeaveRequest(requestToDelete);
+      toast.success("Leave request cancelled successfully");
       fetchLeaveRequests();
     } catch (error) {
-      console.error("Error deleting leave request:", error);
-      toast.error(error.message || "Failed to delete leave request");
+      console.error("Error cancelling leave request:", error);
+      toast.error(error.message || "Failed to cancel leave request");
+    } finally {
+      setRequestToDelete(null);
     }
   };
 
@@ -497,7 +504,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                           onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
                                           className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-sm shadow-sm"
                                         >
-                                          <FiTrash2 /> Delete Request
+                                          <FiX /> Cancel Request
                                         </button>
                                       )}
                                       
@@ -549,6 +556,45 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
           </div>
         </main>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <AnimatePresence>
+        {requestToDelete && (
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden"
+            >
+              <div className="p-6 text-center">
+                <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FiTrash2 className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 mb-2">Cancel Request?</h3>
+                <p className="text-gray-500 text-sm">
+                  Are you sure you want to cancel this leave request? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex border-t border-gray-100 bg-gray-50">
+                <button
+                  onClick={() => setRequestToDelete(null)}
+                  className="flex-1 py-4 font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Keep It
+                </button>
+                <div className="w-px bg-gray-200"></div>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 py-4 font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors"
+                >
+                  Yes, Cancel It
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Document Viewer Modal */}
       <AnimatePresence>

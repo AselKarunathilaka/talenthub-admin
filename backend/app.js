@@ -23,8 +23,10 @@ const holidayAdminRoutes = require("./routes/holidayAdminRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
+const talentHubRestrictionRoutes = require("./routes/talentHubRestrictionRoutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
+const universityRoutes = require("./routes/universityRoutes");
 const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
@@ -78,6 +80,7 @@ app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
+app.use("/api/admin/talenthub-restrictions", talentHubRestrictionRoutes);
 
 //Sri Lanka Holidays (public read; admin management under /api/admin/holidays)
 app.use("/api/holidays", holidayRoutes);
@@ -85,6 +88,9 @@ app.use("/api/admin/holidays", holidayAdminRoutes);
 
 // Seasonal Login Background Override (admin-only write, public read)
 app.use("/api/login-season", seasonOverrideRoutes);
+
+// University Portal Routes
+app.use("/api/university", universityRoutes);
 
 app.get("/api/version", (_req, res) => {
   res.json({

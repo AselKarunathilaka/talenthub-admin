@@ -7,16 +7,8 @@ const FaceMeetingPinService = require("./faceMeetingPinService");
 const AttendanceWorkflowService = require("./attendanceWorkflowService");
 const externalConfig = require("../config/externalSystems");
 
-const configuredFaceMatchThreshold = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
-const FACE_MATCH_THRESHOLD =
-  Number.isFinite(configuredFaceMatchThreshold) &&
-  configuredFaceMatchThreshold >= 0.35 &&
-  configuredFaceMatchThreshold <= 0.65
-    ? configuredFaceMatchThreshold
-    : 0.48;
+const FACE_MATCH_THRESHOLD = Number(process.env.FACE_MATCH_THRESHOLD || 0.48);
 const FACE_DESCRIPTOR_LENGTH = 128;
-const MAX_PROFILE_SAMPLES = 7;
-const AMBIGUOUS_MATCH_MARGIN = 0.04;
 const VALID_FACE_ATTENDANCE_TYPES = new Set(["daily", "meeting"]);
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
@@ -98,9 +90,6 @@ class FaceAttendanceService {
 
       if (!isDuplicateSample) {
         profile.embeddings.push(normalizedDescriptor);
-        if (profile.embeddings.length > MAX_PROFILE_SAMPLES) {
-          profile.embeddings = profile.embeddings.slice(-MAX_PROFILE_SAMPLES);
-        }
         profile.sampleCount = profile.embeddings.length;
       }
 
@@ -123,41 +112,17 @@ class FaceAttendanceService {
     };
   }
 
-  static async registerFaceProfileBatch({ internId, descriptors, source = "browser-camera", metadata = {} }) {
-    const normalizedDescriptors = (Array.isArray(descriptors) ? descriptors : [])
-      .map(normalizeDescriptor)
-      .filter(Boolean)
-      .filter((descriptor, index, all) =>
-        all.findIndex((sample) => euclideanDistance(sample, descriptor) < 0.01) === index,
-      );
-    if (!normalizedDescriptors.length) throw new Error("At least one valid face descriptor is required.");
-
-    const intern = await Intern.findById(internId);
-    if (!intern) throw new Error("Intern not found.");
-    let profile = await InternFaceProfile.findOne({ $or: [{ internId }, { traineeId: intern.Trainee_ID }] });
-    if (!profile) profile = new InternFaceProfile({ internId, traineeId: intern.Trainee_ID, traineeName: intern.Trainee_Name });
-
-    profile.internId = intern._id;
-    profile.traineeId = intern.Trainee_ID;
-    profile.traineeName = intern.Trainee_Name;
-    profile.embeddings = normalizedDescriptors.slice(0, MAX_PROFILE_SAMPLES);
-    profile.sampleCount = profile.embeddings.length;
-    profile.isActive = true;
-    profile.lastMatchedAt = new Date();
-    await profile.save();
-    return { profile, source, metadata };
-  }
-
   static async findBestMatch(descriptor, { expectedInternId = null } = {}) {
     const normalizedDescriptor = normalizeDescriptor(descriptor);
     if (!normalizedDescriptor) {
       throw new Error("A valid face descriptor is required.");
     }
 
-    const profileQuery = { isActive: true };
-    if (expectedInternId) {
-      profileQuery.internId = expectedInternId;
+    if (!expectedInternId) {
+       throw new Error("expectedInternId is required for 1-to-1 face matching.");
     }
+
+    const profileQuery = { isActive: true, internId: expectedInternId };
 
     const profiles = await InternFaceProfile.find(profileQuery).populate(
       "internId",
@@ -167,13 +132,13 @@ class FaceAttendanceService {
     if (!profiles.length) {
       return {
         matched: false,
-        reason: expectedInternId ? "profile_missing_for_intern" : "profile_missing",
+        reason: "profile_missing_for_intern",
         threshold: FACE_MATCH_THRESHOLD,
         bestDistance: null,
       };
     }
 
-    const profileMatches = [];
+    let bestMatch = null;
     let hasUsableEmbedding = false;
 
     for (const profile of profiles) {
@@ -181,39 +146,24 @@ class FaceAttendanceService {
         continue;
       }
 
-      let profileBestDistance = Number.POSITIVE_INFINITY;
-      for (const sample of profile.embeddings.slice(0, MAX_PROFILE_SAMPLES)) {
+      for (const sample of profile.embeddings) {
         hasUsableEmbedding = true;
         const distance = euclideanDistance(sample, normalizedDescriptor);
-        if (distance < profileBestDistance) profileBestDistance = distance;
-      }
-      if (Number.isFinite(profileBestDistance)) {
-        profileMatches.push({ profile, distance: profileBestDistance });
+        if (!bestMatch || distance < bestMatch.distance) {
+          bestMatch = {
+            profile,
+            distance,
+          };
+        }
       }
     }
 
-    profileMatches.sort((left, right) => left.distance - right.distance);
-    const bestMatch = profileMatches[0] || null;
     if (!bestMatch || bestMatch.distance > FACE_MATCH_THRESHOLD) {
       return {
         matched: false,
         reason: hasUsableEmbedding ? "face_not_recognized" : "profile_has_no_embeddings",
         threshold: FACE_MATCH_THRESHOLD,
         bestDistance: bestMatch ? bestMatch.distance : null,
-      };
-    }
-
-    const secondBestMatch = profileMatches[1] || null;
-    if (
-      !expectedInternId &&
-      secondBestMatch &&
-      secondBestMatch.distance - bestMatch.distance < AMBIGUOUS_MATCH_MARGIN
-    ) {
-      return {
-        matched: false,
-        reason: "face_match_ambiguous",
-        threshold: FACE_MATCH_THRESHOLD,
-        bestDistance: bestMatch.distance,
       };
     }
 
