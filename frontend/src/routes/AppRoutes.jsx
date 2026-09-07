@@ -200,6 +200,9 @@ const AppRoutes = () => {
       <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       <Route path="/admin/feature-tips" element={<AdminFeatureTips />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seat management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seat%20management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seatmanagement" element={<AdminSeatManagement />} />
       <Route
         path="/admin/intern-locations"
         element={<AdminInternLocations />}
