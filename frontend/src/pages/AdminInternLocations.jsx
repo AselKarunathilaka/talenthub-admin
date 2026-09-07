@@ -82,9 +82,19 @@ const SRI_LANKA_DISTRICTS = [
   "Vavuniya",
 ];
 
+// ── Sri Lanka Bounding Coordinates ───────────────────────────────────────────
+const SRI_LANKA_BOUNDS = [
+  [5.85, 79.55], // Southwest offshore of Dondra / Galle
+  [9.95, 82.00], // Northeast offshore of Point Pedro / Jaffna
+];
+
 const OMS_CSS = `
   .oms-shadow { stroke: #999; stroke-width: 1; }
   .leaflet-marker-icon { transition: opacity 0.2s; }
+  .leaflet-container { z-index: 1 !important; isolation: isolate; }
+  .leaflet-pane { z-index: 2 !important; }
+  .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
+  .leaflet-control { z-index: 10 !important; }
 `;
 
 // ── FlyTo helper ──────────────────────────────────────────────────────────────
@@ -93,6 +103,40 @@ function FlyTo({ position }) {
   useEffect(() => {
     if (position) map.flyTo(position, 14, { duration: 1.2 });
   }, [position, map]);
+  return null;
+}
+
+// ── Sri Lanka Map Aligner ───────────────────────────────────────────────────
+function SriLankaMapAligner({ flyTo }) {
+  const map = useMap();
+
+  useEffect(() => {
+    const alignSriLanka = () => {
+      map.invalidateSize();
+      if (!flyTo) {
+        map.fitBounds(SRI_LANKA_BOUNDS, {
+          padding: [24, 24],
+          animate: false,
+        });
+      }
+    };
+
+    alignSriLanka();
+    const t1 = setTimeout(alignSriLanka, 100);
+    const t2 = setTimeout(alignSriLanka, 350);
+
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [map, flyTo]);
+
   return null;
 }
 
@@ -228,6 +272,7 @@ const AdminInternLocations = () => {
   const [highlightedIntern, setHighlightedIntern] = useState(null);
   const [flyTo, setFlyTo] = useState(null);
   const [listSearch, setListSearch] = useState("");
+  const [tableFilter, setTableFilter] = useState("all"); // "all", "active", "past"
 
   const markerMapRef = useRef({});
   const API_BASE = import.meta.env.VITE_BACKEND_URL;
@@ -254,14 +299,16 @@ const AdminInternLocations = () => {
           params,
         });
         if (res.data.success) {
-          const valid = res.data.data.filter(
-            (i) =>
-              i.coordinates &&
-              Array.isArray(i.coordinates) &&
-              i.coordinates.length === 2 &&
-              i.coordinates[0] != null &&
-              i.coordinates[1] != null,
-          );
+          const valid = res.data.data
+            .filter(
+              (i) =>
+                i.coordinates &&
+                Array.isArray(i.coordinates) &&
+                i.coordinates.length === 2 &&
+                i.coordinates[0] != null &&
+                i.coordinates[1] != null,
+            )
+            .map((i) => ({ ...i, isPast: false }));
           setInterns(valid);
         } else {
           setError("Invalid response from server");
@@ -314,14 +361,16 @@ const AdminInternLocations = () => {
           { headers: { Authorization: `Bearer ${token}` }, params },
         );
         if (res.data.success) {
-          const valid = res.data.data.filter(
-            (i) =>
-              i.coordinates &&
-              Array.isArray(i.coordinates) &&
-              i.coordinates.length === 2 &&
-              i.coordinates[0] != null &&
-              i.coordinates[1] != null,
-          );
+          const valid = res.data.data
+            .filter(
+              (i) =>
+                i.coordinates &&
+                Array.isArray(i.coordinates) &&
+                i.coordinates.length === 2 &&
+                i.coordinates[0] != null &&
+                i.coordinates[1] != null,
+            )
+            .map((i) => ({ ...i, isPast: true }));
           setPastInterns(valid);
           setPastFetched(true);
         } else {
@@ -344,6 +393,7 @@ const AdminInternLocations = () => {
       return;
     }
     fetchInternLocations(adminInfo.token, "All");
+    fetchPastInternLocations(adminInfo.token, "All");
     fetchDistrictCounts(adminInfo.token);
     fetchPastDistrictCounts(adminInfo.token);
 
@@ -351,6 +401,7 @@ const AdminInternLocations = () => {
     const iv = setInterval(
       () => {
         fetchInternLocations(adminInfo.token, selectedDistrict);
+        fetchPastInternLocations(adminInfo.token, selectedDistrict);
         fetchDistrictCounts(adminInfo.token);
         fetchPastDistrictCounts(adminInfo.token);
       },
@@ -368,9 +419,7 @@ const AdminInternLocations = () => {
     setFlyTo(null);
     setListSearch("");
     fetchInternLocations(adminInfo.token, selectedDistrict);
-    if (showPastInterns && pastFetched) {
-      fetchPastInternLocations(adminInfo.token, selectedDistrict);
-    }
+    fetchPastInternLocations(adminInfo.token, selectedDistrict);
   }, [selectedDistrict, fetchInternLocations, fetchPastInternLocations]);
 
   // ── Toggle past interns ───────────────────────────────────────────────────
@@ -459,6 +508,9 @@ const AdminInternLocations = () => {
   };
 
   const handleListRowClick = (intern) => {
+    if (intern.isPast && !showPastInterns) {
+      setShowPastInterns(true);
+    }
     setFlyTo([intern.coordinates[1], intern.coordinates[0]]);
     setTimeout(() => {
       const m = markerMapRef.current[intern.id];
@@ -466,120 +518,161 @@ const AdminInternLocations = () => {
     }, 1500);
   };
 
-  const filteredListInterns = interns.filter((i) => {
-    if (!listSearch.trim()) return true;
-    const q = listSearch.toLowerCase();
-    return (
-      i.name?.toLowerCase().includes(q) ||
-      i.id?.toLowerCase().includes(q) ||
-      i.address?.toLowerCase().includes(q)
-    );
-  });
+  const combinedInterns = [...interns, ...pastInterns];
+
+  const filteredListInterns = combinedInterns
+    .filter((i) => {
+      if (tableFilter === "active") return !i.isPast;
+      if (tableFilter === "past") return i.isPast;
+      return true;
+    })
+    .filter((i) => {
+      if (!listSearch.trim()) return true;
+      const q = listSearch.toLowerCase();
+      return (
+        i.name?.toLowerCase().includes(q) ||
+        i.id?.toLowerCase().includes(q) ||
+        i.address?.toLowerCase().includes(q)
+      );
+    });
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-cyan-50 text-gray-800 relative">
-        <main className="p-6 lg:p-8 max-w-7xl mx-auto">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
-        {/* ── HEADER ── */}
-        <motion.div
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col xl:flex-row xl:items-center xl:justify-between mb-6 gap-4 xl:gap-6"
-        >
-          {/* TITLE */}
-          <div className="shrink-0">
-            <motion.h1
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
-              className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight whitespace-nowrap"
+        {/* ── TOP HEADER (Same as AdminDashboard) ── */}
+        <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 sm:gap-6 pt-2">
+          {/* Left: Title and Icon */}
+          <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
             >
-              <div className="p-2 bg-[#00b4eb]/10 rounded-xl shrink-0">
-                <MapPin className="text-[#0056a2] h-6 w-6 sm:h-8 sm:w-8" />
-              </div>
-              Intern Locations
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-              className="text-gray-500 mt-2 text-sm font-medium whitespace-nowrap"
-            >
-              Live overview of all registered intern locations
-            </motion.p>
+              <MapPin className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+            </motion.div>
+            <div className="flex flex-col justify-center">
+              <motion.h1
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+                className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+              >
+                Intern Locations
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.1, duration: 0.3 }}
+                className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+              >
+                Live overview of all registered intern locations
+              </motion.p>
+            </div>
           </div>
 
-          {/* RIGHT SIDE ITEMS - 4 CARDS */}
-          <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2 xl:gap-3 w-full min-w-0">
-            
-            {/* Active intern count card (a) */}
+          {/* Right: Live GPS Pill */}
+          <div className="flex items-center gap-3 w-full xl:w-auto justify-start xl:justify-end">
             <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="order-1 lg:order-none flex items-center gap-2 sm:gap-3 bg-white px-3 sm:px-3 py-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[72px] sm:min-h-[68px]"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15, duration: 0.3 }}
+              className="flex items-center gap-2 bg-white border border-slate-200/80 shadow-sm px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[8px]"
             >
-              <div className="bg-blue-50 text-blue-600 p-2 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
-                <FaUsers className="text-base sm:text-base" />
-              </div>
-              <div className="flex flex-col min-w-0">
-                <p className="text-[10px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5 truncate">
-                  {selectedDistrict === "All"
-                    ? "Active Interns"
-                    : `Active in ${selectedDistrict}`}
-                </p>
-                <p className="text-lg sm:text-lg font-bold text-gray-800 leading-none truncate">
-                  {interns.length}
-                </p>
-              </div>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-xs sm:text-sm font-bold text-slate-700">Live GPS Locations</span>
             </motion.div>
+          </div>
+        </div>
 
-            {/* Past interns toggle card (b) */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="order-3 lg:order-none flex items-center justify-between bg-white px-3 sm:px-3 py-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[72px] sm:min-h-[68px]"
-            >
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                <div className="bg-violet-50 text-violet-600 p-2 sm:p-2 rounded-lg sm:rounded-xl shrink-0">
-                  <FaHistory className="text-base sm:text-base" />
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <p className="text-[10px] sm:text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-0.5 truncate">
-                    Past Interns
-                  </p>
-                  <p className="text-lg sm:text-lg font-bold text-gray-800 leading-none truncate">
-                    {pastFetched ? pastInterns.length : "—"}
-                  </p>
-                </div>
+        {/* ── 4 TOP CARDS (Under Title) ── */}
+        <motion.section 
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 z-10 w-full relative"
+        >
+          {/* Card 1: Active Interns */}
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#000066]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-[#000066]/5 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
+                <FaUsers className="w-4 h-4 sm:w-5 sm:h-5 text-[#000066]" />
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-[#0056a2] border border-blue-100">
+                Active
+              </span>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-[#000066] tracking-tight">
+                {loading ? "..." : interns.length}
+              </div>
+              <div className="text-[10px] sm:text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider truncate">
+                {selectedDistrict === "All"
+                  ? "Active Interns"
+                  : `Active in ${selectedDistrict}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Past Interns */}
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-violet-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-violet-50 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
+                <FaHistory className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
               </div>
               <button
+                type="button"
                 onClick={handleTogglePastInterns}
                 disabled={pastLoading}
-                className="flex items-center justify-center transition-all duration-200 ml-1 shrink-0 p-1"
-                title={showPastInterns ? "Hide past interns" : "Show past interns"}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-violet-50 hover:bg-violet-100 border border-violet-200/60 transition-colors cursor-pointer"
+                title={showPastInterns ? "Hide past interns from map" : "Show past interns on map"}
               >
+                <span className="text-xs font-bold text-violet-700">
+                  {showPastInterns ? "Visible" : "Hidden"}
+                </span>
                 {pastLoading ? (
-                  <span className="w-5 h-5 border-2 border-violet-300 border-t-violet-600 rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-violet-400 border-t-violet-700 rounded-full animate-spin" />
                 ) : showPastInterns ? (
-                  <FaToggleOn className="text-[26px] sm:text-[24px] text-violet-600" />
+                  <FaToggleOn className="text-2xl text-violet-600" />
                 ) : (
-                  <FaToggleOff className="text-[26px] sm:text-[24px] text-gray-300 hover:text-gray-400" />
+                  <FaToggleOff className="text-2xl text-slate-400" />
                 )}
               </button>
-            </motion.div>
+            </div>
+            <div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-violet-700 tracking-tight">
+                {pastFetched ? pastInterns.length : "—"}
+              </div>
+              <div className="text-[10px] sm:text-xs font-bold text-slate-500 mt-1 uppercase tracking-wider truncate">
+                Past Interns (Alumni)
+              </div>
+            </div>
+          </div>
 
-            {/* Filter by district (c) */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="order-2 lg:order-none flex flex-col justify-center bg-white px-3 sm:px-3 py-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[72px] sm:min-h-[68px]"
-            >
-              <label className="block text-[10px] sm:text-[10px] font-semibold text-gray-500 mb-1.5 sm:mb-1 uppercase tracking-wider flex items-center gap-1.5 sm:gap-1">
-                <FaFilter className="text-emerald-500 text-[10px] sm:text-[9px] shrink-0" /> <span className="truncate">Filter by District</span>
+          {/* Card 3: Filter by District */}
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#006600]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+            <div className="flex justify-between items-start mb-1.5 sm:mb-2">
+              <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-[#006600]/5 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
+                <FaFilter className="w-4 h-4 sm:w-5 sm:h-5 text-[#006600]" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {selectedDistrict}
+              </span>
+            </div>
+            <div>
+              <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                Filter by District
               </label>
               <div className="relative">
                 <select
                   value={selectedDistrict}
                   onChange={(e) => setSelectedDistrict(e.target.value)}
-                  className="w-full appearance-none bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-2.5 sm:px-2 py-2 sm:py-1 text-xs sm:text-xs text-gray-700 font-medium focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all cursor-pointer pr-7 sm:pr-6"
+                  className="w-full appearance-none bg-slate-50 hover:bg-slate-100/80 border border-slate-200 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-[#006600]/30 focus:border-[#006600] transition-all cursor-pointer pr-8"
                 >
                   {SRI_LANKA_DISTRICTS.map((d) => (
                     <option key={d} value={d}>
@@ -589,56 +682,64 @@ const AdminInternLocations = () => {
                     </option>
                   ))}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-2 sm:right-1.5 flex items-center text-gray-400">
-                  <svg className="w-4 h-4 sm:w-3 sm:h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <div className="pointer-events-none absolute inset-y-0 right-2.5 flex items-center text-slate-400">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </div>
               </div>
-            </motion.div>
+            </div>
+          </div>
 
-            {/* Find interns by id (d) */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              className="order-4 lg:order-none flex flex-col justify-center bg-white px-3 sm:px-3 py-3 sm:py-2 rounded-xl sm:rounded-2xl shadow-sm border border-gray-100 min-h-[72px] sm:min-h-[68px]"
-            >
-              <label className="block text-[10px] sm:text-[10px] font-semibold text-gray-500 mb-1.5 sm:mb-1 uppercase tracking-wider flex items-center gap-1.5 sm:gap-1">
-                <FaIdCard className="text-blue-500 text-[10px] sm:text-[9px] shrink-0" /> <span className="truncate">Find Intern by ID</span>
+          {/* Card 4: Find Intern by ID */}
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-sky-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+            <div className="flex justify-between items-start mb-1.5 sm:mb-2">
+              <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-sky-50 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
+                <FaIdCard className="w-4 h-4 sm:w-5 sm:h-5 text-sky-600" />
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                Quick Search
+              </span>
+            </div>
+            <div>
+              <label className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                Find Intern by ID
               </label>
-              <div className="flex gap-1.5 sm:gap-1">
-                <div className="relative flex-1">
+              <div className="flex gap-1.5">
+                <div className="relative flex-1 min-w-0">
                   <input
                     type="text"
                     value={idSearch}
                     onChange={(e) => setIdSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleIdSearch()}
-                    placeholder="Search ID"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg sm:rounded-xl px-2.5 sm:px-2 py-2 sm:py-1 text-xs sm:text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all pr-6 sm:pr-5"
+                    placeholder="Enter ID..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-slate-800 font-bold placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500 transition-all pr-7 select-text"
                   />
                   {idSearch && (
                     <button
+                      type="button"
                       onClick={clearIdSearch}
-                      className="absolute inset-y-0 right-1.5 sm:right-1.5 flex items-center p-1 text-gray-400 hover:text-gray-600"
+                      className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      <FaTimes className="text-[11px] sm:text-[9px]" />
+                      <FaTimes className="text-xs" />
                     </button>
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={handleIdSearch}
                   disabled={idSearchLoading}
-                  className="px-3 sm:px-2 py-2 sm:py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg sm:rounded-xl shadow-sm transition-all duration-200 flex items-center justify-center shrink-0"
-                  title="Search"
+                  className="px-3 sm:px-3.5 py-1.5 sm:py-2 bg-[#0056a2] hover:bg-[#004482] disabled:opacity-50 text-white rounded-lg sm:rounded-xl shadow-sm transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                  title="Search Intern"
                 >
                   {idSearchLoading ? (
-                    <span className="w-4 h-4 sm:w-3 sm:h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <FaSearch className="text-[12px] sm:text-[10px]" />
+                    <FaSearch className="text-xs sm:text-sm" />
                   )}
                 </button>
               </div>
-            </motion.div>
-
+            </div>
           </div>
-        </motion.div>
+        </motion.section>
 
         {/* ── SEARCH MESSAGES / ALERTS ── */}
         <AnimatePresence>
@@ -744,24 +845,26 @@ const AdminInternLocations = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden relative"
+          className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-slate-200/80 overflow-hidden relative z-10 isolate"
         >
           {loading && (
-            <div className="absolute inset-0 z-[1000] bg-white/50 backdrop-blur-[2px] flex flex-col items-center justify-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin shadow-md" />
-              <p className="text-blue-900 font-semibold bg-white/90 px-5 py-2 rounded-full shadow-sm text-sm border border-blue-100">Loading intern locations...</p>
+            <div className="absolute inset-0 z-[15] bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-4">
+              <div className="w-12 h-12 border-4 border-blue-200 border-t-[#0056a2] rounded-full animate-spin shadow-md" />
+              <p className="text-[#000066] font-semibold bg-white/95 px-5 py-2 rounded-full shadow-sm text-sm border border-blue-100">Loading intern locations...</p>
             </div>
           )}
           <MapContainer
-            center={[7.8731, 80.7718]}
-            zoom={8}
-            style={{ height: "650px", width: "100%" }}
+            bounds={SRI_LANKA_BOUNDS}
+            boundsOptions={{ padding: [24, 24] }}
+            className="h-[540px] sm:h-[680px] lg:h-[780px] xl:h-[840px] w-full"
+            style={{ width: "100%" }}
             scrollWheelZoom
           >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
+            <SriLankaMapAligner flyTo={flyTo} />
             {flyTo && <FlyTo position={flyTo} />}
 
             {/* Active interns layer */}
@@ -788,7 +891,7 @@ const AdminInternLocations = () => {
           </MapContainer>
         </motion.div>
 
-        {/* ── DISTRICT INTERN LIST (active only) ── */}
+        {/* ── DISTRICT INTERN LIST (active + past) ── */}
         <AnimatePresence>
           {selectedDistrict !== "All" && !loading && (
             <motion.div
@@ -798,38 +901,78 @@ const AdminInternLocations = () => {
               transition={{ duration: 0.25 }}
               className="mt-6 bg-white rounded-2xl shadow-md border border-gray-100 overflow-hidden"
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-b border-gray-100">
-                <div className="flex items-center gap-3">
-                  <div className="bg-blue-100 p-2 rounded-lg">
-                    <FaMapMarkerAlt className="text-blue-600 text-sm" />
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <div className="bg-[#000066]/5 p-2 sm:p-2.5 rounded-xl shrink-0">
+                    <FaMapMarkerAlt className="text-[#000066] text-sm" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-800 text-base">
-                      Active Interns in {selectedDistrict}
+                    <h3 className="font-bold text-slate-800 text-sm sm:text-base">
+                      Interns in {selectedDistrict}
                     </h3>
-                    <p className="text-xs text-gray-400">
-                      {filteredListInterns.length} of {interns.length} intern
-                      {interns.length !== 1 ? "s" : ""} shown
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+                      {filteredListInterns.length} shown ({interns.length} active{pastInterns.length > 0 ? `, ${pastInterns.length} past` : ""})
                     </p>
                   </div>
                 </div>
-                <div className="relative sm:w-64">
-                  <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
-                  <input
-                    type="text"
-                    value={listSearch}
-                    onChange={(e) => setListSearch(e.target.value)}
-                    placeholder="Search name, ID or address…"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl pl-8 pr-8 py-2 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 transition-all"
-                  />
-                  {listSearch && (
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  {/* Filter tabs */}
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-xs self-start sm:self-auto">
                     <button
-                      onClick={() => setListSearch("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      type="button"
+                      onClick={() => setTableFilter("all")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        tableFilter === "all"
+                          ? "bg-slate-800 text-white shadow-xs"
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
                     >
-                      <FaTimes className="text-xs" />
+                      All ({combinedInterns.length})
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      onClick={() => setTableFilter("active")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        tableFilter === "active"
+                          ? "bg-blue-700 text-white shadow-xs"
+                          : "text-blue-700 hover:text-blue-900"
+                      }`}
+                    >
+                      Active ({interns.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTableFilter("past")}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                        tableFilter === "past"
+                          ? "bg-violet-700 text-white shadow-xs"
+                          : "text-violet-700 hover:text-violet-900"
+                      }`}
+                    >
+                      Past ({pastInterns.length})
+                    </button>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="relative w-full sm:w-64">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
+                    <input
+                      type="text"
+                      value={listSearch}
+                      onChange={(e) => setListSearch(e.target.value)}
+                      placeholder="Search name, ID or address…"
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-8 py-2 text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#000066]/20 focus:border-[#000066] transition-all select-text"
+                    />
+                    {listSearch && (
+                      <button
+                        onClick={() => setListSearch("")}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                      >
+                        <FaTimes className="text-xs" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -842,25 +985,22 @@ const AdminInternLocations = () => {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100 text-left">
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12">
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12 text-center">
                           #
                         </th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          <span className="flex items-center gap-1.5">
-                            <FaIdCard className="text-gray-300" />
-                            Trainee ID
-                          </span>
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">
+                          Trainee ID
                         </th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center w-36 sm:w-40">
+                          Status
+                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
                           Name
                         </th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          <span className="flex items-center gap-1.5">
-                            <FaHome className="text-gray-300" />
-                            Address
-                          </span>
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                          Address
                         </th>
-                        <th className="px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-32">
+                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-44 text-center">
                           Action
                         </th>
                       </tr>
@@ -874,18 +1014,33 @@ const AdminInternLocations = () => {
                           transition={{ delay: Math.min(idx * 0.025, 0.4) }}
                           className="border-b border-gray-50 hover:bg-blue-50/50 transition-colors duration-150"
                         >
-                          <td className="px-6 py-3.5 text-gray-300 text-xs font-medium">
+                          <td className="px-4 sm:px-6 py-3.5 text-gray-300 text-xs font-medium text-center">
                             {idx + 1}
                           </td>
-                          <td className="px-6 py-3.5">
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-blue-100 text-blue-700 tracking-wide">
+                          <td className="px-4 sm:px-6 py-3.5 text-center">
+                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide ${
+                              intern.isPast
+                                ? "bg-violet-100 text-violet-700 border border-violet-200"
+                                : "bg-blue-100 text-blue-700 border border-blue-200"
+                            }`}>
                               {intern.id}
                             </span>
                           </td>
-                          <td className="px-6 py-3.5 font-semibold text-gray-800">
+                          <td className="px-4 sm:px-6 py-3.5 text-center">
+                            {intern.isPast ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-50 text-violet-700 border border-violet-200">
+                                Past Intern
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Active
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 sm:px-6 py-3.5 font-semibold text-gray-800">
                             {intern.name}
                           </td>
-                          <td className="px-6 py-3.5 text-gray-500 text-xs max-w-xs">
+                          <td className="px-4 sm:px-6 py-3.5 text-gray-500 text-xs max-w-xs">
                             {intern.address ? (
                               <span className="line-clamp-2">{intern.address}</span>
                             ) : (
@@ -894,10 +1049,14 @@ const AdminInternLocations = () => {
                               </span>
                             )}
                           </td>
-                          <td className="px-6 py-3.5">
+                          <td className="px-4 sm:px-6 py-3.5 text-center">
                             <button
                               onClick={() => handleListRowClick(intern)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-150"
+                              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer active:scale-95 ${
+                                intern.isPast
+                                  ? "bg-violet-600 hover:bg-violet-700"
+                                  : "bg-blue-600 hover:bg-blue-700"
+                              }`}
                             >
                               <FaMapMarkerAlt className="text-xs" />
                               View on Map
