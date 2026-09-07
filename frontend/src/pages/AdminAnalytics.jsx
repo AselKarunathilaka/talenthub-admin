@@ -175,12 +175,12 @@ const getStatusBadge = (status) => {
 // Clean status text display without badge/tag styling
 const getPerformanceStatusText = (rate) => {
   if (rate >= 80) {
-    return <span className="text-[13px] font-bold text-emerald-600">Good</span>;
+    return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-emerald-600 whitespace-nowrap">Good</span>;
   }
   if (rate >= 60) {
-    return <span className="text-[13px] font-bold text-amber-500">At Risk</span>;
+    return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-amber-500 whitespace-nowrap">At Risk</span>;
   }
-  return <span className="text-[13px] font-bold text-rose-600">Poor</span>;
+  return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-rose-600 whitespace-nowrap">Poor</span>;
 };
 
 // Profile avatar with image and fallback initial
@@ -677,31 +677,31 @@ const AdminAnalytics = () => {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+        className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden"
       >
         <div
           onClick={() => toggleRow(row.id)}
-          className="p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors"
+          className="p-2.5 sm:p-3 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors gap-1.5 sm:gap-2 sm:gap-3"
         >
-          <div className="flex items-center gap-3 min-w-0">
-            <InternAvatar id={row.id} name={row.name} size="w-10 h-10" />
-            <div className="min-w-0">
-              <h3 className="font-bold text-slate-800 leading-tight truncate text-sm">{row.name}</h3>
-              <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+          <div className="flex items-center gap-1.5 sm:gap-2 sm:gap-3 min-w-0 flex-1">
+            <InternAvatar id={row.id} name={row.name} size="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10" textClass="text-[10px] sm:text-xs" />
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-slate-800 leading-tight truncate text-[11px] sm:text-xs md:text-sm">{row.name}</h3>
+              <p className="text-[9px] sm:text-[10px] md:text-xs text-slate-500 font-medium truncate mt-0.5">
                 {row.email} • {row.traineeId}
               </p>
               {row.institute && row.institute !== "Not Specified" && (
-                <p className="text-[11px] font-medium text-indigo-600/90 flex items-center gap-1 truncate mt-0.5">
-                  <Building2 className="w-3 h-3 flex-shrink-0 text-indigo-400" />
+                <p className="text-[8px] sm:text-[9px] md:text-[11px] font-medium text-indigo-600/90 flex items-center gap-1 truncate mt-0.5">
+                  <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0 text-indigo-400" />
                   <span className="truncate">{row.institute}</span>
                 </p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 sm:gap-2.5 flex-shrink-0">
             {getPerformanceStatusText(row.performanceRate)}
             <motion.div animate={{ rotate: isExpanded ? 90 : 0 }}>
-              <ChevronRight className="w-5 h-5 text-slate-400" />
+              <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-slate-400" />
             </motion.div>
           </div>
         </div>
@@ -714,98 +714,98 @@ const AdminAnalytics = () => {
               exit={{ height: 0, opacity: 0 }}
               className="border-t border-slate-100 bg-slate-50"
             >
-              <div className="p-4 space-y-4">
+              <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
                 {/* Stack & Dates */}
-                <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm space-y-1.5">
+                <div className="bg-white p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm space-y-1.5">
                   <div className="flex items-center gap-2 text-xs text-slate-600">
                     <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
                     <span className="truncate">{row.specialization}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                    <span>Duration: <strong className="text-slate-700">{formatDate(row.startDate)} – {formatDate(row.endDate)}</strong></span>
+                    <span className="truncate">Duration: <strong className="text-slate-700">{formatDate(row.startDate)} – {formatDate(row.endDate)}</strong></span>
                   </div>
                 </div>
 
                 {/* Rates without progress bars */}
-                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm grid grid-cols-2 gap-4 text-center">
+                <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-center">
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Daily Att.</p>
-                    <span className={`text-[15px] font-black ${getRateTextColor(row.dailyAttendanceRate)}`}>
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Daily Att.</p>
+                    <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.dailyAttendanceRate)}`}>
                       {row.dailyAttendanceRate}%
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Meeting Att.</p>
-                    <span className={`text-[15px] font-black ${getRateTextColor(row.meetingAttendanceRate)}`}>
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Meeting Att.</p>
+                    <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.meetingAttendanceRate)}`}>
                       {row.meetingAttendanceRate}%
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Logbook</p>
-                    <span className={`text-[15px] font-black ${getRateTextColor(row.logbookRecordRate)}`}>
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Logbook</p>
+                    <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.logbookRecordRate)}`}>
                       {row.logbookRecordRate}%
                     </span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <p className="text-[10px] font-bold uppercase text-slate-400 mb-1">Performance</p>
-                    <span className={`text-[15px] font-black ${getRateTextColor(row.performanceRate)}`}>
+                    <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Performance</p>
+                    <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.performanceRate)}`}>
                       {row.performanceRate}%
                     </span>
                   </div>
                 </div>
 
                 {/* Counts - without tags */}
-                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Activity Summary</h4>
-                  <div className={`grid ${isNoCommit ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-3 sm:grid-cols-6"} gap-2 text-center`}>
+                <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm">
+                  <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 sm:mb-3">Activity Summary</h4>
+                  <div className={`grid ${isNoCommit ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-3 sm:grid-cols-6"} gap-1.5 sm:gap-2 text-center`}>
                     <div className="flex flex-col items-center">
-                      <span className="text-base font-black text-blue-600 leading-none">{row.dailyAttendanceCount}</span>
-                      <span className="text-[9px] text-blue-600 font-bold uppercase tracking-wider mt-1">Daily Att.</span>
+                      <span className="text-sm sm:text-base font-black text-blue-600 leading-none">{row.dailyAttendanceCount}</span>
+                      <span className="text-[8px] sm:text-[9px] text-blue-600 font-bold uppercase tracking-wider mt-1">Daily Att.</span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <span className="text-base font-black text-purple-600 leading-none">{row.meetingAttendanceCount}</span>
-                      <span className="text-[9px] text-purple-600 font-bold uppercase tracking-wider mt-1">Meetings</span>
+                      <span className="text-sm sm:text-base font-black text-purple-600 leading-none">{row.meetingAttendanceCount}</span>
+                      <span className="text-[8px] sm:text-[9px] text-purple-600 font-bold uppercase tracking-wider mt-1">Meetings</span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <span className="text-base font-black text-amber-600 leading-none">{row.logbookCount}</span>
-                      <span className="text-[9px] text-amber-600 font-bold uppercase tracking-wider mt-1">Logbook</span>
+                      <span className="text-sm sm:text-base font-black text-amber-600 leading-none">{row.logbookCount}</span>
+                      <span className="text-[8px] sm:text-[9px] text-amber-600 font-bold uppercase tracking-wider mt-1">Logbook</span>
                     </div>
                     {!isNoCommit && (
                       <div className="flex flex-col items-center">
-                        <span className="text-base font-black text-emerald-600 leading-none">{row.commitCount}</span>
-                        <span className="text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-1">Commits</span>
+                        <span className="text-sm sm:text-base font-black text-emerald-600 leading-none">{row.commitCount}</span>
+                        <span className="text-[8px] sm:text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-1">Commits</span>
                       </div>
                     )}
                     <div className="flex flex-col items-center">
-                      <span className="text-base font-black text-teal-600 leading-none">{row.workingDays ?? 0}</span>
-                      <span className="text-[9px] text-teal-600 font-bold uppercase tracking-wider mt-1">Work Days</span>
+                      <span className="text-sm sm:text-base font-black text-teal-600 leading-none">{row.workingDays ?? 0}</span>
+                      <span className="text-[8px] sm:text-[9px] text-teal-600 font-bold uppercase tracking-wider mt-1">Work Days</span>
                     </div>
                     <div className="flex flex-col items-center">
-                      <span className="text-base font-black text-indigo-600 leading-none">{row.expectedMeetings ?? 0}</span>
-                      <span className="text-[9px] text-indigo-600 font-bold uppercase tracking-wider mt-1">Exp Meets</span>
+                      <span className="text-sm sm:text-base font-black text-indigo-600 leading-none">{row.expectedMeetings ?? 0}</span>
+                      <span className="text-[8px] sm:text-[9px] text-indigo-600 font-bold uppercase tracking-wider mt-1">Exp Meets</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Projects */}
-                <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
-                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Assigned Projects</h4>
-                  <div className="space-y-2">
+                <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm">
+                  <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 sm:mb-3">Assigned Projects</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                     {row.projects && row.projects.length > 0 ? (
                       row.projects.map((proj, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                        <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-100 rounded-lg p-2 sm:p-2.5">
                           <div className="flex items-center gap-2 truncate pr-2">
                             <Briefcase className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
                             <span className="text-xs font-semibold text-slate-700 truncate">{proj?.name || proj?.projectName || String(proj)}</span>
                           </div>
-                          <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
+                          <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
                             {proj?.status || "In Progress"}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <p className="text-xs text-slate-400 italic text-center py-2">No projects assigned.</p>
+                      <p className="text-xs text-slate-400 italic text-center py-2 col-span-full">No projects assigned.</p>
                     )}
                   </div>
                 </div>
@@ -827,12 +827,13 @@ const AdminAnalytics = () => {
     const hasNextPage = currentPage < totalPages;
 
     const pageNums = (() => {
-      if (totalPages <= 7)
+      const delta = 1; // compact on mobile, fits 320px
+      if (totalPages <= 5)
         return Array.from({ length: totalPages }, (_, i) => i + 1);
       const s = new Set([1, totalPages]);
       for (
-        let i = Math.max(2, currentPage - 2);
-        i <= Math.min(totalPages - 1, currentPage + 2);
+        let i = Math.max(2, currentPage - delta);
+        i <= Math.min(totalPages - 1, currentPage + delta);
         i++
       )
         s.add(i);
@@ -844,7 +845,7 @@ const AdminAnalytics = () => {
         onClick={onClick}
         disabled={disabled || isLoading || isRefreshing}
         title={title}
-        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none cursor-pointer"
+        className="p-1 sm:p-1.5 rounded-md sm:rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none cursor-pointer"
       >
         {icon}
       </button>
@@ -852,13 +853,13 @@ const AdminAnalytics = () => {
 
     return (
       <div
-        className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-slate-50/80 ${
+        className={`flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3.5 bg-slate-50/80 ${
           isMobile
             ? "rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 shadow-sm"
             : "border-t border-slate-200/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl"
         }`}
       >
-        <p className="text-xs sm:text-sm text-slate-500 font-medium">
+        <p className="text-[11px] sm:text-xs md:text-sm text-slate-500 font-medium text-center sm:text-left">
           Showing{" "}
           <span className="font-bold text-slate-700">
             {from} - {to}
@@ -866,28 +867,28 @@ const AdminAnalytics = () => {
           of <span className="font-bold text-slate-700">{totalEntries}</span>{" "}
           records
         </p>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap justify-center">
           {btn(
             () => setCurrentPage(1),
             !hasPrevPage,
-            <FaAngleDoubleLeft className="h-3 w-3" />,
+            <FaAngleDoubleLeft className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
             "First",
           )}
           {btn(
             () => setCurrentPage((p) => Math.max(1, p - 1)),
             !hasPrevPage,
-            <FaChevronLeft className="h-3 w-3" />,
+            <FaChevronLeft className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
             "Previous",
           )}
           {pageNums.map((p, idx, arr) => (
             <React.Fragment key={p}>
               {arr[idx - 1] && p - arr[idx - 1] > 1 && (
-                <span className="px-1 text-slate-400 text-xs font-bold">…</span>
+                <span className="px-0.5 sm:px-1 text-slate-400 text-[10px] sm:text-xs font-bold">…</span>
               )}
               <button
                 onClick={() => setCurrentPage(p)}
                 disabled={isLoading || isRefreshing}
-                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all focus:outline-none cursor-pointer ${
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition-all focus:outline-none cursor-pointer ${
                   p === currentPage
                     ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20"
                     : "text-slate-600 hover:bg-slate-200"
@@ -900,13 +901,13 @@ const AdminAnalytics = () => {
           {btn(
             () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
             !hasNextPage,
-            <FaChevronRight className="h-3 w-3" />,
+            <FaChevronRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
             "Next",
           )}
           {btn(
             () => setCurrentPage(totalPages),
             !hasNextPage,
-            <FaAngleDoubleRight className="h-3 w-3" />,
+            <FaAngleDoubleRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
             "Last",
           )}
         </div>
@@ -920,24 +921,24 @@ const AdminAnalytics = () => {
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
           {/* Top header: Title on Left, Actions on Right */}
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 sm:gap-5 xl:gap-6 pt-4 sm:pt-6">
 
             {/* Left: Analytics Title */}
-            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
-                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+                className="p-2 sm:p-2.5 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
                 <TrendingUp className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
               </motion.div>
-              <div className="flex flex-col justify-center">
+              <div className="flex flex-col justify-center min-w-0">
                 <motion.h1
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight truncate"
                 >
                   Analytics
                 </motion.h1>
@@ -945,316 +946,325 @@ const AdminAnalytics = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1, duration: 0.3 }}
-                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  className="text-slate-500 mt-0.5 text-[11px] sm:text-xs md:text-sm lg:text-base font-medium truncate max-w-xl"
                 >
                   Monitor intern performance, attendance, and project progress
                 </motion.p>
               </div>
             </div>
 
-            {/* Right: Actions */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+            {/* Right: Actions (under title on 768px and 1024px, max-width card) */}
+            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="bg-white rounded-xl md:rounded-[16px] shadow-sm border border-slate-200/80 px-3 sm:px-4 py-2 sm:py-2.5 flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full xl:w-auto justify-end"
+                className="bg-white rounded-xl md:rounded-[16px] shadow-sm border border-slate-200/80 p-1.5 sm:p-2 sm:p-2.5 flex items-center gap-1.5 sm:gap-2 md:gap-3 w-full xl:w-auto justify-between"
               >
                 <button
                   onClick={exportToPDF}
                   disabled={isLoading || isExporting || totalEntries === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="flex-1 xl:flex-none justify-center flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer min-w-0"
                   title="Export to PDF"
                 >
-                  <FileText className="w-4 h-4 text-rose-500" />
-                  <span>{isExporting ? "Exporting..." : "Export PDF"}</span>
+                  <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-rose-500 flex-shrink-0" />
+                  <span className="truncate">{isExporting ? "Exporting..." : "Export PDF"}</span>
                 </button>
                 <button
                   onClick={exportToCSV}
                   disabled={isLoading || isExporting || totalEntries === 0}
-                  className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="flex-1 xl:flex-none justify-center flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer min-w-0"
                   title="Export to CSV"
                 >
-                  <Download className="w-4 h-4 text-slate-500" />
-                  <span>Export CSV</span>
+                  <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-slate-500 flex-shrink-0" />
+                  <span className="truncate">Export CSV</span>
                 </button>
                 <button
                   onClick={() => fetchAnalytics(true)}
                   disabled={isLoading || isRefreshing}
                   title="Refresh Data"
-                  className="p-2 sm:p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-sm flex-shrink-0 disabled:opacity-50 cursor-pointer"
+                  className="p-1.5 sm:p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-sm flex-shrink-0 disabled:opacity-50 cursor-pointer"
                 >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#000066]' : ''}`} />
+                  <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#000066]' : ''}`} />
                 </button>
               </motion.div>
             </div>
           </div>
 
-            {/* KPI Summary Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              {/* Total Interns */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Total Interns</p>
-                  <p className="text-xl font-black text-slate-800 leading-tight">
-                    {isLoading ? "..." : summaryStats.total}
-                  </p>
-                </div>
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+            {/* Total Interns */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
               </div>
-
-              {/* Good Performance */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Good (&ge;80%)</p>
-                  <p className="text-xl font-black text-emerald-600 leading-tight">
-                    {isLoading ? "..." : summaryStats.good}
-                  </p>
-                </div>
-              </div>
-
-              {/* At Risk */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">At Risk (60-79%)</p>
-                  <p className="text-xl font-black text-amber-600 leading-tight">
-                    {isLoading ? "..." : summaryStats.atRisk}
-                  </p>
-                </div>
-              </div>
-
-              {/* Poor */}
-              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3.5">
-                <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
-                  <XCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Poor (&lt;60%)</p>
-                  <p className="text-xl font-black text-rose-600 leading-tight">
-                    {isLoading ? "..." : summaryStats.poor}
-                  </p>
-                </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Total Interns</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.total}
+                </p>
               </div>
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-              {/* Search input */}
-              <div className="relative flex-1 max-w-lg">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  autoComplete="off"
-                  spellCheck="false"
-                  placeholder="Search intern name, ID, email, university, specialization..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-[#000066] transition-colors placeholder:text-slate-400"
-                />
-                {searchTerm && (
+            {/* Good Performance */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">Good</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">&ge;80%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-emerald-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.good}
+                </p>
+              </div>
+            </div>
+
+            {/* At Risk */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">At Risk</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-amber-600 bg-amber-50 px-1 py-0.5 rounded">60-79%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-amber-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.atRisk}
+                </p>
+              </div>
+            </div>
+
+            {/* Poor */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">Poor</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-rose-600 bg-rose-50 px-1 py-0.5 rounded">&lt;60%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-rose-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.poor}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+            {/* Search input */}
+            <div className="relative flex-1 w-full xl:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                autoComplete="off"
+                spellCheck="false"
+                placeholder="Search by name, ID, email, specialization..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 sm:py-2.5 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium outline-none focus:border-[#000066] transition-colors placeholder:text-slate-400"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => handleSearchChange("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-500 transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full xl:w-auto">
+              {/* Status Filter */}
+              <div className="grid grid-cols-4 w-full sm:w-auto bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl p-0.5 sm:p-1 text-[10px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold flex-shrink-0">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "Good", label: "Good" },
+                  { key: "At Risk", label: "At Risk" },
+                  { key: "Poor", label: "Poor" }
+                ].map((tab) => (
                   <button
-                    onClick={() => handleSearchChange("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-500 transition-colors"
+                    key={tab.key}
+                    onClick={() => handleStatusFilterChange(tab.key)}
+                    className={`px-2 sm:px-3 md:px-2.5 lg:px-2.5 xl:px-3 py-1.5 rounded-md sm:rounded-lg text-center transition-all truncate cursor-pointer ${
+                      statusFilter === tab.key
+                        ? "bg-[#000066] text-white shadow-sm font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
                   >
-                    <X className="w-3 h-3" />
+                    {tab.label}
                   </button>
-                )}
+                ))}
               </div>
 
-              {/* Filters */}
-              <div className="flex flex-wrap items-center gap-2.5">
-                {/* Status Filter */}
-                <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl p-1 text-xs font-semibold">
-                  {[
-                    { key: "all", label: "All Status" },
-                    { key: "Good", label: "Good" },
-                    { key: "At Risk", label: "At Risk" },
-                    { key: "Poor", label: "Poor" }
-                  ].map((tab) => (
-                    <button
-                      key={tab.key}
-                      onClick={() => handleStatusFilterChange(tab.key)}
-                      className={`px-3 py-1.5 rounded-lg transition-all ${
-                        statusFilter === tab.key
-                          ? "bg-[#000066] text-white shadow-sm font-bold"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Specialization Filter Dropdown with properly aligned ChevronDown icon */}
-                {uniqueSpecializations.length > 0 && (
-                  <div className="relative">
-                    <select
-                      value={specFilter}
-                      onChange={(e) => handleSpecFilterChange(e.target.value)}
-                      className="appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
-                    >
-                      <option value="all">All Specializations</option>
-                      {uniqueSpecializations.map((spec) => (
-                        <option key={spec} value={spec}>{spec}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </div>
-                )}
-
-                {/* Month Filter Dropdown immediately after Specialization */}
-                <div className="relative" ref={monthDropdownRef}>
-                  <button
-                    type="button"
-                    onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
-                    className={`flex items-center gap-1.5 pl-3 pr-8 py-2 bg-slate-50 border ${
-                      monthSelection !== "all" || includeCurrentMonth
-                        ? "border-[#000066] text-[#000066] bg-indigo-50/50 font-bold"
-                        : "border-slate-200 text-slate-700 font-semibold"
-                    } rounded-xl text-xs outline-none hover:border-[#000066] transition-colors cursor-pointer shadow-sm`}
-                    title="Filter by Month Range"
-                  >
-                    <Calendar className={`w-3.5 h-3.5 ${monthSelection !== "all" || includeCurrentMonth ? "text-[#000066]" : "text-slate-400"} flex-shrink-0`} />
-                    <span className="truncate max-w-[145px]">{activeMonthRange.label}</span>
-                    <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  </button>
-
-                  <AnimatePresence>
-                    {isMonthDropdownOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 4, scale: 0.98 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                        transition={{ duration: 0.12 }}
-                        className="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-60 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 overflow-hidden"
-                      >
-                        {/* Top Checkboxes */}
-                        <div className="space-y-1.5 p-1 bg-slate-50/80 rounded-lg border border-slate-100">
-                          {/* Checkbox 1: Current Month */}
-                          <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors">
-                            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
-                              <input
-                                type="checkbox"
-                                checked={includeCurrentMonth}
-                                onChange={(e) => {
-                                  setIncludeCurrentMonth(e.target.checked);
-                                  setCurrentPage(1);
-                                }}
-                                className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
-                              />
-                              <span>Current Month</span>
-                            </label>
-                            <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
-                              {monthSelection === "all" || monthSelection === "current"
-                                ? "Filter by current month"
-                                : "Combine with previous months"}
-                            </p>
-                          </div>
-
-                          {/* Checkbox 2: Use Internship Start Date */}
-                          <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors border-t border-slate-200/50 pt-1.5">
-                            <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
-                              <input
-                                type="checkbox"
-                                checked={useInternStartDate}
-                                onChange={(e) => {
-                                  setUseInternStartDate(e.target.checked);
-                                  setCurrentPage(1);
-                                }}
-                                className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
-                              />
-                              <span>Use Internship Start Date</span>
-                            </label>
-                            <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
-                              Calculate from internship start date
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="border-t border-slate-100 my-1.5" />
-
-                        {/* Month Range Options */}
-                        <div className="space-y-0.5">
-                          {[
-                            { key: "all", label: "All Months" },
-                            { key: "current", label: "Current Month" },
-                            { key: "prev1", label: "Previous Month" },
-                            { key: "prev2", label: "Previous 2 Months" },
-                            { key: "prev3", label: "Previous 3 Months" },
-                          ].map((opt) => {
-                            const isSelected = monthSelection === opt.key;
-                            return (
-                              <button
-                                key={opt.key}
-                                type="button"
-                                onClick={() => {
-                                  setMonthSelection(opt.key);
-                                  setCurrentPage(1);
-                                  setIsMonthDropdownOpen(false);
-                                }}
-                                className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
-                                  isSelected
-                                    ? "bg-indigo-50 text-[#000066] font-bold"
-                                    : "text-slate-700 hover:bg-slate-50 font-medium"
-                                }`}
-                              >
-                                <span>{opt.label}</span>
-                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#000066]" />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* Page Size Selector with properly aligned ChevronDown icon */}
-                <div className="relative">
+              {/* Specialization Filter Dropdown */}
+              {uniqueSpecializations.length > 0 && (
+                <div className="relative w-full sm:w-auto flex-shrink-0">
                   <select
-                    value={pageSize}
-                    onChange={(e) => {
-                      setPageSize(Number(e.target.value));
-                      setCurrentPage(1);
-                    }}
-                    className="appearance-none pl-3.5 pr-9 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
+                    value={specFilter}
+                    onChange={(e) => handleSpecFilterChange(e.target.value)}
+                    className="w-full sm:w-auto appearance-none pl-3 pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
                   >
-                    <option value="10">10 / page</option>
-                    <option value="25">25 / page</option>
-                    <option value="50">50 / page</option>
-                    <option value="100">100 / page</option>
+                    <option value="all">All Specializations</option>
+                    {uniqueSpecializations.map((spec) => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
                   </select>
-                  <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
+              )}
+
+              {/* Month Filter Dropdown */}
+              <div className="relative flex-1 sm:flex-none" ref={monthDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
+                  className={`w-full sm:w-auto flex items-center justify-between gap-1.5 pl-2.5 sm:pl-3 pr-7 sm:pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border ${
+                    monthSelection !== "all" || includeCurrentMonth
+                      ? "border-[#000066] text-[#000066] bg-indigo-50/50 font-bold"
+                      : "border-slate-200/80 text-slate-700 font-semibold"
+                  } rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs outline-none hover:border-[#000066] transition-colors cursor-pointer shadow-sm`}
+                  title="Filter by Month Range"
+                >
+                  <Calendar className={`w-3.5 h-3.5 ${monthSelection !== "all" || includeCurrentMonth ? "text-[#000066]" : "text-slate-400"} flex-shrink-0`} />
+                  <span className="truncate max-w-[110px] sm:max-w-[145px]">{activeMonthRange.label}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </button>
+
+                <AnimatePresence>
+                  {isMonthDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-[calc(100vw-36px)] max-w-xs sm:w-60 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 overflow-hidden"
+                    >
+                      {/* Top Checkboxes */}
+                      <div className="space-y-1.5 p-1 bg-slate-50/80 rounded-lg border border-slate-100">
+                        {/* Checkbox 1: Current Month */}
+                        <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={includeCurrentMonth}
+                              onChange={(e) => {
+                                setIncludeCurrentMonth(e.target.checked);
+                                setCurrentPage(1);
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
+                            />
+                            <span>Current Month</span>
+                          </label>
+                          <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
+                            {monthSelection === "all" || monthSelection === "current"
+                              ? "Filter by current month"
+                              : "Combine with previous months"}
+                          </p>
+                        </div>
+
+                        {/* Checkbox 2: Use Internship Start Date */}
+                        <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors border-t border-slate-200/50 pt-1.5">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={useInternStartDate}
+                              onChange={(e) => {
+                                setUseInternStartDate(e.target.checked);
+                                setCurrentPage(1);
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
+                            />
+                            <span>Use Internship Start Date</span>
+                          </label>
+                          <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
+                            Calculate from internship start date
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 my-1.5" />
+
+                      {/* Month Range Options */}
+                      <div className="space-y-0.5">
+                        {[
+                          { key: "all", label: "All Months" },
+                          { key: "current", label: "Current Month" },
+                          { key: "prev1", label: "Previous Month" },
+                          { key: "prev2", label: "Previous 2 Months" },
+                          { key: "prev3", label: "Previous 3 Months" },
+                        ].map((opt) => {
+                          const isSelected = monthSelection === opt.key;
+                          return (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              onClick={() => {
+                                setMonthSelection(opt.key);
+                                setCurrentPage(1);
+                                setIsMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                isSelected
+                                  ? "bg-indigo-50 text-[#000066] font-bold"
+                                  : "text-slate-700 hover:bg-slate-50 font-medium"
+                              }`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#000066]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Page Size Selector */}
+              <div className="relative flex-shrink-0">
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="appearance-none pl-2.5 sm:pl-3.5 pr-7 sm:pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
+                >
+                  <option value="10">10 / page</option>
+                  <option value="25">25 / page</option>
+                  <option value="50">50 / page</option>
+                  <option value="100">100 / page</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
             </div>
+          </div>
 
             {/* Mobile View: Cards */}
-            <div className="xl:hidden flex flex-col gap-3">
+            <div className="xl:hidden flex flex-col gap-2.5 sm:gap-3">
               {isLoading ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
                   <div className="relative mb-3 flex items-center justify-center">
-                    <div className="w-10 h-10 rounded-full border-3 border-indigo-100 border-t-[#000066] animate-spin"></div>
-                    <Activity className="w-4 h-4 text-[#000066] absolute inset-0 m-auto animate-pulse" />
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-3 border-indigo-100 border-t-[#000066] animate-spin"></div>
+                    <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#000066] absolute inset-0 m-auto animate-pulse" />
                   </div>
-                  <h4 className="text-sm font-bold text-slate-800">Calculating & Loading Analytics...</h4>
-                  <p className="text-xs text-slate-500 mt-0.5">Processing attendance, logbooks, and performance rates</p>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-800">Calculating & Loading Analytics...</h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Processing attendance, logbooks, and performance rates</p>
                 </div>
               ) : error ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
-                  <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
-                  <p className="text-sm font-bold text-slate-700 mb-3">{error}</p>
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                  <AlertCircle className="w-7 h-7 sm:w-8 sm:h-8 text-rose-500 mb-2" />
+                  <p className="text-xs sm:text-sm font-bold text-slate-700 mb-3">{error}</p>
                   <button
                     onClick={() => fetchAnalytics(true)}
-                    className="px-4 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg transition-colors"
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg sm:rounded-xl transition-colors cursor-pointer"
                   >
                     Retry
                   </button>
@@ -1266,12 +1276,12 @@ const AdminAnalytics = () => {
                   <PaginationBar isMobile={true} />
                 </>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
-                    <Filter className="w-8 h-8 text-slate-300" />
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                    <Filter className="w-6 h-6 sm:w-8 sm:h-8 text-slate-300" />
                   </div>
-                  <h3 className="text-lg font-bold text-slate-700">No results found</h3>
-                  <p className="text-sm text-slate-500 mt-1">Try adjusting your search criteria or clearing filters.</p>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-700">No results found</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Try adjusting your search criteria or clearing filters.</p>
                   {(searchTerm || statusFilter !== "all" || specFilter !== "all") && (
                     <button
                       onClick={() => {
@@ -1280,7 +1290,7 @@ const AdminAnalytics = () => {
                         setSpecFilter("all");
                         setCurrentPage(1);
                       }}
-                      className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                      className="mt-3.5 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors cursor-pointer"
                     >
                       Clear All Filters
                     </button>
@@ -1288,6 +1298,7 @@ const AdminAnalytics = () => {
                 </div>
               )}
             </div>
+
 
             {/* Desktop View: Compact Modern Table with Fixed Layout & Precise Alignment */}
             <div className="hidden xl:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
