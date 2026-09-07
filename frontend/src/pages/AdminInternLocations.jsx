@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
@@ -84,64 +84,96 @@ const SRI_LANKA_DISTRICTS = [
 
 // ── Sri Lanka Bounding Coordinates ───────────────────────────────────────────
 const SRI_LANKA_BOUNDS = [
-  [5.85, 79.55], // Southwest offshore of Dondra / Galle
-  [9.95, 82.00], // Northeast offshore of Point Pedro / Jaffna
+  [5.90, 79.65], // Southwest (Dondra / Galle)
+  [9.85, 81.90], // Northeast (Point Pedro / Jaffna)
 ];
 
 const OMS_CSS = `
   .oms-shadow { stroke: #999; stroke-width: 1; }
   .leaflet-marker-icon { transition: opacity 0.2s; }
-  .leaflet-container { z-index: 1 !important; isolation: isolate; }
+  .leaflet-container { 
+    z-index: 1 !important; 
+    isolation: isolate; 
+    contain: layout paint;
+    touch-action: pan-x pan-y;
+  }
   .leaflet-pane { z-index: 2 !important; }
   .leaflet-top, .leaflet-bottom { z-index: 10 !important; }
   .leaflet-control { z-index: 10 !important; }
 `;
 
 // ── FlyTo helper ──────────────────────────────────────────────────────────────
-function FlyTo({ position }) {
+const FlyTo = React.memo(function FlyTo({ position }) {
   const map = useMap();
   useEffect(() => {
     if (position) map.flyTo(position, 14, { duration: 1.2 });
   }, [position, map]);
   return null;
-}
+});
 
 // ── Sri Lanka Map Aligner ───────────────────────────────────────────────────
-function SriLankaMapAligner({ flyTo }) {
+const SriLankaMapAligner = React.memo(function SriLankaMapAligner({ flyTo }) {
   const map = useMap();
+  const hasAlignedRef = useRef(false);
 
   useEffect(() => {
+    if (hasAlignedRef.current) return;
+
     const alignSriLanka = () => {
       map.invalidateSize();
       if (!flyTo) {
+        const width = window.innerWidth;
+        let padding = [24, 24];
+        let maxZoom = 9;
+
+        if (width < 640) {
+          padding = [10, 6];
+          maxZoom = 8.5;
+        } else if (width <= 1024) {
+          padding = [16, 12];
+          maxZoom = 8.5;
+        }
+
         map.fitBounds(SRI_LANKA_BOUNDS, {
-          padding: [24, 24],
+          padding,
           animate: false,
+          maxZoom,
         });
       }
     };
 
     alignSriLanka();
-    const t1 = setTimeout(alignSriLanka, 100);
-    const t2 = setTimeout(alignSriLanka, 350);
-
-    const handleResize = () => {
-      map.invalidateSize();
-    };
-    window.addEventListener("resize", handleResize);
+    const t1 = setTimeout(alignSriLanka, 80);
+    const t2 = setTimeout(alignSriLanka, 300);
+    hasAlignedRef.current = true;
 
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
-      window.removeEventListener("resize", handleResize);
     };
   }, [map, flyTo]);
 
+  // Window resize debounced invalidateSize only (never re-fitting bounds or fighting scroll)
+  useEffect(() => {
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [map]);
+
   return null;
-}
+});
 
 // ── OMS spiderfy layer ────────────────────────────────────────────────────────
-function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
+const SpiderfyLayer = React.memo(function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
   const map = useMap();
   const omsRef = useRef(null);
   const layerRef = useRef(null);
@@ -244,7 +276,7 @@ function SpiderfyLayer({ interns, highlightedId, markerIcon, onReady }) {
   }, [interns, highlightedId]);
 
   return null;
-}
+});
 
 // ── Main component ────────────────────────────────────────────────────────────
 const AdminInternLocations = () => {
@@ -423,30 +455,35 @@ const AdminInternLocations = () => {
   }, [selectedDistrict, fetchInternLocations, fetchPastInternLocations]);
 
   // ── Toggle past interns ───────────────────────────────────────────────────
-  const handleTogglePastInterns = () => {
-    const next = !showPastInterns;
-    setShowPastInterns(next);
-    if (next && !pastFetched) {
-      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
-      if (adminInfo.token) {
-        fetchPastInternLocations(adminInfo.token, selectedDistrict);
+  const handleTogglePastInterns = useCallback(() => {
+    setShowPastInterns((prev) => {
+      const next = !prev;
+      if (next && !pastFetched) {
+        const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+        if (adminInfo.token) {
+          fetchPastInternLocations(adminInfo.token, selectedDistrict);
+        }
       }
-    }
-  };
+      return next;
+    });
+  }, [pastFetched, fetchPastInternLocations, selectedDistrict]);
 
   // ── Combined district count (active + past when toggle is on) ─────────────
   // This is what shows in the dropdown next to each district name
-  const countForDistrict = (d) => {
-    const activeCount =
-      districtCounts.find((c) => c._id === d)?.count ?? 0;
-    const pastCount = showPastInterns
-      ? (pastDistrictCounts.find((c) => c._id === d)?.count ?? 0)
-      : 0;
-    return activeCount + pastCount;
-  };
+  const countForDistrict = useCallback(
+    (d) => {
+      const activeCount =
+        districtCounts.find((c) => c._id === d)?.count ?? 0;
+      const pastCount = showPastInterns
+        ? (pastDistrictCounts.find((c) => c._id === d)?.count ?? 0)
+        : 0;
+      return activeCount + pastCount;
+    },
+    [districtCounts, showPastInterns, pastDistrictCounts],
+  );
 
   // ── ID search ─────────────────────────────────────────────────────────────
-  const handleIdSearch = async () => {
+  const handleIdSearch = useCallback(async () => {
     const trimmed = idSearch.trim();
     if (!trimmed) {
       setHighlightedIntern(null);
@@ -480,7 +517,7 @@ const AdminInternLocations = () => {
           setTimeout(() => {
             const m = markerMapRef.current[intern.id];
             if (m) m.openPopup();
-          }, 1500);
+          }, 800);
         }
       } else {
         setIdSearchError("Intern not found for that ID.");
@@ -498,16 +535,16 @@ const AdminInternLocations = () => {
     } finally {
       setIdSearchLoading(false);
     }
-  };
+  }, [idSearch, API_BASE]);
 
-  const clearIdSearch = () => {
+  const clearIdSearch = useCallback(() => {
     setIdSearch("");
     setHighlightedIntern(null);
     setFlyTo(null);
     setIdSearchError(null);
-  };
+  }, []);
 
-  const handleListRowClick = (intern) => {
+  const handleListRowClick = useCallback((intern) => {
     if (intern.isPast && !showPastInterns) {
       setShowPastInterns(true);
     }
@@ -515,26 +552,35 @@ const AdminInternLocations = () => {
     setTimeout(() => {
       const m = markerMapRef.current[intern.id];
       if (m) m.openPopup();
-    }, 1500);
-  };
+    }, 800);
+  }, [showPastInterns]);
 
-  const combinedInterns = [...interns, ...pastInterns];
+  const handleMarkerMapReady = useCallback((markerMap) => {
+    Object.assign(markerMapRef.current, markerMap);
+  }, []);
 
-  const filteredListInterns = combinedInterns
-    .filter((i) => {
-      if (tableFilter === "active") return !i.isPast;
-      if (tableFilter === "past") return i.isPast;
-      return true;
-    })
-    .filter((i) => {
-      if (!listSearch.trim()) return true;
-      const q = listSearch.toLowerCase();
-      return (
-        i.name?.toLowerCase().includes(q) ||
-        i.id?.toLowerCase().includes(q) ||
-        i.address?.toLowerCase().includes(q)
-      );
-    });
+  const combinedInterns = useMemo(
+    () => [...interns, ...pastInterns],
+    [interns, pastInterns],
+  );
+
+  const filteredListInterns = useMemo(() => {
+    const q = listSearch.trim().toLowerCase();
+    return combinedInterns
+      .filter((i) => {
+        if (tableFilter === "active") return !i.isPast;
+        if (tableFilter === "past") return i.isPast;
+        return true;
+      })
+      .filter((i) => {
+        if (!q) return true;
+        return (
+          i.name?.toLowerCase().includes(q) ||
+          i.id?.toLowerCase().includes(q) ||
+          i.address?.toLowerCase().includes(q)
+        );
+      });
+  }, [combinedInterns, tableFilter, listSearch]);
 
   return (
     <AdminNavigation>
@@ -598,7 +644,7 @@ const AdminInternLocations = () => {
           className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-5 z-10 w-full relative"
         >
           {/* Card 1: Active Interns */}
-          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#000066]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#000066]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default">
             <div className="flex justify-between items-start mb-2 sm:mb-3">
               <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-[#000066]/5 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
                 <FaUsers className="w-4 h-4 sm:w-5 sm:h-5 text-[#000066]" />
@@ -620,7 +666,7 @@ const AdminInternLocations = () => {
           </div>
 
           {/* Card 2: Past Interns */}
-          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-violet-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-violet-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default">
             <div className="flex justify-between items-start mb-2 sm:mb-3">
               <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-violet-50 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
                 <FaHistory className="w-4 h-4 sm:w-5 sm:h-5 text-violet-600" />
@@ -655,7 +701,7 @@ const AdminInternLocations = () => {
           </div>
 
           {/* Card 3: Filter by District */}
-          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#006600]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-[#006600]/30 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default">
             <div className="flex justify-between items-start mb-1.5 sm:mb-2">
               <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-[#006600]/5 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
                 <FaFilter className="w-4 h-4 sm:w-5 sm:h-5 text-[#006600]" />
@@ -690,7 +736,7 @@ const AdminInternLocations = () => {
           </div>
 
           {/* Card 4: Find Intern by ID */}
-          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-sky-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default will-change-transform">
+          <div className="group bg-white p-3.5 sm:p-4 md:p-5 rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 hover:border-sky-300 hover:shadow-lg transition-all duration-300 flex flex-col justify-between shadow-sm cursor-default">
             <div className="flex justify-between items-start mb-1.5 sm:mb-2">
               <div className="p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl md:rounded-2xl bg-sky-50 transition-transform group-hover:scale-110 duration-300 flex items-center justify-center">
                 <FaIdCard className="w-4 h-4 sm:w-5 sm:h-5 text-sky-600" />
@@ -845,7 +891,7 @@ const AdminInternLocations = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl sm:rounded-3xl shadow-md border border-slate-200/80 overflow-hidden relative z-10 isolate"
+          className="bg-white rounded-xl sm:rounded-3xl shadow-md border border-slate-200/80 overflow-hidden relative z-10 isolate"
         >
           {loading && (
             <div className="absolute inset-0 z-[15] bg-white/60 backdrop-blur-[2px] flex flex-col items-center justify-center gap-4">
@@ -855,10 +901,10 @@ const AdminInternLocations = () => {
           )}
           <MapContainer
             bounds={SRI_LANKA_BOUNDS}
-            boundsOptions={{ padding: [24, 24] }}
-            className="h-[540px] sm:h-[680px] lg:h-[780px] xl:h-[840px] w-full"
+            boundsOptions={{ padding: [12, 12] }}
+            className="h-[460px] sm:h-[620px] lg:h-[750px] xl:h-[840px] w-full"
             style={{ width: "100%" }}
-            scrollWheelZoom
+            scrollWheelZoom={false}
           >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
@@ -872,9 +918,7 @@ const AdminInternLocations = () => {
               interns={interns}
               highlightedId={highlightedIntern?.id}
               markerIcon={null}
-              onReady={(markerMap) => {
-                markerMapRef.current = { ...markerMapRef.current, ...markerMap };
-              }}
+              onReady={handleMarkerMapReady}
             />
 
             {/* Past interns layer — only mounted when toggle is on */}
@@ -883,9 +927,7 @@ const AdminInternLocations = () => {
                 interns={pastInterns}
                 highlightedId={null}
                 markerIcon={pastInternIcon}
-                onReady={(markerMap) => {
-                  markerMapRef.current = { ...markerMapRef.current, ...markerMap };
-                }}
+                onReady={handleMarkerMapReady}
               />
             )}
           </MapContainer>
@@ -916,13 +958,13 @@ const AdminInternLocations = () => {
                   </div>
                 </div>
 
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-stretch sm:items-center lg:items-stretch xl:items-center gap-2.5 w-full sm:w-auto lg:w-fit lg:self-end xl:w-auto">
                   {/* Filter tabs */}
-                  <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-xs self-start sm:self-auto">
+                  <div className="flex items-center gap-1 bg-white border border-slate-200 p-1 rounded-xl shadow-xs w-full sm:w-auto lg:w-full">
                     <button
                       type="button"
                       onClick={() => setTableFilter("all")}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 sm:flex-initial text-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         tableFilter === "all"
                           ? "bg-slate-800 text-white shadow-xs"
                           : "text-slate-600 hover:text-slate-900"
@@ -933,7 +975,7 @@ const AdminInternLocations = () => {
                     <button
                       type="button"
                       onClick={() => setTableFilter("active")}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 sm:flex-initial text-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         tableFilter === "active"
                           ? "bg-blue-700 text-white shadow-xs"
                           : "text-blue-700 hover:text-blue-900"
@@ -944,7 +986,7 @@ const AdminInternLocations = () => {
                     <button
                       type="button"
                       onClick={() => setTableFilter("past")}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      className={`flex-1 sm:flex-initial text-center px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                         tableFilter === "past"
                           ? "bg-violet-700 text-white shadow-xs"
                           : "text-violet-700 hover:text-violet-900"
@@ -955,7 +997,7 @@ const AdminInternLocations = () => {
                   </div>
 
                   {/* Search input */}
-                  <div className="relative w-full sm:w-64">
+                  <div className="relative w-full sm:w-64 lg:w-full xl:w-100">
                     <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none" />
                     <input
                       type="text"
@@ -981,92 +1023,157 @@ const AdminInternLocations = () => {
                   No interns match your search.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-gray-50 border-b border-gray-100 text-left">
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12 text-center">
-                          #
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">
-                          Trainee ID
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center w-36 sm:w-40">
-                          Status
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Name
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                          Address
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-44 text-center">
-                          Action
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredListInterns.map((intern, idx) => (
-                        <motion.tr
-                          key={intern.id}
-                          initial={{ opacity: 0, x: -6 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: Math.min(idx * 0.025, 0.4) }}
-                          className="border-b border-gray-50 hover:bg-blue-50/50 transition-colors duration-150"
-                        >
-                          <td className="px-4 sm:px-6 py-3.5 text-gray-300 text-xs font-medium text-center">
-                            {idx + 1}
-                          </td>
-                          <td className="px-4 sm:px-6 py-3.5 text-center">
-                            <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide ${
-                              intern.isPast
-                                ? "bg-violet-100 text-violet-700 border border-violet-200"
-                                : "bg-blue-100 text-blue-700 border border-blue-200"
-                            }`}>
-                              {intern.id}
-                            </span>
-                          </td>
-                          <td className="px-4 sm:px-6 py-3.5 text-center">
-                            {intern.isPast ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-50 text-violet-700 border border-violet-200">
-                                Past Intern
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                Active
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 sm:px-6 py-3.5 font-semibold text-gray-800">
-                            {intern.name}
-                          </td>
-                          <td className="px-4 sm:px-6 py-3.5 text-gray-500 text-xs max-w-xs">
-                            {intern.address ? (
-                              <span className="line-clamp-2">{intern.address}</span>
-                            ) : (
-                              <span className="italic text-gray-300">
-                                No address on record
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 sm:px-6 py-3.5 text-center">
-                            <button
-                              onClick={() => handleListRowClick(intern)}
-                              className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer active:scale-95 ${
+                <>
+                  {/* Desktop Table (Hidden on mobile, 768px and 1024px screens) */}
+                  <div className="hidden xl:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-100 text-left">
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-12 text-center">
+                            #
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center">
+                            Trainee ID
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider text-center w-36 sm:w-40">
+                            Status
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Name
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                            Address
+                          </th>
+                          <th className="px-4 sm:px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider w-44 text-center">
+                            Action
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredListInterns.map((intern, idx) => (
+                          <tr
+                            key={intern.id}
+                            className="border-b border-gray-50 hover:bg-blue-50/50 transition-colors duration-150"
+                          >
+                            <td className="px-4 sm:px-6 py-3.5 text-gray-300 text-xs font-medium text-center">
+                              {idx + 1}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3.5 text-center">
+                              <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-lg text-xs font-bold tracking-wide ${
                                 intern.isPast
-                                  ? "bg-violet-600 hover:bg-violet-700"
-                                  : "bg-blue-600 hover:bg-blue-700"
-                              }`}
-                            >
-                              <FaMapMarkerAlt className="text-xs" />
-                              View on Map
-                            </button>
-                          </td>
-                        </motion.tr>
+                                  ? "bg-violet-100 text-violet-700 border border-violet-200"
+                                  : "bg-blue-100 text-blue-700 border border-blue-200"
+                              }`}>
+                                {intern.id}
+                              </span>
+                            </td>
+                            <td className="px-4 sm:px-6 py-3.5 text-center">
+                              {intern.isPast ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-violet-50 text-violet-700 border border-violet-200">
+                                  Past Intern
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Active
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3.5 font-semibold text-gray-800">
+                              {intern.name}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3.5 text-gray-500 text-xs max-w-xs">
+                              {intern.address ? (
+                                <span className="line-clamp-2">{intern.address}</span>
+                              ) : (
+                                <span className="italic text-gray-300">
+                                  No address on record
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 sm:px-6 py-3.5 text-center">
+                              <button
+                                onClick={() => handleListRowClick(intern)}
+                                className={`inline-flex items-center justify-center gap-1.5 px-3.5 py-1.5 text-white text-xs font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer active:scale-95 ${
+                                  intern.isPast
+                                    ? "bg-violet-600 hover:bg-violet-700"
+                                    : "bg-blue-600 hover:bg-blue-700"
+                                }`}
+                              >
+                                <FaMapMarkerAlt className="text-xs" />
+                                View on Map
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Card View (For mobile, 768px and 1024px screens) */}
+                  <div className="block xl:hidden p-3 sm:p-4 bg-slate-50/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-3.5">
+                      {filteredListInterns.map((intern, idx) => (
+                        <div
+                          key={intern.id}
+                          className="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs flex flex-col justify-between gap-2.5 hover:border-slate-300 hover:shadow-sm transition-all"
+                        >
+                          <div className="flex flex-col gap-2">
+                            {/* Top row: ID, Status & Index */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-[11px] font-bold text-slate-400">
+                                  #{idx + 1}
+                                </span>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-lg text-xs font-bold tracking-wide ${
+                                  intern.isPast
+                                    ? "bg-violet-100 text-violet-700 border border-violet-200"
+                                    : "bg-blue-100 text-blue-700 border border-blue-200"
+                                }`}>
+                                  {intern.id}
+                                </span>
+                              </div>
+                              {intern.isPast ? (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-violet-50 text-violet-700 border border-violet-200 shrink-0">
+                                  Past Intern
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                  Active
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Name & Address */}
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-slate-900 text-sm truncate">
+                                {intern.name}
+                              </h4>
+                              <p className="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                {intern.address || (
+                                  <span className="italic text-gray-400">No address on record</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Action button */}
+                          <button
+                            type="button"
+                            onClick={() => handleListRowClick(intern)}
+                            className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-white text-xs font-bold rounded-lg shadow-xs transition-all active:scale-[0.98] cursor-pointer ${
+                              intern.isPast
+                                ? "bg-violet-600 hover:bg-violet-700 active:bg-violet-800"
+                                : "bg-blue-600 hover:bg-blue-700 active:bg-blue-800"
+                            }`}
+                          >
+                            <FaMapMarkerAlt className="text-xs shrink-0" />
+                            View on Map
+                          </button>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
+                    </div>
+                  </div>
+                </>
               )}
             </motion.div>
           )}
