@@ -52,13 +52,13 @@ const DigitalClock = () => {
   return (
     <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 w-full">
       <div className="flex items-baseline font-bold tracking-tight text-slate-800 tabular-nums">
-        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getHours())}</span>
-        <span className="text-xl sm:text-2xl md:text-3xl text-slate-400 mx-0.5 sm:mx-1 animate-pulse font-medium">:</span>
-        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getMinutes())}</span>
-        <span className="text-xs sm:text-sm md:text-base text-[#006600] font-bold ml-1 sm:ml-1.5">{formatDigit(time.getSeconds())}</span>
+        <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl">{formatDigit(time.getHours())}</span>
+        <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-slate-400 mx-0.5 sm:mx-1 animate-pulse font-medium">:</span>
+        <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-[10px] sm:text-xs md:text-sm lg:text-base text-[#006600] font-bold ml-1 sm:ml-1.5">{formatDigit(time.getSeconds())}</span>
       </div>
       <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300"></div>
-      <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm md:text-base font-bold text-slate-600 mt-0.5 sm:mt-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-slate-600 mt-0.5 sm:mt-0">
         <span className="text-[#000066] uppercase">{time.toLocaleDateString("en-US", { weekday: "short" })}</span>
         <span>{time.getDate()}</span>
         <span>{time.toLocaleDateString("en-US", { month: "short" })}</span>
@@ -150,39 +150,39 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
 
   return (
     <div className="select-none">
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 border border-gray-100 shadow-lg">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
         {/* month nav */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <motion.button
             onClick={prevMonth}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
           >
-            <FaChevronLeft className="text-base" />
+            <FaChevronLeft className="text-xs sm:text-base" />
           </motion.button>
           <div className="text-center">
-            <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {monthLabel}
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">Daily & Meeting Attendance</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Daily & Meeting Attendance</p>
           </div>
           <motion.button
             onClick={nextMonth}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
           >
-            <FaChevronRight className="text-base" />
+            <FaChevronRight className="text-xs sm:text-base" />
           </motion.button>
         </div>
 
         {/* day-of-week headers */}
-        <div className="grid grid-cols-7 gap-2 mb-4">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-4">
           {DOW.map((d) => (
             <div
               key={d}
-              className="text-center text-xs font-bold text-gray-600 py-3 px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-lg border border-gray-200"
+              className="text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-gray-600 py-1.5 sm:py-2.5 px-0.5 sm:px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-md sm:rounded-lg border border-gray-200"
             >
               {d}
             </div>
@@ -190,7 +190,7 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
         </div>
 
         {/* day cells */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
             const k = keyFor(day);
@@ -253,7 +253,7 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
                         ? `Meeting attendance: ${meetingCount}`
                         : isToday ? "Today" : undefined
                 }
-                className={`flex items-center justify-center rounded-xl h-12 text-base font-semibold transition-all duration-200 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass}`}
+                className={`flex items-center justify-center rounded-lg sm:rounded-xl h-8 sm:h-10 md:h-12 text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass}`}
               >
                 {day}
               </motion.div>
@@ -262,26 +262,26 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
         </div>
 
         {/* legend */}
-        <div className="flex items-center flex-wrap gap-5 mt-6 pt-5 border-t border-gray-200">
-          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200">
-              <span className="text-xs text-emerald-600">✓</span>
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-5 mt-4 sm:mt-6 pt-3 sm:pt-5 border-t border-gray-200">
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 border sm:border-2 border-emerald-200">
+              <span className="text-[9px] sm:text-xs text-emerald-600">✓</span>
             </div>
-            <span className="text-sm font-semibold text-gray-700">Daily</span>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Daily</span>
           </div>
-          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="flex items-center justify-center w-6 h-6 rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200">
-              <span className="text-xs text-blue-600">•</span>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border sm:border-2 border-blue-200">
+              <span className="text-[9px] sm:text-xs text-blue-600">•</span>
             </div>
-            <span className="text-sm font-semibold text-gray-700">Meeting</span>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Meeting</span>
           </div>
-          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500 border-0"></div>
-            <span className="text-sm font-semibold text-gray-700">Both</span>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500 border-0"></div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Both</span>
           </div>
-          <div className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-400"></div>
-            <span className="text-sm font-semibold text-gray-700">Today</span>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border sm:border-2 border-amber-400"></div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Today</span>
           </div>
         </div>
       </div>
@@ -350,41 +350,41 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* calendar */}
-      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-6 border border-gray-100 shadow-lg">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
         {/* nav */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <motion.button
             onClick={prevMonth}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
           >
-            <FaChevronLeft className="text-base" />
+            <FaChevronLeft className="text-xs sm:text-base" />
           </motion.button>
           <div className="text-center">
-            <h3 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {monthLabel}
             </h3>
-            <p className="text-xs text-gray-400 mt-1">Click a date to view</p>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Click a date to view</p>
           </div>
           <motion.button
             onClick={nextMonth}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            className="p-2.5 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
           >
-            <FaChevronRight className="text-base" />
+            <FaChevronRight className="text-xs sm:text-base" />
           </motion.button>
         </div>
 
         {/* dow headers */}
-        <div className="grid grid-cols-7 gap-2 mb-4">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-4">
           {DOW.map((d) => (
             <div
               key={d}
-              className="text-center text-xs font-bold text-gray-600 py-3 px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-lg border border-gray-200"
+              className="text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-gray-600 py-1.5 sm:py-2.5 px-0.5 sm:px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-md sm:rounded-lg border border-gray-200"
             >
               {d}
             </div>
@@ -392,7 +392,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         </div>
 
         {/* cells */}
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
             const k = keyFor(day);
@@ -413,7 +413,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                 disabled={!hasRecord && !isToday}
                 whileHover={hasRecord || isToday ? { scale: 1.08, y: -3 } : {}}
                 whileTap={hasRecord || isToday ? { scale: 0.94 } : {}}
-                className={`flex flex-col items-center justify-center py-4 px-1 rounded-xl font-bold transition-all duration-200 text-base leading-tight
+                className={`flex flex-col items-center justify-center py-2 sm:py-3 md:py-4 px-0.5 sm:px-1 rounded-lg sm:rounded-xl font-bold transition-all duration-200 text-xs sm:text-sm md:text-base leading-tight
                   ${
                     isSelected
                       ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-300 border-0"
@@ -429,7 +429,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                   <motion.span 
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5"
+                    className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500 mt-1"
                   />
                 )}
               </motion.button>
@@ -438,8 +438,8 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         </div>
 
         {/* hint */}
-        <div className="mt-5 pt-4 border-t border-gray-200">
-          <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-2">
+        <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-200">
+          <p className="text-[10px] sm:text-xs text-gray-500 text-center flex items-center justify-center gap-1.5 sm:gap-2">
             <FaRegCalendarAlt className="text-blue-400" />
             Dates with a dot have logbook entries
           </p>
@@ -455,15 +455,15 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -20, scale: 0.95 }}
             transition={{ duration: 0.25, type: "spring", bounce: 0.3 }}
-            className="border border-blue-200 rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50 shadow-xl"
+            className="border border-blue-200 rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50 shadow-lg sm:shadow-xl"
           >
             {/* record header */}
-            <div className="flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border-b border-blue-300">
-              <div className="p-2.5 rounded-lg bg-white/20">
-                <FaCalendar className="text-white text-lg flex-shrink-0" />
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 sm:py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border-b border-blue-300">
+              <div className="p-1.5 sm:p-2.5 rounded-lg bg-white/20">
+                <FaCalendar className="text-white text-sm sm:text-lg flex-shrink-0" />
               </div>
-              <div className="flex-1">
-                <span className="text-base font-bold text-white block">
+              <div className="flex-1 min-w-0">
+                <span className="text-xs sm:text-sm md:text-base font-bold text-white block truncate">
                   {new Date(selectedRecord.date).toLocaleDateString("en-US", {
                     weekday: "long",
                     year: "numeric",
@@ -471,7 +471,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                     day: "numeric",
                   })}
                 </span>
-                <span className="text-xs text-blue-100">
+                <span className="text-[10px] sm:text-xs text-blue-100">
                   {new Date(selectedRecord.date).toLocaleDateString("en-US", { weekday: "short" })}
                 </span>
               </div>
@@ -479,7 +479,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold ${workStatusBadge(selectedRecord.status)}`}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold shrink-0 ${workStatusBadge(selectedRecord.status)}`}
                 >
                   {selectedRecord.status}
                 </motion.span>
@@ -487,7 +487,7 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
             </div>
 
             {/* record body */}
-            <div className="px-6 py-6 space-y-5">
+            <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-3 sm:space-y-5">
               {[
                 {
                   label: "Stack / Technology",
@@ -907,7 +907,7 @@ export default function AdminInactiveInterns() {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3 }}
-                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight"
                 >
                   Inactive Interns
                 </motion.h1>
@@ -915,7 +915,7 @@ export default function AdminInactiveInterns() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.1, duration: 0.3 }}
-                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-[10px] sm:text-xs md:text-sm lg:text-base font-medium max-w-xl"
                 >
                   Manage interns no longer in the active TalentHub system
                 </motion.p>
@@ -923,13 +923,13 @@ export default function AdminInactiveInterns() {
             </div>
             
             {/* Right: Clock */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 w-full xl:w-auto">
               {/* Clock Container */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.15, duration: 0.3 }}
-                className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-xl md:rounded-[16px] w-full xl:w-auto"
+                className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm px-3 sm:px-5 md:px-6 py-2 sm:py-3 md:py-4 rounded-xl md:rounded-[16px] w-full xl:w-auto"
               >
                 <DigitalClock />
               </motion.div>
@@ -1393,7 +1393,7 @@ export default function AdminInactiveInterns() {
             min-height: calc(100vh - 250px);
           }
           @media (max-width: 900px) {
-            .inactive-layout { flex-direction: column; }
+            .inactive-layout { flex-direction: column; gap: 16px; min-height: auto; }
           }
 
           /* ── Left col: intern list ── */
@@ -1405,7 +1405,7 @@ export default function AdminInactiveInterns() {
             overflow: hidden; display: flex; flex-direction: column;
           }
           @media (max-width: 900px) {
-            .inactive-list-col { flex: none; width: 100%; height: 500px; }
+            .inactive-list-col { flex: none; width: 100%; height: auto; max-height: 480px; }
           }
           .inactive-list-header {
             display: flex; align-items: center; justify-content: space-between;
@@ -1418,6 +1418,9 @@ export default function AdminInactiveInterns() {
           .inactive-list-body {
             flex: 1; overflow-y: auto; min-height: 0;
             max-height: calc(100vh - 350px);
+          }
+          @media (max-width: 900px) {
+            .inactive-list-body { max-height: 320px; }
           }
           .inactive-list-item {
             display: flex; align-items: center; gap: 10px;
@@ -1460,11 +1463,6 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-item:hover .inactive-list-item__arrow { color: #0056a2; }
           .inactive-list-item--selected .inactive-list-item__arrow { color: #0056a2; }
-          .inactive-list-pagination {
-            border-top: 1px solid rgba(226, 232, 240, 0.8); background: white;
-            padding: 12px 14px; flex-shrink: 0;
-            display: flex; justify-content: center;
-          }
 
           /* ── Right col: detail ── */
           .inactive-detail-col {
@@ -1596,6 +1594,59 @@ export default function AdminInactiveInterns() {
           }
           .inactive-empty-detail__sub {
             font-size: 13px; color: #6b7280; max-width: 320px; margin: 0; line-height: 1.6;
+          }
+
+          /* ── Responsive adjustments for 1024px and below ── */
+          @media (max-width: 1024px) {
+            .inactive-layout {
+              flex-direction: column; gap: 16px; min-height: auto;
+            }
+            .inactive-list-col {
+              flex: none; width: 100%; height: auto; max-height: 480px;
+            }
+            .inactive-list-body {
+              max-height: 320px;
+            }
+            .inactive-stats-bar {
+              padding: 10px 14px; gap: 10px; margin-bottom: 14px;
+            }
+            .inactive-stat__value { font-size: 20px; }
+            .inactive-stat__label { font-size: 10px; }
+            .inactive-stat--divider { display: none; }
+            .inactive-search-bar { min-width: 100%; }
+            .inactive-search-bar__input {
+              padding: 8px 34px 8px 32px; font-size: 12px;
+            }
+            .inactive-search-bar__icon { left: 10px; font-size: 12px; }
+            .inactive-detail-panel { border-radius: 12px; }
+            .inactive-detail-header { padding: 14px; gap: 12px; }
+            .inactive-detail-avatar { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+            .inactive-detail-name { font-size: 15px; }
+            .inactive-detail-meta { font-size: 11px; }
+            .inactive-detail-email { font-size: 10px; }
+            .inactive-btn { width: 100%; padding: 8px 14px; font-size: 11px; }
+            .inactive-tabs { padding: 0 8px; }
+            .inactive-tab { padding: 10px 12px; font-size: 11px; }
+            .inactive-tab-content { padding: 12px; }
+            .inactive-empty-detail { padding: 24px 14px; min-height: 240px; }
+            .inactive-empty-detail__icon { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 12px; }
+            .inactive-empty-detail__title { font-size: 14px; }
+            .inactive-empty-detail__sub { font-size: 11px; }
+          }
+
+          /* ── Responsive adjustments for 320px - 480px ── */
+          @media (max-width: 480px) {
+            .inactive-layout { gap: 10px; }
+            .inactive-list-col { border-radius: 12px; }
+            .inactive-list-header { padding: 10px 12px; }
+            .inactive-list-header__title { font-size: 12px; }
+            .inactive-count-badge { padding: 3px 8px; font-size: 10px; }
+            .inactive-list-item { padding: 8px 10px; gap: 8px; }
+            .inactive-list-item__avatar { width: 30px; height: 30px; font-size: 12px; border-radius: 8px; }
+            .inactive-list-item__name { font-size: 11px; }
+            .inactive-list-item__meta { font-size: 9px; }
+            .inactive-list-item__email { font-size: 9px; }
+            .inactive-list-item__arrow { font-size: 14px; }
           }
         `}</style>
       </div>
