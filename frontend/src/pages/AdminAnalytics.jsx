@@ -28,6 +28,12 @@ import {
   Building2,
   FileText
 } from "lucide-react";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
+} from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import AdminNavigation from "../components/AdminNavigation";
 import { jsPDF } from "jspdf";
@@ -811,29 +817,153 @@ const AdminAnalytics = () => {
     );
   };
 
+  // Pagination bar matching Daily Logs design
+  const PaginationBar = ({ isMobile = false }) => {
+    if (!totalEntries) return null;
+
+    const from = (currentPage - 1) * pageSize + 1;
+    const to = Math.min(currentPage * pageSize, totalEntries);
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+
+    const pageNums = (() => {
+      if (totalPages <= 7)
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      const s = new Set([1, totalPages]);
+      for (
+        let i = Math.max(2, currentPage - 2);
+        i <= Math.min(totalPages - 1, currentPage + 2);
+        i++
+      )
+        s.add(i);
+      return [...s].sort((a, b) => a - b);
+    })();
+
+    const btn = (onClick, disabled, icon, title) => (
+      <button
+        onClick={onClick}
+        disabled={disabled || isLoading || isRefreshing}
+        title={title}
+        className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none cursor-pointer"
+      >
+        {icon}
+      </button>
+    );
+
+    return (
+      <div
+        className={`flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 bg-slate-50/80 ${
+          isMobile
+            ? "rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 shadow-sm"
+            : "border-t border-slate-200/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl"
+        }`}
+      >
+        <p className="text-xs sm:text-sm text-slate-500 font-medium">
+          Showing{" "}
+          <span className="font-bold text-slate-700">
+            {from} - {to}
+          </span>{" "}
+          of <span className="font-bold text-slate-700">{totalEntries}</span>{" "}
+          records
+        </p>
+        <div className="flex items-center gap-1">
+          {btn(
+            () => setCurrentPage(1),
+            !hasPrevPage,
+            <FaAngleDoubleLeft className="h-3 w-3" />,
+            "First",
+          )}
+          {btn(
+            () => setCurrentPage((p) => Math.max(1, p - 1)),
+            !hasPrevPage,
+            <FaChevronLeft className="h-3 w-3" />,
+            "Previous",
+          )}
+          {pageNums.map((p, idx, arr) => (
+            <React.Fragment key={p}>
+              {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+                <span className="px-1 text-slate-400 text-xs font-bold">…</span>
+              )}
+              <button
+                onClick={() => setCurrentPage(p)}
+                disabled={isLoading || isRefreshing}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all focus:outline-none cursor-pointer ${
+                  p === currentPage
+                    ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20"
+                    : "text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {p}
+              </button>
+            </React.Fragment>
+          ))}
+          {btn(
+            () => setCurrentPage((p) => Math.min(totalPages, p + 1)),
+            !hasNextPage,
+            <FaChevronRight className="h-3 w-3" />,
+            "Next",
+          )}
+          {btn(
+            () => setCurrentPage(totalPages),
+            !hasNextPage,
+            <FaAngleDoubleRight className="h-3 w-3" />,
+            "Last",
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <AdminNavigation>
-      <div className="min-h-screen flex flex-col bg-[#F8FAFC] font-sans">
-        <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-          <div className="max-w-[1600px] w-full mx-auto flex flex-col flex-1 space-y-6">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 md:p-5 rounded-2xl border border-slate-200 shadow-sm">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 md:w-12 md:h-12 flex-shrink-0 rounded-xl bg-gradient-to-br from-[#000066] to-[#006600] flex items-center justify-center text-white shadow-md">
-                  <BarChart3 className="w-6 h-6" />
-                </div>
-                <div>
-                  <h1 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Analytics Overview</h1>
-                  <p className="text-xs md:text-sm font-medium text-slate-500">Monitor intern performance, attendance, and project progress.</p>
-                </div>
+          {/* Top header: Title on Left, Actions on Right */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+
+            {/* Left: Analytics Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+              >
+                <TrendingUp className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Analytics
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Monitor intern performance, attendance, and project progress
+                </motion.p>
               </div>
+            </div>
 
-              <div className="flex items-center gap-2.5">
+            {/* Right: Actions */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="bg-white rounded-xl md:rounded-[16px] shadow-sm border border-slate-200/80 px-3 sm:px-4 py-2 sm:py-2.5 flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full xl:w-auto justify-end"
+              >
                 <button
                   onClick={exportToPDF}
                   disabled={isLoading || isExporting || totalEntries === 0}
-                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                   title="Export to PDF"
                 >
                   <FileText className="w-4 h-4 text-rose-500" />
@@ -842,7 +972,7 @@ const AdminAnalytics = () => {
                 <button
                   onClick={exportToCSV}
                   disabled={isLoading || isExporting || totalEntries === 0}
-                  className="flex items-center gap-2 px-3.5 py-2 md:py-2.5 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm font-semibold text-slate-700 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
+                  className="flex items-center gap-2 px-3 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                   title="Export to CSV"
                 >
                   <Download className="w-4 h-4 text-slate-500" />
@@ -852,12 +982,13 @@ const AdminAnalytics = () => {
                   onClick={() => fetchAnalytics(true)}
                   disabled={isLoading || isRefreshing}
                   title="Refresh Data"
-                  className="p-2 md:p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 transition-colors flex-shrink-0 disabled:opacity-50 shadow-sm cursor-pointer"
+                  className="p-2 sm:p-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-sm flex-shrink-0 disabled:opacity-50 cursor-pointer"
                 >
                   <RefreshCw className={`w-4 h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#000066]' : ''}`} />
                 </button>
-              </div>
+              </motion.div>
             </div>
+          </div>
 
             {/* KPI Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
@@ -1132,25 +1263,7 @@ const AdminAnalytics = () => {
                 <>
                   {analyticsData.map((row) => <MobileCard key={row.id} row={row} />)}
                   {/* Mobile Pagination */}
-                  <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between shadow-sm text-xs font-medium text-slate-600">
-                    <span>Page {currentPage} of {totalPages} ({totalEntries} items)</span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage <= 1}
-                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold cursor-pointer"
-                      >
-                        Prev
-                      </button>
-                      <button
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={currentPage >= totalPages}
-                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 disabled:opacity-40 font-semibold cursor-pointer"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
+                  <PaginationBar isMobile={true} />
                 </>
               ) : (
                 <div className="bg-white rounded-2xl border border-slate-200 p-12 flex flex-col items-center justify-center text-center">
@@ -1463,75 +1576,10 @@ const AdminAnalytics = () => {
               </div>
 
               {/* Desktop Table Footer & Pagination */}
-              {totalEntries > 0 && (
-                <div className="bg-gradient-to-r from-[#000066] to-[#006600] px-4 md:px-6 py-3.5 flex flex-col sm:flex-row justify-between items-center gap-4 text-[13px] font-medium text-white/90 shadow-inner">
-                  <span>
-                    Showing <strong className="text-white font-bold">{(currentPage - 1) * pageSize + 1}</strong> to{" "}
-                    <strong className="text-white font-bold">{Math.min(currentPage * pageSize, totalEntries)}</strong> of{" "}
-                    <strong className="text-white font-bold">{totalEntries}</strong> matching interns
-                  </span>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      disabled={currentPage <= 1}
-                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
-                    >
-                      Prev
-                    </button>
-
-                    {/* Page Numbers */}
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                      .reduce((acc, p, idx, arr) => {
-                        if (idx > 0 && p - arr[idx - 1] > 1) {
-                          acc.push("...");
-                        }
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((p, idx) =>
-                        p === "..." ? (
-                          <span key={`ellipsis-${idx}`} className="px-2 text-white/50">...</span>
-                        ) : (
-                          <button
-                            key={p}
-                            onClick={() => setCurrentPage(p)}
-                            className={`w-8 h-8 rounded-lg font-bold flex items-center justify-center transition-all cursor-pointer ${
-                              currentPage === p
-                                ? "bg-white text-[#000066] shadow-md"
-                                : "border border-white/20 hover:bg-white/10 text-white"
-                            }`}
-                          >
-                            {p}
-                          </button>
-                        )
-                      )}
-
-                    <button
-                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={currentPage >= totalPages}
-                      className="px-3 py-1.5 rounded-lg border border-white/20 hover:bg-white/10 transition-colors text-white font-semibold disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer"
-                    >
-                      Next
-                    </button>
-                  </div>
-                </div>
-              )}
+              <PaginationBar />
             </div>
 
-          </div>
-        </div>
-
-        {/* Page Footer */}
-        <footer className="bg-gradient-to-r from-[#000066] to-[#006600] py-2.5 px-4 md:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] font-medium text-white/90 shadow-inner">
-          <p>© {new Date().getFullYear()} TalentHub. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Terms of Service</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Support</span>
-          </div>
-        </footer>
+        </main>
       </div>
     </AdminNavigation>
   );
