@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -38,10 +38,10 @@ import { API_BASE_URL } from "../api/apiConfig";
 
 const PAGE_SIZE = 15;
 
-// Digital Clock Component
+// Digital Clock Component (Memoized to prevent parent re-renders)
 const formatDigit = (num) => num.toString().padStart(2, '0');
 
-const DigitalClock = () => {
+const DigitalClock = React.memo(function DigitalClock() {
   const [time, setTime] = useState(new Date());
 
   useEffect(() => {
@@ -65,7 +65,7 @@ const DigitalClock = () => {
       </div>
     </div>
   );
-};
+});
 
 /* ─── helpers ──────────────────────────────────────────────── */
 const fmtDate = (
@@ -104,47 +104,44 @@ const toKey = (date) => {
 };
 
 /* ─── AttendanceCalendar ────────────────────────────────────── */
-/**
- * Renders a modern monthly grid calendar with two colored cell types:
- *   • green = daily attendance
- *   • blue  = meeting attendance
- *   • both  = split diagonal pill
- * Enhanced with modern UI/UX design patterns.
- */
-function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
+const AttendanceCalendar = React.memo(function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
-  const [hoveredDay, setHoveredDay] = useState(null);
 
-  const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else setViewMonth((m) => m + 1);
-  };
+  const prevMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 0) {
+        setViewYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }, []);
 
-  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
+  const nextMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 11) {
+        setViewYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }, []);
+
+  const monthLabel = useMemo(() => new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
-  });
+  }), [viewYear, viewMonth]);
 
   const firstDow = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const keyFor = (day) => {
-    if (!day) return null;
-    return `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  };
+  const cells = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < firstDow; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) list.push(d);
+    return list;
+  }, [firstDow, daysInMonth]);
 
   const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
@@ -153,28 +150,24 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
         {/* month nav */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <motion.button
+          <button
             onClick={prevMonth}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
             <FaChevronLeft className="text-xs sm:text-base" />
-          </motion.button>
+          </button>
           <div className="text-center">
             <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {monthLabel}
             </h3>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Daily & Meeting Attendance</p>
           </div>
-          <motion.button
+          <button
             onClick={nextMonth}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
             <FaChevronRight className="text-xs sm:text-base" />
-          </motion.button>
+          </button>
         </div>
 
         {/* day-of-week headers */}
@@ -193,7 +186,7 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
         <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
-            const k = keyFor(day);
+            const k = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const hasDaily = !!dailyMap[k];
             const hasMeeting = !!meetingMap[k];
             const hasBoth = hasDaily && hasMeeting;
@@ -201,7 +194,6 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
               day === today.getDate() &&
               viewMonth === today.getMonth() &&
               viewYear === today.getFullYear();
-            const isHovered = hoveredDay === k;
 
             // Determine cell background
             let cellBg = "bg-white";
@@ -210,40 +202,36 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
             let shadowClass = "";
 
             if (hasBoth) {
-              // split: left green, right blue via gradient
               cellBg = "bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500";
               textColor = "text-white font-bold";
               borderClass = "border-0";
-              shadowClass = isHovered ? "shadow-lg shadow-blue-300" : "shadow-md shadow-blue-200";
+              shadowClass = "shadow-sm sm:shadow-md hover:shadow-lg hover:shadow-blue-300";
             } else if (hasDaily) {
               cellBg = "bg-gradient-to-br from-emerald-50 to-green-50";
               textColor = "text-emerald-700 font-semibold";
               borderClass = "border border-emerald-200";
-              shadowClass = isHovered ? "shadow-md shadow-emerald-200" : "shadow-sm";
+              shadowClass = "shadow-sm hover:shadow-md hover:shadow-emerald-200";
             } else if (hasMeeting) {
               cellBg = "bg-gradient-to-br from-blue-50 to-cyan-50";
               textColor = "text-blue-700 font-semibold";
               borderClass = "border border-blue-200";
-              shadowClass = isHovered ? "shadow-md shadow-blue-200" : "shadow-sm";
+              shadowClass = "shadow-sm hover:shadow-md hover:shadow-blue-200";
             }
 
             if (isToday && !hasDaily && !hasMeeting) {
               cellBg = "bg-gradient-to-br from-amber-50 to-orange-50";
               textColor = "text-gray-700 font-bold";
               borderClass = "border-2 border-amber-300";
-              shadowClass = isHovered ? "shadow-md shadow-amber-200" : "";
+              shadowClass = "hover:shadow-md hover:shadow-amber-200";
             }
 
             const dailyCount = hasDaily ? dailyMap[k].length : 0;
             const meetingCount = hasMeeting ? meetingMap[k].length : 0;
+            const interactive = hasDaily || hasMeeting || isToday;
 
             return (
-              <motion.div
+              <div
                 key={k}
-                onMouseEnter={() => setHoveredDay(k)}
-                onMouseLeave={() => setHoveredDay(null)}
-                whileHover={hasDaily || hasMeeting || isToday ? { scale: 1.08, y: -3 } : {}}
-                whileTap={hasDaily || hasMeeting || isToday ? { scale: 0.94 } : {}}
                 title={
                   hasBoth
                     ? `Daily: ${dailyCount} · Meeting: ${meetingCount}`
@@ -253,10 +241,10 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
                         ? `Meeting attendance: ${meetingCount}`
                         : isToday ? "Today" : undefined
                 }
-                className={`flex items-center justify-center rounded-lg sm:rounded-xl h-8 sm:h-10 md:h-12 text-xs sm:text-sm md:text-base font-semibold transition-all duration-200 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass}`}
+                className={`flex items-center justify-center rounded-lg sm:rounded-xl h-8 sm:h-10 md:h-12 text-xs sm:text-sm md:text-base font-semibold transition-all duration-150 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass} ${interactive ? "hover:scale-105 active:scale-95" : ""}`}
               >
                 {day}
-              </motion.div>
+              </div>
             );
           })}
         </div>
@@ -287,46 +275,48 @@ function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
       </div>
     </div>
   );
-}
+});
 
 /* ─── DailyRecordsCalendar ──────────────────────────────────── */
-/**
- * Shows a modern calendar where dates that have a daily record are highlighted.
- * Clicking a date reveals the record details below with smooth animations.
- */
-function DailyRecordsCalendar({ recordsByDate = {} }) {
+const DailyRecordsCalendar = React.memo(function DailyRecordsCalendar({ recordsByDate = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedKey, setSelectedKey] = useState(null);
-  const [hoveredDay, setHoveredDay] = useState(null);
 
-  const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else setViewMonth((m) => m + 1);
-  };
+  const prevMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 0) {
+        setViewYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }, []);
 
-  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
+  const nextMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 11) {
+        setViewYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }, []);
+
+  const monthLabel = useMemo(() => new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
-  });
+  }), [viewYear, viewMonth]);
 
   const firstDow = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-
-  const keyFor = (day) =>
-    `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const cells = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < firstDow; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) list.push(d);
+    return list;
+  }, [firstDow, daysInMonth]);
 
   const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const selectedRecord = selectedKey ? recordsByDate[selectedKey] : null;
@@ -355,28 +345,24 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
       <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
         {/* nav */}
         <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <motion.button
+          <button
             onClick={prevMonth}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
             <FaChevronLeft className="text-xs sm:text-base" />
-          </motion.button>
+          </button>
           <div className="text-center">
             <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {monthLabel}
             </h3>
             <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Click a date to view</p>
           </div>
-          <motion.button
+          <button
             onClick={nextMonth}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-200 shadow-sm sm:shadow-md hover:shadow-lg"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
             <FaChevronRight className="text-xs sm:text-base" />
-          </motion.button>
+          </button>
         </div>
 
         {/* dow headers */}
@@ -395,44 +381,35 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
-            const k = keyFor(day);
+            const k = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const hasRecord = !!recordsByDate[k];
             const isSelected = k === selectedKey;
             const isToday =
               day === today.getDate() &&
               viewMonth === today.getMonth() &&
               viewYear === today.getFullYear();
-            const isHovered = hoveredDay === k;
 
             return (
-              <motion.button
+              <button
                 key={k}
-                onMouseEnter={() => setHoveredDay(k)}
-                onMouseLeave={() => setHoveredDay(null)}
                 onClick={() => setSelectedKey(isSelected ? null : k)}
                 disabled={!hasRecord && !isToday}
-                whileHover={hasRecord || isToday ? { scale: 1.08, y: -3 } : {}}
-                whileTap={hasRecord || isToday ? { scale: 0.94 } : {}}
-                className={`flex flex-col items-center justify-center py-2 sm:py-3 md:py-4 px-0.5 sm:px-1 rounded-lg sm:rounded-xl font-bold transition-all duration-200 text-xs sm:text-sm md:text-base leading-tight
+                className={`flex flex-col items-center justify-center py-2 sm:py-3 md:py-4 px-0.5 sm:px-1 rounded-lg sm:rounded-xl font-bold transition-all duration-150 text-xs sm:text-sm md:text-base leading-tight
                   ${
                     isSelected
-                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-300 border-0"
+                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-300 border-0 scale-105"
                       : hasRecord
-                        ? `bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-2 border-blue-300 hover:from-blue-100 hover:to-cyan-100 cursor-pointer ${isHovered ? "shadow-lg shadow-blue-200" : "shadow-md"}`
+                        ? `bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-2 border-blue-300 hover:from-blue-100 hover:to-cyan-100 cursor-pointer shadow-sm hover:shadow-md hover:scale-105 active:scale-95`
                         : isToday
-                          ? "bg-gradient-to-br from-amber-50 to-orange-50 text-amber-700 font-bold border-2 border-amber-400 hover:from-amber-100 hover:to-orange-100 cursor-pointer shadow-md"
+                          ? "bg-gradient-to-br from-amber-50 to-orange-50 text-amber-700 font-bold border-2 border-amber-400 hover:from-amber-100 hover:to-orange-100 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
                           : "text-gray-300 cursor-default"
                   }`}
               >
                 {day}
                 {hasRecord && !isSelected && (
-                  <motion.span 
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500 mt-1"
-                  />
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500 mt-1" />
                 )}
-              </motion.button>
+              </button>
             );
           })}
         </div>
@@ -448,13 +425,13 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
 
       {/* selected record details */}
       <AnimatePresence mode="wait">
-        {selectedRecord ? (
+        {selectedRecord && (
           <motion.div
             key={selectedKey}
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            transition={{ duration: 0.25, type: "spring", bounce: 0.3 }}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.15 }}
             className="border border-blue-200 rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50 shadow-lg sm:shadow-xl"
           >
             {/* record header */}
@@ -476,13 +453,11 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                 </span>
               </div>
               {selectedRecord.status && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
+                <span
                   className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold shrink-0 ${workStatusBadge(selectedRecord.status)}`}
                 >
                   {selectedRecord.status}
-                </motion.span>
+                </span>
               )}
             </div>
 
@@ -514,76 +489,63 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                   color: "from-orange-500 to-red-500",
                 },
               ].map(({ label, icon: Icon, value, color }) => (
-                <motion.div 
+                <div 
                   key={label}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.05 }}
-                  className="border-l-4 border-blue-300 pl-4 py-2"
+                  className="border-l-4 border-blue-300 pl-3 sm:pl-4 py-1.5 sm:py-2"
                 >
-                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    <span className={`p-1.5 rounded-lg bg-gradient-to-br ${color} text-white`}>
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                    <span className={`p-1 sm:p-1.5 rounded-lg bg-gradient-to-br ${color} text-white`}>
                       <Icon className="text-xs" />
                     </span>
                     {label}
                   </p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
+                  <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
                     {value || <span className="italic text-gray-400 font-normal">— No entry</span>}
                   </p>
-                </motion.div>
+                </div>
               ))}
 
               {/* meeting attendance within the record */}
               {selectedRecord.meetingAttendance?.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="border-t-2 border-dashed border-blue-200 pt-5"
+                <div
+                  className="border-t-2 border-dashed border-blue-200 pt-3 sm:pt-5"
                 >
-                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <span className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                    <span className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
                       <FaVideo className="text-xs" />
                     </span>
-                    Meeting Attendance (
-                    {selectedRecord.meetingAttendance.length})
+                    Meeting Attendance ({selectedRecord.meetingAttendance.length})
                   </p>
                   <div className="space-y-2">
                     {selectedRecord.meetingAttendance.map((m, i) => (
-                      <motion.div
+                      <div
                         key={i}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: i * 0.05 }}
-                        className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl px-4 py-3 text-xs border border-blue-100 hover:border-blue-300 transition-all"
+                        className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs border border-blue-100 hover:border-blue-300 transition-all"
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-gray-800 truncate mr-2">
                             {m.meetingTitle}
                           </p>
                           {m.projectName && (
-                            <p className="text-[11px] text-gray-500">
+                            <p className="text-[10px] sm:text-[11px] text-gray-500">
                               {m.projectName}
                             </p>
                           )}
                         </div>
-                        <motion.span
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          className={`px-2.5 py-1 rounded-lg font-bold flex-shrink-0 text-[11px] ${attendanceBadge(m.attendanceStatus)}`}
+                        <span
+                          className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-bold flex-shrink-0 text-[10px] sm:text-[11px] ${attendanceBadge(m.attendanceStatus)}`}
                         >
                           {m.attendanceStatus}
-                        </motion.span>
-                      </motion.div>
+                        </span>
+                      </div>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {selectedRecord.attendanceTime && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-xs text-gray-500 flex items-center gap-2 pt-2 border-t border-gray-100 mt-4 pt-4"
+                <p
+                  className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-2 pt-2 border-t border-gray-100 mt-3 sm:mt-4 pt-3 sm:pt-4"
                 >
                   <FaClock className="text-blue-400" />
                   Marked at:{" "}
@@ -597,42 +559,18 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
                       },
                     )}
                   </span>
-                </motion.p>
+                </p>
               )}
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-12 text-center space-y-3"
-          >
-            <motion.div 
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 3, repeat: Infinity }}
-              className="text-5xl text-blue-300 opacity-40"
-            >
-              <FaRegCalendarAlt />
-            </motion.div>
-            <div>
-              <p className="text-base font-semibold text-gray-600 mb-1">
-                No date selected
-              </p>
-              <p className="text-sm text-gray-400">
-                Click on a highlighted date with a dot to view the logbook entry
-              </p>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
-}
+});
 
-/* ─── Pagination ────────────────────────────────────────────── */
-function Pagination({ page, totalPages, total, limit, onPage }) {
+/* ─── Pagination (Memoized) ─────────────────────────────────── */
+const Pagination = React.memo(function Pagination({ page, totalPages, total, limit, onPage }) {
   if (!total || total <= 0) return null;
 
   const from = (page - 1) * limit + 1;
@@ -719,7 +657,7 @@ function Pagination({ page, totalPages, total, limit, onPage }) {
       </div>
     </div>
   );
-}
+});
 
 /* ─── main component ────────────────────────────────────────── */
 export default function AdminInactiveInterns() {
@@ -799,7 +737,7 @@ export default function AdminInactiveInterns() {
   }, [fetchInactiveInterns]);
 
   /* select intern → fetch details */
-  const handleSelectIntern = async (intern) => {
+  const handleSelectIntern = useCallback(async (intern) => {
     setSelectedIntern(intern);
     setDetails(null);
     setDailyRecords([]);
@@ -820,7 +758,7 @@ export default function AdminInactiveInterns() {
     } finally {
       setDetailsLoading(false);
     }
-  };
+  }, [token]);
 
   /* fetch daily records */
   const fetchDailyRecords = useCallback(async () => {
@@ -852,7 +790,7 @@ export default function AdminInactiveInterns() {
   }, [activeTab, fetchDailyRecords]);
 
   /* reactivate */
-  const handleReactivate = async () => {
+  const handleReactivate = useCallback(async () => {
     if (!selectedIntern) return;
     if (!window.confirm(`Reactivate ${selectedIntern.traineeName}?`)) return;
     setReactivating(true);
@@ -878,7 +816,7 @@ export default function AdminInactiveInterns() {
     } finally {
       setReactivating(false);
     }
-  };
+  }, [selectedIntern, token]);
 
   const tabs = ["overview", "attendance", "records"];
 
@@ -1006,11 +944,7 @@ export default function AdminInactiveInterns() {
                 <div className="inactive-list-body">
                   {loading ? (
                     <div className="inactive-loader" style={{ minHeight: 200 }}>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="inactive-loader__spinner"
-                      />
+                      <div className="inactive-loader__spinner animate-spin" />
                       <p>Loading…</p>
                     </div>
                   ) : inactiveInterns.length === 0 ? (
@@ -1022,16 +956,11 @@ export default function AdminInactiveInterns() {
                       <p>{searchTerm ? 'Try a different search term.' : 'All interns are currently active.'}</p>
                     </div>
                   ) : (
-                    inactiveInterns.map((intern, index) => (
-                      <motion.div
+                    inactiveInterns.map((intern) => (
+                      <div
                         key={intern.id}
-                        onClick={() => {
-                          handleSelectIntern(intern);
-                        }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.15 }}
-                        className={`inactive-list-item ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
+                        onClick={() => handleSelectIntern(intern)}
+                        className={`inactive-list-item transform-gpu transition-colors ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
                       >
                          <div className="inactive-list-item__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                             <img
@@ -1062,7 +991,7 @@ export default function AdminInactiveInterns() {
                           </div>
                         </div>
                         <div className="inactive-list-item__arrow">›</div>
-                      </motion.div>
+                      </div>
                     ))
                   )}
                 </div>
@@ -1106,10 +1035,8 @@ export default function AdminInactiveInterns() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="inactive-loader__spinner"
+                      <div
+                        className="inactive-loader__spinner animate-spin"
                         style={{ width: 48, height: 48, marginBottom: 16 }}
                       />
                       <p className="inactive-empty-detail__sub">Loading profile…</p>
@@ -1283,11 +1210,7 @@ export default function AdminInactiveInterns() {
                               <div>
                                 {recordsLoading ? (
                                   <div className="inactive-loader" style={{ minHeight: 200 }}>
-                                    <motion.div
-                                      animate={{ rotate: 360 }}
-                                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                      className="inactive-loader__spinner"
-                                    />
+                                    <div className="inactive-loader__spinner animate-spin" />
                                     <p>Loading records…</p>
                                   </div>
                                 ) : recordsError ? (
