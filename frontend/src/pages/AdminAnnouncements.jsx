@@ -241,11 +241,10 @@ const AdminAnnouncements = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
             {/* Page Header */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
               <div>
                 <motion.h1
                   initial={{ opacity: 0, y: -10 }}
@@ -657,7 +656,6 @@ const AdminAnnouncements = () => {
               </motion.div>
             </div>
           </main>
-        </div>
       </div>
 
       {/* Confirm Delete Modal */}

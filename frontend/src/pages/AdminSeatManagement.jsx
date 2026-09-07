@@ -635,7 +635,7 @@ const AdminSeatManagement = () => {
   return (
     <AdminNavigation>
       <div className="min-h-full max-w-full overflow-x-hidden relative font-sans text-slate-800 flex flex-col select-none">
-        <main className="relative flex-1 p-2 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full max-w-full flex flex-col gap-4 sm:gap-6 min-w-0">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full max-w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
           {/* Normal Flow Back Button before page heading (History page only) */}
           {showHistory && (

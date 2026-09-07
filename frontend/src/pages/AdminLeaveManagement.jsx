@@ -802,9 +802,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-full relative bg-slate-50 font-sans text-gray-800 flex flex-col select-none">
-        <div className="flex-1 w-full flex flex-col">
-          <div className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full min-w-0 flex flex-col gap-4 sm:gap-6">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full min-w-0 flex flex-col gap-4 sm:gap-6">
           {/* Header Section */}
           <div className="relative z-10 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2 mb-8">
             {/* Left: Title */}
@@ -1585,8 +1584,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               </motion.div>
             </>
           )}
-          </div>
-        </div>
+        </main>
 
       {/* Review Modal */}
       <AnimatePresence>

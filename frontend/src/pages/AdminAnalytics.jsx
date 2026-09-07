@@ -1120,7 +1120,7 @@ const AdminAnalytics = () => {
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
           {/* Top header: Title on Left, Actions on Right */}
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 sm:gap-5 xl:gap-6 pt-4 sm:pt-6">
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
 
             {/* Left: Analytics Title */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">

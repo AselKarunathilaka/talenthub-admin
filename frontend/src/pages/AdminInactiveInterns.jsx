@@ -37,6 +37,35 @@ import { API_BASE_URL } from "../api/apiConfig";
 
 const PAGE_SIZE = 15;
 
+// Digital Clock Component
+const formatDigit = (num) => num.toString().padStart(2, '0');
+
+const DigitalClock = () => {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 w-full">
+      <div className="flex items-baseline font-bold tracking-tight text-slate-800 tabular-nums">
+        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getHours())}</span>
+        <span className="text-xl sm:text-2xl md:text-3xl text-slate-400 mx-0.5 sm:mx-1 animate-pulse font-medium">:</span>
+        <span className="text-2xl sm:text-3xl md:text-4xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-xs sm:text-sm md:text-base text-[#006600] font-bold ml-1 sm:ml-1.5">{formatDigit(time.getSeconds())}</span>
+      </div>
+      <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+      <div className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-sm md:text-base font-bold text-slate-600 mt-0.5 sm:mt-0">
+        <span className="text-[#000066] uppercase">{time.toLocaleDateString("en-US", { weekday: "short" })}</span>
+        <span>{time.getDate()}</span>
+        <span>{time.toLocaleDateString("en-US", { month: "short" })}</span>
+      </div>
+    </div>
+  );
+};
+
 /* ─── helpers ──────────────────────────────────────────────── */
 const fmtDate = (
   d,
@@ -820,41 +849,59 @@ export default function AdminInactiveInterns() {
 
   const tabs = ["overview", "attendance", "records"];
 
-  /* ── render ── */
   return (
     <AdminNavigation>
-      <div className="inactive-root relative z-10">
-        {/* Ambient background */}
-        <div className="inactive-ambient absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="inactive-ambient__orb inactive-ambient__orb--1 absolute" />
-          <div className="inactive-ambient__orb inactive-ambient__orb--2 absolute" />
-        </div>
+      {/* Background using transparent to blend with Layout */}
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+          
+          {/* Top header: Title on Left, Clock & Tools on Right */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
 
-        <div className="inactive-content relative z-10 pt-4">
-          <main className="inactive-main">
-
-            {/* Page header */}
-            <div className="mb-8">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            {/* Left: Dashboard Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <UserX className="text-[#0056a2] h-8 w-8" />
-                </div>
-                Inactive Interns
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.05, duration: 0.2 }}
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                Manage interns no longer in the active TalentHub system
-              </motion.p>
+                <UserX className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Inactive Interns
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Manage interns no longer in the active TalentHub system
+                </motion.p>
+              </div>
             </div>
+            
+            {/* Right: Clock */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+              {/* Clock Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-4 rounded-xl md:rounded-[16px] w-full xl:w-auto"
+              >
+                <DigitalClock />
+              </motion.div>
+            </div>
+          </div>
 
             {/* Stats + Search bar */}
             <motion.div
@@ -1258,42 +1305,14 @@ export default function AdminInactiveInterns() {
 
             </div>
           </main>
-        </div>
 
         <style>{`
-          /* ── Root ── */
-          .inactive-root {
-            min-height: 100vh;
-            background: #f0f4f8;
-            position: relative;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-          }
-
-          /* ── Ambient ── */
-          .inactive-ambient { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-          .inactive-ambient__orb {
-            position: absolute; border-radius: 50%;
-            filter: blur(80px); opacity: 0.06;
-          }
-          .inactive-ambient__orb--1 {
-            width: 500px; height: 500px;
-            background: #0056a2; top: -100px; right: -100px;
-          }
-          .inactive-ambient__orb--2 {
-            width: 400px; height: 400px;
-            background: #50b748; bottom: -80px; left: -80px;
-          }
-
-          /* ── Layout ── */
-          .inactive-content { position: relative; z-index: 1; padding-top: 8px; }
-          .inactive-main { max-width: 1200px; margin: 0 auto; padding: 24px 24px 60px; }
-
           /* ── Stats bar ── */
           .inactive-stats-bar {
             display: flex; align-items: center; gap: 20px;
             padding: 14px 20px; background: white;
-            border-radius: 14px; border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            border-radius: 16px; border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             margin-bottom: 20px; flex-wrap: wrap;
           }
           .inactive-stat { display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; }
@@ -1349,9 +1368,9 @@ export default function AdminInactiveInterns() {
           /* ── Left col: intern list ── */
           .inactive-list-col {
             flex: 0 0 340px; min-width: 0;
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             overflow: hidden; display: flex; flex-direction: column;
           }
           @media (max-width: 900px) {
@@ -1359,7 +1378,7 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+            padding: 16px 20px; border-bottom: 1px solid rgba(226, 232, 240, 0.8);
             background: #fafafa;
           }
           .inactive-list-header__title {
@@ -1411,7 +1430,7 @@ export default function AdminInactiveInterns() {
           .inactive-list-item:hover .inactive-list-item__arrow { color: #0056a2; }
           .inactive-list-item--selected .inactive-list-item__arrow { color: #0056a2; }
           .inactive-list-pagination {
-            border-top: 1px solid #f0f0f0; background: white;
+            border-top: 1px solid rgba(226, 232, 240, 0.8); background: white;
             padding: 12px 14px; flex-shrink: 0;
             display: flex; justify-content: center;
           }
@@ -1423,9 +1442,9 @@ export default function AdminInactiveInterns() {
 
           /* ── Detail panel ── */
           .inactive-detail-panel {
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex; flex-direction: column; overflow: hidden;
             flex: 1;
           }
@@ -1434,7 +1453,7 @@ export default function AdminInactiveInterns() {
           .inactive-detail-header {
             display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
             padding: 24px; background: #fafafa;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
           }
           .inactive-detail-avatar {
             width: 64px; height: 64px; border-radius: 16px;
@@ -1460,7 +1479,7 @@ export default function AdminInactiveInterns() {
 
           /* ── Tabs ── */
           .inactive-tabs {
-            display: flex; border-bottom: 1px solid #f0f0f0;
+            display: flex; border-bottom: 1px solid rgba(226, 232, 240, 0.8);
             padding: 0 16px; background: white; overflow-x: auto;
           }
           .inactive-tab {
@@ -1526,9 +1545,9 @@ export default function AdminInactiveInterns() {
 
           /* ── Empty detail ── */
           .inactive-empty-detail {
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             min-height: 400px; padding: 40px; text-align: center;

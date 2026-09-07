@@ -144,7 +144,7 @@ const AdminInternRecords = () => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none bg-slate-50">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
           <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
             {/* Normal Flow Back Button */}
             <div className="w-full -mt-2 sm:-mt-4 mb-1">

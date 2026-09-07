@@ -199,7 +199,7 @@ const AdminQRManagement = () => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none bg-slate-50">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         
         {/* Full Screen Mode */}
         <AnimatePresence>
