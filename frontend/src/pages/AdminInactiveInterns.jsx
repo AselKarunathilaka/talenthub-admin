@@ -25,9 +25,10 @@ import {
   FaLaptopCode,
   FaTasks,
   FaChevronDown,
-  FaChevronUp,
   FaChevronLeft,
   FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
   FaUsers,
   FaRegCalendarAlt,
   FaVideo,
@@ -631,59 +632,91 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
 }
 
 /* ─── Pagination ────────────────────────────────────────────── */
-function Pagination({ page, totalPages, onPrev, onNext, onPage }) {
-  if (totalPages <= 1) return null;
+function Pagination({ page, totalPages, total, limit, onPage }) {
+  if (!total || total <= 0) return null;
 
-  const getPages = () => {
-    if (totalPages <= 7) {
+  const from = (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  const pageNums = (() => {
+    if (totalPages <= 7)
       return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    if (page <= 4) {
-      return [1, 2, 3, 4, 5, "...", totalPages];
-    }
-    if (page >= totalPages - 3) {
-      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-    return [1, "...", page - 1, page, page + 1, "...", totalPages];
-  };
+    const s = new Set([1, totalPages]);
+    for (
+      let i = Math.max(2, page - 2);
+      i <= Math.min(totalPages - 1, page + 2);
+      i++
+    )
+      s.add(i);
+    return [...s].sort((a, b) => a - b);
+  })();
+
+  const btn = (onClick, disabled, icon, title) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none"
+    >
+      {icon}
+    </button>
+  );
 
   return (
-    <div className="flex flex-nowrap items-center justify-center w-full gap-1">
-      <button
-        onClick={onPrev}
-        disabled={page === 1}
-        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
-      >
-        <FaChevronLeft className="text-[10px]" /> Prev
-      </button>
-      
-      {getPages().map((p, i) =>
-        p === "..." ? (
-          <span key={`e-${i}`} className="text-xs text-gray-400 px-2 flex-shrink-0">
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            className={`w-[26px] h-[28px] flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-              p === page
-                ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                : "text-gray-500 hover:bg-blue-50 hover:text-blue-600 bg-white"
-            }`}
-          >
-            {p}
-          </button>
-        ),
-      )}
-      
-      <button
-        onClick={onNext}
-        disabled={page === totalPages}
-        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
-      >
-        Next <FaChevronRight className="text-[10px]" />
-      </button>
+    <div className="flex flex-col items-center justify-between gap-2.5 px-3 sm:px-4 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl w-full">
+      <p className="text-xs sm:text-sm text-slate-500 font-medium text-center">
+        Showing{" "}
+        <span className="font-bold text-slate-700">
+          {from} - {to}
+        </span>{" "}
+        of <span className="font-bold text-slate-700">{total}</span>{" "}
+        records
+      </p>
+      <div className="flex items-center gap-1 flex-wrap justify-center">
+        {btn(
+          () => onPage(1),
+          !hasPrev,
+          <FaAngleDoubleLeft className="h-3 w-3" />,
+          "First",
+        )}
+        {btn(
+          () => onPage(page - 1),
+          !hasPrev,
+          <FaChevronLeft className="h-3 w-3" />,
+          "Previous",
+        )}
+        {pageNums.map((p, idx, arr) => (
+          <React.Fragment key={p}>
+            {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+              <span className="px-1 text-slate-400 text-xs font-bold">…</span>
+            )}
+            <button
+              onClick={() => onPage(p)}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all focus:outline-none ${
+                p === page
+                  ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20"
+                  : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {p}
+            </button>
+          </React.Fragment>
+        ))}
+        {btn(
+          () => onPage(page + 1),
+          !hasNext,
+          <FaChevronRight className="h-3 w-3" />,
+          "Next",
+        )}
+        {btn(
+          () => onPage(totalPages),
+          !hasNext,
+          <FaAngleDoubleRight className="h-3 w-3" />,
+          "Last",
+        )}
+      </div>
     </div>
   );
 }
@@ -1036,15 +1069,13 @@ export default function AdminInactiveInterns() {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="inactive-list-pagination">
-                    <Pagination
-                      page={currentPage}
-                      totalPages={totalPages}
-                      onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      onPage={(p) => setCurrentPage(p)}
-                    />
-                  </div>
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    total={totalInterns}
+                    limit={PAGE_SIZE}
+                    onPage={(p) => setCurrentPage(p)}
+                  />
                 )}
               </div>
 
