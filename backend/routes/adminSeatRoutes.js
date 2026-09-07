@@ -9,6 +9,8 @@ const {
   lockSeat,
   unlockSeat,
   getPendingCheckIns,
+  adminBookSeat,
+  adminCancelBooking,
 } = require("../controllers/adminSeatController");
 const authenticateUser = require("../middleware/authMiddleware");
 
@@ -78,6 +80,22 @@ router.get("/seat-bookings/pending-checkins", getPendingCheckIns);
  * @query   date - optional date filter (YYYY-MM-DD)
  */
 router.get("/seat-bookings/seat/:seatNumber", getBookingBySeat);
+
+/**
+ * @route   POST /api/admin/seat-bookings/book
+ * @desc    Admin book a seat for an intern
+ * @access  Private (Admin)
+ * @body    { seatNumber: Number, date: String (YYYY-MM-DD), traineeId: String }
+ */
+router.post("/seat-bookings/book", adminBookSeat);
+
+/**
+ * @route   POST /api/admin/seat-bookings/cancel
+ * @desc    Admin cancel a seat booking
+ * @access  Private (Admin)
+ * @body    { bookingId?: String, seatNumber?: Number, date?: String }
+ */
+router.post("/seat-bookings/cancel", adminCancelBooking);
 
 module.exports = router;
 
