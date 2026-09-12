@@ -148,3 +148,31 @@ exports.updateUser = async (req, res) => {
     res.status(500).json({ message: "Failed to update user." });
   }
 };
+
+// ─── WHATSAPP INTEGRATION ───
+
+exports.getWhatsAppStatus = async (req, res) => {
+  try {
+    const { getWhatsAppStatus } = require("../utils/whatsappSender");
+    const status = getWhatsAppStatus();
+    res.status(200).json(status);
+  } catch (error) {
+    console.error("[Settings] Get WhatsApp status error:", error);
+    res.status(500).json({ message: "Failed to fetch WhatsApp status." });
+  }
+};
+
+exports.disconnectWhatsApp = async (req, res) => {
+  try {
+    const { disconnectWhatsApp } = require("../utils/whatsappSender");
+    const result = await disconnectWhatsApp();
+    if (result.success) {
+      res.status(200).json({ message: "WhatsApp disconnected successfully." });
+    } else {
+      res.status(500).json({ message: "Failed to disconnect WhatsApp.", error: result.error });
+    }
+  } catch (error) {
+    console.error("[Settings] Disconnect WhatsApp error:", error);
+    res.status(500).json({ message: "An error occurred while disconnecting WhatsApp." });
+  }
+};

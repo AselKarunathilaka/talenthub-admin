@@ -3,6 +3,10 @@ const qrcode = require('qrcode-terminal');
 
 let client;
 let isReady = false;
+let qrCodeData = null;
+let connectionStatus = 'INITIALIZING'; // INITIALIZING, DISCONNECTED, WAITING_FOR_SCAN, CONNECTED, ERROR
+let connectedNumber = null;
+let connectionTime = null;
 
 /**
  * Initializes the WhatsApp Web client
@@ -10,6 +14,8 @@ let isReady = false;
  */
 const initializeWhatsApp = () => {
     console.log('[WhatsApp] Initializing automated client...');
+    connectionStatus = 'INITIALIZING';
+    qrCodeData = null;
     
     client = new Client({
         // Use LocalAuth to save the session so you don't have to scan the QR code every time
@@ -25,21 +31,85 @@ const initializeWhatsApp = () => {
         console.log('Scan this QR code with the WhatsApp app on your phone:');
         qrcode.generate(qr, { small: true });
         console.log('======================================================\n');
+        
+        qrCodeData = qr;
+        connectionStatus = 'WAITING_FOR_SCAN';
     });
 
     client.on('ready', () => {
         console.log('✅ [WhatsApp] Client is ready and authenticated!');
         isReady = true;
+        connectionStatus = 'CONNECTED';
+        qrCodeData = null;
+        connectedNumber = client.info?.wid?.user || 'Unknown';
+        connectionTime = new Date().toISOString();
     });
     
     client.on('disconnected', (reason) => {
         console.log('❌ [WhatsApp] Client was logged out or disconnected:', reason);
         isReady = false;
+        connectionStatus = 'DISCONNECTED';
+        qrCodeData = null;
+        connectedNumber = null;
+        connectionTime = null;
+        
+        // Optionally auto-reinitialize after a small delay
+        setTimeout(() => {
+            if (connectionStatus === 'DISCONNECTED') {
+               initializeWhatsApp();
+            }
+        }, 5000);
+    });
+
+    client.on('auth_failure', (msg) => {
+        console.error('❌ [WhatsApp] Authentication failure:', msg);
+        connectionStatus = 'ERROR';
+        qrCodeData = null;
     });
 
     client.initialize().catch(err => {
         console.error('❌ [WhatsApp] Initialization failed:', err);
+        connectionStatus = 'ERROR';
     });
+};
+
+const getWhatsAppStatus = () => {
+    return {
+        status: connectionStatus,
+        qrCode: qrCodeData,
+        connectedNumber: connectedNumber,
+        connectionTime: connectionTime
+    };
+};
+
+const disconnectWhatsApp = async () => {
+    if (!client) return { success: false, error: "Client not initialized" };
+    try {
+        await client.logout();
+        isReady = false;
+        connectionStatus = 'DISCONNECTED';
+        qrCodeData = null;
+        connectedNumber = null;
+        connectionTime = null;
+        
+        // Wait a brief moment before re-initializing to get a new QR code
+        setTimeout(() => {
+            initializeWhatsApp();
+        }, 2000);
+        
+        return { success: true };
+    } catch (error) {
+        // Fallback destroy if logout fails
+        try {
+            await client.destroy();
+            connectionStatus = 'DISCONNECTED';
+            setTimeout(() => initializeWhatsApp(), 2000);
+            return { success: true };
+        } catch (destroyErr) {
+            console.error('[WhatsApp Sender] Disconnect failed:', error);
+            return { success: false, error: error.message };
+        }
+    }
 };
 
 /**
@@ -79,5 +149,7 @@ const sendWhatsAppMessage = async (toPhoneNumber, message) => {
 
 module.exports = {
   initializeWhatsApp,
-  sendWhatsAppMessage
+  sendWhatsAppMessage,
+  getWhatsAppStatus,
+  disconnectWhatsApp
 };

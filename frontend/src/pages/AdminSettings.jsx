@@ -10,8 +10,15 @@ import {
   Edit, 
   Power, 
   PowerOff,
-  AlertTriangle 
+  AlertTriangle,
+  MessageCircle,
+  Smartphone,
+  RefreshCw,
+  CheckCircle2,
+  XCircle,
+  Unplug
 } from "lucide-react";
+import QRCode from "react-qr-code";
 import { API_ENDPOINTS } from "../api/apiConfig";
 import { adminApi, notificationUtils } from "../api/adminApi";
 import { getAdminSession } from "../utils/adminAuth";
@@ -50,11 +57,62 @@ const AdminSettings = () => {
   });
   const [formLoading, setFormLoading] = useState(false);
 
+  // WhatsApp State
+  const [waStatus, setWaStatus] = useState(null);
+  const [waLoading, setWaLoading] = useState(false);
+  const [waDisconnecting, setWaDisconnecting] = useState(false);
+  const [waDisconnectModal, setWaDisconnectModal] = useState(false);
+
   useEffect(() => {
     if (activeTab === "users" && canManageUsers) {
       fetchUsers();
     }
   }, [activeTab, canManageUsers]);
+
+  const fetchWhatsAppStatus = async (silent = false) => {
+    if (!silent) setWaLoading(true);
+    try {
+      const data = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_STATUS);
+      setWaStatus(data);
+    } catch (error) {
+      console.error("Failed to fetch WhatsApp status", error);
+      if (!silent) notificationUtils.showError("Failed to fetch WhatsApp connection status.");
+    } finally {
+      if (!silent) setWaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    let pollInterval;
+    if (activeTab === "whatsapp") {
+      fetchWhatsAppStatus();
+      // Poll every 3 seconds if waiting for scan
+      pollInterval = setInterval(() => {
+        if (activeTab === "whatsapp") {
+          fetchWhatsAppStatus(true);
+        }
+      }, 3000);
+    }
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [activeTab]);
+
+  const handleDisconnectWhatsApp = async () => {
+    try {
+      setWaDisconnecting(true);
+      const res = await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_DISCONNECT);
+      notificationUtils.showSuccess(res.message || "WhatsApp disconnected.");
+      setWaDisconnectModal(false);
+      fetchWhatsAppStatus();
+    } catch (error) {
+      console.error("WhatsApp disconnect error:", error);
+      notificationUtils.showError(error.response?.data?.message || "Failed to disconnect WhatsApp.");
+    } finally {
+      setWaDisconnecting(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -257,6 +315,20 @@ const AdminSettings = () => {
             >
               <Users className="w-4 h-4" />
               User Management
+            </button>
+          )}
+          
+          {canManageUsers && (
+            <button
+              onClick={() => setActiveTab("whatsapp")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "whatsapp" 
+                  ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-900/5" 
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+              }`}
+            >
+              <MessageCircle className="w-4 h-4" />
+              WhatsApp Integration
             </button>
           )}
         </div>
@@ -463,6 +535,118 @@ const AdminSettings = () => {
               </div>
             </div>
           )}
+
+          {/* WhatsApp Integration Section */}
+          {activeTab === "whatsapp" && canManageUsers && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-emerald-500" />
+                    WhatsApp Integration
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Connect the WhatsApp account used for system messaging.</p>
+                </div>
+                <button
+                  onClick={() => fetchWhatsAppStatus()}
+                  className="p-2 text-slate-400 hover:text-emerald-600 bg-white border border-slate-200 rounded-lg shadow-sm transition-colors flex items-center justify-center"
+                  title="Refresh Status"
+                >
+                  <RefreshCw className={`w-5 h-5 ${waLoading ? 'animate-spin text-emerald-500' : ''}`} />
+                </button>
+              </div>
+
+              <div className="p-6 md:p-10 flex flex-col items-center justify-center">
+                {waLoading && !waStatus ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
+                    <p className="text-slate-500 font-medium text-sm">Checking WhatsApp status...</p>
+                  </div>
+                ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
+                  <div className="max-w-md w-full bg-slate-50 rounded-2xl border border-slate-200 p-8 flex flex-col items-center text-center shadow-inner">
+                    <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-6">
+                      <Smartphone className="w-8 h-8 text-slate-700" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">Connect WhatsApp</h3>
+                    <p className="text-sm text-slate-500 mb-8 max-w-sm">
+                      Open WhatsApp on your phone, go to <strong>Linked Devices</strong>, select <strong>Link a Device</strong>, and scan the code below.
+                    </p>
+                    
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mb-6">
+                      {waStatus?.qrCode ? (
+                        <QRCode value={waStatus.qrCode} size={220} level="H" />
+                      ) : (
+                        <div className="w-[220px] h-[220px] bg-slate-100 flex items-center justify-center rounded-lg">
+                          <RefreshCw className="w-8 h-8 text-slate-300 animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-4 py-2 rounded-full text-sm font-medium border border-amber-200/50">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      Waiting for scan...
+                    </div>
+                  </div>
+                ) : waStatus?.status === 'CONNECTED' ? (
+                  <div className="max-w-md w-full bg-emerald-50/50 rounded-2xl border border-emerald-100 p-8 flex flex-col items-center text-center">
+                    <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6 ring-4 ring-emerald-50">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">WhatsApp Connected</h3>
+                    <p className="text-sm text-slate-500 mb-6">
+                      The system is successfully linked and ready to send automated messages.
+                    </p>
+                    
+                    <div className="w-full bg-white rounded-xl shadow-sm border border-emerald-100 p-5 mb-8 space-y-3">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500 font-medium">Status</span>
+                        <span className="inline-flex items-center gap-1.5 text-emerald-600 font-semibold">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Connected
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500 font-medium">Account</span>
+                        <span className="text-slate-800 font-medium">{waStatus?.connectedNumber || "Active Number"}</span>
+                      </div>
+                      {waStatus?.connectionTime && (
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500 font-medium">Connected Since</span>
+                          <span className="text-slate-800 font-medium">
+                            {new Date(waStatus.connectionTime).toLocaleDateString()} {new Date(waStatus.connectionTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => setWaDisconnectModal(true)}
+                      className="px-6 py-2.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Unplug className="w-4 h-4" />
+                      Disconnect Account
+                    </button>
+                  </div>
+                ) : (
+                  <div className="max-w-md w-full bg-slate-50 rounded-2xl border border-slate-200 p-8 flex flex-col items-center text-center shadow-inner">
+                     <div className="w-16 h-16 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center mb-6">
+                      <XCircle className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <h3 className="text-xl font-bold text-slate-800 mb-2">WhatsApp Disconnected</h3>
+                    <p className="text-sm text-slate-500 mb-8 max-w-sm">
+                      The WhatsApp client is currently disconnected or initializing. Please wait a moment for a new QR code to generate.
+                    </p>
+                    <button
+                      onClick={() => fetchWhatsAppStatus()}
+                      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      Check Again
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -617,6 +801,46 @@ const AdminSettings = () => {
           </div>
         </div>
       )}
+
+      {/* WhatsApp Disconnect Modal */}
+      {waDisconnectModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setWaDisconnectModal(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-scale-up">
+            <div className="p-6">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4 mx-auto">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 text-center mb-2">Disconnect WhatsApp?</h3>
+              <p className="text-sm text-slate-500 text-center mb-6">
+                This will immediately stop the current WhatsApp account from being used for the existing automated message-sending features until a new account is connected.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWaDisconnectModal(false)}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={waDisconnecting}
+                  onClick={handleDisconnectWhatsApp}
+                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors disabled:opacity-70 flex items-center justify-center gap-2"
+                >
+                  {waDisconnecting ? (
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    "Disconnect"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
     </AdminNavigation>
   );
