@@ -1,5 +1,5 @@
 /**
- * LogbookRestrictions.jsx
+ * AdminLogbookRestriction.jsx
  *
  * Admin page – view all currently restricted interns and lift restrictions
  * after a valid reason (supervisor meeting) has been recorded.
@@ -11,7 +11,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock } from "lucide-react";
+import { Lock, ShieldAlert } from "lucide-react";
 import {
   FaLock,
   FaLockOpen,
@@ -28,6 +28,10 @@ import {
   FaShieldAlt,
   FaSignOutAlt,
   FaDownload,
+  FaEye,
+  FaEyeSlash,
+  FaEnvelope,
+  FaBriefcase,
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -200,81 +204,6 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
       setError("Please provide a detailed reason (at least 15 characters).");
       return;
     }
-    
-    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
-    const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
-    const bypassEmails = [
-      "mgiri@slt.com.lk",
-      "mgiridaransysdev@gmail.com",
-      "hjanaka@gmail.com",
-      "ranujaliyanaarachchi@gmail.com"
-    ];
-
-    if (!bypassEmails.includes(currentUserEmail)) {
-      const { value: password } = await Swal.fire({
-        title: 'Enter Password',
-        html: `
-          <div style="font-size: 14px; color: #4b5563; margin-bottom: 16px;">Admin Password required.</div>
-          <div class="logres-pw-wrapper">
-            <input type="text" name="username" value="" tabindex="-1" autocomplete="username" style="opacity: 0; position: absolute; top: 0; left: 0; width: 1px; height: 1px; z-index: -1;" />
-            <input type="password" id="logres-password-input" class="logres-swal-input" placeholder="Enter your password" autocomplete="current-password" />
-            <div class="logres-pw-toggle" id="logres-pw-toggle">
-              <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 640 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M320 400c-75.85 0-137.25-58.71-142.9-133.11L72.2 185.82c-13.79 17.3-26.48 35.59-36.72 55.59a32.35 32.35 0 0 0 0 29.19C89.71 376.41 197.07 448 320 448c26.91 0 52.87-4 77.89-10.46L346 397.39a144.13 144.13 0 0 1-26 2.61zm313.82 58.1l-110.55-85.44a331.25 331.25 0 0 0 81.25-102.07 32.35 32.35 0 0 0 0-29.19C550.29 135.59 442.93 64 320 64a308.15 308.15 0 0 0-147.32 37.7L45.46 3.37A16 16 0 0 0 23 6.18L3.37 31.45A16 16 0 0 0 6.18 53.9l588.36 454.73a16 16 0 0 0 22.46-2.81l19.64-25.27a16 16 0 0 0-2.82-22.45zm-183.72-142l-39.3-30.38A94.75 94.75 0 0 0 416 256a94.76 94.76 0 0 0-121.31-92.21A47.65 47.65 0 0 1 304 192a46.64 46.64 0 0 1-1.54 10l-73.61-56.89A142.31 142.31 0 0 1 320 112a143.92 143.92 0 0 1 144 144c0 21.63-5.29 41.79-13.9 60.11z"></path></svg>
-            </div>
-          </div>
-        `,
-        showCancelButton: true,
-        confirmButtonText: 'Verify & Restore',
-        confirmButtonColor: BRAND.primary,
-        cancelButtonColor: BRAND.ghost,
-        customClass: {
-          container: 'logres-swal-container',
-          popup: 'logres-swal-popup',
-          title: 'logres-swal-title',
-          confirmButton: 'logres-btn logres-btn--primary',
-          cancelButton: 'logres-btn logres-btn--ghost'
-        },
-        didOpen: () => {
-          const toggle = document.getElementById('logres-pw-toggle');
-          const input = document.getElementById('logres-password-input');
-          
-          const eyeSVG = `<svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M288 144a110.94 110.94 0 0 0-31.24 5 55.4 55.4 0 0 1 7.24 27 56 56 0 0 1-56 56 55.4 55.4 0 0 1-27-7.24A111.71 111.71 0 1 0 288 144zm284.52 97.4C518.29 135.59 410.93 64 288 64S57.68 135.64 3.48 241.41a32.35 32.35 0 0 0 0 29.19C57.71 376.41 165.07 448 288 448s230.32-71.64 284.52-177.41a32.35 32.35 0 0 0 0-29.19zM288 400c-98.65 0-189.09-55-237.93-144C98.91 167 189.34 112 288 112s189.09 55 237.93 144C477.1 345 386.66 400 288 400z"></path></svg>`;
-          const eyeSlashSVG = toggle.innerHTML;
-
-          toggle.addEventListener('click', () => {
-            if (input.type === 'password') {
-              input.type = 'text';
-              toggle.innerHTML = eyeSVG;
-            } else {
-              input.type = 'password';
-              toggle.innerHTML = eyeSlashSVG;
-            }
-          });
-        },
-        preConfirm: () => {
-          const password = document.getElementById('logres-password-input').value;
-          if (!password) {
-            Swal.showValidationMessage('You need to enter the password!');
-            return false;
-          }
-          return password;
-        }
-      });
-
-      if (!password) {
-        return; // Cancelled
-      }
-
-      if (password !== 'TalentHub@2026' && password !== 'G2026@SLT@npm') {
-        Swal.fire({
-          icon: 'error',
-          title: 'Incorrect Password',
-          text: 'The password you entered is incorrect.',
-          confirmButtonColor: BRAND.primary,
-        });
-        return;
-      }
-    }
 
     setLoading(true);
     setError(null);
@@ -319,7 +248,6 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
             </button>
           </div>
 
-          {/* Intern summary */}
           <div className="logres-lift-summary">
             <div
               className="logres-lift-summary__avatar"
@@ -359,7 +287,6 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
             </div>
           </div>
 
-          {/* Current restriction reason */}
           {intern.logbookRestrictionReason && (
             <div className="logres-restriction-reason-box">
               <FaInfoCircle style={{ flexShrink: 0, color: BRAND.warn }} />
@@ -367,7 +294,6 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Lift reason input */}
           <div className="logres-lift-form">
             <label className="logres-lift-form__label">
               Reason for lifting restriction{" "}
@@ -432,7 +358,7 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Main Page Component                                                        */
 /* ─────────────────────────────────────────────────────────────────────────── */
-const LogbookRestrictions = () => {
+const AdminLogbookRestriction = () => {
   const navigate = useNavigate();
   const [interns, setInterns] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -443,8 +369,12 @@ const LogbookRestrictions = () => {
   const [toast, setToast] = useState(null);
   const [holidayGate, setHolidayGate] = useState(null);
 
-  // Whether the current year's holiday data is trustworthy enough for the
-  // Sunday cron to restrict anyone — see backend/utils/holidayStore.js.
+  // Confirm popup state
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmShowPw, setConfirmShowPw] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
+
   useEffect(() => {
     let cancelled = false;
     holidayApi
@@ -454,9 +384,7 @@ const LogbookRestrictions = () => {
         const current = years?.find((y) => y.year === new Date().getFullYear());
         if (current) setHolidayGate(current);
       })
-      .catch(() => {
-        /* non-blocking: the restriction list still renders */
-      });
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -466,9 +394,8 @@ const LogbookRestrictions = () => {
     const doc = new jsPDF("landscape");
     doc.setFont("helvetica");
 
-    // Title
     doc.setFontSize(18);
-    doc.setTextColor(0, 86, 162); // BRAND.primary
+    doc.setTextColor(0, 86, 162);
     doc.text("Logbook Restrictions Report", 14, 22);
 
     doc.setFontSize(11);
@@ -491,7 +418,6 @@ const LogbookRestrictions = () => {
 
     interns.forEach(intern => {
       const reason = intern.logbookRestrictionReason || "";
-      
       const rowData = [
         intern.traineeName || "-",
         intern.traineeId || "-",
@@ -520,24 +446,10 @@ const LogbookRestrictions = () => {
       styles: { fontSize: 8, cellPadding: 2, halign: "center", valign: "middle" },
       headStyles: { fillColor: [0, 86, 162], textColor: 255, halign: "center", valign: "middle" },
       columnStyles: {
-        0: { halign: "left" }, // Name
-        1: { halign: "center" }, // ID
-        2: { halign: "center" }, // Restricted Since
-        8: { cellWidth: 50, halign: "left" } // Reason
-      },
-      didParseCell: function (data) {
-        if (data.section === 'body' && data.column.index >= 3 && data.column.index <= 7) {
-          const raw = data.cell.raw;
-          if (raw && typeof raw === 'string') {
-             if (raw.includes('Not Submitted')) {
-                data.cell.styles.textColor = [220, 38, 38]; // Red text
-                data.cell.styles.fontStyle = 'bold';
-             } else if (raw.includes('Submitted')) {
-                data.cell.styles.textColor = [37, 99, 235]; // Blue text
-                data.cell.styles.fontStyle = 'bold';
-             }
-          }
-        }
+        0: { halign: "left" },
+        1: { halign: "center" },
+        2: { halign: "center" },
+        8: { cellWidth: 50, halign: "left" }
       }
     });
 
@@ -581,6 +493,34 @@ const LogbookRestrictions = () => {
     showToast("Logbook access successfully restored.", "success");
   };
 
+  const handleLiftClick = (intern) => {
+    setConfirmTarget(intern);
+    setConfirmPassword("");
+    setConfirmShowPw(false);
+    setConfirmError("");
+  };
+
+  const handleConfirmVerify = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
+    const bypassEmails = [
+      "mgiri@slt.com.lk",
+      "mgiridaransysdev@gmail.com",
+      "hjanaka@gmail.com",
+      "ranujaliyanaarachchi@gmail.com"
+    ];
+    const validPasswords = ["TalentHub@2026", "G2026@SLT@npm"];
+
+    if (bypassEmails.includes(currentUserEmail) || validPasswords.includes(confirmPassword)) {
+      setConfirmError("");
+      setLiftTarget(confirmTarget);
+      setConfirmTarget(null);
+      setConfirmPassword("");
+    } else {
+      setConfirmError("Incorrect password. Please try again.");
+    }
+  };
+
   const filtered = interns.filter((i) => {
     const q = search.toLowerCase();
     return (
@@ -591,43 +531,46 @@ const LogbookRestrictions = () => {
     );
   });
 
-  /* ── Render ── */
   return (
     <AdminNavigation>
       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
-          {/* Header */}
           <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
-            <div>
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <Lock className="text-[#0056a2] h-8 w-8" />
-                </div>
-                Logbook Restrictions
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.05, duration: 0.2 }}
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                Interns restricted due to submitting fewer than 3 logs in a working week (excluding weekends & public holidays). Lift access after supervisor approval.
-              </motion.p>
+                <Lock className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Logbook Restrictions
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Interns restricted due to submitting fewer than 3 logs in a working week (excluding weekends & public holidays). Lift access after supervisor approval.
+                </motion.p>
+              </div>
             </div>
           </div>
 
-          {/* Holiday data gate — auto-restriction is paused when the working-day
-              window can't be trusted, so admins must know before escalating. */}
           {holidayGate && !holidayGate.enforcementReady && (
             <motion.div
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
-              className="mb-6 flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
+              className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4"
             >
               <FaExclamationTriangle className="mt-0.5 shrink-0 text-amber-600" />
               <div className="flex-1">
@@ -635,10 +578,8 @@ const LogbookRestrictions = () => {
                   Automatic restrictions are paused for {holidayGate.year}
                 </p>
                 <p className="mt-1 text-sm text-amber-700">
-                  Public holiday data for {holidayGate.year} is “{holidayGate.dataQuality}”,
-                  so the 5-working-day window may be wrong. The Sunday job is holding
-                  candidates for review instead of restricting them. Confirm the year
-                  under Holidays to resume.
+                  Public holiday data for {holidayGate.year} is "{holidayGate.dataQuality}",
+                  so the 5-working-day window may be wrong.
                 </p>
                 <button
                   onClick={() => navigate("/admin/holidays")}
@@ -650,76 +591,48 @@ const LogbookRestrictions = () => {
             </motion.div>
           )}
 
-          {/* Stats bar */}
           <motion.div
             className="logres-stats-bar"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            style={{ flexWrap: "wrap", justifyContent: "space-between" }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
               <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.danger }}
-                >
+                <span className="logres-stat__value" style={{ color: BRAND.danger }}>
                   {loading ? "—" : interns.length}
                 </span>
                 <span className="logres-stat__label">Currently Restricted</span>
               </div>
               <div className="logres-stat logres-stat--divider" />
               <div className="logres-stat">
-                <span
-                  className="logres-stat__value"
-                  style={{ color: BRAND.warn }}
-                >
+                <span className="logres-stat__value" style={{ color: BRAND.warn }}>
                   {loading ? "—" : filtered.length}
                 </span>
                 <span className="logres-stat__label">Shown (filtered)</span>
               </div>
             </div>
-
             <button
               onClick={exportToPDF}
               className="logres-btn logres-btn--primary"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                backgroundColor: BRAND.primary,
-                color: "white",
-                padding: "10px 20px",
-                borderRadius: "10px",
-                fontWeight: "600",
-                border: "none",
-                cursor: "pointer",
-                marginLeft: "auto",
-                transition: "background 0.2s"
-              }}
-              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#004482")}
-              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = BRAND.primary)}
+              style={{ display: "flex", alignItems: "center", gap: 8 }}
             >
               <FaDownload /> Export PDF
             </button>
           </motion.div>
 
-          {/* Info banner */}
           <motion.div
             className="logres-info-banner"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.15 }}
           >
-            <FaInfoCircle
-              style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }}
-            />
+            <FaInfoCircle style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }} />
             <p>
-              Interns below are automatically restricted for submitting fewer than <strong>3 logbook </strong>entries within a <strong> 5 working-day </strong>period <strong>(</strong>excluding weekends and public holidays<strong>)</strong>. Use <strong> "Lift Restriction" </strong>to restore access and record the supervisor's reason.
+              Interns below are automatically restricted for submitting fewer than <strong>3 logbook</strong> entries within a <strong>5 working-day</strong> period <strong>(</strong>excluding weekends and public holidays<strong>)</strong>. Use <strong>"Lift Restriction"</strong> to restore access and record the supervisor's reason.
             </p>
           </motion.div>
 
-          {/* Search */}
           <motion.div
             className="logres-search-bar"
             initial={{ opacity: 0 }}
@@ -734,19 +647,14 @@ const LogbookRestrictions = () => {
               onChange={(e) => setSearch(e.target.value)}
               className="logres-search-bar__input"
               autoComplete="off"
-              data-lpignore="true"
             />
             {search && (
-              <button
-                className="logres-search-bar__clear"
-                onClick={() => setSearch("")}
-              >
+              <button className="logres-search-bar__clear" onClick={() => setSearch("")}>
                 <FaTimes />
               </button>
             )}
           </motion.div>
 
-          {/* Content */}
           {loading ? (
             <div className="logres-loader">
               <motion.div
@@ -758,47 +666,25 @@ const LogbookRestrictions = () => {
             </div>
           ) : error ? (
             <div className="logres-error">
-              <FaExclamationTriangle
-                style={{ fontSize: 36, color: BRAND.danger }}
-              />
+              <FaExclamationTriangle style={{ fontSize: 36, color: BRAND.danger }} />
               <p>{error}</p>
-              <button
-                className="logres-btn logres-btn--primary"
-                onClick={fetchRestricted}
-              >
-                Retry
-              </button>
+              <button className="logres-btn logres-btn--primary" onClick={fetchRestricted}>Retry</button>
             </div>
           ) : filtered.length === 0 ? (
-            <motion.div
-              className="logres-empty"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
+            <motion.div className="logres-empty" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <div className="logres-empty__icon">
-                <FaCheckCircle
-                  style={{ color: BRAND.success, fontSize: 40 }}
-                />
+                <FaCheckCircle style={{ color: BRAND.success, fontSize: 40 }} />
               </div>
-              <h3>
-                {interns.length === 0
-                  ? "No Restricted Interns"
-                  : "No Results"}
-              </h3>
+              <h3>{interns.length === 0 ? "No Restricted Interns" : "No Results"}</h3>
               <p>
                 {interns.length === 0
-                  ? "All interns currently have full logbook access. Restrictions are applied automatically at the end of each weekly check."
+                  ? "All interns currently have full logbook access."
                   : "Try adjusting your search."}
               </p>
             </motion.div>
           ) : (
-            <motion.div
-              className="logres-list"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-            >
-              {/* Desktop table */}
+            <motion.div className="logres-list" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.25 }}>
+
               <div className="logres-table-wrapper">
                 <table className="logres-table">
                   <thead>
@@ -836,44 +722,25 @@ const LogbookRestrictions = () => {
                               </div>
                             </div>
                             <div>
-                              <div className="logres-table__name">
-                                {intern.traineeName}
-                              </div>
-                              <div className="logres-table__sub">
-                                {intern.traineeId}
-                              </div>
+                              <div className="logres-table__name">{intern.traineeName}</div>
+                              <div className="logres-table__sub">{intern.traineeId}</div>
                             </div>
                           </div>
                         </td>
                         <td>
-                          <div className="logres-table__name">
-                            {intern.email || "—"}
-                          </div>
-                          <div className="logres-table__sub">
-                            {intern.fieldOfSpecialization || "—"}
-                          </div>
+                          <div className="logres-table__name">{intern.email || "—"}</div>
+                          <div className="logres-table__sub">{intern.fieldOfSpecialization || "—"}</div>
                         </td>
                         <td>
-                          <div className="logres-table__name">
-                            {fmtDate(intern.logbookRestrictedAt)}
-                          </div>
+                          <div className="logres-table__name">{fmtDate(intern.logbookRestrictedAt)}</div>
                           <div className="logres-table__sub">
                             {intern.logbookRestrictedAt
-                              ? `${Math.floor(
-                                  (Date.now() -
-                                    new Date(
-                                      intern.logbookRestrictedAt,
-                                    ).getTime()) /
-                                    86400000,
-                                )} days ago`
+                              ? `${Math.floor((Date.now() - new Date(intern.logbookRestrictedAt).getTime()) / 86400000)} days ago`
                               : "—"}
                           </div>
                         </td>
                         <td>
-                          <div
-                            className="logres-reason-cell"
-                            title={intern.logbookRestrictionReason}
-                          >
+                          <div className="logres-reason-cell" title={intern.logbookRestrictionReason}>
                             {intern.logbookRestrictionReason || "—"}
                           </div>
                         </td>
@@ -881,7 +748,7 @@ const LogbookRestrictions = () => {
                           <div className="logres-action-btns">
                             <button
                               className="logres-btn logres-btn--lift logres-btn--sm"
-                              onClick={() => setLiftTarget(intern)}
+                              onClick={() => handleLiftClick(intern)}
                               title={`Lift restriction for ${intern.traineeName}`}
                             >
                               <FaLockOpen style={{ marginRight: 4 }} /> Lift
@@ -920,37 +787,36 @@ const LogbookRestrictions = () => {
                         </div>
                       </div>
                       <div className="logres-card__identity">
-                        <span className="logres-card__name">
-                          {intern.traineeName}
-                        </span>
-                        <span className="logres-card__id">
-                          {intern.traineeId}
-                        </span>
+                        <span className="logres-card__name">{intern.traineeName}</span>
+                        <span className="logres-card__id">{intern.traineeId}</span>
                       </div>
                       <div className="logres-card__badge">
-                        <FaLock style={{ marginRight: 4, fontSize: 10 }} />{" "}
-                        Restricted
+                        <FaLock style={{ marginRight: 4, fontSize: 10 }} /> Restricted
                       </div>
                     </div>
                     <div className="logres-card__meta">
-                      <span>📧 {intern.email}</span>
-                      <span>🎯 {intern.fieldOfSpecialization}</span>
-                      <span>
-                        🔒 Since {fmtDate(intern.logbookRestrictedAt)}
-                      </span>
+                      <div className="logres-card__meta-row">
+                        <FaEnvelope className="logres-card__meta-icon" />
+                        <span className="logres-card__meta-text">{intern.email || "—"}</span>
+                      </div>
+                      <div className="logres-card__meta-row">
+                        <FaBriefcase className="logres-card__meta-icon" />
+                        <span className="logres-card__meta-text">{intern.fieldOfSpecialization || "—"}</span>
+                      </div>
+                      <div className="logres-card__meta-row">
+                        <FaCalendarAlt className="logres-card__meta-icon" />
+                        <span className="logres-card__meta-text">Restricted since {fmtDate(intern.logbookRestrictedAt)}</span>
+                      </div>
                     </div>
                     {intern.logbookRestrictionReason && (
-                      <p className="logres-card__reason">
-                        {intern.logbookRestrictionReason}
-                      </p>
+                      <p className="logres-card__reason">{intern.logbookRestrictionReason}</p>
                     )}
                     <div className="logres-card__actions">
                       <button
                         className="logres-btn logres-btn--lift logres-btn--sm"
-                        onClick={() => setLiftTarget(intern)}
+                        onClick={() => handleLiftClick(intern)}
                       >
-                        <FaLockOpen style={{ marginRight: 4 }} /> Lift
-                        Restriction
+                        <FaLockOpen style={{ marginRight: 4 }} /> Lift Restriction
                       </button>
                     </div>
                   </motion.div>
@@ -959,6 +825,109 @@ const LogbookRestrictions = () => {
             </motion.div>
           )}
         </main>
+
+        {/* ── Confirm Lift Popup — Security Check style ── */}
+        <AnimatePresence>
+          {confirmTarget && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
+                onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+              />
+              {/* Modal */}
+              <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 lg:pl-[270px]">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-md"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header */}
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-gradient-to-br from-[#000066] to-[#006600] rounded-xl flex-shrink-0">
+                        <ShieldAlert className="text-white h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-extrabold text-slate-800">Confirm Lift Restriction</h3>
+                        <p className="text-xs text-slate-500 mt-0.5">Enter admin password to proceed</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Intern mini-card */}
+                  <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#ef4444,#c0392b)', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                      <img
+                        src={`${API_BASE_URL}/interns/${confirmTarget._id}/profile-picture`}
+                        alt={confirmTarget.traineeName}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', position: 'absolute', top: 0, left: 0 }}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                      />
+                      <span>{(confirmTarget.traineeName || "?")[0].toUpperCase()}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">{confirmTarget.traineeName}</p>
+                      <p className="text-xs text-slate-500 truncate">{confirmTarget.traineeId}</p>
+                    </div>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, color: '#ef4444', flexShrink: 0 }}>
+                      <FaLock style={{ fontSize: 9 }} /> Restricted
+                    </span>
+                  </div>
+
+                  {/* Password input */}
+                  <div className="mb-4 relative">
+                    <input
+                      type={confirmShowPw ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
+                      placeholder="Enter admin password..."
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0056a2]/20 focus:border-[#0056a2]/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setConfirmShowPw(!confirmShowPw)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                    >
+                      {confirmShowPw ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {confirmError && (
+                      <p className="text-xs font-semibold text-red-500 mt-2">{confirmError}</p>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConfirmVerify}
+                      disabled={!confirmPassword}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0056a2] text-white rounded-xl text-sm font-bold hover:bg-[#004482] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    >
+                      <FaLockOpen className="w-3.5 h-3.5" /> Verify &amp; Proceed
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>
 
         {/* Modals */}
         {liftTarget && (
@@ -998,11 +967,17 @@ const LogbookRestrictions = () => {
         <style>{`
         /* ── Stats bar ── */
         .logres-stats-bar {
-          display: flex; align-items: center; gap: 24px;
-          padding: 16px 20px; background: white;
+          display: flex; align-items: center; gap: 16px;
+          padding: 14px 16px; background: white;
           border-radius: 14px; border: 1px solid #f0f0f0;
           box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-          margin-bottom: 16px;
+          margin-bottom: 16px; flex-wrap: wrap;
+          justify-content: space-between;
+        }
+        @media (max-width: 480px) {
+          .logres-stats-bar { flex-direction: column; align-items: stretch; gap: 10px; }
+          .logres-stats-bar > div { justify-content: space-between; }
+          .logres-stats-bar button { width: 100%; justify-content: center; }
         }
         .logres-stat { display: flex; flex-direction: column; gap: 2px; }
         .logres-stat__value { font-size: 26px; font-weight: 800; }
@@ -1114,6 +1089,32 @@ const LogbookRestrictions = () => {
 
         /* ── Mobile cards ── */
         .logres-cards-mobile { display: flex; flex-direction: column; gap: 12px; }
+        .logres-card__meta {
+          display: flex; flex-direction: column; gap: 6px;
+          margin-bottom: 12px;
+        }
+        .logres-card__meta-row {
+          display: flex; align-items: center; gap: 8px;
+          font-size: 13px; color: #4b5563; min-width: 0;
+        }
+        .logres-card__meta-icon {
+          flex-shrink: 0; font-size: 11px; color: #9ca3af; width: 14px;
+        }
+        .logres-card__meta-text {
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          min-width: 0; flex: 1;
+        }
+        .logres-card__reason {
+          font-size: 12px; color: #6b7280; background: #fafafa;
+          padding: 8px 10px; border-radius: 8px; margin-bottom: 12px;
+          border: 1px solid #f0f0f0; word-break: break-word;
+          line-height: 1.5;
+        }
+        .logres-card__actions { display: flex; gap: 8px; }
+        @media (max-width: 480px) {
+          .logres-card__actions { flex-direction: column; }
+          .logres-card__actions .logres-btn { width: 100% !important; justify-content: center; }
+        }
         @media (min-width: 768px) { .logres-cards-mobile { display: none; } }
         .logres-card {
           background: white; border-radius: 16px;
@@ -1127,8 +1128,8 @@ const LogbookRestrictions = () => {
           display: flex; align-items: center; justify-content: center;
           color: white; font-size: 15px; font-weight: 700; flex-shrink: 0;
         }
-        .logres-card__identity { flex: 1; }
-        .logres-card__name { display: block; font-size: 15px; font-weight: 700; color: #1a1a2e; }
+        .logres-card__identity { flex: 1; min-width: 0; }
+        .logres-card__name { display: block; font-size: 15px; font-weight: 700; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .logres-card__id { font-size: 12px; color: #9ca3af; }
         .logres-card__badge {
           display: inline-flex; align-items: center;
@@ -1366,4 +1367,4 @@ const LogbookRestrictions = () => {
   );
 };
 
-export default LogbookRestrictions;
+export default AdminLogbookRestriction;

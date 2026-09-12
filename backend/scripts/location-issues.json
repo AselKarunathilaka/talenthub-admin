@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-22T17:52:55.991Z",
+  "generatedAt": "2026-09-12T17:52:50.248Z",
   "issues": [
     {
       "id": "3791",
@@ -15,6 +15,22 @@
       "storedDistrict": "Colombo",
       "verifiedDistrict": "Gampaha",
       "address": "Dalugama, Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3957",
+      "name": "Weerasinghe Kankanamge Malith Yasintha",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "C/4  Mawella Road , Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3970",
+      "name": "Senuja Amarasingha Ekanayaka",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "No 37 Manelgama Road, Kelaniya",
       "action": "re-geocoded"
     },
     {
@@ -63,6 +79,38 @@
       "storedDistrict": "none",
       "verifiedDistrict": "—",
       "address": "178 Bodawaththa Udagunnepana",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3927",
+      "name": "DRC Sharuna Siriwansha",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Kiralabakka , Kalugamawa",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3938",
+      "name": "Siri Jayalath Jothirathne Hirusha Pramuditha",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "100/3C  Nuwararawewa",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3947",
+      "name": "S Ramesh Krishan Sundarshana",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Thalgala , Nagollagama",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3959",
+      "name": "Insusha Ashen",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "2/2/C/4/3 Soriyapaluwa Ganemullla",
       "action": "geocode failed"
     }
   ]

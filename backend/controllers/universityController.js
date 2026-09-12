@@ -324,7 +324,7 @@ const fetchGoogleUserInfo = (accessToken) => {
 const buildUniversityQueryRegex = (universityName) => {
   const normalized = (universityName || "").trim().toLowerCase();
 
-  if (!normalized) return { $exists: true };
+  if (!normalized || normalized === "all") return { $exists: true };
 
   // Common Sri Lankan university alias patterns
   if (normalized.includes("nsbm")) {
@@ -1421,7 +1421,7 @@ const getUniversityStudentDetails = async (req, res) => {
         workQualityRate,
         overallQualityScore: workQualityRate,
         qualityScore: workQualityRate,
-        logbookCount,
+        logbookCount: dailyRecords.length,
         commitsCount,
         projectsCount,
         presentDays: attMetrics.presentDays,

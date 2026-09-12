@@ -46,6 +46,7 @@ import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
 import DailyRecordsHeatmap from "../components/DailyRecordsHeatmap";
 import CommitHeatmap from "../components/CommitHeatmap";
+import AdminNavigation from "../components/AdminNavigation";
 
 // ── In-Memory Fast Client Cache (SWR Pattern for instant page loads) ─────────
 const studentDataCache = new Map();
@@ -392,19 +393,22 @@ const UniversityStudentDetails = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const isAdminMode = location.pathname.startsWith('/admin');
+  const apiPathPrefix = isAdminMode ? 'admin/universities/students' : 'university/students';
+
   const getAuthToken = useCallback(() => {
+    if (isAdminMode) {
+      try {
+        return JSON.parse(localStorage.getItem("adminInfo") || "{}")?.token || "";
+      } catch {
+        return "";
+      }
+    }
     return (
       localStorage.getItem("universityToken") ||
-      localStorage.getItem("authToken") ||
-      (() => {
-        try {
-          return JSON.parse(localStorage.getItem("adminInfo") || "{}")?.token || "";
-        } catch {
-          return "";
-        }
-      })()
+      localStorage.getItem("authToken")
     );
-  }, []);
+  }, [isAdminMode]);
 
   const handleLogout = useCallback(() => {
     localStorage.removeItem("universityToken");
@@ -421,7 +425,7 @@ const UniversityStudentDetails = () => {
     const controller = new AbortController();
 
     try {
-      const res = await fetch(`${API_BASE_URL}/university/students/${internId}`, {
+      const res = await fetch(`${API_BASE_URL}/${apiPathPrefix}/${internId}`, {
         headers: {
           "Content-Type": "application/json",
           ...(token && { Authorization: `Bearer ${token}` }),
@@ -471,7 +475,7 @@ const UniversityStudentDetails = () => {
     try {
       const token = getAuthToken();
       const res = await fetch(
-        `${API_BASE_URL}/university/students/${internId}/feedback`,
+        `${API_BASE_URL}/${apiPathPrefix}/${internId}/feedback`,
         {
           method: "POST",
           headers: {
@@ -526,7 +530,7 @@ const UniversityStudentDetails = () => {
     try {
       const token = getAuthToken();
       const res = await fetch(
-        `${API_BASE_URL}/university/students/${internId}/feedback/${feedbackId}`,
+        `${API_BASE_URL}/${apiPathPrefix}/${internId}/feedback/${feedbackId}`,
         {
           method: "PUT",
           headers: {
@@ -569,7 +573,7 @@ const UniversityStudentDetails = () => {
     try {
       const token = getAuthToken();
       const res = await fetch(
-        `${API_BASE_URL}/university/students/${internId}/feedback/${feedbackId}`,
+        `${API_BASE_URL}/${apiPathPrefix}/${internId}/feedback/${feedbackId}`,
         {
           method: "DELETE",
           headers: {
@@ -677,9 +681,10 @@ const UniversityStudentDetails = () => {
 
   const profilePictureUrl = supervisor?.picture || supervisor?.googlePictureUrl || "";
 
-  return (
+  const pageContent = (
     <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none">
       {/* ─── Top Brand Navigation Bar ─── */}
+      {!isAdminMode && (
       <header
         className="sticky top-0 z-40 shadow-lg text-white select-none"
         style={{
@@ -852,7 +857,8 @@ const UniversityStudentDetails = () => {
             </div>
           </div>
         </div>
-      </header>
+        </header>
+      )}
 
       {/* ─── Main Content Container ─── */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-3.5 sm:px-6 lg:px-8 py-5 sm:py-7 space-y-5 sm:space-y-6 select-none">
@@ -868,8 +874,8 @@ const UniversityStudentDetails = () => {
           </button>
 
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <button onClick={() => navigate("/university-dashboard")} className="hover:text-slate-900 transition-colors font-medium">
-              University Portal
+            <button onClick={() => navigate(isAdminMode ? "/admin/universities" : "/university-dashboard")} className="hover:text-slate-900 transition-colors font-medium">
+              {isAdminMode ? "Admin Portal" : "University Portal"}
             </button>
             <span>/</span>
             <span className="font-semibold text-slate-800 truncate max-w-[150px] sm:max-w-[240px]">
@@ -890,11 +896,11 @@ const UniversityStudentDetails = () => {
             <AlertCircle className="h-12 w-12 text-rose-500 mx-auto" />
             <h3 className="text-base font-bold text-slate-900">{error}</h3>
             <button
-              onClick={() => navigate("/university-dashboard")}
+              onClick={() => navigate(isAdminMode ? "/admin/universities" : "/university-dashboard")}
               className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-colors inline-flex items-center gap-2 min-h-[40px]"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>Return to Students Dashboard</span>
+              <span>{isAdminMode ? "Return to Universities" : "Return to Students Dashboard"}</span>
             </button>
           </div>
         ) : student ? (
@@ -2193,16 +2199,24 @@ const UniversityStudentDetails = () => {
       </main>
 
       {/* ─── Footer ─── */}
-      <footer
-        className="text-white/80 py-4 mt-auto"
-        style={{ background: "linear-gradient(135deg, #000066 0%, #006600 100%)" }}
-      >
-        <div className="px-4 sm:px-6 flex items-center justify-between gap-4">
-          <p className="text-xs">© {new Date().getFullYear()} TalentHub . SLT Mobitel . All rights reserved.</p>
-          <p className="text-xs text-white/60">TalentHub University Portal System</p>
-        </div>
-      </footer>
+      {!isAdminMode && (
+        <footer
+          className="text-white/80 py-4 mt-auto"
+          style={{ background: "linear-gradient(135deg, #000066 0%, #006600 100%)" }}
+        >
+          <div className="px-4 sm:px-6 flex items-center justify-between gap-4">
+            <p className="text-xs">© {new Date().getFullYear()} TalentHub . SLT Mobitel . All rights reserved.</p>
+            <p className="text-xs text-white/60">TalentHub University Portal System</p>
+          </div>
+        </footer>
+      )}
     </div>
+  );
+
+  return isAdminMode ? (
+    <AdminNavigation>{pageContent}</AdminNavigation>
+  ) : (
+    pageContent
   );
 };
 

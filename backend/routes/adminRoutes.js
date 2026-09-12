@@ -40,6 +40,18 @@ const {
   getPastInternSyncStats,
 } = require("../controllers/pastInternController");
 const {
+  getAllUniversities,
+  approveUniversityRequest,
+  rejectUniversityRequest,
+  deleteUniversityRequest,
+  getUniversityStudentsForAdmin,
+  getUniversityStudentDetailsForAdmin,
+  getUniversityStudentGitCommitsForAdmin,
+  addStudentFeedbackForAdmin,
+  updateStudentFeedbackForAdmin,
+  deleteStudentFeedbackForAdmin,
+} = require("../controllers/adminUniversityController");
+const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
 const {
@@ -190,6 +202,18 @@ router.get("/past-intern-sync-stats", getPastInternSyncStats);
 router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
+
+// University Management (admin only)
+router.get("/universities", getAllUniversities);
+router.put("/universities/:id/approve", approveUniversityRequest);
+router.put("/universities/:id/reject", rejectUniversityRequest);
+router.delete("/universities/:id", deleteUniversityRequest);
+router.get("/universities/:universityName/students", getUniversityStudentsForAdmin);
+router.get("/universities/students/:internId", getUniversityStudentDetailsForAdmin);
+router.get("/universities/students/:internId/git-commits", getUniversityStudentGitCommitsForAdmin);
+router.post("/universities/students/:internId/feedback", addStudentFeedbackForAdmin);
+router.put("/universities/students/:internId/feedback/:feedbackId", updateStudentFeedbackForAdmin);
+router.delete("/universities/students/:internId/feedback/:feedbackId", deleteStudentFeedbackForAdmin);
 
 // GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns (meeting + daily combined)
 router.get("/attendance/by-date", getAttendanceByDate);

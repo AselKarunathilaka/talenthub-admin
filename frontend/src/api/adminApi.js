@@ -99,6 +99,59 @@ export const adminApi = {
     if (!response.ok) throw new Error("Failed to download on-leave Excel");
     return response.blob();
   },
+
+  // --- University Management ---
+  getUniversities: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to fetch universities");
+    return response.json();
+  },
+
+  approveUniversity: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}/approve`, {
+      method: "PUT",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to approve university");
+    return response.json();
+  },
+
+  rejectUniversity: async (id, reason) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}/reject`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify({ rejectionReason: reason }),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to reject university");
+    return response.json();
+  },
+
+  deleteUniversity: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to delete university");
+    return response.json();
+  },
+
+  getStudentsByUniversity: async (universityName) => {
+    const url = `${API_BASE_URL}/admin/universities/${encodeURIComponent(universityName)}/students`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to fetch university students");
+    return response.json();
+  },
   downloadApprovedLeaveReport,
   // Get dashboard statistics
   getDashboardStats: async () => {
