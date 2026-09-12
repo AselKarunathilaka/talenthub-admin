@@ -11,7 +11,7 @@ export function isNoCommitSpecialization(specName) {
   if (!specName) return false;
   const s = String(specName).trim().toLowerCase();
   
-  if (/\b(qa|sqa|ba|pm|apm|devops|ai|ml|genai|sre|nlp)\b/i.test(s)) {
+  if (/\b(qa|sqa|ba|pm|apm|devops|ai|ml|genai|sre|nlp|cyber|security|cybersecurity)\b/i.test(s)) {
     return true;
   }
 

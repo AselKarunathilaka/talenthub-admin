@@ -4,7 +4,7 @@ import Login from "../pages/Login";
 import Attendance from "../pages/Attendance";
 import FaceAttendance from "../pages/FaceAttendance";
 import ScanQRCode from "../pages/ScanQRCode";
-import Dashboard from "../pages/Dashboard";
+import InternDashboard from "../pages/InternDashboard";
 import Availability from "../pages/Availability";
 import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
 import DailyRecords from "../pages/DailyRecords";
@@ -99,7 +99,7 @@ const AppRoutes = () => {
         path="/dashboard"
         element={
           <AgreementGuard>
-            <Dashboard />
+            <InternDashboard />
           </AgreementGuard>
         }
       />

@@ -66,7 +66,7 @@ const getPerformanceColors = (percentage) => {
   return { track: "#fee2e2", stroke: "#ef4444", text: "#dc2626" }; // red
 };
 
-const Dashboard = ({ previewInternId = null, isPreview = false }) => {
+const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
   const effectiveInternId = previewInternId || localStorage.getItem("internId");
 
   const [attendanceStats, setAttendanceStats] = useState({
@@ -79,6 +79,8 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
   const [filteredMeetingAttendance, setFilteredMeetingAttendance] = useState(
     [],
   );
+  const [projectAttendance, setProjectAttendance] = useState([]);
+  const [teamAttendance, setTeamAttendance] = useState([]);
   const [dailyRecords, setDailyRecords] = useState([]);
   const [dailyAttendanceStats, setDailyAttendanceStats] = useState({
     present: 0,
@@ -195,13 +197,20 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
         setFilteredAttendance(dailyAttendanceData);
         setDailyRecords(dailyAttendanceData);
 
-        // Set meeting attendance (for the Attendance History section)
-        const meetingAttendanceData =
+        // Separate meeting attendance and project attendance (TalentTrail)
+        const allMeetingData =
           response.meetingAttendance ||
           response.attendance?.filter((entry) => entry.isMeeting) ||
           [];
-        setMeetingAttendance(meetingAttendanceData);
-        setFilteredMeetingAttendance(meetingAttendanceData);
+          
+        const trueMeetingData = allMeetingData.filter(e => e.attendanceMethod !== "talenttrail" && e.attendanceMethod !== "talenttrail-team");
+        const trueProjectData = allMeetingData.filter(e => e.attendanceMethod === "talenttrail");
+        const trueTeamData = allMeetingData.filter(e => e.attendanceMethod === "talenttrail-team");
+
+        setMeetingAttendance(trueMeetingData);
+        setFilteredMeetingAttendance(trueMeetingData);
+        setProjectAttendance(trueProjectData);
+        setTeamAttendance(trueTeamData);
 
         const meetingDateKey = (entry) => {
           const date = entry.date ? new Date(entry.date) : null;
@@ -209,10 +218,10 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
             ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
             : String(entry.date || "");
         };
-        const meetingPresentCount = meetingAttendanceData.filter(
+        const meetingPresentCount = trueMeetingData.filter(
           (entry) => entry.status === "Present",
         ).length;
-        const meetingAbsentCount = meetingAttendanceData.filter(
+        const meetingAbsentCount = trueMeetingData.filter(
           (entry) => entry.status === "Absent",
         ).length;
 
@@ -1400,6 +1409,12 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
           {/* ── Logbook / Commits Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', padding: 'clamp(12px, 3vw, 20px) 0' }}>
           {/* Heatmap External Toggle */}
+          {!isNoCommitSpecialization(
+            internData?.field_of_spec_name ||
+            internData?.fieldOfSpecialization ||
+            internData?.specialization ||
+            ""
+          ) && (
           <div className="w-full max-w-[400px] mx-auto px-4">
             <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full relative">
               <button
@@ -1436,6 +1451,7 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
               />
             </div>
           </div>
+          )}
 
           {/* Heatmap Card */}
           <div className="bento-deep-content" style={{ margin: 0 }}>
@@ -1479,38 +1495,65 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
           {/* ── Daily / Meeting Attendance Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', paddingTop: 'clamp(4px, 1vw, 8px)', paddingBottom: 'clamp(12px, 3vw, 20px)' }}>
           {/* ── Beautiful External Toggle ── */}
-          <div className="w-full max-w-[400px] mx-auto px-4">
-            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full relative">
+          <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 overflow-x-auto custom-scrollbar pb-2">
+            <div className="grid grid-cols-4 min-w-[500px] bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
               <button
                 onClick={() => setActiveTab("daily")}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                   activeTab === "daily"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <BookOpen size={16} className="shrink-0" />
-                <span className="truncate">Daily<span className="hidden sm:inline"> Attendance</span></span>
+                <span className="truncate">Daily<span className="hidden md:inline"> Attendance</span></span>
               </button>
               <button
                 onClick={() => setActiveTab("meeting")}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
                   activeTab === "meeting"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
                 <Users size={16} className="shrink-0" />
-                <span className="truncate">Meeting<span className="hidden sm:inline"> Attendance</span></span>
+                <span className="truncate">Meeting<span className="hidden md:inline"> Attendance</span></span>
+              </button>
+              <button
+                onClick={() => setActiveTab("project")}
+                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  activeTab === "project"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Folder size={16} className="shrink-0" />
+                <span className="truncate">Project<span className="hidden md:inline"> Attendance</span></span>
+              </button>
+              <button
+                onClick={() => setActiveTab("team")}
+                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                  activeTab === "team"
+                    ? "text-white"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
+              >
+                <Users size={16} className="shrink-0" />
+                <span className="truncate">Team<span className="hidden md:inline"> Attendance</span></span>
               </button>
               <div
-                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-md"
+                className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-md"
                 style={{
+                  width: "calc(25% - 3px)",
                   background:
                     activeTab === "daily"
                       ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
-                      : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                  left: activeTab === "daily" ? "6px" : "calc(50%)",
+                      : activeTab === "meeting"
+                      ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
+                      : activeTab === "project"
+                      ? "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)"
+                      : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                  left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(25% + 3px)" : activeTab === "project" ? "calc(50%)" : "calc(75% - 3px)",
                 }}
               />
             </div>
@@ -1729,6 +1772,176 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
                   )}
                 </motion.div>
               )}
+              {activeTab === "project" && (
+                <motion.div key="project" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
+                    <div>
+                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Project Attendance</h3>
+                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Synced from TalentTrail project assignments</p>
+                    </div>
+                  </div>
+
+                  {projectAttendance && projectAttendance.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(
+                        projectAttendance.reduce((acc, entry) => {
+                          const pName = entry.projectName || "External Project";
+                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [] };
+                          acc[pName].records.push(entry);
+                          const s = String(entry.status || "").toLowerCase();
+                          if (s === "present") acc[pName].present++;
+                          else if (s === "late") acc[pName].late++;
+                          else acc[pName].absent++;
+                          return acc;
+                        }, {})
+                      ).map(([projectName, data], idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                                <Folder size={20} />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{projectName}</h4>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  {data.records.length} Total Records
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+                            <div className="p-3 text-center">
+                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Present</p>
+                              <p className="text-xl font-black text-emerald-600 leading-none">{data.present + data.late}</p>
+                            </div>
+                            <div className="p-3 text-center">
+                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Absent</p>
+                              <p className="text-xl font-black text-rose-600 leading-none">{data.absent}</p>
+                            </div>
+                          </div>
+
+                          <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                              <thead className="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {data.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
+                                  <tr key={ri} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-4 py-2 text-xs font-medium text-slate-700">
+                                      {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                                        String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
+                                        'bg-rose-100 text-rose-700'
+                                      }`}>
+                                        {r.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No project attendance records synced from TalentTrail</div>
+                  )}
+                </motion.div>
+              )}
+              {activeTab === "team" && (
+                <motion.div key="team" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
+                    <div>
+                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Team Attendance</h3>
+                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Synced from TalentTrail team assignments</p>
+                    </div>
+                  </div>
+
+                  {teamAttendance && teamAttendance.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(
+                        teamAttendance.reduce((acc, entry) => {
+                          const pName = entry.projectName || "External Team"; // mapped in backend
+                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [] };
+                          acc[pName].records.push(entry);
+                          const s = String(entry.status || "").toLowerCase();
+                          if (s === "present") acc[pName].present++;
+                          else if (s === "late") acc[pName].late++;
+                          else acc[pName].absent++;
+                          return acc;
+                        }, {})
+                      ).map(([teamName, data], idx) => (
+                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                                <Users size={20} />
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{teamName}</h4>
+                                <p className="text-[11px] text-slate-500 mt-0.5">
+                                  {data.records.length} Total Records
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
+                            <div className="p-3 text-center">
+                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Present</p>
+                              <p className="text-xl font-black text-emerald-600 leading-none">{data.present + data.late}</p>
+                            </div>
+                            <div className="p-3 text-center">
+                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Absent</p>
+                              <p className="text-xl font-black text-rose-600 leading-none">{data.absent}</p>
+                            </div>
+                          </div>
+
+                          <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse">
+                              <thead className="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
+                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50">
+                                {data.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
+                                  <tr key={ri} className="hover:bg-slate-50 transition-colors">
+                                    <td className="px-4 py-2 text-xs font-medium text-slate-700">
+                                      {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-"}
+                                    </td>
+                                    <td className="px-4 py-2 text-right">
+                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                                        String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
+                                        'bg-rose-100 text-rose-700'
+                                      }`}>
+                                        {r.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No team attendance records synced from TalentTrail</div>
+                  )}
+                </motion.div>
+              )}
             </AnimatePresence>
           </div>
         </div>{/* end attendance section */}
@@ -1929,4 +2142,4 @@ const Dashboard = ({ previewInternId = null, isPreview = false }) => {
   );
 };
 
-export default Dashboard;
+export default InternDashboard;

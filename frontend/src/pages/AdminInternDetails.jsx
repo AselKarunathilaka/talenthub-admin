@@ -46,7 +46,7 @@ import autoTable from "jspdf-autotable";
 import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
-import Dashboard from "./Dashboard";
+import InternDashboard from "./InternDashboard";
 import {
   isNoCommitSpecialization,
   calcWorkingDays as calcWorkingDaysUtil,
@@ -4018,7 +4018,7 @@ const AdminInternDetails = () => {
                 {/* ══ PREVIEW TAB (Intern-Side Portal Preview using Dashboard.jsx) ══ */}
                 {activeTab === "preview" && (
                   <div className="rounded-2xl overflow-hidden border border-gray-200 bg-[#f8fafc] shadow-sm">
-                    <Dashboard previewInternId={internId} isPreview={true} />
+                    <InternDashboard previewInternId={internId} isPreview={true} />
                   </div>
                 )}
               </motion.div>

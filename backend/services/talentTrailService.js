@@ -101,6 +101,11 @@ class TalentTrailService {
     return this.authGet("/project-attendance");
   }
 
+  /** Get team attendance records */
+  async getTeamAttendance() {
+    return this.authGet("/team-attendance");
+  }
+
   /**
    * Get enriched certificate data for a specific intern.
    * Aggregates: intern details, projects, modules, attendance count.
@@ -135,18 +140,27 @@ class TalentTrailService {
         return { talentTrailIntern: null, projects: [], attendanceCount: 0 };
       }
 
-      // ── Step 2: Find teams this intern belongs to ─────────────────────
-      // GET /team-members → filter by internId
+      // ── Step 2: Find teams this intern belongs to ────────────────────────
+      // GET /team-members   filter by internId
       let internTeamIds = [];
+      let allTeamsMap = {};
       try {
-        const allMembers = await this.getTeamMembers();
+        const [allMembers, allTeams] = await Promise.all([
+          this.getTeamMembers().catch(() => []),
+          this.getTeams().catch(() => [])
+        ]);
         internTeamIds = Array.isArray(allMembers)
           ? allMembers
               .filter((tm) => tm.internId === ttIntern.internId)
               .map((tm) => tm.teamId)
           : [];
+        if (Array.isArray(allTeams)) {
+          allTeams.forEach(t => {
+            allTeamsMap[t.teamId] = t.teamName || `Team ${t.teamId}`;
+          });
+        }
       } catch (err) {
-        console.warn("Failed to fetch team members:", err.message);
+        console.warn("Failed to fetch team members/teams:", err.message);
       }
 
       // ── Step 3: Find all projects via team assignments ─────────────────
@@ -161,10 +175,21 @@ class TalentTrailService {
             )
           );
 
-          // Collect unique project IDs from team assignments
+          // Collect unique project IDs from team assignments and map projectId -> teamIds
           const projectIds = new Set();
-          teamProjectResults.flat().forEach((pt) => {
-            if (pt.projectId) projectIds.add(pt.projectId);
+          const projectIdToTeamIds = {};
+          
+          internTeamIds.forEach((tid, idx) => {
+            const pts = teamProjectResults[idx];
+            if (Array.isArray(pts)) {
+              pts.forEach((pt) => {
+                if (pt.projectId) {
+                  projectIds.add(pt.projectId);
+                  if (!projectIdToTeamIds[pt.projectId]) projectIdToTeamIds[pt.projectId] = [];
+                  projectIdToTeamIds[pt.projectId].push(tid);
+                }
+              });
+            }
           });
 
           if (projectIds.size > 0) {
@@ -198,6 +223,9 @@ class TalentTrailService {
       let attendanceRecords = [];
       try {
         const attendance = await this.getProjectAttendance();
+        if (Array.isArray(attendance) && attendance.length > 0) {
+          console.log("Sample attendance record:", attendance[0]);
+        }
         if (Array.isArray(attendance) && internProjects.length > 0) {
           const internProjectIds = new Set(
             internProjects.map((p) => p.projectId)
@@ -205,7 +233,10 @@ class TalentTrailService {
           attendanceRecords = attendance.filter(
             (a) => internProjectIds.has(a.projectId)
           );
-          attendanceCount = attendanceRecords.filter((a) => a.status === "PRESENT").length;
+          attendanceCount = attendanceRecords.filter((a) => {
+            const s = String(a.status).toUpperCase();
+            return s === "PRESENT" || s === "PARTICIPATED";
+          }).length;
         } else if (Array.isArray(attendance)) {
           // No project info — return all records as best-effort
           attendanceRecords = attendance;
@@ -216,12 +247,31 @@ class TalentTrailService {
       } catch (err) {
         console.warn("Failed to fetch attendance:", err.message);
       }
+      // ── Step 5: Generate team attendance ──────────────────────────────
+      let teamAttendanceRecords = [];
+      try {
+        if (attendanceRecords && attendanceRecords.length > 0) {
+          attendanceRecords.forEach(a => {
+            const tids = projectIdToTeamIds[a.projectId] || [];
+            tids.forEach(tid => {
+              teamAttendanceRecords.push({
+                ...a,
+                teamId: tid,
+                teamName: allTeamsMap[tid] || `Team ${tid}`
+              });
+            });
+          });
+        }
+      } catch (err) {
+        console.warn("Failed to generate team attendance:", err.message);
+      }
 
       return {
         talentTrailIntern: ttIntern,
         projects: internProjects,
         attendanceCount,
         attendanceRecords,
+        teamAttendanceRecords,
       };
     } catch (err) {
       console.error("getCertificateData error:", err.message);
@@ -230,6 +280,7 @@ class TalentTrailService {
         projects: [],
         attendanceCount: 0,
         attendanceRecords: [],
+        teamAttendanceRecords: [],
         error: err.message,
       };
     }

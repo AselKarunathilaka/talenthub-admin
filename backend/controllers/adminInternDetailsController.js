@@ -19,7 +19,7 @@ const DailyRecord = require("../models/DailyRecord");
 const DailyAttendanceLog = require("../models/DailyAttendanceLog");
 const MeetingAttendance = require("../models/MeetingAttendance");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
-const TalentTrailService = require("../services/talentTrailService");
+const TalentTrailService = require("../services/TalentTrailService");
 
 // ─── Attendance type classification ─────────────────────────────────────────
 
@@ -342,9 +342,9 @@ const getAdminInternAttendance = async (req, res) => {
           meetingAttendance.push({
             date: at,
             status:
-              record.status === "PRESENT"
+              (String(record.status).toUpperCase() === "PRESENT" || String(record.status).toUpperCase() === "PARTICIPATED")
                 ? "Present"
-                : record.status === "LATE"
+                : String(record.status).toUpperCase() === "LATE"
                   ? "Late"
                   : "Absent",
             meetingName: projectName,
@@ -357,6 +357,34 @@ const getAdminInternAttendance = async (req, res) => {
             isMeeting: true,
           });
           dailyRecordMeetingKeys.add(getMeetingKey(at, projectName));
+        });
+      }
+      
+      if (ttData?.teamAttendanceRecords?.length > 0) {
+        ttData.teamAttendanceRecords.forEach((record) => {
+          const at = record.date ? new Date(record.date) : new Date();
+          const teamName = record.teamName || "External Team";
+          if (dailyRecordMeetingKeys.has(getMeetingKey(at, teamName)))
+            return;
+
+          meetingAttendance.push({
+            date: at,
+            status:
+              (String(record.status).toUpperCase() === "PRESENT" || String(record.status).toUpperCase() === "PARTICIPATED")
+                ? "Present"
+                : String(record.status).toUpperCase() === "LATE"
+                  ? "Late"
+                  : "Absent",
+            meetingName: teamName,
+            projectName: teamName,
+            type: "Meeting",
+            rawType: "talenttrail-team",
+            attendanceTypeLabel: "Team Meeting",
+            attendanceMethod: "talenttrail-team",
+            time: formatColomboTime(at),
+            isMeeting: true,
+          });
+          dailyRecordMeetingKeys.add(getMeetingKey(at, teamName));
         });
       }
     } catch (e) {
