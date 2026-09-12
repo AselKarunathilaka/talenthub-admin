@@ -24,6 +24,7 @@ import {
   BarChart2,
   TrendingUp,
   ShieldAlert,
+  Settings,
 } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
 import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
@@ -92,6 +93,7 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     { to: "/admin/talenthub-restrictions", label: "Hub Restrictions", icon: <ShieldAlert className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/settings", label: "Settings", icon: <Settings className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     { to: "/admin/holidays", label: "Holidays", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-[18px] w-[18px]" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <SquarePlay className="h-[18px] w-[18px]" />, isExternal: true },

@@ -1,14 +1,18 @@
-const ALL_PERMISSIONS = [
+const ADMIN_PERMISSIONS = [
   "dashboard.view", "interns.view", "interns.manage", "daily_logs.view",
   "attendance.view", "attendance.manage", "leave.view", "leave.manage",
-  "announcements.manage", "seats.manage", "settings.manage", "users.manage",
+  "announcements.manage", "seats.manage",
+];
+
+const ALL_PERMISSIONS = [
+  ...ADMIN_PERMISSIONS,
+  "settings.manage", "users.manage",
 ];
 
 const ROLE_PERMISSIONS = {
   super_admin: ALL_PERMISSIONS,
-  // Operational admins may invite and manage Google staff accounts. Controller
-  // safeguards still prevent them from editing super-admin accounts or self-access.
-  admin: ALL_PERMISSIONS,
+  admin: ADMIN_PERMISSIONS,
+  developer: ADMIN_PERMISSIONS,
   supervisor: [
     "dashboard.view", "interns.view", "daily_logs.view", "attendance.view",
     "leave.view",

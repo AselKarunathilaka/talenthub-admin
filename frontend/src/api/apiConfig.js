@@ -37,6 +37,10 @@ export const API_ENDPOINTS = {
     INTERN_REPORT: "/admin/report/interns",
     SEND_NOTIFICATIONS: "/admin/notifications/overdue",
     INTERN_DETAILS: "/admin/intern",
+    SETTINGS: {
+      SECURITY_PASSWORD: "/admin/settings/security-password",
+      USERS: "/admin/settings/users",
+    },
   },
 };
 

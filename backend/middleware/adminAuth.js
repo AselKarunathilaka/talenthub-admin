@@ -27,6 +27,7 @@ const requirePermission = (permission) => (req, res, next) => {
 const routePermission = (req) => {
   const path = req.path;
   if (path.startsWith("/users")) return "users.manage";
+  if (path.startsWith("/settings")) return "settings.manage";
   if (path.startsWith("/dashboard")) return "dashboard.view";
   if (path.startsWith("/daily-records") || path.includes("non-submission")) return "daily_logs.view";
   if (path.startsWith("/announcements")) return "announcements.manage";

@@ -1,0 +1,625 @@
+import React, { useState, useEffect } from "react";
+import { 
+  KeyRound, 
+  Users, 
+  UserPlus, 
+  ShieldCheck, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Edit, 
+  Power, 
+  PowerOff,
+  AlertTriangle 
+} from "lucide-react";
+import { API_ENDPOINTS } from "../api/apiConfig";
+import { adminApi, notificationUtils } from "../api/adminApi";
+import { getAdminSession } from "../utils/adminAuth";
+
+import AdminNavigation from "../components/AdminNavigation";
+
+const AdminSettings = () => {
+  const [activeTab, setActiveTab] = useState("security");
+  const adminSession = getAdminSession();
+  const isSuperAdmin = adminSession?.user?.role === "super_admin";
+  const canManageUsers = isSuperAdmin || adminSession?.user?.permissions?.includes("users.manage");
+
+  // Security Password State
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // User Management State
+  const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+
+  // User Form State
+  const [userForm, setUserForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    confirmUserPassword: "",
+    role: "admin",
+    isActive: true
+  });
+  const [formLoading, setFormLoading] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === "users" && canManageUsers) {
+      fetchUsers();
+    }
+  }, [activeTab, canManageUsers]);
+
+  const fetchUsers = async () => {
+    try {
+      setUsersLoading(true);
+      const data = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.USERS);
+      setUsers(data);
+    } catch (error) {
+      console.error("Failed to fetch users", error);
+      notificationUtils.showError("Failed to fetch administrative users.");
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      notificationUtils.showError("All password fields are required.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      notificationUtils.showError("New password and confirm password do not match.");
+      return;
+    }
+    if (newPassword.length < 6) {
+      notificationUtils.showError("New password must be at least 6 characters long.");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORD, {
+        currentPassword,
+        newPassword
+      });
+      notificationUtils.showSuccess("Security password successfully changed.");
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error) {
+      console.error("Password change error:", error);
+      notificationUtils.showError(error.response?.data?.message || "Failed to change security password.");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const openUserModal = (user = null) => {
+    if (user) {
+      setEditingUser(user);
+      setUserForm({
+        name: user.name || "",
+        email: user.email || "",
+        password: "",
+        confirmUserPassword: "",
+        role: user.role || "admin",
+        isActive: user.isActive
+      });
+    } else {
+      setEditingUser(null);
+      setUserForm({
+        name: "",
+        email: "",
+        password: "",
+        confirmUserPassword: "",
+        role: "admin",
+        isActive: true
+      });
+    }
+    setIsUserModalOpen(true);
+  };
+
+  const closeUserModal = () => {
+    setIsUserModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleUserSubmit = async (e) => {
+    e.preventDefault();
+    if (!userForm.name || !userForm.email || !userForm.role) {
+      notificationUtils.showError("Name, Email, and Role are required.");
+      return;
+    }
+    
+    if (!editingUser) {
+      if (!userForm.password || !userForm.confirmUserPassword) {
+        notificationUtils.showError("Passwords are required for new users.");
+        return;
+      }
+      if (userForm.password !== userForm.confirmUserPassword) {
+        notificationUtils.showError("Passwords do not match.");
+        return;
+      }
+    } else if (userForm.password && userForm.password !== userForm.confirmUserPassword) {
+      notificationUtils.showError("Passwords do not match.");
+      return;
+    }
+
+    try {
+      setFormLoading(true);
+      if (editingUser) {
+        // Only send password if it's being updated
+        const payload = {
+          name: userForm.name,
+          role: userForm.role,
+          isActive: userForm.isActive
+        };
+        if (userForm.password) payload.password = userForm.password;
+
+        await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${editingUser._id}`, payload);
+        notificationUtils.showSuccess("User updated successfully.");
+      } else {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.USERS, {
+          name: userForm.name,
+          email: userForm.email,
+          password: userForm.password,
+          role: userForm.role,
+          isActive: userForm.isActive
+        });
+        notificationUtils.showSuccess("User created successfully.");
+      }
+      closeUserModal();
+      fetchUsers();
+    } catch (error) {
+      console.error("User save error:", error);
+      notificationUtils.showError(error.response?.data?.message || "Failed to save user.");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const toggleUserStatus = async (user) => {
+    if (user.role === "super_admin" && !isSuperAdmin) {
+      notificationUtils.showError("Only Super Admins can manage other Super Admins.");
+      return;
+    }
+    if (user._id === adminSession?.user?.id && user.isActive) {
+      notificationUtils.showError("You cannot disable your own active account from here.");
+      return;
+    }
+    
+    if (window.confirm(`Are you sure you want to ${user.isActive ? 'disable' : 'enable'} this account?`)) {
+      try {
+        await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${user._id}`, {
+          isActive: !user.isActive
+        });
+        notificationUtils.showSuccess(`User account ${user.isActive ? 'disabled' : 'enabled'}.`);
+        fetchUsers();
+      } catch (error) {
+        notificationUtils.showError(error.response?.data?.message || "Failed to change user status.");
+      }
+    }
+  };
+
+  const formatRoleLabel = (role) => {
+    switch (role) {
+      case "super_admin": return "Super Admin";
+      case "admin": return "Admin";
+      case "developer": return "Developer";
+      case "supervisor": return "Supervisor";
+      default: return role;
+    }
+  };
+
+  return (
+    <AdminNavigation>
+      <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8 animate-fade-in">
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
+            <Lock className="w-8 h-8 text-blue-600" />
+            System Settings
+          </h1>
+          <p className="text-slate-500 mt-2">Manage security and administrative users.</p>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex space-x-1 bg-slate-200/50 p-1 rounded-xl w-full md:w-max">
+          <button
+            onClick={() => setActiveTab("security")}
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "security" 
+                ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-900/5" 
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+            }`}
+          >
+            <ShieldCheck className="w-4 h-4" />
+            Security Password
+          </button>
+          
+          {canManageUsers && (
+            <button
+              onClick={() => setActiveTab("users")}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === "users" 
+                  ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-900/5" 
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              User Management
+            </button>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="mt-6">
+          {/* Security Password Section */}
+          {activeTab === "security" && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/50 p-6">
+                <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                  <KeyRound className="w-5 h-5 text-blue-500" />
+                  Change Security Password
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Update the global security password used for sensitive system actions like turning off location tracking.
+                </p>
+              </div>
+              
+              <div className="p-6 md:p-8">
+                <form onSubmit={handlePasswordChange} className="max-w-md space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Current Security Password</label>
+                    <div className="relative">
+                      <input
+                        type={showCurrent ? "text" : "password"}
+                        value={currentPassword}
+                        onChange={(e) => setCurrentPassword(e.target.value)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="Enter current password"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowCurrent(!showCurrent)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">New Security Password</label>
+                    <div className="relative">
+                      <input
+                        type={showNew ? "text" : "password"}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="Enter new password (min 6 chars)"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowNew(!showNew)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Confirm New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showConfirm ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
+                        placeholder="Confirm new password"
+                      />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowConfirm(!showConfirm)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="submit"
+                      disabled={passwordLoading}
+                      className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    >
+                      {passwordLoading ? (
+                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4" />
+                      )}
+                      Change Password
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* User Management Section */}
+          {activeTab === "users" && canManageUsers && (
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="border-b border-slate-100 bg-slate-50/50 p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                    <Users className="w-5 h-5 text-indigo-500" />
+                    Admin Users
+                  </h2>
+                  <p className="text-sm text-slate-500 mt-1">Manage system administrators and their roles.</p>
+                </div>
+                <button
+                  onClick={() => openUserModal()}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  Add User
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                      <th className="px-6 py-4">Name</th>
+                      <th className="px-6 py-4">Email</th>
+                      <th className="px-6 py-4">Role</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {usersLoading ? (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center gap-3">
+                            <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                            <p className="text-sm">Loading users...</p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : users.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
+                          No users found.
+                        </td>
+                      </tr>
+                    ) : (
+                      users.map(user => (
+                        <tr key={user._id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-6 py-4">
+                            <span className="font-medium text-slate-800">{user.name || "N/A"}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-sm text-slate-600">{user.email}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
+                              user.role === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              user.role === 'developer' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                              user.role === 'supervisor' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                              'bg-blue-50 text-blue-700 border-blue-200'
+                            }`}>
+                              {formatRoleLabel(user.role)}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${
+                              user.isActive ? 'text-emerald-600' : 'text-slate-400'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => openUserModal(user)}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                title="Edit user"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              
+                              <button
+                                onClick={() => toggleUserStatus(user)}
+                                className={`p-1.5 rounded-md transition-colors ${
+                                  user.isActive 
+                                    ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' 
+                                    : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                                title={user.isActive ? "Disable user" : "Enable user"}
+                                disabled={user._id === adminSession?.user?.id && user.isActive}
+                              >
+                                {user.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Add/Edit User Modal */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
+          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeUserModal} />
+          
+          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
+              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                {editingUser ? <Edit className="w-5 h-5 text-indigo-500" /> : <UserPlus className="w-5 h-5 text-indigo-500" />}
+                {editingUser ? "Edit User" : "Add New User"}
+              </h3>
+              <button onClick={closeUserModal} className="text-slate-400 hover:text-slate-600">
+                <PowerOff className="w-5 h-5 rotate-45" /> {/* Use as close X */}
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto">
+              <form id="userForm" onSubmit={handleUserSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={userForm.name}
+                    onChange={(e) => setUserForm({...userForm, name: e.target.value})}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-slate-700">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    disabled={!!editingUser}
+                    value={userForm.email}
+                    onChange={(e) => setUserForm({...userForm, email: e.target.value})}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm ${
+                      editingUser ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Role</label>
+                    <select
+                      value={userForm.role}
+                      onChange={(e) => setUserForm({...userForm, role: e.target.value})}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                    >
+                      <option value="admin">Admin</option>
+                      <option value="developer">Developer</option>
+                      <option value="supervisor">Supervisor</option>
+                      {isSuperAdmin && <option value="super_admin">Super Admin</option>}
+                    </select>
+                  </div>
+                  
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-slate-700">Account Status</label>
+                    <select
+                      value={userForm.isActive.toString()}
+                      onChange={(e) => setUserForm({...userForm, isActive: e.target.value === 'true'})}
+                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                    >
+                      <option value="true">Active</option>
+                      <option value="false">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                {!editingUser && (
+                  <>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700">Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={userForm.password}
+                        onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-sm font-medium text-slate-700">Confirm Password</label>
+                      <input
+                        type="password"
+                        required
+                        value={userForm.confirmUserPassword}
+                        onChange={(e) => setUserForm({...userForm, confirmUserPassword: e.target.value})}
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+                
+                {editingUser && (
+                  <div className="pt-2 border-t border-slate-100 mt-4">
+                    <p className="text-xs text-slate-500 mb-3 flex items-start gap-1.5">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
+                      Leave password fields blank if you do not wish to change the user's password.
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-slate-600">New Password</label>
+                        <input
+                          type="password"
+                          value={userForm.password}
+                          onChange={(e) => setUserForm({...userForm, password: e.target.value})}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-medium text-slate-600">Confirm Password</label>
+                        <input
+                          type="password"
+                          value={userForm.confirmUserPassword}
+                          onChange={(e) => setUserForm({...userForm, confirmUserPassword: e.target.value})}
+                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </form>
+            </div>
+            
+            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeUserModal}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="userForm"
+                disabled={formLoading}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center gap-2"
+              >
+                {formLoading ? (
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                ) : (
+                  editingUser ? "Save Changes" : "Create User"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+    </AdminNavigation>
+  );
+};
+
+export default AdminSettings;
