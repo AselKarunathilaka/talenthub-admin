@@ -208,6 +208,8 @@ class TalentTrailService {
               description: p.description || "",
               startDate: p.startDate || null,
               targetDate: p.targetDate || null,
+              meetingDay: p.meetingDay || null,
+              assignedTeamName: p.assignedTeamName || "External Team",
             }));
           }
         }
@@ -247,31 +249,11 @@ class TalentTrailService {
       } catch (err) {
         console.warn("Failed to fetch attendance:", err.message);
       }
-      // ── Step 5: Generate team attendance ──────────────────────────────
-      let teamAttendanceRecords = [];
-      try {
-        if (attendanceRecords && attendanceRecords.length > 0) {
-          attendanceRecords.forEach(a => {
-            const tids = projectIdToTeamIds[a.projectId] || [];
-            tids.forEach(tid => {
-              teamAttendanceRecords.push({
-                ...a,
-                teamId: tid,
-                teamName: allTeamsMap[tid] || `Team ${tid}`
-              });
-            });
-          });
-        }
-      } catch (err) {
-        console.warn("Failed to generate team attendance:", err.message);
-      }
-
       return {
         talentTrailIntern: ttIntern,
         projects: internProjects,
         attendanceCount,
         attendanceRecords,
-        teamAttendanceRecords,
       };
     } catch (err) {
       console.error("getCertificateData error:", err.message);
@@ -280,7 +262,6 @@ class TalentTrailService {
         projects: [],
         attendanceCount: 0,
         attendanceRecords: [],
-        teamAttendanceRecords: [],
         error: err.message,
       };
     }

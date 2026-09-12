@@ -332,61 +332,88 @@ const getAdminInternAttendance = async (req, res) => {
         intern.Trainee_ID,
         intern.Trainee_Email,
       );
-      if (ttData?.attendanceRecords?.length > 0) {
-        ttData.attendanceRecords.forEach((record) => {
-          const at = record.date ? new Date(record.date) : new Date();
-          const projectName = record.projectName || "External Project";
-          if (dailyRecordMeetingKeys.has(getMeetingKey(at, projectName)))
-            return;
 
-          meetingAttendance.push({
-            date: at,
-            status:
-              (String(record.status).toUpperCase() === "PRESENT" || String(record.status).toUpperCase() === "PARTICIPATED")
-                ? "Present"
-                : String(record.status).toUpperCase() === "LATE"
-                  ? "Late"
-                  : "Absent",
-            meetingName: projectName,
-            projectName,
-            type: "Meeting",
-            rawType: "talenttrail",
-            attendanceTypeLabel: "External Project",
-            attendanceMethod: "talenttrail",
-            time: formatColomboTime(at),
-            isMeeting: true,
-          });
-          dailyRecordMeetingKeys.add(getMeetingKey(at, projectName));
+      // ── Step 5b: Individual Project/Team Attendance from Meeting Days ──
+      const validDailyAttendanceDates = new Set(faceDates);
+      if (intern.attendance && intern.attendance.length > 0) {
+        intern.attendance.forEach(entry => {
+          const type = String(entry.type || "").toLowerCase();
+          if (DAILY_ATTENDANCE_TYPES.has(type) && type !== "daily") {
+            if (String(entry.status || "present").toLowerCase() === "present") {
+              validDailyAttendanceDates.add(getDateKey(entry.date));
+            }
+          }
         });
       }
-      
-      if (ttData?.teamAttendanceRecords?.length > 0) {
-        ttData.teamAttendanceRecords.forEach((record) => {
-          const at = record.date ? new Date(record.date) : new Date();
-          const teamName = record.teamName || "External Team";
-          if (dailyRecordMeetingKeys.has(getMeetingKey(at, teamName)))
-            return;
 
-          meetingAttendance.push({
-            date: at,
-            status:
-              (String(record.status).toUpperCase() === "PRESENT" || String(record.status).toUpperCase() === "PARTICIPATED")
-                ? "Present"
-                : String(record.status).toUpperCase() === "LATE"
-                  ? "Late"
-                  : "Absent",
-            meetingName: teamName,
-            projectName: teamName,
-            type: "Meeting",
-            rawType: "talenttrail-team",
-            attendanceTypeLabel: "Team Meeting",
-            attendanceMethod: "talenttrail-team",
-            time: formatColomboTime(at),
-            isMeeting: true,
-          });
-          dailyRecordMeetingKeys.add(getMeetingKey(at, teamName));
+      const daysOfWeek = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+      if (ttData?.projects?.length > 0) {
+        console.log(`[AdminInternDetails] Processing ${ttData.projects.length} projects for meeting days...`);
+        ttData.projects.forEach(project => {
+          console.log(`[AdminInternDetails] Project: ${project.projectName}, meetingDay: ${project.meetingDay}`);
+          if (!project.meetingDay) return;
+          const rawDays = String(project.meetingDay).split(",").map(d => d.trim().toLowerCase());
+          const meetingDayIndices = rawDays.map(d => daysOfWeek[d]).filter(idx => idx !== undefined);
+          
+          if (meetingDayIndices.length === 0) return;
+
+          const pStartDate = project.startDate ? new Date(project.startDate) : null;
+          if (!pStartDate || isNaN(pStartDate.getTime())) return;
+
+          const pEndDate = project.targetDate ? new Date(project.targetDate) : new Date();
+          const endDate = pEndDate.getTime() < Date.now() ? pEndDate : new Date();
+
+          let currentDate = new Date(pStartDate);
+          currentDate.setHours(12, 0, 0, 0); // avoid timezone shifts
+          endDate.setHours(23, 59, 59, 999);
+          
+          let generatedCount = 0;
+
+          while (currentDate <= endDate) {
+            if (meetingDayIndices.includes(currentDate.getDay())) {
+              const projectName = project.projectName || "External Project";
+              const dateKey = getDateKey(currentDate);
+              const isPresent = validDailyAttendanceDates.has(dateKey);
+              
+              if (!dailyRecordMeetingKeys.has(getMeetingKey(currentDate, projectName))) {
+                meetingAttendance.push({
+                  date: new Date(currentDate), // clone
+                  status: isPresent ? "Present" : "Absent",
+                  meetingName: projectName,
+                  projectName: projectName,
+                  type: "Meeting",
+                  rawType: "talenttrail",
+                  attendanceTypeLabel: "External Project",
+                  attendanceMethod: "talenttrail",
+                  time: formatColomboTime(currentDate),
+                  isMeeting: true,
+                });
+                
+                const teamName = project.assignedTeamName || "External Team";
+                meetingAttendance.push({
+                  date: new Date(currentDate), // clone
+                  status: isPresent ? "Present" : "Absent",
+                  meetingName: teamName,
+                  projectName: teamName,
+                  type: "Meeting",
+                  rawType: "talenttrail-team",
+                  attendanceTypeLabel: "Team Meeting",
+                  attendanceMethod: "talenttrail-team",
+                  time: formatColomboTime(currentDate),
+                  isMeeting: true,
+                });
+
+                dailyRecordMeetingKeys.add(getMeetingKey(currentDate, projectName));
+                generatedCount++;
+              }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          console.log(`[AdminInternDetails] Generated ${generatedCount} records for ${project.projectName}`);
         });
       }
+
     } catch (e) {
       console.error(
         "[AdminInternDetails] TalentTrail fetch failed:",
