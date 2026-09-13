@@ -1496,7 +1496,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', paddingTop: 'clamp(4px, 1vw, 8px)', paddingBottom: 'clamp(12px, 3vw, 20px)' }}>
           {/* ── Beautiful External Toggle ── */}
           <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 overflow-x-auto custom-scrollbar pb-2">
-            <div className="grid grid-cols-4 min-w-[500px] bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
+            <div className="grid grid-cols-3 min-w-[400px] bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
               <button
                 onClick={() => setActiveTab("daily")}
                 className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -1506,7 +1506,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 }`}
               >
                 <BookOpen size={16} className="shrink-0" />
-                <span className="truncate">Daily<span className="hidden md:inline"> Attendance</span></span>
+                <span className="whitespace-nowrap">Daily Attendance</span>
               </button>
               <button
                 onClick={() => setActiveTab("meeting")}
@@ -1517,18 +1517,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 }`}
               >
                 <Users size={16} className="shrink-0" />
-                <span className="truncate">Meeting<span className="hidden md:inline"> Attendance</span></span>
-              </button>
-              <button
-                onClick={() => setActiveTab("project")}
-                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
-                  activeTab === "project"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <Folder size={16} className="shrink-0" />
-                <span className="truncate">Project<span className="hidden md:inline"> Attendance</span></span>
+                <span className="whitespace-nowrap">Meeting Attendance</span>
               </button>
               <button
                 onClick={() => setActiveTab("team")}
@@ -1539,21 +1528,19 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 }`}
               >
                 <Users size={16} className="shrink-0" />
-                <span className="truncate">Team<span className="hidden md:inline"> Attendance</span></span>
+                <span className="whitespace-nowrap">Team Attendance</span>
               </button>
               <div
                 className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-md"
                 style={{
-                  width: "calc(25% - 3px)",
+                  width: "calc(33.333% - 4px)",
                   background:
                     activeTab === "daily"
                       ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
                       : activeTab === "meeting"
                       ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                      : activeTab === "project"
-                      ? "linear-gradient(135deg, #f59e0b 0%, #b45309 100%)"
                       : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
-                  left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(25% + 3px)" : activeTab === "project" ? "calc(50%)" : "calc(75% - 3px)",
+                  left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
                 }}
               />
             </div>
@@ -1772,97 +1759,13 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                   )}
                 </motion.div>
               )}
-              {activeTab === "project" && (
-                <motion.div key="project" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
-                    <div>
-                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Project Attendance</h3>
-                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Synced from TalentTrail project assignments</p>
-                    </div>
-                  </div>
 
-                  {projectAttendance && projectAttendance.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(
-                        projectAttendance.reduce((acc, entry) => {
-                          const pName = entry.projectName || "External Project";
-                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [] };
-                          acc[pName].records.push(entry);
-                          const s = String(entry.status || "").toLowerCase();
-                          if (s === "present") acc[pName].present++;
-                          else if (s === "late") acc[pName].late++;
-                          else acc[pName].absent++;
-                          return acc;
-                        }, {})
-                      ).map(([projectName, data], idx) => (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
-                                <Folder size={20} />
-                              </div>
-                              <div>
-                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{projectName}</h4>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                  {data.records.length} Total Records
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-                            <div className="p-3 text-center">
-                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Present</p>
-                              <p className="text-xl font-black text-emerald-600 leading-none">{data.present + data.late}</p>
-                            </div>
-                            <div className="p-3 text-center">
-                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Absent</p>
-                              <p className="text-xl font-black text-rose-600 leading-none">{data.absent}</p>
-                            </div>
-                          </div>
-
-                          <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
-                            <table className="w-full text-left border-collapse">
-                              <thead className="bg-slate-50 sticky top-0 z-10">
-                                <tr>
-                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50">
-                                {data.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
-                                  <tr key={ri} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-2 text-xs font-medium text-slate-700">
-                                      {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-"}
-                                    </td>
-                                    <td className="px-4 py-2 text-right">
-                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                        String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                                        String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
-                                        'bg-rose-100 text-rose-700'
-                                      }`}>
-                                        {r.status}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No project attendance records synced from TalentTrail</div>
-                  )}
-                </motion.div>
-              )}
               {activeTab === "team" && (
                 <motion.div key="team" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
                   <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
                     <div>
                       <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Team Attendance</h3>
-                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Synced from TalentTrail team assignments</p>
+                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Attendance records organized by team assignments</p>
                     </div>
                   </div>
 
@@ -1871,57 +1774,104 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       {Object.entries(
                         teamAttendance.reduce((acc, entry) => {
                           const pName = entry.projectName || "External Team"; // mapped in backend
-                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [] };
+                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [], meetingDay: null, actualProjectName: null };
                           acc[pName].records.push(entry);
+                          // Capture meetingDay and actualProjectName from the first record that has them
+                          if (!acc[pName].meetingDay && entry.meetingDay) acc[pName].meetingDay = entry.meetingDay;
+                          if (!acc[pName].actualProjectName && entry.actualProjectName) acc[pName].actualProjectName = entry.actualProjectName;
                           const s = String(entry.status || "").toLowerCase();
                           if (s === "present") acc[pName].present++;
                           else if (s === "late") acc[pName].late++;
                           else acc[pName].absent++;
                           return acc;
                         }, {})
-                      ).map(([teamName, data], idx) => (
+                      ).map(([teamName, data], idx) => {
+                        // Parse meeting days into an array of capitalized day names
+                        const meetingDays = data.meetingDay
+                          ? String(data.meetingDay).split(",").map(d => d.trim()).filter(Boolean).map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase())
+                          : [];
+                        return (
                         <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
                           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
                               <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
                                 <Users size={20} />
                               </div>
-                              <div>
-                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{teamName}</h4>
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{data.actualProjectName || teamName}</h4>
                                 <p className="text-[11px] text-slate-500 mt-0.5">
-                                  {data.records.length} Total Records
+                                  Total Records: {data.records.length}
                                 </p>
+                                {meetingDays.length > 0 && (
+                                  <p className="text-[11px] text-slate-500 mt-0.5">
+                                    Meeting Days: {meetingDays.join(", ")}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-2 divide-x divide-slate-100 border-b border-slate-100">
-                            <div className="p-3 text-center">
-                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Present</p>
-                              <p className="text-xl font-black text-emerald-600 leading-none">{data.present + data.late}</p>
-                            </div>
-                            <div className="p-3 text-center">
-                              <p className="text-xs text-slate-500 font-semibold mb-1 uppercase tracking-wider">Absent</p>
-                              <p className="text-xl font-black text-rose-600 leading-none">{data.absent}</p>
-                            </div>
+                          <div className="p-3 flex flex-row flex-nowrap justify-center gap-2 border-b border-slate-100 bg-slate-50/30">
+                            {(() => {
+                              const tPresent = data.present + data.late;
+                              const tAbsent = data.absent;
+                              const tTotal = tPresent + tAbsent;
+                              const tRate = tTotal > 0 ? Math.round((tPresent / tTotal) * 100) : 0;
+                              return (
+                                <>
+                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-violet-50 to-violet-100 rounded-lg border border-violet-200 flex-1">
+                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-violet-600 flex items-center justify-center shrink-0">
+                                      <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
+                                      <p className="text-xs sm:text-sm font-black text-violet-900 m-0 leading-none">{tPresent}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-rose-50 to-rose-100 rounded-lg border border-rose-200 flex-1">
+                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
+                                      <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
+                                      <p className="text-xs sm:text-sm font-black text-rose-900 m-0 leading-none">{tAbsent}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 flex-1">
+                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-purple-500 flex items-center justify-center shrink-0">
+                                      <Percent className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                    </div>
+                                    <div className="text-left">
+                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-purple-600 uppercase tracking-wider m-0">Rate</p>
+                                      <p className="text-xs sm:text-sm font-black text-purple-900 m-0 leading-none">{tRate}%</p>
+                                    </div>
+                                  </div>
+                                </>
+                              );
+                            })()}
                           </div>
 
                           <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
-                            <table className="w-full text-left border-collapse">
+                            <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
                               <thead className="bg-slate-50 sticky top-0 z-10">
                                 <tr>
-                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date</th>
-                                  <th className="px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Status</th>
+                                  <th className="w-[10%] sm:w-[15%]"></th>
+                                  <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Date</th>
+                                  <th className="w-[30%] sm:w-[30%]"></th>
+                                  <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                  <th className="w-[10%] sm:w-[15%]"></th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-50">
                                 {data.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
                                   <tr key={ri} className="hover:bg-slate-50 transition-colors">
-                                    <td className="px-4 py-2 text-xs font-medium text-slate-700">
-                                      {r.date ? new Date(r.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : "-"}
+                                    <td></td>
+                                    <td className="py-2 text-xs font-medium text-slate-700 text-center whitespace-nowrap">
+                                      {r.date ? (function(d){ return `${d.getFullYear()} ${d.toLocaleString('en-US', { month: 'short' })} ${String(d.getDate()).padStart(2, '0')}` })(new Date(r.date)) : "-"}
                                     </td>
-                                    <td className="px-4 py-2 text-right">
-                                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    <td></td>
+                                    <td className="py-2 text-center whitespace-nowrap">
+                                      <span className={`inline-flex items-center justify-center min-w-[50px] sm:min-w-[65px] px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${
                                         String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
                                         String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
                                         'bg-rose-100 text-rose-700'
@@ -1929,13 +1879,15 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                                         {r.status}
                                       </span>
                                     </td>
+                                    <td></td>
                                   </tr>
                                 ))}
                               </tbody>
                             </table>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No team attendance records synced from TalentTrail</div>

@@ -359,12 +359,23 @@ const getAdminInternAttendance = async (req, res) => {
           if (meetingDayIndices.length === 0) return;
 
           const pStartDate = project.startDate ? new Date(project.startDate) : null;
-          if (!pStartDate || isNaN(pStartDate.getTime())) return;
+          const internStart = intern.Training_StartDate ? new Date(intern.Training_StartDate) : null;
+          
+          // Determine the actual start date: later of project start or intern start
+          let startDate = pStartDate;
+          if (internStart && pStartDate && internStart > pStartDate) {
+            startDate = internStart;
+          } else if (!pStartDate && internStart) {
+            startDate = internStart;
+          }
+          if (!startDate || isNaN(startDate.getTime())) return;
 
-          const pEndDate = project.targetDate ? new Date(project.targetDate) : new Date();
-          const endDate = pEndDate.getTime() < Date.now() ? pEndDate : new Date();
+          // Ignore project.targetDate as it might be outdated (e.g. from a past year)
+          // Cap the end date at the intern's training end date or today, whichever is earlier
+          const internEnd = intern.Training_EndDate ? new Date(intern.Training_EndDate) : new Date();
+          const endDate = internEnd.getTime() < Date.now() ? new Date(internEnd) : new Date();
 
-          let currentDate = new Date(pStartDate);
+          let currentDate = new Date(startDate);
           currentDate.setHours(12, 0, 0, 0); // avoid timezone shifts
           endDate.setHours(23, 59, 59, 999);
           
@@ -396,6 +407,8 @@ const getAdminInternAttendance = async (req, res) => {
                   status: isPresent ? "Present" : "Absent",
                   meetingName: teamName,
                   projectName: teamName,
+                  actualProjectName: projectName, // the TalentTrail project this team belongs to
+                  meetingDay: project.meetingDay || null, // meeting day(s) from TalentTrail project
                   type: "Meeting",
                   rawType: "talenttrail-team",
                   attendanceTypeLabel: "Team Meeting",
