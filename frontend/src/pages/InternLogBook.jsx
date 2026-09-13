@@ -210,7 +210,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           </h2>
           <p
             style={{
-              fontSize: 13,
+              fontSize: "clamp(11px, 2vw, 12px)",
               color: "#991b1b",
               marginTop: 5,
               marginBottom: 0,
@@ -236,7 +236,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           {restrictedAt && (
             <p
               style={{
-                fontSize: 12,
+                fontSize: "clamp(10px, 2vw, 12px)",
                 color: "#ef4444",
                 fontWeight: 600,
                 margin: "0 0 6px",
@@ -248,7 +248,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           {reason && (
             <p
               style={{
-                fontSize: 13,
+                fontSize: "clamp(11px, 2vw, 12px)",
                 color: "#991b1b",
                 margin: 0,
                 lineHeight: 1.6,
@@ -261,7 +261,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
 
         <p
           style={{
-            fontSize: 14,
+            fontSize: "clamp(11px, 2.5vw, 13px)",
             color: "#7f1d1d",
             lineHeight: 1.7,
             marginBottom: 20,
@@ -315,7 +315,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 13,
+                  fontSize: "clamp(11px, 2vw, 12px)",
                   fontWeight: 700,
                   flexShrink: 0,
                 }}
@@ -324,7 +324,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
               </span>
               <span
                 style={{
-                  fontSize: 14,
+                  fontSize: "clamp(11px, 2.5vw, 13px)",
                   color: "#7f1d1d",
                   lineHeight: 1.5,
                   paddingTop: 3,
@@ -339,7 +339,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
         <div style={{ borderTop: "1px solid #fecaca", paddingTop: 16 }}>
           <p
             style={{
-              fontSize: 12,
+              fontSize: "clamp(10px, 2vw, 12px)",
               color: "#991b1b",
               margin: 0,
               lineHeight: 1.6,
@@ -358,7 +358,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Main Component                                                           */
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const Logbook = () => {
+const InternLogBook = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -903,7 +903,7 @@ const Logbook = () => {
     if (activeStep > 0) setActiveStep((s) => s - 1);
   };
 
-  /* â”€â”€ Derived states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── Derived states ──────────────────────────────────────────────────────── */
   const isSubmitDisabled =
     projectAccessBlocked !== false ||
     extendedLeaveBlocked !== false ||
@@ -1049,50 +1049,45 @@ const Logbook = () => {
 
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            <SectionTip sectionKey="logbook" />
+            
 
             {/* â”€â”€â”€â”€â”€ Page Header â”€â”€â”€â”€â”€ */}
-            <div style={{ marginBottom: 32 }} className="logbook-fade-in">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div>
-                  <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
-                    <BookOpen className="text-[#00b4eb] h-8 w-8" />
-                    Daily Logbook
+            <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
+              <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
+                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                  <BookOpen className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <h1 className="text-[clamp(20px,5vw,28px)] font-[800] text-[#1a1a2e] leading-tight tracking-tight">
+                    Smart Logbook
                   </h1>
-                  <p
-                    style={{
-                      color: "#6b7280",
-                      marginTop: 6,
-                      fontSize: 15,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    "{quote}"
+                  <p className="text-[#6b7280] mt-[2px] text-[clamp(11px,2.5vw,14px)] font-medium">
+                    Record your daily progress and tasks seamlessly.
                   </p>
                 </div>
-                <button
-                  onClick={() => navigate("/DailyRecords")}
-                  className="logbook-view-records-btn"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "10px 20px",
-                    background: "white",
-                    border: `1.5px solid ${palette.border}`,
-                    borderRadius: 14,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: palette.primary,
-                    cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                  }}
-                >
-                  <FiBook style={{ marginRight: 8, color: palette.light }} />
-                  View Records
-                  <FiArrowRight style={{ marginLeft: 8, opacity: 0.5 }} />
-                </button>
               </div>
+              <button
+                onClick={() => navigate("/DailyRecords")}
+                className="logbook-view-records-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "10px 20px",
+                  background: "white",
+                  border: `1.5px solid ${palette.border}`,
+                  borderRadius: 14,
+                  fontSize: "clamp(11px, 2.5vw, 13px)",
+                  fontWeight: 600,
+                  color: palette.primary,
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                }}
+              >
+                <FiBook style={{ marginRight: 8, color: palette.light }} />
+                View Records
+                <FiArrowRight style={{ marginLeft: 8, opacity: 0.5 }} />
+              </button>
             </div>
 
             {/* â”€â”€â”€â”€â”€ â˜… Step 1: Restriction check loading â”€â”€â”€â”€â”€ */}
@@ -1116,10 +1111,10 @@ const Logbook = () => {
                   size={28}
                   style={{ color: "#ef4444", marginBottom: 16 }}
                 />
-                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>
+                <p style={{ fontSize: "clamp(12px, 3vw, 14px)", fontWeight: 600, color: "#374151" }}>
                   Checking logbook accessâ€¦
                 </p>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+                <p style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#9ca3af", marginTop: 4 }}>
                   Verifying your submission status
                 </p>
               </div>
@@ -1192,7 +1187,7 @@ const Logbook = () => {
                         </h2>
                         <p
                           style={{
-                            fontSize: 13,
+                            fontSize: "clamp(11px, 2vw, 12px)",
                             color: "#a16207",
                             marginTop: 4,
                           }}
@@ -1216,7 +1211,7 @@ const Logbook = () => {
                         >
                           <p
                             style={{
-                              fontSize: 13,
+                              fontSize: "clamp(11px, 2vw, 12px)",
                               color: "#92400e",
                               fontWeight: 500,
                               margin: 0,
@@ -1229,7 +1224,7 @@ const Logbook = () => {
 
                       <p
                         style={{
-                          fontSize: 14,
+                          fontSize: "clamp(11px, 2.5vw, 13px)",
                           color: "#a16207",
                           marginBottom: 16,
                           lineHeight: 1.6,
@@ -1320,7 +1315,7 @@ const Logbook = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 700,
                                 flexShrink: 0,
                               }}
@@ -1329,7 +1324,7 @@ const Logbook = () => {
                             </span>
                             <span
                               style={{
-                                fontSize: 14,
+                                fontSize: "clamp(11px, 2.5vw, 13px)",
                                 color: "#78350f",
                                 lineHeight: 1.5,
                                 paddingTop: 3,
@@ -1350,7 +1345,7 @@ const Logbook = () => {
                       >
                         <p
                           style={{
-                            fontSize: 12,
+                            fontSize: "clamp(10px, 2vw, 12px)",
                             color: "#b45309",
                             margin: 0,
                             lineHeight: 1.5,
@@ -1380,7 +1375,7 @@ const Logbook = () => {
                             "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                           color: "white",
                           fontWeight: 600,
-                          fontSize: 15,
+                          fontSize: "clamp(12px, 3vw, 14px)",
                           textDecoration: "none",
                           transition: "all 0.3s ease",
                           boxShadow: "0 4px 14px rgba(245, 158, 11, 0.25)",
@@ -1447,7 +1442,7 @@ const Logbook = () => {
                         </h2>
                         <p
                           style={{
-                            fontSize: 13,
+                            fontSize: "clamp(11px, 2vw, 12px)",
                             color: "#0c4a6e",
                             marginTop: 4,
                           }}
@@ -1460,7 +1455,7 @@ const Logbook = () => {
                     <div style={{ padding: "24px" }}>
                       <p
                         style={{
-                          fontSize: 14,
+                          fontSize: "clamp(11px, 2.5vw, 13px)",
                           color: "#0c4a6e",
                           marginBottom: 16,
                           lineHeight: 1.6,
@@ -1515,14 +1510,14 @@ const Logbook = () => {
                     />
                     <p
                       style={{
-                        fontSize: 15,
+                        fontSize: "clamp(12px, 3vw, 14px)",
                         fontWeight: 600,
                         color: "#374151",
                       }}
                     >
                       Checking status...
                     </p>
-                    <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+                    <p style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#9ca3af", marginTop: 4 }}>
                       Verifying your project assignment and leave status
                     </p>
                   </div>
@@ -1750,7 +1745,7 @@ const Logbook = () => {
                               >
                                 How are you working today?
                               </h2>
-                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                              <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                 Select your work status for today
                               </p>
                             </div>
@@ -1759,7 +1754,7 @@ const Logbook = () => {
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 600,
                                 color: "#374151",
                                 marginBottom: 12,
@@ -1869,7 +1864,7 @@ const Logbook = () => {
                                     </div>
                                     <span
                                       style={{
-                                        fontSize: 14,
+                                        fontSize: "clamp(11px, 2.5vw, 13px)",
                                         fontWeight: 700,
                                         color: isSelected
                                           ? opt.palette.primary
@@ -1957,7 +1952,7 @@ const Logbook = () => {
                                   background: palette.gradient,
                                   color: "white",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: areFieldsDisabled
                                     ? "not-allowed"
                                     : "pointer",
@@ -1996,7 +1991,7 @@ const Logbook = () => {
                               >
                                 What's your focus area?
                               </h2>
-                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                              <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                 Select the technology stack you worked on
                               </p>
                             </div>
@@ -2005,7 +2000,7 @@ const Logbook = () => {
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 600,
                                 color: "#374151",
                                 marginBottom: 12,
@@ -2088,7 +2083,7 @@ const Logbook = () => {
                                     </div>
                                     <span
                                       style={{
-                                        fontSize: 13,
+                                        fontSize: "clamp(11px, 2vw, 12px)",
                                         fontWeight: isSelected ? 600 : 500,
                                         color: isSelected
                                           ? palette.primary
@@ -2124,7 +2119,7 @@ const Logbook = () => {
                                   background: "white",
                                   color: "#6b7280",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: "pointer",
                                   transition: "all 0.3s ease",
                                 }}
@@ -2148,7 +2143,7 @@ const Logbook = () => {
                                     : "#d1d5db",
                                   color: "white",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: formData.stack
                                     ? "pointer"
                                     : "not-allowed",
@@ -2248,7 +2243,7 @@ const Logbook = () => {
                                   >
                                     Log your daily impact
                                   </h2>
-                                  <p style={{ color: "#6b7280", fontSize: 14 }}>
+                                  <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                     Complete your daily work summary
                                   </p>
                                 </div>
@@ -2259,7 +2254,7 @@ const Logbook = () => {
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2295,7 +2290,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.tasks.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2319,7 +2314,7 @@ const Logbook = () => {
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2355,7 +2350,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.challenges.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2379,7 +2374,7 @@ const Logbook = () => {
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2415,7 +2410,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.plans.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2495,14 +2490,14 @@ const Logbook = () => {
                                           fontWeight: 600,
                                           color: "#92400e",
                                           marginBottom: 4,
-                                          fontSize: 14,
+                                          fontSize: "clamp(11px, 2.5vw, 13px)",
                                         }}
                                       >
                                         Team Assignment Required
                                       </p>
                                       <p
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           marginBottom: 12,
                                         }}
@@ -2511,7 +2506,7 @@ const Logbook = () => {
                                       </p>
                                       <p
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           marginBottom: 8,
                                         }}
@@ -2533,7 +2528,7 @@ const Logbook = () => {
                                       </p>
                                       <ol
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           listStyleType: "decimal",
                                           paddingLeft: 20,
@@ -2592,7 +2587,7 @@ const Logbook = () => {
                                       <span
                                         style={{
                                           fontWeight: 600,
-                                          fontSize: 14,
+                                          fontSize: "clamp(11px, 2.5vw, 13px)",
                                           color:
                                             statusMessage.type === "success"
                                               ? "#166534"
@@ -2640,7 +2635,7 @@ const Logbook = () => {
                                   background: "white",
                                   color: "#6b7280",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: "pointer",
                                   transition: "all 0.3s ease",
                                 }}
@@ -2671,7 +2666,7 @@ const Logbook = () => {
                                       ? "#92400e"
                                       : "white",
                                   fontWeight: 700,
-                                  fontSize: 15,
+                                  fontSize: "clamp(12px, 3vw, 14px)",
                                   cursor: isSubmitDisabled
                                     ? "not-allowed"
                                     : "pointer",
@@ -2691,7 +2686,7 @@ const Logbook = () => {
                               <p
                                 style={{
                                   textAlign: "center",
-                                  fontSize: 12,
+                                  fontSize: "clamp(10px, 2vw, 12px)",
                                   color: "#b45309",
                                   marginTop: 8,
                                 }}
@@ -2720,47 +2715,9 @@ const Logbook = () => {
                 {/* â”€â”€â”€â”€â”€ Info Cards (only when access is granted) â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === false && (
                   <div style={{ marginTop: 24 }} className="logbook-fade-in">
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4">
                       {/* Tips Card */}
-                      <InfoCard
-                        icon={<FiInfo />}
-                        title="Tips for Better Logging"
-                        palette={palette}
-                      >
-                        <ul
-                          style={{ listStyle: "none", padding: 0, margin: 0 }}
-                        >
-                          {[
-                            "Always keep a backup of your weekly logs",
-                            "Be specific about the tasks you completed",
-                            "Only submit descriptive and work-related entries",
-                            "Update daily to help you track your progress",
-                          ].map((tip, i) => (
-                            <li
-                              key={i}
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 8,
-                                padding: "6px 0",
-                                fontSize: 13,
-                                color: "#4b5563",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  color: palette.light,
-                                  flexShrink: 0,
-                                  marginTop: 2,
-                                }}
-                              >
-                                â€¢
-                              </span>
-                              {tip}
-                            </li>
-                          ))}
-                        </ul>
-                      </InfoCard>
+                      
 
                       {/* Today's Summary Card */}
                       <InfoCard
@@ -2858,7 +2815,7 @@ const InfoCard = ({ icon, title, palette, children }) => {
         </div>
         <span
           style={{
-            fontSize: 15,
+            fontSize: "clamp(12px, 3vw, 14px)",
             fontWeight: 600,
             color: "#1a1a2e",
             flex: 1,
@@ -2877,13 +2834,13 @@ const InfoCard = ({ icon, title, palette, children }) => {
 const SummaryRow = ({ label, value }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <span
-      style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", minWidth: 60 }}
+      style={{ fontSize: "clamp(11px, 2vw, 12px)", fontWeight: 600, color: "#6b7280", minWidth: 60 }}
     >
       {label}:
     </span>
-    <span style={{ fontSize: 13, color: "#374151", flex: 1 }}>{value}</span>
+    <span style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#374151", flex: 1 }}>{value}</span>
   </div>
 );
 
-export default Logbook;
+export default InternLogBook;
 

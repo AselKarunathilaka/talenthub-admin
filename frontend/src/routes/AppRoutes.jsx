@@ -6,7 +6,7 @@ import FaceAttendance from "../pages/FaceAttendance";
 import ScanQRCode from "../pages/ScanQRCode";
 import InternDashboard from "../pages/InternDashboard";
 import Availability from "../pages/Availability";
-import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
+import InternLogBook from "../pages/InternLogBook";
 import DailyRecords from "../pages/DailyRecords";
 import MyLeaveRequests from "../pages/MyLeaveRequests";
 import ShortLeavePass from "../pages/ShortLeavePass";
@@ -124,7 +124,7 @@ const AppRoutes = () => {
         path="/log-book"
         element={
           <AgreementGuard>
-            <LogBook />
+            <InternLogBook />
           </AgreementGuard>
         }
       />
