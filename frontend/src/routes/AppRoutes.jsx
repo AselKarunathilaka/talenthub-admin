@@ -10,7 +10,7 @@ import InternLogBook from "../pages/InternLogBook";
 import DailyRecords from "../pages/DailyRecords";
 import InternLeave from "../pages/InternLeave";
 import ShortLeavePass from "../pages/ShortLeavePass";
-import SeatReservation from "../pages/SeatReservation";
+import InternSeatReservation from "../pages/InternSeatReservation";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminDailyRecords from "../pages/AdminDailyRecords";
@@ -164,7 +164,7 @@ const AppRoutes = () => {
         path="/seat-reservation"
         element={
           <AgreementGuard>
-            <SeatReservation />
+            <InternSeatReservation />
           </AgreementGuard>
         }
       />
