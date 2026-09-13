@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Menu, LogOut, User, ChevronDown } from "lucide-react";
 
-const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => {
+const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -32,14 +32,16 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions }) => 
     <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between bg-gradient-to-r from-[#000066] to-[#006600] px-4 shadow-md border-b border-white/10 sm:px-6 lg:px-8">
       {/* Left side: Mobile menu button & Title */}
       <div className="flex items-center gap-4">
-        <button
-          onClick={onMenuClick}
-          className="inline-flex items-center justify-center rounded-md p-2 text-white/80 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#00b4eb] lg:hidden transition-colors"
-          aria-expanded="false"
-        >
-          <span className="sr-only">Open sidebar</span>
-          <Menu className="h-6 w-6" aria-hidden="true" />
-        </button>
+        {!hideSidebar && (
+          <button
+            onClick={onMenuClick}
+            className="inline-flex items-center justify-center rounded-md p-2 text-white/80 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-inset focus:ring-[#00b4eb] lg:hidden transition-colors"
+            aria-expanded="false"
+          >
+            <span className="sr-only">Open sidebar</span>
+            <Menu className="h-6 w-6" aria-hidden="true" />
+          </button>
+        )}
         <h1 className="text-xl font-bold text-white tracking-tight hidden sm:block drop-shadow-sm">
           {activeTitle}
         </h1>

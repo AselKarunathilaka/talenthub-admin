@@ -925,11 +925,19 @@ const UniversityStudentDetails = () => {
                     alt={student.name}
                     className="w-full h-full object-cover bg-white"
                     onError={(e) => {
-                      e.target.src =
-                        student.googlePictureUrl ||
-                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          student.name || "Intern"
-                        )}&background=random`;
+                      const currentSrc = e.target.src;
+                      const googlePic = student.googlePictureUrl;
+                      const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        student.name || "Intern"
+                      )}&background=random`;
+
+                      if (googlePic && !currentSrc.includes(googlePic)) {
+                        e.target.src = googlePic;
+                      } else if (!currentSrc.includes("ui-avatars.com")) {
+                        e.target.src = defaultAvatar;
+                      } else {
+                        e.target.onerror = null;
+                      }
                     }}
                   />
                 </div>

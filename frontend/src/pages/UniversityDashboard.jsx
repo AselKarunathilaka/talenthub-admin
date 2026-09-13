@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { FaUsers, FaUserCheck, FaUserTimes, FaExclamationTriangle, FaSearch, FaTimes } from "react-icons/fa";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap,
@@ -424,21 +424,174 @@ const UniversityDashboard = () => {
   // Google Profile Picture resolution
   const profilePictureUrl = supervisor?.picture || supervisor?.googlePictureUrl || "";
 
-  const userData = {
-    name: supervisor?.supervisorName || "Supervisor",
-    email: supervisor?.email || "Academic Supervisor",
-    role: "Authorized Supervisor",
-    profilePicUrl: profilePictureUrl,
-  };
-
   return (
-    <Layout
-      navLinks={[]}
-      user={userData}
-      onLogout={handleLogout}
-      activeTitle="University Portal"
-    >
-      <div className="flex-1 max-w-7xl w-full mx-auto space-y-8 select-none">
+    <div className="min-h-screen bg-[#f8fafc] text-slate-800 flex flex-col font-sans select-none">
+      {/* ─── Top Brand Navigation Bar ─── */}
+      <header
+        className="sticky top-0 z-40 shadow-lg text-white select-none"
+        style={{
+          background: "linear-gradient(135deg, #000066 0%, #006600 100%)",
+        }}
+      >
+        <div className="w-full px-3.5 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16 sm:h-20">
+            {/* ─── LEFT CORNER: SLT Logo + TalentHub Logo + Title & University Info ─── */}
+            <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+              <Link
+                to="/university-dashboard"
+                className="flex items-center gap-2 sm:gap-2.5 hover:opacity-95 transition-opacity shrink-0"
+              >
+                <img
+                  src={sltLogo}
+                  alt="SLT Mobitel"
+                  className="h-7 sm:h-9 w-auto object-contain select-none"
+                />
+                <img
+                  src={talentHubLogo}
+                  alt="TalentHub"
+                  className="h-7 sm:h-9 w-auto rounded-md object-contain select-none"
+                />
+              </Link>
+
+              <div className="flex flex-col justify-center min-w-0">
+                <Link to="/university-dashboard" className="leading-none">
+                  <span className="text-lg sm:text-2xl font-extrabold tracking-tight leading-none text-white">
+                    <span className="text-[#00b4eb]">Talent</span>
+                    <span className="text-[#50b748]">Hub</span>
+                  </span>
+                </Link>
+                <span className="text-[11px] sm:text-[13px] text-white/80 font-normal mt-0.5 leading-none tracking-normal truncate">
+                  University Portal
+                </span>
+              </div>
+
+              {/* Divider */}
+              <div className="h-9 sm:h-11 w-px bg-white/20 hidden md:block mx-1 sm:mx-2 shrink-0" />
+
+              {/* University Name & Supervisor Name */}
+              <div className="hidden md:flex flex-col justify-center leading-tight min-w-0">
+                <span className="text-xs sm:text-sm font-bold text-white truncate max-w-[200px] lg:max-w-[340px]">
+                  {supervisor?.universityName || "University Supervision"}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-white/70 mt-0.5 truncate max-w-[200px] lg:max-w-[340px]">
+                  {supervisor?.supervisorName
+                    ? `Supervisor: ${supervisor.supervisorName}`
+                    : "Academic Supervision"}
+                </span>
+              </div>
+            </div>
+
+            {/* ─── RIGHT CORNER: Profile Avatar / Dropdown ─── */}
+            <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+              <div className="relative" ref={profileRef}>
+                <button
+                  onClick={() => setIsProfileOpen((prev) => !prev)}
+                  className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1.5 rounded-full sm:rounded-2xl bg-white/10 hover:bg-white/20 border border-white/15 transition-all cursor-pointer min-h-[40px]"
+                  aria-label="Toggle user profile menu"
+                >
+                  {profilePictureUrl ? (
+                    <img
+                      src={profilePictureUrl}
+                      alt={supervisor?.supervisorName || "Supervisor"}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full object-cover shadow-sm ring-2 ring-emerald-400"
+                    />
+                  ) : (
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gradient-to-br from-[#00b4eb] to-[#50b748] flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow ring-2 ring-white/30">
+                      {(supervisor?.supervisorName || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+
+                  <div className="hidden md:flex flex-col text-left leading-tight pr-1">
+                    <span className="text-xs font-bold text-white max-w-[130px] truncate">
+                      {supervisor?.supervisorName || "Supervisor"}
+                    </span>
+                    <span className="text-[10px] text-white/70 max-w-[130px] truncate">
+                      {supervisor?.universityName || "University"}
+                    </span>
+                  </div>
+
+                  <ChevronDown
+                    className={`h-3.5 w-3.5 text-white/70 transition-transform ${isProfileOpen ? "rotate-180" : ""
+                      }`}
+                  />
+                </button>
+
+                {/* Profile & Logout Dropdown Menu */}
+                <AnimatePresence>
+                  {isProfileOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white text-slate-800 shadow-2xl border border-slate-200 overflow-hidden z-50"
+                    >
+                      {/* Dropdown Header */}
+                      <div className="p-4 bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200 flex items-center gap-3">
+                        {profilePictureUrl ? (
+                          <img
+                            src={profilePictureUrl}
+                            alt={supervisor?.supervisorName || "Supervisor"}
+                            className="w-11 h-11 rounded-full object-cover ring-2 ring-emerald-500 shadow-sm shrink-0"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#000066] to-[#006600] text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+                            {(supervisor?.supervisorName || "U")[0].toUpperCase()}
+                          </div>
+                        )}
+
+                        <div className="overflow-hidden">
+                          <h4 className="font-bold text-sm text-slate-900 truncate">
+                            {supervisor?.supervisorName || "University Supervisor"}
+                          </h4>
+                          <p className="text-xs text-slate-500 truncate">
+                            {supervisor?.email || "Academic Supervisor"}
+                          </p>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 mt-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            Authorized Supervisor
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* University Details */}
+                      <div className="p-3.5 space-y-1.5 text-xs border-b border-slate-100">
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <Building2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                          <span className="font-semibold text-slate-800 truncate">
+                            {supervisor?.universityName || "University"}
+                          </span>
+                        </div>
+                        {supervisor?.department && (
+                          <div className="flex items-center gap-2 text-slate-600 pl-6">
+                            <span>Department: {supervisor.department}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Dropdown Actions */}
+                      <div className="p-2 space-y-1">
+                        <button
+                          onClick={() => {
+                            setIsProfileOpen(false);
+                            handleLogout();
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700 transition-colors cursor-pointer min-h-[40px]"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-8 select-none">
 
 
         
@@ -630,27 +783,36 @@ const UniversityDashboard = () => {
                           
                           {/* Profile Info Section */}
                           <div className="flex items-start gap-4 xl:w-2/5 min-w-[300px]">
-                            {student.googlePictureUrl ? (
-                              <img 
-                                src={student.googlePictureUrl} 
-                                alt={student.name} 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  let original = student.googlePictureUrl || "";
-                                  let highRes = original;
-                                  if (highRes.includes("googleusercontent.com")) {
-                                    highRes = highRes.replace(/=s\d+(-c)?/g, "=s800-c");
-                                  }
-                                  setIsLightboxFallback(false);
-                                  setLightboxImage({ original, highRes });
-                                }}
-                                className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm border-2 border-white ring-2 ring-slate-100 shrink-0 cursor-pointer hover:scale-105 transition-transform" 
-                              />
-                            ) : (
-                              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-2xl font-black shadow-sm border-2 border-white ring-2 ring-slate-100 shrink-0">
-                                {student.name ? student.name.charAt(0).toUpperCase() : "?"}
-                              </div>
-                            )}
+                            <img 
+                              src={`${API_BASE_URL}/interns/${student.id || student._id}/profile-picture`}
+                              alt={student.name} 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                let original = student.googlePictureUrl || "";
+                                let highRes = original;
+                                if (highRes.includes("googleusercontent.com")) {
+                                  highRes = highRes.replace(/=s\d+(-c)?/g, "=s800-c");
+                                }
+                                setIsLightboxFallback(false);
+                                setLightboxImage({ original: original || e.target.src, highRes: highRes || e.target.src });
+                              }}
+                              className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover shadow-sm border-2 border-white ring-2 ring-slate-100 shrink-0 cursor-pointer hover:scale-105 transition-transform bg-white" 
+                              onError={(e) => {
+                                const currentSrc = e.target.src;
+                                const googlePic = student.googlePictureUrl;
+                                const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                  student.name || "Intern"
+                                )}&background=random`;
+
+                                if (googlePic && !currentSrc.includes(googlePic)) {
+                                  e.target.src = googlePic;
+                                } else if (!currentSrc.includes("ui-avatars.com")) {
+                                  e.target.src = defaultAvatar;
+                                } else {
+                                  e.target.onerror = null;
+                                }
+                              }}
+                            />
                             
                             <div className="flex-1 min-w-0 pt-1">
                               <h3 className="font-bold text-slate-800 text-lg sm:text-xl truncate" title={student.name}>
@@ -712,7 +874,7 @@ const UniversityDashboard = () => {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </main>
 
       {/* Fullscreen Image Lightbox */}
       <AnimatePresence>
@@ -745,7 +907,18 @@ const UniversityDashboard = () => {
           </motion.div>
         )}
       </AnimatePresence>
-    </Layout>
+
+      {/* ─── Footer ─── */}
+      <footer
+        className="text-white/80 py-4 mt-auto"
+        style={{ background: "linear-gradient(135deg, #000066 0%, #006600 100%)" }}
+      >
+        <div className="px-4 sm:px-6 flex items-center justify-between gap-4">
+          <p className="text-xs">© {new Date().getFullYear()} TalentHub . SLT Mobitel . All rights reserved.</p>
+          <p className="text-xs text-white/60">TalentHub University Portal System</p>
+        </div>
+      </footer>
+    </div>
   );
 };
 

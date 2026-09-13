@@ -12,6 +12,7 @@ const Layout = ({
   onLogout,
   customActions = null,
   sidebarMode = "grid",
+  hideSidebar = false,
 }) => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -44,7 +45,7 @@ const Layout = ({
   return (
     <div className="flex h-[100dvh] bg-[#f8fafc] overflow-hidden font-sans text-slate-800">
       {/* Mobile Sidebar Backdrop */}
-      {isMobileOpen && (
+      {!hideSidebar && isMobileOpen && (
         <div
           className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden transition-opacity duration-300 ease-in-out"
           onClick={() => setIsMobileOpen(false)}
@@ -53,16 +54,18 @@ const Layout = ({
       )}
 
       {/* Sidebar Component */}
-      <Sidebar
-        navLinks={navLinks}
-        isOpen={isMobileOpen}
-        onClose={() => setIsMobileOpen(false)}
-        onLogout={onLogout}
-        user={user}
-        mode={sidebarMode}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
-      />
+      {!hideSidebar && (
+        <Sidebar
+          navLinks={navLinks}
+          isOpen={isMobileOpen}
+          onClose={() => setIsMobileOpen(false)}
+          onLogout={onLogout}
+          user={user}
+          mode={sidebarMode}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed((prev) => !prev)}
+        />
+      )}
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative transition-all duration-300">
@@ -81,6 +84,7 @@ const Layout = ({
             activeTitle={activeTitle}
             onLogout={onLogout}
             customActions={customActions}
+            hideSidebar={hideSidebar}
           />
         </div>
         
