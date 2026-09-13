@@ -1,7 +1,7 @@
 import React, { useEffect, Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
-import Attendance from "../pages/Attendance";
+import InternAttendance from "../pages/InternAttendance";
 import FaceAttendance from "../pages/FaceAttendance";
 import ScanQRCode from "../pages/ScanQRCode";
 import InternDashboard from "../pages/InternDashboard";
@@ -75,7 +75,7 @@ const AppRoutes = () => {
         path="/attendance"
         element={
           <AgreementGuard>
-            <Attendance />
+            <InternAttendance />
           </AgreementGuard>
         }
       />
