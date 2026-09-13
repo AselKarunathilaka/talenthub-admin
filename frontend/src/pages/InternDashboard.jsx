@@ -935,55 +935,55 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             <WhatsAppSupportButton size="sm" className="shadow-lg hover:scale-105 border border-[#25D366]/30" />
           </div>
 
-          <div className="relative z-10 px-3 pt-10 pb-4 xs:px-5 xs:pt-12 xs:pb-5 xm:px-6 xm:pt-12 xm:pb-5 sm:px-10 sm:py-10 flex flex-row items-end min-h-[130px] xs:min-h-[150px] sm:min-h-0 gap-2.5 xs:gap-4 xm:gap-5 sm:gap-8">
+          <div className="relative z-10 px-2 pt-8 pb-3 xs:px-5 xs:pt-12 xs:pb-5 xm:px-6 xm:pt-12 xm:pb-5 sm:px-10 sm:py-10 flex flex-row items-end min-h-[110px] xs:min-h-[150px] sm:min-h-0 gap-2 xs:gap-4 xm:gap-5 sm:gap-8">
 
             {/* Profile Picture */}
             <div className="relative group flex-shrink-0">
-              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{width: 'clamp(62px, 18vw, 112px)', height: 'clamp(62px, 18vw, 112px)'}}>
+              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{width: 'clamp(45px, 15vw, 112px)', height: 'clamp(45px, 15vw, 112px)'}}>
                 <img
                   src={profilePicUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
-                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{fontSize: 'clamp(16px, 4.5vw, 36px)'}}>
+                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{fontSize: 'clamp(14px, 4vw, 36px)'}}>
                   {(internData?.Trainee_Name || internData?.name) ? (internData?.Trainee_Name || internData?.name).charAt(0).toUpperCase() : "U"}
                 </div>
               </div>
-              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{width: 'clamp(15px, 4.2vw, 28px)', height: 'clamp(15px, 4.2vw, 28px)', borderWidth: 'clamp(2px, 0.6vw, 4px)', bottom: 'clamp(-2px, -0.5vw, -8px)', right: 'clamp(-2px, -0.5vw, -8px)'}} title="Active">
-                <div className="bg-white rounded-full animate-pulse" style={{width: 'clamp(6px, 1.8vw, 8px)', height: 'clamp(6px, 1.8vw, 8px)'}} />
+              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{width: 'clamp(12px, 4vw, 28px)', height: 'clamp(12px, 4vw, 28px)', borderWidth: 'clamp(1.5px, 0.5vw, 4px)', bottom: 'clamp(-1px, -0.5vw, -8px)', right: 'clamp(-1px, -0.5vw, -8px)'}} title="Active">
+                <div className="bg-white rounded-full animate-pulse" style={{width: 'clamp(4px, 1.5vw, 8px)', height: 'clamp(4px, 1.5vw, 8px)'}} />
               </div>
             </div>
 
             {/* Main Info */}
-            <div className="flex-1 text-left flex flex-col justify-end min-w-0 pr-2 xs:pr-4 mb-1">
-              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{fontSize: 'clamp(8px, 2.2vw, 12px)', marginBottom: 'clamp(2px, 0.5vw, 6px)'}}>
+            <div className="flex-1 text-left flex flex-col justify-end min-w-0 pr-1 xs:pr-4 mb-1">
+              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{fontSize: 'clamp(7px, 2vw, 12px)', marginBottom: 'clamp(1px, 0.5vw, 6px)'}}>
                 Welcome Back
               </span>
-              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md leading-tight" style={{fontSize: 'clamp(15px, 4.2vw, 31px)', marginBottom: 'clamp(4px, 1vw, 12px)', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
+              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md leading-tight" style={{fontSize: 'clamp(14px, 4vw, 31px)', marginBottom: 'clamp(3px, 1vw, 12px)', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
                 {(internData?.Trainee_Name || internData?.name) || "User"}
               </h1>
 
-              <div className="flex flex-nowrap items-center justify-start overflow-hidden" style={{gap: 'clamp(3px, 1vw, 12px)'}}>
-                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)'}}>
-                  <User className="text-[#00b4eb] shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
+              <div className="flex flex-nowrap items-center justify-start overflow-hidden" style={{gap: 'clamp(2px, 1vw, 12px)'}}>
+                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)'}}>
+                  <User className="text-[#00b4eb] shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
                   {internData?.Trainee_ID || internData?.internId || "ID Not Assigned"}
                 </span>
 
                 {countdownTime?.totalDaysLeft > 0 ? (
-                  <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
-                    <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
+                    <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
                     {countdownTime.totalDaysLeft} Days Left
                   </span>
                 ) : internData?.Training_Status === "Ended" ? (
-                  <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
                     Training Ended
                   </span>
                 ) : null}
 
                 {lastSeenDate && (
-                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)'}}>
-                    <Clock className="text-slate-400 shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
+                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)'}}>
+                    <Clock className="text-slate-400 shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
                     Last seen: {lastSeenDate}
                   </span>
                 )}
@@ -1034,14 +1034,14 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 Training Period
               </h2>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 16px", flex: 1 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(6px, 2vw, 10px) clamp(8px, 3vw, 16px)", flex: 1 }}>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Start Date</p>
-                <p className="text-sm font-semibold text-slate-800">{internData?.Training_StartDate ? formatDate(internData.Training_StartDate) : "N/A"}</p>
+                <p className="text-[12px] sm:text-sm font-semibold text-slate-800">{internData?.Training_StartDate ? formatDate(internData.Training_StartDate) : "N/A"}</p>
               </div>
               <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                 <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">End Date</p>
-                <p className="text-sm font-semibold text-slate-800">{internData?.Training_EndDate ? formatDate(internData.Training_EndDate) : "N/A"}</p>
+                <p className="text-[12px] sm:text-sm font-semibold text-slate-800">{internData?.Training_EndDate ? formatDate(internData.Training_EndDate) : "N/A"}</p>
               </div>
               {internData?.Training_StartDate && internData?.Training_EndDate && (() => {
                 const start = new Date(internData.Training_StartDate);
@@ -1057,33 +1057,33 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                   <>
                     <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Duration</p>
-                      <p className="text-sm font-semibold text-slate-800">{weeks}w {remainingDays}d</p>
+                      <p className="text-[12px] sm:text-sm font-semibold text-slate-800">{weeks}w {remainingDays}d</p>
                     </div>
                     <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-0.5">Status</p>
-                      <p className={`text-sm font-bold ${!isEnded ? "text-emerald-600" : "text-red-600"}`}>{!isEnded ? `${daysLeft}d left` : "Ended"}</p>
+                      <p className={`text-[12px] sm:text-sm font-bold ${!isEnded ? "text-emerald-600" : "text-red-600"}`}>{!isEnded ? `${daysLeft}d left` : "Ended"}</p>
                     </div>
                     <div className="col-span-2 mt-1">
                       {countdownTime ? (
-                        <div style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)", border: "1px solid #a7f3d0", borderRadius: 12, padding: "10px 10px", display: "flex", alignItems: "center", justifyContent: "center", gap: 16 }}>
-                          <div style={{ textAlign: "center", minWidth: 40 }}>
-                            <p style={{ fontSize: 'clamp(13px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.days).padStart(2, "0")}</p>
-                            <p style={{ fontSize: 9, fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Days</p>
+                        <div style={{ background: "linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)", border: "1px solid #a7f3d0", borderRadius: 12, padding: "clamp(6px, 2vw, 10px) clamp(6px, 2vw, 10px)", display: "flex", alignItems: "center", justifyContent: "center", gap: 'clamp(4px, 3vw, 16px)' }}>
+                          <div style={{ textAlign: "center", minWidth: 'clamp(28px, 6vw, 40px)' }}>
+                            <p style={{ fontSize: 'clamp(12px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.days).padStart(2, "0")}</p>
+                            <p style={{ fontSize: 'clamp(7px, 2vw, 9px)', fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Days</p>
                           </div>
-                          <div style={{ width: 1, height: 26, background: "#a7f3d0" }} />
-                          <div style={{ textAlign: "center", minWidth: 40 }}>
-                            <p style={{ fontSize: 'clamp(13px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.hours).padStart(2, "0")}</p>
-                            <p style={{ fontSize: 9, fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Hrs</p>
+                          <div style={{ width: 1, height: 'clamp(18px, 5vw, 26px)', background: "#a7f3d0" }} />
+                          <div style={{ textAlign: "center", minWidth: 'clamp(28px, 6vw, 40px)' }}>
+                            <p style={{ fontSize: 'clamp(12px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.hours).padStart(2, "0")}</p>
+                            <p style={{ fontSize: 'clamp(7px, 2vw, 9px)', fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Hrs</p>
                           </div>
-                          <div style={{ width: 1, height: 26, background: "#a7f3d0" }} />
-                          <div style={{ textAlign: "center", minWidth: 40 }}>
-                            <p style={{ fontSize: 'clamp(13px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.mins).padStart(2, "0")}</p>
-                            <p style={{ fontSize: 9, fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Mins</p>
+                          <div style={{ width: 1, height: 'clamp(18px, 5vw, 26px)', background: "#a7f3d0" }} />
+                          <div style={{ textAlign: "center", minWidth: 'clamp(28px, 6vw, 40px)' }}>
+                            <p style={{ fontSize: 'clamp(12px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.mins).padStart(2, "0")}</p>
+                            <p style={{ fontSize: 'clamp(7px, 2vw, 9px)', fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Mins</p>
                           </div>
-                          <div style={{ width: 1, height: 26, background: "#a7f3d0" }} />
-                          <div style={{ textAlign: "center", minWidth: 40 }}>
-                            <p style={{ fontSize: 'clamp(13px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.secs).padStart(2, "0")}</p>
-                            <p style={{ fontSize: 9, fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Secs</p>
+                          <div style={{ width: 1, height: 'clamp(18px, 5vw, 26px)', background: "#a7f3d0" }} />
+                          <div style={{ textAlign: "center", minWidth: 'clamp(28px, 6vw, 40px)' }}>
+                            <p style={{ fontSize: 'clamp(12px, 4vw, 20px)', fontWeight: 900, color: "#059669", lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{String(countdownTime.secs).padStart(2, "0")}</p>
+                            <p style={{ fontSize: 'clamp(7px, 2vw, 9px)', fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase", letterSpacing: "0.07em", marginTop: 2 }}>Secs</p>
                           </div>
                         </div>
                       ) : (
@@ -1141,8 +1141,8 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             <div style={{ display: "flex", gap: 4, justifyContent: "center", alignItems: "center", flex: 1, paddingBottom: 8, flexWrap: "nowrap", minWidth: 0, width: "100%" }}>
 
               {/* Daily Ring */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 130, aspectRatio: "1 / 1" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 'clamp(2px, 1.5vw, 6px)', flex: 1, minWidth: 0 }}>
+                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 'clamp(60px, 15vw, 130px)', aspectRatio: "1 / 1" }}>
                   <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", display: "block", transform: "rotate(-90deg)" }}>
                     <circle cx="50" cy="50" r="42" fill="none" stroke={getPerformanceColors(dailyAttendanceRate).track} strokeWidth="8" />
                     <circle cx="50" cy="50" r="42" fill="none" stroke={getPerformanceColors(dailyAttendanceRate).stroke} strokeWidth="8" strokeLinecap="round"
@@ -1150,18 +1150,18 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       style={{ transition: "stroke-dashoffset 1.6s ease" }} />
                   </svg>
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 'clamp(9px, 3.5cqw, 24px)', fontWeight: 900, color: getPerformanceColors(dailyAttendanceRate).text, lineHeight: 1 }}>{dailyAttendanceRate}%</span>
+                    <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: getPerformanceColors(dailyAttendanceRate).text, lineHeight: 1 }}>{dailyAttendanceRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 1.8cqw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Daily<br /> Attendance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Daily<br className="sm:hidden block"/> Attendance</span>
               </div>
 
               {/* Divider */}
-              <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0, margin: "12px 0" }} />
+              <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0, margin: "clamp(6px, 1.5vw, 12px) 0" }} />
 
               {/* Meeting Ring */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 130, aspectRatio: "1 / 1" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 'clamp(2px, 1.5vw, 6px)', flex: 1, minWidth: 0 }}>
+                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 'clamp(60px, 15vw, 130px)', aspectRatio: "1 / 1" }}>
                   <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", display: "block", transform: "rotate(-90deg)" }}>
                     <circle cx="50" cy="50" r="42" fill="none" stroke={getPerformanceColors(meetingAttendanceRate).track} strokeWidth="8" />
                     <circle cx="50" cy="50" r="42" fill="none" stroke={getPerformanceColors(meetingAttendanceRate).stroke} strokeWidth="8" strokeLinecap="round"
@@ -1169,18 +1169,18 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       style={{ transition: "stroke-dashoffset 1.6s ease" }} />
                   </svg>
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 'clamp(9px, 3.5cqw, 24px)', fontWeight: 900, color: getPerformanceColors(meetingAttendanceRate).text, lineHeight: 1 }}>{meetingAttendanceRate}%</span>
+                    <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: getPerformanceColors(meetingAttendanceRate).text, lineHeight: 1 }}>{meetingAttendanceRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 1.8cqw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Meeting<br /> Attendance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Meeting<br className="sm:hidden block"/> Attendance</span>
               </div>
 
               {/* Divider */}
-              <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0, margin: "12px 0" }} />
+              <div style={{ width: 1, alignSelf: "stretch", background: "#e2e8f0", flexShrink: 0, margin: "clamp(6px, 1.5vw, 12px) 0" }} />
 
               {/* Work Quality */}
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
-                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 130, aspectRatio: "1 / 1" }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 'clamp(2px, 1.5vw, 6px)', flex: 1, minWidth: 0 }}>
+                <div className="att-ring-wrap" style={{ position: "relative", width: "100%", maxWidth: 'clamp(60px, 15vw, 130px)', aspectRatio: "1 / 1" }}>
                   <svg viewBox="0 0 100 100" style={{ width: "100%", height: "100%", display: "block", transform: "rotate(-90deg)" }}>
                     <circle cx="50" cy="50" r="42" fill="none" stroke={workQualityRate >= 75 ? "#dbeafe" : workQualityRate >= 50 ? "#fef08a" : "#fecaca"} strokeWidth="8" />
                     <circle cx="50" cy="50" r="42" fill="none" stroke={workQualityRate >= 75 ? "#3b82f6" : workQualityRate >= 50 ? "#eab308" : "#ef4444"} strokeWidth="8" strokeLinecap="round"
@@ -1188,10 +1188,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       style={{ transition: "stroke-dashoffset 1.6s ease" }} />
                   </svg>
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-                    <span style={{ fontSize: 'clamp(9px, 3.5cqw, 24px)', fontWeight: 900, color: workQualityRate >= 75 ? "#2563eb" : workQualityRate >= 50 ? "#ca8a04" : "#dc2626", lineHeight: 1 }}>{workQualityRate}%</span>
+                    <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: workQualityRate >= 75 ? "#2563eb" : workQualityRate >= 50 ? "#ca8a04" : "#dc2626", lineHeight: 1 }}>{workQualityRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 1.8cqw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Work<br /> Performance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Work<br className="sm:hidden block"/> Performance</span>
               </div>
 
             </div>
@@ -1469,32 +1469,32 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             internData?.specialization ||
             ""
           ) && (
-          <div className="w-full max-w-[400px] mx-auto px-4">
-            <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full relative">
+          <div className="w-full max-w-[400px] mx-auto px-2 sm:px-4">
+            <div className="flex bg-white p-1.5 rounded-[12px] sm:rounded-2xl shadow-sm border border-gray-100 w-full relative">
               <button
                 onClick={() => setHeatmapView("logbook")}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${
                   heatmapView === "logbook"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <BookOpen size={16} className="shrink-0" />
+                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span className="truncate">Logbook</span>
               </button>
               <button
                 onClick={() => setHeatmapView("commits")}
-                className={`relative z-10 flex-1 py-2.5 px-4 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${
                   heatmapView === "commits"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <GitCommit size={16} className="shrink-0" />
+                <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span className="truncate">Commits</span>
               </button>
               <div
-                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl transition-all duration-300 ease-out shadow-md"
+                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[8px] sm:rounded-xl transition-all duration-300 ease-out shadow-md"
                 style={{
                   background:
                     heatmapView === "logbook"
@@ -1549,40 +1549,43 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           {/* ── Daily / Meeting Attendance Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', paddingTop: 'clamp(4px, 1vw, 8px)', paddingBottom: 'clamp(12px, 3vw, 20px)' }}>
           {/* ── Beautiful External Toggle ── */}
-          <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 overflow-x-auto custom-scrollbar pb-2">
-            <div className="grid grid-cols-3 min-w-[400px] bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
+          <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 pb-2">
+            <div className="grid grid-cols-3 w-full bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
               <button
                 onClick={() => setActiveTab("daily")}
-                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                   activeTab === "daily"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <BookOpen size={16} className="shrink-0" />
-                <span className="whitespace-nowrap">Daily Attendance</span>
+                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="whitespace-nowrap hidden sm:inline">Daily Attendance</span>
+                <span className="whitespace-nowrap sm:hidden">Daily</span>
               </button>
               <button
                 onClick={() => setActiveTab("meeting")}
-                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                   activeTab === "meeting"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <Folder size={16} className="shrink-0" />
-                <span className="whitespace-nowrap">Meeting Attendance</span>
+                <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="whitespace-nowrap hidden sm:inline">Meeting Attendance</span>
+                <span className="whitespace-nowrap sm:hidden">Meeting</span>
               </button>
               <button
                 onClick={() => setActiveTab("team")}
-                className={`relative z-10 flex-1 py-2.5 px-2 sm:px-4 text-[12px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
                   activeTab === "team"
                     ? "text-white"
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <Users size={16} className="shrink-0" />
-                <span className="whitespace-nowrap">Team Attendance</span>
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span className="whitespace-nowrap hidden sm:inline">Team Attendance</span>
+                <span className="whitespace-nowrap sm:hidden">Team</span>
               </button>
               <div
                 className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-md"
