@@ -8,7 +8,7 @@ import InternDashboard from "../pages/InternDashboard";
 import Availability from "../pages/Availability";
 import InternLogBook from "../pages/InternLogBook";
 import DailyRecords from "../pages/DailyRecords";
-import MyLeaveRequests from "../pages/MyLeaveRequests";
+import InternLeave from "../pages/InternLeave";
 import ShortLeavePass from "../pages/ShortLeavePass";
 import SeatReservation from "../pages/SeatReservation";
 import AdminLogin from "../pages/AdminLogin";
@@ -140,7 +140,7 @@ const AppRoutes = () => {
         path="/leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests requestType="short_leave" />
+            <InternLeave requestType="short_leave" />
           </AgreementGuard>
         }
       />
@@ -148,7 +148,7 @@ const AppRoutes = () => {
         path="/study-leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests requestType="study_leave" />
+            <InternLeave requestType="study_leave" />
           </AgreementGuard>
         }
       />

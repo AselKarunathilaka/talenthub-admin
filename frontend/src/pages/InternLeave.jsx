@@ -1,9 +1,8 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
-import SectionTip from "../components/SectionTip";
 import toast from "react-hot-toast";
 import {
   FiFileText,
@@ -23,7 +22,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bike, GraduationCap } from "lucide-react";
 
-const MyLeaveRequests = ({ requestType = "short_leave" }) => {
+const InternLeave = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
@@ -189,13 +188,13 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case "Approved":
-        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-green-100 text-green-700 border border-green-200";
+        return "px-3 py-1 rounded-full text-[clamp(9px,2vw,10px)] font-black uppercase tracking-widest bg-green-100 text-green-700 border border-green-200";
       case "Denied":
-        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-100 text-rose-700 border border-rose-200";
+        return "px-3 py-1 rounded-full text-[clamp(9px,2vw,10px)] font-black uppercase tracking-widest bg-rose-100 text-rose-700 border border-rose-200";
       case "Pending":
-        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200";
+        return "px-3 py-1 rounded-full text-[clamp(9px,2vw,10px)] font-black uppercase tracking-widest bg-amber-100 text-amber-700 border border-amber-200";
       default:
-        return "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-gray-100 text-gray-700 border border-gray-200";
+        return "px-3 py-1 rounded-full text-[clamp(9px,2vw,10px)] font-black uppercase tracking-widest bg-gray-100 text-gray-700 border border-gray-200";
     }
   };
 
@@ -236,21 +235,24 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
     <Navigation>
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-          <SectionTip sectionKey={isStudyLeave ? "extendedleave" : "shortleave"} />
           {/* Header & Date Picker */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 logbook-fade-in">
-            <div>
-              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
+          <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
+            <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
+              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
                 {isStudyLeave ? (
-                  <GraduationCap className="text-[#00b4eb] h-8 w-8" />
+                  <GraduationCap className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
                 ) : (
-                  <Bike className="text-[#00b4eb] h-8 w-8" />
+                  <Bike className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
                 )}
-                {pageCopy.title}
-              </h1>
-              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
-                "{pageCopy.description}"
-              </p>
+              </div>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-[clamp(20px,5vw,28px)] font-[800] text-[#1a1a2e] leading-tight tracking-tight">
+                  {pageCopy.title}
+                </h1>
+                <p className="text-[#6b7280] mt-[2px] text-[clamp(11px,2.5vw,14px)] font-medium">
+                  {pageCopy.description}
+                </p>
+              </div>
             </div>
 
             <motion.div 
@@ -264,7 +266,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                   <FiCalendar className="text-[#00b4eb] h-4 w-4" />
                 </div>
                 <div className="flex-1">
-                  <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wider block">Filter Date</label>
+                  <label className="text-[clamp(8px,2vw,9px)] font-bold text-gray-400 uppercase tracking-wider block">Filter Date</label>
                   <div className="flex items-center">
                     <input 
                       type="date" 
@@ -275,7 +277,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                         setPagination((prev) => ({ ...prev, page: 1 }));
                         setActiveTab("list");
                       }} 
-                      className="bg-transparent text-xs font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
+                      className="bg-transparent text-[clamp(10px,2vw,12px)] font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
                     />
                     {selectedDate && (
                       <button 
@@ -309,7 +311,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                   }
                   setActiveTab("new");
                 }} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
                   activeTab === "new" 
                     ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" 
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
@@ -319,7 +321,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
               </button>
               <button 
                 onClick={() => setActiveTab("list")} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
                   activeTab === "list" 
                     ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" 
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
@@ -360,8 +362,8 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                           <FiFileText className="h-8 w-8 text-slate-300" />
                         </div>
-                        <h4 className="text-lg font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
-                        <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
+                        <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
+                        <p className="text-gray-500 text-[clamp(11px,2.5vw,14px)] mt-1 max-w-sm mx-auto">
                           {isToday 
                             ? pageCopy.emptyToday 
                             : selectedDate 
@@ -379,7 +381,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                       </div>
                     ) : (
                       <>
-                        <h3 className="text-xl font-extrabold text-gray-800 tracking-tight mb-4 px-2">
+                        <h3 className="text-[clamp(16px,4vw,20px)] font-extrabold text-gray-800 tracking-tight mb-[clamp(12px,3vw,16px)] px-2">
                           {selectedDate ? `Requests for ${formatDisplayDate(selectedDate)}` : "All Requests"}
                         </h3>
                         {leaveRequests.map((request) => (
@@ -406,12 +408,12 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                    <FiClock size={24} />}
                                 </div>
                                 <div>
-                                  <h4 className="text-lg font-bold text-gray-900 leading-tight">
+                                  <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-900 leading-tight">
                                     {isStudyLeave
                                       ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
                                       : request.leaveTime}
                                   </h4>
-                                  <p className="text-sm font-medium text-gray-500 mt-0.5">
+                                  <p className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-500 mt-0.5">
                                     {request.purpose} Purpose
                                   </p>
                                 </div>
@@ -450,20 +452,20 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                       <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                                         <div className="flex items-center gap-2 mb-2">
                                           <FiInfo className="text-gray-400" />
-                                          <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Reason</span>
+                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase tracking-wider">Reason</span>
                                         </div>
-                                        <p className="text-sm text-gray-800 font-medium">{request.reason}</p>
+                                        <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.reason}</p>
                                       </div>
 
                                       <div className="space-y-3">
                                         <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-xs font-bold text-gray-500 uppercase">National ID</span>
-                                          <span className="text-sm font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
+                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">National ID</span>
+                                          <span className="text-[clamp(11px,2.5vw,14px)] font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
                                         </div>
                                         
                                         <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-xs font-bold text-gray-500 uppercase">Submitted At</span>
-                                          <span className="text-sm font-medium text-gray-600">{formatDate(request.submittedAt)}</span>
+                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">Submitted At</span>
+                                          <span className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-600">{formatDate(request.submittedAt)}</span>
                                         </div>
                                       </div>
                                     </div>
@@ -472,8 +474,8 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                       <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
                                         <FiShield className="text-[#0056a2] mt-0.5" size={18} />
                                         <div>
-                                          <span className="text-xs font-bold text-[#0056a2] uppercase tracking-wider block mb-1">Admin Response</span>
-                                          <p className="text-sm text-gray-800 font-medium">{request.adminResponse}</p>
+                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-[#0056a2] uppercase tracking-wider block mb-1">Admin Response</span>
+                                          <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.adminResponse}</p>
                                         </div>
                                       </div>
                                     )}
@@ -482,7 +484,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                       <div className="flex items-center gap-2 pt-2">
                                         <button
                                           onClick={(e) => { e.stopPropagation(); handleViewDocument(request._id); }}
-                                          className="text-sm px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold flex items-center gap-2 rounded-xl transition-all shadow-sm"
+                                          className="text-[clamp(11px,2.5vw,14px)] px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold flex items-center gap-2 rounded-xl transition-all shadow-sm"
                                         >
                                           <FiEye className="text-[#00b4eb]" /> View Proof Document
                                         </button>
@@ -494,7 +496,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                                       {request.status === "Pending" && (
                                         <button
                                           onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
-                                          className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-sm shadow-sm"
+                                          className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-[clamp(11px,2.5vw,14px)] shadow-sm"
                                         >
                                           <FiTrash2 /> Delete Request
                                         </button>
@@ -523,17 +525,17 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                             <button
                               onClick={() => setPagination((prev) => ({ ...prev, page: prev.page - 1 }))}
                               disabled={pagination.page === 1}
-                              className="px-4 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+                              className="px-4 py-2 rounded-xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
                             >
                               Previous
                             </button>
-                            <span className="text-sm font-bold text-gray-500 bg-white px-4 py-2 rounded-xl border border-gray-100">
+                            <span className="text-[clamp(11px,2.5vw,14px)] font-bold text-gray-500 bg-white px-4 py-2 rounded-xl border border-gray-100">
                               Page {pagination.page} of {pagination.totalPages}
                             </span>
                             <button
                               onClick={() => setPagination((prev) => ({ ...prev, page: prev.page + 1 }))}
                               disabled={pagination.page === pagination.totalPages}
-                              className="px-4 py-2 rounded-xl font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
+                              className="px-4 py-2 rounded-xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 shadow-sm"
                             >
                               Next
                             </button>
@@ -567,7 +569,7 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] to-[#0056a2]"></div>
               
               <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-slate-50/50">
-                <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                <h3 className="text-[clamp(14px,3.5vw,18px)] font-extrabold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-[#0056a2]" /> Document Viewer
                 </h3>
                 <button
@@ -614,13 +616,13 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
                 <a
                   href={documentViewer.url}
                   download
-                  className="px-6 py-2.5 text-sm font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
+                  className="px-6 py-2.5 text-[clamp(11px,2.5vw,14px)] font-bold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors shadow-sm"
                 >
                   Download
                 </a>
                 <button
                   onClick={closeDocumentViewer}
-                  className="px-6 py-2.5 text-sm font-bold text-white bg-slate-800 rounded-xl hover:bg-slate-900 transition-colors shadow-sm"
+                  className="px-6 py-2.5 text-[clamp(11px,2.5vw,14px)] font-bold text-white bg-slate-800 rounded-xl hover:bg-slate-900 transition-colors shadow-sm"
                 >
                   Close Viewer
                 </button>
@@ -633,5 +635,5 @@ const MyLeaveRequests = ({ requestType = "short_leave" }) => {
   );
 };
 
-export default MyLeaveRequests;
+export default InternLeave;
 
