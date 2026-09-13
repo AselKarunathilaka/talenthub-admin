@@ -679,6 +679,24 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
       };
     }
 
+    // TalentTrail - Project Meeting
+    if (normalizedMethod === "talenttrail") {
+      return {
+        label: "Project",
+        className: "bg-blue-50 text-blue-700 border-blue-100",
+        Icon: Folder,
+      };
+    }
+
+    // TalentTrail - Team Meeting
+    if (normalizedMethod === "talenttrail-team") {
+      return {
+        label: "Team",
+        className: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100",
+        Icon: Users,
+      };
+    }
+
     return {
       label: "Unknown",
       className: "bg-gray-50 text-gray-600 border-gray-100",
@@ -844,7 +862,8 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
       const hours = Math.floor((msLeft / (1000 * 60 * 60)) % 24);
       const mins = Math.floor((msLeft / (1000 * 60)) % 60);
       const secs = Math.floor((msLeft / 1000) % 60);
-      setCountdownTime({ days, hours, mins, secs });
+      const totalDaysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+      setCountdownTime({ days, hours, mins, secs, totalDaysLeft });
     };
     tick();
     const interval = setInterval(tick, 1000);
@@ -951,10 +970,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                   {internData?.Trainee_ID || internData?.internId || "ID Not Assigned"}
                 </span>
 
-                {countdownTime?.days > 0 ? (
+                {countdownTime?.totalDaysLeft > 0 ? (
                   <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
                     <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(12px, 2.8vw, 14px)', height: 'clamp(12px, 2.8vw, 14px)'}} />
-                    {countdownTime.days} Days Left
+                    {countdownTime.totalDaysLeft} Days Left
                   </span>
                 ) : internData?.Training_Status === "Ended" ? (
                   <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(2px, 0.8vw, 6px)', padding: 'clamp(2px, 0.5vw, 6px) clamp(4px, 1.2vw, 12px)', fontSize: 'clamp(10px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
@@ -1190,8 +1209,31 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             <div className="bento-card-body flex-1">
               {(() => {
                 const merged = [
-                  ...(filteredAttendance || []).map(a => ({ ...a, activityType: 'Daily Logbook', icon: <Building size={11} /> })),
-                  ...(meetingAttendance || []).map(a => ({ ...a, activityType: 'Meeting', icon: <Users size={11} /> }))
+                  ...(filteredAttendance || [])
+                    .filter(a => !a.attendanceMethod || !a.attendanceMethod.toLowerCase().includes('logbook'))
+                    .map(a => ({ 
+                      ...a, 
+                      activityType: a.attendanceMethod ? `Daily Attendance (${a.attendanceMethod})` : 'Daily Attendance', 
+                      icon: <CheckCircle size={11} /> 
+                    })),
+                  ...(logbookRecords || []).map(r => {
+                    const rDate = new Date(r.attendanceTime || r.createdAt || r.date);
+                    const formattedTime = !isNaN(rDate.getTime()) 
+                      ? rDate.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Colombo' }) 
+                      : "N/A";
+                    return {
+                      date: r.attendanceTime || r.createdAt || r.date,
+                      status: (r.status === 'leave' || r.status === 'study_leave') ? 'Absent' : 'Present',
+                      time: formattedTime,
+                      activityType: 'Daily Logbook',
+                      icon: <Building size={11} />
+                    };
+                  }),
+                  ...(meetingAttendance || []).map(a => ({ 
+                    ...a, 
+                    activityType: a.attendanceMethod ? `Meeting Attendance (${a.attendanceMethod})` : 'Meeting Attendance', 
+                    icon: <Users size={11} /> 
+                  }))
                 ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
                 return merged && merged.length > 0 ? (
@@ -1528,7 +1570,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                     : "text-gray-500 hover:text-gray-700"
                 }`}
               >
-                <Users size={16} className="shrink-0" />
+                <Folder size={16} className="shrink-0" />
                 <span className="whitespace-nowrap">Meeting Attendance</span>
               </button>
               <button
@@ -1551,7 +1593,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
                       : activeTab === "meeting"
                       ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                      : "linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)",
+                      : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                   left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
                 }}
               />

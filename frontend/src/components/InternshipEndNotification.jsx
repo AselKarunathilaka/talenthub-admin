@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertOctagon, AlertTriangle, Clock, Calendar } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, Clock, Calendar, X } from 'lucide-react';
 
 /**
  * InternshipEndNotification Component
@@ -23,44 +23,48 @@ const InternshipEndNotification = ({ notification, onDismiss }) => {
   const getNotificationStyling = (urgency) => {
     const styles = {
       critical: {
-        containerClass: 'bg-red-50/80 border border-red-100 shadow-sm',
-        textColor: 'text-red-900',
-        subTextColor: 'text-red-700',
-        iconColor: 'text-red-600 bg-red-100/50',
-        icon: <AlertOctagon className="w-6 h-6" />,
-        buttonClass: 'bg-white text-red-700 hover:bg-red-50 border border-red-200/60 shadow-sm',
+        containerClass: 'bg-gradient-to-br from-red-100 via-red-100/70 to-rose-100 border border-red-200/60 shadow-[0_12px_40px_rgb(220,38,38,0.35)]',
+        textColor: 'text-red-950',
+        subTextColor: 'text-red-800/80',
+        iconColor: 'text-red-600 bg-white shadow-sm ring-1 ring-red-100',
+        icon: <AlertOctagon className="w-5 h-5" />,
+        buttonClass: 'bg-gradient-to-r from-red-600 to-rose-500 text-white hover:from-red-500 hover:to-rose-400 shadow-md hover:shadow-red-500/25 border-0',
         progressBg: 'bg-red-200/50',
-        progressFill: 'bg-red-500'
+        progressFill: 'bg-gradient-to-r from-red-500 to-rose-500 shadow-[0_0_12px_rgba(239,68,68,0.6)]',
+        accentColor: 'text-red-600'
       },
       high: {
-        containerClass: 'bg-orange-50/80 border border-orange-100 shadow-sm',
-        textColor: 'text-orange-900',
-        subTextColor: 'text-orange-700',
-        iconColor: 'text-orange-600 bg-orange-100/50',
-        icon: <AlertTriangle className="w-6 h-6" />,
-        buttonClass: 'bg-white text-orange-700 hover:bg-orange-50 border border-orange-200/60 shadow-sm',
+        containerClass: 'bg-gradient-to-br from-amber-100 via-orange-100/70 to-yellow-100 border border-orange-200/60 shadow-[0_12px_40px_rgb(249,115,22,0.35)]',
+        textColor: 'text-orange-950',
+        subTextColor: 'text-orange-800/80',
+        iconColor: 'text-orange-600 bg-white shadow-sm ring-1 ring-orange-100',
+        icon: <AlertTriangle className="w-5 h-5" />,
+        buttonClass: 'bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-400 hover:to-amber-400 shadow-md hover:shadow-orange-500/25 border-0',
         progressBg: 'bg-orange-200/50',
-        progressFill: 'bg-orange-500'
+        progressFill: 'bg-gradient-to-r from-orange-500 to-amber-500 shadow-[0_0_12px_rgba(249,115,22,0.6)]',
+        accentColor: 'text-orange-600'
       },
       medium: {
-        containerClass: 'bg-yellow-50/80 border border-yellow-100 shadow-sm',
-        textColor: 'text-yellow-900',
-        subTextColor: 'text-yellow-700',
-        iconColor: 'text-yellow-600 bg-yellow-100/50',
-        icon: <Clock className="w-6 h-6" />,
-        buttonClass: 'bg-white text-yellow-700 hover:bg-yellow-50 border border-yellow-200/60 shadow-sm',
+        containerClass: 'bg-gradient-to-br from-yellow-100 via-amber-100/70 to-yellow-100 border border-yellow-200/60 shadow-[0_12px_40px_rgb(234,179,8,0.35)]',
+        textColor: 'text-yellow-950',
+        subTextColor: 'text-yellow-800/80',
+        iconColor: 'text-yellow-600 bg-white shadow-sm ring-1 ring-yellow-100',
+        icon: <Clock className="w-5 h-5" />,
+        buttonClass: 'bg-gradient-to-r from-yellow-500 to-amber-500 text-white hover:from-yellow-400 hover:to-amber-400 shadow-md hover:shadow-yellow-500/25 border-0',
         progressBg: 'bg-yellow-200/50',
-        progressFill: 'bg-yellow-500'
+        progressFill: 'bg-gradient-to-r from-yellow-400 to-amber-500 shadow-[0_0_12px_rgba(234,179,8,0.6)]',
+        accentColor: 'text-yellow-600'
       },
       low: {
-        containerClass: 'bg-blue-50/80 border border-blue-100 shadow-sm',
-        textColor: 'text-blue-900',
-        subTextColor: 'text-blue-700',
-        iconColor: 'text-blue-600 bg-blue-100/50',
-        icon: <Calendar className="w-6 h-6" />,
-        buttonClass: 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200/60 shadow-sm',
+        containerClass: 'bg-gradient-to-br from-blue-100 via-indigo-100/70 to-blue-100 border border-blue-200/60 shadow-[0_12px_40px_rgb(59,130,246,0.35)]',
+        textColor: 'text-blue-950',
+        subTextColor: 'text-blue-800/80',
+        iconColor: 'text-blue-600 bg-white shadow-sm ring-1 ring-blue-100',
+        icon: <Calendar className="w-5 h-5" />,
+        buttonClass: 'bg-gradient-to-r from-blue-600 to-indigo-500 text-white hover:from-blue-500 hover:to-indigo-400 shadow-md hover:shadow-blue-500/25 border-0',
         progressBg: 'bg-blue-200/50',
-        progressFill: 'bg-blue-500'
+        progressFill: 'bg-gradient-to-r from-blue-500 to-indigo-500 shadow-[0_0_12px_rgba(59,130,246,0.6)]',
+        accentColor: 'text-blue-600'
       }
     };
     
@@ -72,7 +76,7 @@ const InternshipEndNotification = ({ notification, onDismiss }) => {
   const formatEndDate = (date) => {
     return new Date(date).toLocaleDateString('en-GB', {
       day: '2-digit',
-      month: '2-digit',
+      month: 'short',
       year: 'numeric'
     });
   };
@@ -80,52 +84,65 @@ const InternshipEndNotification = ({ notification, onDismiss }) => {
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0, y: -20, scale: 0.98 }}
+        initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -20, scale: 0.98 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className={`relative overflow-hidden rounded-2xl p-5 mb-6 ${styling.containerClass} backdrop-blur-sm`}
+        exit={{ opacity: 0, y: -20, scale: 0.95 }}
+        transition={{ duration: 0.5, type: "spring", bounce: 0.4 }}
+        className={`relative overflow-hidden rounded-3xl p-4 sm:p-5 mb-8 ${styling.containerClass} backdrop-blur-xl group`}
       >
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        {/* Subtle background glow effect */}
+        <div className={`absolute top-0 right-0 w-64 h-64 bg-white/40 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none`} />
+
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 relative z-10">
           <div className="flex items-start gap-4">
-            <div className={`p-3 rounded-2xl flex-shrink-0 ${styling.iconColor}`}>
+            <motion.div 
+              initial={{ rotate: -10, scale: 0.9 }}
+              animate={{ rotate: 0, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+              className={`p-2.5 rounded-2xl flex-shrink-0 ${styling.iconColor} relative`}
+            >
               {styling.icon}
-            </div>
-            <div className="flex-1 space-y-1">
-              <h3 className={`font-semibold text-lg tracking-tight ${styling.textColor}`}>
+              <div className={`absolute inset-0 rounded-2xl ring-2 ring-white/50 pointer-events-none`} />
+            </motion.div>
+            
+            <div className="flex-1 space-y-1 pt-0.5">
+              <h3 className={`font-extrabold text-lg sm:text-xl tracking-tight ${styling.textColor} flex items-center gap-2`}>
                 Internship Ending Soon
               </h3>
-              <p className={`text-sm font-medium ${styling.subTextColor} leading-relaxed`}>
+              <p className={`text-sm font-semibold ${styling.subTextColor} leading-snug max-w-xl`}>
                 {notification.message}
               </p>
-              <div className={`text-xs font-medium ${styling.subTextColor} opacity-80 flex items-center gap-1.5 pt-1`}>
-                <Calendar className="w-3.5 h-3.5" />
-                End date: {formatEndDate(notification.endDate)}
+              <div className={`text-xs font-bold ${styling.subTextColor} opacity-90 flex items-center gap-1.5 pt-1.5`}>
+                <Calendar className="w-3.5 h-3.5 opacity-70" />
+                <span>End date: <span className={styling.textColor}>{formatEndDate(notification.endDate)}</span></span>
               </div>
             </div>
           </div>
           
           <button
             onClick={handleDismiss}
-            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex-shrink-0 active:scale-95 ${styling.buttonClass}`}
+            className={`group/btn relative w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 flex-shrink-0 active:scale-95 ${styling.buttonClass} overflow-hidden`}
           >
-            Dismiss
+            <span className="relative z-10 flex items-center justify-center gap-1.5">
+              <X className="w-3.5 h-3.5 opacity-70 transition-transform group-hover/btn:rotate-90" />
+              Dismiss
+            </span>
           </button>
         </div>
 
         {/* Progress bar for visual representation */}
         {notification.daysRemaining <= 30 && (
-          <div className="mt-6">
-            <div className="flex justify-between items-end text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
+          <div className="mt-5 relative z-10">
+            <div className="flex justify-between items-end text-xs font-black text-gray-500/80 uppercase tracking-widest mb-3 px-1">
               <span>Days remaining</span>
-              <span className={`text-sm ${styling.textColor}`}>{notification.daysRemaining}</span>
+              <span className={`text-sm ${styling.accentColor}`}>{notification.daysRemaining}</span>
             </div>
-            <div className={`w-full ${styling.progressBg} rounded-full h-1.5 overflow-hidden`}>
+            <div className={`w-full ${styling.progressBg} rounded-full h-2.5 overflow-visible relative shadow-inner`}>
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${Math.max(0, (notification.daysRemaining / 30) * 100)}%` }}
-                transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                className={`h-full rounded-full ${styling.progressFill}`}
+                transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
+                className={`absolute top-0 left-0 h-full rounded-full ${styling.progressFill}`}
               />
             </div>
           </div>
