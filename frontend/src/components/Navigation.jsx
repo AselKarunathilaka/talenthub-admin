@@ -23,6 +23,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   PanelLeftOpen,
+  ExternalLink,
 } from "lucide-react";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import Layout from "./Layout";
@@ -225,6 +226,14 @@ const Navigation = ({ children }) => {
     );
   };
 
+  const handleTalentTrailClick = () => {
+    window.open(
+      "https://talenttrail.slt.lk/",
+      "_blank",
+      "noopener,noreferrer",
+    );
+  };
+
   const navLinks = [
     { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
     { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" /> },
@@ -232,6 +241,7 @@ const Navigation = ({ children }) => {
     { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" /> },
     { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" /> },
     { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" /> },
+    { onClick: handleTalentTrailClick, label: "Talent Trail", icon: <ExternalLink className="h-5 w-5" />, isExternal: true },
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-5 w-5" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <Youtube className="h-5 w-5" />, isExternal: true },
   ];

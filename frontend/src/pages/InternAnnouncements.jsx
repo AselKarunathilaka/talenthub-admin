@@ -200,15 +200,19 @@ const InternAnnouncements = () => {
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1200px] w-full">
           <SectionTip sectionKey="announcements" />
           {/* Page Header */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6 logbook-fade-in">
-            <div>
-              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
-                <Bell className="text-[#00b4eb] h-8 w-8" />
-                Announcements
-              </h1>
-              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
-                "Important notices and updates from management"
-              </p>
+          <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
+            <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
+              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                <Bell className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
+              </div>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-[clamp(20px,5vw,28px)] font-[800] text-[#1a1a2e] leading-tight tracking-tight">
+                  Announcements
+                </h1>
+                <p className="text-[#6b7280] mt-[2px] text-[clamp(11px,2.5vw,14px)] font-medium">
+                  Important notices and updates from management
+                </p>
+              </div>
             </div>
           </div>
 
