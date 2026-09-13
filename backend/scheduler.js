@@ -4,6 +4,9 @@
 const cron = require("node-cron");
 const { exec } = require("child_process");
 const path = require("path");
+const AutoCheckoutScheduler = require("./services/autoCheckoutScheduler");
+
+AutoCheckoutScheduler.init();
 
 const SCRIPTS_DIR = path.join(__dirname, "scripts");
 

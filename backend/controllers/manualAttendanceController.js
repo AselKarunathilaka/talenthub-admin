@@ -96,12 +96,14 @@ exports.markManualAttendance = async (req, res) => {
     const now = new Date();
 
     const type = mode === "daily" ? "manual_daily" : "manual_meeting";
+    const checkOutTime = mode === "daily" ? moment(attendanceDate).tz(TZ).set({ hour: 16, minute: 30, second: 0, millisecond: 0 }).toDate() : undefined;
 
     const record = {
       date: attendanceDate,
       status,
       type,
       timeMarked: now,
+      ...(mode === "daily" && { checkOutTime }),
       ...(mode === "meeting" && { meetingName: meetingName.trim() }),
     };
 
@@ -140,8 +142,8 @@ exports.markManualAttendance = async (req, res) => {
         attendanceTime: now,
         markType: type, // "manual_daily"
         status: status.toLowerCase(),
-        isCheckout: false,
-        checkOutTime: null,
+        isCheckout: true,
+        checkOutTime: checkOutTime,
         sessionId: null,
         source: "manual",
       });
@@ -248,12 +250,15 @@ exports.bulkMarkAttendance = async (req, res) => {
           continue;
         }
 
+        const checkOutTime = mode === "daily" ? moment(attendanceDate).tz(TZ).set({ hour: 16, minute: 30, second: 0, millisecond: 0 }).toDate() : undefined;
+
         // Build attendance record
         const record = {
           date: attendanceDate,
           status,
           type,
           timeMarked: now,
+          ...(mode === "daily" && { checkOutTime }),
           ...(mode === "meeting" && { meetingName: meetingName.trim() }),
         };
 
@@ -288,8 +293,8 @@ exports.bulkMarkAttendance = async (req, res) => {
             attendanceTime: now,
             markType: type,
             status: status.toLowerCase(),
-            isCheckout: false,
-            checkOutTime: null,
+            isCheckout: true,
+            checkOutTime: checkOutTime,
             sessionId: null,
             source: "manual",
           });
@@ -498,7 +503,32 @@ exports.approveManualRequest = async (req, res) => {
     // Call attendanceService to mark the attendance officially
     const intern = request.internId;
     if (request.attendanceType === "daily") {
-       await attendanceService.markAttendanceAndNotify(intern._id, "Present");
+       const attendanceDateStr = moment(request.date || new Date()).tz(TZ).format("YYYY-MM-DD");
+       const attendanceDate = moment.tz(attendanceDateStr, "YYYY-MM-DD", TZ).startOf("day").toDate();
+       const checkOutTime = moment.tz(`${attendanceDateStr}T16:30:00`, TZ).toDate();
+       
+       intern.attendance.push({
+         date: attendanceDate,
+         status: "Present",
+         type: "manual_daily",
+         timeMarked: new Date(),
+         checkOutTime: checkOutTime
+       });
+       await intern.save();
+       
+       recordDailyAttendance({
+         internId: intern._id,
+         traineeId: intern.Trainee_ID || intern.traineeId || "",
+         traineeName: intern.Trainee_Name || "",
+         date: attendanceDateStr,
+         attendanceTime: new Date(),
+         markType: "manual_daily",
+         status: "present",
+         isCheckout: true,
+         checkOutTime: checkOutTime,
+         sessionId: null,
+         source: "manual",
+       });
     } else if (request.attendanceType === "meeting") {
        // Manual meeting logic - pushing directly for simplicity as per manual controller
        const record = {

@@ -203,12 +203,24 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           response.attendance?.filter((entry) => entry.isMeeting) ||
           [];
           
-        const trueMeetingData = allMeetingData.filter(e => e.attendanceMethod !== "talenttrail" && e.attendanceMethod !== "talenttrail-team");
+        const rawTrueMeetingData = allMeetingData.filter(e => e.attendanceMethod !== "talenttrail" && e.attendanceMethod !== "talenttrail-team");
+        const deduplicatedMeetingData = [];
+        const seenMeetingKeys = new Set();
+        rawTrueMeetingData.forEach(entry => {
+          const d = new Date(entry.date);
+          const dateStr = !isNaN(d.getTime()) ? `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` : String(entry.date);
+          const key = `${dateStr}_${entry.meetingName || entry.projectName || entry.meetingTitle || "Unknown"}`.toLowerCase();
+          if (!seenMeetingKeys.has(key)) {
+            seenMeetingKeys.add(key);
+            deduplicatedMeetingData.push(entry);
+          }
+        });
+
         const trueProjectData = allMeetingData.filter(e => e.attendanceMethod === "talenttrail");
         const trueTeamData = allMeetingData.filter(e => e.attendanceMethod === "talenttrail-team");
 
-        setMeetingAttendance(trueMeetingData);
-        setFilteredMeetingAttendance(trueMeetingData);
+        setMeetingAttendance(deduplicatedMeetingData);
+        setFilteredMeetingAttendance(deduplicatedMeetingData);
         setProjectAttendance(trueProjectData);
         setTeamAttendance(trueTeamData);
 
@@ -218,10 +230,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
             : String(entry.date || "");
         };
-        const meetingPresentCount = trueMeetingData.filter(
+        const meetingPresentCount = deduplicatedMeetingData.filter(
           (entry) => entry.status === "Present",
         ).length;
-        const meetingAbsentCount = trueMeetingData.filter(
+        const meetingAbsentCount = deduplicatedMeetingData.filter(
           (entry) => entry.status === "Absent",
         ).length;
 
@@ -1639,9 +1651,9 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                                     </div>
                                   </td>
                                   <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${methodMeta.className}`} title={methodMeta.label}>
+                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
                                       <MethodIcon size={12} className="shrink-0" />
-                                      <span className="hidden sm:inline">{methodMeta.label}</span>
+                                      <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
                                     </span>
                                   </td>
                                   <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
@@ -1737,9 +1749,9 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                                     </div>
                                   </td>
                                   <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${methodMeta.className}`} title={methodMeta.label}>
+                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
                                       <MethodIcon size={12} className="shrink-0" />
-                                      <span className="hidden sm:inline">{methodMeta.label}</span>
+                                      <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
                                     </span>
                                   </td>
                                   <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">

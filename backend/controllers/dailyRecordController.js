@@ -53,6 +53,7 @@ async function ensureDailyAttendance(intern, dateStr) {
     status: "Present",
     type: "daily",
     timeMarked: now,
+    checkOutTime: now,
   });
   await intern.save();
 
@@ -65,8 +66,8 @@ async function ensureDailyAttendance(intern, dateStr) {
     attendanceTime: now,
     markType: "daily",
     status: "present",
-    isCheckout: false,
-    checkOutTime: null,
+    isCheckout: true,
+    checkOutTime: now,
     sessionId: null,
     source: "logbook",
   });
@@ -161,7 +162,7 @@ const createDailyRecord = async (req, res) => {
       status: status || "working",
       attendance: "present",
       attendanceTime: existingAttendance?.timeMarked || now,
-      checkOutTime: existingAttendance?.checkOutTime || null,
+      checkOutTime: existingAttendance?.checkOutTime || (existingAttendance ? null : now),
     });
 
     await newRecord.save();
