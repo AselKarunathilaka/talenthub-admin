@@ -1,4 +1,4 @@
-/**
+fs.writeFileSync('g:/github/TalentHub/frontend/src/pages/TalentHubRestrictions.jsx', `/**
  * TalentHubRestrictions.jsx
  *
  * Admin page – view and manage interns restricted from TalentHub access
@@ -7,11 +7,11 @@
  * Route: /admin/talenthub-restrictions
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import AdminNavigation from "../components/AdminNavigation";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShieldAlert } from "lucide-react";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import AdminNavigation from '../components/AdminNavigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Lock, ShieldAlert } from 'lucide-react';
 import {
   FaLock,
   FaLockOpen,
@@ -27,40 +27,43 @@ import {
   FaEye,
   FaEyeSlash,
   FaEnvelope,
-  FaBriefcase
-} from "react-icons/fa";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { API_BASE_URL } from "../api/apiConfig";
+  FaBriefcase,
+  FaSync
+} from 'react-icons/fa';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import Swal from 'sweetalert2';
+import { API_BASE_URL } from '../api/apiConfig';
+import toast from 'react-hot-toast';
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Config / helpers                                                           */
 /* ─────────────────────────────────────────────────────────────────────────── */
 const BRAND = {
-  primary: "#0056a2",
-  accent: "#00b4eb",
-  danger: "#ef4444",
-  success: "#50b748",
-  warn: "#f59e0b",
+  primary: '#0056a2',
+  accent: '#00b4eb',
+  danger: '#ef4444',
+  success: '#50b748',
+  warn: '#f59e0b',
 };
 
 const fmt = (dateStr) => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 
 const fmtDate = (dateStr) => {
-  if (!dateStr) return "—";
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
   });
 };
 
@@ -103,11 +106,11 @@ const HistoryModal = ({ intern, onClose }) => (
             intern.restrictionHistory.map((h, i) => (
               <div
                 key={i}
-                className={`logres-history-entry ${h.liftedAt ? "logres-history-entry--lifted" : "logres-history-entry--active"}`}
+                className={`logres-history-entry ${h.liftedAt ? 'logres-history-entry--lifted' : 'logres-history-entry--active'}`}
               >
                 <div className="logres-history-entry__badge">
                   {h.liftedAt ? (
-                    <FaCheckCircle style={{ color: BRAND.success }} />
+                    <FaLockOpen style={{ color: BRAND.success }} />
                   ) : (
                     <FaLock style={{ color: BRAND.danger }} />
                   )}
@@ -166,7 +169,168 @@ const HistoryModal = ({ intern, onClose }) => (
   </AnimatePresence>
 );
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  Lift Modal                                                                 */
+/* ─────────────────────────────────────────────────────────────────────────── */
+const DEFAULT_LIFT_REASON =
+  'Granted grace period to finalize project allocation with supervisor.';
 
+const LiftModal = ({ intern, onClose, onSuccess }) => {
+  const [reason, setReason] = useState(DEFAULT_LIFT_REASON);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  const adminInfo = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('adminInfo') || '{}'); }
+    catch { return {}; }
+  }, []);
+
+  const handleLift = async () => {
+    if (!reason.trim() || reason.trim().length < 10) {
+      setError('Please provide a detailed reason (at least 10 characters).');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/talenthub-restrictions/${intern.id || intern._id}/lift`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminInfo.token}` },
+        body: JSON.stringify({ liftReason: reason.trim(), days: 5 }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'Failed to grant access');
+      onSuccess(intern.id || intern._id);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="logres-modal-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="logres-modal logres-modal--lift"
+          initial={{ opacity: 0, scale: 0.92, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.92, y: 20 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="logres-modal__header">
+            <div className="logres-modal__title-row">
+              <FaLockOpen style={{ color: BRAND.warn }} />
+              <h3>Grant Temporary Access</h3>
+            </div>
+            <button className="logres-modal__close" onClick={onClose}>
+              <FaTimes />
+            </button>
+          </div>
+
+          <div className="logres-lift-summary">
+            <div
+              className="logres-lift-summary__avatar"
+              style={{ padding: 0, overflow: 'hidden', position: 'relative' }}
+            >
+              {intern.googlePictureUrl ? (
+                <img
+                  src={intern.googlePictureUrl}
+                  alt={intern.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  {(intern.name || '?')[0].toUpperCase()}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="logres-lift-summary__name">{intern.name}</p>
+              <p className="logres-lift-summary__meta">
+                {intern.traineeId} · {intern.email}
+              </p>
+              <p className="logres-lift-summary__restricted-since">
+                <FaCalendarAlt style={{ marginRight: 4, fontSize: 11 }} />
+                Restricted since {fmt(intern.talentHubRestrictedAt)}
+              </p>
+            </div>
+          </div>
+
+          <div className="logres-restriction-reason-box">
+            <FaInfoCircle style={{ flexShrink: 0, color: BRAND.warn }} />
+            <p><strong>5-Day Grace Period:</strong> If the intern is still not enrolled in a project after 5 days, access will be automatically restricted again.</p>
+          </div>
+
+          <div className="logres-lift-form">
+            <label className="logres-lift-form__label">
+              Reason for override <span style={{ color: BRAND.danger }}>*</span>
+            </label>
+            <p className="logres-lift-form__hint">
+              Record the reason for granting temporary access.
+            </p>
+            <textarea
+              className="logres-lift-form__textarea"
+              rows={3}
+              value={reason}
+              onChange={(e) => {
+                setReason(e.target.value);
+                setError(null);
+              }}
+            />
+            {error && (
+              <p className="logres-lift-form__error">
+                <FaExclamationTriangle style={{ marginRight: 6 }} />
+                {error}
+              </p>
+            )}
+          </div>
+
+          <div className="logres-modal__actions">
+            <button
+              className="logres-btn logres-btn--ghost"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              className="logres-btn logres-btn--lift"
+              style={{ background: `linear-gradient(135deg, ${BRAND.warn}, #d97706)` }}
+              onClick={handleLift}
+              disabled={loading || !reason.trim()}
+            >
+              {loading ? (
+                <>
+                  <FaSpinner className="logres-spin" style={{ marginRight: 6 }} /> Granting…
+                </>
+              ) : (
+                <>
+                  <FaLockOpen style={{ marginRight: 6 }} /> Grant 5-Day Access
+                </>
+              )}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Main Page Component                                                        */
@@ -181,25 +345,26 @@ const TalentHubRestrictions = () => {
     enrolledCount: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("restricted");
+  const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('restricted');
+  const [liftTarget, setLiftTarget] = useState(null);
   const [historyTarget, setHistoryTarget] = useState(null);
   const [toastMsg, setToastMsg] = useState(null);
 
-  // Confirm popup state (Re-Restrict / Lift)
+  // Confirm popup state (Re-Restrict)
   const [confirmTarget, setConfirmTarget] = useState(null);
-  const [confirmType, setConfirmType] = useState(null); // 'lift' or 'revoke'
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [confirmShowPw, setConfirmShowPw] = useState(false);
-  const [confirmError, setConfirmError] = useState("");
+  const [confirmError, setConfirmError] = useState('');
 
   const adminInfo = useMemo(() => {
-    try { return JSON.parse(localStorage.getItem("adminInfo") || "{}"); }
+    try { return JSON.parse(localStorage.getItem('adminInfo') || '{}'); }
     catch { return {}; }
   }, []);
 
-  const showToast = (msg, type = "success") => {
+  const showToast = (msg, type = 'success') => {
     setToastMsg({ msg, type });
     setTimeout(() => setToastMsg(null), 3500);
   };
@@ -210,16 +375,16 @@ const TalentHubRestrictions = () => {
     try {
       const res = await fetch(`${API_BASE_URL}/admin/talenthub-restrictions?filter=all&search=`, {
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
           Authorization: `Bearer ${adminInfo.token}`,
         },
       });
       if (!res.ok) {
         if (res.status === 401 || res.status === 403) {
-          navigate("/admin-login");
+          navigate('/admin-login');
           return;
         }
-        throw new Error("Failed to load restricted interns");
+        throw new Error('Failed to load restricted interns');
       }
       const json = await res.json();
       if (json.success) {
@@ -237,33 +402,55 @@ const TalentHubRestrictions = () => {
     fetchRestrictions();
   }, [fetchRestrictions]);
 
+  const handleLiveSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/admin/talenthub-restrictions/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminInfo.token}` },
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast('Restrictions synchronized!', 'success');
+        await fetchRestrictions(false);
+      } else {
+        showToast(json.error || 'Sync failed', 'error');
+      }
+    } catch {
+      showToast('Sync error', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const exportToPDF = () => {
-    const doc = new jsPDF("landscape");
-    doc.setFont("helvetica");
+    const doc = new jsPDF('landscape');
+    doc.setFont('helvetica');
     doc.setFontSize(18);
     doc.setTextColor(0, 86, 162);
-    doc.text("TalentHub Restrictions Report", 14, 22);
+    doc.text('TalentHub Restrictions Report', 14, 22);
 
     doc.setFontSize(11);
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
 
-    const tableColumn = ["Name", "Trainee ID", "Email", "Specialization", "Status", "Date", "Reason"];
+    const tableColumn = ['Name', 'Trainee ID', 'Email', 'Specialization', 'Status', 'Date', 'Reason'];
     const tableRows = [];
 
     interns.forEach(intern => {
-      let status = "Active";
-      if (intern.talentHubRestricted) status = "Restricted";
-      else if (intern.talentHubOverride) status = `Override`;
+      let status = 'Active';
+      if (intern.talentHubRestricted) status = 'Restricted';
+      else if (intern.talentHubOverride) status = `Override (${intern.daysRemaining}d)`;
 
-      const reason = intern.talentHubRestrictionReason || intern.talentHubOverrideReason || "";
+      const reason = intern.talentHubRestrictionReason || intern.talentHubOverrideReason || '';
       const date = fmtDate(intern.talentHubRestrictedAt || intern.talentHubOverrideAt);
 
       tableRows.push([
-        intern.name || "-",
-        intern.traineeId || "-",
-        intern.email || "-",
-        intern.specialization || "-",
+        intern.name || '-',
+        intern.traineeId || '-',
+        intern.email || '-',
+        intern.specialization || '-',
         status,
         date,
         reason
@@ -274,85 +461,73 @@ const TalentHubRestrictions = () => {
       head: [tableColumn],
       body: tableRows,
       startY: 40,
-      theme: "grid",
-      styles: { fontSize: 8, cellPadding: 2, halign: "center", valign: "middle" },
-      headStyles: { fillColor: [0, 86, 162], textColor: 255, halign: "center", valign: "middle" },
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, halign: 'center', valign: 'middle' },
+      headStyles: { fillColor: [0, 86, 162], textColor: 255, halign: 'center', valign: 'middle' },
       columnStyles: {
-        0: { halign: "left", cellWidth: 35 },
-        2: { halign: "left", cellWidth: 45 },
-        6: { cellWidth: 50, halign: "left" }
+        0: { halign: 'left', cellWidth: 35 },
+        2: { halign: 'left', cellWidth: 45 },
+        6: { cellWidth: 50, halign: 'left' }
       }
     });
 
-    doc.save(`TalentHub_Restrictions_${new Date().toISOString().split("T")[0]}.pdf`);
+    doc.save(`TalentHub_Restrictions_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  const handleConfirmClick = (intern, type) => {
+  const handleLiftSuccess = (internId) => {
+    setLiftTarget(null);
+    showToast('Temporary access granted successfully.', 'success');
+    fetchRestrictions(false);
+  };
+
+  const handleReRestrictClick = (intern) => {
     setConfirmTarget(intern);
-    setConfirmType(type);
-    setConfirmPassword("");
+    setConfirmPassword('');
     setConfirmShowPw(false);
-    setConfirmError("");
+    setConfirmError('');
   };
 
   const handleConfirmVerify = async () => {
     const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
     const bypassEmails = [
-      "mgiri@slt.com.lk",
-      "mgiridaransysdev@gmail.com",
-      "hjanaka@gmail.com",
-      "ranujaliyanaarachchi@gmail.com"
+      'mgiri@slt.com.lk',
+      'mgiridaransysdev@gmail.com',
+      'hjanaka@gmail.com',
+      'ranujaliyanaarachchi@gmail.com'
     ];
-    const validPasswords = ["TalentHub@2026", "G2026@SLT@npm"];
+    const validPasswords = ['TalentHub@2026', 'G2026@SLT@npm'];
 
     if (bypassEmails.includes(currentUserEmail) || validPasswords.includes(confirmPassword)) {
-      setConfirmError("");
+      setConfirmError('');
       const target = confirmTarget;
-      const type = confirmType;
-      
       setConfirmTarget(null);
-      setConfirmType(null);
-      setConfirmPassword("");
+      setConfirmPassword('');
       
       try {
-        let endpoint = "";
-        let body = {};
-        let successMsg = "";
-        
-        if (type === "lift") {
-          endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`;
-          body = { liftReason: "Admin granted temporary access" };
-          successMsg = `Temporary access granted for ${target.name}`;
-        } else {
-          endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`;
-          body = { reason: "Admin manually restricted access / revoked override" };
-          successMsg = `Access restricted for ${target.name}`;
-        }
-
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
-          body: JSON.stringify(body),
+        const res = await fetch(`${API_BASE_URL}/admin/talenthub-restrictions/${target.id || target._id}/restrict`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminInfo.token}` },
+          body: JSON.stringify({ reason: 'Admin manually restricted access / revoked override' }),
         });
         const json = await res.json();
         if (json.success) {
-          showToast(successMsg);
+          showToast(`Access restricted for ${target.name}`);
           await fetchRestrictions(false);
         } else {
-          showToast(json.error || "Failed", "error");
+          showToast(json.error || 'Failed', 'error');
         }
       } catch {
-        showToast("Error processing request", "error");
+        showToast('Error restricting access', 'error');
       }
     } else {
-      setConfirmError("Incorrect password. Please try again.");
+      setConfirmError('Incorrect password. Please try again.');
     }
   };
 
   const filtered = interns.filter((i) => {
-    if (activeTab === "restricted" && !i.talentHubRestricted) return false;
-    if (activeTab === "overridden" && !i.talentHubOverride) return false;
-    if (activeTab === "active" && (i.talentHubRestricted || i.talentHubOverride)) return false;
+    if (activeTab === 'restricted' && !i.talentHubRestricted) return false;
+    if (activeTab === 'overridden' && !i.talentHubOverride) return false;
+    if (activeTab === 'active' && (i.talentHubRestricted || i.talentHubOverride)) return false;
     
     const q = search.toLowerCase();
     return (
@@ -392,15 +567,23 @@ const TalentHubRestrictions = () => {
                   transition={{ delay: 0.1, duration: 0.3 }}
                   className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
                 >
-                  Manage intern TalentHub access based on project enrollment. Automatically restricted every Sunday.
+                  Manage intern TalentHub access based on project enrollment. Lift access to grant a temporary grace period.
                 </motion.p>
               </div>
             </div>
             <div className="flex gap-2">
               <button
+                onClick={handleLiveSync}
+                disabled={syncing}
+                className="logres-btn logres-btn--ghost"
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
+              >
+                <FaSync className={syncing ? 'logres-spin' : ''} /> {syncing ? 'Syncing...' : 'Sync'}
+              </button>
+              <button
                 onClick={exportToPDF}
                 className="logres-btn logres-btn--primary"
-                style={{ display: "flex", alignItems: "center", gap: 8 }}
+                style={{ display: 'flex', alignItems: 'center', gap: 8 }}
               >
                 <FaDownload /> Export PDF
               </button>
@@ -413,47 +596,47 @@ const TalentHubRestrictions = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
               <div 
                 className="logres-stat" 
-                style={{ cursor: "pointer" }}
-                onClick={() => setActiveTab("restricted")}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveTab('restricted')}
               >
-                <span className="logres-stat__value" style={{ color: activeTab === "restricted" ? BRAND.danger : "#9ca3af" }}>
-                  {loading ? "—" : stats.restrictedCount}
+                <span className="logres-stat__value" style={{ color: activeTab === 'restricted' ? BRAND.danger : '#9ca3af' }}>
+                  {loading ? '—' : stats.restrictedCount}
                 </span>
                 <span className="logres-stat__label">Currently Restricted</span>
               </div>
               <div className="logres-stat logres-stat--divider" />
               <div 
                 className="logres-stat"
-                style={{ cursor: "pointer" }}
-                onClick={() => setActiveTab("overridden")}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveTab('overridden')}
               >
-                <span className="logres-stat__value" style={{ color: activeTab === "overridden" ? BRAND.warn : "#9ca3af" }}>
-                  {loading ? "—" : stats.overriddenCount}
+                <span className="logres-stat__value" style={{ color: activeTab === 'overridden' ? BRAND.warn : '#9ca3af' }}>
+                  {loading ? '—' : stats.overriddenCount}
                 </span>
                 <span className="logres-stat__label">Active Overrides</span>
               </div>
               <div className="logres-stat logres-stat--divider" />
               <div 
                 className="logres-stat"
-                style={{ cursor: "pointer" }}
-                onClick={() => setActiveTab("active")}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveTab('active')}
               >
-                <span className="logres-stat__value" style={{ color: activeTab === "active" ? BRAND.success : "#9ca3af" }}>
-                  {loading ? "—" : (stats.totalInterns - stats.restrictedCount - stats.overriddenCount)}
+                <span className="logres-stat__value" style={{ color: activeTab === 'active' ? BRAND.success : '#9ca3af' }}>
+                  {loading ? '—' : (stats.totalInterns - stats.restrictedCount - stats.overriddenCount)}
                 </span>
-                <span className="logres-stat__label">Active (Enrolled)</span>
+                <span className="logres-stat__label">Active</span>
               </div>
               <div className="logres-stat logres-stat--divider" />
               <div 
                 className="logres-stat"
-                style={{ cursor: "pointer" }}
-                onClick={() => setActiveTab("all")}
+                style={{ cursor: 'pointer' }}
+                onClick={() => setActiveTab('all')}
               >
-                <span className="logres-stat__value" style={{ color: activeTab === "all" ? BRAND.primary : "#9ca3af" }}>
-                  {loading ? "—" : stats.totalInterns}
+                <span className="logres-stat__value" style={{ color: activeTab === 'all' ? BRAND.primary : '#9ca3af' }}>
+                  {loading ? '—' : stats.totalInterns}
                 </span>
                 <span className="logres-stat__label">Total Interns</span>
               </div>
@@ -468,7 +651,7 @@ const TalentHubRestrictions = () => {
           >
             <FaInfoCircle style={{ flexShrink: 0, color: BRAND.primary, marginTop: 2 }} />
             <p>
-              Interns below are restricted from TalentHub access if they are <strong>not enrolled in any project</strong>. This is automatically evaluated every Sunday. Use <strong>"Lift"</strong> to grant temporary access.
+              Interns below are restricted from TalentHub access if they are <strong>not enrolled in any project</strong>. Use <strong>"Lift Restriction"</strong> to grant a 5-day temporary access period.
             </p>
           </motion.div>
 
@@ -488,7 +671,7 @@ const TalentHubRestrictions = () => {
               autoComplete="off"
             />
             {search && (
-              <button className="logres-search-bar__clear" onClick={() => setSearch("")}>
+              <button className="logres-search-bar__clear" onClick={() => setSearch('')}>
                 <FaTimes />
               </button>
             )}
@@ -498,7 +681,7 @@ const TalentHubRestrictions = () => {
             <div className="logres-loader">
               <motion.div
                 animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
                 className="logres-loader__spinner"
               />
               <p>Loading restricted interns…</p>
@@ -514,11 +697,11 @@ const TalentHubRestrictions = () => {
               <div className="logres-empty__icon">
                 <FaCheckCircle style={{ color: BRAND.success, fontSize: 40 }} />
               </div>
-              <h3>{interns.length === 0 ? "No Restricted Interns" : "No Results"}</h3>
+              <h3>{interns.length === 0 ? 'No Restricted Interns' : 'No Results'}</h3>
               <p>
                 {interns.length === 0
-                  ? "All interns currently have full TalentHub access."
-                  : "Try adjusting your search or filters."}
+                  ? 'All interns currently have full TalentHub access.'
+                  : 'Try adjusting your search or filters.'}
               </p>
             </motion.div>
           ) : (
@@ -546,16 +729,16 @@ const TalentHubRestrictions = () => {
                       >
                         <td>
                           <div className="logres-table__intern-cell">
-                            <div className="logres-table__avatar" style={{ padding: 0, overflow: "hidden", position: "relative" }}>
+                            <div className="logres-table__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                               {intern.googlePictureUrl ? (
                                 <img
                                   src={intern.googlePictureUrl}
                                   alt={intern.name}
-                                  style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
                                 />
                               ) : (
-                                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "inherit", fontWeight: "inherit", color: "inherit" }}>
-                                  {(intern.name || "?")[0].toUpperCase()}
+                                <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                                  {(intern.name || '?')[0].toUpperCase()}
                                 </div>
                               )}
                             </div>
@@ -566,15 +749,15 @@ const TalentHubRestrictions = () => {
                           </div>
                         </td>
                         <td>
-                          <div className="logres-table__name">{intern.email || "—"}</div>
-                          <div className="logres-table__sub">{intern.specialization || "—"}</div>
+                          <div className="logres-table__name">{intern.email || '—'}</div>
+                          <div className="logres-table__sub">{intern.specialization || '—'}</div>
                         </td>
                         <td>
                           <div className="logres-table__name">
                             {intern.talentHubRestricted ? (
                               <span style={{ color: BRAND.danger }}>Restricted</span>
                             ) : intern.talentHubOverride ? (
-                              <span style={{ color: BRAND.warn }}>Override</span>
+                              <span style={{ color: BRAND.warn }}>Override ({intern.daysRemaining}d left)</span>
                             ) : (
                               <span style={{ color: BRAND.success }}>Active</span>
                             )}
@@ -585,7 +768,7 @@ const TalentHubRestrictions = () => {
                         </td>
                         <td>
                           <div className="logres-reason-cell" title={intern.talentHubRestrictionReason || intern.talentHubOverrideReason}>
-                            {intern.talentHubRestrictionReason || intern.talentHubOverrideReason || "—"}
+                            {intern.talentHubRestrictionReason || intern.talentHubOverrideReason || '—'}
                           </div>
                         </td>
                         <td>
@@ -594,7 +777,7 @@ const TalentHubRestrictions = () => {
                               <button
                                 className="logres-btn logres-btn--lift logres-btn--sm"
                                 style={{ background: `linear-gradient(135deg, ${BRAND.warn}, #d97706)`, boxShadow: `0 4px 12px rgba(245, 158, 11, 0.2)` }}
-                                onClick={() => handleConfirmClick(intern, 'lift')}
+                                onClick={() => setLiftTarget(intern)}
                                 title={`Grant access to ${intern.name}`}
                               >
                                 <FaLockOpen style={{ marginRight: 4 }} /> Lift
@@ -604,7 +787,7 @@ const TalentHubRestrictions = () => {
                               <button
                                 className="logres-btn logres-btn--lift logres-btn--sm"
                                 style={{ background: `linear-gradient(135deg, ${BRAND.danger}, #b91c1c)`, boxShadow: `0 4px 12px rgba(239, 68, 68, 0.2)` }}
-                                onClick={() => handleConfirmClick(intern, 'revoke')}
+                                onClick={() => handleReRestrictClick(intern)}
                                 title={`Revoke access for ${intern.name}`}
                               >
                                 <FaLock style={{ marginRight: 4 }} /> Revoke
@@ -636,16 +819,16 @@ const TalentHubRestrictions = () => {
                     transition={{ delay: idx * 0.04 }}
                   >
                     <div className="logres-card__top">
-                      <div className="logres-card__avatar" style={{ padding: 0, overflow: "hidden", position: "relative" }}>
+                      <div className="logres-card__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                         {intern.googlePictureUrl ? (
                           <img
                             src={intern.googlePictureUrl}
                             alt={intern.name}
-                            style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }}
+                            style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }}
                           />
                         ) : (
-                          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "inherit", fontWeight: "inherit", color: "inherit" }}>
-                            {(intern.name || "?")[0].toUpperCase()}
+                          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'inherit', fontWeight: 'inherit', color: 'inherit' }}>
+                            {(intern.name || '?')[0].toUpperCase()}
                           </div>
                         )}
                       </div>
@@ -653,7 +836,7 @@ const TalentHubRestrictions = () => {
                         <span className="logres-card__name">{intern.name}</span>
                         <span className="logres-card__id">{intern.traineeId}</span>
                       </div>
-                      <div className="logres-card__badge" style={intern.talentHubOverride ? { background: "#fffbeb", borderColor: "#fde68a", color: BRAND.warn } : !intern.talentHubRestricted ? { background: "#f0fdf4", borderColor: "#bbf7d0", color: BRAND.success } : {}}>
+                      <div className="logres-card__badge" style={intern.talentHubOverride ? { background: '#fffbeb', borderColor: '#fde68a', color: BRAND.warn } : !intern.talentHubRestricted ? { background: '#f0fdf4', borderColor: '#bbf7d0', color: BRAND.success } : {}}>
                         {intern.talentHubRestricted ? (
                           <><FaLock style={{ marginRight: 4, fontSize: 10 }} /> Restricted</>
                         ) : intern.talentHubOverride ? (
@@ -666,11 +849,11 @@ const TalentHubRestrictions = () => {
                     <div className="logres-card__meta">
                       <div className="logres-card__meta-row">
                         <FaEnvelope className="logres-card__meta-icon" />
-                        <span className="logres-card__meta-text">{intern.email || "—"}</span>
+                        <span className="logres-card__meta-text">{intern.email || '—'}</span>
                       </div>
                       <div className="logres-card__meta-row">
                         <FaBriefcase className="logres-card__meta-icon" />
-                        <span className="logres-card__meta-text">{intern.specialization || "—"}</span>
+                        <span className="logres-card__meta-text">{intern.specialization || '—'}</span>
                       </div>
                       <div className="logres-card__meta-row">
                         <FaCalendarAlt className="logres-card__meta-icon" />
@@ -685,7 +868,7 @@ const TalentHubRestrictions = () => {
                         <button
                           className="logres-btn logres-btn--lift logres-btn--sm"
                           style={{ flex: 1, background: `linear-gradient(135deg, ${BRAND.warn}, #d97706)` }}
-                          onClick={() => handleConfirmClick(intern, 'lift')}
+                          onClick={() => setLiftTarget(intern)}
                         >
                           <FaLockOpen style={{ marginRight: 4 }} /> Lift
                         </button>
@@ -694,7 +877,7 @@ const TalentHubRestrictions = () => {
                         <button
                           className="logres-btn logres-btn--lift logres-btn--sm"
                           style={{ flex: 1, background: `linear-gradient(135deg, ${BRAND.danger}, #b91c1c)` }}
-                          onClick={() => handleConfirmClick(intern, 'revoke')}
+                          onClick={() => handleReRestrictClick(intern)}
                         >
                           <FaLock style={{ marginRight: 4 }} /> Revoke
                         </button>
@@ -720,7 +903,7 @@ const TalentHubRestrictions = () => {
             <>
               <div
                 className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
-                onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                onClick={() => { setConfirmTarget(null); setConfirmError(''); }}
               />
               <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 lg:pl-[270px]">
                 <motion.div
@@ -733,18 +916,16 @@ const TalentHubRestrictions = () => {
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 bg-gradient-to-br ${confirmType === 'lift' ? 'from-amber-600 to-amber-500' : 'from-[#000066] to-[#006600]'} rounded-xl flex-shrink-0`}>
-                        {confirmType === 'lift' ? <FaLockOpen className="text-white h-4 w-4" /> : <ShieldAlert className="text-white h-4 w-4" />}
+                      <div className="p-2 bg-gradient-to-br from-[#000066] to-[#006600] rounded-xl flex-shrink-0">
+                        <ShieldAlert className="text-white h-4 w-4" />
                       </div>
                       <div>
-                        <h3 className="text-base font-extrabold text-slate-800">
-                          {confirmType === 'lift' ? 'Confirm Access' : 'Confirm Restriction'}
-                        </h3>
+                        <h3 className="text-base font-extrabold text-slate-800">Confirm Restriction</h3>
                         <p className="text-xs text-slate-500 mt-0.5">Enter admin password to proceed</p>
                       </div>
                     </div>
                     <button
-                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      onClick={() => { setConfirmTarget(null); setConfirmError(''); }}
                       className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
                     >
                       <FaTimes className="w-4 h-4" />
@@ -752,15 +933,15 @@ const TalentHubRestrictions = () => {
                   </div>
 
                   <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
-                    <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "linear-gradient(135deg,#ef4444,#c0392b)", flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#ef4444,#c0392b)', flexShrink: 0, position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
                       {confirmTarget.googlePictureUrl ? (
                         <img
                           src={confirmTarget.googlePictureUrl}
                           alt={confirmTarget.name}
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
                       ) : (
-                        <span>{(confirmTarget.name || "?")[0].toUpperCase()}</span>
+                        <span>{(confirmTarget.name || '?')[0].toUpperCase()}</span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -771,10 +952,10 @@ const TalentHubRestrictions = () => {
 
                   <div className="mb-4 relative">
                     <input
-                      type={confirmShowPw ? "text" : "password"}
+                      type={confirmShowPw ? 'text' : 'password'}
                       value={confirmPassword}
-                      onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
-                      onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(''); }}
+                      onKeyDown={(e) => e.key === 'Enter' && handleConfirmVerify()}
                       placeholder="Enter admin password..."
                       autoFocus
                       className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0056a2]/20 focus:border-[#0056a2]/40 outline-none transition-all"
@@ -793,7 +974,7 @@ const TalentHubRestrictions = () => {
 
                   <div className="flex gap-3">
                     <button
-                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      onClick={() => { setConfirmTarget(null); setConfirmError(''); }}
                       className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
                     >
                       Cancel
@@ -801,9 +982,9 @@ const TalentHubRestrictions = () => {
                     <button
                       onClick={handleConfirmVerify}
                       disabled={!confirmPassword}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 ${confirmType === 'lift' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#0056a2] hover:bg-[#004482]'} text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm`}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0056a2] text-white rounded-xl text-sm font-bold hover:bg-[#004482] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                     >
-                      {confirmType === 'lift' ? <FaLockOpen className="w-3.5 h-3.5" /> : <FaLock className="w-3.5 h-3.5" />} Verify &amp; Proceed
+                      <FaLock className="w-3.5 h-3.5" /> Verify &amp; Proceed
                     </button>
                   </div>
                 </motion.div>
@@ -813,6 +994,13 @@ const TalentHubRestrictions = () => {
         </AnimatePresence>
 
         {/* Modals */}
+        {liftTarget && (
+          <LiftModal
+            intern={liftTarget}
+            onClose={() => setLiftTarget(null)}
+            onSuccess={handleLiftSuccess}
+          />
+        )}
         {historyTarget && (
           <HistoryModal
             intern={historyTarget}
@@ -830,7 +1018,7 @@ const TalentHubRestrictions = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 40 }}
             >
-              {toastMsg.type === "success" ? (
+              {toastMsg.type === 'success' ? (
                 <FaCheckCircle style={{ marginRight: 8 }} />
               ) : (
                 <FaExclamationTriangle style={{ marginRight: 8 }} />
@@ -1128,6 +1316,45 @@ const TalentHubRestrictions = () => {
         .logres-tag--auto { background: #fef3c7; color: #92400e; }
         .logres-tag--manual { background: #ede9fe; color: #5b21b6; }
 
+        /* ── Lift modal specifics ── */
+        .logres-lift-summary {
+          display: flex; align-items: center; gap: 14px;
+          padding: 16px 24px; background: #fafafa;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .logres-lift-summary__avatar {
+          width: 48px; height: 48px; border-radius: 50%;
+          background: linear-gradient(135deg, #ef4444, #c0392b);
+          display: flex; align-items: center; justify-content: center;
+          color: white; font-size: 18px; font-weight: 700; flex-shrink: 0;
+        }
+        .logres-lift-summary__name { font-size: 16px; font-weight: 700; color: #1a1a2e; margin: 0 0 3px; }
+        .logres-lift-summary__meta { font-size: 12px; color: #9ca3af; margin: 0 0 3px; }
+        .logres-lift-summary__restricted-since {
+          font-size: 12px; color: #ef4444; display: flex; align-items: center; margin: 0;
+        }
+        .logres-restriction-reason-box {
+          display: flex; gap: 10px; align-items: flex-start;
+          margin: 16px 24px 0;
+          padding: 12px 14px;
+          background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px;
+        }
+        .logres-restriction-reason-box p { font-size: 13px; color: #92400e; margin: 0; }
+        .logres-lift-form { padding: 16px 24px 0; }
+        .logres-lift-form__label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 4px; }
+        .logres-lift-form__hint { font-size: 12px; color: #9ca3af; margin: 0 0 10px; }
+        .logres-lift-form__textarea {
+          width: 100%; padding: 12px 14px;
+          border: 1.5px solid #e0e0e0; border-radius: 12px;
+          font-size: 13px; font-family: inherit; resize: vertical;
+          outline: none; transition: border-color 0.2s; color: #1a1a2e;
+          box-sizing: border-box;
+        }
+        .logres-lift-form__textarea:focus { border-color: #50b748; }
+        .logres-lift-form__error {
+          display: flex; align-items: center;
+          font-size: 12px; color: #ef4444; margin-top: 6px;
+        }
 
         /* ── Toast ── */
         .logres-toast {
@@ -1145,9 +1372,4 @@ const TalentHubRestrictions = () => {
         @keyframes logres-spin { to { transform: rotate(360deg); } }
         .logres-spin { animation: logres-spin 0.8s linear infinite; }
       `}</style>
-      </div>
-    </AdminNavigation>
-  );
-};
-
-export default TalentHubRestrictions;
+`);

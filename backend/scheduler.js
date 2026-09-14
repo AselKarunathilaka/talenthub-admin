@@ -5,6 +5,7 @@ const cron = require("node-cron");
 const { exec } = require("child_process");
 const path = require("path");
 const AutoCheckoutScheduler = require("./services/autoCheckoutScheduler");
+require("./services/talentHubRestrictionScheduler"); // Registers Sunday 10:05 AM TalentHub restrictions job
 
 AutoCheckoutScheduler.init();
 

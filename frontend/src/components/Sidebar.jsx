@@ -1,10 +1,24 @@
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import logo from "../assets/talenthubwhitebg.jpeg";
 import { LogOut, ChevronLeft, ChevronRight } from "lucide-react";
 
 const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid", isCollapsed = false, onToggleCollapse }) => {
   const location = useLocation();
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    if (navRef.current) {
+      const savedScroll = sessionStorage.getItem("sidebarScrollPos");
+      if (savedScroll) {
+        navRef.current.scrollTop = parseInt(savedScroll, 10);
+      }
+    }
+  }, []);
+
+  const handleScroll = (e) => {
+    sessionStorage.setItem("sidebarScrollPos", e.target.scrollTop.toString());
+  };
 
   const isActive = (path) => location.pathname === path;
 
@@ -47,7 +61,11 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden p-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <nav 
+        ref={navRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto overflow-x-hidden p-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
         <div className={isCollapsed ? "flex flex-col gap-1.5" : (mode === "grid" ? "grid grid-cols-3 gap-2" : "flex flex-col gap-1.5")}>
           {regularLinks.map((link, index) => {
             const active = isActive(link.to);
