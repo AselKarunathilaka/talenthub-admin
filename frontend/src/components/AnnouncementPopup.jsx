@@ -21,6 +21,27 @@ const getInternToken = () => {
   return null;
 };
 
+const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
+const isDismissedToday = (id) => {
+  try {
+    const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '{}');
+    return dismissed[id] === getTodayDateString();
+  } catch {
+    return false;
+  }
+};
+
+const setDismissedToday = (id) => {
+  try {
+    const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '{}');
+    dismissed[id] = getTodayDateString();
+    localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
+  } catch (e) {
+    console.error("Error setting dismissed status:", e);
+  }
+};
+
 const PRIORITY_META = {
   urgent: {
     label: "Urgent",
@@ -60,7 +81,7 @@ const AnnouncementPopup = () => {
 
         const data = await res.json();
         const unreadPopups = data
-          .filter(a => a.showAsPopup)
+          .filter(a => a.showAsPopup && !isDismissedToday(a._id))
           .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           
         setPopups(unreadPopups);
@@ -73,14 +94,20 @@ const AnnouncementPopup = () => {
     fetchPopups();
   }, []);
 
-  const handleDismiss = async (id) => {
-    setPopups((prev) => prev.filter(p => p._id !== id));
+  const handleDismiss = async (currentPopup) => {
+    setPopups((prev) => prev.filter(p => p._id !== currentPopup._id));
     
+    if (currentPopup.alwaysDisplay) {
+      setDismissedToday(currentPopup._id);
+      window.dispatchEvent(new Event('announcementsUpdated'));
+      return;
+    }
+
     const token = getInternToken();
     if (!token) return;
     
     try {
-      await fetch(`${API_BASE_URL}/announcements/${id}/read`, {
+      await fetch(`${API_BASE_URL}/announcements/${currentPopup._id}/read`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -123,6 +150,11 @@ const AnnouncementPopup = () => {
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${meta.badgeClass}`}>
                     {meta.label}
                   </span>
+                  {currentPopup.alwaysDisplay && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                      Daily
+                    </span>
+                  )}
                   <span className="text-xs font-bold text-gray-400">
                     {new Date(currentPopup.createdAt).toLocaleDateString()}
                   </span>
@@ -130,7 +162,7 @@ const AnnouncementPopup = () => {
               </div>
             </div>
             <button
-              onClick={() => handleDismiss(currentPopup._id)}
+              onClick={() => handleDismiss(currentPopup)}
               className="absolute top-5 right-5 p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
             >
               <X className="h-5 w-5" />
@@ -154,7 +186,7 @@ const AnnouncementPopup = () => {
               <span />
             )}
             <button
-              onClick={() => handleDismiss(currentPopup._id)}
+              onClick={() => handleDismiss(currentPopup)}
               className="px-6 py-2.5 bg-[#0056a2] hover:bg-[#00488a] text-white rounded-xl text-sm font-bold shadow-sm shadow-blue-500/20 transition-all"
             >
               {popups.length > 1 ? "Next" : "Dismiss"}

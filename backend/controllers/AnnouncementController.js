@@ -4,7 +4,7 @@ const Intern = require("../models/Intern");
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
   try {
-    const { title, message, priority, showAsPopup } = req.body;
+    const { title, message, priority, showAsPopup, alwaysDisplay } = req.body;
 
     if (!title || !message) {
       return res
@@ -24,6 +24,7 @@ const createAnnouncement = async (req, res) => {
       message,
       priority: priority || "normal",
       showAsPopup: Boolean(showAsPopup),
+      alwaysDisplay: Boolean(alwaysDisplay),
       createdBy,
     });
 

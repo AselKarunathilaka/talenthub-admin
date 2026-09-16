@@ -90,6 +90,27 @@ const fetchActiveAnnouncements = async () => {
   return res.json();
 };
 
+const getTodayDateString = () => new Date().toISOString().split('T')[0];
+
+const isDismissedToday = (id) => {
+  try {
+    const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '{}');
+    return dismissed[id] === getTodayDateString();
+  } catch {
+    return false;
+  }
+};
+
+const setDismissedToday = (id) => {
+  try {
+    const dismissed = JSON.parse(localStorage.getItem('dismissedAnnouncements') || '{}');
+    dismissed[id] = getTodayDateString();
+    localStorage.setItem('dismissedAnnouncements', JSON.stringify(dismissed));
+  } catch (e) {
+    console.error("Error setting dismissed status:", e);
+  }
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const InternAnnouncements = () => {
   const navigate = useNavigate();
@@ -112,7 +133,8 @@ const InternAnnouncements = () => {
     setError(null);
     try {
       const data = await fetchActiveAnnouncements();
-      const sorted = [...data].sort(
+      const filteredData = data.filter(a => !(a.alwaysDisplay && isDismissedToday(a._id)));
+      const sorted = [...filteredData].sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
       );
       setAnnouncements(sorted);
@@ -142,6 +164,14 @@ const InternAnnouncements = () => {
     }
 
     setExpandedId(id);
+    const announcement = announcements.find((a) => a._id === id);
+
+    if (announcement?.alwaysDisplay) {
+      setDismissedToday(id);
+      window.dispatchEvent(new Event('announcementsUpdated'));
+      return;
+    }
+
     const token = getInternToken();
     try {
       await fetch(`${API_BASE_URL}/announcements/${id}/read`, {
@@ -336,6 +366,11 @@ const InternAnnouncements = () => {
                                 {!isRead && (
                                   <span className="text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full font-black bg-blue-600 text-white flex-shrink-0">
                                     New
+                                  </span>
+                                )}
+                                {a.alwaysDisplay && (
+                                  <span className="text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full font-black bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                                    Daily
                                   </span>
                                 )}
                               </div>

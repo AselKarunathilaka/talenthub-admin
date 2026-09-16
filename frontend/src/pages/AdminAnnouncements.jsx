@@ -40,9 +40,9 @@ const PRIORITY_OPTIONS = [
 ];
 
 const priorityStyle = {
-  normal: "bg-blue-50 text-[#0056a2] border-blue-200",
-  important: "bg-amber-50 text-amber-700 border-amber-200",
-  urgent: "bg-rose-50 text-rose-700 border-rose-200",
+  normal: "bg-blue-50 text-[#0056a2] border-[#0056a2] shadow-sm",
+  important: "bg-amber-50 text-amber-700 border-amber-500 shadow-sm",
+  urgent: "bg-rose-50 text-rose-700 border-rose-500 shadow-sm",
 };
 
 const priorityDot = {
@@ -94,6 +94,7 @@ const AdminAnnouncements = () => {
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState("normal");
   const [showAsPopup, setShowAsPopup] = useState(false);
+  const [alwaysDisplay, setAlwaysDisplay] = useState(false);
   const [sending, setSending] = useState(false);
 
   // List state
@@ -164,12 +165,14 @@ const AdminAnnouncements = () => {
         message: message.trim(),
         priority,
         showAsPopup,
+        alwaysDisplay,
       });
       showToast("Announcement sent successfully!", "success");
       setTitle("");
       setMessage("");
       setPriority("normal");
       setShowAsPopup(false);
+      setAlwaysDisplay(false);
       setCurrentPage(1);
       fetchAnnouncements();
     } catch (err) {
@@ -244,27 +247,34 @@ const AdminAnnouncements = () => {
       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
             {/* Page Header */}
-            <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
                 >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <Megaphone className="text-[#0056a2] h-8 w-8" />
-                  </div>
-                  Announcements
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  Broadcast messages and important notices to all interns
-                </motion.p>
+                  <Megaphone className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                </motion.div>
+                <div className="flex flex-col justify-center">
+                  <motion.h1
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  >
+                    Announcements
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  >
+                    Broadcast messages and important notices to all interns
+                  </motion.p>
+                </div>
               </div>
             </div>
 
@@ -289,10 +299,10 @@ const AdminAnnouncements = () => {
               )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
               {/* ── Compose Panel ── */}
               <motion.div
-                className="xl:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-fit"
+                className="lg:col-span-6 xl:col-span-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-auto lg:h-[calc(100vh-40px)] lg:min-h-[700px] lg:sticky lg:top-6"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
@@ -311,7 +321,7 @@ const AdminAnnouncements = () => {
                   </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="flex-1 lg:overflow-y-auto pr-2 space-y-5 lg:[&::-webkit-scrollbar]:w-2 lg:[&::-webkit-scrollbar-track]:bg-transparent lg:[&::-webkit-scrollbar-thumb]:bg-slate-200 lg:[&::-webkit-scrollbar-thumb]:rounded-full hover:lg:[&::-webkit-scrollbar-thumb]:bg-slate-300">
                   {/* Title */}
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
@@ -359,15 +369,14 @@ const AdminAnnouncements = () => {
                           key={opt.value}
                           type="button"
                           onClick={() => setPriority(opt.value)}
-                          className={`flex items-center justify-center space-x-1.5 px-2 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                          className={`w-full flex items-center justify-center space-x-1.5 px-1 sm:px-2 py-2.5 rounded-xl border-2 text-[10px] sm:text-xs font-bold transition-all ${
                             priority === opt.value
-                              ? priorityStyle[opt.value] +
-                                " ring-2 ring-offset-1 ring-current"
+                              ? priorityStyle[opt.value]
                               : "bg-slate-50 border-slate-200 text-gray-500 hover:bg-gray-100"
                           }`}
                         >
                           <span
-                            className={`h-2 w-2 rounded-full ${priorityDot[opt.value]}`}
+                            className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${priorityDot[opt.value]}`}
                           />
                           <span>{opt.label}</span>
                         </button>
@@ -403,32 +412,62 @@ const AdminAnnouncements = () => {
                     </span>
                   </div>
 
+                  {/* Always Display Toggle */}
+                  <div className="flex items-center space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAlwaysDisplay(!alwaysDisplay)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:ring-offset-2 ${
+                        alwaysDisplay ? "bg-amber-500" : "bg-gray-200"
+                      }`}
+                      role="switch"
+                      aria-checked={alwaysDisplay}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          alwaysDisplay ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">
+                        Always Display
+                      </span>
+                      <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+                        Show once per day instead of dismissing permanently when closed
+                      </span>
+                    </span>
+                  </div>
+
                   {/* Send button */}
-                  <motion.button
-                    onClick={handleSend}
-                    disabled={sending}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 text-white rounded-2xl text-sm font-bold transition-all shadow-sm shadow-blue-500/20 disabled:cursor-not-allowed disabled:shadow-none"
-                    whileHover={{ scale: sending ? 1 : 1.02 }}
-                    whileTap={{ scale: sending ? 1 : 0.98 }}
-                  >
-                    {sending ? (
-                      <>
-                        <FaSpinner className="h-4 w-4 animate-spin" />
-                        <span>Sending...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaPaperPlane className="h-4 w-4" />
-                        <span>Send to All Interns</span>
-                      </>
-                    )}
-                  </motion.button>
+                  <div className="pt-2">
+                    <motion.button
+                      onClick={handleSend}
+                      disabled={sending}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 text-white rounded-2xl text-sm font-bold transition-all shadow-sm shadow-blue-500/20 disabled:cursor-not-allowed disabled:shadow-none"
+                      whileHover={{ scale: sending ? 1 : 1.02 }}
+                      whileTap={{ scale: sending ? 1 : 0.98 }}
+                    >
+                      {sending ? (
+                        <>
+                          <FaSpinner className="h-4 w-4 animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaPaperPlane className="h-4 w-4" />
+                          <span>Send to All Interns</span>
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
 
               {/* ── Announcements List ── */}
               <motion.div
-                className="xl:col-span-3 flex flex-col gap-4 md:gap-6"
+                className="lg:col-span-6 xl:col-span-7 flex flex-col gap-4 md:gap-6 h-auto lg:h-[calc(100vh-40px)] lg:min-h-[700px]"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
@@ -463,8 +502,8 @@ const AdminAnnouncements = () => {
                 </div>
 
                 {/* List card */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex-1">
-                  <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[400px] lg:min-h-0">
+                  <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
                     <h3 className="text-lg font-extrabold text-gray-900">
                       Sent Announcements
                     </h3>
@@ -505,7 +544,7 @@ const AdminAnnouncements = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 lg:overflow-y-auto flex-1 lg:[&::-webkit-scrollbar]:w-2 lg:[&::-webkit-scrollbar-track]:bg-transparent lg:[&::-webkit-scrollbar-thumb]:bg-slate-200 lg:[&::-webkit-scrollbar-thumb]:rounded-full hover:lg:[&::-webkit-scrollbar-thumb]:bg-slate-300">
                         {paginated.map((a) => {
                           const isExpanded = expandedId === a._id;
                           return (
@@ -532,6 +571,11 @@ const AdminAnnouncements = () => {
                                       {a.showAsPopup && (
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
                                           Popup
+                                        </span>
+                                      )}
+                                      {a.alwaysDisplay && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                                          Daily
                                         </span>
                                       )}
                                     </div>
@@ -591,7 +635,7 @@ const AdminAnnouncements = () => {
 
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/50">
+                        <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/50 flex-shrink-0">
                           <div className="flex items-center justify-between gap-4">
                             <motion.button
                               onClick={() => goTo(safePage - 1)}
