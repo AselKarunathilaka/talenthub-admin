@@ -17,6 +17,9 @@ import {
   FaToggleOn,
   FaToggleOff,
   FaMapMarkerAlt,
+  FaEye,
+  FaEyeSlash,
+  FaSpinner,
 } from "react-icons/fa";
 import axios from "axios";
 import L from "leaflet";
@@ -425,23 +428,23 @@ const AdminInternLocations = () => {
       return;
     }
     fetchInternLocations(adminInfo.token, "All");
-    fetchPastInternLocations(adminInfo.token, "All");
     fetchDistrictCounts(adminInfo.token);
-    fetchPastDistrictCounts(adminInfo.token);
 
     // Refresh every 1 hour (was 5 minutes — no need to hammer the server)
     const iv = setInterval(
       () => {
         fetchInternLocations(adminInfo.token, selectedDistrict);
-        fetchPastInternLocations(adminInfo.token, selectedDistrict);
         fetchDistrictCounts(adminInfo.token);
-        fetchPastDistrictCounts(adminInfo.token);
+        if (showPastInterns) {
+          fetchPastInternLocations(adminInfo.token, selectedDistrict);
+          fetchPastDistrictCounts(adminInfo.token);
+        }
       },
       60 * 60 * 1000,
     );
     return () => clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showPastInterns, selectedDistrict]);
 
   // ── Re-fetch when district filter changes ─────────────────────────────────
   useEffect(() => {
@@ -451,22 +454,69 @@ const AdminInternLocations = () => {
     setFlyTo(null);
     setListSearch("");
     fetchInternLocations(adminInfo.token, selectedDistrict);
-    fetchPastInternLocations(adminInfo.token, selectedDistrict);
-  }, [selectedDistrict, fetchInternLocations, fetchPastInternLocations]);
+    if (showPastInterns) {
+      fetchPastInternLocations(adminInfo.token, selectedDistrict);
+    }
+  }, [selectedDistrict, fetchInternLocations, fetchPastInternLocations, showPastInterns]);
 
-  // ── Toggle past interns ───────────────────────────────────────────────────
-  const handleTogglePastInterns = useCallback(() => {
+  // ── Security Popup State ──────────────────────────────────────────────────
+  const [showSecurityPopup, setShowSecurityPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+
+  const executeTogglePastInterns = useCallback(() => {
     setShowPastInterns((prev) => {
       const next = !prev;
       if (next && !pastFetched) {
         const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
         if (adminInfo.token) {
           fetchPastInternLocations(adminInfo.token, selectedDistrict);
+          fetchPastDistrictCounts(adminInfo.token);
         }
       }
       return next;
     });
-  }, [pastFetched, fetchPastInternLocations, selectedDistrict]);
+  }, [pastFetched, fetchPastInternLocations, fetchPastDistrictCounts, selectedDistrict]);
+
+  const handlePasswordVerify = async () => {
+    if (!securityPassword) {
+      setPasswordError("Please enter the security password");
+      return;
+    }
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const actionName = !showPastInterns ? "past intern locations visibility toggled on" : "past intern locations visibility toggled off";
+      
+      const res = await axios.post(
+        `${API_BASE}/admin/attendance/verify-security`,
+        { securityPin: securityPassword, action: actionName },
+        { headers: { Authorization: `Bearer ${adminInfo.token}` } }
+      );
+      
+      if (res.data.success || res.status === 200) {
+        setShowSecurityPopup(false);
+        setSecurityPassword("");
+        setPasswordError("");
+        executeTogglePastInterns();
+      }
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || "Invalid security password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  // ── Toggle past interns ───────────────────────────────────────────────────
+  const handleTogglePastInterns = useCallback(() => {
+    setSecurityPassword("");
+    setPasswordError("");
+    setShowPasswordText(false);
+    setShowSecurityPopup(true);
+  }, []);
 
   // ── Combined district count (active + past when toggle is on) ─────────────
   // This is what shows in the dropdown next to each district name
@@ -1179,6 +1229,81 @@ const AdminInternLocations = () => {
           )}
         </AnimatePresence>
       </main>
+      {/* Security Check Popup */}
+      <AnimatePresence>
+        {showSecurityPopup && (
+          <>
+            {/* Overlay covering full screen, under navbar/sidebar */}
+            <div 
+              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+              onClick={() => setShowSecurityPopup(false)}
+            />
+            
+            {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
+            <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
+              <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">Enter password to proceed</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      type={showPasswordText ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      {showPasswordText ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={settingsSaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                    >
+                      {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   </AdminNavigation>
   );

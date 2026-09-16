@@ -125,7 +125,7 @@ const updateAttendanceSettings = async (req, res) => {
 
 const verifySecurityPassword = async (req, res) => {
   try {
-    const { securityPin, action } = req.body;
+    const { securityPin, action, extraInfo } = req.body;
     if (!securityPin) {
       return res.status(400).json({ message: "Security Password is required." });
     }
@@ -180,6 +180,26 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Meeting QR Code Generated in Admin Side";
     } else if (action === "pin code generation") {
       statusText = "PIN Code Generated in Admin Side";
+    } else if (action === "short leave approve") {
+      statusText = "Short Leave Approved in Admin Side";
+    } else if (action === "short leave deny") {
+      statusText = "Short Leave Denied in Admin Side";
+    } else if (action === "short leave restore") {
+      statusText = "Short Leave Restored to Pending in Admin Side";
+    } else if (action === "extended leave approve") {
+      statusText = "Extended Leave Approved in Admin Side";
+    } else if (action === "extended leave deny") {
+      statusText = "Extended Leave Denied in Admin Side";
+    } else if (action === "extended leave restore") {
+      statusText = "Extended Leave Restored to Pending in Admin Side";
+    } else if (action === "past intern locations visibility toggled on") {
+      statusText = "Past Intern Locations Visibility Toggled On in Admin Side";
+    } else if (action === "past intern locations visibility toggled off") {
+      statusText = "Past Intern Locations Visibility Toggled Off in Admin Side";
+    }
+    
+    if (extraInfo) {
+      statusText += extraInfo;
     }
     
     sendSecurityAlertEmail({

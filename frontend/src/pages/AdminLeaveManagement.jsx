@@ -29,6 +29,7 @@ import {
   FiChevronsRight,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
+import { FaTimes, FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
 import { getAdminSession, hasAdminPermission } from "../utils/adminAuth";
@@ -90,6 +91,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
   const [isSelectAll, setIsSelectAll] = useState(false);
   const [triggeringEmail, setTriggeringEmail] = useState(false);
 
+  // Security popup state
+  const [showSecurityPopup, setShowSecurityPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [pendingAction, setPendingAction] = useState(null); // { type, args }
+
   // Single Action Popup Modal
   const [actionModal, setActionModal] = useState({
     open: false,
@@ -130,6 +139,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setSelectedRequests(new Set());
     setIsSelectAll(false);
     setSearchQuery("");
+    setShowSecurityPopup(false);
+    setPasswordError("");
+    setPendingAction(null);
   }
 
   // Close any open popup when clicking Short Leave or Extended Leave navigation
@@ -335,7 +347,111 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setDocumentViewer({ show: false, url: "", type: "", loading: false });
   };
 
-  const handleStatusUpdate = async (requestId, status, response = "") => {
+  const triggerSecurityPopup = (type, args) => {
+    setPendingAction({ type, args });
+    setSecurityPassword("");
+    setPasswordError("");
+    setShowPasswordText(false);
+    setShowSecurityPopup(true);
+    setActionModal(prev => ({ ...prev, open: false }));
+    setIsBulkModalOpen(false);
+  };
+
+  const executePendingAction = () => {
+    if (!pendingAction) return;
+    const { type, args } = pendingAction;
+    if (type === "statusUpdate") {
+      handleStatusUpdateActual(...args);
+    } else if (type === "approveAll") {
+      handleApproveAllActual();
+    } else if (type === "bulkSubmit") {
+      confirmBulkActionActual();
+    }
+    setPendingAction(null);
+  };
+
+  const handlePasswordVerify = async () => {
+    if (!securityPassword) {
+      setPasswordError("Please enter the security password");
+      return;
+    }
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      let actionName = "security verification";
+      let internInfo = "";
+
+      if (pendingAction?.type === "statusUpdate") {
+         const requestId = pendingAction.args[0];
+         const status = pendingAction.args[1];
+         const request = leaveRequests.find(r => r._id === requestId);
+         if (request) {
+           internInfo = ` for ${request.internName} (ID: ${request.internTraineeId})`;
+         }
+
+         if (requestType === "short_leave") {
+            actionName = status === "Approved" ? "short leave approve" : status === "Denied" ? "short leave deny" : "short leave restore";
+         } else if (requestType === "study_leave") {
+            actionName = status === "Approved" ? "extended leave approve" : status === "Denied" ? "extended leave deny" : "extended leave restore";
+         }
+      } else if (pendingAction?.type === "approveAll") {
+         const params = { limit: 10000, requestType, status: "Pending" };
+         if (selectedDate && isStudyLeave) params.submittedDate = selectedDate;
+         else if (selectedDate) params.date = selectedDate;
+         try {
+           const res = await getAllLeaveRequests(params);
+           const list = res.data.map(r => `\n  • ${r.internName || "Unknown"} (ID: ${r.internTraineeId || "N/A"})`).join("");
+           internInfo = ` for ${stats.pending} intern(s):${list}`;
+         } catch (e) {
+           internInfo = ` for ${stats.pending} intern(s)`;
+         }
+         actionName = requestType === "short_leave" ? "short leave approve" : "extended leave approve";
+      } else if (pendingAction?.type === "bulkSubmit") {
+         const params = { limit: 10000, requestType, status: filter === "Denied" ? "Denied" : "Pending" };
+         if (selectedDate && isStudyLeave) params.submittedDate = selectedDate;
+         else if (selectedDate) params.date = selectedDate;
+         try {
+           const res = await getAllLeaveRequests(params);
+           const list = Array.from(selectedRequests).map(id => {
+              const req = res.data.find(r => r._id === id);
+              return req ? `\n  • ${req.internName || "Unknown"} (ID: ${req.internTraineeId || "N/A"})` : "";
+           }).filter(Boolean).join("");
+           internInfo = ` for ${selectedRequests.size} intern(s):${list}`;
+         } catch (e) {
+           internInfo = ` for ${selectedRequests.size} intern(s)`;
+         }
+         
+         const isRestore = bulkAction === "restore";
+         actionName = requestType === "short_leave" 
+           ? (bulkAction === "approve" ? "short leave approve" : isRestore ? "short leave restore" : "short leave deny") 
+           : (bulkAction === "approve" ? "extended leave approve" : isRestore ? "extended leave restore" : "extended leave deny");
+      }
+      
+      const response = await adminApi.post('/admin/attendance/verify-security', {
+        securityPin: securityPassword,
+        action: actionName,
+        extraInfo: internInfo
+      });
+      
+      // adminApi.post throws on error and returns the json directly on success
+      if (response.success || response.message) {
+        setShowSecurityPopup(false);
+        setSecurityPassword("");
+        setPasswordError("");
+        executePendingAction();
+      }
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || "Invalid security password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const handleStatusUpdate = (requestId, status, response = "") => {
+    triggerSecurityPopup("statusUpdate", [requestId, status, response]);
+  };
+
+  const handleStatusUpdateActual = async (requestId, status, response = "") => {
     setProcessing(true);
     try {
       await updateLeaveRequestStatus(requestId, {
@@ -360,7 +476,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     }
   };
 
-  const handleApproveAll = async () => {
+  const handleApproveAll = () => {
+    triggerSecurityPopup("approveAll", []);
+  };
+
+  const handleApproveAllActual = async () => {
     if (!window.confirm(`Are you sure you want to approve ALL ${stats.pending} pending requests?`)) {
       return;
     }
@@ -472,7 +592,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setIsBulkModalOpen(true);
   };
 
-  const confirmBulkAction = async () => {
+  const confirmBulkAction = () => {
+    triggerSecurityPopup("bulkSubmit", []);
+  };
+
+  const confirmBulkActionActual = async () => {
     if (selectedRequests.size === 0) {
       toast.error("No requests selected");
       return;
@@ -512,13 +636,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
       setSelectedRequests(new Set());
       setIsSelectAll(false);
-      setBulkAdminResponse("");
       setIsBulkModalOpen(false);
+      setBulkAction("");
+      setBulkAdminResponse("");
       fetchLeaveRequests();
       fetchStats();
     } catch (error) {
-      console.error("Error in bulk action:", error);
-      toast.error("Failed to process bulk action");
+      console.error("Error performing bulk action:", error);
+      toast.error(error.message || "Failed to perform bulk action");
     } finally {
       setProcessing(false);
     }
@@ -2366,6 +2491,85 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             </React.Fragment>
             )}
       </AnimatePresence>
+
+      {/* Security Check Popup */}
+      <AnimatePresence>
+        {showSecurityPopup && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+              onClick={() => setShowSecurityPopup(false)}
+            />
+            
+            {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
+            <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
+              <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">Enter password to proceed</p>
+                    </div>
+                    <button 
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      type={showPasswordText ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                    >
+                      {showPasswordText ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={settingsSaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                    >
+                      {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
+
       </div>
     </AdminNavigation>
   );
