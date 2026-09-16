@@ -18,27 +18,32 @@ const {
  */
 exports.getAllUniversities = async (req, res) => {
   try {
-    const universities = await UniversityUser.find().sort({ createdAt: -1 }).lean();
-    
-    // Aggregate intern counts per university
-    const interns = await Intern.find({}, "Institute institute").lean();
-    
-    const universityCounts = {};
-    interns.forEach(intern => {
-      const inst = String(intern.Institute || intern.institute || "").trim().toLowerCase();
-      if (inst) {
-        if (!universityCounts[inst]) universityCounts[inst] = 0;
-        universityCounts[inst]++;
-      }
-    });
+    const [universities, internCounts] = await Promise.all([
+      UniversityUser.find().sort({ createdAt: -1 }).lean(),
+      Intern.aggregate([
+        {
+          $project: {
+            inst: { $toLower: { $trim: { input: { $ifNull: ["$Institute", "$institute"] } } } }
+          }
+        },
+        { $match: { inst: { $ne: "" } } },
+        { $group: { _id: "$inst", count: { $sum: 1 } } }
+      ])
+    ]);
 
-    // Match up counts using a naive includes/startsWith check (since data might be messy)
+    // Build a quick lookup map: lowercased institution name -> count
+    const countMap = {};
+    for (const { _id, count } of internCounts) {
+      if (_id) countMap[_id] = count;
+    }
+
+    // Match up counts using includes/startsWith check
     const enriched = universities.map(u => {
       const nameLower = u.universityName.toLowerCase();
       const firstWord = nameLower.split(" ")[0];
-      
+
       let count = 0;
-      for (const [inst, c] of Object.entries(universityCounts)) {
+      for (const [inst, c] of Object.entries(countMap)) {
         if (inst.includes(nameLower) || nameLower.includes(inst) || inst.includes(firstWord)) {
           count += c;
         }

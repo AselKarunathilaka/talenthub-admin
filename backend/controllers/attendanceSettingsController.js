@@ -196,10 +196,24 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Past Intern Locations Visibility Toggled On in Admin Side";
     } else if (action === "past intern locations visibility toggled off") {
       statusText = "Past Intern Locations Visibility Toggled Off in Admin Side";
+    } else if (action === "seat book") {
+      statusText = "Seat Booked in Admin Side";
+    } else if (action === "seat lock") {
+      statusText = "Seat Locked in Admin Side";
+    } else if (action === "seat unlock") {
+      statusText = "Seat Unlocked in Admin Side";
+    } else if (action === "booking cancel") {
+      statusText = "Seat Booking Cancelled in Admin Side";
+    } else if (action === "university approve") {
+      statusText = "University Access Approved in Admin Side";
+    } else if (action === "university reject") {
+      statusText = "University Request Rejected in Admin Side";
+    } else if (action === "university remove") {
+      statusText = "University Access Removed in Admin Side";
     }
     
     if (extraInfo) {
-      statusText += extraInfo;
+      statusText += " - " + extraInfo;
     }
     
     sendSecurityAlertEmail({

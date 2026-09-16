@@ -873,15 +873,17 @@ const UniversityStudentDetails = () => {
             <span className="sm:hidden">Back</span>
           </button>
 
+          {!isAdminMode && (
           <div className="flex items-center gap-2 text-xs text-slate-500">
-            <button onClick={() => navigate(isAdminMode ? "/admin/universities" : "/university-dashboard")} className="hover:text-slate-900 transition-colors font-medium">
-              {isAdminMode ? "Admin Portal" : "University Portal"}
+            <button onClick={() => navigate("/university-dashboard")} className="hover:text-slate-900 transition-colors font-medium">
+              University Portal
             </button>
             <span>/</span>
             <span className="font-semibold text-slate-800 truncate max-w-[150px] sm:max-w-[240px]">
               {student?.name || "Student Details"}
             </span>
           </div>
+          )}
         </div>
 
         {/* Full Blocking Loading State (Only if 0 data available) */}

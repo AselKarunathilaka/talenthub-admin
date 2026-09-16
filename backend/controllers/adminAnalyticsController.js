@@ -278,7 +278,7 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
     projectRecords,
   ] = await Promise.all([
     // (A) DailyRecords (Logbook submissions - minimal payload)
-    DailyRecord.find({})
+    DailyRecord.find({ $or: internIdOrQuery })
       .select("internId traineeId date status meetingAttendance.projectName meetingAttendance.attendanceTime")
       .lean(),
 
@@ -287,24 +287,32 @@ async function computeAllAnalytics({ filterStartDateStr, filterEndDateStr, useIn
       status: "present",
       method: "face",
       qrBackupUsed: { $ne: true },
+      $or: internIdOrQuery
     })
       .select("internId traineeId attendanceDate attendanceTime")
       .lean(),
 
     // (C) DailyAttendanceLog (Standalone QR/Manual daily scans)
-    DailyAttendanceLog.find({})
+    DailyAttendanceLog.find({ $or: internIdOrQuery })
       .select("internId traineeId date status")
       .lean()
       .catch(() => []),
 
     // (D) MeetingAttendance (Standalone QR/Manual meeting scans)
-    MeetingAttendance.find({})
+    MeetingAttendance.find({ $or: internIdOrQuery })
       .select("internId traineeId date status markType projectName")
       .lean()
       .catch(() => []),
 
     // (E) TalentTrail sync projects
-    InternTalentTrailSync.find({})
+    InternTalentTrailSync.find({
+      $or: [
+        { internRef: { $in: internIdStrings } },
+        { internCode: { $in: internTraineeStrings } },
+        { email: { $in: internEmails } },
+        { talentTrailInternId: { $in: internTraineeNumbers } }
+      ]
+    })
       .select("internRef email internCode name talentTrailInternId projects")
       .lean(),
 

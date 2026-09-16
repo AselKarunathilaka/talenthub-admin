@@ -740,6 +740,7 @@ const getUniversityStudents = async (req, res) => {
           { Institute: new RegExp(universityName.split(" ")[0] || "NSBM", "i") },
         ],
       })
+        .select("_id Trainee_ID Trainee_Name Trainee_Email Institute institute field_of_spec_name team Training_StartDate Training_EndDate district Trainee_HomeAddress googlePictureUrl logbookRestricted status commitsCount gitCommits restrictionCount attendance")
         .sort({ Trainee_Name: 1 })
         .lean(),
       InactiveIntern.find({
@@ -749,10 +750,11 @@ const getUniversityStudents = async (req, res) => {
           { Institute: new RegExp(universityName.split(" ")[0] || "NSBM", "i") },
         ],
       })
+        .select("_id Trainee_ID Trainee_Name Trainee_Email Institute institute field_of_spec_name team Training_StartDate Training_EndDate district Trainee_HomeAddress googlePictureUrl status commitsCount attendance")
         .lean()
         .catch(() => []),
       Project.find({})
-        .select("projectName status description tasks feedback team")
+        .select("projectName status description tasks.assignedTo feedback.internId team")
         .lean()
         .catch(() => []),
     ]);
@@ -763,16 +765,18 @@ const getUniversityStudents = async (req, res) => {
     // 2. Parallel fetch related data for active interns
     const [dailyRecords, faceLogs, feedbacks, syncRecords] = await Promise.all([
       DailyRecord.find({ internId: { $in: internIds } })
-        .select("internId date status attendance attendanceTime meetingAttendance task progress")
+        .select("internId date status attendance attendanceTime meetingAttendance")
         .lean(),
       FaceAttendanceLog.find({ internId: { $in: internIds } })
         .select("internId timestamp date")
         .lean()
         .catch(() => []),
       UniversityStudentFeedback.find({ internId: { $in: internIds } })
+        .select("internId")
         .lean()
         .catch(() => []),
       InternTalentTrailSync.find({ email: { $in: internEmails } })
+        .select("email projects")
         .lean()
         .catch(() => []),
     ]);
@@ -809,6 +813,51 @@ const getUniversityStudents = async (req, res) => {
       }
     });
 
+    // O(N) Project Pre-processing for speed
+    const projectsByInternId = new Map();
+    const projectsByTeam = new Map();
+
+    (allProjects || []).forEach((p) => {
+      if (!p) return;
+      
+      const pMapped = {
+        id: p._id,
+        name: p.projectName,
+        status: p.status,
+        description: p.description,
+      };
+
+      if (p.team) {
+        const t = String(p.team).toLowerCase().trim();
+        if (!projectsByTeam.has(t)) projectsByTeam.set(t, []);
+        projectsByTeam.get(t).push(pMapped);
+      }
+
+      if (Array.isArray(p.tasks)) {
+        p.tasks.forEach(t => {
+          if (t && Array.isArray(t.assignedTo)) {
+            t.assignedTo.forEach(uid => {
+              if (uid) {
+                const uStr = String(uid);
+                if (!projectsByInternId.has(uStr)) projectsByInternId.set(uStr, []);
+                projectsByInternId.get(uStr).push(pMapped);
+              }
+            });
+          }
+        });
+      }
+
+      if (Array.isArray(p.feedback)) {
+        p.feedback.forEach(f => {
+          if (f && f.internId) {
+            const uStr = String(f.internId);
+            if (!projectsByInternId.has(uStr)) projectsByInternId.set(uStr, []);
+            projectsByInternId.get(uStr).push(pMapped);
+          }
+        });
+      }
+    });
+
     const currentYear = new Date().getFullYear();
     const holidays = getSriLankanHolidays([currentYear - 2, currentYear - 1, currentYear, currentYear + 1]) || new Set();
 
@@ -836,22 +885,18 @@ const getUniversityStudents = async (req, res) => {
       totalLogbooksSubmitted += logbookCount;
 
       // 4. Projects Count & Enrolled Projects
-      const localProjects = (allProjects || []).filter((p) => {
-        if (!p) return false;
-        const inTasks = Array.isArray(p.tasks) && p.tasks.some((t) =>
-          t && Array.isArray(t.assignedTo) && t.assignedTo.some((uid) => uid && String(uid) === idKey)
-        );
-        const inFeedback = Array.isArray(p.feedback) && p.feedback.some(
-          (f) => f && f.internId && String(f.internId) === idKey
-        );
-        const matchTeam = p.team && intern.team && String(p.team).toLowerCase().trim() === String(intern.team).toLowerCase().trim();
-        return inTasks || inFeedback || matchTeam;
-      }).map((p) => ({
-        id: p._id,
-        name: p.projectName,
-        status: p.status,
-        description: p.description,
-      }));
+      const myProjectsMap = new Map();
+      
+      if (projectsByInternId.has(idKey)) {
+        projectsByInternId.get(idKey).forEach(p => myProjectsMap.set(String(p.id), p));
+      }
+      
+      const teamKey = intern.team ? String(intern.team).toLowerCase().trim() : null;
+      if (teamKey && projectsByTeam.has(teamKey)) {
+        projectsByTeam.get(teamKey).forEach(p => myProjectsMap.set(String(p.id), p));
+      }
+      
+      const localProjects = Array.from(myProjectsMap.values());
 
       const ttProjects = Array.isArray(syncRecord?.projects)
         ? syncRecord.projects.map((p) => ({
@@ -1007,19 +1052,47 @@ const getUniversityStudents = async (req, res) => {
       return true;
     });
 
+    // Fetch DailyRecords for inactive interns to correctly compute logbookRecordRate
+    const inactiveIds = uniqueInactiveList.map((i) => i._id);
+    const inactiveDailyRecords = inactiveIds.length > 0
+      ? await DailyRecord.find({ internId: { $in: inactiveIds } })
+          .select("internId date status attendance attendanceTime meetingAttendance")
+          .lean()
+          .catch(() => [])
+      : [];
+    const inactiveRecordsByIntern = new Map();
+    inactiveDailyRecords.forEach((rec) => {
+      const key = String(rec.internId);
+      if (!inactiveRecordsByIntern.has(key)) inactiveRecordsByIntern.set(key, []);
+      inactiveRecordsByIntern.get(key).push(rec);
+    });
+
     // Format inactive & terminated students
     const inactiveStudentList = uniqueInactiveList.map((inactiveIntern) => {
       const isTerminated = Boolean(
         inactiveIntern.archiveReason === "terminated"
       );
 
+      const inactiveStudentRecords = inactiveRecordsByIntern.get(String(inactiveIntern._id)) || [];
       const attMetrics = computeAttendanceMetrics(
         inactiveIntern,
-        [],
-        inactiveIntern.archivedAt || inactiveIntern.Training_EndDate || new Date()
+        inactiveStudentRecords,
+        inactiveIntern.archivedAt || inactiveIntern.Training_EndDate || new Date(),
+        holidays
       );
 
-      const workQualityRate = Math.round((attMetrics.dailyAttendanceRate + attMetrics.meetingAttendanceRate) / 2);
+      // Performance rate — exact same formula as AdminAnalytics
+      const inactiveSpecName = inactiveIntern.field_of_spec_name || inactiveIntern.fieldOfSpecialization || inactiveIntern.specialization || "";
+      const inactiveCommitsCount = typeof inactiveIntern.commitsCount === "number" ? inactiveIntern.commitsCount : 0;
+      const inactiveLogbookRate = attMetrics.logbookRecordRate;
+      const inactiveBaseAvg = (inactiveLogbookRate + attMetrics.meetingAttendanceRate) / 2;
+      let workQualityRate = 0;
+      if (isNoCommitSpecialization(inactiveSpecName)) {
+        workQualityRate = Math.max(0, Math.min(100, Math.round(inactiveBaseAvg)));
+      } else {
+        const inactiveCommitBonus = Math.max(0, inactiveCommitsCount - attMetrics.workingDays);
+        workQualityRate = Math.max(0, Math.min(100, Math.round(inactiveBaseAvg + inactiveCommitBonus)));
+      }
 
       const restrictionHistory = Array.isArray(inactiveIntern.logbookRestrictionHistory)
         ? inactiveIntern.logbookRestrictionHistory
@@ -1055,8 +1128,8 @@ const getUniversityStudents = async (req, res) => {
         workingDays: attMetrics.workingDays,
         elapsedWeeks: attMetrics.elapsedWeeks,
         attendedWeeks: attMetrics.attendedWeeks,
-        logbookCount: 0,
-        commitsCount: 0,
+        logbookCount: attMetrics.logbookCount || 0,
+        commitsCount: inactiveCommitsCount,
         projectsCount: 0,
         qualityScore: workQualityRate,
         workQualityRate,

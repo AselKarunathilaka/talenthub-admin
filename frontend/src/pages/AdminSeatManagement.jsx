@@ -18,6 +18,8 @@ import {
   FaHistory,
   FaLock,
   FaUnlock,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -28,6 +30,7 @@ import {
   seatBookingCsvUtils,
   seatNotificationUtils,
 } from "../api/adminSeatApi";
+import { adminApi } from "../api/adminApi";
 import { leftSection, rightSection, useMapScale, getLocalISODate } from "./useSeatManagement";
 
 const TOTAL_SEATS = 88;
@@ -226,6 +229,54 @@ const AdminSeatManagement = () => {
   const [bookingTraineeId, setBookingTraineeId] = useState("");
   const [seatActionLoading, setSeatActionLoading] = useState(false);
 
+  // Security Popup State
+  const [showSecurityPopup, setShowSecurityPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
+  const [seatActionMessage, setSeatActionMessage] = useState(null); // { type: 'success'|'error', heading, text }
+
+  const showSeatMessage = (type, heading, text) => {
+    setSeatActionMessage({ type, heading, text });
+    setTimeout(() => setSeatActionMessage(null), 6000);
+  };
+
+  const handlePasswordVerify = async () => {
+    if (!securityPassword) {
+      setPasswordError("Please enter the security password");
+      return;
+    }
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      const response = await adminApi.post('/admin/attendance/verify-security', {
+        securityPin: securityPassword,
+        action: pendingAction?.name || "security verification",
+        extraInfo: pendingAction?.extraInfo
+          ? (typeof pendingAction.extraInfo === 'string'
+              ? pendingAction.extraInfo
+              : `Seat ${pendingAction.extraInfo.seatNumber || ''}${pendingAction.extraInfo.traineeId ? `, Trainee ID: ${pendingAction.extraInfo.traineeId}` : ''}`)
+          : ""
+      });
+
+      if (response.success || response.message) {
+        setShowSecurityPopup(false);
+        setSecurityPassword("");
+        setPasswordError("");
+        if (pendingAction?.execute) {
+          pendingAction.execute();
+        }
+        setPendingAction(null);
+      }
+    } catch (err) {
+      setPasswordError(err.response?.data?.message || "Invalid security password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
   // Seat lock management state
   const [lockedSeats, setLockedSeats] = useState([]);
   const [lockedSeatDetailsBySeat, setLockedSeatDetailsBySeat] = useState({}); // { seatNum: { traineeId } }
@@ -315,25 +366,25 @@ const AdminSeatManagement = () => {
   };
 
   // Handle lock/unlock a seat
-  const handleToggleLock = async (seatNumber, action, customTraineeId) => {
+  const executeToggleLock = async (seatNumber, action, customTraineeId) => {
     setLockLoading(true);
     setSeatActionLoading(true);
     try {
       const tId = customTraineeId !== undefined ? customTraineeId : lockTraineeId;
       if (action === "lock") {
         const result = await adminSeatApi.lockSeat(seatNumber, tId?.trim() || null);
-        seatNotificationUtils.showSuccess(result.message);
+        showSeatMessage("success", "🔒 Seat Locked Successfully", result.message || `Seat ${seatNumber} has been locked.`);
         if (result.warning) {
-          setTimeout(() => seatNotificationUtils.showInfo(result.warning), 500);
+          setTimeout(() => showSeatMessage("warning", "⚠️ Notice", result.warning), 500);
         }
       } else {
         const result = await adminSeatApi.unlockSeat(seatNumber);
-        seatNotificationUtils.showSuccess(result.message);
+        showSeatMessage("success", "🔓 Seat Unlocked Successfully", result.message || `Seat ${seatNumber} has been unlocked.`);
       }
       await fetchLockedSeats();
       await fetchBookings(); // Refresh bookings too in case a locked seat had a booking
     } catch (err) {
-      seatNotificationUtils.showError(err.message || `Failed to ${action} seat`);
+      showSeatMessage("error", "❌ Action Failed", err.message || `Failed to ${action} seat`);
     } finally {
       setLockLoading(false);
       setSeatActionLoading(false);
@@ -343,29 +394,61 @@ const AdminSeatManagement = () => {
     }
   };
 
+  const handleToggleLock = (seatNumber, action, customTraineeId) => {
+    if (lockLoading || seatActionLoading) return;
+    const actionName = action === "lock" ? "seat lock" : "seat unlock";
+    const tId = customTraineeId !== undefined ? customTraineeId : lockTraineeId;
+    
+    setPendingAction({
+      name: actionName,
+      extraInfo: { seatNumber, traineeId: tId?.trim() },
+      execute: () => executeToggleLock(seatNumber, action, customTraineeId)
+    });
+    setSecurityPassword("");
+    setPasswordError("");
+    setShowPasswordText(false);
+    setSelectedSeatModal(null);
+    setShowSecurityPopup(true);
+  };
+
   // Admin Book a Seat for an intern
-  const handleAdminBookSeat = async (seatNumber, traineeId) => {
-    if (!traineeId || !traineeId.trim()) {
-      seatNotificationUtils.showError("Please enter a Trainee ID");
-      return;
-    }
+  const executeAdminBookSeat = async (seatNumber, traineeId) => {
     setSeatActionLoading(true);
     try {
       const result = await adminSeatApi.bookSeat(seatNumber, selectedDate, traineeId.trim());
-      seatNotificationUtils.showSuccess(result.message || `Seat ${seatNumber} booked successfully`);
+      showSeatMessage("success", "✅ Seat Booked Successfully", result.message || `Seat ${seatNumber} has been booked.`);
       setSelectedSeatModal(null);
       setBookingTraineeId("");
       await fetchBookings();
       await fetchLockedSeats();
     } catch (err) {
-      seatNotificationUtils.showError(err.message || "Failed to book seat");
+      showSeatMessage("error", "❌ Booking Failed", err.message || "Failed to book seat");
     } finally {
       setSeatActionLoading(false);
     }
   };
 
+  const handleAdminBookSeat = (seatNumber, traineeId) => {
+    if (!traineeId || !traineeId.trim()) {
+      showSeatMessage("error", "❌ Missing Trainee ID", "Please enter a Trainee ID to book this seat.");
+      return;
+    }
+    if (seatActionLoading) return;
+
+    setPendingAction({
+      name: "seat book",
+      extraInfo: { seatNumber, traineeId: traineeId.trim() },
+      execute: () => executeAdminBookSeat(seatNumber, traineeId)
+    });
+    setSecurityPassword("");
+    setPasswordError("");
+    setShowPasswordText(false);
+    setSelectedSeatModal(null);
+    setShowSecurityPopup(true);
+  };
+
   // Admin Cancel a Booking
-  const handleAdminCancelBooking = async (bookingId, seatNumber) => {
+  const executeAdminCancelBooking = async (bookingId, seatNumber) => {
     setSeatActionLoading(true);
     try {
       const result = await adminSeatApi.cancelBooking({
@@ -373,15 +456,30 @@ const AdminSeatManagement = () => {
         seatNumber,
         date: selectedDate,
       });
-      seatNotificationUtils.showSuccess(result.message || `Booking for Seat ${seatNumber} cancelled`);
+      showSeatMessage("success", "🗑️ Booking Cancelled Successfully", result.message || `Booking for Seat ${seatNumber} has been cancelled.`);
       setSelectedSeatModal(null);
       await fetchBookings();
       await fetchLockedSeats();
     } catch (err) {
-      seatNotificationUtils.showError(err.message || "Failed to cancel booking");
+      showSeatMessage("error", "❌ Cancellation Failed", err.message || "Failed to cancel booking");
     } finally {
       setSeatActionLoading(false);
     }
+  };
+
+  const handleAdminCancelBooking = (bookingId, seatNumber) => {
+    if (seatActionLoading) return;
+
+    setPendingAction({
+      name: "booking cancel",
+      extraInfo: { seatNumber, bookingId },
+      execute: () => executeAdminCancelBooking(bookingId, seatNumber)
+    });
+    setSecurityPassword("");
+    setPasswordError("");
+    setShowPasswordText(false);
+    setSelectedSeatModal(null);
+    setShowSecurityPopup(true);
   };
 
   // Silent refresh for polling — doesn't trigger loading spinner
@@ -839,6 +937,59 @@ const AdminSeatManagement = () => {
                   <div className="flex items-center justify-between">
                     <p className={`text-sm font-bold ${searchMessage.type === "success" ? "text-emerald-800" : searchMessage.type === "error" ? "text-rose-800" : "text-[#0056a2]"}`}>{searchMessage.text}</p>
                     <button onClick={() => setSearchMessage(null)} className={`${searchMessage.type === "success" ? "text-emerald-600 hover:text-emerald-800" : searchMessage.type === "error" ? "text-rose-600 hover:text-rose-800" : "text-[#0056a2] hover:text-[#00b4eb]"}`}><FaTimes className="h-4 w-4" /></button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Seat Action Result Message */}
+            <AnimatePresence>
+              {seatActionMessage && (
+                <motion.div
+                  className={`mt-4 p-4 rounded-2xl border ${
+                    seatActionMessage.type === "success"
+                      ? "bg-emerald-50 border-emerald-200"
+                      : seatActionMessage.type === "warning"
+                      ? "bg-amber-50 border-amber-200"
+                      : "bg-rose-50 border-rose-200"
+                  }`}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className={`text-sm font-extrabold mb-0.5 ${
+                        seatActionMessage.type === "success"
+                          ? "text-emerald-800"
+                          : seatActionMessage.type === "warning"
+                          ? "text-amber-800"
+                          : "text-rose-800"
+                      }`}>
+                        {seatActionMessage.heading}
+                      </p>
+                      <p className={`text-xs font-medium ${
+                        seatActionMessage.type === "success"
+                          ? "text-emerald-700"
+                          : seatActionMessage.type === "warning"
+                          ? "text-amber-700"
+                          : "text-rose-700"
+                      }`}>
+                        {seatActionMessage.text}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setSeatActionMessage(null)}
+                      className={`shrink-0 ${
+                        seatActionMessage.type === "success"
+                          ? "text-emerald-500 hover:text-emerald-700"
+                          : seatActionMessage.type === "warning"
+                          ? "text-amber-500 hover:text-amber-700"
+                          : "text-rose-500 hover:text-rose-700"
+                      }`}
+                    >
+                      <FaTimes className="h-4 w-4" />
+                    </button>
                   </div>
                 </motion.div>
               )}
@@ -1450,13 +1601,27 @@ const AdminSeatManagement = () => {
           )}
         </main>
 
+        {/* Shared backdrop overlay - persists while any popup is open, prevents flash */}
+        <AnimatePresence>
+          {(selectedSeatModal || showSecurityPopup) && (
+            <motion.div
+              key="shared-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[25] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
         {/* Seat Action & Booking Modal placed outside main but inside relative container to cover everything except navbar/sidebar */}
         <AnimatePresence>
           {selectedSeatModal && (
             <>
-              {/* Overlay covering full screen, under navbar/sidebar at z-[25] */}
+              {/* Invisible click-capture for closing modal */}
               <div
-                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300"
+                className="fixed inset-0 z-[26] pointer-events-auto"
                 onClick={() => {
                   if (!seatActionLoading) {
                     setSelectedSeatModal(null);
@@ -1466,9 +1631,8 @@ const AdminSeatManagement = () => {
                 }}
               />
 
-              {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
-              <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
-                <div className="sticky top-[5vh] sm:top-[10vh] md:top-[14vh] w-full flex justify-center px-3 sm:px-4 pointer-events-none">
+              {/* Modal container - absolute within content area for correct centering */}
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-3 sm:px-4">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1757,7 +1921,83 @@ const AdminSeatManagement = () => {
                       </div>
                     )}
                   </motion.div>
-                </div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Security Check Popup */}
+        <AnimatePresence>
+          {showSecurityPopup && (
+            <>
+              {/* Invisible click-capture for closing security popup */}
+              <div
+                className="fixed inset-0 z-[26] pointer-events-auto"
+                onClick={() => setShowSecurityPopup(false)}
+              />
+
+              {/* Modal container */}
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    onAnimationComplete={() => {
+                      document.getElementById('seat-security-password-input')?.focus();
+                    }}
+                    className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  >
+                    <div className="flex justify-between items-start mb-3 sm:mb-4">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                        <p className="text-xs text-slate-500 mt-1">Enter password to proceed</p>
+                      </div>
+                      <button
+                        onClick={() => setShowSecurityPopup(false)}
+                        className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-3 sm:mb-5 relative">
+                      <input
+                        id="seat-security-password-input"
+                        type={showPasswordText ? "text" : "password"}
+                        value={securityPassword}
+                        onChange={(e) => setSecurityPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                        placeholder="Enter password..."
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPasswordText(!showPasswordText)}
+                        className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+                      >
+                        {showPasswordText ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                      </button>
+                      {passwordError && (
+                        <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowSecurityPopup(false)}
+                        className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePasswordVerify}
+                        disabled={settingsSaving || !securityPassword}
+                        className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                      >
+                        {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    </div>
+                  </motion.div>
               </div>
             </>
           )}
