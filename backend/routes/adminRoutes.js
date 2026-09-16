@@ -246,6 +246,7 @@ router.get(
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);
 router.put("/attendance/settings", updateAttendanceSettings);
+router.post("/attendance/verify-security", requireAdmin, require("../controllers/attendanceSettingsController").verifySecurityPassword);
 
 // Attendance — face/QR meeting pin
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);

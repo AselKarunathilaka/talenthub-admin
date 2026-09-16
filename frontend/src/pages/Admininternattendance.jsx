@@ -621,6 +621,7 @@ const AdminInternAttendance = () => {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
   const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [passwordPopupAction, setPasswordPopupAction] = useState("");
   const [securityPassword, setSecurityPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
@@ -671,12 +672,50 @@ const AdminInternAttendance = () => {
 
   const handleToggleLocationRequirement = async () => {
     if (sltLocationRequired) {
+      setPasswordPopupAction("location");
       setShowPasswordPopup(true);
       setSecurityPassword("");
       setPasswordError("");
       return;
     }
     await submitLocationToggle(true, null);
+  };
+  
+  const handleMarkAttendanceClick = () => {
+    setPasswordPopupAction("attendance");
+    setShowPasswordPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  };
+
+  const handlePasswordVerify = async () => {
+    if (passwordPopupAction === "location") {
+      await submitLocationToggle(false, securityPassword);
+    } else if (passwordPopupAction === "attendance") {
+      setSettingsSaving(true);
+      setPasswordError("");
+      try {
+        const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+        const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+          },
+          body: JSON.stringify({ securityPin: securityPassword, action: "manual attendance" }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Invalid password");
+        
+        setShowPasswordPopup(false);
+        showToast("Security verification successful", "success");
+        navigate("/admin/manual-attendance");
+      } catch (err) {
+        setPasswordError(err.message || "Invalid password");
+      } finally {
+        setSettingsSaving(false);
+      }
+    }
   };
 
   const submitLocationToggle = async (required, password) => {
@@ -970,7 +1009,7 @@ const AdminInternAttendance = () => {
                   </div>
 
                   <button
-                    onClick={() => navigate("/admin/manual-attendance")}
+                    onClick={handleMarkAttendanceClick}
                     className="flex-1 bg-gradient-to-r from-[#000066] to-[#006600] text-white px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-sm shadow-md shadow-[#006600]/20 hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2 focus:outline-none"
                   >
                     <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1364,7 +1403,9 @@ const AdminInternAttendance = () => {
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
                       <div>
                         <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
-                        <p className="text-xs text-slate-500 mt-1">Enter password to disable location requirement</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {passwordPopupAction === "attendance" ? "Enter password to access manual marking" : "Enter password to disable location requirement"}
+                        </p>
                       </div>
                       <button 
                         onClick={() => setShowPasswordPopup(false)}
@@ -1379,7 +1420,7 @@ const AdminInternAttendance = () => {
                         type={showPassword ? "text" : "password"}
                         value={securityPassword}
                         onChange={(e) => setSecurityPassword(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && submitLocationToggle(false, securityPassword)}
+                        onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
                         placeholder="Enter password..."
                         autoFocus
                         className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000066]/20 focus:border-[#000066]/40 outline-none transition-all"
@@ -1404,7 +1445,7 @@ const AdminInternAttendance = () => {
                         Cancel
                       </button>
                       <button
-                        onClick={() => submitLocationToggle(false, securityPassword)}
+                        onClick={handlePasswordVerify}
                         disabled={settingsSaving || !securityPassword}
                         className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-[#000066] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#000066]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                       >

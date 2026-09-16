@@ -123,7 +123,82 @@ const updateAttendanceSettings = async (req, res) => {
   }
 };
 
+const verifySecurityPassword = async (req, res) => {
+  try {
+    const { securityPin, action } = req.body;
+    if (!securityPin) {
+      return res.status(400).json({ message: "Security Password is required." });
+    }
+    
+    const securityConfig = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    if (!securityConfig) {
+      return res.status(401).json({ message: "Invalid Security Password." });
+    }
+    
+    const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid Security Password." });
+    }
+    
+    let adminName = req.user?.name || "Unknown User";
+    let adminEmail = req.user?.email || "Unknown Email";
+    if (req.user && req.user.email) {
+      const actualUser = await User.findOne({ email: req.user.email });
+      if (actualUser && actualUser.name) adminName = actualUser.name;
+    }
+    
+    const now = new Date();
+    const dateStr = now.getFullYear() + "/" + String(now.getMonth() + 1).padStart(2, "0") + "/" + String(now.getDate()).padStart(2, "0");
+    let hours = now.getHours();
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+    const timeStr = hours + ":" + minutes + " " + ampm;
+    
+    securityConfig.history.push({
+      activity: action || "security verification",
+      userName: adminName,
+      userMail: adminEmail,
+      date: dateStr,
+      time: timeStr,
+    });
+    await securityConfig.save();
+    
+    const { sendSecurityAlertEmail } = require("../utils/emailSender");
+    const { sendWhatsAppMessage } = require("../utils/whatsappSender");
+    const SecurityAlert = require("../models/SecurityAlert");
+    
+    let statusText = "Security Verification Passed";
+    if (action === "manual attendance") {
+      statusText = "Manual Attendance Admin Tool Accessed";
+    }
+    
+    sendSecurityAlertEmail({
+      adminName: adminName,
+      adminEmail: adminEmail,
+      statusText: statusText
+    }).catch(err => console.error("Failed to send security alert email:", err));
+    
+    SecurityAlert.find({}).then(alerts => {
+      alerts.forEach(alert => {
+        if (alert.phoneNumber) {
+          const message = `⚠️ *SECURITY ALERT*\n${statusText}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+          sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
+            console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+          );
+        }
+      });
+    }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+    
+    return res.status(200).json({ message: "Verification successful." });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to verify password.", error: error.message });
+  }
+};
+
 module.exports = {
   getAttendanceSettings,
   updateAttendanceSettings,
+  verifySecurityPassword
 };
