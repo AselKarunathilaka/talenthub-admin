@@ -1618,7 +1618,7 @@ const AdminSeatManagement = () => {
         {/* Seat Action & Booking Modal placed outside main but inside relative container to cover everything except navbar/sidebar */}
         <AnimatePresence>
           {selectedSeatModal && (
-            <>
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
               {/* Invisible click-capture for closing modal */}
               <div
                 className="fixed inset-0 z-[26] pointer-events-auto"
@@ -1922,14 +1922,14 @@ const AdminSeatManagement = () => {
                     )}
                   </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Security Check Popup */}
         <AnimatePresence>
           {showSecurityPopup && (
-            <>
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
               {/* Invisible click-capture for closing security popup */}
               <div
                 className="fixed inset-0 z-[26] pointer-events-auto"
@@ -1999,7 +1999,7 @@ const AdminSeatManagement = () => {
                     </div>
                   </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>

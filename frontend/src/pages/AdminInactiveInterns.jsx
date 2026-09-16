@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserX } from "lucide-react";
+import { UserX, X } from "lucide-react";
 import {
   FaArrowLeft,
   FaSearch,
@@ -32,11 +32,13 @@ import {
   FaUsers,
   FaRegCalendarAlt,
   FaVideo,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 // Digital Clock Component (Memoized to prevent parent re-renders)
 const formatDigit = (num) => num.toString().padStart(2, '0');
@@ -68,10 +70,15 @@ const DigitalClock = React.memo(function DigitalClock() {
 });
 
 /* ─── helpers ──────────────────────────────────────────────── */
-const fmtDate = (
-  d,
-  opts = { year: "numeric", month: "short", day: "numeric" },
-) => (d ? new Date(d).toLocaleDateString("en-US", opts) : "N/A");
+const fmtDate = (d) => {
+  if (!d) return "N/A";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "N/A";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+};
 
 const isSameDay = (a, b) => {
   if (!a || !b) return false;
@@ -603,7 +610,7 @@ const Pagination = React.memo(function Pagination({ page, totalPages, total, lim
   );
 
   return (
-    <div className="flex flex-col items-center justify-between gap-2.5 px-3 sm:px-4 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl w-full">
+    <div className="flex flex-col items-center justify-between gap-2.5 px-3 sm:px-4 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl w-full mt-auto">
       <p className="text-xs sm:text-sm text-slate-500 font-medium text-center">
         Showing{" "}
         <span className="font-bold text-slate-700">
@@ -685,6 +692,13 @@ export default function AdminInactiveInterns() {
   const [reactivating, setReactivating] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Security Popup State
+  const [showSecurityPopup, setShowSecurityPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [securitySaving, setSecuritySaving] = useState(false);
 
   const carouselRef = useRef(null);
 
@@ -789,10 +803,17 @@ export default function AdminInactiveInterns() {
     if (activeTab === "records") fetchDailyRecords();
   }, [activeTab, fetchDailyRecords]);
 
-  /* reactivate */
-  const handleReactivate = useCallback(async () => {
+  /* reactivate — opens security check popup */
+  const handleReactivate = useCallback(() => {
     if (!selectedIntern) return;
-    if (!window.confirm(`Reactivate ${selectedIntern.traineeName}?`)) return;
+    setShowSecurityPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  }, [selectedIntern]);
+
+  /* execute reactivation after password verified */
+  const executeReactivate = useCallback(async () => {
+    if (!selectedIntern) return;
     setReactivating(true);
     try {
       const res = await fetch(
@@ -818,6 +839,43 @@ export default function AdminInactiveInterns() {
     }
   }, [selectedIntern, token]);
 
+  /* verify security password then reactivate */
+  const handlePasswordVerify = useCallback(async () => {
+    if (!securityPassword) {
+      setPasswordError("Please enter the security password");
+      return;
+    }
+    setSecuritySaving(true);
+    setPasswordError("");
+    try {
+      const internName = selectedIntern?.traineeName || "";
+      const internEmail = selectedIntern?.traineeEmail || selectedIntern?.email || "";
+      const internId = selectedIntern?.traineeId || "N/A";
+      const response = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          securityPin: securityPassword,
+          action: "intern reactivate",
+          extraInfo: `Intern: ${internName} (ID: ${internId})${internEmail ? ` - ${internEmail}` : ""}`,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && (data.success || data.message)) {
+        setShowSecurityPopup(false);
+        setSecurityPassword("");
+        setPasswordError("");
+        await executeReactivate();
+      } else {
+        setPasswordError(data.message || "Invalid security password");
+      }
+    } catch (err) {
+      setPasswordError(err.message || "Invalid security password");
+    } finally {
+      setSecuritySaving(false);
+    }
+  }, [securityPassword, selectedIntern, authHeaders, executeReactivate]);
+
   const tabs = ["overview", "attendance", "records"];
 
   return (
@@ -828,7 +886,7 @@ export default function AdminInactiveInterns() {
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
           
           {/* Top header: Title on Left, Clock & Tools on Right */}
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+          <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
 
             {/* Left: Dashboard Title */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
@@ -983,7 +1041,7 @@ export default function AdminInactiveInterns() {
                           <div className="inactive-list-item__meta">
                             <span>ID: {intern.traineeId}</span>
                             {intern.archivedAt && (
-                              <span>· {new Date(intern.archivedAt).toLocaleDateString()}</span>
+                              <span>· {fmtDate(intern.archivedAt)}</span>
                             )}
                           </div>
                           <div className="inactive-list-item__email" title={intern.email}>
@@ -1340,7 +1398,6 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-body {
             flex: 1; overflow-y: auto; min-height: 0;
-            max-height: calc(100vh - 350px);
           }
           @media (max-width: 900px) {
             .inactive-list-body { max-height: 320px; }
@@ -1572,6 +1629,96 @@ export default function AdminInactiveInterns() {
             .inactive-list-item__arrow { font-size: 14px; }
           }
         `}</style>
+
+        {/* Security Check Backdrop */}
+        <AnimatePresence>
+          {showSecurityPopup && (
+            <motion.div
+              key="inactive-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[25] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Security Check Popup */}
+        <AnimatePresence>
+          {showSecurityPopup && (
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+              <div
+                className="fixed inset-0 z-[26] pointer-events-auto"
+                onClick={() => setShowSecurityPopup(false)}
+              />
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  
+                  onAnimationComplete={() => {
+                    document.getElementById('inactive-security-password-input')?.focus();
+                  }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">Enter password to proceed</p>
+                    </div>
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      id="inactive-security-password-input"
+                      type={showPasswordText ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      {showPasswordText ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-rose-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={securitySaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                    >
+                      {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </AdminNavigation>
   );

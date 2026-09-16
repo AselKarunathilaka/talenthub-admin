@@ -11,7 +11,7 @@ import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShieldAlert } from "lucide-react";
+import { ShieldAlert, X } from "lucide-react";
 import {
   FaLock,
   FaLockOpen,
@@ -69,104 +69,89 @@ const fmtDate = (dateStr) => {
 /* ─────────────────────────────────────────────────────────────────────────── */
 const HistoryModal = ({ intern, onClose }) => (
   <AnimatePresence>
-    <motion.div
-      key="overlay"
-      className="logres-modal-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="logres-modal"
-        initial={{ opacity: 0, scale: 0.92, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 20 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="logres-modal__header">
-          <div className="logres-modal__title-row">
-            <FaHistory style={{ color: BRAND.primary }} />
-            <h3>Restriction History</h3>
+    {intern && (
+      <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+      <div
+        className="fixed inset-0 z-[49] pointer-events-auto"
+        onClick={onClose}
+      />
+      <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
+        <motion.div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 sm:p-6 w-full max-w-lg pointer-events-auto max-h-full overflow-y-auto no-scrollbar flex flex-col"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-2">
+              <FaHistory className="text-blue-600" />
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-800">Restriction History</h3>
+            </div>
+            <button className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer" onClick={onClose}>
+              <FaTimes />
+            </button>
           </div>
-          <button className="logres-modal__close" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
 
-        <p className="logres-modal__sub">
-          {intern.name} · {intern.traineeId}
-        </p>
+          <p className="text-xs sm:text-sm font-semibold text-slate-700 mb-3 sm:mb-4">
+            {intern.name} • {intern.traineeId}
+          </p>
 
-        <div className="logres-modal__entries">
-          {intern.restrictionHistory && intern.restrictionHistory.length > 0 ? (
-            intern.restrictionHistory.map((h, i) => (
-              <div
-                key={i}
-                className={`logres-history-entry ${h.liftedAt ? "logres-history-entry--lifted" : "logres-history-entry--active"}`}
-              >
-                <div className="logres-history-entry__badge">
-                  {h.liftedAt ? (
-                    <FaCheckCircle style={{ color: BRAND.success }} />
-                  ) : (
-                    <FaLock style={{ color: BRAND.danger }} />
-                  )}
-                </div>
-                <div className="logres-history-entry__body">
-                  <div className="logres-history-entry__row">
-                    <span className="logres-history-entry__label">
-                      Restricted
-                    </span>
-                    <span>{fmt(h.restrictedAt)}</span>
+          <div className="space-y-4">
+            {intern.restrictionHistory && intern.restrictionHistory.length > 0 ? (
+              intern.restrictionHistory.map((h, i) => (
+                <div key={i} className={`flex flex-col sm:flex-row gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border ${h.liftedAt ? "bg-emerald-50/50 border-emerald-100" : "bg-rose-50/50 border-rose-100"}`}>
+                  <div className="mt-0 sm:mt-1 flex justify-start sm:block">
+                    {h.liftedAt ? (
+                      <FaCheckCircle className="text-emerald-500 text-lg" />
+                    ) : (
+                      <FaLock className="text-rose-500 text-lg" />
+                    )}
                   </div>
-                  <div className="logres-history-entry__reason">
-                    {h.restrictionReason}
+                  <div className="flex-1 text-xs sm:text-sm min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                      <span className="font-bold text-slate-700">Restricted</span>
+                      <span className="text-slate-500">{fmt(h.restrictedAt)}</span>
+                    </div>
+                    <div className="text-slate-600 mb-3">{h.restrictionReason}</div>
+                    
+                    {h.liftedAt && (
+                      <>
+                        <div className="h-px bg-slate-200 my-3" />
+                        <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                          <span className="font-bold text-slate-700">Lifted</span>
+                          <span className="text-slate-500">{fmt(h.liftedAt)}</span>
+                        </div>
+                        {h.liftedBy && (
+                          <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                            <span className="font-semibold text-slate-700">By</span>
+                            <span className="text-slate-500">{h.liftedBy}</span>
+                          </div>
+                        )}
+                        {h.liftReason && (
+                          <div className="text-slate-600 italic mt-2">{h.liftReason}</div>
+                        )}
+                        {h.overrideExpiresAt && (
+                          <div className="flex justify-between mt-2">
+                            <span className="font-semibold text-slate-700">Expires</span>
+                            <span className="text-slate-500">{fmt(h.overrideExpiresAt)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  {h.liftedAt && (
-                    <>
-                      <div className="logres-history-entry__divider" />
-                      <div className="logres-history-entry__row">
-                        <span className="logres-history-entry__label">
-                          Lifted
-                        </span>
-                        <span>{fmt(h.liftedAt)}</span>
-                      </div>
-                      {h.liftedBy && (
-                        <div className="logres-history-entry__row">
-                          <span className="logres-history-entry__label">
-                            By
-                          </span>
-                          <span>{h.liftedBy}</span>
-                        </div>
-                      )}
-                      {h.liftReason && (
-                        <div className="logres-history-entry__reason logres-history-entry__reason--lift">
-                          {h.liftReason}
-                        </div>
-                      )}
-                      {h.overrideExpiresAt && (
-                        <div className="logres-history-entry__row">
-                          <span className="logres-history-entry__label">
-                            Expires
-                          </span>
-                          <span>{fmt(h.overrideExpiresAt)}</span>
-                        </div>
-                      )}
-                    </>
-                  )}
                 </div>
-              </div>
-            ))
-          ) : (
-            <p className="logres-modal__empty">No history available.</p>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
+              ))
+            ) : (
+              <p className="text-center text-slate-500 py-4">No history found.</p>
+            )}
+          </div>
+        </motion.div>
+      </div>
+          </motion.div>
+    )}
   </AnimatePresence>
 );
-
-
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Main Page Component                                                        */
@@ -193,6 +178,7 @@ const TalentHubRestrictions = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmShowPw, setConfirmShowPw] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [securitySaving, setSecuritySaving] = useState(false);
 
   const adminInfo = useMemo(() => {
     try { return JSON.parse(localStorage.getItem("adminInfo") || "{}"); }
@@ -296,56 +282,74 @@ const TalentHubRestrictions = () => {
   };
 
   const handleConfirmVerify = async () => {
-    const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
-    const bypassEmails = [
-      "mgiri@slt.com.lk",
-      "mgiridaransysdev@gmail.com",
-      "hjanaka@gmail.com",
-      "ranujaliyanaarachchi@gmail.com"
-    ];
-    const validPasswords = ["TalentHub@2026", "G2026@SLT@npm"];
+    if (!confirmPassword) {
+      setConfirmError("Please enter the security password");
+      return;
+    }
+    setSecuritySaving(true);
+    setConfirmError("");
+    try {
+      const internName = confirmTarget?.name || "";
+      const internId = confirmTarget?.traineeId || "N/A";
+      const action = confirmType === "lift" ? "talenthub restriction lift" : "talenthub restriction revoke";
 
-    if (bypassEmails.includes(currentUserEmail) || validPasswords.includes(confirmPassword)) {
-      setConfirmError("");
-      const target = confirmTarget;
-      const type = confirmType;
-      
-      setConfirmTarget(null);
-      setConfirmType(null);
-      setConfirmPassword("");
-      
-      try {
-        let endpoint = "";
-        let body = {};
-        let successMsg = "";
-        
-        if (type === "lift") {
-          endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`;
-          body = { liftReason: "Admin granted temporary access" };
-          successMsg = `Temporary access granted for ${target.name}`;
-        } else {
-          endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`;
-          body = { reason: "Admin manually restricted access / revoked override" };
-          successMsg = `Access restricted for ${target.name}`;
-        }
+      const response = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
+        body: JSON.stringify({
+          securityPin: confirmPassword,
+          action,
+          extraInfo: `Intern: ${internName} (ID: ${internId})`,
+        }),
+      });
 
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
-          body: JSON.stringify(body),
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast(successMsg);
-          await fetchRestrictions(false);
-        } else {
-          showToast(json.error || "Failed", "error");
+      const data = await response.json();
+      if (response.ok && (data.success || data.message)) {
+        setConfirmError("");
+        const target = confirmTarget;
+        const type = confirmType;
+
+        setConfirmTarget(null);
+        setConfirmType(null);
+        setConfirmPassword("");
+
+        try {
+          let endpoint = "";
+          let body = {};
+          let successMsg = "";
+
+          if (type === "lift") {
+            endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`;
+            body = { liftReason: "Admin granted temporary access" };
+            successMsg = `Temporary access granted for ${target.name}`;
+          } else {
+            endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`;
+            body = { reason: "Admin manually restricted access / revoked override" };
+            successMsg = `Access restricted for ${target.name}`;
+          }
+
+          const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
+            body: JSON.stringify(body),
+          });
+          const json = await res.json();
+          if (json.success) {
+            showToast(successMsg);
+            await fetchRestrictions(false);
+          } else {
+            showToast(json.error || "Failed", "error");
+          }
+        } catch {
+          showToast("Error processing request", "error");
         }
-      } catch {
-        showToast("Error processing request", "error");
+      } else {
+        setConfirmError(data.error || data.message || "Invalid security password");
       }
-    } else {
-      setConfirmError("Incorrect password. Please try again.");
+    } catch (err) {
+      setConfirmError(err.message || "Invalid security password");
+    } finally {
+      setSecuritySaving(false);
     }
   };
 
@@ -367,7 +371,7 @@ const TalentHubRestrictions = () => {
     <AdminNavigation>
       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+          <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -396,10 +400,10 @@ const TalentHubRestrictions = () => {
                 </motion.p>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto">
               <button
                 onClick={exportToPDF}
-                className="logres-btn logres-btn--primary"
+                className="logres-btn logres-btn--primary w-full sm:w-auto justify-center"
                 style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
                 <FaDownload /> Export PDF
@@ -714,43 +718,56 @@ const TalentHubRestrictions = () => {
           )}
         </main>
 
-        {/* ── Confirm Restrict Popup — Security Check style ── */}
+        {/* ── Security Check Backdrop ── */}
+        <AnimatePresence>
+          {(confirmTarget || historyTarget) && (
+            <motion.div
+              key="talenthub-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Security Check Popup ── */}
         <AnimatePresence>
           {confirmTarget && (
-            <>
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
               <div
-                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
+                className="fixed inset-0 z-[49] pointer-events-auto"
                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
               />
-              <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 lg:pl-[270px]">
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ duration: 0.2 }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-md"
+                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                  onAnimationComplete={() => {
+                    document.getElementById('talenthub-security-password-input')?.focus();
+                  }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 bg-gradient-to-br ${confirmType === 'lift' ? 'from-amber-600 to-amber-500' : 'from-[#000066] to-[#006600]'} rounded-xl flex-shrink-0`}>
-                        {confirmType === 'lift' ? <FaLockOpen className="text-white h-4 w-4" /> : <ShieldAlert className="text-white h-4 w-4" />}
-                      </div>
-                      <div>
-                        <h3 className="text-base font-extrabold text-slate-800">
-                          {confirmType === 'lift' ? 'Confirm Access' : 'Confirm Restriction'}
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Enter admin password to proceed</p>
-                      </div>
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {confirmType === 'lift' ? 'Enter password to lift restriction' : 'Enter password to restrict access'}
+                      </p>
                     </div>
                     <button
                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
-                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
                     >
-                      <FaTimes className="w-4 h-4" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
 
+                  {/* Intern mini-card */}
                   <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl p-3 mb-4">
                     <div style={{ width: 36, height: 36, borderRadius: "50%", overflow: "hidden", background: "linear-gradient(135deg,#ef4444,#c0392b)", flexShrink: 0, position: "relative", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 14 }}>
                       {confirmTarget.googlePictureUrl ? (
@@ -765,60 +782,61 @@ const TalentHubRestrictions = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{confirmTarget.name}</p>
-                      <p className="text-xs text-slate-500 truncate">{confirmTarget.traineeId}</p>
+                      <p className="text-xs text-slate-500 truncate">ID: {confirmTarget.traineeId}</p>
                     </div>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, color: '#ef4444', flexShrink: 0 }}>
+                      <FaLock style={{ fontSize: 9 }} /> Restricted
+                    </span>
                   </div>
 
-                  <div className="mb-4 relative">
+                  <div className="mb-3 sm:mb-5 relative">
                     <input
+                      id="talenthub-security-password-input"
                       type={confirmShowPw ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
                       onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
-                      placeholder="Enter admin password..."
-                      autoFocus
-                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0056a2]/20 focus:border-[#0056a2]/40 outline-none transition-all"
+                      placeholder="Enter password..."
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setConfirmShowPw(!confirmShowPw)}
-                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
                     >
                       {confirmShowPw ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
                     </button>
                     {confirmError && (
-                      <p className="text-xs font-semibold text-red-500 mt-2">{confirmError}</p>
+                      <p className="text-xs font-semibold text-rose-500 mt-2">{confirmError}</p>
                     )}
                   </div>
 
-                  <div className="flex gap-3">
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
                     <button
                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
-                      className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleConfirmVerify}
-                      disabled={!confirmPassword}
-                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 ${confirmType === 'lift' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-[#0056a2] hover:bg-[#004482]'} text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm`}
+                      disabled={securitySaving || !confirmPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                     >
-                      {confirmType === 'lift' ? <FaLockOpen className="w-3.5 h-3.5" /> : <FaLock className="w-3.5 h-3.5" />} Verify &amp; Proceed
+                      {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
                 </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Modals */}
-        {historyTarget && (
-          <HistoryModal
-            intern={historyTarget}
-            onClose={() => setHistoryTarget(null)}
-          />
-        )}
+        <HistoryModal
+          intern={historyTarget}
+          onClose={() => setHistoryTarget(null)}
+        />
 
         {/* Toast */}
         <AnimatePresence>

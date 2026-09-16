@@ -1,5 +1,7 @@
 const InternRepository = require("../repositories/internRepository");
 const DailyRecord = require("../models/DailyRecord");
+const { sendEmail } = require("../utils/emailSender");
+const { sendWhatsAppMessage } = require("../utils/whatsappSender");
 
 /* ─── Attendance type classification ──────────────────────────── */
 const MEETING_ATTENDANCE_TYPES = new Set([
@@ -316,6 +318,35 @@ class InactiveInternController {
       }
 
       await InternRepository.restoreInactiveIntern(internId);
+
+      // Send Email Notification
+      if (inactiveIntern.Trainee_Email) {
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #0056a2; color: #fff; padding: 20px; text-align: center;">
+              <h2 style="margin: 0; font-size: 24px;">Internship Reactivation Notice</h2>
+            </div>
+            <div style="padding: 20px;">
+              <p>Dear ${inactiveIntern.Trainee_Name},</p>
+              <p>Your internship profile at TalentHub has been successfully reactivated.</p>
+              <p>You can now log in to the system and continue your activities.</p>
+              <p>Best regards,<br/>TalentHub SLT Team</p>
+            </div>
+          </div>
+        `;
+        sendEmail(inactiveIntern.Trainee_Email, "Internship Reactivation Notice", null, emailHtml).catch(err => {
+          console.error("Failed to send reactivation email:", err);
+        });
+      }
+
+      // Send WhatsApp Notification
+      const contactNo = inactiveIntern.contactNo || inactiveIntern.Contact_No || inactiveIntern.Trainee_Contact_No || inactiveIntern.phone || inactiveIntern.mobile;
+      if (contactNo) {
+        const whatsappMsg = `*Internship Reactivation Notice*\n\nDear ${inactiveIntern.Trainee_Name},\nYour internship profile at TalentHub has been successfully reactivated.\n\nBest regards,\nTalentHub SLT Team`;
+        sendWhatsAppMessage(contactNo, whatsappMsg).catch(err => {
+          console.error("Failed to send WhatsApp message:", err);
+        });
+      }
 
       res.json({
         success: true,

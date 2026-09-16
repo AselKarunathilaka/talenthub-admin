@@ -11,7 +11,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Lock, ShieldAlert } from "lucide-react";
+import { Lock, ShieldAlert, X } from "lucide-react";
 import {
   FaLock,
   FaLockOpen,
@@ -92,99 +92,87 @@ async function apiFetch(path, options = {}) {
 /* ─────────────────────────────────────────────────────────────────────────── */
 const HistoryModal = ({ intern, onClose }) => (
   <AnimatePresence>
-    <motion.div
-      key="overlay"
-      className="logres-modal-overlay"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={onClose}
-    >
-      <motion.div
-        className="logres-modal"
-        initial={{ opacity: 0, scale: 0.92, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.92, y: 20 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="logres-modal__header">
-          <div className="logres-modal__title-row">
-            <FaHistory style={{ color: BRAND.primary }} />
-            <h3>Restriction History</h3>
+    {intern && (
+      <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+      <div
+        className="fixed inset-0 z-[49] pointer-events-auto"
+        onClick={onClose}
+      />
+      <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
+        <motion.div
+          className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 sm:p-6 w-full max-w-lg pointer-events-auto max-h-full overflow-y-auto no-scrollbar flex flex-col"
+          initial={{ opacity: 0, scale: 0.95, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 10 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-2">
+              <FaHistory className="text-blue-600" />
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-800">Restriction History</h3>
+            </div>
+            <button className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer" onClick={onClose}>
+              <FaTimes />
+            </button>
           </div>
-          <button className="logres-modal__close" onClick={onClose}>
-            <FaTimes />
-          </button>
-        </div>
 
-        <p className="logres-modal__sub">
-          {intern.traineeName} · {intern.traineeId}
-        </p>
+          <p className="text-xs sm:text-sm font-semibold text-slate-700 mb-3 sm:mb-4">
+            {intern.name} • {intern.traineeId}
+          </p>
 
-        <div className="logres-modal__entries">
-          {intern.restrictionHistory && intern.restrictionHistory.length > 0 ? (
-            intern.restrictionHistory.map((h, i) => (
-              <div
-                key={i}
-                className={`logres-history-entry ${h.liftedAt ? "logres-history-entry--lifted" : "logres-history-entry--active"}`}
-              >
-                <div className="logres-history-entry__badge">
-                  {h.liftedAt ? (
-                    <FaLockOpen style={{ color: BRAND.success }} />
-                  ) : (
-                    <FaLock style={{ color: BRAND.danger }} />
-                  )}
-                </div>
-                <div className="logres-history-entry__body">
-                  <div className="logres-history-entry__row">
-                    <span className="logres-history-entry__label">
-                      Restricted
-                    </span>
-                    <span>{fmt(h.restrictedAt)}</span>
+          <div className="space-y-4">
+            {intern.restrictionHistory && intern.restrictionHistory.length > 0 ? (
+              intern.restrictionHistory.map((h, i) => (
+                <div key={i} className={`flex flex-col sm:flex-row gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border ${h.liftedAt ? "bg-emerald-50/50 border-emerald-100" : "bg-rose-50/50 border-rose-100"}`}>
+                  <div className="mt-0 sm:mt-1 flex justify-start sm:block">
+                    {h.liftedAt ? (
+                      <FaCheckCircle className="text-emerald-500 text-lg" />
+                    ) : (
+                      <FaLock className="text-rose-500 text-lg" />
+                    )}
                   </div>
-                  <div className="logres-history-entry__reason">
-                    {h.restrictionReason}
+                  <div className="flex-1 text-xs sm:text-sm min-w-0">
+                    <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                      <span className="font-bold text-slate-700">Restricted</span>
+                      <span className="text-slate-500">{fmt(h.restrictedAt)}</span>
+                    </div>
+                    <div className="text-slate-600 mb-3">{h.restrictionReason}</div>
+                    
+                    {h.liftedAt && (
+                      <>
+                        <div className="h-px bg-slate-200 my-3" />
+                        <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                          <span className="font-bold text-slate-700">Lifted</span>
+                          <span className="text-slate-500">{fmt(h.liftedAt)}</span>
+                        </div>
+                        {h.liftedBy && (
+                          <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                            <span className="font-semibold text-slate-700">By</span>
+                            <span className="text-slate-500">{h.liftedBy}</span>
+                          </div>
+                        )}
+                        {h.liftReason && (
+                          <div className="text-slate-600 italic mt-2">{h.liftReason}</div>
+                        )}
+                        {h.overrideExpiresAt && (
+                          <div className="flex justify-between mt-2">
+                            <span className="font-semibold text-slate-700">Expires</span>
+                            <span className="text-slate-500">{fmt(h.overrideExpiresAt)}</span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                  {h.autoRestricted !== undefined && (
-                    <span
-                      className={`logres-tag ${h.autoRestricted ? "logres-tag--auto" : "logres-tag--manual"}`}
-                    >
-                      {h.autoRestricted ? "Auto-restricted" : "Manual"}
-                    </span>
-                  )}
-                  {h.liftedAt && (
-                    <>
-                      <div className="logres-history-entry__divider" />
-                      <div className="logres-history-entry__row">
-                        <span className="logres-history-entry__label">
-                          Lifted
-                        </span>
-                        <span>{fmt(h.liftedAt)}</span>
-                      </div>
-                      {h.liftedBy && (
-                        <div className="logres-history-entry__row">
-                          <span className="logres-history-entry__label">
-                            By
-                          </span>
-                          <span>{h.liftedBy}</span>
-                        </div>
-                      )}
-                      {h.liftReason && (
-                        <div className="logres-history-entry__reason logres-history-entry__reason--lift">
-                          {h.liftReason}
-                        </div>
-                      )}
-                    </>
-                  )}
                 </div>
-              </div>
-            ))
-          ) : (
-            <p className="logres-modal__empty">No history available.</p>
-          )}
-        </div>
-      </motion.div>
-    </motion.div>
+              ))
+            ) : (
+              <p className="text-center text-slate-500 py-4">No history found.</p>
+            )}
+          </div>
+        </motion.div>
+      </div>
+          </motion.div>
+    )}
   </AnimatePresence>
 );
 
@@ -224,133 +212,104 @@ const LiftModal = ({ intern, onClose, onSuccess }) => {
 
   return (
     <AnimatePresence>
-      <motion.div
-        className="logres-modal-overlay"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-      >
-        <motion.div
-          className="logres-modal logres-modal--lift"
-          initial={{ opacity: 0, scale: 0.92, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.92, y: 20 }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="logres-modal__header">
-            <div className="logres-modal__title-row">
-              <FaLockOpen style={{ color: BRAND.success }} />
-              <h3>Lift Logbook Restriction</h3>
-            </div>
-            <button className="logres-modal__close" onClick={onClose}>
-              <FaTimes />
-            </button>
-          </div>
-
-          <div className="logres-lift-summary">
-            <div
-              className="logres-lift-summary__avatar"
-              style={{ padding: 0, overflow: "hidden", position: "relative" }}
+      {intern && (
+        <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+          <div
+            className="fixed inset-0 z-[49] pointer-events-auto"
+            onClick={onClose}
+          />
+          <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 sm:p-6 w-full max-w-md pointer-events-auto max-h-full overflow-y-auto no-scrollbar flex flex-col"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
-                alt={intern.traineeName}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                onError={(e) => {
-                  e.target.style.display = "none";
-                  if (e.target.nextSibling)
-                    e.target.nextSibling.style.display = "flex";
-                }}
-              />
-              <div
-                style={{
-                  display: "none",
-                  width: "100%",
-                  height: "100%",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {(intern.traineeName || "?")[0].toUpperCase()}
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2">
+                  <FaLockOpen className="text-emerald-500" />
+                  <h3 className="text-base sm:text-lg font-extrabold text-slate-800">Lift Logbook Restriction</h3>
+                </div>
+                <button className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer" onClick={onClose}>
+                  <FaTimes />
+                </button>
               </div>
-            </div>
-            <div>
-              <p className="logres-lift-summary__name">{intern.traineeName}</p>
-              <p className="logres-lift-summary__meta">
-                {intern.traineeId} · {intern.email}
-              </p>
-              <p className="logres-lift-summary__restricted-since">
-                <FaCalendarAlt style={{ marginRight: 4, fontSize: 11 }} />
-                Restricted since {fmt(intern.logbookRestrictedAt)}
-              </p>
-            </div>
-          </div>
 
-          {intern.logbookRestrictionReason && (
-            <div className="logres-restriction-reason-box">
-              <FaInfoCircle style={{ flexShrink: 0, color: BRAND.warn }} />
-              <p>{intern.logbookRestrictionReason}</p>
-            </div>
-          )}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl p-3 sm:p-4 mb-4">
+                <div style={{ width: 40, height: 40, borderRadius: '50%', overflow: 'hidden', position: 'relative', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 'bold' }}>
+                  <img
+                    src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                    alt={intern.traineeName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", position: 'absolute', top: 0, left: 0 }}
+                    onError={(e) => {
+                      e.target.style.display = "none";
+                    }}
+                  />
+                  <span>{(intern.traineeName || "?")[0].toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-slate-800 truncate">{intern.traineeName}</p>
+                  <p className="text-xs text-slate-500 truncate">{intern.traineeId} • {intern.email}</p>
+                  <div className="flex items-center gap-1 text-xs text-slate-500 mt-1">
+                    <FaCalendarAlt /> Restricted since {fmt(intern.logbookRestrictedAt)}
+                  </div>
+                </div>
+              </div>
 
-          <div className="logres-lift-form">
-            <label className="logres-lift-form__label">
-              Reason for lifting restriction{" "}
-              <span style={{ color: BRAND.danger }}>*</span>
-            </label>
-            <p className="logres-lift-form__hint">
-              Record the valid reason provided by the intern after meeting with
-              their supervisor.
-            </p>
-            <textarea
-              className="logres-lift-form__textarea"
-              rows={4}
-              placeholder="e.g. Intern met with supervisor on 08 Jun 2026. Medical emergency confirmed with documentation. Access restored as per supervisor approval."
-              value={reason}
-              onChange={(e) => {
-                setReason(e.target.value);
-                setError(null);
-              }}
-            />
-            {error && (
-              <p className="logres-lift-form__error">
-                <FaExclamationTriangle style={{ marginRight: 6 }} />
-                {error}
-              </p>
-            )}
-          </div>
-
-          <div className="logres-modal__actions">
-            <button
-              className="logres-btn logres-btn--ghost"
-              onClick={onClose}
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              className="logres-btn logres-btn--lift"
-              onClick={handleLift}
-              disabled={loading || !reason.trim()}
-            >
-              {loading ? (
-                <>
-                  <FaSpinner
-                    className="logres-spin"
-                    style={{ marginRight: 6 }}
-                  />{" "}
-                  Lifting…
-                </>
-              ) : (
-                <>
-                  <FaLockOpen style={{ marginRight: 6 }} /> Restore Access
-                </>
+              {intern.logbookRestrictionReason && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex gap-3 text-sm text-amber-800">
+                  <FaInfoCircle className="mt-0.5 shrink-0" />
+                  <p>{intern.logbookRestrictionReason}</p>
+                </div>
               )}
-            </button>
+
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Reason for lifting restriction <span className="text-rose-500">*</span>
+                </label>
+                <p className="text-xs text-slate-500 mb-2">Record the valid reason provided by the intern after meeting with their supervisor.</p>
+                <textarea
+                  className="w-full p-2.5 sm:p-3 bg-white border border-slate-300 rounded-lg sm:rounded-xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+                  rows={4}
+                  placeholder="e.g. Intern met with supervisor on 08 Jun 2026. Medical emergency confirmed with documentation. Access restored as per supervisor approval."
+                  value={reason}
+                  onChange={(e) => {
+                    setReason(e.target.value);
+                    setError(null);
+                  }}
+                />
+                {error && (
+                  <p className="text-xs font-semibold text-rose-500 mt-2 flex items-center gap-1">
+                    <FaExclamationTriangle /> {error}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
+                <button
+                  className="flex-1 py-2 sm:py-3 bg-white border border-slate-300 text-slate-700 text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                  onClick={onClose}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="flex-1 py-2 sm:py-3 flex justify-center items-center gap-2 bg-emerald-600 text-white text-xs sm:text-sm font-bold rounded-lg sm:rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                  onClick={handleLift}
+                  disabled={loading || !reason.trim()}
+                >
+                  {loading ? (
+                    <><FaSpinner className="animate-spin" /> Lifting...</>
+                  ) : (
+                    <><FaLockOpen /> Restore Access</>
+                  )}
+                </button>
+              </div>
+            </motion.div>
           </div>
         </motion.div>
-      </motion.div>
+      )}
     </AnimatePresence>
   );
 };
@@ -374,6 +333,7 @@ const AdminLogbookRestriction = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [confirmShowPw, setConfirmShowPw] = useState(false);
   const [confirmError, setConfirmError] = useState("");
+  const [securitySaving, setSecuritySaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -500,24 +460,42 @@ const AdminLogbookRestriction = () => {
     setConfirmError("");
   };
 
-  const handleConfirmVerify = () => {
-    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
-    const currentUserEmail = adminInfo?.user?.email || adminInfo?.email;
-    const bypassEmails = [
-      "mgiri@slt.com.lk",
-      "mgiridaransysdev@gmail.com",
-      "hjanaka@gmail.com",
-      "ranujaliyanaarachchi@gmail.com"
-    ];
-    const validPasswords = ["TalentHub@2026", "G2026@SLT@npm"];
+  const handleConfirmVerify = async () => {
+    if (!confirmPassword) {
+      setConfirmError("Please enter the security password");
+      return;
+    }
+    setSecuritySaving(true);
+    setConfirmError("");
+    try {
+      const internName = confirmTarget?.traineeName || "";
+      const internId = confirmTarget?.traineeId || "N/A";
+      const token = JSON.parse(localStorage.getItem("adminInfo") || "{}").token;
+      const authHeaders = { Authorization: `Bearer ${token}` };
 
-    if (bypassEmails.includes(currentUserEmail) || validPasswords.includes(confirmPassword)) {
-      setConfirmError("");
-      setLiftTarget(confirmTarget);
-      setConfirmTarget(null);
-      setConfirmPassword("");
-    } else {
-      setConfirmError("Incorrect password. Please try again.");
+      const response = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          securityPin: confirmPassword,
+          action: "logbook restriction lift",
+          extraInfo: `Intern: ${internName} (ID: ${internId})`,
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok && (data.success || data.message)) {
+        setConfirmError("");
+        setLiftTarget(confirmTarget);
+        setConfirmTarget(null);
+        setConfirmPassword("");
+      } else {
+        setConfirmError(data.error || data.message || "Invalid security password");
+      }
+    } catch (err) {
+      setConfirmError(err.message || "Invalid security password");
+    } finally {
+      setSecuritySaving(false);
     }
   };
 
@@ -535,7 +513,7 @@ const AdminLogbookRestriction = () => {
     <AdminNavigation>
       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+          <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -826,41 +804,50 @@ const AdminLogbookRestriction = () => {
           )}
         </main>
 
-        {/* ── Confirm Lift Popup — Security Check style ── */}
+        {/* ── Security Check Backdrop ── */}
+        <AnimatePresence>
+          {(confirmTarget || historyTarget || liftTarget) && (
+            <motion.div
+              key="logbook-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Security Check Popup ── */}
         <AnimatePresence>
           {confirmTarget && (
-            <>
-              {/* Backdrop */}
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
               <div
-                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
+                className="fixed inset-0 z-[49] pointer-events-auto"
                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
               />
-              {/* Modal */}
-              <div className="fixed inset-0 z-[50] flex items-center justify-center p-4 lg:pl-[270px]">
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ duration: 0.2 }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-md"
+                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                  onAnimationComplete={() => {
+                    document.getElementById('logbook-security-password-input')?.focus();
+                  }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* Header */}
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 bg-gradient-to-br from-[#000066] to-[#006600] rounded-xl flex-shrink-0">
-                        <ShieldAlert className="text-white h-4 w-4" />
-                      </div>
-                      <div>
-                        <h3 className="text-base font-extrabold text-slate-800">Confirm Lift Restriction</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">Enter admin password to proceed</p>
-                      </div>
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">Enter password to lift restriction</p>
                     </div>
                     <button
                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
-                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
                     >
-                      <FaTimes className="w-4 h-4" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
 
@@ -877,72 +864,66 @@ const AdminLogbookRestriction = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-800 truncate">{confirmTarget.traineeName}</p>
-                      <p className="text-xs text-slate-500 truncate">{confirmTarget.traineeId}</p>
+                      <p className="text-xs text-slate-500 truncate">ID: {confirmTarget.traineeId}</p>
                     </div>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 20, background: '#fef2f2', border: '1px solid #fecaca', fontSize: 11, fontWeight: 700, color: '#ef4444', flexShrink: 0 }}>
                       <FaLock style={{ fontSize: 9 }} /> Restricted
                     </span>
                   </div>
 
-                  {/* Password input */}
-                  <div className="mb-4 relative">
+                  <div className="mb-3 sm:mb-5 relative">
                     <input
+                      id="logbook-security-password-input"
                       type={confirmShowPw ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
                       onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
-                      placeholder="Enter admin password..."
-                      autoFocus
-                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#0056a2]/20 focus:border-[#0056a2]/40 outline-none transition-all"
+                      placeholder="Enter password..."
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
                     />
                     <button
                       type="button"
                       onClick={() => setConfirmShowPw(!confirmShowPw)}
-                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
                     >
                       {confirmShowPw ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
                     </button>
                     {confirmError && (
-                      <p className="text-xs font-semibold text-red-500 mt-2">{confirmError}</p>
+                      <p className="text-xs font-semibold text-rose-500 mt-2">{confirmError}</p>
                     )}
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex gap-3">
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
                     <button
                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
-                      className="flex-1 px-4 py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleConfirmVerify}
-                      disabled={!confirmPassword}
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-[#0056a2] text-white rounded-xl text-sm font-bold hover:bg-[#004482] disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      disabled={securitySaving || !confirmPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                     >
-                      <FaLockOpen className="w-3.5 h-3.5" /> Verify &amp; Proceed
+                      {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
                 </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
 
         {/* Modals */}
-        {liftTarget && (
-          <LiftModal
-            intern={liftTarget}
-            onClose={() => setLiftTarget(null)}
-            onSuccess={handleLiftSuccess}
-          />
-        )}
-        {historyTarget && (
-          <HistoryModal
-            intern={historyTarget}
-            onClose={() => setHistoryTarget(null)}
-          />
-        )}
+        <LiftModal
+          intern={liftTarget}
+          onClose={() => setLiftTarget(null)}
+          onSuccess={handleLiftSuccess}
+        />
+        <HistoryModal
+          intern={historyTarget}
+          onClose={() => setHistoryTarget(null)}
+        />
 
         {/* Toast */}
         <AnimatePresence>

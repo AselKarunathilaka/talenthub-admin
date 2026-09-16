@@ -237,7 +237,7 @@ const AdminUniversities = () => {
         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
           
           {/* Header */}
-          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+          <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -773,21 +773,33 @@ const AdminUniversities = () => {
         </main>
       </div>
 
+      {/* Shared backdrop overlay - persists while any popup is open, prevents flash */}
+      <AnimatePresence>
+        {(confirmModal || showSecurityPopup) && (
+          <motion.div
+            key="shared-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[25] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+          />
+        )}
+      </AnimatePresence>
+
       {/* Confirmation Modals */}
       <AnimatePresence>
         {confirmModal && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[60] bg-slate-900/40 backdrop-blur-sm pointer-events-auto"
+          <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+            {/* Invisible click-capture for closing modal */}
+            <div
+              className="fixed inset-0 z-[26] pointer-events-auto"
               onClick={() => {
                 setConfirmModal(null);
                 setRejectionReason("");
               }}
             />
-            <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[62] pointer-events-none flex items-center justify-center px-4">
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
               <motion.div
                 initial={{ scale: 0.95, opacity: 0, y: 10 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -854,36 +866,22 @@ const AdminUniversities = () => {
                 </div>
               </motion.div>
             </div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
 
-        {/* Shared backdrop overlay */}
-        <AnimatePresence>
-          {showSecurityPopup && (
-            <motion.div
-              key="shared-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-[60] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+      {/* Security Check Popup */}
+      <AnimatePresence>
+        {showSecurityPopup && (
+          <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+            {/* Invisible click-capture for closing security popup */}
+            <div
+              className="fixed inset-0 z-[26] pointer-events-auto"
+              onClick={() => setShowSecurityPopup(false)}
             />
-          )}
-        </AnimatePresence>
 
-        {/* Security Check Popup */}
-        <AnimatePresence>
-          {showSecurityPopup && (
-            <>
-              {/* Invisible click-capture for closing security popup */}
-              <div
-                className="fixed inset-0 z-[61] pointer-events-auto"
-                onClick={() => setShowSecurityPopup(false)}
-              />
-
-              {/* Modal container */}
-              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[62] pointer-events-none flex items-center justify-center px-4">
+            {/* Modal container */}
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -945,7 +943,7 @@ const AdminUniversities = () => {
                     </div>
                   </motion.div>
               </div>
-            </>
+            </motion.div>
           )}
         </AnimatePresence>
 

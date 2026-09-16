@@ -210,6 +210,14 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "University Request Rejected in Admin Side";
     } else if (action === "university remove") {
       statusText = "University Access Removed in Admin Side";
+    } else if (action === "intern reactivate") {
+      statusText = "Reactivate Intern in Admin Side";
+    } else if (action === "logbook restriction lift") {
+      statusText = "Logbook Restriction lift in admin side";
+    } else if (action === "talenthub restriction lift") {
+      statusText = "TalentHub Restriction lift in admin side";
+    } else if (action === "talenthub restriction revoke") {
+      statusText = "TalentHub Restriction revoke in admin side";
     }
     
     if (extraInfo) {
