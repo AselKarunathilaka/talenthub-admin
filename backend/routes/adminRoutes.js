@@ -291,18 +291,19 @@ router.post("/sync/talent-trail", async (req, res) => {
 router.get("/talenttrail/projects", async (req, res) => {
   try {
     const InternTalentTrailSync = require("../models/InternTalentTrailSync");
-    const syncs = await InternTalentTrailSync.find({}).lean();
-    const projectsMap = new Map();
-    for (const sync of syncs) {
-      if (sync.projects) {
-        for (const proj of sync.projects) {
-          if (!projectsMap.has(proj.projectId)) {
-            projectsMap.set(proj.projectId, proj);
-          }
-        }
-      }
+    const internCode = req.query.internCode;
+
+    if (internCode) {
+      const sync = await InternTalentTrailSync.findOne({ internCode }).lean();
+      return res.json(sync && sync.projects ? sync.projects : []);
     }
-    res.json(Array.from(projectsMap.values()));
+
+    const projects = await InternTalentTrailSync.aggregate([
+      { $unwind: "$projects" },
+      { $group: { _id: "$projects.projectId", project: { $first: "$projects" } } },
+      { $replaceRoot: { newRoot: "$project" } }
+    ]);
+    res.json(projects);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

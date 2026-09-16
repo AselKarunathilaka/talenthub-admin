@@ -1423,7 +1423,7 @@ const AdminInternAttendance = () => {
                         onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
                         placeholder="Enter password..."
                         autoFocus
-                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-[#000066]/20 focus:border-[#000066]/40 outline-none transition-all"
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
                       />
                       <button
                         type="button"
@@ -1447,7 +1447,7 @@ const AdminInternAttendance = () => {
                       <button
                         onClick={handlePasswordVerify}
                         disabled={settingsSaving || !securityPassword}
-                        className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-[#000066] text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-[#000066]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                        className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
                       >
                         {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                       </button>

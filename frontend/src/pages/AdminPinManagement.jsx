@@ -15,6 +15,8 @@ import {
   FaUserClock,
   FaUsers,
   FaCopy,
+  FaEye,
+  FaEyeSlash,
 } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
@@ -31,6 +33,50 @@ const AdminPinManagement = () => {
   const [projects, setProjects] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = React.useRef(null);
+
+  // Security Verification States
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const handleGenerateClick = () => {
+    if (!projectName.trim()) {
+      toast.error('Please enter a project name first');
+      return;
+    }
+    setShowPasswordPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  };
+
+  const handlePasswordVerify = async () => {
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+        },
+        body: JSON.stringify({ securityPin: securityPassword, action: "pin code generation" }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid password");
+      
+      setShowPasswordPopup(false);
+      toast.success("Security verification successful", { id: "sec-verify" });
+      fetchFacePin(true);
+    } catch (err) {
+      setPasswordError(err.message || "Invalid password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -69,8 +115,18 @@ const AdminPinManagement = () => {
   const filteredProjects = React.useMemo(() => {
     if (!projectName) return projects.slice(0, 50);
     const query = projectName.toLowerCase();
+    
     return projects
       .filter(p => (p.projectName || p.name || "").toLowerCase().includes(query))
+      .sort((a, b) => {
+        const aName = (a.projectName || a.name || "").toLowerCase();
+        const bName = (b.projectName || b.name || "").toLowerCase();
+        if (aName === query) return -1;
+        if (bName === query) return 1;
+        if (aName.startsWith(query) && !bName.startsWith(query)) return -1;
+        if (bName.startsWith(query) && !aName.startsWith(query)) return 1;
+        return aName.localeCompare(bName);
+      })
       .slice(0, 50);
   }, [projects, projectName]);
   const fetchFacePin = useCallback(async (rotate = false) => {
@@ -236,7 +292,8 @@ const AdminPinManagement = () => {
                                       return (
                                         <div
                                           key={proj._id || pName}
-                                          onClick={() => {
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
                                             setProjectName(pName);
                                             setIsDropdownOpen(false);
                                           }}
@@ -263,7 +320,7 @@ const AdminPinManagement = () => {
 
                     <button
                       type="button"
-                      onClick={() => fetchFacePin(true)}
+                      onClick={handleGenerateClick}
                       disabled={pinLoading}
                       className="mt-5 w-full py-3 sm:py-4 bg-gradient-to-r from-[#000066] to-[#006600] hover:from-[#000050] hover:to-[#005000] text-white rounded-2xl font-bold text-base sm:text-lg shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all flex items-center justify-center space-x-2 sm:space-x-3 disabled:opacity-60 disabled:cursor-not-allowed active:scale-95"
                     >
@@ -344,6 +401,81 @@ const AdminPinManagement = () => {
             </div>
           </main>
       </div>
+      
+      {/* Password Modal */}
+      <AnimatePresence>
+        {showPasswordPopup && (
+          <>
+            <div 
+              className="fixed inset-0 z-[60] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+              onClick={() => setShowPasswordPopup(false)}
+            />
+            <div className="absolute inset-x-0 top-0 h-full z-[70] pointer-events-none">
+              <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Enter password to generate PIN code
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setShowPasswordPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                    >
+                      {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowPasswordPopup(false)}
+                      className="flex-1 px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={settingsSaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    >
+                      {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
   </AdminNavigation>
   );
 };

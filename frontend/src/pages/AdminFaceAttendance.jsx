@@ -34,6 +34,8 @@ import {
   FaUserCheck,
   FaUserClock,
   FaUsers,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 
 // ── Shared Utils & Constants ──────────────────────────────────────────────────
@@ -208,6 +210,14 @@ const AdminFaceAttendance = () => {
   const [videoDims, setVideoDims] = useState({ width: 640, height: 480 });
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
 
+  // Security Verification Modal States
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [passwordPopupAction, setPasswordPopupAction] = useState("");
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const meshCanvasRef = useRef(null);
@@ -325,29 +335,36 @@ const AdminFaceAttendance = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/admin/talenttrail/projects`, {
-          headers: getAuthHeaders(),
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setProjects(data);
-        }
-      } catch (err) {
-        console.error("Failed to load projects", err);
+  const fetchProjects = useCallback(async (internCode = null) => {
+    try {
+      if (!internCode) {
+        setProjects([]);
+        return;
       }
-    };
-    
+      
+      const url = `${API_BASE_URL}/admin/talenttrail/projects?internCode=${encodeURIComponent(internCode)}`;
+        
+      const response = await fetch(url, {
+        headers: getAuthHeaders(),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data);
+      }
+    } catch (err) {
+      console.error("Failed to load projects", err);
+    }
+  }, []);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
-      loadProjects();
+      fetchProjects();
       // Pre-load enrollment profiles for instant display
       fetchEnrollmentProfiles();
     }, 250);
     
     return () => clearTimeout(timer);
-  }, [fetchEnrollmentProfiles]);
+  }, [fetchEnrollmentProfiles, fetchProjects]);
 
   useEffect(() => {
     return () => stopCamera();
@@ -378,6 +395,7 @@ const AdminFaceAttendance = () => {
     setSelectedIntern(intern);
     setSearchQuery(intern.Trainee_Name);
     setSearchResults([]);
+    fetchProjects(intern.Trainee_ID);
     // Do not stop camera so admin can continuously scan interns
     if (cameraActive) {
       setFaceGuide({ ready: false, message: "Center face in the oval" });
@@ -414,6 +432,39 @@ const AdminFaceAttendance = () => {
   useEffect(() => {
     if (cameraActive) attachStreamToVideo();
   }, [cameraActive]);
+
+  const handleInitializeClick = () => {
+    setPasswordPopupAction("face-scanner");
+    setShowPasswordPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  };
+
+  const handlePasswordVerify = async () => {
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+        },
+        body: JSON.stringify({ securityPin: securityPassword, action: "face attendance scanner initialization" }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid password");
+      
+      setShowPasswordPopup(false);
+      toast.success("Security verification successful", { id: "sec-verify" });
+      startCamera();
+    } catch (err) {
+      setPasswordError(err.message || "Invalid password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const startCamera = async () => {
     if (!selectedIntern) {
@@ -786,14 +837,14 @@ const AdminFaceAttendance = () => {
               
               {/* Sidebar Configuration */}
               <motion.div 
-                className="xl:col-span-4 space-y-6 flex flex-col"
+                className="xl:col-span-4 space-y-6 flex flex-col min-w-0"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.1 }}
               >
-                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5 sm:p-6 relative flex-1 flex flex-col">
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-5 sm:p-6 relative flex-1 flex flex-col min-w-0">
                   
-                  <div className="flex items-center gap-2 mb-6">
+                  <div className="flex items-center gap-2 mb-6 shrink-0">
                     <div className="w-1 h-5 bg-blue-500 rounded-full"></div>
                     <h3 className="text-lg font-bold text-slate-900 tracking-tight">Configuration</h3>
                   </div>
@@ -854,13 +905,16 @@ const AdminFaceAttendance = () => {
                           value={searchQuery}
                           onChange={(e) => {
                             handleSearch(e.target.value);
-                            if (selectedIntern) setSelectedIntern(null);
+                            if (selectedIntern) {
+                              setSelectedIntern(null);
+                              fetchProjects();
+                            }
                           }}
                           placeholder="Search by name or ID..."
                           className="w-full pl-11 pr-10 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:ring-4 focus:ring-blue-100/50 focus:border-blue-400 focus:bg-white transition-all outline-none"
                         />
                         {searchQuery && (
-                          <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSelectedIntern(null); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors">
+                          <button onClick={() => { setSearchQuery(""); setSearchResults([]); setSelectedIntern(null); fetchProjects(); }} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-slate-200 hover:bg-slate-300 rounded-full transition-colors">
                             <X className="w-3 h-3 text-slate-600" />
                           </button>
                         )}
@@ -877,11 +931,11 @@ const AdminFaceAttendance = () => {
                       </AnimatePresence>
                       
                       {selectedIntern && (
-                        <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="p-4 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 rounded-2xl border border-blue-200/60 flex items-center gap-4 mt-2 relative overflow-hidden shadow-sm">
-                          <div className="absolute top-0 right-0 p-3 opacity-10">
-                            <UserCheck className="w-16 h-16 text-blue-600" />
+                        <motion.div initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} className="min-w-0 w-full p-3 sm:p-4 bg-gradient-to-br from-blue-50/80 to-indigo-50/80 rounded-2xl border border-blue-200/60 flex items-center gap-3 sm:gap-4 mt-2 relative overflow-hidden shadow-sm">
+                          <div className="absolute top-0 right-0 p-2 sm:p-3 opacity-10">
+                            <UserCheck className="w-12 h-12 sm:w-16 sm:h-16 text-blue-600" />
                           </div>
-                          <div className="w-14 h-14 rounded-full shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden ring-4 ring-white relative z-10">
+                          <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full shadow-sm flex items-center justify-center flex-shrink-0 overflow-hidden ring-2 sm:ring-4 ring-white relative z-10">
                             <img
                               src={`${API_BASE_URL}/interns/${selectedIntern._id}/profile-picture`}
                               alt="Profile"
@@ -892,11 +946,11 @@ const AdminFaceAttendance = () => {
                               }}
                             />
                           </div>
-                          <div className="min-w-0 flex-1 relative z-10">
-                            <p className="text-sm font-bold text-slate-900 truncate tracking-tight">{selectedIntern.Trainee_Name}</p>
-                            <div className="flex items-center gap-1.5 mt-1">
-                              <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
-                              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">{selectedIntern.Trainee_ID}</p>
+                          <div className="min-w-0 flex-1 relative z-10 overflow-hidden">
+                            <p className="text-[11px] sm:text-sm font-bold text-slate-900 truncate tracking-tight">{selectedIntern.Trainee_Name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5 sm:mt-1 min-w-0">
+                              <span className="inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500 shrink-0"></span>
+                              <p className="text-[9px] sm:text-[11px] font-bold text-slate-500 uppercase tracking-wider truncate">{selectedIntern.Trainee_ID}</p>
                             </div>
                           </div>
                         </motion.div>
@@ -1014,7 +1068,7 @@ const AdminFaceAttendance = () => {
                         <p className="text-slate-400 text-sm mb-10 font-medium leading-relaxed">Select an intern and configure settings, then initialize the camera to begin scanning.</p>
                         
                         <button
-                          onClick={startCamera}
+                          onClick={handleInitializeClick}
                           disabled={!selectedIntern || loading || (mode === "meeting" && !meetingTitle.trim())}
                           className="group relative px-6 py-3 sm:px-8 sm:py-4 bg-white text-slate-900 rounded-2xl font-bold shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 disabled:cursor-not-allowed overflow-hidden w-full sm:w-auto"
                         >
@@ -1212,7 +1266,7 @@ const AdminFaceAttendance = () => {
                       </button>
                     )}
                   </div>
-                  <div className="relative min-w-[240px]">
+                  <div className="relative w-full xl:w-auto xl:min-w-[240px]">
                     <button
                       onClick={() => setIsFilterOpen(!isFilterOpen)}
                       className="w-full flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition hover:bg-slate-100 focus:border-blue-400 focus:ring-4 focus:ring-blue-100/50"
@@ -1416,6 +1470,81 @@ const AdminFaceAttendance = () => {
             </div>
           </>
         )}
+        </AnimatePresence>
+
+        {/* Password Modal */}
+        <AnimatePresence>
+          {showPasswordPopup && (
+            <>
+              <div 
+                className="fixed inset-0 z-[60] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+                onClick={() => setShowPasswordPopup(false)}
+              />
+              <div className="absolute inset-x-0 top-0 h-full z-[70] pointer-events-none">
+                <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  >
+                    <div className="flex justify-between items-start mb-3 sm:mb-4">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {passwordPopupAction === "face-scanner" ? "Enter password to initialize scanner" : "Enter password to verify"}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-3 sm:mb-5 relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={securityPassword}
+                        onChange={(e) => setSecurityPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                        placeholder="Enter password..."
+                        autoFocus
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      >
+                        {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                      </button>
+                      {passwordError && (
+                        <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePasswordVerify}
+                        disabled={settingsSaving || !securityPassword}
+                        className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        {settingsSaving ? <Loader className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+            </>
+          )}
         </AnimatePresence>
 
       </main>

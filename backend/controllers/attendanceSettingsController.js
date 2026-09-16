@@ -172,6 +172,14 @@ const verifySecurityPassword = async (req, res) => {
     let statusText = "Security Verification Passed";
     if (action === "manual attendance") {
       statusText = "Manual Attendance Admin Tool Accessed";
+    } else if (action === "face attendance scanner initialization") {
+      statusText = "Face Attendance Access in Admin Side";
+    } else if (action === "daily qr code generation") {
+      statusText = "Daily QR Code Generated in Admin Side";
+    } else if (action === "meeting qr code generation") {
+      statusText = "Meeting QR Code Generated in Admin Side";
+    } else if (action === "pin code generation") {
+      statusText = "PIN Code Generated in Admin Side";
     }
     
     sendSecurityAlertEmail({

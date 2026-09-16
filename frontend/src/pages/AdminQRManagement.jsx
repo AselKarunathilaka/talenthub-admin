@@ -3,14 +3,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import AdminNavigation from '../components/AdminNavigation';
 import { QrCode, CheckCircle, XCircle, Clock, AlertTriangle, Minimize } from "lucide-react";
-import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, FaSpinner, FaCopy, FaComments, FaChevronDown } from 'react-icons/fa';
+import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, FaSpinner, FaCopy, FaComments, FaChevronDown, FaTimes, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
 import { API_BASE_URL } from '../api/apiConfig';
 
 const AdminQRManagement = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('meeting'); // 'meeting' or 'daily'
+  const [activeTab, setActiveTab] = useState('daily'); // 'meeting' or 'daily'
   const [meetingName, setMeetingName] = useState('General Meeting');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [limitAttendance, setLimitAttendance] = useState(false);
@@ -24,6 +24,48 @@ const AdminQRManagement = () => {
   const pollingInterval = useRef(null);
   const rotationInterval = useRef(null);
   const [rotationCounter, setRotationCounter] = useState(0);
+
+  // Security Verification States
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [settingsSaving, setSettingsSaving] = useState(false);
+
+  const handleGenerateClick = () => {
+    setShowPasswordPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  };
+
+  const handlePasswordVerify = async () => {
+    setSettingsSaving(true);
+    setPasswordError("");
+    try {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const actionString = activeTab === 'meeting' ? "meeting qr code generation" : "daily qr code generation";
+      
+      const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+        },
+        body: JSON.stringify({ securityPin: securityPassword, action: actionString }),
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Invalid password");
+      
+      setShowPasswordPopup(false);
+      toast.success("Security verification successful", { id: "sec-verify" });
+      handleGenerate();
+    } catch (err) {
+      setPasswordError(err.message || "Invalid password");
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
 
   const handleGenerate = async () => {
     try {
@@ -395,34 +437,35 @@ const AdminQRManagement = () => {
               
               <div className="flex flex-col flex-1 justify-between h-full space-y-6">
                 {/* Switcher matching dropdown visually with real icons (not emojis) */}
-                <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-200/60 w-full relative">
-                  <button
-                    onClick={() => { setActiveTab("meeting"); setQrCodeData(null); }}
-                    className={`relative z-10 flex-1 py-3 px-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
-                      activeTab === "meeting" ? "text-white" : "text-slate-500 hover:text-slate-700"
-                    }`}
-                  >
-                    <FaUsers className={activeTab === "meeting" ? "text-white/90 text-lg" : "text-slate-400 text-lg"} />
-                    <span>Meeting</span>
-                  </button>
+                <div className="relative flex p-1.5 bg-slate-100/80 rounded-2xl mb-8">
                   <button
                     onClick={() => { setActiveTab("daily"); setQrCodeData(null); }}
-                    className={`relative z-10 flex-1 py-3 px-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${
+                    className={`relative z-10 flex-1 flex items-center justify-center gap-2.5 py-3 text-sm font-extrabold transition-all duration-300 rounded-xl ${
                       activeTab === "daily" ? "text-white" : "text-slate-500 hover:text-slate-700"
                     }`}
                   >
                     <FaCalendarDay className={activeTab === "daily" ? "text-white/90 text-lg" : "text-slate-400 text-lg"} />
-                    <span>Daily</span>
+                    Daily QR
                   </button>
-
-                  <div
-                    className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-out shadow-sm"
-                    style={{
-                      background: activeTab === "meeting"
-                          ? "linear-gradient(135deg, #000066 0%, #0056a2 100%)" // Primary Brand Colors
-                          : "linear-gradient(135deg, #006600 0%, #2e7d32 100%)", // Secondary Brand Colors
-                      left: activeTab === "meeting" ? "6px" : "calc(50%)",
+                  <button
+                    onClick={() => { setActiveTab("meeting"); setQrCodeData(null); }}
+                    className={`relative z-10 flex-1 flex items-center justify-center gap-2.5 py-3 text-sm font-extrabold transition-all duration-300 rounded-xl ${
+                      activeTab === "meeting" ? "text-white" : "text-slate-500 hover:text-slate-700"
+                    }`}
+                  >
+                    <FaUsers className={activeTab === "meeting" ? "text-white/90 text-lg" : "text-slate-400 text-lg"} />
+                    Meeting QR
+                  </button>
+                  
+                  <motion.div
+                    className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-xl shadow-md z-0"
+                    animate={{
+                      background: activeTab === "daily"
+                        ? "linear-gradient(135deg, #006600 0%, #2e7d32 100%)"
+                        : "linear-gradient(135deg, #000066 0%, #0056a2 100%)",
+                      left: activeTab === "daily" ? "6px" : "calc(50%)"
                     }}
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 </div>
 
@@ -531,7 +574,7 @@ const AdminQRManagement = () => {
                         <div className="p-4 bg-[#006600]/5 text-[#006600] rounded-xl text-xs sm:text-sm font-semibold border border-[#006600]/10 leading-relaxed shadow-sm mt-2">
                           <div className="flex items-start gap-3">
                             <FaCalendarDay className="w-6 h-6 flex-shrink-0 opacity-80 mt-0.5" />
-                            <p>Generates the standard daily check-in code. Ensure interns are within the geofence perimeter to successfully scan.</p>
+                            <p>Generates the standard daily check in code. Ensure interns are within the geofence perimeter to successfully scan.</p>
                           </div>
                         </div>
                       </motion.div>
@@ -541,7 +584,7 @@ const AdminQRManagement = () => {
 
                 <button
                   type="button"
-                  onClick={handleGenerate}
+                  onClick={handleGenerateClick}
                   disabled={loading}
                   className="inline-flex items-center justify-center rounded-xl sm:rounded-2xl transition-all duration-300 ease-out whitespace-nowrap bg-gradient-to-r from-[#000066] to-[#006600] text-white hover:opacity-95 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] shadow-md w-full py-3.5 sm:py-4 text-sm sm:text-base font-bold tracking-wide mt-auto disabled:opacity-70 disabled:hover:translate-y-0 disabled:hover:shadow-md disabled:active:scale-100"
                 >
@@ -642,6 +685,81 @@ const AdminQRManagement = () => {
           .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         `}</style>
       </div>
+      
+      {/* Password Modal */}
+      <AnimatePresence>
+        {showPasswordPopup && (
+          <>
+            <div 
+              className="fixed inset-0 z-[60] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+              onClick={() => setShowPasswordPopup(false)}
+            />
+            <div className="absolute inset-x-0 top-0 h-full z-[70] pointer-events-none">
+              <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Enter password to generate {activeTab === 'meeting' ? 'meeting' : 'daily'} QR code
+                      </p>
+                    </div>
+                    <button 
+                      onClick={() => setShowPasswordPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      autoFocus
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                    >
+                      {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowPasswordPopup(false)}
+                      className="flex-1 px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={settingsSaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                    >
+                      {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </div>
+          </>
+        )}
+      </AnimatePresence>
     </AdminNavigation>
   );
 };
