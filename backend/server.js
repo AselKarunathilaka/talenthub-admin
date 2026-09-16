@@ -4,6 +4,7 @@ const _bufferShim = require('buffer');
 if (!_bufferShim.SlowBuffer) _bufferShim.SlowBuffer = Buffer;
 if (!Buffer.prototype.equal && Buffer.prototype.equals) Buffer.prototype.equal = Buffer.prototype.equals;
 
+const fs = require('fs');
 const app = require("./app");
 const connectDB = require("./config/database");
 const InternService = require("./services/internService");
@@ -58,8 +59,12 @@ const server = app.listen(PORT, () => {
   // Initialize daily 4:30 PM seat booking expiration scheduler
   initSeatBookingScheduler();
 
-  // Initialize automated WhatsApp background sender
-  initializeWhatsApp();
+  // Initialize automated WhatsApp background sender only if previously linked
+  if (fs.existsSync('./.wwebjs_auth')) {
+    initializeWhatsApp();
+  } else {
+    console.log("ℹ️  [WhatsApp] Skipping initialization: No saved session found. Await manual link from dashboard.");
+  }
 
   // Initialize TalentTrail sync job (runs immediately, then every 5 minutes)
   console.log("⏳ Starting TalentTrail sync job...");

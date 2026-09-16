@@ -176,3 +176,18 @@ exports.disconnectWhatsApp = async (req, res) => {
     res.status(500).json({ message: "An error occurred while disconnecting WhatsApp." });
   }
 };
+
+exports.linkWhatsApp = async (req, res) => {
+  try {
+    const { linkWhatsApp } = require("../utils/whatsappSender");
+    const result = await linkWhatsApp();
+    if (result.success) {
+      res.status(200).json({ message: "WhatsApp linking started." });
+    } else {
+      res.status(500).json({ message: "Failed to link WhatsApp.", error: result.error });
+    }
+  } catch (error) {
+    console.error("[Settings] Link WhatsApp error:", error);
+    res.status(500).json({ message: "An error occurred while linking WhatsApp." });
+  }
+};

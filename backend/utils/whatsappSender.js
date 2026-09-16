@@ -1,5 +1,6 @@
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const fs = require('fs');
 
 let client;
 let isReady = false;
@@ -12,16 +13,36 @@ let connectionTime = null;
  * Initializes the WhatsApp Web client
  * This should be called once when the server starts
  */
-const initializeWhatsApp = () => {
+const initializeWhatsApp = async () => {
     console.log('[WhatsApp] Initializing automated client...');
     connectionStatus = 'INITIALIZING';
     qrCodeData = null;
     
+    if (client) {
+        try {
+            await client.destroy();
+        } catch (e) {
+            console.log('[WhatsApp] Ignored error while destroying previous client.');
+        }
+        client = null;
+    }
+    
     client = new Client({
         // Use LocalAuth to save the session so you don't have to scan the QR code every time
         authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
+        authTimeoutMs: 60000,
+        qrMaxRetries: 3,
         puppeteer: {
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            args: [
+                '--no-sandbox', 
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--no-first-run',
+                '--no-zygote',
+                '--disable-gpu'
+            ],
+            protocolTimeout: 240000
         }
     });
 
@@ -53,12 +74,8 @@ const initializeWhatsApp = () => {
         connectedNumber = null;
         connectionTime = null;
         
-        // Optionally auto-reinitialize after a small delay
-        setTimeout(() => {
-            if (connectionStatus === 'DISCONNECTED') {
-               initializeWhatsApp();
-            }
-        }, 5000);
+        // Removed auto-restart to prevent "Browser is already running" locked session loops.
+        // User must manually restart from Admin Settings if disconnected.
     });
 
     client.on('auth_failure', (msg) => {
@@ -83,33 +100,70 @@ const getWhatsAppStatus = () => {
 };
 
 const disconnectWhatsApp = async () => {
-    if (!client) return { success: false, error: "Client not initialized" };
-    try {
-        await client.logout();
+    if (!client) {
+        // If not initialized, just try to clean up the folder anyway
+        if (fs.existsSync('./.wwebjs_auth')) {
+            try { fs.rmSync('./.wwebjs_auth', { recursive: true, force: true }); } catch (e) {}
+        }
+        return { success: true, message: "Cleaned up" };
+    }
+    
+    const cleanupAndRestart = (shouldRestart = false) => {
         isReady = false;
         connectionStatus = 'DISCONNECTED';
         qrCodeData = null;
         connectedNumber = null;
         connectionTime = null;
         
-        // Wait a brief moment before re-initializing to get a new QR code
-        setTimeout(() => {
-            initializeWhatsApp();
-        }, 2000);
+        if (fs.existsSync('./.wwebjs_auth')) {
+            try { fs.rmSync('./.wwebjs_auth', { recursive: true, force: true }); } catch (e) {}
+        }
         
+        if (shouldRestart) {
+            setTimeout(() => {
+                initializeWhatsApp();
+            }, 2000);
+        }
+    };
+
+    // Wrap in timeout to prevent hanging when puppeteer is crashed
+    const safeLogout = () => Promise.race([
+        client.logout(),
+        new Promise(resolve => setTimeout(resolve, 3000))
+    ]);
+
+    const safeDestroy = () => Promise.race([
+        client.destroy(),
+        new Promise(resolve => setTimeout(resolve, 3000))
+    ]);
+
+    try {
+        await safeLogout();
+        cleanupAndRestart(false);
         return { success: true };
     } catch (error) {
         // Fallback destroy if logout fails
         try {
-            await client.destroy();
-            connectionStatus = 'DISCONNECTED';
-            setTimeout(() => initializeWhatsApp(), 2000);
+            await safeDestroy();
+            cleanupAndRestart(false);
             return { success: true };
         } catch (destroyErr) {
             console.error('[WhatsApp Sender] Disconnect failed:', error);
-            return { success: false, error: error.message };
+            cleanupAndRestart(false);
+            return { success: true, message: "Forced cleanup" }; // Always return true to clear UI
         }
     }
+};
+
+/**
+ * Manually trigger linking (initialization).
+ */
+const linkWhatsApp = async () => {
+    if (connectionStatus === 'WAITING_FOR_SCAN' || connectionStatus === 'CONNECTED') {
+        return { success: true, message: "Already linking or connected" };
+    }
+    await initializeWhatsApp();
+    return { success: true };
 };
 
 /**
@@ -151,5 +205,6 @@ module.exports = {
   initializeWhatsApp,
   sendWhatsAppMessage,
   getWhatsAppStatus,
-  disconnectWhatsApp
+  disconnectWhatsApp,
+  linkWhatsApp
 };

@@ -55,6 +55,15 @@
   animation: drawCheck 0.4s ease-out 0.4s forwards;
 }
 
+@keyframes scan {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(220px);
+  }
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /*  LogBook Page — Animations & Styles                                       */
 /* ═══════════════════════════════════════════════════════════════════════════ */

@@ -29,5 +29,6 @@ router.put("/users/:id", requireUserManage, settingsController.updateUser);
 // ─── WhatsApp Integration ───
 router.get("/whatsapp-status", enforceRoutePermission, settingsController.getWhatsAppStatus);
 router.post("/whatsapp-disconnect", enforceRoutePermission, settingsController.disconnectWhatsApp);
+router.post("/whatsapp-link", enforceRoutePermission, settingsController.linkWhatsApp);
 
 module.exports = router;

@@ -228,9 +228,9 @@ const sendUniversityRejectionEmail = async ({ to, supervisorName, universityName
 };
 
 /**
- * Send security alert when location attendance policy is disabled
+ * Send security alert when location attendance policy is toggled
  */
-const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
+const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => {
   const SecurityAlert = require("../models/SecurityAlert");
   
   try {
@@ -247,26 +247,29 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
     }
 
     const to = emails; // sendEmail supports array of strings
-    const subject = `⚠️ SECURITY ALERT: Attendance Location Policy Disabled`;
+    const subject = `⚠️ SECURITY ALERT: Attendance Location Policy ${statusText}`;
+    
+    const isEnabled = statusText === "Enabled";
+    const statusColor = isEnabled ? "#10b981" : "#ef4444"; // emerald for Enabled, red for Disabled
     
     const html = `
       <!DOCTYPE html>
       <html>
       <body style="font-family: -apple-system, sans-serif; background-color: #fef2f2; padding: 20px; color: #1e293b;">
-        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid #fecaca; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-          <div style="background: #ef4444; padding: 20px; text-align: center; color: white;">
+        <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; border: 1px solid ${isEnabled ? '#6ee7b7' : '#fecaca'}; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+          <div style="background: ${statusColor}; padding: 20px; text-align: center; color: white;">
             <h2 style="margin: 0; font-size: 20px;">System Security Alert</h2>
           </div>
           <div style="padding: 24px; line-height: 1.6;">
-            <h3 style="margin-top: 0; color: #991b1b;">Location Geofencing Disabled</h3>
-            <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually disabled.</p>
+            <h3 style="margin-top: 0; color: ${isEnabled ? '#047857' : '#991b1b'};">Location Geofencing ${statusText}</h3>
+            <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually ${statusText.toLowerCase()}.</p>
             
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
               <p style="margin: 0;"><strong>Timestamp:</strong> ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}</p>
             </div>
             
-            <p style="font-size: 14px; color: #64748b;">If this action was not authorized, please log into the Admin Portal immediately to re-enable location tracking.</p>
+            <p style="font-size: 14px; color: #64748b;">If this action was not authorized, please log into the Admin Portal immediately to review the settings.</p>
           </div>
         </div>
       </body>
@@ -277,7 +280,7 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail }) => {
       to, 
       subject, 
       html, 
-      text: `Warning: Location security was disabled by ${adminName} (${adminEmail}).` 
+      text: `Notice: Location security was ${statusText.toLowerCase()} by ${adminName} (${adminEmail}).` 
     });
   } catch (error) {
     console.error("Failed to dynamically send security alert email:", error);

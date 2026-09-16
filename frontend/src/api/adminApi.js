@@ -86,6 +86,61 @@ const downloadApprovedLeaveReport = async ({
 
 // Admin API functions
 export const adminApi = {
+  // Generic HTTP methods for the adminApi
+  get: async (url) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
+  post: async (url, body = {}) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
+  put: async (url, body = {}) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+  
+  delete: async (url) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
   // Download on-leave interns Excel
   downloadOnLeaveExcel: async () => {
     const token = getAuthToken();

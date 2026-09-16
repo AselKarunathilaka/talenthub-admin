@@ -42,6 +42,7 @@ export const API_ENDPOINTS = {
       USERS: "/admin/settings/users",
       WHATSAPP_STATUS: "/admin/settings/whatsapp-status",
       WHATSAPP_DISCONNECT: "/admin/settings/whatsapp-disconnect",
+      WHATSAPP_LINK: "/admin/settings/whatsapp-link",
     },
   },
 };
