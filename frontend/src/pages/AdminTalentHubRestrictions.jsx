@@ -77,7 +77,7 @@ const HistoryModal = ({ intern, onClose }) => (
       />
       <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
         <motion.div
-          className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 sm:p-6 w-full max-w-lg pointer-events-auto max-h-full overflow-y-auto no-scrollbar flex flex-col"
+          className="bg-white rounded-2xl shadow-2xl border border-slate-200 p-5 xl:p-6 w-full max-w-lg pointer-events-auto max-h-full overflow-y-auto no-scrollbar flex flex-col"
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -86,30 +86,30 @@ const HistoryModal = ({ intern, onClose }) => (
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-2">
               <FaHistory className="text-blue-600" />
-              <h3 className="text-base sm:text-lg font-extrabold text-slate-800">Restriction History</h3>
+              <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Restriction History</h3>
             </div>
             <button className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer" onClick={onClose}>
               <FaTimes />
             </button>
           </div>
 
-          <p className="text-xs sm:text-sm font-semibold text-slate-700 mb-3 sm:mb-4">
+          <p className="text-xs xl:text-sm font-semibold text-slate-700 mb-3 xl:mb-4">
             {intern.name} • {intern.traineeId}
           </p>
 
           <div className="space-y-4">
             {intern.restrictionHistory && intern.restrictionHistory.length > 0 ? (
               intern.restrictionHistory.map((h, i) => (
-                <div key={i} className={`flex flex-col sm:flex-row gap-2 sm:gap-4 p-3 sm:p-4 rounded-lg sm:rounded-xl border ${h.liftedAt ? "bg-emerald-50/50 border-emerald-100" : "bg-rose-50/50 border-rose-100"}`}>
-                  <div className="mt-0 sm:mt-1 flex justify-start sm:block">
+                <div key={i} className={`flex flex-col xl:flex-row gap-2 xl:gap-4 p-3 xl:p-4 rounded-lg xl:rounded-xl border ${h.liftedAt ? "bg-emerald-50/50 border-emerald-100" : "bg-rose-50/50 border-rose-100"}`}>
+                  <div className="mt-0 xl:mt-1 flex justify-start xl:block">
                     {h.liftedAt ? (
                       <FaCheckCircle className="text-emerald-500 text-lg" />
                     ) : (
                       <FaLock className="text-rose-500 text-lg" />
                     )}
                   </div>
-                  <div className="flex-1 text-xs sm:text-sm min-w-0">
-                    <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                  <div className="flex-1 text-xs xl:text-sm min-w-0">
+                    <div className="flex flex-col xl:flex-row xl:justify-between mb-1 gap-1 xl:gap-0">
                       <span className="font-bold text-slate-700">Restricted</span>
                       <span className="text-slate-500">{fmt(h.restrictedAt)}</span>
                     </div>
@@ -118,12 +118,12 @@ const HistoryModal = ({ intern, onClose }) => (
                     {h.liftedAt && (
                       <>
                         <div className="h-px bg-slate-200 my-3" />
-                        <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                        <div className="flex flex-col xl:flex-row xl:justify-between mb-1 gap-1 xl:gap-0">
                           <span className="font-bold text-slate-700">Lifted</span>
                           <span className="text-slate-500">{fmt(h.liftedAt)}</span>
                         </div>
                         {h.liftedBy && (
-                          <div className="flex flex-col sm:flex-row sm:justify-between mb-1 gap-1 sm:gap-0">
+                          <div className="flex flex-col xl:flex-row xl:justify-between mb-1 gap-1 xl:gap-0">
                             <span className="font-semibold text-slate-700">By</span>
                             <span className="text-slate-500">{h.liftedBy}</span>
                           </div>
@@ -400,10 +400,10 @@ const TalentHubRestrictions = () => {
                 </motion.p>
               </div>
             </div>
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex gap-2 w-full xl:w-auto">
               <button
                 onClick={exportToPDF}
-                className="logres-btn logres-btn--primary w-full sm:w-auto justify-center"
+                className="logres-btn logres-btn--primary w-full xl:w-auto justify-center"
                 style={{ display: "flex", alignItems: "center", gap: 8 }}
               >
                 <FaDownload /> Export PDF
@@ -687,7 +687,7 @@ const TalentHubRestrictions = () => {
                     <div className="logres-card__actions">
                       {intern.talentHubRestricted && (
                         <button
-                          className="logres-btn logres-btn--lift logres-btn--sm"
+                          className="logres-btn logres-btn--lift logres-btn--sm w-full xl:w-auto justify-center"
                           style={{ flex: 1, background: `linear-gradient(135deg, ${BRAND.warn}, #d97706)` }}
                           onClick={() => handleConfirmClick(intern, 'lift')}
                         >
@@ -696,7 +696,7 @@ const TalentHubRestrictions = () => {
                       )}
                       {intern.talentHubOverride && (
                         <button
-                          className="logres-btn logres-btn--lift logres-btn--sm"
+                          className="logres-btn logres-btn--lift logres-btn--sm w-full xl:w-auto justify-center"
                           style={{ flex: 1, background: `linear-gradient(135deg, ${BRAND.danger}, #b91c1c)` }}
                           onClick={() => handleConfirmClick(intern, 'revoke')}
                         >
@@ -752,7 +752,7 @@ const TalentHubRestrictions = () => {
                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                  <div className="flex justify-between items-start mb-3 xl:mb-4">
                     <div>
                       <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
                       <p className="text-xs text-slate-500 mt-1">
@@ -789,7 +789,7 @@ const TalentHubRestrictions = () => {
                     </span>
                   </div>
 
-                  <div className="mb-3 sm:mb-5 relative">
+                  <div className="mb-3 xl:mb-5 relative">
                     <input
                       id="talenthub-security-password-input"
                       type={confirmShowPw ? "text" : "password"}
@@ -811,17 +811,17 @@ const TalentHubRestrictions = () => {
                     )}
                   </div>
 
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
+                  <div className="flex flex-col-reverse xl:flex-row gap-2 xl:gap-3 mt-4">
                     <button
                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
-                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                      className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleConfirmVerify}
                       disabled={securitySaving || !confirmPassword}
-                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                      className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
                     >
                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
@@ -950,7 +950,7 @@ const TalentHubRestrictions = () => {
           border: 1px solid #f0f0f0; overflow: hidden;
           box-shadow: 0 2px 12px rgba(0,0,0,0.04);
         }
-        @media (min-width: 768px) { .logres-table-wrapper { display: block; } }
+        @media (min-width: 1025px) { .logres-table-wrapper { display: block; } }
         .logres-table { width: 100%; border-collapse: collapse; }
         .logres-table thead tr {
           background: #fafafa; border-bottom: 1px solid #f0f0f0;
@@ -1009,7 +1009,7 @@ const TalentHubRestrictions = () => {
           .logres-card__actions { flex-direction: column; }
           .logres-card__actions .logres-btn { width: 100% !important; justify-content: center; }
         }
-        @media (min-width: 768px) { .logres-cards-mobile { display: none; } }
+        @media (min-width: 1025px) { .logres-cards-mobile { display: none; } }
         .logres-card {
           background: white; border-radius: 16px;
           border: 1.5px solid #fecaca;

@@ -20,7 +20,7 @@ exports.listRestrictions = async (req, res) => {
     // Evaluate each intern to ensure live real-time accuracy
     const enrichedList = await Promise.all(
       interns.map(async (intern) => {
-        const access = await talentHubRestrictionService.evaluateInternAccess(intern);
+        const access = await talentHubRestrictionService.evaluateInternAccess(intern, true);
 
         const idStr = String(intern._id);
         const expiresAt = intern.talentHubOverrideExpiresAt ? new Date(intern.talentHubOverrideExpiresAt) : null;

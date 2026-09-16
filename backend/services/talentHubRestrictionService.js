@@ -154,7 +154,7 @@ async function getInternProjects(intern) {
  *      - If talentHubOverride === true AND overrideExpiresAt <= now -> Re-restricted with "Temporary 5-day access expired: still not enrolled in any project".
  *      - If no override -> Restricted with "No project assigned".
  */
-async function evaluateInternAccess(internDocOrId) {
+async function evaluateInternAccess(internDocOrId, skipLiveSync = false) {
   let intern = internDocOrId;
   if (!intern || !intern._id || typeof intern.save !== "function") {
     intern = await Intern.findById(internDocOrId);
@@ -166,7 +166,7 @@ async function evaluateInternAccess(internDocOrId) {
   let projects = await getInternProjects(intern);
   let hasProjects = projects.length > 0;
 
-  if (!hasProjects) {
+  if (!hasProjects && !skipLiveSync) {
     try {
       // Re-fetch from Talent Trail to ensure we have the absolute latest data before restricting
       const { syncTalentTrailData } = require("./talentTrailSyncService");
