@@ -312,7 +312,7 @@ const AdminHolidays = () => {
                     <button
                       key={y.year}
                       onClick={() => setYear(y.year)}
-                      className={`flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-bold transition-all duration-200 ${
+                      className={`flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-bold transition-all duration-200 w-full sm:w-auto justify-between sm:justify-start ${
                         active
                           ? "bg-white border-[#00b4eb]/30 shadow-sm ring-2 ring-[#00b4eb]/20 text-slate-900"
                           : "bg-white/60 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300 hover:shadow-sm"
@@ -478,12 +478,12 @@ const AdminHolidays = () => {
               className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
             >
               {/* Card header */}
-              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 sm:border-b sm:border-slate-100 bg-white border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none shadow-sm sm:shadow-none mb-3 sm:mb-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 whitespace-nowrap">
                     {year} Calendar
                   </h2>
-                  <span className={`inline-flex items-center gap-1 rounded-xl border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${quality.chip}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-xl border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${quality.chip} whitespace-nowrap`}>
                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${quality.dot}`} />
                     {quality.label}
                   </span>
@@ -535,16 +535,16 @@ const AdminHolidays = () => {
                   </div>
                 </div>
               ) : (
-                <ul className="divide-y divide-slate-100/80">
+                <ul className="flex flex-col gap-3 sm:gap-0 sm:block sm:divide-y sm:divide-slate-100/80">
                   {holidays.map((h) => {
                     const dp = getDateParts(h.date);
                     return (
                       <li
                         key={h._id}
-                        className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-slate-50/80 transition-colors group"
+                        className="flex items-start sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-3.5 hover:bg-slate-50/80 transition-colors group bg-white sm:bg-transparent border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none shadow-sm sm:shadow-none mb-3 sm:mb-0"
                       >
                         {/* Calendar date badge */}
-                        <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center bg-blue-50/80 border border-blue-100/50 rounded-2xl">
+                        <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center bg-blue-50/80 border border-blue-100/50 rounded-2xl mt-0.5 sm:mt-0">
                           <span className="text-[10px] font-black uppercase tracking-widest text-[#0056a2]/60 leading-none">
                             {dp.month}
                           </span>
@@ -556,53 +556,55 @@ const AdminHolidays = () => {
                           </span>
                         </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm sm:text-base font-bold text-slate-800 truncate">
-                            {h.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {(h.type || []).map((t) => (
-                              <span
-                                key={t}
-                                className="inline-block rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide"
-                              >
-                                {t}
-                              </span>
-                            ))}
-                            {h.sources?.length > 0 && (
-                              <span className="text-[11px] text-slate-400 font-medium">
-                                via {h.sources.join(", ")}
+                        {/* Info & Actions */}
+                        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm sm:text-base font-bold text-slate-800 leading-tight">
+                              {h.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2 sm:mt-1">
+                              {(h.type || []).map((t) => (
+                                <span
+                                  key={t}
+                                  className="inline-block rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                              {h.sources?.length > 0 && (
+                                <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                                  via {h.sources.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Badges & actions */}
+                          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+                            {h.isManual && (
+                              <span className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700">
+                                <Sparkles className="h-3 w-3" />
+                                <span className="hidden sm:inline">Manual</span>
                               </span>
                             )}
+                            <button
+                              onClick={() => {
+                                setEditing(h);
+                                setForm({ date: h.date, name: h.name });
+                              }}
+                              className="p-2 rounded-xl text-slate-400 sm:text-slate-300 bg-slate-50 sm:bg-transparent hover:bg-slate-100 hover:text-slate-700 transition-colors sm:opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              title="Rename"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(h)}
+                              className="p-2 rounded-xl text-rose-400 sm:text-slate-300 bg-rose-50 sm:bg-transparent hover:bg-rose-100 hover:text-rose-600 transition-colors sm:opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              title="Remove"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                        </div>
-
-                        {/* Badges & actions */}
-                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                          {h.isManual && (
-                            <span className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700">
-                              <Sparkles className="h-3 w-3" />
-                              Manual
-                            </span>
-                          )}
-                          <button
-                            onClick={() => {
-                              setEditing(h);
-                              setForm({ date: h.date, name: h.name });
-                            }}
-                            className="p-2 rounded-xl text-slate-300 hover:bg-slate-100 hover:text-slate-700 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Rename"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(h)}
-                            className="p-2 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Remove"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </li>
                     );

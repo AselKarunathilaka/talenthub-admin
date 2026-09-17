@@ -111,15 +111,9 @@ const updateAttendanceSettings = async (req, res) => {
       });
     }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
 
-    return res.status(200).json({
-      message: "Attendance settings updated successfully.",
-      settings,
-    });
+    return res.status(200).json({ message: "Verification successful." });
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to update attendance settings.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Failed to verify password.", error: error.message });
   }
 };
 
@@ -216,31 +210,50 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Logbook Restriction lift in admin side";
     } else if (action === "talenthub restriction lift") {
       statusText = "TalentHub Restriction lift in admin side";
-    } else if (action === "talenthub restriction revoke") {
+        } else if (action === "talenthub restriction revoke") {
       statusText = "TalentHub Restriction revoke in admin side";
+    } else if (action === "Send announcemt for all interns in admin side" || action === "send mass announcement") {
+      statusText = "Send announcemt for all interns in admin side";
+        } else if (action === "Delete anncounement in admin side" || action === "delete announcement") {
+      statusText = "Delete anncounement in admin side";
+    } else if (action === "add holiday") {
+      statusText = "Add Holiday in admin side";
+    } else if (action === "delete holiday") {
+      statusText = "Delete Holiday in admin side";
+    } else if (action === "update holiday") {
+      statusText = "Update Holiday in admin side";
+    } else if (action === "verify holiday") {
+      statusText = "Verify Holidays in admin side";
+    } else if (action === "unverify holiday") {
+      statusText = "Unverify Holidays in admin side";
     }
     
+    let emailStatusText = statusText;
+    let whatsappMessage = `⚠️ *SECURITY ALERT*\n${statusText}`;
+    
     if (extraInfo) {
-      statusText += " - " + extraInfo;
+      emailStatusText += " - " + extraInfo;
+      whatsappMessage += `\n\nAction Data:\n${extraInfo.replace(/, /g, '\n')}`;
     }
+    
+    whatsappMessage += `\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
     
     sendSecurityAlertEmail({
       adminName: adminName,
       adminEmail: adminEmail,
-      statusText: statusText
+      statusText: emailStatusText
     }).catch(err => console.error("Failed to send security alert email:", err));
     
     SecurityAlert.find({}).then(alerts => {
       alerts.forEach(alert => {
         if (alert.phoneNumber) {
-          const message = `⚠️ *SECURITY ALERT*\n${statusText}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-          sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
+          sendWhatsAppMessage(alert.phoneNumber, whatsappMessage).catch(err => 
             console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
           );
         }
       });
     }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
-    
+
     return res.status(200).json({ message: "Verification successful." });
   } catch (error) {
     return res.status(500).json({ message: "Failed to verify password.", error: error.message });

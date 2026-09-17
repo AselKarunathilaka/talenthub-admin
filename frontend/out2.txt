@@ -1,0 +1,118 @@
+Created At: 2026-09-17T11:02:27+05:30
+Completed At: 2026-09-17T11:02:27+05:30
+File Path: `file:///g:/github/TalentHub/frontend/src/pages/AdminAnnouncements.jsx`
+Total Lines: 889
+Total Bytes: 44218
+Showing lines 780 to 889
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+780:               animate={{ opacity: 1 }}
+781:               exit={{ opacity: 0 }}
+782:               transition={{ duration: 0.2 }}
+783:               className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-md"
+784:             />
+785:           )}
+786:         </AnimatePresence>
+787: 
+788:         {/* ── Security Check Popup ── */}
+789:         <AnimatePresence>
+790:           {confirmTarget && (
+791:             <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+792:               <div
+793:                 className="fixed inset-0 z-[49] pointer-events-auto"
+794:                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+795:               />
+796:               <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+797:                 <motion.div
+798:                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
+799:                   animate={{ opacity: 1, scale: 1, y: 0 }}
+800:                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
+801:                   transition={{ type: "spring", damping: 26, stiffness: 320 }}
+802:                   onAnimationComplete={() => {
+803:                     document.getElementById('announcement-security-password-input')?.focus();
+804:                   }}
+805:                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+806:                   onClick={(e) => e.stopPropagation()}
+807:                 >
+808:                   <div className="flex justify-between items-start mb-3 sm:mb-4">
+809:                     
+810:                     <div>
+811:                       <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+812:                       <p className="text-xs text-slate-500 mt-1">
+813:                         {confirmTarget?.type === "delete" ? "Enter password to delete announcement" : "Enter password to send announcement"}
+814:                       </p>
+815:                     </div>
+816:                     <button
+817:                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+818:                       className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+819:                     >
+820:                       <FaTimes className="w-4 h-4" />
+821:                     </button>
+822:                   </div>
+823: 
+824:                   
+825:                   <div className={`flex items-center gap-3 border rounded-xl p-3 mb-4 ${confirmTarget?.type === "delete" ? "bg-rose-50 border-rose-100" : "bg-blue-50 border-blue-100"}`}>
+826:                     <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: confirmTarget?.type === "delete" ? 'linear-gradient(135deg,#f43f5e,#e11d48)' : 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+827:                       {confirmTarget?.type === "delete" ? <FaTrash /> : <FaBullhorn />}
+828:                     </div>
+829:                     <div className="flex-1 min-w-0">
+830:                       <p className="text-sm font-bold text-slate-800 truncate">
+831:                         {confirmTarget?.type === "delete" ? "Delete Announcement" : "Mass Announcement"}
+832:                       </p>
+833:                       <p className="text-xs text-slate-500 truncate">
+834:                         {confirmTarget?.type === "delete" ? "Action cannot be undone" : "To: All Interns"}
+835:                       </p>
+836:                     </div>
+837:                   </div>
+838: 
+839:                   <div className="mb-3 sm:mb-5 relative">
+840:                     <input
+841:                       id="announcement-security-password-input"
+842:                       type={confirmShowPw ? "text" : "password"}
+843:                       value={confirmPassword}
+844:                       onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
+845:                       onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
+846:                       placeholder="Enter password..."
+847:                       className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+848:                     />
+849:                     <button
+850:                       type="button"
+851:                       onClick={() => setConfirmShowPw(!confirmShowPw)}
+852:                       className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+853:                     >
+854:                       {confirmShowPw ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+855:                     </button>
+856:                     {confirmError && (
+857:                       <p className="text-xs font-semibold text-rose-500 mt-2">{confirmError}</p>
+858:                     )}
+859:                   </div>
+860: 
+861:                   <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
+862:                     <button
+863:                       onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+864:                       className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+865:                     >
+866:                       Cancel
+867:                     </button>
+868:                     
+869:                     <button
+870:                       onClick={handleConfirmVerify}
+871:                       disabled={securitySaving || !confirmPassword}
+872:                       className={`flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer ${confirmTarget?.type === "delete" ? "bg-rose-600 hover:bg-rose-700" : "bg-blue-600 hover:bg-blue-700"}`}
+873:                     >
+874:                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : (confirmTarget?.type === "delete" ? "Verify & Delete" : "Verify & Send")}
+875:                     </button>
+876:                   </div>
+877:                 </motion.div>
+878:               </div>
+879:             </motion.div>
+880:           )}
+881:         </AnimatePresence>
+882: 
+883:       <Toast toast={toast} onDismiss={() => setToast(null)} />
+884:     </AdminNavigation>
+885:   );
+886: };
+887: 
+888: export default AdminAnnouncements;
+889: 
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

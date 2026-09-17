@@ -1,5 +1,8 @@
 const Announcement = require("../models/Announcement");
 const Intern = require("../models/Intern");
+const { sendEmail } = require("../utils/emailSender");
+const { sendWhatsAppMessage } = require("../utils/whatsappSender");
+const { getActiveInternsQuery } = require("../utils/workingDays");
 
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
@@ -27,6 +30,31 @@ const createAnnouncement = async (req, res) => {
       alwaysDisplay: Boolean(alwaysDisplay),
       createdBy,
     });
+
+    
+    // Asynchronously send to all active interns
+    Intern.find(getActiveInternsQuery())
+      .select("Trainee_Email Trainee_Phone")
+      .lean()
+      .then(async (interns) => {
+        console.log(`[Announcements] Sending mass announcement to ${interns.length} interns...`);
+        for (const intern of interns) {
+          if (intern.Trainee_Email) {
+            await sendEmail({
+              to: intern.Trainee_Email,
+              subject: `TalentHub Announcement: ${title}`,
+              text: message,
+              html: `<h2>${title}</h2><p>${message.replace(/\n/g, '<br/>')}</p>`
+            }).catch(() => {});
+          }
+          if (intern.Trainee_Phone) {
+            await sendWhatsAppMessage(intern.Trainee_Phone, `📢 *TalentHub Announcement*\n\n*${title}*\n\n${message}`).catch(() => {});
+          }
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay to prevent rate limits
+        }
+        console.log(`[Announcements] Finished sending mass announcement to ${interns.length} interns.`);
+      })
+      .catch(err => console.error("Error fetching interns for mass announcement:", err));
 
     return res.status(201).json(announcement);
   } catch (error) {

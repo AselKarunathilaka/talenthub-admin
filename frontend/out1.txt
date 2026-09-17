@@ -1,0 +1,808 @@
+Created At: 2026-09-17T11:02:00+05:30
+Completed At: 2026-09-17T11:02:00+05:30
+File Path: `file:///g:/github/TalentHub/frontend/src/pages/AdminAnnouncements.jsx`
+Total Lines: 889
+Total Bytes: 44218
+Showing lines 1 to 800
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+1: import React, { useState, useEffect } from "react";
+2: import { useNavigate } from "react-router-dom";
+3: import {
+4:   FaArrowLeft,
+5:   FaBullhorn,
+6:   FaPaperPlane,
+7:   FaTrash,
+8:   FaSpinner,
+9:   FaExclamationTriangle,
+10:   FaCheckCircle,
+11:   FaTimes,
+12:   FaFilter,
+13:   FaCalendarAlt,
+14:   FaSearch,
+15:   FaChevronDown,
+16:   FaChevronLeft,
+17:   FaChevronRight,
+18:   FaEye,
+19:   FaEyeSlash,
+20:   FaLock,
+21: } from "react-icons/fa";
+22: import { motion, AnimatePresence } from "framer-motion";
+23: import { announcementApi } from "../api/adminApi";
+24: import { API_BASE_URL } from "../api/apiConfig";
+25: import AdminNavigation from "../components/AdminNavigation";
+26: import { Megaphone } from "lucide-react";
+27: 
+28: // ─── Helpers ─────────────────────────────────────────────────────────────────
+29: const formatDateTime = (dateString) => {
+30:   if (!dateString) return "N/A";
+31:   return new Date(dateString).toLocaleString("en-US", {
+32:     year: "numeric",
+33:     month: "short",
+34:     day: "numeric",
+35:     hour: "2-digit",
+36:     minute: "2-digit",
+37:   });
+38: };
+39: 
+40: const PRIORITY_OPTIONS = [
+41:   { value: "normal", label: "Normal" },
+42:   { value: "important", label: "Important" },
+43:   { value: "urgent", label: "Urgent" },
+44: ];
+45: 
+46: const priorityStyle = {
+47:   normal: "bg-blue-50 text-[#0056a2] border-[#0056a2] shadow-sm",
+48:   important: "bg-amber-50 text-amber-700 border-amber-500 shadow-sm",
+49:   urgent: "bg-rose-50 text-rose-700 border-rose-500 shadow-sm",
+50: };
+51: 
+52: const priorityDot = {
+53:   normal: "bg-[#0056a2]",
+54:   important: "bg-amber-500",
+55:   urgent: "bg-rose-500",
+56: };
+57: 
+58: const PAGE_SIZE = 5;
+59: 
+60: // ─── Toast ────────────────────────────────────────────────────────────────────
+61: const Toast = ({ toast, onDismiss }) => (
+62:   <AnimatePresence>
+63:     {toast && (
+64:       <motion.div
+65:         initial={{ opacity: 0, y: 40, scale: 0.95 }}
+66:         animate={{ opacity: 1, y: 0, scale: 1 }}
+67:         exit={{ opacity: 0, y: 20, scale: 0.95 }}
+68:         className={`fixed bottom-6 right-6 z-50 flex items-center space-x-3 px-5 py-3 rounded-2xl shadow-xl border max-w-sm ${
+69:           toast.type === "success"
+70:             ? "bg-green-50 border-green-200 text-green-800"
+71:             : toast.type === "error"
+72:               ? "bg-rose-50 border-rose-200 text-rose-800"
+73:               : "bg-blue-50 border-blue-200 text-[#0056a2]"
+74:         }`}
+75:       >
+76:         {toast.type === "success" ? (
+77:           <FaCheckCircle className="flex-shrink-0 h-4 w-4 text-green-500" />
+78:         ) : toast.type === "error" ? (
+79:           <FaExclamationTriangle className="flex-shrink-0 h-4 w-4 text-rose-500" />
+80:         ) : (
+81:           <FaBullhorn className="flex-shrink-0 h-4 w-4 text-[#0056a2]" />
+82:         )}
+83:         <p className="text-sm font-bold flex-1">{toast.message}</p>
+84:         <button onClick={onDismiss} className="opacity-60 hover:opacity-100">
+85:           <FaTimes className="h-3 w-3" />
+86:         </button>
+87:       </motion.div>
+88:     )}
+89:   </AnimatePresence>
+90: );
+91: 
+92: // ─── Main Component ───────────────────────────────────────────────────────────
+93: const AdminAnnouncements = () => {
+94:   const navigate = useNavigate();
+95: 
+96:   // Form state
+97:   const [title, setTitle] = useState("");
+98:   const [message, setMessage] = useState("");
+99:   const [priority, setPriority] = useState("normal");
+100:   const [showAsPopup, setShowAsPopup] = useState(false);
+101:   const [alwaysDisplay, setAlwaysDisplay] = useState(false);
+102:   const [sending, setSending] = useState(false);
+103: 
+104:   // List state
+105:   const [announcements, setAnnouncements] = useState([]);
+106:   const [loadingList, setLoadingList] = useState(true);
+107:   const [filterPriority, setFilterPriority] = useState("all");
+108:   const [searchTerm, setSearchTerm] = useState("");
+109: 
+110:   // Pagination
+111:   const [currentPage, setCurrentPage] = useState(1);
+112: 
+113:   // UI state
+114:   const [toast, setToast] = useState(null);
+115:   const [confirmDelete, setConfirmDelete] = useState(null);
+116:   const [deletingId, setDeletingId] = useState(null);
+117:   const [expandedId, setExpandedId] = useState(null);
+118:     const [error, setError] = useState(null);
+119: 
+120:   // Security Check State
+121:   const [confirmTarget, setConfirmTarget] = useState(null);
+122:   const [confirmPassword, setConfirmPassword] = useState("");
+123:   const [confirmShowPw, setConfirmShowPw] = useState(false);
+124:   const [confirmError, setConfirmError] = useState("");
+125:   const [securitySaving, setSecuritySaving] = useState(false);
+126: 
+127:   const showToast = (msg, type = "info") => {
+128:     setToast({ message: msg, type });
+129:     setTimeout(() => setToast(null), 4000);
+130:   };
+131: 
+132:   // ── Fetch ──────────────────────────────────────────────────────────────────
+133:   const fetchAnnouncements = async () => {
+134:     setLoadingList(true);
+135:     try {
+136:       const data = await announcementApi.getAll();
+137:       const sorted = [...data].sort(
+138:         (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+139:       );
+140:       setAnnouncements(sorted);
+141:     } catch (err) {
+142:       setError("Failed to load announcements.");
+143:     } finally {
+144:       setLoadingList(false);
+145:     }
+146:   };
+147: 
+148:   useEffect(() => {
+149:     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+150:     if (!adminInfo.token) {
+151:       navigate("/admin-login");
+152:       return;
+153:     }
+154:     fetchAnnouncements();
+155:   }, [navigate]);
+156: 
+157:   useEffect(() => {
+158:     setCurrentPage(1);
+159:   }, [filterPriority, searchTerm]);
+160: 
+161:   // ── Send ───────────────────────────────────────────────────────────────────
+162:   
+163:   const executeSend = async () => {
+164:     setSending(true);
+165:     try {
+166:       await announcementApi.create({
+167:         title: title.trim(),
+168:         message: message.trim(),
+169:         priority,
+170:         showAsPopup,
+171:         alwaysDisplay,
+172:       });
+173:       showToast("Announcement sent successfully!", "success");
+174:       setTitle("");
+175:       setMessage("");
+176:       setPriority("normal");
+177:       setShowAsPopup(false);
+178:       setAlwaysDisplay(false);
+179:       setCurrentPage(1);
+180:       fetchAnnouncements();
+181:     } catch (err) {
+182:       showToast(err.message || "Failed to send announcement.", "error");
+183:     } finally {
+184:       setSending(false);
+185:     }
+186:   };
+187: 
+188:   
+189:   const handleConfirmVerify = async () => {
+190:     if (!confirmPassword) {
+191:       setConfirmError("Please enter the security password");
+192:       return;
+193:     }
+194:     setSecuritySaving(true);
+195:     setConfirmError("");
+196:     try {
+197:       let action = "Send announcemt for all interns in admin side";
+198:       let extraInfo = `Title: ${title}`;
+199:       if (confirmTarget?.type === "delete") {
+200:         action = "Delete anncounement in admin side";
+201:         extraInfo = `Title: ${confirmTarget.title}`;
+202:       }
+203: 
+204:       const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+205:       const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+206:         method: "POST",
+207:         headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
+208:         body: JSON.stringify({
+209:           securityPin: confirmPassword,
+210:           action,
+211:           extraInfo,
+212:         }),
+213:       });
+214: 
+215:       const data = await res.json();
+216:       if (res.ok && (data.success || data.message)) {
+217:         setConfirmError("");
+218:         const target = confirmTarget;
+219:         setConfirmTarget(null);
+220:         setConfirmPassword("");
+221:         
+222:         if (target?.type === "send") {
+223:           executeSend();
+224:         } else if (target?.type === "delete") {
+225:           executeDelete(target.id);
+226:         }
+227:       } else {
+228:         setConfirmError(data.error || data.message || "Invalid security password");
+229:       }
+230:     } catch (err) {
+231:       setConfirmError(err.message || "Invalid security password");
+232:     } finally {
+233:       setSecuritySaving(false);
+234:     }
+235:   };
+236: 
+237: 
+238:   const handleSend = async () => {
+239:     if (!title.trim()) {
+240:       showToast("Title is required.", "error");
+241:       return;
+242:     }
+243:     if (!message.trim()) {
+244:       showToast("Message is required.", "error");
+245:       return;
+246:     }
+247:     setConfirmTarget({ type: 'send' });
+248:   };
+249: 
+250: 
+251:   // ── Delete ─────────────────────────────────────────────────────────────────
+252:   const executeDelete = async (id) => {
+253:     setDeletingId(id);
+254:     try {
+255:       await announcementApi.delete(id);
+256:       setAnnouncements((prev) => prev.filter((a) => a._id !== id));
+257:       setCurrentPage((prev) => {
+258:         const remaining = announcements.filter((a) => a._id !== id);
+259:         const newTotal = Math.max(1, Math.ceil(remaining.length / PAGE_SIZE));
+260:         return Math.min(prev, newTotal);
+261:       });
+262:       showToast("Announcement deleted.", "info");
+263:     } catch (err) {
+264:       showToast("Failed to delete announcement.", "error");
+265:     } finally {
+266:       setDeletingId(null);
+267:       
+268:     }
+269:   };
+270: 
+271:   const toggleExpand = (id) =>
+272:     setExpandedId((prev) => (prev === id ? null : id));
+273: 
+274:   // ── Filter + paginate ──────────────────────────────────────────────────────
+275:   const filtered = announcements.filter((a) => {
+276:     const matchesPriority =
+277:       filterPriority === "all" || a.priority === filterPriority;
+278:     const q = searchTerm.toLowerCase();
+279:     const matchesSearch =
+280:       !q ||
+281:       a.title.toLowerCase().includes(q) ||
+282:       a.message.toLowerCase().includes(q);
+283:     return matchesPriority && matchesSearch;
+284:   });
+285: 
+286:   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+287:   const safePage = Math.min(currentPage, totalPages);
+288:   const paginated = filtered.slice(
+289:     (safePage - 1) * PAGE_SIZE,
+290:     safePage * PAGE_SIZE,
+291:   );
+292:   const goTo = (p) => setCurrentPage(Math.max(1, Math.min(p, totalPages)));
+293: 
+294:   const pageNumbers = () => {
+295:     if (totalPages <= 5)
+296:       return Array.from({ length: totalPages }, (_, i) => i + 1);
+297:     if (safePage <= 3) return [1, 2, 3, 4, "…", totalPages];
+298:     if (safePage >= totalPages - 2)
+299:       return [
+300:         1,
+301:         "…",
+302:         totalPages - 3,
+303:         totalPages - 2,
+304:         totalPages - 1,
+305:         totalPages,
+306:       ];
+307:     return [1, "…", safePage - 1, safePage, safePage + 1, "…", totalPages];
+308:   };
+309: 
+310:   // ─── Render ────────────────────────────────────────────────────────────────
+311:   return (
+312:     <AdminNavigation>
+313:       <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+314:         <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+315:             {/* Page Header */}
+316:             <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+317:               <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+318:                 <motion.div
+319:                   initial={{ opacity: 0, scale: 0.8 }}
+320:                   animate={{ opacity: 1, scale: 1 }}
+321:                   transition={{ duration: 0.3 }}
+322:                   className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+323:                 >
+324:                   <Megaphone className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+325:                 </motion.div>
+326:                 <div className="flex flex-col justify-center">
+327:                   <motion.h1
+328:                     initial={{ opacity: 0, y: -10 }}
+329:                     animate={{ opacity: 1, y: 0 }}
+330:                     transition={{ duration: 0.3 }}
+331:                     className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+332:                   >
+333:                     Announcements
+334:                   </motion.h1>
+335:                   <motion.p
+336:                     initial={{ opacity: 0 }}
+337:                     animate={{ opacity: 1 }}
+338:                     transition={{ delay: 0.1, duration: 0.3 }}
+339:                     className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+340:                   >
+341:                     Broadcast messages and important notices to all interns
+342:                   </motion.p>
+343:                 </div>
+344:               </div>
+345:             </div>
+346: 
+347:             {/* Error banner */}
+348:             <AnimatePresence>
+349:               {error && (
+350:                 <motion.div
+351:                   className="mb-4 bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start space-x-3"
+352:                   initial={{ opacity: 0, y: -10 }}
+353:                   animate={{ opacity: 1, y: 0 }}
+354:                   exit={{ opacity: 0, y: -10 }}
+355:                 >
+356:                   <FaExclamationTriangle className="text-rose-500 flex-shrink-0 mt-0.5" />
+357:                   <p className="text-sm font-bold text-rose-700 flex-1">{error}</p>
+358:                   <button
+359:                     onClick={() => setError(null)}
+360:                     className="text-rose-500 hover:text-rose-700 text-xl font-bold"
+361:                   >
+362:                     ×
+363:                   </button>
+364:                 </motion.div>
+365:               )}
+366:             </AnimatePresence>
+367: 
+368:             <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6">
+369:               {/* ── Compose Panel ── */}
+370:               <motion.div
+371:                 className="xl:col-span-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-auto xl:h-[calc(100vh-40px)] xl:min-h-[700px] xl:sticky xl:top-6"
+372:                 initial={{ opacity: 0, x: -20 }}
+373:                 animate={{ opacity: 1, x: 0 }}
+374:                 transition={{ delay: 0.1, duration: 0.3 }}
+375:               >
+376:                 <div className="flex items-center space-x-3 mb-6">
+377:                   <div className="h-10 w-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+378:                     <FaBullhorn className="text-[#0056a2]" />
+379:                   </div>
+380:                   <div>
+381:                     <h3 className="text-lg font-extrabold text-gray-900">
+382:                       New Announcement
+383:                     </h3>
+384:                     <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+385:                       Compose & Send
+386:                     </p>
+387:                   </div>
+388:                 </div>
+389: 
+390:                 <div className="flex-1 xl:overflow-y-auto pr-2 px-1 -mx-1 pb-4 space-y-5 xl:[&::-webkit-scrollbar]:w-2 xl:[&::-webkit-scrollbar-track]:bg-transparent xl:[&::-webkit-scrollbar-thumb]:bg-slate-200 xl:[&::-webkit-scrollbar-thumb]:rounded-full hover:xl:[&::-webkit-scrollbar-thumb]:bg-slate-300">
+391:                   {/* Title */}
+392:                   <div>
+393:                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+394:                       Title <span className="text-rose-500">*</span>
+395:                     </label>
+396:                     <input
+397:                       type="text"
+398:                       value={title}
+399:                       onChange={(e) => setTitle(e.target.value)}
+400:                       placeholder="e.g. Monthly Review Reminder"
+401:                       maxLength={100}
+402:                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 transition-all"
+403:                     />
+404:                     <p className="text-[10px] font-bold text-gray-400 mt-1.5 text-right">
+405:                       {title.length}/100
+406:                     </p>
+407:                   </div>
+408: 
+409:                   {/* Message */}
+410:                   <div>
+411:                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+412:                       Message <span className="text-rose-500">*</span>
+413:                     </label>
+414:                     <textarea
+415:                       value={message}
+416:                       onChange={(e) => setMessage(e.target.value)}
+417:                       rows={5}
+418:                       placeholder="Write your announcement here..."
+419:                       maxLength={1000}
+420:                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-[#00b4eb]/30 outline-none text-sm font-semibold text-gray-700 transition-all resize-none"
+421:                     />
+422:                     <p className="text-[10px] font-bold text-gray-400 mt-1.5 text-right">
+423:                       {message.length}/1000
+424:                     </p>
+425:                   </div>
+426: 
+427:                   {/* Priority */}
+428:                   <div>
+429:                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+430:                       Priority
+431:                     </label>
+432:                     <div className="grid grid-cols-3 gap-2 sm:gap-3">
+433:                       {PRIORITY_OPTIONS.map((opt) => (
+434:                         <button
+435:                           key={opt.value}
+436:                           type="button"
+437:                           onClick={() => setPriority(opt.value)}
+438:                           className={`w-full flex items-center justify-center space-x-1.5 px-1 sm:px-2 py-2.5 rounded-xl border-2 text-[10px] sm:text-xs font-bold transition-all ${
+439:                             priority === opt.value
+440:                               ? priorityStyle[opt.value]
+441:                               : "bg-slate-50 border-slate-200 text-gray-500 hover:bg-gray-100"
+442:                           }`}
+443:                         >
+444:                           <span
+445:                             className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${priorityDot[opt.value]}`}
+446:                           />
+447:                           <span>{opt.label}</span>
+448:                         </button>
+449:                       ))}
+450:                     </div>
+451:                   </div>
+452: 
+453:                   {/* Show as Popup Toggle */}
+454:                   <div className="flex items-center space-x-3 pt-2">
+455:                     <button
+456:                       type="button"
+457:                       onClick={() => setShowAsPopup(!showAsPopup)}
+458:                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:ring-offset-2 ${
+459:                         showAsPopup ? "bg-[#0056a2]" : "bg-gray-200"
+460:                       }`}
+461:                       role="switch"
+462:                       aria-checked={showAsPopup}
+463:                     >
+464:                       <span
+465:                         aria-hidden="true"
+466:                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+467:                           showAsPopup ? "translate-x-5" : "translate-x-0"
+468:                         }`}
+469:                       />
+470:                     </button>
+471:                     <span className="flex flex-col">
+472:                       <span className="text-sm font-semibold text-gray-900">
+473:                         Show as Popup
+474:                       </span>
+475:                       <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+476:                         Display this announcement as a popup to interns when they login
+477:                       </span>
+478:                     </span>
+479:                   </div>
+480: 
+481:                   {/* Always Display Toggle */}
+482:                   <div className="flex items-center space-x-3 pt-2">
+483:                     <button
+484:                       type="button"
+485:                       onClick={() => setAlwaysDisplay(!alwaysDisplay)}
+486:                       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:ring-offset-2 ${
+487:                         alwaysDisplay ? "bg-amber-500" : "bg-gray-200"
+488:                       }`}
+489:                       role="switch"
+490:                       aria-checked={alwaysDisplay}
+491:                     >
+492:                       <span
+493:                         aria-hidden="true"
+494:                         className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+495:                           alwaysDisplay ? "translate-x-5" : "translate-x-0"
+496:                         }`}
+497:                       />
+498:                     </button>
+499:                     <span className="flex flex-col">
+500:                       <span className="text-sm font-semibold text-gray-900">
+501:                         Always Display
+502:                       </span>
+503:                       <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+504:                         Show once per day instead of dismissing permanently when closed
+505:                       </span>
+506:                     </span>
+507:                   </div>
+508: 
+509:                   {/* Send button */}
+510:                   <div className="pt-2">
+511:                     <motion.button
+512:                       onClick={handleSend}
+513:                       disabled={sending}
+514:                       className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 text-white rounded-2xl text-sm font-bold transition-all shadow-sm shadow-blue-500/20 disabled:cursor-not-allowed disabled:shadow-none"
+515:                       whileHover={{ scale: sending ? 1 : 1.02 }}
+516:                       whileTap={{ scale: sending ? 1 : 0.98 }}
+517:                     >
+518:                       {sending ? (
+519:                         <>
+520:                           <FaSpinner className="h-4 w-4 animate-spin" />
+521:                           <span>Sending...</span>
+522:                         </>
+523:                       ) : (
+524:                         <>
+525:                           <FaPaperPlane className="h-4 w-4" />
+526:                           <span>Send to All Interns</span>
+527:                         </>
+528:                       )}
+529:                     </motion.button>
+530:                   </div>
+531:                 </div>
+532:               </motion.div>
+533: 
+534:               {/* ── Announcements List ── */}
+535:               <motion.div
+536:                 className="xl:col-span-7 flex flex-col gap-4 md:gap-6 h-auto xl:h-[calc(100vh-40px)] xl:min-h-[700px]"
+537:                 initial={{ opacity: 0, x: 20 }}
+538:                 animate={{ opacity: 1, x: 0 }}
+539:                 transition={{ delay: 0.2, duration: 0.3 }}
+540:               >
+541:                 {/* Filters */}
+542:                 <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm">
+543:                   <div className="flex flex-col sm:flex-row gap-3">
+544:                     <div className="flex-1 relative">
+545:                       <FaSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
+546:                       <input
+547:                         type="text"
+548:                         value={searchTerm}
+549:                         onChange={(e) => setSearchTerm(e.target.value)}
+550:                         placeholder="Search announcements..."
+551:                         className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-[#00b4eb]/30 outline-none transition-all"
+552:                       />
+553:                     </div>
+554:                     <div className="flex items-center space-x-2 bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3">
+555:                       <FaFilter className="text-gray-400 h-4 w-4" />
+556:                       <select
+557:                         value={filterPriority}
+558:                         onChange={(e) => setFilterPriority(e.target.value)}
+559:                         className="bg-transparent border-0 focus:ring-0 text-sm font-bold text-gray-700 outline-none pr-1 cursor-pointer"
+560:                       >
+561:                         <option value="all">All Priorities</option>
+562:                         <option value="normal">Normal</option>
+563:                         <option value="important">Important</option>
+564:                         <option value="urgent">Urgent</option>
+565:                       </select>
+566:                     </div>
+567:                   </div>
+568:                 </div>
+569: 
+570:                 {/* List card */}
+571:                 <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[400px] lg:min-h-0">
+572:                   <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
+573:                     <h3 className="text-lg font-extrabold text-gray-900">
+574:                       Sent Announcements
+575:                     </h3>
+576:                     <div className="flex items-center gap-2">
+577:                       {loadingList && (
+578:                         <FaSpinner className="animate-spin text-[#00b4eb] h-4 w-4" />
+579:                       )}
+580:                       {!loadingList && (
+581:                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest bg-gray-100 px-3 py-1 rounded-full">
+582:                           {filtered.length} total
+583:                         </span>
+584:                       )}
+585:                     </div>
+586:                   </div>
+587: 
+588:                   {loadingList ? (
+589:                     <div className="flex items-center justify-center py-20">
+590:                       <div className="text-center">
+591:                         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0056a2] mx-auto mb-4"></div>
+592:                         <p className="text-sm font-bold text-gray-500">
+593:                           Loading announcements...
+594:                         </p>
+595:                       </div>
+596:                     </div>
+597:                   ) : filtered.length === 0 ? (
+598:                     <div className="text-center py-20 px-4">
+599:                       <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+600:                         <FaBullhorn className="h-8 w-8 text-slate-300" />
+601:                       </div>
+602:                       <h3 className="text-lg font-bold text-gray-700 mb-1">
+603:                         No announcements yet
+604:                       </h3>
+605:                       <p className="text-sm font-medium text-gray-400">
+606:                         {searchTerm || filterPriority !== "all"
+607:                           ? "No announcements match your filters."
+608:                           : "Compose and send your first announcement."}
+609:                       </p>
+610:                     </div>
+611:                   ) : (
+612:                     <>
+613:                       <div className="divide-y divide-gray-100 xl:overflow-y-auto flex-1 xl:[&::-webkit-scrollbar]:w-2 xl:[&::-webkit-scrollbar-track]:bg-transparent xl:[&::-webkit-scrollbar-thumb]:bg-slate-200 xl:[&::-webkit-scrollbar-thumb]:rounded-full hover:xl:[&::-webkit-scrollbar-thumb]:bg-slate-300">
+614:                         {paginated.map((a) => {
+615:                           const isExpanded = expandedId === a._id;
+616:                           return (
+617:                             <div
+618:                               key={a._id}
+619:                               className="p-5 md:p-6 hover:bg-slate-50/50 transition-colors group"
+620:                             >
+621:                               <div className="flex items-start justify-between gap-4">
+622:                                 <div className="flex items-start space-x-4 flex-1 min-w-0">
+623:                                   <div
+624:                                     className={`mt-1.5 flex-shrink-0 h-3 w-3 rounded-full shadow-sm ${priorityDot[a.priority] || "bg-[#0056a2]"}`}
+625:                                   />
+626:                                   <div className="flex-1 min-w-0">
+627:                                     {/* Title + priority badge */}
+628:                                     <div className="flex flex-wrap items-center gap-3 mb-2">
+629:                                       <h4 className="text-base font-bold text-gray-900 truncate">
+630:                                         {a.title}
+631:                                       </h4>
+632:                                       <span
+633:                                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${priorityStyle[a.priority] || priorityStyle.normal}`}
+634:                                       >
+635:                                         {a.priority}
+636:                                       </span>
+637:                                       {a.showAsPopup && (
+638:                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
+639:                                           Popup
+640:                                         </span>
+641:                                       )}
+642:                                       {a.alwaysDisplay && (
+643:                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+644:                                           Daily
+645:                                         </span>
+646:                                       )}
+647:                                     </div>
+648: 
+649:                                     <p
+650:                                       className={`text-sm font-medium text-gray-600 mt-1 whitespace-pre-wrap break-words transition-all duration-200 leading-relaxed ${isExpanded ? "" : "line-clamp-2"}`}
+651:                                     >
+652:                                       {a.message}
+653:                                     </p>
+654: 
+655:                                     <div className="flex flex-wrap items-center gap-3 mt-3">
+656:                                       <span className="text-xs font-bold text-gray-400 flex items-center gap-1.5">
+657:                                         <FaCalendarAlt className="h-3 w-3" />
+658:                                         {formatDateTime(a.createdAt)}
+659:                                       </span>
+660:                                     </div>
+661:                                   </div>
+662:                                 </div>
+663: 
+664:                                 {/* Actions */}
+665:                                 <div className="flex items-center space-x-2 flex-shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+666:                                   <motion.button
+667:                                     onClick={() => toggleExpand(a._id)}
+668:                                     className="p-2 rounded-xl text-gray-400 hover:text-[#0056a2] hover:bg-blue-50 transition-colors"
+669:                                     whileHover={{ scale: 1.1 }}
+670:                                     whileTap={{ scale: 0.9 }}
+671:                                     title={isExpanded ? "Collapse" : "Expand"}
+672:                                   >
+673:                                     <motion.div
+674:                                       animate={{ rotate: isExpanded ? 180 : 0 }}
+675:                                       transition={{ duration: 0.2 }}
+676:                                     >
+677:                                       <FaChevronDown className="h-4 w-4" />
+678:                                     </motion.div>
+679:                                   </motion.button>
+680: 
+681:                                   <motion.button
+682:                                     onClick={() => setConfirmTarget({ type: 'delete', id: a._id, title: a.title })}
+683:                                     disabled={deletingId === a._id}
+684:                                     className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-50"
+685:                                     whileHover={{ scale: 1.1 }}
+686:                                     whileTap={{ scale: 0.9 }}
+687:                                     title="Delete"
+688:                                   >
+689:                                     {deletingId === a._id ? (
+690:                                       <FaSpinner className="h-4 w-4 animate-spin" />
+691:                                     ) : (
+692:                                       <FaTrash className="h-4 w-4" />
+693:                                     )}
+694:                                   </motion.button>
+695:                                 </div>
+696:                               </div>
+697:                             </div>
+698:                           );
+699:                         })}
+700:                       </div>
+701: 
+702:                       {/* Pagination */}
+703:                       {totalPages > 1 && (
+704:                         <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/50 flex-shrink-0">
+705:                           <div className="flex items-center justify-between gap-4">
+706:                             <motion.button
+707:                               onClick={() => goTo(safePage - 1)}
+708:                               disabled={safePage === 1}
+709:                               className="flex items-center space-x-2 px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+710:                               whileHover={{ scale: safePage === 1 ? 1 : 1.02 }}
+711:                               whileTap={{ scale: safePage === 1 ? 1 : 0.98 }}
+712:                             >
+713:                               <FaChevronLeft className="h-3 w-3" />
+714:                               <span>Prev</span>
+715:                             </motion.button>
+716: 
+717:                             <div className="hidden sm:flex items-center gap-1.5">
+718:                               {pageNumbers().map((p, i) =>
+719:                                 p === "…" ? (
+720:                                   <span
+721:                                     key={`e-${i}`}
+722:                                     className="px-2 text-gray-400 text-xs font-bold select-none"
+723:                                   >
+724:                                     …
+725:                                   </span>
+726:                                 ) : (
+727:                                   <motion.button
+728:                                     key={p}
+729:                                     onClick={() => goTo(p)}
+730:                                     className={`w-9 h-9 flex items-center justify-center text-xs font-bold rounded-xl border transition-all ${
+731:                                       safePage === p
+732:                                         ? "bg-[#0056a2] text-white border-[#0056a2] shadow-sm shadow-blue-500/20"
+733:                                         : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+734:                                     }`}
+735:                                     whileHover={{
+736:                                       scale: safePage === p ? 1 : 1.05,
+737:                                     }}
+738:                                     whileTap={{ scale: 0.95 }}
+739:                                   >
+740:                                     {p}
+741:                                   </motion.button>
+742:                                 ),
+743:                               )}
+744:                             </div>
+745: 
+746:                             <motion.button
+747:                               onClick={() => goTo(safePage + 1)}
+748:                               disabled={safePage === totalPages}
+749:                               className="flex items-center space-x-2 px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+750:                               whileHover={{
+751:                                 scale: safePage === totalPages ? 1 : 1.02,
+752:                               }}
+753:                               whileTap={{
+754:                                 scale: safePage === totalPages ? 1 : 0.98,
+755:                               }}
+756:                             >
+757:                               <span>Next</span>
+758:                               <FaChevronRight className="h-3 w-3" />
+759:                             </motion.button>
+760:                           </div>
+761:                         </div>
+762:                       )}
+763:                     </>
+764:                   )}
+765:                 </div>
+766:               </motion.div>
+767:             </div>
+768:           </main>
+769:       </div>
+770: 
+771:       
+772: 
+773:       
+774:         {/* ── Security Check Backdrop ── */}
+775:         <AnimatePresence>
+776:           {confirmTarget && (
+777:             <motion.div
+778:               key="announcement-overlay"
+779:               initial={{ opacity: 0 }}
+780:               animate={{ opacity: 1 }}
+781:               exit={{ opacity: 0 }}
+782:               transition={{ duration: 0.2 }}
+783:               className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-md"
+784:             />
+785:           )}
+786:         </AnimatePresence>
+787: 
+788:         {/* ── Security Check Popup ── */}
+789:         <AnimatePresence>
+790:           {confirmTarget && (
+791:             <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+792:               <div
+793:                 className="fixed inset-0 z-[49] pointer-events-auto"
+794:                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+795:               />
+796:               <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+797:                 <motion.div
+798:                   initial={{ opacity: 0, scale: 0.95, y: 10 }}
+799:                   animate={{ opacity: 1, scale: 1, y: 0 }}
+800:                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

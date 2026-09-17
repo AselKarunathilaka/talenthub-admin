@@ -247,7 +247,7 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => 
     }
 
     const to = emails; // sendEmail supports array of strings
-    const subject = `⚠️ SECURITY ALERT: Attendance Location Policy ${statusText}`;
+    const subject = `⚠️ SECURITY ALERT: ${statusText}`;
     
     const isEnabled = statusText === "Enabled";
     const statusColor = isEnabled ? "#10b981" : "#ef4444"; // emerald for Enabled, red for Disabled
@@ -261,8 +261,8 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => 
             <h2 style="margin: 0; font-size: 20px;">System Security Alert</h2>
           </div>
           <div style="padding: 24px; line-height: 1.6;">
-            <h3 style="margin-top: 0; color: ${isEnabled ? '#047857' : '#991b1b'};">Location Geofencing ${statusText}</h3>
-            <p>Please be advised that the strict <strong>Location Geofencing Security</strong> for the Face Attendance system has been manually ${statusText.toLowerCase()}.</p>
+            <h3 style="margin-top: 0; color: #047857;">${statusText}</h3>
+            <p>Please be advised that the following security action has been performed: <strong>${statusText}</strong>.</p>
             
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
