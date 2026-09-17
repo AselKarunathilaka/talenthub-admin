@@ -230,7 +230,7 @@ const sendUniversityRejectionEmail = async ({ to, supervisorName, universityName
 /**
  * Send security alert when location attendance policy is toggled
  */
-const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => {
+const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText, actionData }) => {
   const SecurityAlert = require("../models/SecurityAlert");
   
   try {
@@ -249,9 +249,25 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => 
     const to = emails; // sendEmail supports array of strings
     const subject = `⚠️ SECURITY ALERT: ${statusText}`;
     
-    const isEnabled = statusText === "Enabled";
-    const statusColor = isEnabled ? "#10b981" : "#ef4444"; // emerald for Enabled, red for Disabled
+    const isEnabled = statusText.toLowerCase().includes("enabled") || statusText.toLowerCase().includes("passed");
+    const statusColor = isEnabled ? "#10b981" : "#ef4444"; // emerald for Enabled/Passed, red otherwise
     
+    let actionDataHtml = "";
+    if (actionData) {
+      const dataRows = actionData.split(", ").map(item => {
+        const [key, ...val] = item.split(":");
+        return `<tr><td style="padding: 4px 0; color: #64748b;">${key.trim()}:</td><td style="padding: 4px 0; font-weight: 600;">${val.join(":").trim()}</td></tr>`;
+      }).join("");
+      actionDataHtml = `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <h4 style="margin: 0 0 12px 0; color: #0f172a;">Action Data:</h4>
+          <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
+            ${dataRows}
+          </table>
+        </div>
+      `;
+    }
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -263,6 +279,8 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => 
           <div style="padding: 24px; line-height: 1.6;">
             <h3 style="margin-top: 0; color: #047857;">${statusText}</h3>
             <p>Please be advised that the following security action has been performed: <strong>${statusText}</strong>.</p>
+            
+            ${actionDataHtml}
             
             <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
               <p style="margin: 0 0 8px 0;"><strong>Action Performed By:</strong> ${adminName} (${adminEmail})</p>
@@ -280,7 +298,7 @@ const sendSecurityAlertEmail = async ({ adminName, adminEmail, statusText }) => 
       to, 
       subject, 
       html, 
-      text: `Notice: Location security was ${statusText.toLowerCase()} by ${adminName} (${adminEmail}).` 
+      text: `Notice: ${statusText} by ${adminName} (${adminEmail}).` 
     });
   } catch (error) {
     console.error("Failed to dynamically send security alert email:", error);

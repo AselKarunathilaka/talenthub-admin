@@ -87,6 +87,7 @@ exports.createUser = async (req, res) => {
       email,
       password, // Password hashed automatically by pre-save hook in User model
       role,
+      visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
       authProvider: "developer_password",
       createdBy: req.user.id,
@@ -108,7 +109,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, isActive, password } = req.body;
+    const { name, role, isActive, password, visiblePages } = req.body;
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -134,6 +135,7 @@ exports.updateUser = async (req, res) => {
 
     if (name) userToUpdate.name = name;
     if (role) userToUpdate.role = role;
+    if (visiblePages !== undefined) userToUpdate.visiblePages = visiblePages;
     if (isActive !== undefined) userToUpdate.isActive = isActive;
     if (password) userToUpdate.password = password; // Will be hashed by pre-save hook
 
@@ -146,6 +148,36 @@ exports.updateUser = async (req, res) => {
   } catch (error) {
     console.error("[Settings] Update user error:", error);
     res.status(500).json({ message: "Failed to update user." });
+  }
+};
+
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const userToDelete = await User.findById(id);
+    if (!userToDelete) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    // Super Admin protections
+    if (userToDelete.role === "super_admin" && req.user.role !== "super_admin") {
+      return res.status(403).json({ message: "Only Super Admins can delete other Super Admins." });
+    }
+
+    // Prevent deleting yourself if you are the only active super_admin
+    if (userToDelete._id.toString() === req.user.id) {
+       const activeSuperAdminsCount = await User.countDocuments({ role: "super_admin", isActive: true });
+       if (activeSuperAdminsCount <= 1) {
+         return res.status(400).json({ message: "Cannot delete the last active Super Admin account." });
+       }
+    }
+
+    await User.findByIdAndDelete(id);
+    res.status(200).json({ message: "User deleted successfully." });
+  } catch (error) {
+    console.error("[Settings] Delete user error:", error);
+    res.status(500).json({ message: "Failed to delete user." });
   }
 };
 
@@ -189,5 +221,154 @@ exports.linkWhatsApp = async (req, res) => {
   } catch (error) {
     console.error("[Settings] Link WhatsApp error:", error);
     res.status(500).json({ message: "An error occurred while linking WhatsApp." });
+  }
+};
+
+// ─── TOGGLES (WHATSAPP/EMAIL) ───
+exports.getSettingsToggles = async (req, res) => {
+  try {
+    let config = await SecuritySetting.findOne({ functionName: "Security check" });
+    if (!config) {
+      config = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    }
+    res.status(200).json(config?.toggles || {
+      location: true,
+      attendance: true,
+      logbook: true,
+      holiday: true,
+      lift: true
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch toggles." });
+  }
+};
+
+exports.updateSettingsToggles = async (req, res) => {
+  try {
+    let config = await SecuritySetting.findOne({ functionName: "Security check" });
+    if (!config) {
+      config = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    }
+    if (!config) {
+      return res.status(404).json({ message: "Security setting config not found." });
+    }
+    config.toggles = { ...config.toggles, ...req.body };
+    await config.save();
+    res.status(200).json({ message: "Toggles updated", toggles: config.toggles });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update toggles." });
+  }
+};
+
+// ─── SECURITY ALERTS ───
+const SecurityAlert = require("../models/SecurityAlert");
+
+exports.getAllSecurityAlerts = async (req, res) => {
+  try {
+    const alerts = await SecurityAlert.find();
+    res.status(200).json(alerts);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch security alerts." });
+  }
+};
+
+exports.createSecurityAlert = async (req, res) => {
+  try {
+    const newAlert = new SecurityAlert(req.body);
+    await newAlert.save();
+    res.status(201).json(newAlert);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create security alert." });
+  }
+};
+
+exports.updateSecurityAlert = async (req, res) => {
+  try {
+    const alert = await SecurityAlert.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.status(200).json(alert);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update security alert." });
+  }
+};
+
+exports.deleteSecurityAlert = async (req, res) => {
+  try {
+    await SecurityAlert.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Security alert deleted." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete security alert." });
+  }
+};
+
+// ─── SYSTEM SPECIALIZATIONS ───
+const SystemSpecialization = require("../models/SystemSpecialization");
+
+exports.getAllSpecializations = async (req, res) => {
+  try {
+    const specs = await SystemSpecialization.find();
+    res.status(200).json(specs);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch specializations." });
+  }
+};
+
+exports.createSpecialization = async (req, res) => {
+  try {
+    const newSpec = new SystemSpecialization(req.body);
+    await newSpec.save();
+    res.status(201).json(newSpec);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create specialization." });
+  }
+};
+
+exports.updateSpecialization = async (req, res) => {
+  try {
+    const spec = await SystemSpecialization.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    res.status(200).json(spec);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update specialization." });
+  }
+};
+
+exports.deleteSpecialization = async (req, res) => {
+  try {
+    await SystemSpecialization.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "Specialization deleted." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete specialization." });
+  }
+};
+
+// ─── API KEYS ───
+const ApiKey = require("../models/ApiKey");
+const crypto = require("crypto");
+
+exports.getAllApiKeys = async (req, res) => {
+  try {
+    const keys = await ApiKey.find();
+    res.status(200).json(keys);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch API keys." });
+  }
+};
+
+exports.createApiKey = async (req, res) => {
+  try {
+    const keyString = "th_" + crypto.randomBytes(24).toString("hex");
+    const newKey = new ApiKey({ name: req.body.name, key: keyString });
+    await newKey.save();
+    res.status(201).json(newKey);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to generate API key." });
+  }
+};
+
+exports.deleteApiKey = async (req, res) => {
+  try {
+    await ApiKey.findByIdAndDelete(req.params.id);
+    res.status(200).json({ message: "API key deleted." });
+  } catch (error) {
+    res.status(500).json({ message: "Failed to delete API key." });
   }
 };

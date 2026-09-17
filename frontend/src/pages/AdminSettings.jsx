@@ -1,35 +1,37 @@
 import React, { useState, useEffect } from "react";
 import { 
-  KeyRound, 
-  Users, 
-  UserPlus, 
-  ShieldCheck, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  Edit, 
-  Power, 
-  PowerOff,
-  AlertTriangle,
-  MessageCircle,
-  Smartphone,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  Unplug
+  KeyRound, Users, UserPlus, ShieldCheck, Lock, Eye, EyeOff, Edit, Power, PowerOff, AlertTriangle,
+  MessageCircle, Smartphone, RefreshCw, CheckCircle2, XCircle, Unplug, ShieldAlert, Key, Link as LinkIcon, Trash, ListChecks, CheckSquare, Settings2
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "react-qr-code";
 import { API_ENDPOINTS } from "../api/apiConfig";
 import { adminApi, notificationUtils } from "../api/adminApi";
 import { getAdminSession } from "../utils/adminAuth";
-
 import AdminNavigation from "../components/AdminNavigation";
+
+const AVAILABLE_PAGES = [
+  "Announcements", "Face Attendance", "Inactive Interns", "Intern Attendance", "Leave Management",
+  "Logbook Restrictions", "Pin Management", "QR Management", "Seat Management", "TalentHub Restrictions",
+  "Universities", "Intern Locations"
+];
 
 const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState("security");
   const adminSession = getAdminSession();
   const isSuperAdmin = adminSession?.user?.role === "super_admin";
-  const canManageUsers = isSuperAdmin || adminSession?.user?.permissions?.includes("users.manage");
+  const isPM = adminSession?.user?.role === "PM";
+  const canManageUsers = isSuperAdmin || isPM || adminSession?.user?.permissions?.includes("users.manage");
+
+  // State: Security Verification Popup
+  const [isVerified, setIsVerified] = useState(false);
+  const [verifyPassword, setVerifyPassword] = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  const [showVerifyPassword, setShowVerifyPassword] = useState(false);
+
+  // Tabs states
+  const [loading, setLoading] = useState(false);
 
   // Security Password State
   const [currentPassword, setCurrentPassword] = useState("");
@@ -40,836 +42,698 @@ const AdminSettings = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const [isLinking, setIsLinking] = useState(false);
-
-  // User Management State
-  const [users, setUsers] = useState([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-
-  // User Form State
-  const [userForm, setUserForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmUserPassword: "",
-    role: "admin",
-    isActive: true
+  // WhatsApp Toggles State
+  const [toggles, setToggles] = useState({
+    location: true,
+    attendance: true,
+    logbook: true,
+    holiday: true,
+    lift: true
   });
-  const [formLoading, setFormLoading] = useState(false);
+  const [togglesLoading, setTogglesLoading] = useState(false);
 
-  // WhatsApp State
+  // WhatsApp Linking State
   const [waStatus, setWaStatus] = useState(null);
   const [waLoading, setWaLoading] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
   const [waDisconnecting, setWaDisconnecting] = useState(false);
-  const [waDisconnectModal, setWaDisconnectModal] = useState(false);
+
+  // Data Arrays
+  const [users, setUsers] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [specs, setSpecs] = useState([]);
+  const [apiKeys, setApiKeys] = useState([]);
+
+  // Modals
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [alertModalOpen, setAlertModalOpen] = useState(false);
+  const [specModalOpen, setSpecModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
+  // Forms
+  const [userForm, setUserForm] = useState({ name: "", email: "", role: "admin", isActive: true, password: "", confirmPassword: "", visiblePages: [] });
+  const [alertForm, setAlertForm] = useState({ name: "", role: "", subRole: "", email: "", phoneNumber: "" });
+  const [specForm, setSpecForm] = useState({ name: "", isNonCoding: false });
+
+  // Security Verify Function
+  const handleVerify = async (e) => {
+    e.preventDefault();
+    if (!verifyPassword) {
+      setVerifyError("Security Password is required");
+      return;
+    }
+    setVerifyLoading(true);
+    try {
+      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: verifyPassword,
+        action: "Get access to settings page in admin side",
+      });
+      setIsVerified(true);
+      setVerifyError("");
+      loadInitialData(); // Load all initial data once verified
+    } catch (error) {
+      setVerifyError(error.response?.data?.message || "Invalid Security Password");
+    } finally {
+      setVerifyLoading(false);
+    }
+  };
+
+  const loadInitialData = () => {
+    if (canManageUsers) {
+      fetchUsers();
+      fetchAlerts();
+      fetchSpecs();
+      fetchApiKeys();
+      fetchToggles();
+      fetchWhatsAppStatus();
+    }
+  };
 
   useEffect(() => {
-    if (activeTab === "users" && canManageUsers) {
-      fetchUsers();
+    let pollInterval;
+    if (isVerified && activeTab === "whatsapp") {
+      fetchWhatsAppStatus();
+      pollInterval = setInterval(() => {
+        fetchWhatsAppStatus(true);
+      }, 3000);
     }
-  }, [activeTab, canManageUsers]);
+    return () => { if (pollInterval) clearInterval(pollInterval); };
+  }, [activeTab, isVerified]);
+
+  // -- Data Fetchers --
+  const fetchUsers = async () => { try { const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.USERS); setUsers(res); } catch (e) { console.error(e); } };
+  const fetchAlerts = async () => { try { const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS); setAlerts(res); } catch (e) { console.error(e); } };
+  const fetchSpecs = async () => { try { const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS); setSpecs(res); } catch (e) { console.error(e); } };
+  const fetchApiKeys = async () => { try { const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.API_KEYS); setApiKeys(res); } catch (e) { console.error(e); } };
+  const fetchToggles = async () => { try { const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.TOGGLES); setToggles(res); } catch (e) { console.error(e); } };
 
   const fetchWhatsAppStatus = async (silent = false) => {
     if (!silent) setWaLoading(true);
     try {
       const data = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_STATUS);
       setWaStatus(data);
-      if (data?.status === 'WAITING_FOR_SCAN' || data?.status === 'CONNECTED') {
-        setIsLinking(false);
-      }
-    } catch (error) {
-      console.error("Failed to fetch WhatsApp status", error);
-      if (!silent) notificationUtils.showError("Failed to fetch WhatsApp connection status.");
-    } finally {
-      if (!silent) setWaLoading(false);
-    }
+      if (data?.status === 'WAITING_FOR_SCAN' || data?.status === 'CONNECTED') setIsLinking(false);
+    } catch (e) { console.error(e); } finally { if (!silent) setWaLoading(false); }
   };
 
-  useEffect(() => {
-    let pollInterval;
-    if (activeTab === "whatsapp") {
-      fetchWhatsAppStatus();
-      // Poll every 3 seconds if waiting for scan or linking
-      pollInterval = setInterval(() => {
-        if (activeTab === "whatsapp") {
-          fetchWhatsAppStatus(true);
-        }
-      }, 3000);
-    }
-    
-    return () => {
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [activeTab]);
-
-  const handleDisconnectWhatsApp = async () => {
-    try {
-      setWaDisconnecting(true);
-      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_DISCONNECT);
-      setWaDisconnectModal(false);
-      fetchWhatsAppStatus();
-    } catch (error) {
-      console.error("WhatsApp disconnect error:", error);
-      notificationUtils.showError(error.response?.data?.message || "Failed to disconnect WhatsApp.");
-    } finally {
-      setWaDisconnecting(false);
-    }
-  };
-
-  const handleLinkWhatsApp = async () => {
-    try {
-      setIsLinking(true);
-      setWaStatus(null); // Clear status to show loader
-      setWaLoading(true);
-      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_LINK);
-      
-      // Fast polling for rapid QR display
-      const fastPoll = setInterval(async () => {
-        try {
-          const data = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_STATUS);
-          if (data?.status === 'WAITING_FOR_SCAN' || data?.status === 'CONNECTED' || data?.status === 'ERROR') {
-            clearInterval(fastPoll);
-            setWaStatus(data);
-            setIsLinking(false);
-            setWaLoading(false);
-          }
-        } catch (e) {
-          clearInterval(fastPoll);
-        }
-      }, 1000);
-    } catch (error) {
-      console.error("WhatsApp link error:", error);
-      notificationUtils.showError(error.response?.data?.message || "Failed to start WhatsApp link process.");
-      setIsLinking(false);
-      fetchWhatsAppStatus(); // restore status
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      setUsersLoading(true);
-      const data = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.USERS);
-      setUsers(data);
-    } catch (error) {
-      console.error("Failed to fetch users", error);
-      notificationUtils.showError("Failed to fetch administrative users.");
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
+  // -- Handlers --
   const handlePasswordChange = async (e) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      notificationUtils.showError("All password fields are required.");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      notificationUtils.showError("New password and confirm password do not match.");
-      return;
-    }
-    if (newPassword.length < 6) {
-      notificationUtils.showError("New password must be at least 6 characters long.");
-      return;
-    }
-
+    if (newPassword !== confirmPassword) return notificationUtils.showError("Passwords do not match.");
+    if (newPassword.length < 6) return notificationUtils.showError("Must be at least 6 characters.");
+    setPasswordLoading(true);
     try {
-      setPasswordLoading(true);
-      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORD, {
-        currentPassword,
-        newPassword
-      });
-      notificationUtils.showSuccess("Security password successfully changed.");
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
-    } catch (error) {
-      console.error("Password change error:", error);
-      notificationUtils.showError(error.response?.data?.message || "Failed to change security password.");
-    } finally {
-      setPasswordLoading(false);
+      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORD, { currentPassword, newPassword });
+      notificationUtils.showSuccess("Password changed successfully.");
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+    } catch (e) { notificationUtils.showError(e.response?.data?.message || "Failed to change password."); } finally { setPasswordLoading(false); }
+  };
+
+  const handleToggleChange = async (key) => {
+    const newToggles = { ...toggles, [key]: !toggles[key] };
+    setToggles(newToggles);
+    try {
+      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.TOGGLES, newToggles);
+      notificationUtils.showSuccess("Toggle updated successfully.");
+    } catch (e) {
+      setToggles(toggles); // revert
+      notificationUtils.showError("Failed to update toggle.");
     }
   };
 
-  const openUserModal = (user = null) => {
-    if (user) {
-      setEditingUser(user);
-      setUserForm({
-        name: user.name || "",
-        email: user.email || "",
-        password: "",
-        confirmUserPassword: "",
-        role: user.role || "admin",
-        isActive: user.isActive
-      });
-    } else {
-      setEditingUser(null);
-      setUserForm({
-        name: "",
-        email: "",
-        password: "",
-        confirmUserPassword: "",
-        role: "admin",
-        isActive: true
-      });
+  const handleWhatsAppLink = async () => {
+    setIsLinking(true);
+    setWaLoading(true);
+    try {
+      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_LINK);
+      const poll = setInterval(async () => {
+        try {
+          const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_STATUS);
+          if (['WAITING_FOR_SCAN', 'CONNECTED', 'ERROR'].includes(res?.status)) {
+            clearInterval(poll); setWaStatus(res); setIsLinking(false); setWaLoading(false);
+          }
+        } catch (e) { clearInterval(poll); }
+      }, 1000);
+    } catch (e) {
+      notificationUtils.showError("Failed to start linking.");
+      setIsLinking(false); fetchWhatsAppStatus();
     }
-    setIsUserModalOpen(true);
   };
 
-  const closeUserModal = () => {
-    setIsUserModalOpen(false);
-    setEditingUser(null);
+  const handleWhatsAppDisconnect = async () => {
+    setWaDisconnecting(true);
+    try {
+      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_DISCONNECT);
+      fetchWhatsAppStatus();
+    } catch (e) { notificationUtils.showError("Failed to disconnect."); } finally { setWaDisconnecting(false); }
   };
 
+  // -- User CRUD --
   const handleUserSubmit = async (e) => {
     e.preventDefault();
-    if (!userForm.name || !userForm.email || !userForm.role) {
-      notificationUtils.showError("Name, Email, and Role are required.");
-      return;
-    }
-    
-    if (!editingUser) {
-      if (!userForm.password || !userForm.confirmUserPassword) {
-        notificationUtils.showError("Passwords are required for new users.");
-        return;
-      }
-      if (userForm.password !== userForm.confirmUserPassword) {
-        notificationUtils.showError("Passwords do not match.");
-        return;
-      }
-    } else if (userForm.password && userForm.password !== userForm.confirmUserPassword) {
-      notificationUtils.showError("Passwords do not match.");
-      return;
-    }
-
+    setLoading(true);
     try {
-      setFormLoading(true);
-      if (editingUser) {
-        // Only send password if it's being updated
-        const payload = {
-          name: userForm.name,
-          role: userForm.role,
-          isActive: userForm.isActive
-        };
-        if (userForm.password) payload.password = userForm.password;
-
-        await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${editingUser._id}`, payload);
-        notificationUtils.showSuccess("User updated successfully.");
+      if (editingItem) {
+        const payload = { ...userForm };
+        if (!payload.password) delete payload.password;
+        await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${editingItem._id}`, payload);
+        notificationUtils.showSuccess("User updated.");
       } else {
-        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.USERS, {
-          name: userForm.name,
-          email: userForm.email,
-          password: userForm.password,
-          role: userForm.role,
-          isActive: userForm.isActive
-        });
-        notificationUtils.showSuccess("User created successfully.");
+        if (userForm.password !== userForm.confirmPassword) { setLoading(false); return notificationUtils.showError("Passwords mismatch."); }
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.USERS, userForm);
+        notificationUtils.showSuccess("User created.");
       }
-      closeUserModal();
-      fetchUsers();
-    } catch (error) {
-      console.error("User save error:", error);
-      notificationUtils.showError(error.response?.data?.message || "Failed to save user.");
-    } finally {
-      setFormLoading(false);
+      setUserModalOpen(false); fetchUsers();
+    } catch (e) { notificationUtils.showError(e.response?.data?.message || "Failed to save user."); } finally { setLoading(false); }
+  };
+  
+  const deleteUser = async (id) => {
+    if (!window.confirm("Delete this user?")) return;
+    try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${id}`); fetchUsers(); notificationUtils.showSuccess("User deleted."); } catch(e) { notificationUtils.showError(e.response?.data?.message || "Failed to delete."); }
+  };
+
+  // -- Alert CRUD --
+  const handleAlertSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editingItem) await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS}/${editingItem._id}`, alertForm);
+      else await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS, alertForm);
+      setAlertModalOpen(false); fetchAlerts(); notificationUtils.showSuccess("Alert updated.");
+    } catch (e) { notificationUtils.showError("Failed to save alert."); } finally { setLoading(false); }
+  };
+  const deleteAlert = async (id) => {
+    if (!window.confirm("Delete alert?")) return;
+    try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS}/${id}`); fetchAlerts(); notificationUtils.showSuccess("Deleted."); } catch(e) {}
+  };
+
+  // -- Specialization CRUD --
+  const handleSpecSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editingItem) await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS}/${editingItem._id}`, specForm);
+      else await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS, specForm);
+      setSpecModalOpen(false); fetchSpecs(); notificationUtils.showSuccess("Specialization updated.");
+    } catch (e) { notificationUtils.showError("Failed to save."); } finally { setLoading(false); }
+  };
+  const deleteSpec = async (id) => {
+    if (!window.confirm("Delete Specialization?")) return;
+    try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS}/${id}`); fetchSpecs(); notificationUtils.showSuccess("Deleted."); } catch(e) {}
+  };
+
+  // -- API Key CRUD --
+  const generateApiKey = async () => {
+    const name = window.prompt("Enter a name for this API Key:");
+    if (!name) return;
+    try {
+      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.API_KEYS, { name });
+      fetchApiKeys(); notificationUtils.showSuccess("Key generated.");
+    } catch(e) { notificationUtils.showError("Failed to generate."); }
+  };
+  const deleteApiKey = async (id) => {
+    if (!window.confirm("Revoke this API Key?")) return;
+    try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.API_KEYS}/${id}`); fetchApiKeys(); notificationUtils.showSuccess("Revoked."); } catch(e) {}
+  };
+
+  const handleVisiblePageToggle = (page) => {
+    if (userForm.visiblePages.includes(page)) {
+      setUserForm({ ...userForm, visiblePages: userForm.visiblePages.filter(p => p !== page) });
+    } else {
+      setUserForm({ ...userForm, visiblePages: [...userForm.visiblePages, page] });
     }
   };
 
-  const toggleUserStatus = async (user) => {
-    if (user.role === "super_admin" && !isSuperAdmin) {
-      notificationUtils.showError("Only Super Admins can manage other Super Admins.");
-      return;
-    }
-    if (user._id === adminSession?.user?.id && user.isActive) {
-      notificationUtils.showError("You cannot disable your own active account from here.");
-      return;
-    }
-    
-    if (window.confirm(`Are you sure you want to ${user.isActive ? 'disable' : 'enable'} this account?`)) {
-      try {
-        await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${user._id}`, {
-          isActive: !user.isActive
-        });
-        notificationUtils.showSuccess(`User account ${user.isActive ? 'disabled' : 'enabled'}.`);
-        fetchUsers();
-      } catch (error) {
-        notificationUtils.showError(error.response?.data?.message || "Failed to change user status.");
-      }
-    }
-  };
-
-  const formatRoleLabel = (role) => {
-    switch (role) {
-      case "super_admin": return "Super Admin";
-      case "admin": return "Admin";
-      case "developer": return "Developer";
-      case "supervisor": return "Supervisor";
-      default: return role;
-    }
-  };
+  // --- UI Render ---
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8 animate-fade-in">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
-            <Lock className="w-8 h-8 text-blue-600" />
-            System Settings
-          </h1>
-          <p className="text-slate-500 mt-2">Manage security and administrative users.</p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex space-x-1 bg-slate-200/50 p-1 rounded-xl w-full md:w-max">
-          <button
-            onClick={() => setActiveTab("security")}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "security" 
-                ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-900/5" 
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
-            }`}
-          >
-            <ShieldCheck className="w-4 h-4" />
-            Security Password
-          </button>
+      <div className="min-h-screen bg-slate-50/50 p-4 md:p-6 lg:p-8 animate-fade-in pb-24">
+        <div className="max-w-7xl mx-auto space-y-8">
           
-          {canManageUsers && (
-            <button
-              onClick={() => setActiveTab("users")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "users" 
-                  ? "bg-white text-blue-700 shadow-sm ring-1 ring-slate-900/5" 
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              User Management
-            </button>
-          )}
-          
-          {canManageUsers && (
-            <button
-              onClick={() => setActiveTab("whatsapp")}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "whatsapp" 
-                  ? "bg-white text-emerald-700 shadow-sm ring-1 ring-slate-900/5" 
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
-              }`}
-            >
-              <MessageCircle className="w-4 h-4" />
-              WhatsApp Integration
-            </button>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="mt-6">
-          {/* Security Password Section */}
-          {activeTab === "security" && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="border-b border-slate-100 bg-slate-50/50 p-6">
-                <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                  <KeyRound className="w-5 h-5 text-blue-500" />
-                  Change Security Password
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  Update the global security password used for sensitive system actions like turning off location tracking.
-                </p>
-              </div>
-              
-              <div className="p-6 md:p-8">
-                <form onSubmit={handlePasswordChange} className="max-w-md space-y-5">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Current Security Password</label>
-                    <div className="relative">
-                      <input
-                        type={showCurrent ? "text" : "password"}
-                        value={currentPassword}
-                        onChange={(e) => setCurrentPassword(e.target.value)}
-                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="Enter current password"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowCurrent(!showCurrent)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                        {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">New Security Password</label>
-                    <div className="relative">
-                      <input
-                        type={showNew ? "text" : "password"}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="Enter new password (min 6 chars)"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowNew(!showNew)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                        {showNew ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Confirm New Password</label>
-                    <div className="relative">
-                      <input
-                        type={showConfirm ? "text" : "password"}
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm"
-                        placeholder="Confirm new password"
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowConfirm(!showConfirm)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                      >
-                        {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="pt-2">
-                    <button
-                      type="submit"
-                      disabled={passwordLoading}
-                      className="w-full sm:w-auto px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                    >
-                      {passwordLoading ? (
-                        <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <ShieldCheck className="w-4 h-4" />
-                      )}
-                      Change Password
-                    </button>
-                  </div>
-                </form>
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+                >
+                  <Settings2 className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                </motion.div>
+                <div className="flex flex-col justify-center">
+                  <motion.h1
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  >
+                    System Settings
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  >
+                    Global configurations and integrations.
+                  </motion.p>
+                </div>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* User Management Section */}
-          {activeTab === "users" && canManageUsers && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="border-b border-slate-100 bg-slate-50/50 p-4 md:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-indigo-500" />
-                    Admin Users
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-1">Manage system administrators and their roles.</p>
+          {/* Navigation Tabs */}
+          <div className="flex overflow-x-auto space-x-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/60 hide-scrollbar">
+            <TabButton active={activeTab === "security"} onClick={() => setActiveTab("security")} icon={ShieldCheck} label="Password" color="blue" />
+            <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={Users} label="Staff Management" color="indigo" />
+            <TabButton active={activeTab === "alerts"} onClick={() => setActiveTab("alerts")} icon={ShieldAlert} label="Security Alerts" color="rose" />
+            <TabButton active={activeTab === "whatsapp"} onClick={() => setActiveTab("whatsapp")} icon={MessageCircle} label="WhatsApp" color="emerald" />
+            <TabButton active={activeTab === "specializations"} onClick={() => setActiveTab("specializations")} icon={ListChecks} label="Specializations" color="amber" />
+            <TabButton active={activeTab === "apikeys"} onClick={() => setActiveTab("apikeys")} icon={Key} label="API Keys" color="slate" />
+          </div>
+
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
+            {activeTab === "security" && (
+              <div className="p-8">
+                <div className="max-w-md">
+                  <h3 className="text-xl font-bold text-slate-800 mb-2 flex items-center gap-2"><KeyRound className="w-5 h-5 text-blue-500"/> Change Security Password</h3>
+                  <p className="text-sm text-slate-500 mb-8">This password is required for sensitive administrative actions.</p>
+                  
+                  <form onSubmit={handlePasswordChange} className="space-y-5">
+                    <PasswordField label="Current Password" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} setShow={setShowCurrent} />
+                    <PasswordField label="New Password" value={newPassword} onChange={setNewPassword} show={showNew} setShow={setShowNew} />
+                    <PasswordField label="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} show={showConfirm} setShow={setShowConfirm} />
+                    <button type="submit" disabled={passwordLoading} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20">
+                      {passwordLoading ? "Updating..." : "Update Password"}
+                    </button>
+                  </form>
                 </div>
-                <button
-                  onClick={() => openUserModal()}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 whitespace-nowrap"
-                >
-                  <UserPlus className="w-4 h-4" />
-                  Add User
-                </button>
               </div>
+            )}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                      <th className="px-6 py-4">Name</th>
-                      <th className="px-6 py-4">Email</th>
-                      <th className="px-6 py-4">Role</th>
-                      <th className="px-6 py-4">Status</th>
-                      <th className="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {usersLoading ? (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                          <div className="flex flex-col items-center justify-center gap-3">
-                            <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
-                            <p className="text-sm">Loading users...</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : users.length === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="px-6 py-12 text-center text-slate-500">
-                          No users found.
-                        </td>
-                      </tr>
-                    ) : (
-                      users.map(user => (
-                        <tr key={user._id} className="hover:bg-slate-50/50 transition-colors">
-                          <td className="px-6 py-4">
-                            <span className="font-medium text-slate-800">{user.name || "N/A"}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className="text-sm text-slate-600">{user.email}</span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${
-                              user.role === 'super_admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              user.role === 'developer' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
-                              user.role === 'supervisor' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                              'bg-blue-50 text-blue-700 border-blue-200'
-                            }`}>
-                              {formatRoleLabel(user.role)}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${
-                              user.isActive ? 'text-emerald-600' : 'text-slate-400'
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500' : 'bg-slate-400'}`} />
-                              {user.isActive ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() => openUserModal(user)}
-                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                                title="Edit user"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </button>
-                              
-                              <button
-                                onClick={() => toggleUserStatus(user)}
-                                className={`p-1.5 rounded-md transition-colors ${
-                                  user.isActive 
-                                    ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' 
-                                    : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-                                }`}
-                                title={user.isActive ? "Disable user" : "Enable user"}
-                                disabled={user._id === adminSession?.user?.id && user.isActive}
-                              >
-                                {user.isActive ? <PowerOff className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                              </button>
-                            </div>
+            {activeTab === "users" && (
+              <div className="p-0">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500"/> Staff Management</h3>
+                  <button onClick={() => { setEditingItem(null); setUserForm({name:"", email:"", role:"admin", isActive:true, password:"", confirmPassword:"", visiblePages:[]}); setUserModalOpen(true); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><UserPlus className="w-4 h-4"/> Add Staff</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
+                      <tr><th className="px-6 py-4">Name</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Role</th><th className="px-6 py-4">Status</th><th className="px-6 py-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60">
+                      {users.map(user => (
+                        <tr key={user._id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-6 py-4 font-medium text-slate-800">{user.name}</td>
+                          <td className="px-6 py-4 text-slate-500">{user.email}</td>
+                          <td className="px-6 py-4"><span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-semibold">{user.role.toUpperCase()}</span></td>
+                          <td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${user.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>{user.isActive ? 'Active' : 'Inactive'}</span></td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => { setEditingItem(user); setUserForm({name:user.name, email:user.email, role:user.role, isActive:user.isActive, visiblePages: user.visiblePages || [], password:"", confirmPassword:""}); setUserModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors mx-1"><Edit className="w-4 h-4"/></button>
+                            <button onClick={() => deleteUser(user._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-1"><Trash className="w-4 h-4"/></button>
                           </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* WhatsApp Integration Section */}
-          {activeTab === "whatsapp" && canManageUsers && (
-            <div className="bg-white rounded-3xl shadow-lg shadow-slate-200/50 border border-slate-100 overflow-hidden relative">
-              {/* Background gradient decorative element */}
-              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-transparent z-0" />
-              
-              <div className="relative z-10 p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100/60 bg-white/50 backdrop-blur-sm">
-                <div>
-                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-3 tracking-tight">
-                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-xl">
-                      <MessageCircle className="w-5 h-5" />
-                    </div>
-                    WhatsApp Integration
-                  </h2>
-                  <p className="text-sm text-slate-500 mt-2 font-medium">Link your WhatsApp account for instant security alerts and system messaging.</p>
+                      ))}
+                      {users.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-400">No staff found</td></tr>}
+                    </tbody>
+                  </table>
                 </div>
-                {/* Removed manual refresh button as polling handles it */}
               </div>
+            )}
 
-              <div className="relative z-10 p-6 md:p-12 flex flex-col items-center justify-center min-h-[400px]">
-                {isLinking || (waLoading && !waStatus) || waStatus?.status === 'INITIALIZING' ? (
-                  <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
-                    <div className="relative">
-                      <div className="w-16 h-16 border-4 border-emerald-100 rounded-full" />
-                      <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
-                      <div className="absolute inset-0 flex items-center justify-center text-emerald-500">
-                        <MessageCircle className="w-6 h-6 animate-pulse" />
-                      </div>
-                    </div>
-                    <p className="text-slate-500 font-medium text-sm mt-6">Establishing secure connection...</p>
-                  </div>
-                ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
-                  <div className="max-w-md w-full bg-white rounded-3xl border border-slate-100 p-8 flex flex-col items-center text-center shadow-xl shadow-slate-200/40 relative overflow-hidden animate-fade-in">
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 to-orange-500" />
-                    
-                    <div className="w-20 h-20 bg-amber-50 rounded-2xl flex items-center justify-center mb-6 ring-8 ring-amber-50/50">
-                      <Smartphone className="w-10 h-10 text-amber-500" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Link Device</h3>
-                    <p className="text-sm text-slate-500 mb-8 max-w-[280px] leading-relaxed">
-                      Open WhatsApp on your phone, go to <strong className="text-slate-700">Linked Devices</strong>, and scan this code.
-                    </p>
-                    
-                    <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-8 relative group hover:border-amber-200 transition-colors">
-                      {waStatus?.qrCode ? (
-                         <div className="relative">
-                           <QRCode value={waStatus.qrCode} size={240} level="H" />
-                           {/* Decorative scanning line */}
-                           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-amber-500/20 to-transparent h-4 w-full animate-[scan_2s_ease-in-out_infinite]" />
-                         </div>
-                      ) : (
-                        <div className="w-[240px] h-[240px] bg-slate-50 flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200">
-                          <div className="w-8 h-8 border-2 border-slate-300 border-t-amber-500 rounded-full animate-spin mb-3" />
-                          <span className="text-xs text-slate-400 font-medium">Generating Code...</span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2.5 text-amber-700 bg-amber-50 px-5 py-2.5 rounded-full text-sm font-semibold border border-amber-200/60 shadow-sm">
-                      <div className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
-                      </div>
-                      Waiting for scan...
-                    </div>
-                  </div>
-                ) : waStatus?.status === 'CONNECTED' ? (
-                  <div className="max-w-md w-full bg-white rounded-3xl border border-slate-100 p-8 flex flex-col items-center text-center shadow-xl shadow-emerald-900/5 relative overflow-hidden animate-fade-in">
-                    <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500" />
-                    
-                    <div className="relative mb-6">
-                      <div className="absolute inset-0 bg-emerald-100 rounded-full animate-ping opacity-20" />
-                      <div className="w-24 h-24 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center ring-8 ring-emerald-50 border border-emerald-100 relative z-10">
-                        <CheckCircle2 className="w-12 h-12 text-emerald-500 drop-shadow-sm" />
-                      </div>
-                    </div>
-                    
-                    <h3 className="text-2xl font-bold text-slate-800 mb-2 tracking-tight">System Linked</h3>
-                    <p className="text-sm text-slate-500 mb-8 max-w-[280px] leading-relaxed">
-                      WhatsApp is actively sending automated messages and security alerts.
-                    </p>
-                    
-                    <div className="w-full bg-slate-50/50 rounded-2xl border border-slate-100 p-5 mb-8 space-y-4">
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-medium">Status</span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 font-semibold border border-emerald-200/50">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" /> Active
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500 font-medium">Account</span>
-                        <span className="text-slate-800 font-semibold bg-white px-2.5 py-1 rounded-md shadow-sm border border-slate-200">{waStatus?.connectedNumber || "Active Number"}</span>
-                      </div>
-                      {waStatus?.connectionTime && (
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-500 font-medium">Linked On</span>
-                          <span className="text-slate-700 font-medium">
-                            {new Date(waStatus.connectionTime).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <button
-                      onClick={handleDisconnectWhatsApp}
-                      disabled={waDisconnecting}
-                      className="w-full py-3.5 bg-white border-2 border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200 text-sm font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center justify-center gap-2 group disabled:opacity-70"
-                    >
-                      {waDisconnecting ? (
-                         <div className="w-4 h-4 border-2 border-red-600/20 border-t-red-600 rounded-full animate-spin" />
-                      ) : (
-                         <Unplug className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-                      )}
-                      {waDisconnecting ? "Disconnecting..." : "Disconnect Account"}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="max-w-md w-full bg-white rounded-3xl border border-slate-100 p-8 flex flex-col items-center text-center shadow-xl shadow-slate-200/40 relative overflow-hidden animate-fade-in">
-                     <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-slate-300 to-slate-400" />
-                     
-                     <div className="w-20 h-20 bg-slate-50 rounded-2xl flex items-center justify-center mb-6 ring-8 ring-slate-50 border border-slate-100">
-                      <MessageCircle className="w-10 h-10 text-slate-400" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-slate-800 mb-3 tracking-tight">Not Connected</h3>
-                    <p className="text-sm text-slate-500 mb-8 max-w-[280px] leading-relaxed">
-                      Link your WhatsApp account to enable automated messages and critical system notifications.
-                    </p>
-                    
-                    <div className="w-full">
-                      <button
-                        onClick={handleLinkWhatsApp}
-                        className="w-full py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-emerald-500/20 hover:shadow-xl hover:shadow-emerald-500/30 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Smartphone className="w-4 h-4" />
-                        Link WhatsApp Account
-                      </button>
-                      <p className="text-xs text-slate-400 mt-4 font-medium">Clicking this will generate a new secure QR code.</p>
-                    </div>
-                  </div>
-                )}
+            {activeTab === "alerts" && (
+              <div className="p-0">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-rose-500"/> Security Alerts Contacts</h3>
+                  <button onClick={() => { setEditingItem(null); setAlertForm({name:"", role:"", subRole:"", email:"", phoneNumber:""}); setAlertModalOpen(true); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><UserPlus className="w-4 h-4"/> Add Contact</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
+                      <tr><th className="px-6 py-4">Name</th><th className="px-6 py-4">Role/Sub</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Phone</th><th className="px-6 py-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60">
+                      {alerts.map(a => (
+                        <tr key={a._id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-6 py-4 font-medium text-slate-800">{a.name}</td>
+                          <td className="px-6 py-4 text-slate-500">{a.role} <span className="text-xs text-slate-400">({a.subRole})</span></td>
+                          <td className="px-6 py-4 text-slate-500">{a.email}</td>
+                          <td className="px-6 py-4 text-slate-500">{a.phoneNumber}</td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => { setEditingItem(a); setAlertForm({name:a.name, role:a.role, subRole:a.subRole, email:a.email, phoneNumber:a.phoneNumber}); setAlertModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors mx-1"><Edit className="w-4 h-4"/></button>
+                            <button onClick={() => deleteAlert(a._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-1"><Trash className="w-4 h-4"/></button>
+                          </td>
+                        </tr>
+                      ))}
+                      {alerts.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-400">No alert contacts found</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {activeTab === "specializations" && (
+              <div className="p-0">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><ListChecks className="w-5 h-5 text-amber-500"/> Talent Trail Specializations</h3>
+                  <button onClick={() => { setEditingItem(null); setSpecForm({name:"", isNonCoding:false}); setSpecModalOpen(true); }} className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><UserPlus className="w-4 h-4"/> Add Specialization</button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm whitespace-nowrap">
+                    <thead className="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
+                      <tr><th className="px-6 py-4">Specialization Name</th><th className="px-6 py-4">Category Type</th><th className="px-6 py-4 text-right">Actions</th></tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100/60">
+                      {specs.map(s => (
+                        <tr key={s._id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-6 py-4 font-medium text-slate-800">{s.name}</td>
+                          <td className="px-6 py-4"><span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${s.isNonCoding ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>{s.isNonCoding ? 'Non-Coding Role' : 'Coding Role'}</span></td>
+                          <td className="px-6 py-4 text-right">
+                            <button onClick={() => { setEditingItem(s); setSpecForm({name:s.name, isNonCoding:s.isNonCoding}); setSpecModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors mx-1"><Edit className="w-4 h-4"/></button>
+                            <button onClick={() => deleteSpec(s._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-1"><Trash className="w-4 h-4"/></button>
+                          </td>
+                        </tr>
+                      ))}
+                      {specs.length === 0 && <tr><td colSpan="3" className="text-center py-8 text-slate-400">No specializations defined</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "apikeys" && (
+              <div className="p-0">
+                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-600"/> API Keys</h3>
+                  <button onClick={generateApiKey} className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><Key className="w-4 h-4"/> Generate Key</button>
+                </div>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {apiKeys.map(k => (
+                      <div key={k._id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex items-center justify-between group hover:border-slate-300 transition-all">
+                        <div>
+                          <p className="font-semibold text-slate-800 mb-1">{k.name}</p>
+                          <p className="font-mono text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded inline-block">{k.key}</p>
+                          <p className="text-xs text-slate-400 mt-2">Created: {new Date(k.createdAt).toLocaleDateString()}</p>
+                        </div>
+                        <button onClick={() => deleteApiKey(k._id)} className="w-10 h-10 bg-white border border-slate-200 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm"><Trash className="w-4 h-4"/></button>
+                      </div>
+                    ))}
+                    {apiKeys.length === 0 && <div className="col-span-full text-center py-8 text-slate-400">No API Keys generated</div>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "whatsapp" && (
+              <div className="flex flex-col md:flex-row h-full">
+                {/* Left side: Toggles */}
+                <div className="w-full md:w-1/3 border-r border-slate-100 bg-slate-50/50 p-6">
+                  <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Settings2 className="w-5 h-5 text-emerald-600"/> Notification Toggles</h3>
+                  <p className="text-sm text-slate-500 mb-6">Select which events trigger WhatsApp and Email notifications.</p>
+                  <div className="space-y-4">
+                    <ToggleOption label="Location Verification" description="Alert when geofencing is enabled or disabled." enabled={toggles.location} onChange={() => handleToggleChange("location")} />
+                    <ToggleOption label="Daily Attendance" description="Alerts for face or QR attendance configurations." enabled={toggles.attendance} onChange={() => handleToggleChange("attendance")} />
+                    <ToggleOption label="Logbook Entries" description="Alerts for logbook restrictions and updates." enabled={toggles.logbook} onChange={() => handleToggleChange("logbook")} />
+                    <ToggleOption label="Holiday Setup" description="Alerts when system holidays are managed." enabled={toggles.holiday} onChange={() => handleToggleChange("holiday")} />
+                    <ToggleOption label="Access Restrictions" description="Alerts for system restrictions lift or revoke." enabled={toggles.lift} onChange={() => handleToggleChange("lift")} />
+                  </div>
+                </div>
+                
+                {/* Right side: WhatsApp Linking */}
+                <div className="w-full md:w-2/3 p-6 md:p-12 flex flex-col items-center justify-center relative overflow-hidden bg-white">
+                  {isLinking || (waLoading && !waStatus) || waStatus?.status === 'INITIALIZING' ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
+                      <p className="text-slate-500 font-medium">Establishing connection...</p>
+                    </div>
+                  ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
+                    <div className="text-center">
+                      <h3 className="text-xl font-bold text-slate-800 mb-2">Link Device</h3>
+                      <p className="text-sm text-slate-500 mb-8 max-w-xs mx-auto">Open WhatsApp on your phone, go to Linked Devices, and scan this code.</p>
+                      <div className="bg-white p-4 rounded-3xl shadow-lg border border-slate-100 mb-6 inline-block">
+                        {waStatus?.qrCode ? <QRCode value={waStatus.qrCode} size={220} level="H" /> : <div className="w-[220px] h-[220px] bg-slate-50 animate-pulse rounded-2xl" />}
+                      </div>
+                      <p className="text-emerald-600 font-medium animate-pulse text-sm">Waiting for scan...</p>
+                    </div>
+                  ) : waStatus?.status === 'CONNECTED' ? (
+                    <div className="text-center">
+                      <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-6 text-emerald-500 shadow-inner border border-emerald-100">
+                        <CheckCircle2 className="w-12 h-12" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800 mb-2">WhatsApp Linked</h3>
+                      <p className="text-sm text-slate-500 mb-8">Active Account: <strong>{waStatus?.connectedNumber}</strong></p>
+                      <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="px-8 py-3 bg-rose-50 text-rose-600 font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center gap-2">
+                        <Unplug className="w-4 h-4"/> Disconnect Device
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400 border border-slate-100">
+                        <MessageCircle className="w-12 h-12" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800 mb-2">Not Connected</h3>
+                      <p className="text-sm text-slate-500 mb-8 max-w-xs mx-auto">Link your WhatsApp account to enable automated messages.</p>
+                      <button onClick={handleWhatsAppLink} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all inline-flex items-center gap-2">
+                        <Smartphone className="w-4 h-4"/> Generate QR Code
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Add/Edit User Modal */}
-      {isUserModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-0">
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={closeUserModal} />
-          
-          <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh] animate-scale-up">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
-              <h3 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
-                {editingUser ? <Edit className="w-5 h-5 text-indigo-500" /> : <UserPlus className="w-5 h-5 text-indigo-500" />}
-                {editingUser ? "Edit User" : "Add New User"}
-              </h3>
-              <button onClick={closeUserModal} className="text-slate-400 hover:text-slate-600">
-                <PowerOff className="w-5 h-5 rotate-45" /> {/* Use as close X */}
-              </button>
+      {/* --- Modals --- */}
+      {/* Staff Modal */}
+      {userModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Staff Member" : "Add Staff Member"}</h3>
+              <button onClick={() => setUserModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
             </div>
-
             <div className="p-6 overflow-y-auto">
-              <form id="userForm" onSubmit={handleUserSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={userForm.name}
-                    onChange={(e) => setUserForm({...userForm, name: e.target.value})}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-slate-700">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    disabled={!!editingUser}
-                    value={userForm.email}
-                    onChange={(e) => setUserForm({...userForm, email: e.target.value})}
-                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm ${
-                      editingUser ? 'bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed' : 'bg-slate-50 border-slate-200'
-                    }`}
-                  />
-                </div>
-
+              <form onSubmit={handleUserSubmit} className="space-y-4">
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.name} onChange={e=>setUserForm({...userForm, name: e.target.value})} /></div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Email</label><input type="email" required disabled={!!editingItem} className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm disabled:opacity-50" value={userForm.email} onChange={e=>setUserForm({...userForm, email: e.target.value})} /></div>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Role</label>
-                    <select
-                      value={userForm.role}
-                      onChange={(e) => setUserForm({...userForm, role: e.target.value})}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="developer">Developer</option>
-                      <option value="supervisor">Supervisor</option>
-                      {isSuperAdmin && <option value="super_admin">Super Admin</option>}
-                    </select>
-                  </div>
-                  
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-slate-700">Account Status</label>
-                    <select
-                      value={userForm.isActive.toString()}
-                      onChange={(e) => setUserForm({...userForm, isActive: e.target.value === 'true'})}
-                      className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                    >
-                      <option value="true">Active</option>
-                      <option value="false">Inactive</option>
-                    </select>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.role} onChange={e=>setUserForm({...userForm, role: e.target.value})}><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="PM">PM</option><option value="supervisor">Supervisor</option><option value="developer">Developer</option></select></div>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e=>setUserForm({...userForm, isActive: e.target.value === 'true'})}><option value="true">Active</option><option value="false">Inactive</option></select></div>
+                </div>
+                
+                {/* Visible Pages Multi-Select */}
+                <div className="pt-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Visible Pages <span className="text-xs font-normal text-slate-400">(N/A for Super Admin/PM)</span></label>
+                  <div className={`grid grid-cols-2 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-40 overflow-y-auto ${['super_admin', 'PM'].includes(userForm.role) ? 'opacity-50 pointer-events-none' : ''}`}>
+                    {AVAILABLE_PAGES.map(page => (
+                      <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900">
+                        <input type="checkbox" checked={userForm.visiblePages.includes(page)} onChange={() => handleVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                        {page}
+                      </label>
+                    ))}
                   </div>
                 </div>
 
-                {!editingUser && (
-                  <>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={userForm.password}
-                        onChange={(e) => setUserForm({...userForm, password: e.target.value})}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-sm font-medium text-slate-700">Confirm Password</label>
-                      <input
-                        type="password"
-                        required
-                        value={userForm.confirmUserPassword}
-                        onChange={(e) => setUserForm({...userForm, confirmUserPassword: e.target.value})}
-                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                      />
-                    </div>
-                  </>
+                {!editingItem && (
+                  <div className="grid grid-cols-2 gap-4 pt-2">
+                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
+                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
+                  </div>
                 )}
-                
-                {editingUser && (
-                  <div className="pt-2 border-t border-slate-100 mt-4">
-                    <p className="text-xs text-slate-500 mb-3 flex items-start gap-1.5">
-                      <AlertTriangle className="w-4 h-4 shrink-0 text-amber-500" />
-                      Leave password fields blank if you do not wish to change the user's password.
-                    </p>
+                {editingItem && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <p className="text-xs text-slate-400 mb-2">Leave blank to keep current password</p>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-slate-600">New Password</label>
-                        <input
-                          type="password"
-                          value={userForm.password}
-                          onChange={(e) => setUserForm({...userForm, password: e.target.value})}
-                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-medium text-slate-600">Confirm Password</label>
-                        <input
-                          type="password"
-                          value={userForm.confirmUserPassword}
-                          onChange={(e) => setUserForm({...userForm, confirmUserPassword: e.target.value})}
-                          className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
-                        />
-                      </div>
+                      <div><input type="password" placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
+                      <div><input type="password" placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
                     </div>
                   </div>
                 )}
+                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md disabled:opacity-70">{loading ? "Saving..." : "Save Staff Member"}</button></div>
               </form>
-            </div>
-            
-            <div className="px-6 py-4 border-t border-slate-100 bg-slate-50/50 shrink-0 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={closeUserModal}
-                className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 bg-white border border-slate-200 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="userForm"
-                disabled={formLoading}
-                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 transition-colors disabled:opacity-70 flex items-center gap-2"
-              >
-                {formLoading ? (
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                ) : (
-                  editingUser ? "Save Changes" : "Create User"
-                )}
-              </button>
             </div>
           </div>
         </div>
       )}
 
-    </div>
+      {/* Security Alert Modal */}
+      {alertModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Contact" : "Add Alert Contact"}</h3>
+              <button onClick={() => setAlertModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleAlertSubmit} className="space-y-4">
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.name} onChange={e=>setAlertForm({...alertForm, name:e.target.value})} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.role} onChange={e=>setAlertForm({...alertForm, role:e.target.value})} /></div>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Sub Role</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.subRole} onChange={e=>setAlertForm({...alertForm, subRole:e.target.value})} /></div>
+                </div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Email</label><input type="email" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.email} onChange={e=>setAlertForm({...alertForm, email:e.target.value})} /></div>
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">WhatsApp Phone (with Country Code)</label><input type="text" placeholder="e.g. 94701234567" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.phoneNumber} onChange={e=>setAlertForm({...alertForm, phoneNumber:e.target.value})} /></div>
+                <div className="pt-2"><button disabled={loading} type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-md">{loading ? "Saving..." : "Save Contact"}</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Specialization Modal */}
+      {specModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Specialization" : "Add Specialization"}</h3>
+              <button onClick={() => setSpecModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            </div>
+            <div className="p-6">
+              <form onSubmit={handleSpecSubmit} className="space-y-4">
+                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Specialization Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-amber-500" value={specForm.name} onChange={e=>setSpecForm({...specForm, name:e.target.value})} /></div>
+                <div className="flex items-center gap-3 pt-2">
+                  <input type="checkbox" id="noncoding" checked={specForm.isNonCoding} onChange={e=>setSpecForm({...specForm, isNonCoding:e.target.checked})} className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                  <label htmlFor="noncoding" className="text-sm font-semibold text-slate-700 cursor-pointer">Mark as Non-Coding Role (e.g. BA, QA, DevOps)</label>
+                </div>
+                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold shadow-md">{loading ? "Saving..." : "Save Specialization"}</button></div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Security Check Backdrop & Modal */}
+      <AnimatePresence>
+        {!isVerified && (
+          <motion.div
+            key="security-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {!isVerified && (
+          <motion.div key="security-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                className="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8 w-full max-w-md pointer-events-auto relative overflow-hidden"
+              >
+                <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-600" />
+                <div className="text-center mb-8">
+                  <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-blue-100">
+                    <ShieldCheck className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Security Check</h2>
+                  <p className="text-sm text-slate-500 mt-2">Enter the global security password to access system settings.</p>
+                </div>
+                
+                <form onSubmit={handleVerify} className="space-y-6">
+                  <div>
+                    <div className="relative group">
+                      <input
+                        type={showVerifyPassword ? "text" : "password"}
+                        value={verifyPassword}
+                        onChange={(e) => { setVerifyPassword(e.target.value); setVerifyError(""); }}
+                        className="w-full px-4 py-3 pl-11 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+                        placeholder="Enter security password"
+                      />
+                      <Lock className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-blue-500 transition-colors" />
+                      <button 
+                        type="button" 
+                        onClick={() => setShowVerifyPassword(!showVerifyPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                      >
+                        {showVerifyPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                    {verifyError && <p className="text-rose-500 text-sm mt-2 flex items-center gap-1.5"><AlertTriangle className="w-4 h-4"/> {verifyError}</p>}
+                  </div>
+                  
+                  <button
+                    type="submit"
+                    disabled={verifyLoading || !verifyPassword}
+                    className="w-full py-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-lg shadow-blue-500/30 transition-all flex justify-center items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verifyLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Verify Access"}
+                  </button>
+                </form>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </AdminNavigation>
   );
 };
+
+// --- Subcomponents ---
+
+const TabButton = ({ active, onClick, icon: Icon, label, color }) => {
+  const colorMap = {
+    blue: "text-blue-700 bg-blue-50 border-blue-200 hover:bg-blue-100",
+    indigo: "text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100",
+    rose: "text-rose-700 bg-rose-50 border-rose-200 hover:bg-rose-100",
+    emerald: "text-emerald-700 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+    amber: "text-amber-700 bg-amber-50 border-amber-200 hover:bg-amber-100",
+    slate: "text-slate-700 bg-slate-100 border-slate-300 hover:bg-slate-200",
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border shrink-0 ${
+        active ? colorMap[color] + " shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 bg-transparent border-transparent hover:bg-slate-50 hover:text-slate-700"
+      }`}
+    >
+      <Icon className="w-4 h-4" />
+      {label}
+    </button>
+  );
+};
+
+const PasswordField = ({ label, value, onChange, show, setShow }) => (
+  <div>
+    <label className="text-sm font-semibold text-slate-700 block mb-1.5">{label}</label>
+    <div className="relative group">
+      <input
+        type={show ? "text" : "password"}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+      />
+      <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+        {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+      </button>
+    </div>
+  </div>
+);
+
+const ToggleOption = ({ label, description, enabled, onChange }) => (
+  <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:border-emerald-200 transition-colors cursor-pointer" onClick={onChange}>
+    <div>
+      <p className="font-semibold text-slate-800">{label}</p>
+      <p className="text-xs text-slate-500 mt-0.5">{description}</p>
+    </div>
+    <div className={`relative w-12 h-6 rounded-full transition-colors ${enabled ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+      <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${enabled ? 'translate-x-6' : 'translate-x-0'}`} />
+    </div>
+  </div>
+);
 
 export default AdminSettings;

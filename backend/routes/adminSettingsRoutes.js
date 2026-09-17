@@ -25,10 +25,32 @@ const requireUserManage = requirePermission("users.manage");
 router.get("/users", requireUserManage, settingsController.getAllUsers);
 router.post("/users", requireUserManage, settingsController.createUser);
 router.put("/users/:id", requireUserManage, settingsController.updateUser);
+router.delete("/users/:id", requireUserManage, settingsController.deleteUser);
 
 // ─── WhatsApp Integration ───
 router.get("/whatsapp-status", enforceRoutePermission, settingsController.getWhatsAppStatus);
 router.post("/whatsapp-disconnect", enforceRoutePermission, settingsController.disconnectWhatsApp);
 router.post("/whatsapp-link", enforceRoutePermission, settingsController.linkWhatsApp);
+
+// ─── Toggles ───
+router.get("/toggles", enforceRoutePermission, settingsController.getSettingsToggles);
+router.put("/toggles", enforceRoutePermission, settingsController.updateSettingsToggles);
+
+// ─── Security Alerts ───
+router.get("/security-alerts", enforceRoutePermission, settingsController.getAllSecurityAlerts);
+router.post("/security-alerts", enforceRoutePermission, settingsController.createSecurityAlert);
+router.put("/security-alerts/:id", enforceRoutePermission, settingsController.updateSecurityAlert);
+router.delete("/security-alerts/:id", enforceRoutePermission, settingsController.deleteSecurityAlert);
+
+// ─── Specializations ───
+router.get("/specializations", enforceRoutePermission, settingsController.getAllSpecializations);
+router.post("/specializations", enforceRoutePermission, settingsController.createSpecialization);
+router.put("/specializations/:id", enforceRoutePermission, settingsController.updateSpecialization);
+router.delete("/specializations/:id", enforceRoutePermission, settingsController.deleteSpecialization);
+
+// ─── API Keys ───
+router.get("/api-keys", enforceRoutePermission, settingsController.getAllApiKeys);
+router.post("/api-keys", enforceRoutePermission, settingsController.createApiKey);
+router.delete("/api-keys/:id", enforceRoutePermission, settingsController.deleteApiKey);
 
 module.exports = router;

@@ -13,9 +13,10 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["super_admin", "admin", "developer", "supervisor"],
+    enum: ["super_admin", "admin", "developer", "supervisor", "PM"],
   },
   permissions: [{ type: String }],
+  visiblePages: [{ type: String }],
   isActive: { type: Boolean, default: true },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   invitedAt: Date,
@@ -38,7 +39,7 @@ const userSchema = new mongoose.Schema({
     transports: { type: [String] },
   }],
   currentChallenge: { type: String, select: false },
-}, { timestamps: true });
+}, { timestamps: true, collection: "staff" });
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();

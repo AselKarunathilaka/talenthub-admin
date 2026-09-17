@@ -81,25 +81,33 @@ const AdminNavigation = ({ children }) => {
   const navLinks = [
     { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/daily-records", label: "Daily Logs", icon: <BookOpen className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "daily_logs.view" },
-    { to: "/admin/intern-attendance", label: "Attendance", icon: <ScanLine className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.view" },
-    { to: "/admin/face-attendance", label: "Face ID", icon: <ScanFace className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
-    { to: "/admin/qr-management", label: "QR", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
-    { to: "/admin/pin-management", label: "PIN", icon: <KeyRound className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/intern-attendance", label: "Intern Attendance", icon: <ScanLine className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.view" },
+    { to: "/admin/face-attendance", label: "Face Attendance", icon: <ScanFace className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/qr-management", label: "QR Management", icon: <QrCode className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
+    { to: "/admin/pin-management", label: "Pin Management", icon: <KeyRound className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "attendance.manage" },
     { to: "/admin/leave-requests", label: "Short Leave", icon: <Bike className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "leave.view" },
     { to: "/admin/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "leave.view" },
-    { to: "/admin/intern-locations", label: "Locations", icon: <MapPin className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.view" },
-    { to: "/admin/seat-management", label: "Seat Layout", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "seats.manage" },
+    { to: "/admin/intern-locations", label: "Intern Locations", icon: <MapPin className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.view" },
+    { to: "/admin/seat-management", label: "Seat Management", icon: <Armchair className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "seats.manage" },
     { to: "/admin/analytics", label: "Analytics", icon: <TrendingUp className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.view" },
     { to: "/admin/universities", label: "Universities", icon: <Building2 className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
-    { to: "/admin/logbook-restrictions", label: "Log Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
-    { to: "/admin/talenthub-restrictions", label: "Hub Restrictions", icon: <ShieldAlert className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
-    { to: "/admin/announcements", label: "Notifications", icon: <Bell className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
+    { to: "/admin/logbook-restrictions", label: "Logbook Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/talenthub-restrictions", label: "TalentHub Restrictions", icon: <ShieldAlert className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/announcements", label: "Announcements", icon: <Bell className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/settings", label: "Settings", icon: <Settings className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     { to: "/admin/holidays", label: "Holidays", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-[18px] w-[18px]" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <SquarePlay className="h-[18px] w-[18px]" />, isExternal: true },
-  ].filter((link) => !link.permission || hasAdminPermission(link.permission));
+  ].filter((link) => {
+    if (link.isExternal || link.label === "Dashboard" || link.label === "Settings") {
+      return !link.permission || hasAdminPermission(link.permission);
+    }
+    const user = adminSession?.user;
+    if (user?.role === "super_admin" || user?.role === "PM") return true;
+    if (user?.visiblePages && user.visiblePages.includes(link.label)) return true;
+    return false;
+  });
   
   const activeLink = navLinks.find(link => isActive(link.to));
   const activeTitle = activeLink ? activeLink.label : (isActive("/admin/announcements") ? "Announcements" : "Dashboard");

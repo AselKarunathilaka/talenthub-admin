@@ -92,24 +92,27 @@ const updateAttendanceSettings = async (req, res) => {
 
     const statusText = sltLocationRequired ? "Enabled" : "Disabled";
 
-    // Send Email (which dynamically fetches from SecurityAlert)
-    sendSecurityAlertEmail({
-      adminName: adminName,
-      adminEmail: adminEmail,
-      statusText: statusText
-    }).catch((err) => console.error("Failed to send security alert email:", err));
+    const t = securityConfig.toggles || {};
+    if (t.location !== false) {
+      // Send Email (which dynamically fetches from SecurityAlert)
+      sendSecurityAlertEmail({
+        adminName: adminName,
+        adminEmail: adminEmail,
+        statusText: statusText
+      }).catch((err) => console.error("Failed to send security alert email:", err));
 
-    // Fetch recipients for WhatsApp and send
-    SecurityAlert.find({}).then(alerts => {
-      alerts.forEach(alert => {
-        if (alert.phoneNumber) {
-          const message = `⚠️ *SECURITY ALERT*\nLocation Geofencing ${statusText}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-          sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
-            console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
-          );
-        }
-      });
-    }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+      // Fetch recipients for WhatsApp and send
+      SecurityAlert.find({}).then(alerts => {
+        alerts.forEach(alert => {
+          if (alert.phoneNumber) {
+            const message = `⚠️ *SECURITY ALERT*\nLocation Geofencing ${statusText}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+            sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
+              console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+            );
+          }
+        });
+      }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+    }
 
     return res.status(200).json({ message: "Verification successful." });
   } catch (error) {
@@ -226,33 +229,47 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Verify Holidays in admin side";
     } else if (action === "unverify holiday") {
       statusText = "Unverify Holidays in admin side";
+    } else if (action === "Get access to settings page in admin side" || action === "Settings page accessed") {
+      statusText = "Settings page to get access in admin side";
     }
     
     let emailStatusText = statusText;
     let whatsappMessage = `⚠️ *SECURITY ALERT*\n${statusText}`;
     
     if (extraInfo) {
-      emailStatusText += " - " + extraInfo;
       whatsappMessage += `\n\nAction Data:\n${extraInfo.replace(/, /g, '\n')}`;
     }
     
     whatsappMessage += `\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
     
-    sendSecurityAlertEmail({
-      adminName: adminName,
-      adminEmail: adminEmail,
-      statusText: emailStatusText
-    }).catch(err => console.error("Failed to send security alert email:", err));
+    // Check toggles before sending alerts
+    const t = securityConfig.toggles || {};
+    let shouldSendAlert = true;
     
-    SecurityAlert.find({}).then(alerts => {
-      alerts.forEach(alert => {
-        if (alert.phoneNumber) {
-          sendWhatsAppMessage(alert.phoneNumber, whatsappMessage).catch(err => 
-            console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
-          );
-        }
-      });
-    }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+    if (action.includes("location") && t.location === false) shouldSendAlert = false;
+    else if (action.includes("attendance") && t.attendance === false) shouldSendAlert = false;
+    else if (action.includes("logbook") && t.logbook === false) shouldSendAlert = false;
+    else if (action.includes("holiday") && t.holiday === false) shouldSendAlert = false;
+    else if (action.includes("lift") && t.lift === false) shouldSendAlert = false;
+
+    if (shouldSendAlert) {
+      sendSecurityAlertEmail({
+        adminName: adminName,
+        adminEmail: adminEmail,
+        statusText: emailStatusText,
+        actionData: extraInfo // Pass extraInfo directly to format cleanly in email
+      }).catch(err => console.error("Failed to send security alert email:", err));
+      
+      SecurityAlert.find({}).then(alerts => {
+        alerts.forEach(alert => {
+          if (alert.phoneNumber) {
+            sendWhatsAppMessage(alert.phoneNumber, whatsappMessage).catch(err => 
+              console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+            );
+          }
+        });
+      }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+    }
 
     return res.status(200).json({ message: "Verification successful." });
   } catch (error) {
