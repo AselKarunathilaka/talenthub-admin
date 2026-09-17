@@ -3,11 +3,8 @@ import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-=======
 import SectionTip from "../components/SectionTip";
 import LivePassIndicator from "../components/LivePassIndicator";
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
 import toast from "react-hot-toast";
 import {
   FiFileText,
@@ -319,13 +316,8 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                         setSelectedDate(e.target.value);
                         setPagination((prev) => ({ ...prev, page: 1 }));
                         setActiveTab("list");
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-                      }} 
-                      className="bg-transparent text-[clamp(10px,2vw,12px)] font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
-=======
                       }}
-                      className="bg-transparent text-xs font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
+                      className="bg-transparent text-[clamp(10px,2vw,12px)] font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
                     />
                     {selectedDate && (
                       <button
@@ -358,33 +350,18 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                     return;
                   }
                   setActiveTab("new");
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-                }} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
-                  activeTab === "new" 
-                    ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" 
-=======
                 }}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "new"
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${activeTab === "new"
                     ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50"
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
                   }`}
               >
                 <FiPlus size={18} /> New Request
               </button>
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-              <button 
-                onClick={() => setActiveTab("list")} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
-                  activeTab === "list" 
-                    ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" 
-=======
               <button
                 onClick={() => setActiveTab("list")}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-100 ${activeTab === "list"
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${activeTab === "list"
                     ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50"
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
                   }`}
               >
@@ -423,19 +400,11 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                         <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                           <FiFileText className="h-8 w-8 text-slate-300" />
                         </div>
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
                         <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
                         <p className="text-gray-500 text-[clamp(11px,2.5vw,14px)] mt-1 max-w-sm mx-auto">
-                          {isToday 
-                            ? pageCopy.emptyToday 
-                            : selectedDate 
-=======
-                        <h4 className="text-lg font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
-                        <p className="text-gray-500 text-sm mt-1 max-w-sm mx-auto">
                           {isToday
                             ? pageCopy.emptyToday
                             : selectedDate
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
                               ? `No requests found for ${formatDisplayDate(selectedDate)}.`
                               : "No requests found."}
                         </p>
@@ -469,9 +438,9 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                               >
                                 <div className="flex items-center gap-4">
                                   <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${passLiveStatus ? (passLiveStatus.isLive ? "bg-green-50 text-[#50b748]" : "bg-rose-50 text-rose-500") :
-                                      request.status === "Approved" ? "bg-green-50 text-[#50b748]" :
-                                        request.status === "Denied" ? "bg-rose-50 text-rose-500" :
-                                          "bg-blue-50 text-[#0056a2]"
+                                    request.status === "Approved" ? "bg-green-50 text-[#50b748]" :
+                                      request.status === "Denied" ? "bg-rose-50 text-rose-500" :
+                                        "bg-blue-50 text-[#0056a2]"
                                     }`}>
                                     {passLiveStatus ? (passLiveStatus.isLive ? <FiCheckCircle size={24} /> : <FiXCircle size={24} />) :
                                       request.status === "Approved" ? <FiCheckCircle size={24} /> :
@@ -489,32 +458,6 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                                     </p>
                                   </div>
                                 </div>
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-                                <div>
-                                  <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-900 leading-tight">
-                                    {isStudyLeave
-                                      ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
-                                      : request.leaveTime}
-                                  </h4>
-                                  <p className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-500 mt-0.5">
-                                    {request.purpose} Purpose
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-4">
-                                <div className="hidden sm:block">
-                                  <span className={getStatusBadgeClass(request.status)}>
-                                    {request.status}
-                                  </span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-transform duration-200 ${expandedId === request._id ? 'rotate-180 bg-slate-100 text-gray-800' : 'bg-slate-50 text-gray-400 group-hover:bg-slate-100'}`}>
-                                  <FiChevronDown />
-                                </div>
-                              </div>
-                            </div>
-=======
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
 
                                 <div className="flex items-center gap-4">
                                   <div className="hidden sm:block">
@@ -524,76 +467,7 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                                       <span className={getStatusBadgeClass(request.status)}>
                                         {request.status}
                                       </span>
-<<<<<<< HEAD:frontend/src/pages/InternLeave.jsx
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FiInfo className="text-gray-400" />
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase tracking-wider">Reason</span>
-                                        </div>
-                                        <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.reason}</p>
-                                      </div>
-
-                                      <div className="space-y-3">
-                                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">National ID</span>
-                                          <span className="text-[clamp(11px,2.5vw,14px)] font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
-                                        </div>
-                                        
-                                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">Submitted At</span>
-                                          <span className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-600">{formatDate(request.submittedAt)}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {request.adminResponse && (
-                                      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                                        <FiShield className="text-[#0056a2] mt-0.5" size={18} />
-                                        <div>
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-[#0056a2] uppercase tracking-wider block mb-1">Admin Response</span>
-                                          <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.adminResponse}</p>
-                                        </div>
-                                      </div>
                                     )}
-
-                                    {request.proofDocument && request.proofDocument.data && (
-                                      <div className="flex items-center gap-2 pt-2">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleViewDocument(request._id); }}
-                                          className="text-[clamp(11px,2.5vw,14px)] px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold flex items-center gap-2 rounded-xl transition-all shadow-sm"
-                                        >
-                                          <FiEye className="text-[#00b4eb]" /> View Proof Document
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-wrap items-center justify-end gap-3 pt-4 mt-2 border-t border-gray-200">
-                                      {request.status === "Pending" && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
-                                          className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-[clamp(11px,2.5vw,14px)] shadow-sm"
-                                        >
-                                          <FiTrash2 /> Delete Request
-                                        </button>
-                                      )}
-                                      
-                                      {request.status === "Approved" && request.passToken && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); navigate(`/leave-pass/${request.passToken}`); }}
-                                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                                        >
-                                          <FiCheckCircle size={18} />
-                                          View Leave Pass
-                                        </button>
-                                      )}
-                                    </div>
-=======
-                                    )}
->>>>>>> 19ae213 (Add live animation to short leave pass preview and live pass page):frontend/src/pages/MyLeaveRequests.jsx
                                   </div>
                                   <div className={`p-2 rounded-full transition-transform duration-200 ${expandedId === request._id ? 'rotate-180 bg-slate-100 text-gray-800' : 'bg-slate-50 text-gray-400 group-hover:bg-slate-100'}`}>
                                     <FiChevronDown />
@@ -680,8 +554,8 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                                           <button
                                             onClick={(e) => { e.stopPropagation(); navigate(`/leave-pass/${request.passToken}`); }}
                                             className={`flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] ${passLiveStatus && !passLiveStatus.isLive
-                                                ? "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-lg hover:shadow-rose-500/30"
-                                                : "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30"
+                                              ? "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-lg hover:shadow-rose-500/30"
+                                              : "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30"
                                               }`}
                                           >
                                             {passLiveStatus && !passLiveStatus.isLive ? <FiXCircle size={18} /> : <FiCheckCircle size={18} />}
