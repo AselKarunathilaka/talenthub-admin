@@ -453,7 +453,7 @@ const AdminLogbookRestriction = () => {
     showToast("Logbook access successfully restored.", "success");
   };
 
-  const handleLiftClick = (intern) => {
+  const handleLiftClick = (intern) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { setLiftTarget(intern); return; }
     setConfirmTarget(intern);
     setConfirmPassword("");
     setConfirmShowPw(false);

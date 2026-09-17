@@ -12,14 +12,14 @@ exports.changeSecurityPassword = async (req, res) => {
       return res.status(400).json({ message: "Current and new passwords are required." });
     }
 
-    let securityConfig = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    let securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
     
     if (!securityConfig) {
       // If none exists, we create it (fallback)
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash("TalentHub@2026", salt);
       securityConfig = await SecuritySetting.create({
-        functionName: "Location on/off",
+        functionName: "Security Check",
         password: hashedPassword,
         history: [],
       });
@@ -67,10 +67,16 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
   try {
-    const { name, email, password, role, isActive } = req.body;
+    const { name, email, password, role, isActive, authProvider } = req.body;
 
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: "All fields are required." });
+    if (!name || !email || !role) {
+      return res.status(400).json({ message: "Name, email, and role are required." });
+    }
+
+    const provider = authProvider === "google" ? "google" : "developer_password";
+
+    if (provider === "developer_password" && !password) {
+      return res.status(400).json({ message: "Password is required for email/password logins." });
     }
 
     if (role === "super_admin" && req.user.role !== "super_admin") {
@@ -85,11 +91,11 @@ exports.createUser = async (req, res) => {
     const newUser = new User({
       name,
       email,
-      password, // Password hashed automatically by pre-save hook in User model
+      ...(password && { password }), // Password hashed automatically by pre-save hook in User model
       role,
       visiblePages: req.body.visiblePages || [],
       isActive: isActive !== undefined ? isActive : true,
-      authProvider: "developer_password",
+      authProvider: provider,
       createdBy: req.user.id,
     });
 
@@ -109,7 +115,7 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, role, isActive, password, visiblePages } = req.body;
+    const { name, role, isActive, password, visiblePages, requireSecurityCheck } = req.body;
 
     const userToUpdate = await User.findById(id);
     if (!userToUpdate) {
@@ -137,6 +143,7 @@ exports.updateUser = async (req, res) => {
     if (role) userToUpdate.role = role;
     if (visiblePages !== undefined) userToUpdate.visiblePages = visiblePages;
     if (isActive !== undefined) userToUpdate.isActive = isActive;
+    if (requireSecurityCheck !== undefined) userToUpdate.requireSecurityCheck = requireSecurityCheck;
     if (password) userToUpdate.password = password; // Will be hashed by pre-save hook
 
     await userToUpdate.save();
@@ -229,7 +236,7 @@ exports.getSettingsToggles = async (req, res) => {
   try {
     let config = await SecuritySetting.findOne({ functionName: "Security check" });
     if (!config) {
-      config = await SecuritySetting.findOne({ functionName: "Location on/off" });
+      config = await SecuritySetting.findOne({ functionName: "Security Check" });
     }
     res.status(200).json(config?.toggles || {
       location: true,
@@ -247,7 +254,7 @@ exports.updateSettingsToggles = async (req, res) => {
   try {
     let config = await SecuritySetting.findOne({ functionName: "Security check" });
     if (!config) {
-      config = await SecuritySetting.findOne({ functionName: "Location on/off" });
+      config = await SecuritySetting.findOne({ functionName: "Security Check" });
     }
     if (!config) {
       return res.status(404).json({ message: "Security setting config not found." });
@@ -300,45 +307,7 @@ exports.deleteSecurityAlert = async (req, res) => {
   }
 };
 
-// ─── SYSTEM SPECIALIZATIONS ───
-const SystemSpecialization = require("../models/SystemSpecialization");
 
-exports.getAllSpecializations = async (req, res) => {
-  try {
-    const specs = await SystemSpecialization.find();
-    res.status(200).json(specs);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to fetch specializations." });
-  }
-};
-
-exports.createSpecialization = async (req, res) => {
-  try {
-    const newSpec = new SystemSpecialization(req.body);
-    await newSpec.save();
-    res.status(201).json(newSpec);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to create specialization." });
-  }
-};
-
-exports.updateSpecialization = async (req, res) => {
-  try {
-    const spec = await SystemSpecialization.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.status(200).json(spec);
-  } catch (error) {
-    res.status(500).json({ message: "Failed to update specialization." });
-  }
-};
-
-exports.deleteSpecialization = async (req, res) => {
-  try {
-    await SystemSpecialization.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Specialization deleted." });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to delete specialization." });
-  }
-};
 
 // ─── API KEYS ───
 const ApiKey = require("../models/ApiKey");
@@ -356,7 +325,15 @@ exports.getAllApiKeys = async (req, res) => {
 exports.createApiKey = async (req, res) => {
   try {
     const keyString = "th_" + crypto.randomBytes(24).toString("hex");
-    const newKey = new ApiKey({ name: req.body.name, key: keyString });
+    let expiresAt = null;
+    if (req.body.expiresInDays && req.body.expiresInDays !== 'never') {
+      const days = parseInt(req.body.expiresInDays);
+      if (!isNaN(days)) {
+        expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + days);
+      }
+    }
+    const newKey = new ApiKey({ name: req.body.name, key: keyString, accessiblePages: req.body.accessiblePages || [], expiresAt });
     await newKey.save();
     res.status(201).json(newKey);
   } catch (error) {

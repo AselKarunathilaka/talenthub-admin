@@ -35,11 +35,8 @@ const securitySettingSchema = new mongoose.Schema(
       required: true,
     },
     toggles: {
-      location: { type: Boolean, default: true },
-      attendance: { type: Boolean, default: true },
-      logbook: { type: Boolean, default: true },
-      holiday: { type: Boolean, default: true },
-      lift: { type: Boolean, default: true },
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
     history: [historySchema],
   },

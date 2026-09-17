@@ -20,12 +20,12 @@ const updateAttendanceSettings = async (req, res) => {
     const { sltLocationRequired, securityPin } = req.body;
 
     // Find the master security setting document
-    let securityConfig = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    let securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
     if (!securityConfig) {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash("TalentHub@2026", salt);
       securityConfig = await SecuritySetting.create({
-        functionName: "Location on/off",
+        functionName: "Security Check",
         password: hashedPassword,
         history: [],
       });
@@ -33,13 +33,24 @@ const updateAttendanceSettings = async (req, res) => {
 
     // If trying to disable location security, require the Master PIN
     if (sltLocationRequired === false) {
-      if (!securityPin) {
-        return res.status(400).json({ message: "Security Password is required." });
+      let requireSecurityCheck = true;
+      if (req.user && (req.user.id || req.user._id)) {
+        const userId = req.user.id || req.user._id;
+        const user = await User.findById(userId);
+        if (user && user.requireSecurityCheck === false) {
+          requireSecurityCheck = false;
+        }
       }
 
-      const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
-      if (!isMatch) {
-        return res.status(401).json({ message: "Invalid Security Password." });
+      if (requireSecurityCheck) {
+        if (!securityPin) {
+          return res.status(400).json({ message: "Security Password is required." });
+        }
+
+        const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
+        if (!isMatch) {
+          return res.status(400).json({ message: "Invalid Security Password." });
+        }
       }
     }
 
@@ -114,7 +125,7 @@ const updateAttendanceSettings = async (req, res) => {
       }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
     }
 
-    return res.status(200).json({ message: "Verification successful." });
+    return res.status(200).json({ message: "Settings updated successfully.", settings });
   } catch (error) {
     return res.status(500).json({ message: "Failed to verify password.", error: error.message });
   }
@@ -127,21 +138,52 @@ const verifySecurityPassword = async (req, res) => {
       return res.status(400).json({ message: "Security Password is required." });
     }
     
-    const securityConfig = await SecuritySetting.findOne({ functionName: "Location on/off" });
+    const securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
     if (!securityConfig) {
-      return res.status(401).json({ message: "Invalid Security Password." });
+      return res.status(400).json({ message: "Invalid Security Password." });
     }
     
     const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid Security Password." });
-    }
     
     let adminName = req.user?.name || "Unknown User";
     let adminEmail = req.user?.email || "Unknown Email";
     if (req.user && req.user.email) {
       const actualUser = await User.findOne({ email: req.user.email });
       if (actualUser && actualUser.name) adminName = actualUser.name;
+    }
+
+    if (!isMatch) {
+      let attemptedAction = "Security Verification";
+      if (action === "Get access to settings page in admin side" || action === "Settings page accessed") {
+        attemptedAction = "Settings page to get access in admin side";
+      } else if (action) {
+        attemptedAction = action;
+      }
+
+      const failureMessage = `⚠️ *SECURITY ALERT*\nFailed Security Verification Attempt\n\nAction: ${attemptedAction}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
+
+      const { sendSecurityAlertEmail } = require("../utils/emailSender");
+      const { sendWhatsAppMessage } = require("../utils/whatsappSender");
+      const SecurityAlert = require("../models/SecurityAlert");
+
+      SecurityAlert.find({}).then(alerts => {
+        alerts.forEach(alert => {
+          if (alert.phoneNumber) {
+            sendWhatsAppMessage(alert.phoneNumber, failureMessage).catch(err => 
+              console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+            );
+          }
+        });
+      }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+
+      sendSecurityAlertEmail({
+        adminName: adminName,
+        adminEmail: adminEmail,
+        statusText: `Failed Verification Attempt: ${attemptedAction}`,
+        actionData: extraInfo
+      }).catch(err => console.error("Failed to send security alert email:", err));
+
+      return res.status(400).json({ message: "Invalid Security Password." });
     }
     
     const now = new Date();

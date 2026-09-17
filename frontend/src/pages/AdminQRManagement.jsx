@@ -32,7 +32,7 @@ const AdminQRManagement = () => {
   const [passwordError, setPasswordError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = () => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { handleGenerate(); return; }
     setShowPasswordPopup(true);
     setSecurityPassword("");
     setPasswordError("");

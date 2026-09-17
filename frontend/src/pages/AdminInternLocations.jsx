@@ -511,7 +511,7 @@ const AdminInternLocations = () => {
   };
 
   // ── Toggle past interns ───────────────────────────────────────────────────
-  const handleTogglePastInterns = useCallback(() => {
+  const handleTogglePastInterns = useCallback(() => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeTogglePastInterns(); return; }
     setSecurityPassword("");
     setPasswordError("");
     setShowPasswordText(false);

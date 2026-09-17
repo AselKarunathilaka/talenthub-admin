@@ -244,9 +244,23 @@ const AdminAnnouncements = () => {
       showToast("Message is required.", "error");
       return;
     }
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      executeSend();
+      return;
+    }
     setConfirmTarget({ type: 'send' });
   };
 
+
+  const handleDeleteClick = (announcement) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      executeDelete(announcement._id);
+      return;
+    }
+    setConfirmTarget({ type: 'delete', id: announcement._id, title: announcement.title });
+  };
 
   // ── Delete ─────────────────────────────────────────────────────────────────
   const executeDelete = async (id) => {
@@ -679,7 +693,7 @@ const AdminAnnouncements = () => {
                                   </motion.button>
 
                                   <motion.button
-                                    onClick={() => setConfirmTarget({ type: 'delete', id: a._id, title: a.title })}
+                                    onClick={() => handleDeleteClick(a)}
                                     disabled={deletingId === a._id}
                                     className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-50"
                                     whileHover={{ scale: 1.1 }}

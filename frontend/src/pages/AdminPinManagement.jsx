@@ -41,7 +41,7 @@ const AdminPinManagement = () => {
   const [passwordError, setPasswordError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = () => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { fetchFacePin(true); return; }
     if (!projectName.trim()) {
       toast.error('Please enter a project name first');
       return;

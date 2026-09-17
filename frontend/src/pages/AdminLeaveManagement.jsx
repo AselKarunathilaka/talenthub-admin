@@ -347,7 +347,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setDocumentViewer({ show: false, url: "", type: "", loading: false });
   };
 
-  const triggerSecurityPopup = (type, args) => {
+  const triggerSecurityPopup = (type, args) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { if (type === "statusUpdate") { handleStatusUpdateActual(...args); } else if (type === "approveAll") { handleApproveAllActual(); } else if (type === "bulkSubmit") { confirmBulkActionActual(); } setActionModal(prev => ({ ...prev, open: false })); setIsBulkModalOpen(false); return; }
     setPendingAction({ type, args });
     setSecurityPassword("");
     setPasswordError("");

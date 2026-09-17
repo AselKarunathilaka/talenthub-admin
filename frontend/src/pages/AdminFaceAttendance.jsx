@@ -434,6 +434,11 @@ const AdminFaceAttendance = () => {
   }, [cameraActive]);
 
   const handleInitializeClick = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      startCamera();
+      return;
+    }
     setPasswordPopupAction("face-scanner");
     setShowPasswordPopup(true);
     setSecurityPassword("");

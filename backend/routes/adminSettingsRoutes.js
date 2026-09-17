@@ -43,10 +43,10 @@ router.put("/security-alerts/:id", enforceRoutePermission, settingsController.up
 router.delete("/security-alerts/:id", enforceRoutePermission, settingsController.deleteSecurityAlert);
 
 // ─── Specializations ───
-router.get("/specializations", enforceRoutePermission, settingsController.getAllSpecializations);
-router.post("/specializations", enforceRoutePermission, settingsController.createSpecialization);
-router.put("/specializations/:id", enforceRoutePermission, settingsController.updateSpecialization);
-router.delete("/specializations/:id", enforceRoutePermission, settingsController.deleteSpecialization);
+
+
+
+
 
 // ─── API Keys ───
 router.get("/api-keys", enforceRoutePermission, settingsController.getAllApiKeys);

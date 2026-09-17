@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   invitationEmailLastAttemptAt: Date,
   invitationEmailError: { type: String, select: false },
   invitationEmailAttempts: { type: Number, default: 0 },
+  requireSecurityCheck: { type: Boolean, default: true },
   lastLoginAt: Date,
   // WebAuthn Passkey fields
   passkeys: [{

@@ -804,7 +804,7 @@ export default function AdminInactiveInterns() {
   }, [activeTab, fetchDailyRecords]);
 
   /* reactivate — opens security check popup */
-  const handleReactivate = useCallback(() => {
+  const handleReactivate = useCallback(() => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeReactivate(); return; }
     if (!selectedIntern) return;
     setShowSecurityPopup(true);
     setSecurityPassword("");

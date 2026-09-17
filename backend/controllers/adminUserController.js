@@ -126,9 +126,7 @@ exports.updateUser = async (req, res, next) => {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found." });
     if (user.role === "super_admin") return res.status(403).json({ message: "Super-admin accounts cannot be changed here." });
-    if (String(user._id) === String(req.admin._id)) return res.status(400).json({ message: "You cannot change your own access." });
-
-    const { name, role, permissions, isActive } = req.body;
+    const { name, role, permissions, isActive, requireSecurityCheck } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = String(name).trim();
     if (role !== undefined) {
@@ -141,6 +139,14 @@ exports.updateUser = async (req, res, next) => {
       updates.permissions = sanitizePermissions(role || user.role || "supervisor", permissions);
     }
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
+    if (requireSecurityCheck !== undefined) updates.requireSecurityCheck = Boolean(requireSecurityCheck);
+
+    // Prevent changing own role/permissions/isActive, but allow changing own requireSecurityCheck and name
+    if (String(user._id) === String(req.admin._id)) {
+      if (role !== undefined || permissions !== undefined || isActive !== undefined) {
+        return res.status(400).json({ message: "You cannot change your own role, permissions, or active status." });
+      }
+    }
 
     // Normalize historical accounts while updating them. Atomic updates avoid
     // re-validating unrelated legacy fields such as old password records.

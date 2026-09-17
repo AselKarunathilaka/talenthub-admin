@@ -12,9 +12,17 @@ const apiKeySchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    accessiblePages: {
+      type: [String],
+      default: [],
+    },
     isActive: {
       type: Boolean,
       default: true,
+    },
+    expiresAt: {
+      type: Date,
+      default: null,
     },
   },
   {

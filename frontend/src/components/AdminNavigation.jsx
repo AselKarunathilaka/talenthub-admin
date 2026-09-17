@@ -100,11 +100,18 @@ const AdminNavigation = ({ children }) => {
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-[18px] w-[18px]" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <SquarePlay className="h-[18px] w-[18px]" />, isExternal: true },
   ].filter((link) => {
-    if (link.isExternal || link.label === "Dashboard" || link.label === "Settings") {
-      return !link.permission || hasAdminPermission(link.permission);
-    }
     const user = adminSession?.user;
-    if (user?.role === "super_admin" || user?.role === "PM") return true;
+    const role = user?.role;
+
+    if (link.isExternal || link.label === "Dashboard") return true;
+    
+    if (role === "super_admin" || role === "PM") return true;
+    
+    if (role === "admin" || role === "developer") {
+      if (link.label === "Settings") return false;
+      return true;
+    }
+    
     if (user?.visiblePages && user.visiblePages.includes(link.label)) return true;
     return false;
   });

@@ -273,7 +273,7 @@ const TalentHubRestrictions = () => {
     doc.save(`TalentHub_Restrictions_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
-  const handleConfirmClick = (intern, type) => {
+  const executeAction = async (target, type) => { try { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); let endpoint = ""; let body = {}; let successMsg = ""; if (type === "lift") { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`; body = { liftReason: "Admin granted temporary access" }; successMsg = `Temporary access granted for ${target.name}`; } else { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`; body = { reason: "Admin manually restricted access / revoked override" }; successMsg = `Access restricted for ${target.name}`; } const res = await fetch(`${API_BASE_URL}${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` }, body: JSON.stringify(body) }); const json = await res.json(); if (json.success) { showToast(successMsg); await fetchRestrictions(false); } else { showToast(json.error || "Failed", "error"); } } catch { showToast("Error processing request", "error"); } }; const handleConfirmClick = (intern, type) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeAction(intern, type); return; }
     setConfirmTarget(intern);
     setConfirmType(type);
     setConfirmPassword("");

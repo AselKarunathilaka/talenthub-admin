@@ -672,6 +672,11 @@ const AdminInternAttendance = () => {
 
   const handleToggleLocationRequirement = async () => {
     if (sltLocationRequired) {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (adminInfo?.user?.requireSecurityCheck === false) {
+        await submitLocationToggle(false, null);
+        return;
+      }
       setPasswordPopupAction("location");
       setShowPasswordPopup(true);
       setSecurityPassword("");
@@ -682,6 +687,11 @@ const AdminInternAttendance = () => {
   };
   
   const handleMarkAttendanceClick = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      navigate("/admin/manual-attendance");
+      return;
+    }
     setPasswordPopupAction("attendance");
     setShowPasswordPopup(true);
     setSecurityPassword("");
@@ -723,13 +733,16 @@ const AdminInternAttendance = () => {
     setPasswordError("");
     try {
       const payload = { sltLocationRequired: required };
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const requireCheck = adminInfo?.user?.requireSecurityCheck !== false;
+
       if (!required) {
-        if (!password) {
+        if (requireCheck && !password) {
           setPasswordError("Password is required");
           setSettingsSaving(false);
           return;
         }
-        payload.securityPin = password;
+        if (password) payload.securityPin = password;
       }
       const result = await attendanceApi.updateSettings(payload);
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
