@@ -118,6 +118,8 @@ const AdminSettings = () => {
 
   // Forms
   const [userForm, setUserForm] = useState({ name: "", email: "", role: "admin", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true });
+  const [showUserFormPassword, setShowUserFormPassword] = useState(false);
+  const [showUserFormConfirmPassword, setShowUserFormConfirmPassword] = useState(false);
   const [alertForm, setAlertForm] = useState({ name: "", role: "", subRole: "", email: "", phoneNumber: "" });
   const [specForm, setSpecForm] = useState({ name: "", isNonCoding: false });
   const [apiForm, setApiForm] = useState({ name: "", accessiblePages: [], expiresInDays: "never" });
@@ -899,16 +901,42 @@ const AdminSettings = () => {
 
                 {(!editingItem && userForm.authProvider === 'developer_password') && (
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+                      <div className="relative">
+                        <input type={showUserFormPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} />
+                        <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                          {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label>
+                      <div className="relative">
+                        <input type={showUserFormConfirmPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} />
+                        <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                          {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {(editingItem && userForm.authProvider === 'developer_password') && (
                   <div className="pt-2 border-t border-slate-100">
                     <p className="text-xs text-slate-400 mb-2">Leave blank to keep current password</p>
                     <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      <div><input type="password" placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
-                      <div><input type="password" placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
+                      <div className="relative">
+                        <input type={showUserFormPassword ? "text" : "password"} placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} />
+                        <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                          {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <input type={showUserFormConfirmPassword ? "text" : "password"} placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} />
+                        <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                          {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
