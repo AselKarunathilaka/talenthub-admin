@@ -1,6 +1,16 @@
 const mongoose = require("mongoose");
 const crypto = require("crypto");
 
+const isGibberishReason = (text) => {
+  const cleaned = (text || "").trim().replace(/\s+/g, "");
+  if (!cleaned) return false;
+  if (/^(.)\1*$/i.test(cleaned)) return true; // whole string is one repeated char
+  if (/(.)\1{3,}/i.test(cleaned)) return true; // 4+ same char in a row anywhere
+  const uniqueChars = new Set(cleaned.toLowerCase()).size;
+  if (cleaned.length >= 10 && uniqueChars <= 2) return true; // e.g. "ababababab"
+  return false;
+};
+
 const leaveRequestSchema = new mongoose.Schema(
   {
     intern: {
@@ -56,6 +66,15 @@ const leaveRequestSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 10,
+      validate: {
+        validator: function (value) {
+          // Only enforce gibberish check for Extended Leave
+          if (this.requestType !== "study_leave") return true;
+          return !isGibberishReason(value);
+        },
+        message:
+          "repeated/gibberish text detected. Please provide a meaningful reason for extended leave.",
+      },
     },
     proofDocument: {
       data: {

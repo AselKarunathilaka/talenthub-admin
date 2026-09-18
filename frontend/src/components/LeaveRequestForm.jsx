@@ -9,6 +9,16 @@ const isValidSriLankanNIC = (nic) => {
   return nicRegex.test(nic);
 };
 
+const isGibberishReason = (text) => {
+  const cleaned = (text || "").trim().replace(/\s+/g, "");
+  if (!cleaned) return false;
+  if (/^(.)\1*$/i.test(cleaned)) return true; // whole string is one repeated char
+  if (/(.)\1{3,}/i.test(cleaned)) return true; // 4+ same char in a row anywhere
+  const uniqueChars = new Set(cleaned.toLowerCase()).size;
+  if (cleaned.length >= 10 && uniqueChars <= 2) return true; // e.g. "ababababab"
+  return false;
+};
+
 const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const [formData, setFormData] = useState({
@@ -114,6 +124,11 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
         return;
       }
 
+      if (isGibberishReason(formData.reason)) {
+        toast.error("Please provide a valid, meaningful reason (avoid repeated characters)");
+        return;
+      }
+
       if (!proofDocument) {
         toast.error("Proof document is required for formal extended leave");
         return;
@@ -182,7 +197,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
   const labelClasses = "block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2";
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden"
@@ -281,11 +296,10 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               onChange={handleChange}
               placeholder="e.g. 123456789V or 200012345678"
               required
-              className={`${inputClasses} ${
-                formData.nationalId && !isValidSriLankanNIC(formData.nationalId)
+              className={`${inputClasses} ${formData.nationalId && !isValidSriLankanNIC(formData.nationalId)
                   ? "border-red-300 bg-red-50 focus:ring-red-500"
                   : ""
-              }`}
+                }`}
             />
             {formData.nationalId && !isValidSriLankanNIC(formData.nationalId) && (
               <p className="text-xs text-rose-500 font-medium mt-1.5 flex items-center gap-1">
@@ -336,7 +350,11 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
             className={`${inputClasses} resize-none`}
           />
           <div className="flex justify-between items-center mt-1.5">
-            <p className="text-[10px] text-gray-400 font-bold uppercase">10 characters minimum</p>
+            <p className="text-[10px] text-gray-400 font-bold uppercase">
+              {isStudyLeave
+                ? "10 characters minimum — avoid repeated characters"
+                : "10 characters minimum"}
+            </p>
             <p className={`text-[10px] font-bold ${formData.reason.length < 10 ? 'text-rose-400' : 'text-[#50b748]'}`}>
               {formData.reason.length} chars
             </p>
@@ -347,10 +365,9 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           <label className={labelClasses}>
             <FiUpload className="text-[#00b4eb]" /> Proof Document {isStudyLeave ? "*" : "(Optional)"}
           </label>
-          <div 
-            className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-200 ${
-              isDragging ? "border-[#00b4eb] bg-blue-50/50" : proofDocument ? "border-[#50b748] bg-green-50/30" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
-            }`}
+          <div
+            className={`border-2 border-dashed rounded-2xl p-6 transition-all duration-200 ${isDragging ? "border-[#00b4eb] bg-blue-50/50" : proofDocument ? "border-[#50b748] bg-green-50/30" : "border-slate-200 bg-slate-50 hover:bg-slate-100"
+              }`}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
@@ -363,10 +380,10 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
               className="hidden"
               id="file-upload"
             />
-            
+
             <AnimatePresence mode="wait">
               {!proofDocument ? (
-                <motion.div 
+                <motion.div
                   key="upload-prompt"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -381,7 +398,7 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
                   <p className="text-xs font-medium text-gray-400 mt-1">PDF, JPG, PNG or DOC (max. 5MB)</p>
                 </motion.div>
               ) : (
-                <motion.div 
+                <motion.div
                   key="file-info"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -396,8 +413,8 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
                       <p className="text-[10px] font-bold text-gray-400 uppercase">{(proofDocument.size / 1024 / 1024).toFixed(2)} MB</p>
                     </div>
                   </div>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); removeFile(); }}
                     className="p-2 hover:bg-red-50 text-gray-400 hover:text-rose-500 rounded-lg transition-colors shrink-0"
                   >
@@ -413,11 +430,10 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
           <button
             type="submit"
             disabled={loading}
-            className={`w-full py-4 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition-all duration-300 ${
-              loading
+            className={`w-full py-4 rounded-xl text-white font-extrabold flex items-center justify-center gap-2 transition-all duration-300 ${loading
                 ? "bg-slate-300 cursor-not-allowed"
                 : "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] hover:shadow-lg hover:shadow-blue-500/30 hover:scale-[1.01] active:scale-[0.99]"
-            }`}
+              }`}
           >
             {loading ? (
               <div className="flex items-center gap-2">

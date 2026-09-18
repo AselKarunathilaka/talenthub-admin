@@ -2,6 +2,15 @@ const leaveRequestService = require("../services/leaveRequestService");
 const User = require("../models/User");
 const fs = require("fs");
 
+const isGibberishReason = (text) => {
+  const cleaned = (text || "").trim().replace(/\s+/g, "");
+  if (!cleaned) return false;
+  if (/^(.)\1*$/i.test(cleaned)) return true;
+  if (/(.)\1{3,}/i.test(cleaned)) return true;
+  const uniqueChars = new Set(cleaned.toLowerCase()).size;
+  return cleaned.length >= 10 && uniqueChars <= 2;
+};
+
 class LeaveRequestController {
   // Create a new leave request (Intern only)
   async createLeaveRequest(req, res, next) {
@@ -32,6 +41,15 @@ class LeaveRequestController {
         return res.status(400).json({
           success: false,
           message: "Proof document is required for formal extended leave requests",
+        });
+      }
+
+      // Extended Leave only: block gibberish/repeated-character reasons
+      if (requestType === "study_leave" && isGibberishReason(reason)) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Please provide a valid, meaningful reason for extended leave (repeated characters aren't accepted).",
         });
       }
 
