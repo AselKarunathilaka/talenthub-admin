@@ -128,10 +128,10 @@ class LogbookRestrictionService {
     }
 
     const message =
-      `Dear interns, you have been given a grace period of ${NEW_INTERN_GRACE_AMOUNT} days. ` +
-      `It's gonna end in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}. ` +
-      `After the grace period, failure to update the logbook at least 3 working days ` +
-      `(Mon-Fri) will result in logbook restrictions.`;
+      `Dear Interns, please note that the ${NEW_INTERN_GRACE_AMOUNT}-day grace period for updating your logbook ` +
+      `will end in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}. ` +
+      `Thereafter, failure to update the logbook for at least 3 working days per week (Monday\u2013Friday) ` +
+      `may result in logbook restrictions.`;
 
     return {
       show: true,
