@@ -1,4 +1,5 @@
 const InternService = require("../services/internService");
+const LogbookRestrictionService = require("../services/logbookRestrictionService");
 const attendanceService = require("../services/attendanceService");
 const { parseXLSX, addInternsFromXLSX } = require("../utils/xlsxHandler");
 const sendEmail = require("../utils/emailSender");
@@ -174,6 +175,10 @@ const getInternById = async (req, res) => {
 
     const internObj = intern.toObject ? intern.toObject() : { ...intern };
     internObj.records = records;
+    // Single source of truth for the new-joiner grace-period banner — the
+    // frontend just renders this, it doesn't recompute days/tier/message.
+    internObj.logbookGraceInfo =
+      LogbookRestrictionService.getNewInternGraceStatus(intern);
 
     res.status(200).json(internObj);
   } catch (error) {

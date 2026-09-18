@@ -3,11 +3,31 @@ const DailyRecord = require("../models/DailyRecord");
 const moment = require("moment");
 const {
   getPastWorkingDays,
-  isWithinGracePeriod,
+  daysRemainingInCalendarGracePeriod,
+  isWithinCalendarGracePeriod,
+  isWithinLeavingGracePeriod,
   getActiveInternsQuery,
   getHolidayDataQuality,
   isHolidayDataTrusted,
 } = require("../utils/workingDays");
+
+// ── Grace periods (calendar-based, not working days) ────────────────────────
+// Newly joined interns get 21 days from Training_StartDate before the
+// logbook restriction can be applied to them, so they have time to adapt to
+// the system.
+const NEW_INTERN_GRACE_AMOUNT = 21;
+const NEW_INTERN_GRACE_UNIT = "days";
+
+// Interns leaving get a 14-day window before Training_EndDate during which
+// the restriction is not applied either.
+const LEAVING_INTERN_GRACE_AMOUNT = 14;
+const LEAVING_INTERN_GRACE_UNIT = "days";
+
+// ── Sticky-banner color tiers for the new-intern grace countdown ───────────
+// First 14 days of the 21-day window: blue. Next 4 days: yellow. Last 3: red.
+const GRACE_TIER_BLUE_MIN_DAYS_REMAINING = 8; // daysRemaining 21..8  → blue  (14 days)
+const GRACE_TIER_YELLOW_MIN_DAYS_REMAINING = 4; // daysRemaining 7..4   → yellow (4 days)
+// daysRemaining 3..1 → red (3 days)
 
 // ── Minimum number of daily logs an intern must submit within the check
 // window (past 5 working days) to avoid restriction. Kept in sync with
@@ -47,7 +67,79 @@ class LogbookRestrictionService {
 
   static isNewIntern(intern) {
     if (!intern.Training_StartDate) return false;
-    return isWithinGracePeriod(intern.Training_StartDate);
+    return isWithinCalendarGracePeriod(
+      intern.Training_StartDate,
+      NEW_INTERN_GRACE_AMOUNT,
+      NEW_INTERN_GRACE_UNIT,
+    );
+  }
+
+  /**
+   * Is this intern within their final 14 days (Training_EndDate)? If so,
+   * the logbook restriction should not be applied to them either.
+   */
+  static isLeavingIntern(intern) {
+    if (!intern.Training_EndDate) return false;
+    return isWithinLeavingGracePeriod(
+      intern.Training_EndDate,
+      LEAVING_INTERN_GRACE_AMOUNT,
+      LEAVING_INTERN_GRACE_UNIT,
+    );
+  }
+
+  /**
+   * Single source of truth for the new-joiner grace-period sticky banner.
+   * The frontend calls the intern-profile endpoint and displays whatever
+   * this returns verbatim — it does not recompute days/tier/message itself,
+   * so there is nothing to keep "in sync" on the frontend side.
+   *
+   * Only ever returns show:true for NEW interns — leaving interns don't get
+   * this banner, even though they're also skipped by the restriction job.
+   */
+  static getNewInternGraceStatus(intern, referenceDate = new Date()) {
+    const base = {
+      show: false,
+      graceDays: NEW_INTERN_GRACE_AMOUNT,
+      daysRemaining: null,
+      tier: null,
+      message: null,
+    };
+
+    if (!intern || !intern.Training_StartDate) return base;
+
+    const daysRemaining = daysRemainingInCalendarGracePeriod(
+      intern.Training_StartDate,
+      NEW_INTERN_GRACE_AMOUNT,
+      NEW_INTERN_GRACE_UNIT,
+      referenceDate,
+    );
+
+    if (daysRemaining === null || daysRemaining < 1 || daysRemaining > NEW_INTERN_GRACE_AMOUNT) {
+      return { ...base, daysRemaining };
+    }
+
+    let tier;
+    if (daysRemaining >= GRACE_TIER_BLUE_MIN_DAYS_REMAINING) {
+      tier = "blue";
+    } else if (daysRemaining >= GRACE_TIER_YELLOW_MIN_DAYS_REMAINING) {
+      tier = "yellow";
+    } else {
+      tier = "red";
+    }
+
+    const message =
+      `Dear interns, you have been given a grace period of ${NEW_INTERN_GRACE_AMOUNT} days. ` +
+      `It's gonna end in ${daysRemaining} day${daysRemaining === 1 ? "" : "s"}. ` +
+      `After the grace period, failure to update the logbook at least 3 working days ` +
+      `(Mon-Fri) will result in logbook restrictions.`;
+
+    return {
+      show: true,
+      graceDays: NEW_INTERN_GRACE_AMOUNT,
+      daysRemaining,
+      tier,
+      message,
+    };
   }
 
   // ── Log-submission check (count-based, matches WeeklyNonSubmissionExcelService) ──
@@ -120,6 +212,7 @@ class LogbookRestrictionService {
       restricted: 0, // newly restricted this run
       alreadyRestricted: 0, // already restricted, still below requirement
       skipped: 0, // new interns
+      skippedLeaving: 0, // interns leaving within their grace window
       submittedButRestricted: 0, // met requirement this week but still restricted (admin must lift)
       metRequirement: 0, // met requirement, not restricted
       wouldRestrict: [], // populated instead of restricting when enforcement is paused
@@ -136,11 +229,20 @@ class LogbookRestrictionService {
         const tid = intern.Trainee_ID || "Unknown";
 
         try {
-          // ── Skip new interns ────────────────────────────────────────────
+          // ── Skip new interns (21-day grace period from Training_StartDate) ──
           if (this.isNewIntern(intern)) {
             results.skipped++;
             console.log(
-              `🆕 ${name} (${tid}) — SKIPPED (joined within review period)`,
+              `🆕 ${name} (${tid}) — SKIPPED (within 21-day new-joiner grace period)`,
+            );
+            continue;
+          }
+
+          // ── Skip interns leaving soon (14-day grace period before Training_EndDate) ──
+          if (this.isLeavingIntern(intern)) {
+            results.skippedLeaving++;
+            console.log(
+              `👋 ${name} (${tid}) — SKIPPED (within 14-day leaving grace period)`,
             );
             continue;
           }
@@ -228,6 +330,7 @@ class LogbookRestrictionService {
       console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
       console.log(`📋 Total checked:                  ${results.total}`);
       console.log(`🆕 New interns skipped:            ${results.skipped}`);
+      console.log(`👋 Leaving interns skipped:        ${results.skippedLeaving}`);
       console.log(
         `✅ Met requirement (>=${MIN_LOGS_REQUIRED} logs):        ${results.metRequirement}`,
       );
