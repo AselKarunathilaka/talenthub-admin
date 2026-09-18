@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import Navigation from "../components/Navigation";
 import InternshipEndNotification from "../components/InternshipEndNotification";
+import GracePeriodBanner from "../components/GracePeriodBanner";
 import NoProjectNotification from "../components/NoProjectNotification";
 import FaceRegistrationModal from "../components/FaceRegistrationModal";
 import OnboardingTour from "../components/OnboardingTour";
@@ -105,6 +106,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
   const [internData, setInternData] = useState(null);
   const [internProjects, setInternProjects] = useState([]);
   const [endDateNotification, setEndDateNotification] = useState(null);
+  const [graceBannerInfo, setGraceBannerInfo] = useState(null);
   const [showFaceModal, setShowFaceModal] = useState(false);
   const [projectPopupPending, setProjectPopupPending] = useState(false);
   const [showNoProjectPopup, setShowNoProjectPopup] = useState(false);
@@ -160,10 +162,32 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           }
 
           if (shouldShow) {
-              setEndDateNotification(notification);
+            setEndDateNotification(notification);
           } else {
             setEndDateNotification(null);
           }
+        }
+
+        // New-joiner logbook grace-period banner — comes straight from the
+        // backend (response.logbookGraceInfo), no local date/tier/message math.
+        if (response.logbookGraceInfo && response.logbookGraceInfo.show) {
+          const graceInfo = response.logbookGraceInfo;
+
+          let shouldShowGrace = true;
+          const lastDismissedGraceStr = localStorage.getItem(
+            "logbookGraceBannerDismissedDate",
+          );
+          if (lastDismissedGraceStr) {
+            const lastDismissed = new Date(lastDismissedGraceStr);
+            const today = new Date();
+            if (lastDismissed.toDateString() === today.toDateString()) {
+              shouldShowGrace = false;
+            }
+          }
+
+          setGraceBannerInfo(shouldShowGrace ? graceInfo : null);
+        } else {
+          setGraceBannerInfo(null);
         }
         return response; // Return data so loadAllData can use it directly
       } else {
@@ -202,7 +226,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           response.meetingAttendance ||
           response.attendance?.filter((entry) => entry.isMeeting) ||
           [];
-          
+
         const rawTrueMeetingData = allMeetingData.filter(e => e.attendanceMethod !== "talenttrail" && e.attendanceMethod !== "talenttrail-team");
         const deduplicatedMeetingData = [];
         const seenMeetingKeys = new Set();
@@ -314,7 +338,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           if (res && Array.isArray(res.records)) {
             records = res.records;
           }
-        } catch {}
+        } catch { }
 
         if (!records.length) {
           try {
@@ -322,7 +346,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
             if (Array.isArray(data)) {
               records = data;
             }
-          } catch {}
+          } catch { }
         }
 
         if (records.length > 0) {
@@ -918,6 +942,14 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
           }}
         />
 
+        <GracePeriodBanner
+          graceInfo={graceBannerInfo}
+          onDismiss={() => {
+            setGraceBannerInfo(null);
+            localStorage.setItem("logbookGraceBannerDismissedDate", new Date().toISOString());
+          }}
+        />
+
         {/* ===== Beautiful Hero Banner ===== */}
         <motion.div
           className="hero-banner-card relative w-full rounded-3xl overflow-hidden mb-8 shadow-2xl bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] border border-slate-700/50"
@@ -939,51 +971,51 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
 
             {/* Profile Picture */}
             <div className="relative group flex-shrink-0">
-              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{width: 'clamp(45px, 15vw, 112px)', height: 'clamp(45px, 15vw, 112px)'}}>
+              <div className="w-14 h-14 xs:w-18 xs:h-18 xm:w-20 xm:h-20 sm:w-28 sm:h-28 rounded-lg xs:rounded-xl xm:rounded-2xl sm:rounded-3xl overflow-hidden border-[2px] xs:border-[3px] border-white/10 shadow-2xl bg-gradient-to-br from-[#00b4eb] to-indigo-600 flex items-center justify-center" style={{ width: 'clamp(45px, 15vw, 112px)', height: 'clamp(45px, 15vw, 112px)' }}>
                 <img
                   src={profilePicUrl}
                   alt="Profile"
                   className="w-full h-full object-cover"
                   onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
                 />
-                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{fontSize: 'clamp(14px, 4vw, 36px)'}}>
+                <div className="hidden w-full h-full items-center justify-center font-black text-white" style={{ fontSize: 'clamp(14px, 4vw, 36px)' }}>
                   {(internData?.Trainee_Name || internData?.name) ? (internData?.Trainee_Name || internData?.name).charAt(0).toUpperCase() : "U"}
                 </div>
               </div>
-              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{width: 'clamp(12px, 4vw, 28px)', height: 'clamp(12px, 4vw, 28px)', borderWidth: 'clamp(1.5px, 0.5vw, 4px)', bottom: 'clamp(-1px, -0.5vw, -8px)', right: 'clamp(-1px, -0.5vw, -8px)'}} title="Active">
-                <div className="bg-white rounded-full animate-pulse" style={{width: 'clamp(4px, 1.5vw, 8px)', height: 'clamp(4px, 1.5vw, 8px)'}} />
+              <div className="absolute bg-emerald-500 rounded-full border-[#1e293b] shadow-lg flex items-center justify-center" style={{ width: 'clamp(12px, 4vw, 28px)', height: 'clamp(12px, 4vw, 28px)', borderWidth: 'clamp(1.5px, 0.5vw, 4px)', bottom: 'clamp(-1px, -0.5vw, -8px)', right: 'clamp(-1px, -0.5vw, -8px)' }} title="Active">
+                <div className="bg-white rounded-full animate-pulse" style={{ width: 'clamp(4px, 1.5vw, 8px)', height: 'clamp(4px, 1.5vw, 8px)' }} />
               </div>
             </div>
 
             {/* Main Info */}
             <div className="flex-1 text-left flex flex-col justify-end min-w-0 pr-1 xs:pr-4 mb-1">
-              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{fontSize: 'clamp(7px, 2vw, 12px)', marginBottom: 'clamp(1px, 0.5vw, 6px)'}}>
+              <span className="text-blue-300/80 font-bold uppercase tracking-widest block truncate" style={{ fontSize: 'clamp(7px, 2vw, 12px)', marginBottom: 'clamp(1px, 0.5vw, 6px)' }}>
                 Welcome Back
               </span>
-              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md leading-tight" style={{fontSize: 'clamp(14px, 4vw, 31px)', marginBottom: 'clamp(3px, 1vw, 12px)', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
+              <h1 className="font-extrabold text-white tracking-tight drop-shadow-md leading-tight" style={{ fontSize: 'clamp(14px, 4vw, 31px)', marginBottom: 'clamp(3px, 1vw, 12px)', wordBreak: 'break-word', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 {(internData?.Trainee_Name || internData?.name) || "User"}
               </h1>
 
-              <div className="flex flex-nowrap items-center justify-start overflow-hidden" style={{gap: 'clamp(2px, 1vw, 12px)'}}>
-                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)'}}>
-                  <User className="text-[#00b4eb] shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
+              <div className="flex flex-nowrap items-center justify-start overflow-hidden" style={{ gap: 'clamp(2px, 1vw, 12px)' }}>
+                <span className="flex items-center whitespace-nowrap rounded bg-white/10 text-white border border-white/10 backdrop-blur-md font-semibold shadow-sm" style={{ gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)' }}>
+                  <User className="text-[#00b4eb] shrink-0" style={{ width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)' }} />
                   {internData?.Trainee_ID || internData?.internId || "ID Not Assigned"}
                 </span>
 
                 {countdownTime?.totalDaysLeft > 0 ? (
-                  <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)'}}>
-                    <Calendar className="text-blue-400 shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-blue-100 border border-blue-500/30 backdrop-blur-md font-semibold shadow-sm" style={{ gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(59,130,246,0.2)' }}>
+                    <Calendar className="text-blue-400 shrink-0" style={{ width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)' }} />
                     {countdownTime.totalDaysLeft} Days Left
                   </span>
                 ) : internData?.Training_Status === "Ended" ? (
-                  <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)'}}>
+                  <span className="hidden sm:flex items-center whitespace-nowrap text-red-200 border border-red-500/30 backdrop-blur-md font-semibold" style={{ gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(239,68,68,0.2)' }}>
                     Training Ended
                   </span>
                 ) : null}
 
                 {lastSeenDate && (
-                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)'}}>
-                    <Clock className="text-slate-400 shrink-0" style={{width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)'}} />
+                  <span className="flex items-center whitespace-nowrap text-slate-300 border border-white/5 backdrop-blur-md font-semibold" style={{ gap: 'clamp(1px, 0.8vw, 6px)', padding: 'clamp(1.5px, 0.5vw, 6px) clamp(2px, 1vw, 12px)', fontSize: 'clamp(8.5px, 2.5vw, 13px)', borderRadius: 'clamp(4px, 1vw, 12px)', background: 'rgba(255,255,255,0.05)' }}>
+                    <Clock className="text-slate-400 shrink-0" style={{ width: 'clamp(10px, 2.5vw, 14px)', height: 'clamp(10px, 2.5vw, 14px)' }} />
                     Last seen: {lastSeenDate}
                   </span>
                 )}
@@ -1153,7 +1185,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                     <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: getPerformanceColors(dailyAttendanceRate).text, lineHeight: 1 }}>{dailyAttendanceRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Daily<br className="sm:hidden block"/> Attendance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Daily<br className="sm:hidden block" /> Attendance</span>
               </div>
 
               {/* Divider */}
@@ -1172,7 +1204,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                     <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: getPerformanceColors(meetingAttendanceRate).text, lineHeight: 1 }}>{meetingAttendanceRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Meeting<br className="sm:hidden block"/> Attendance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Meeting<br className="sm:hidden block" /> Attendance</span>
               </div>
 
               {/* Divider */}
@@ -1191,7 +1223,7 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                     <span style={{ fontSize: 'clamp(11px, 3.5vw, 24px)', fontWeight: 900, color: workQualityRate >= 75 ? "#2563eb" : workQualityRate >= 50 ? "#ca8a04" : "#dc2626", lineHeight: 1 }}>{workQualityRate}%</span>
                   </div>
                 </div>
-                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Work<br className="sm:hidden block"/> Performance</span>
+                <span style={{ fontSize: 'clamp(7px, 2.5vw, 11px)', fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.04em", textAlign: "center", lineHeight: 1.2 }}>Work<br className="sm:hidden block" /> Performance</span>
               </div>
 
             </div>
@@ -1211,15 +1243,15 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                 const merged = [
                   ...(filteredAttendance || [])
                     .filter(a => !a.attendanceMethod || !a.attendanceMethod.toLowerCase().includes('logbook'))
-                    .map(a => ({ 
-                      ...a, 
-                      activityType: a.attendanceMethod ? `Daily Attendance (${a.attendanceMethod})` : 'Daily Attendance', 
-                      icon: <CheckCircle size={11} /> 
+                    .map(a => ({
+                      ...a,
+                      activityType: a.attendanceMethod ? `Daily Attendance (${a.attendanceMethod})` : 'Daily Attendance',
+                      icon: <CheckCircle size={11} />
                     })),
                   ...(logbookRecords || []).map(r => {
                     const rDate = new Date(r.attendanceTime || r.createdAt || r.date);
-                    const formattedTime = !isNaN(rDate.getTime()) 
-                      ? rDate.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Colombo' }) 
+                    const formattedTime = !isNaN(rDate.getTime())
+                      ? rDate.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Colombo' })
                       : "N/A";
                     return {
                       date: r.attendanceTime || r.createdAt || r.date,
@@ -1229,10 +1261,10 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
                       icon: <Building size={11} />
                     };
                   }),
-                  ...(meetingAttendance || []).map(a => ({ 
-                    ...a, 
-                    activityType: a.attendanceMethod ? `Meeting Attendance (${a.attendanceMethod})` : 'Meeting Attendance', 
-                    icon: <Users size={11} /> 
+                  ...(meetingAttendance || []).map(a => ({
+                    ...a,
+                    activityType: a.attendanceMethod ? `Meeting Attendance (${a.attendanceMethod})` : 'Meeting Attendance',
+                    icon: <Users size={11} />
                   }))
                 ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
@@ -1462,498 +1494,492 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
 
           {/* ── Logbook / Commits Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', padding: 'clamp(12px, 3vw, 20px) 0' }}>
-          {/* Heatmap External Toggle */}
-          {!isNoCommitSpecialization(
-            internData?.field_of_spec_name ||
-            internData?.fieldOfSpecialization ||
-            internData?.specialization ||
-            ""
-          ) && (
-          <div className="w-full max-w-[400px] mx-auto px-2 sm:px-4">
-            <div className="flex bg-white p-1.5 rounded-[12px] sm:rounded-2xl shadow-sm border border-gray-100 w-full relative">
-              <button
-                onClick={() => setHeatmapView("logbook")}
-                className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${
-                  heatmapView === "logbook"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Logbook</span>
-              </button>
-              <button
-                onClick={() => setHeatmapView("commits")}
-                className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${
-                  heatmapView === "commits"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="truncate">Commits</span>
-              </button>
-              <div
-                className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[8px] sm:rounded-xl transition-all duration-300 ease-out shadow-md"
-                style={{
-                  background:
-                    heatmapView === "logbook"
-                      ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
-                      : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
-                  left: heatmapView === "logbook" ? "6px" : "calc(50%)",
-                }}
-              />
-            </div>
-          </div>
-          )}
-
-          {/* Heatmap Card */}
-          <div className="bento-deep-content" style={{ margin: 0 }}>
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-              <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                <div>
-                  <h3 style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
-                    {heatmapView === "logbook" ? "Daily Logbook Activity Heatmap" : "GitHub Code Commit Activity Heatmap"}
-                  </h3>
-                  <p style={{ fontSize: 'clamp(11px, 3vw, 13px)', color: "#64748b", margin: 0 }}>
-                    {heatmapView === "logbook"
-                      ? "Visualize your daily logbook submissions throughout your internship"
-                      : "Visualize your GitHub code commits across assigned projects"}
-                  </p>
+            {/* Heatmap External Toggle */}
+            {!isNoCommitSpecialization(
+              internData?.field_of_spec_name ||
+              internData?.fieldOfSpecialization ||
+              internData?.specialization ||
+              ""
+            ) && (
+                <div className="w-full max-w-[400px] mx-auto px-2 sm:px-4">
+                  <div className="flex bg-white p-1.5 rounded-[12px] sm:rounded-2xl shadow-sm border border-gray-100 w-full relative">
+                    <button
+                      onClick={() => setHeatmapView("logbook")}
+                      className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${heatmapView === "logbook"
+                          ? "text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                      <span className="truncate">Logbook</span>
+                    </button>
+                    <button
+                      onClick={() => setHeatmapView("commits")}
+                      className={`relative z-10 flex-1 py-1.5 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-xs sm:text-sm font-bold rounded-[8px] sm:rounded-xl transition-all duration-300 flex items-center justify-center gap-1 sm:gap-2 ${heatmapView === "commits"
+                          ? "text-white"
+                          : "text-gray-500 hover:text-gray-700"
+                        }`}
+                    >
+                      <GitCommit className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                      <span className="truncate">Commits</span>
+                    </button>
+                    <div
+                      className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[8px] sm:rounded-xl transition-all duration-300 ease-out shadow-md"
+                      style={{
+                        background:
+                          heatmapView === "logbook"
+                            ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
+                            : "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)",
+                        left: heatmapView === "logbook" ? "6px" : "calc(50%)",
+                      }}
+                    />
+                  </div>
                 </div>
-                {heatmapView === "commits" && gitCommitsData?.githubUsername && (
-                  <span className="text-xs font-mono text-slate-600 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
-                    GitHub: @{gitCommitsData.githubUsername}
-                  </span>
-                )}
-              </div>
-              {heatmapView === "logbook" ? (
-                <DailyRecordsHeatmap
-                  startDate={internData?.Training_StartDate}
-                  endDate={internData?.Training_EndDate}
-                  records={logbookRecords}
-                />
-              ) : (
-                <CommitHeatmap
-                  startDate={internData?.Training_StartDate}
-                  endDate={internData?.Training_EndDate}
-                  internId={effectiveInternId}
-                  commitData={gitCommitsData}
-                />
               )}
-            </motion.div>
-          </div>
+
+            {/* Heatmap Card */}
+            <div className="bento-deep-content" style={{ margin: 0 }}>
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                  <div>
+                    <h3 style={{ fontSize: 'clamp(16px, 4vw, 22px)', fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
+                      {heatmapView === "logbook" ? "Daily Logbook Activity Heatmap" : "GitHub Code Commit Activity Heatmap"}
+                    </h3>
+                    <p style={{ fontSize: 'clamp(11px, 3vw, 13px)', color: "#64748b", margin: 0 }}>
+                      {heatmapView === "logbook"
+                        ? "Visualize your daily logbook submissions throughout your internship"
+                        : "Visualize your GitHub code commits across assigned projects"}
+                    </p>
+                  </div>
+                  {heatmapView === "commits" && gitCommitsData?.githubUsername && (
+                    <span className="text-xs font-mono text-slate-600 bg-slate-100 px-3 py-1 rounded-xl border border-slate-200">
+                      GitHub: @{gitCommitsData.githubUsername}
+                    </span>
+                  )}
+                </div>
+                {heatmapView === "logbook" ? (
+                  <DailyRecordsHeatmap
+                    startDate={internData?.Training_StartDate}
+                    endDate={internData?.Training_EndDate}
+                    records={logbookRecords}
+                  />
+                ) : (
+                  <CommitHeatmap
+                    startDate={internData?.Training_StartDate}
+                    endDate={internData?.Training_EndDate}
+                    internId={effectiveInternId}
+                    commitData={gitCommitsData}
+                  />
+                )}
+              </motion.div>
+            </div>
 
           </div>{/* end logbook section */}
 
           {/* ── Daily / Meeting Attendance Section ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: 'clamp(12px, 3vw, 20px)', paddingTop: 'clamp(4px, 1vw, 8px)', paddingBottom: 'clamp(12px, 3vw, 20px)' }}>
-          {/* ── Beautiful External Toggle ── */}
-          <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 pb-2">
-            <div className="grid grid-cols-3 w-full bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
-              <button
-                onClick={() => setActiveTab("daily")}
-                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                  activeTab === "daily"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="whitespace-nowrap hidden sm:inline">Daily Attendance</span>
-                <span className="whitespace-nowrap sm:hidden">Daily</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("meeting")}
-                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                  activeTab === "meeting"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="whitespace-nowrap hidden sm:inline">Meeting Attendance</span>
-                <span className="whitespace-nowrap sm:hidden">Meeting</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("team")}
-                className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${
-                  activeTab === "team"
-                    ? "text-white"
-                    : "text-gray-500 hover:text-gray-700"
-                }`}
-              >
-                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-                <span className="whitespace-nowrap hidden sm:inline">Team Attendance</span>
-                <span className="whitespace-nowrap sm:hidden">Team</span>
-              </button>
-              <div
-                className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-md"
-                style={{
-                  width: "calc(33.333% - 4px)",
-                  background:
-                    activeTab === "daily"
-                      ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
-                      : activeTab === "meeting"
-                      ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                      : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
-                  left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
-                }}
-              />
+            {/* ── Beautiful External Toggle ── */}
+            <div className="w-full max-w-[800px] mx-auto px-2 sm:px-4 pb-2">
+              <div className="grid grid-cols-3 w-full bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 relative">
+                <button
+                  onClick={() => setActiveTab("daily")}
+                  className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "daily"
+                      ? "text-white"
+                      : "text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="whitespace-nowrap hidden sm:inline">Daily Attendance</span>
+                  <span className="whitespace-nowrap sm:hidden">Daily</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("meeting")}
+                  className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "meeting"
+                      ? "text-white"
+                      : "text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  <Folder className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="whitespace-nowrap hidden sm:inline">Meeting Attendance</span>
+                  <span className="whitespace-nowrap sm:hidden">Meeting</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("team")}
+                  className={`relative z-10 flex-1 py-2 sm:py-2.5 px-1 sm:px-4 text-[10px] xs:text-[11px] sm:text-sm font-bold rounded-xl transition-all duration-300 flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 ${activeTab === "team"
+                      ? "text-white"
+                      : "text-gray-500 hover:text-gray-700"
+                    }`}
+                >
+                  <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                  <span className="whitespace-nowrap hidden sm:inline">Team Attendance</span>
+                  <span className="whitespace-nowrap sm:hidden">Team</span>
+                </button>
+                <div
+                  className="absolute top-1.5 bottom-1.5 rounded-xl transition-all duration-300 ease-out shadow-md"
+                  style={{
+                    width: "calc(33.333% - 4px)",
+                    background:
+                      activeTab === "daily"
+                        ? "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)"
+                        : activeTab === "meeting"
+                          ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
+                          : "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+                    left: activeTab === "daily" ? "6px" : activeTab === "meeting" ? "calc(33.333% + 2px)" : "calc(66.666% - 2px)",
+                  }}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Tables Card */}
-          <div className="bento-deep-content" style={{ margin: 0 }}>
-            <AnimatePresence mode="wait">
-              {activeTab === "daily" && (
-                <motion.div key="daily" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
-                    <div>
-                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Daily Attendance History</h3>
-                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Your detailed daily attendance records</p>
+            {/* Tables Card */}
+            <div className="bento-deep-content" style={{ margin: 0 }}>
+              <AnimatePresence mode="wait">
+                {activeTab === "daily" && (
+                  <motion.div key="daily" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
+                      <div>
+                        <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Daily Attendance History</h3>
+                        <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Your detailed daily attendance records</p>
+                      </div>
+                      <div className="flex flex-row flex-nowrap justify-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 w-full lg:w-auto">
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-emerald-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
+                            <TrendingUp className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider m-0">Present</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-emerald-900 m-0 leading-none">{attendedDaysCount}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-rose-500 flex items-center justify-center shrink-0">
+                            <TrendingDown className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, workingDays - attendedDaysCount)}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-blue-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
+                            <Percent className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-blue-600 uppercase tracking-wider m-0">Rate</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-blue-900 m-0 leading-none">{dailyAttendanceRate}%</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex flex-row flex-nowrap justify-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 w-full lg:w-auto">
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-emerald-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-emerald-500 flex items-center justify-center shrink-0">
-                          <TrendingUp className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-emerald-600 uppercase tracking-wider m-0">Present</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-emerald-900 m-0 leading-none">{attendedDaysCount}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-rose-500 flex items-center justify-center shrink-0">
-                          <TrendingDown className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, workingDays - attendedDaysCount)}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-blue-50 to-blue-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-blue-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-                          <Percent className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-blue-600 uppercase tracking-wider m-0">Rate</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-blue-900 m-0 leading-none">{dailyAttendanceRate}%</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {filteredAttendance && filteredAttendance.length > 0 ? (
-                    <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
-                        <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
-                          <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                            <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Check In</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Check Out</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
-                            {filteredAttendance.map((entry, idx) => {
-                              let date, dayName, formattedDate, dateNumber;
-                              try {
-                                const rawDateStr = String(entry.date || "");
-                                if (rawDateStr.includes("-")) {
-                                  const parts = rawDateStr.slice(0, 10).split("-").map(Number);
-                                  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-                                    date = new Date(parts[0], parts[1] - 1, parts[2]);
+                    {filteredAttendance && filteredAttendance.length > 0 ? (
+                      <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
+                          <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
+                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                              <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Check In</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Check Out</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {filteredAttendance.map((entry, idx) => {
+                                let date, dayName, formattedDate, dateNumber;
+                                try {
+                                  const rawDateStr = String(entry.date || "");
+                                  if (rawDateStr.includes("-")) {
+                                    const parts = rawDateStr.slice(0, 10).split("-").map(Number);
+                                    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+                                      date = new Date(parts[0], parts[1] - 1, parts[2]);
+                                    } else { date = new Date(entry.date); }
                                   } else { date = new Date(entry.date); }
-                                } else { date = new Date(entry.date); }
-                                dayName = date.toLocaleDateString("en-US", { weekday: "short" });
-                                formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-                                dateNumber = date.getDate();
-                              } catch (error) { dayName = "N/A"; formattedDate = entry.date || "N/A"; dateNumber = "-"; }
-                              const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
-                              const MethodIcon = methodMeta.Icon;
-                              const isPresent = entry.status === "Present";
-                              return (
-                                <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <div className="flex items-center justify-center">
-                                      <span className="font-semibold text-slate-800 text-[10px] sm:text-xs">{formattedDate}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
-                                      {entry.checkInTime || entry.time ? (
-                                        <><Clock size={11} className="text-emerald-500 shrink-0 hidden sm:block" /> {entry.checkInTime || entry.time}</>
-                                      ) : <span className="text-slate-400">—</span>}
-                                    </div>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
-                                      {entry.checkOutTime ? (
-                                        <><Clock size={11} className="text-amber-500 shrink-0 hidden sm:block" /> {entry.checkOutTime}</>
-                                      ) : <span className="text-slate-400">—</span>}
-                                    </div>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
-                                      <MethodIcon size={12} className="shrink-0" />
-                                      <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
-                                    </span>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${isPresent ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
-                                      {entry.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No daily attendance records found</div>
-                  )}
-                </motion.div>
-              )}
-
-              {activeTab === "meeting" && (
-                <motion.div key="meeting" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-3 xs:mb-4 xm:mb-5 sm:mb-6 gap-3 xs:gap-4 sm:gap-6 text-center lg:text-left">
-                    <div>
-                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Meeting Attendance History</h3>
-                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Your detailed meeting attendance records</p>
-                    </div>
-                    <div className="flex flex-row flex-nowrap justify-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 w-full lg:w-auto">
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-violet-50 to-violet-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-violet-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-violet-600 flex items-center justify-center shrink-0">
-                          <TrendingUp className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-violet-900 m-0 leading-none">{attendedMeetingWeeksCount}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-rose-500 flex items-center justify-center shrink-0">
-                          <TrendingDown className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, elapsedWeeks - attendedMeetingWeeksCount)}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-purple-200 flex-1 sm:flex-none">
-                        <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-purple-500 flex items-center justify-center shrink-0">
-                          <Percent className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-purple-600 uppercase tracking-wider m-0">Rate</p>
-                          <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-purple-900 m-0 leading-none">{meetingAttendanceRate}%</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  {filteredMeetingAttendance && filteredMeetingAttendance.length > 0 ? (
-                    <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                      <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
-                        <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
-                          <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
-                            <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">Meeting Name</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Time</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
-                              <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 bg-white">
-                            {filteredMeetingAttendance.map((entry, idx) => {
-                              const d = new Date(entry.date);
-                              const isPresent = entry.status === "Present";
-                              const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
-                              const MethodIcon = methodMeta.Icon;
-                              return (
-                                <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <div className="flex items-center justify-center">
-                                      <span className="font-semibold text-slate-800 text-[10px] sm:text-xs">
-                                        {`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`}
+                                  dayName = date.toLocaleDateString("en-US", { weekday: "short" });
+                                  formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+                                  dateNumber = date.getDate();
+                                } catch (error) { dayName = "N/A"; formattedDate = entry.date || "N/A"; dateNumber = "-"; }
+                                const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
+                                const MethodIcon = methodMeta.Icon;
+                                const isPresent = entry.status === "Present";
+                                return (
+                                  <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <div className="flex items-center justify-center">
+                                        <span className="font-semibold text-slate-800 text-[10px] sm:text-xs">{formattedDate}</span>
+                                      </div>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
+                                        {entry.checkInTime || entry.time ? (
+                                          <><Clock size={11} className="text-emerald-500 shrink-0 hidden sm:block" /> {entry.checkInTime || entry.time}</>
+                                        ) : <span className="text-slate-400">—</span>}
+                                      </div>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
+                                        {entry.checkOutTime ? (
+                                          <><Clock size={11} className="text-amber-500 shrink-0 hidden sm:block" /> {entry.checkOutTime}</>
+                                        ) : <span className="text-slate-400">—</span>}
+                                      </div>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
+                                        <MethodIcon size={12} className="shrink-0" />
+                                        <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
                                       </span>
-                                    </div>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center text-[10px] sm:text-sm font-semibold text-slate-800 break-words">
-                                    {entry.meetingName || entry.type || "Meeting"}
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
-                                      <Clock size={11} className="text-slate-400 shrink-0 hidden sm:block" />
-                                      {entry.checkInTime || entry.time || "N/A"}
-                                    </div>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
-                                      <MethodIcon size={12} className="shrink-0" />
-                                      <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
-                                    </span>
-                                  </td>
-                                  <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
-                                    <span className={`inline-flex px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${isPresent ? "bg-indigo-100 text-indigo-700" : "bg-rose-100 text-rose-700"}`}>
-                                      {entry.status}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <span className={`inline-flex px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${isPresent ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                                        {entry.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No daily attendance records found</div>
+                    )}
+                  </motion.div>
+                )}
+
+                {activeTab === "meeting" && (
+                  <motion.div key="meeting" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-3 xs:mb-4 xm:mb-5 sm:mb-6 gap-3 xs:gap-4 sm:gap-6 text-center lg:text-left">
+                      <div>
+                        <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Meeting Attendance History</h3>
+                        <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Your detailed meeting attendance records</p>
+                      </div>
+                      <div className="flex flex-row flex-nowrap justify-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 w-full lg:w-auto">
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-violet-50 to-violet-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-violet-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-violet-600 flex items-center justify-center shrink-0">
+                            <TrendingUp className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-violet-900 m-0 leading-none">{attendedMeetingWeeksCount}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-rose-50 to-rose-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-rose-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-rose-500 flex items-center justify-center shrink-0">
+                            <TrendingDown className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-rose-900 m-0 leading-none">{Math.max(0, elapsedWeeks - attendedMeetingWeeksCount)}</p>
+                          </div>
+                        </div>
+                        <div className="flex flex-row items-center gap-1 xs:gap-1.5 xm:gap-2 sm:gap-3 px-1.5 py-1 xs:px-2 xs:py-1.5 xm:px-3 xm:py-2 sm:px-4 sm:py-2.5 bg-gradient-to-br from-purple-50 to-purple-100 rounded-[6px] xs:rounded-lg sm:rounded-xl border border-purple-200 flex-1 sm:flex-none">
+                          <div className="w-4 h-4 xs:w-5 xs:h-5 xm:w-6 xm:h-6 sm:w-8 sm:h-8 rounded-[4px] xs:rounded-md sm:rounded-lg bg-purple-500 flex items-center justify-center shrink-0">
+                            <Percent className="w-2.5 h-2.5 xs:w-3 xs:h-3 xm:w-3.5 xm:h-3.5 sm:w-4 sm:h-4" color="#fff" />
+                          </div>
+                          <div className="text-left">
+                            <p className="text-[7px] xs:text-[8px] xm:text-[9px] sm:text-[10px] font-extrabold text-purple-600 uppercase tracking-wider m-0">Rate</p>
+                            <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-lg font-black text-purple-900 m-0 leading-none">{meetingAttendanceRate}%</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No meeting attendance records found</div>
-                  )}
-                </motion.div>
-              )}
+                    {filteredMeetingAttendance && filteredMeetingAttendance.length > 0 ? (
+                      <div className="rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="overflow-x-auto overflow-y-auto touch-pan-x touch-pan-y overscroll-x-contain overscroll-y-auto no-scrollbar max-h-[242px] sm:max-h-[320px]">
+                          <table className="w-max sm:w-full mx-auto border-collapse" style={{ tableLayout: "auto" }}>
+                            <thead className="bg-slate-50 sticky top-0 z-10 shadow-sm">
+                              <tr className="border-b border-slate-200 text-slate-500 text-[9px] sm:text-xs uppercase tracking-wider font-bold">
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Date</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">Meeting Name</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Time</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Method</th>
+                                <th className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center whitespace-nowrap">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {filteredMeetingAttendance.map((entry, idx) => {
+                                const d = new Date(entry.date);
+                                const isPresent = entry.status === "Present";
+                                const methodMeta = getMeetingMethodMeta(entry.attendanceMethod || entry.method || entry.markedBy || entry.type);
+                                const MethodIcon = methodMeta.Icon;
+                                return (
+                                  <tr key={idx} className="hover:bg-slate-50/60 transition-colors">
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <div className="flex items-center justify-center">
+                                        <span className="font-semibold text-slate-800 text-[10px] sm:text-xs">
+                                          {`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center text-[10px] sm:text-sm font-semibold text-slate-800 break-words">
+                                      {entry.meetingName || entry.type || "Meeting"}
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <div className="flex items-center justify-center gap-0.5 sm:gap-1 text-slate-600 text-[10px] sm:text-xs font-medium">
+                                        <Clock size={11} className="text-slate-400 shrink-0 hidden sm:block" />
+                                        {entry.checkInTime || entry.time || "N/A"}
+                                      </div>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <span className={`inline-flex items-center justify-center gap-0.5 sm:gap-1.5 px-0.5 sm:px-2 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold w-[60px] sm:w-[90px] ${methodMeta.className}`} title={methodMeta.label}>
+                                        <MethodIcon size={12} className="shrink-0" />
+                                        <span className="hidden sm:inline truncate leading-tight">{methodMeta.label}</span>
+                                      </span>
+                                    </td>
+                                    <td className="px-0.5 sm:px-4 py-2 sm:py-3.5 text-center">
+                                      <span className={`inline-flex px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${isPresent ? "bg-indigo-100 text-indigo-700" : "bg-rose-100 text-rose-700"}`}>
+                                        {entry.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No meeting attendance records found</div>
+                    )}
+                  </motion.div>
+                )}
 
-              {activeTab === "team" && (
-                <motion.div key="team" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                  <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
-                    <div>
-                      <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Team Attendance</h3>
-                      <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Attendance records organized by team assignments</p>
+                {activeTab === "team" && (
+                  <motion.div key="team" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                    <div className="flex flex-col lg:flex-row justify-between items-center lg:items-end mb-6 gap-6 text-center lg:text-left">
+                      <div>
+                        <h3 className="text-[15px] xs:text-[17px] xm:text-[18px] sm:text-xl font-extrabold" style={{ color: "#0f172a", marginBottom: 4 }}>Team Attendance</h3>
+                        <p className="text-[10px] xs:text-[11px] xm:text-xs sm:text-sm" style={{ color: "#64748b", margin: 0 }}>Attendance records organized by team assignments</p>
+                      </div>
                     </div>
-                  </div>
 
-                  {teamAttendance && teamAttendance.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(
-                        teamAttendance.reduce((acc, entry) => {
-                          const pName = entry.projectName || "External Team"; // mapped in backend
-                          if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [], meetingDay: null, actualProjectName: null };
-                          acc[pName].records.push(entry);
-                          // Capture meetingDay and actualProjectName from the first record that has them
-                          if (!acc[pName].meetingDay && entry.meetingDay) acc[pName].meetingDay = entry.meetingDay;
-                          if (!acc[pName].actualProjectName && entry.actualProjectName) acc[pName].actualProjectName = entry.actualProjectName;
-                          const s = String(entry.status || "").toLowerCase();
-                          if (s === "present") acc[pName].present++;
-                          else if (s === "late") acc[pName].late++;
-                          else acc[pName].absent++;
-                          return acc;
-                        }, {})
-                      ).map(([teamName, data], idx) => {
-                        // Parse meeting days into an array of capitalized day names
-                        const meetingDays = data.meetingDay
-                          ? String(data.meetingDay).split(",").map(d => d.trim()).filter(Boolean).map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase())
-                          : [];
-                        return (
-                        <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
-                          <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                            <div className="flex items-center gap-3 flex-1 min-w-0">
-                              <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
-                                <Users size={20} />
+                    {teamAttendance && teamAttendance.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {Object.entries(
+                          teamAttendance.reduce((acc, entry) => {
+                            const pName = entry.projectName || "External Team"; // mapped in backend
+                            if (!acc[pName]) acc[pName] = { present: 0, absent: 0, late: 0, records: [], meetingDay: null, actualProjectName: null };
+                            acc[pName].records.push(entry);
+                            // Capture meetingDay and actualProjectName from the first record that has them
+                            if (!acc[pName].meetingDay && entry.meetingDay) acc[pName].meetingDay = entry.meetingDay;
+                            if (!acc[pName].actualProjectName && entry.actualProjectName) acc[pName].actualProjectName = entry.actualProjectName;
+                            const s = String(entry.status || "").toLowerCase();
+                            if (s === "present") acc[pName].present++;
+                            else if (s === "late") acc[pName].late++;
+                            else acc[pName].absent++;
+                            return acc;
+                          }, {})
+                        ).map(([teamName, data], idx) => {
+                          // Parse meeting days into an array of capitalized day names
+                          const meetingDays = data.meetingDay
+                            ? String(data.meetingDay).split(",").map(d => d.trim()).filter(Boolean).map(d => d.charAt(0).toUpperCase() + d.slice(1).toLowerCase())
+                            : [];
+                          return (
+                            <div key={idx} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+                              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                                  <div className="w-10 h-10 rounded-xl bg-violet-100 text-violet-600 flex items-center justify-center shrink-0">
+                                    <Users size={20} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{data.actualProjectName || teamName}</h4>
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                      Total Records: {data.records.length}
+                                    </p>
+                                    {meetingDays.length > 0 && (
+                                      <p className="text-[11px] text-slate-500 mt-0.5">
+                                        Meeting Days: {meetingDays.join(", ")}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <h4 className="font-bold text-slate-800 text-sm line-clamp-1">{data.actualProjectName || teamName}</h4>
-                                <p className="text-[11px] text-slate-500 mt-0.5">
-                                  Total Records: {data.records.length}
-                                </p>
-                                {meetingDays.length > 0 && (
-                                  <p className="text-[11px] text-slate-500 mt-0.5">
-                                    Meeting Days: {meetingDays.join(", ")}
-                                  </p>
-                                )}
+
+                              <div className="p-3 flex flex-row flex-nowrap justify-center gap-2 border-b border-slate-100 bg-slate-50/30">
+                                {(() => {
+                                  const tPresent = data.present + data.late;
+                                  const tAbsent = data.absent;
+                                  const tTotal = tPresent + tAbsent;
+                                  const tRate = tTotal > 0 ? Math.round((tPresent / tTotal) * 100) : 0;
+                                  return (
+                                    <>
+                                      <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-violet-50 to-violet-100 rounded-lg border border-violet-200 flex-1">
+                                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-violet-600 flex items-center justify-center shrink-0">
+                                          <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                        </div>
+                                        <div className="text-left">
+                                          <p className="text-[8px] sm:text-[9px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
+                                          <p className="text-xs sm:text-sm font-black text-violet-900 m-0 leading-none">{tPresent}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-rose-50 to-rose-100 rounded-lg border border-rose-200 flex-1">
+                                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
+                                          <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                        </div>
+                                        <div className="text-left">
+                                          <p className="text-[8px] sm:text-[9px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
+                                          <p className="text-xs sm:text-sm font-black text-rose-900 m-0 leading-none">{tAbsent}</p>
+                                        </div>
+                                      </div>
+                                      <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 flex-1">
+                                        <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-purple-500 flex items-center justify-center shrink-0">
+                                          <Percent className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
+                                        </div>
+                                        <div className="text-left">
+                                          <p className="text-[8px] sm:text-[9px] font-extrabold text-purple-600 uppercase tracking-wider m-0">Rate</p>
+                                          <p className="text-xs sm:text-sm font-black text-purple-900 m-0 leading-none">{tRate}%</p>
+                                        </div>
+                                      </div>
+                                    </>
+                                  );
+                                })()}
+                              </div>
+
+                              <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
+                                <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+                                  <thead className="bg-slate-50 sticky top-0 z-10">
+                                    <tr>
+                                      <th className="w-[10%] sm:w-[15%]"></th>
+                                      <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Date</th>
+                                      <th className="w-[30%] sm:w-[30%]"></th>
+                                      <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                      <th className="w-[10%] sm:w-[15%]"></th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-50">
+                                    {data.records.sort((a, b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
+                                      <tr key={ri} className="hover:bg-slate-50 transition-colors">
+                                        <td></td>
+                                        <td className="py-2 text-xs font-medium text-slate-700 text-center whitespace-nowrap">
+                                          {r.date ? (function (d) { return `${d.getFullYear()} ${d.toLocaleString('en-US', { month: 'short' })} ${String(d.getDate()).padStart(2, '0')}` })(new Date(r.date)) : "-"}
+                                        </td>
+                                        <td></td>
+                                        <td className="py-2 text-center whitespace-nowrap">
+                                          <span className={`inline-flex items-center justify-center min-w-[50px] sm:min-w-[65px] px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                                              String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
+                                                'bg-rose-100 text-rose-700'
+                                            }`}>
+                                            {r.status}
+                                          </span>
+                                        </td>
+                                        <td></td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
-                          </div>
-                          
-                          <div className="p-3 flex flex-row flex-nowrap justify-center gap-2 border-b border-slate-100 bg-slate-50/30">
-                            {(() => {
-                              const tPresent = data.present + data.late;
-                              const tAbsent = data.absent;
-                              const tTotal = tPresent + tAbsent;
-                              const tRate = tTotal > 0 ? Math.round((tPresent / tTotal) * 100) : 0;
-                              return (
-                                <>
-                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-violet-50 to-violet-100 rounded-lg border border-violet-200 flex-1">
-                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-violet-600 flex items-center justify-center shrink-0">
-                                      <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
-                                    </div>
-                                    <div className="text-left">
-                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-violet-600 uppercase tracking-wider m-0">Present</p>
-                                      <p className="text-xs sm:text-sm font-black text-violet-900 m-0 leading-none">{tPresent}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-rose-50 to-rose-100 rounded-lg border border-rose-200 flex-1">
-                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-rose-500 flex items-center justify-center shrink-0">
-                                      <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
-                                    </div>
-                                    <div className="text-left">
-                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-rose-600 uppercase tracking-wider m-0">Absent</p>
-                                      <p className="text-xs sm:text-sm font-black text-rose-900 m-0 leading-none">{tAbsent}</p>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-row items-center gap-2 px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200 flex-1">
-                                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-purple-500 flex items-center justify-center shrink-0">
-                                      <Percent className="w-3 h-3 sm:w-3.5 sm:h-3.5" color="#fff" />
-                                    </div>
-                                    <div className="text-left">
-                                      <p className="text-[8px] sm:text-[9px] font-extrabold text-purple-600 uppercase tracking-wider m-0">Rate</p>
-                                      <p className="text-xs sm:text-sm font-black text-purple-900 m-0 leading-none">{tRate}%</p>
-                                    </div>
-                                  </div>
-                                </>
-                              );
-                            })()}
-                          </div>
-
-                          <div className="p-0 flex-1 max-h-[200px] overflow-y-auto custom-scrollbar">
-                            <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
-                              <thead className="bg-slate-50 sticky top-0 z-10">
-                                <tr>
-                                  <th className="w-[10%] sm:w-[15%]"></th>
-                                  <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Date</th>
-                                  <th className="w-[30%] sm:w-[30%]"></th>
-                                  <th className="w-[25%] sm:w-[20%] py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
-                                  <th className="w-[10%] sm:w-[15%]"></th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-50">
-                                {data.records.sort((a,b) => new Date(b.date) - new Date(a.date)).map((r, ri) => (
-                                  <tr key={ri} className="hover:bg-slate-50 transition-colors">
-                                    <td></td>
-                                    <td className="py-2 text-xs font-medium text-slate-700 text-center whitespace-nowrap">
-                                      {r.date ? (function(d){ return `${d.getFullYear()} ${d.toLocaleString('en-US', { month: 'short' })} ${String(d.getDate()).padStart(2, '0')}` })(new Date(r.date)) : "-"}
-                                    </td>
-                                    <td></td>
-                                    <td className="py-2 text-center whitespace-nowrap">
-                                      <span className={`inline-flex items-center justify-center min-w-[50px] sm:min-w-[65px] px-1 sm:px-2.5 py-0.5 sm:py-1 rounded-md text-[9px] sm:text-xs font-bold ${
-                                        String(r.status || '').toLowerCase() === 'present' ? 'bg-emerald-100 text-emerald-700' :
-                                        String(r.status || '').toLowerCase() === 'late' ? 'bg-amber-100 text-amber-700' :
-                                        'bg-rose-100 text-rose-700'
-                                      }`}>
-                                        {r.status}
-                                      </span>
-                                    </td>
-                                    <td></td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No team attendance records synced from TalentTrail</div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>{/* end attendance section */}
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: "#94a3b8" }}>No team attendance records synced from TalentTrail</div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>{/* end attendance section */}
         </div>{/* end deep dive container */}
 
         {/* ===== University Supervisor Feedback Section ===== */}
@@ -2085,68 +2111,68 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
   return (
     <Navigation onLogout={handleLogout}>
       <AnnouncementPopup />
-        {showFaceModal && (
-          <FaceRegistrationModal
-            isOpen={showFaceModal}
-            onClose={closeFaceRegistration}
-            onEnrollmentComplete={closeFaceRegistration}
-          />
-        )}
-        {showNoProjectPopup && (
-          <NoProjectNotification onDismiss={() => setShowNoProjectPopup(false)} />
-        )}
-        {showTour && (
-          <OnboardingTour
-            internData={internData}
-            internId={effectiveInternId}
-            isNewIntern={isNewIntern}
-          />
-        )}
-        {showCricketPopup && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">
-            <div className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-2xl">
-              <button
-                onClick={() => {
-                  localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
-                  setShowCricketPopup(false);
-                }}
-                className="absolute right-3 top-3 text-gray-500 hover:text-gray-800"
-                aria-label="Close cricket fiesta announcement"
-              >
-                ✕
-              </button>
-              <div className="h-full rounded-2xl bg-white p-6 text-center">
-                <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-2">
-                  <img src={cricketPosterUrl} alt="Cricket Fiesta poster" className="w-full max-h-[32rem] rounded-lg object-contain" />
-                </div>
-                <div className="mt-4 text-center">
-                  <p className="text-sm text-gray-500 mt-1">Register before December 31st to secure your spot.</p>
-                </div>
-                <div className="mt-6 flex flex-col gap-3">
-                  <a href={cricketRegistrationLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
-                    Open Registration Links
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
-                      setShowCricketPopup(false);
-                    }}
-                    className="text-sm font-medium text-gray-600 underline"
-                  >
-                    Maybe later
-                  </button>
-                </div>
+      {showFaceModal && (
+        <FaceRegistrationModal
+          isOpen={showFaceModal}
+          onClose={closeFaceRegistration}
+          onEnrollmentComplete={closeFaceRegistration}
+        />
+      )}
+      {showNoProjectPopup && (
+        <NoProjectNotification onDismiss={() => setShowNoProjectPopup(false)} />
+      )}
+      {showTour && (
+        <OnboardingTour
+          internData={internData}
+          internId={effectiveInternId}
+          isNewIntern={isNewIntern}
+        />
+      )}
+      {showCricketPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 px-4 py-6">
+          <div className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white shadow-2xl">
+            <button
+              onClick={() => {
+                localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
+                setShowCricketPopup(false);
+              }}
+              className="absolute right-3 top-3 text-gray-500 hover:text-gray-800"
+              aria-label="Close cricket fiesta announcement"
+            >
+              ✕
+            </button>
+            <div className="h-full rounded-2xl bg-white p-6 text-center">
+              <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-2">
+                <img src={cricketPosterUrl} alt="Cricket Fiesta poster" className="w-full max-h-[32rem] rounded-lg object-contain" />
+              </div>
+              <div className="mt-4 text-center">
+                <p className="text-sm text-gray-500 mt-1">Register before December 31st to secure your spot.</p>
+              </div>
+              <div className="mt-6 flex flex-col gap-3">
+                <a href={cricketRegistrationLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700">
+                  Open Registration Links
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.setItem("cricketFiestaDismissed", "2025-12-31");
+                    setShowCricketPopup(false);
+                  }}
+                  className="text-sm font-medium text-gray-600 underline"
+                >
+                  Maybe later
+                </button>
               </div>
             </div>
           </div>
-        )}
-        <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column" }}>
-          <div style={{ flex: 1, paddingBottom: 16 }}>
-            {renderContent()}
-          </div>
         </div>
-        <FeatureTipModal />
+      )}
+      <div style={{ flex: 1, width: "100%", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: 1, paddingBottom: 16 }}>
+          {renderContent()}
+        </div>
+      </div>
+      <FeatureTipModal />
     </Navigation>
   );
 };

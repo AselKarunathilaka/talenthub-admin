@@ -128,6 +128,49 @@ function isWithinGracePeriod(startDate, referenceDate = new Date()) {
 }
 
 /**
+ * How many days remain in a calendar-based (not working-day) grace period
+ * that starts at startDate and runs for `amount` `unit`s (e.g. 21 days).
+ *
+ * Day 1 of the window (referenceDate === startDate) returns `amount`.
+ * Returns 0 or negative once the window has ended, and null if startDate
+ * is missing. This is THE single source of truth for the "new-joiner
+ * logbook grace period" countdown — both the restriction-skip check and
+ * the sticky-banner info the frontend displays are derived from it.
+ */
+function daysRemainingInCalendarGracePeriod(startDate, amount, unit, referenceDate = new Date()) {
+  if (!startDate) return null;
+  const start = moment.tz(startDate, TZ).startOf("day");
+  const graceEndExclusive = start.clone().add(amount, unit);
+  const ref = moment.tz(referenceDate, TZ).startOf("day");
+  return graceEndExclusive.diff(ref, "days");
+}
+
+/**
+ * Calendar-based (not working-day) grace period, counted from startDate.
+ * True while daysRemaining is between 1 and `amount` inclusive.
+ */
+function isWithinCalendarGracePeriod(startDate, amount, unit, referenceDate = new Date()) {
+  const daysRemaining = daysRemainingInCalendarGracePeriod(startDate, amount, unit, referenceDate);
+  if (daysRemaining === null) return false;
+  return daysRemaining >= 1 && daysRemaining <= amount;
+}
+
+/**
+ * Calendar-based grace period counted BACKWARD from an end date — e.g. an
+ * intern whose Training_EndDate is within the next 14 days.
+ * Used for the logbook-restriction "leaving intern" grace period.
+ *
+ * Returns true if referenceDate falls within [endDate - amount(unit), endDate].
+ */
+function isWithinLeavingGracePeriod(endDate, amount, unit, referenceDate = new Date()) {
+  if (!endDate) return false;
+  const end = moment.tz(endDate, TZ).endOf("day");
+  const graceStart = end.clone().subtract(amount, unit).startOf("day");
+  const ref = moment.tz(referenceDate, TZ).startOf("day");
+  return ref.isSameOrAfter(graceStart) && ref.isSameOrBefore(end);
+}
+
+/**
  * Standardized Mongoose query object for active, non-test, non-terminated interns.
  */
 function getActiveInternsQuery(referenceDate = new Date()) {
@@ -162,5 +205,8 @@ module.exports = {
   getWorkingDaysInRange,
   calculateGracePeriodEndDate,
   isWithinGracePeriod,
+  daysRemainingInCalendarGracePeriod,
+  isWithinCalendarGracePeriod,
+  isWithinLeavingGracePeriod,
   getActiveInternsQuery,
 };
