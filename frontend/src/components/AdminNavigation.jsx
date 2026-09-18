@@ -34,6 +34,7 @@ import Layout from "./Layout";
 
 const AdminNavigation = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -57,6 +58,10 @@ const AdminNavigation = ({ children }) => {
   const adminSession = getAdminSession();
   
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
     localStorage.removeItem("adminInfo");
     navigate("/admin-login");
   };
@@ -94,9 +99,10 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/inactive-interns", label: "Inactive Interns", icon: <UserX className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "interns.manage" },
     { to: "/admin/logbook-restrictions", label: "Logbook Restrictions", icon: <Lock className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
     { to: "/admin/talenthub-restrictions", label: "TalentHub Restrictions", icon: <ShieldAlert className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
-    { to: "/admin/announcements", label: "Announcements", icon: <Bell className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
-    { to: "/admin/settings", label: "Settings", icon: <Settings className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+    { to: "/admin/announcements", label: "Notifications", icon: <Bell className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/holidays", label: "Holidays", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
+    { to: "/admin/settings", label: "Settings", icon: <Settings className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
+
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-[18px] w-[18px]" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <SquarePlay className="h-[18px] w-[18px]" />, isExternal: true },
   ].filter((link) => {
@@ -124,20 +130,43 @@ const AdminNavigation = ({ children }) => {
   const userData = {
     name: adminSession?.user?.name || adminSession?.user?.email,
     email: adminSession?.user?.email,
-    role: adminSession?.user?.role === 'SUPERVISOR' ? 'SUPERVISOR' : 'ADMIN',
+    role: adminSession?.user?.role ? adminSession.user.role.replace('_', ' ').toUpperCase() : 'ADMIN',
     picture: adminSession?.user?.picture || null,
   };
 
   return (
-    <Layout
-      navLinks={navLinks}
-      user={userData}
-      onLogout={handleLogout}
-      customActions={customActions}
-      activeTitle={activeTitle}
-    >
-      {children}
-    </Layout>
+    <>
+      <Layout
+        navLinks={navLinks}
+        user={userData}
+        onLogout={handleLogout}
+        customActions={customActions}
+        activeTitle={activeTitle}
+      >
+        {children}
+      </Layout>
+
+      {showLogoutConfirm && (
+        <>
+          <div className="fixed inset-0 z-[100] bg-slate-900/50 backdrop-blur-sm transition-opacity" onClick={() => setShowLogoutConfirm(false)} />
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 pointer-events-auto transform transition-all scale-100 opacity-100">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mb-4">
+                  <LogOut className="w-6 h-6" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Sign Out</h3>
+                <p className="text-sm text-slate-500 mb-6">Are you sure you want to sign out of your account?</p>
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                  <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-sm rounded-xl transition-colors">Cancel</button>
+                  <button onClick={confirmLogout} className="flex-1 px-4 py-2.5 bg-rose-600 text-white hover:bg-rose-700 font-semibold text-sm rounded-xl shadow-md shadow-rose-500/20 transition-all">Sign Out</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 

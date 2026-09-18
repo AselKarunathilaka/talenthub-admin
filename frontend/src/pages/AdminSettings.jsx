@@ -410,21 +410,21 @@ const AdminSettings = () => {
           
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
-              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <div className="flex items-center gap-2 xl:gap-3 md:gap-4">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.3 }}
-                  className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+                  className="p-2.5 xl:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg xl:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
                 >
-                  <Settings2 className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                  <Settings2 className="text-white h-4 w-4 xl:h-5 xl:w-5 md:h-6 md:w-6" />
                 </motion.div>
                 <div className="flex flex-col justify-center">
                   <motion.h1
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                    className="text-2xl xl:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
                   >
                     System Settings
                   </motion.h1>
@@ -432,7 +432,7 @@ const AdminSettings = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.1, duration: 0.3 }}
-                    className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                    className="text-slate-500 mt-0.5 xl:mt-1 text-xs xl:text-sm md:text-base font-medium max-w-xl"
                   >
                     Global configurations and integrations.
                   </motion.p>
@@ -442,18 +442,18 @@ const AdminSettings = () => {
           </div>
 
           {/* Navigation Tabs */}
-          <div className="flex overflow-x-auto space-x-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200/60 hide-scrollbar">
+          <div className="flex flex-col xl:flex-row overflow-x-auto gap-1.5 xl:gap-2 bg-white p-2 xl:p-1.5 rounded-2xl shadow-sm border border-slate-200/60 hide-scrollbar">
             <TabButton active={activeTab === "security"} onClick={() => setActiveTab("security")} icon={ShieldCheck} label="Password" color="blue" />
             <TabButton active={activeTab === "users"} onClick={() => setActiveTab("users")} icon={Users} label="Staff & Login Management" color="indigo" />
             <TabButton active={activeTab === "alerts"} onClick={() => setActiveTab("alerts")} icon={ShieldAlert} label="Security Alerts" color="rose" />
             <TabButton active={activeTab === "apikeys"} onClick={() => setActiveTab("apikeys")} icon={Key} label="API Keys" color="slate" />
           </div>
 
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
+          <div className="bg-white rounded-2xl xl:rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
             {activeTab === "security" && (
-              <div className="p-8 flex justify-center">
+              <div className="p-4 xl:p-8 flex justify-center">
                 <div className="max-w-md w-full">
-                  <h3 className="text-xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2"><KeyRound className="w-5 h-5 text-blue-500"/> Change Security Password</h3>
+                  <h3 className="text-lg xl:text-xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2"><KeyRound className="w-5 h-5 text-blue-500"/> Change Security Password</h3>
                   <p className="text-sm text-slate-500 mb-8 text-center">This password is required for sensitive administrative actions.</p>
                   
                   <form onSubmit={handlePasswordChange} className="space-y-5">
@@ -470,17 +470,17 @@ const AdminSettings = () => {
 
             {activeTab === "users" && (
               <div className="p-0 flex flex-col min-h-[500px]">
-                  <div className="p-6 border-b border-slate-100 flex flex-col gap-6 bg-slate-50/50">
-                    <div className="flex items-center justify-between">
+                  <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col gap-4 xl:gap-6 bg-slate-50/50">
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                       <div>
-                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500"/> Staff & Login Management</h3>
-                        <p className="text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
+                        <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500"/> Staff & Login Management</h3>
+                        <p className="text-xs xl:text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
                       </div>
-                      <button onClick={() => { setEditingItem(null); setUserForm({name:"", email:"", role:"admin", isActive:true, password:"", confirmPassword:"", visiblePages:[], authProvider: "developer_password"}); setUserModalOpen(true); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><UserPlus className="w-4 h-4"/> Add Staff</button>
+                      <button onClick={() => { setEditingItem(null); setUserForm({name:"", email:"", role:"admin", isActive:true, password:"", confirmPassword:"", visiblePages:[], authProvider: "developer_password"}); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4"/> Add Staff</button>
                     </div>
 
                     {/* Role Filter Toggles */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-col xl:flex-row xl:flex-wrap gap-2">
                       {[
                         { id: "all", label: "Email and password login" },
                         { id: "super_admin", label: "Super Admins" },
@@ -498,7 +498,7 @@ const AdminSettings = () => {
                           <button
                             key={tab.id}
                             onClick={() => setActiveRoleTab(tab.id)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all w-full xl:w-auto text-center ${
                               activeRoleTab === tab.id
                                 ? "bg-indigo-600 text-white border border-transparent shadow-md shadow-indigo-500/20"
                                 : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
@@ -510,7 +510,7 @@ const AdminSettings = () => {
                     </div>
                   </div>
                   
-                  <div className="p-6 space-y-8 bg-slate-50/30 flex-1">
+                  <div className="p-4 xl:p-6 space-y-6 xl:space-y-8 bg-slate-50/30 flex-1">
                     {(() => {
                       const filteredUsers = users.filter(u => {
                         if (activeRoleTab !== "all" && u.role !== activeRoleTab) return false;
@@ -531,8 +531,8 @@ const AdminSettings = () => {
                       return (
                         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                           <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm whitespace-nowrap">
-                              <thead className="text-slate-400 font-medium border-b border-slate-100 bg-white">
+                            <table className="block xl:table w-full text-left text-sm whitespace-normal xl:whitespace-nowrap">
+                              <thead className="hidden xl:table-header-group text-slate-400 font-medium border-b border-slate-100 bg-white">
                                 <tr>
                                   <th className="px-5 py-3">Name</th>
                                   <th className="px-5 py-3">Email</th>
@@ -543,7 +543,7 @@ const AdminSettings = () => {
                                   <th className="px-5 py-3 text-center">Actions</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-50">
+                              <tbody className="block xl:table-row-group divide-y-0 xl:divide-y divide-slate-50 p-4 xl:p-0 space-y-4 xl:space-y-0 bg-slate-50/30 xl:bg-transparent">
                                 {filteredUsers.map(user => {
                                   const iconColor = user.role === 'super_admin' ? 'text-purple-500 bg-purple-100' :
                                                     user.role === 'PM' ? 'text-amber-500 bg-amber-100' :
@@ -555,50 +555,69 @@ const AdminSettings = () => {
                                   const authMethod = (user.authProvider === 'google' || user.googleSubject) ? 'Google SSO' : '••••••••';
                                   
                                   return (
-                                  <tr key={user._id} className="hover:bg-slate-50/50 transition-colors group/row">
-                                    <td className="px-5 py-3.5">
-                                      <div className="flex items-center gap-3">
-                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${iconColor}`}>
+                                  <tr key={user._id} className="block xl:table-row bg-white xl:bg-transparent border border-slate-200 xl:border-0 rounded-xl xl:rounded-none p-3 xl:p-0 hover:bg-slate-50/50 transition-colors group/row shadow-sm xl:shadow-none text-sm">
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0">
+                                      <div className="flex xl:flex-row items-center gap-2.5 xl:gap-3">
+                                        <div className={`w-8 h-8 xl:w-8 xl:h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${iconColor}`}>
                                           {user.name.charAt(0).toUpperCase()}
                                         </div>
-                                        <span className="font-medium text-slate-700">{user.name}</span>
+                                        <span className="font-bold xl:font-medium text-slate-800 xl:text-slate-700 text-sm">{user.name}</span>
                                       </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-slate-500 font-medium">{user.email}</td>
-                                    <td className="px-5 py-3.5 text-center text-slate-400 font-mono tracking-widest">{authMethod}</td>
-                                    <td className="px-5 py-3.5 text-center">
-                                      <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${user.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50' : 'bg-slate-100 text-slate-500 border border-slate-200/50'}`}>
-                                        {user.isActive ? 'Active' : 'Disabled'}
-                                      </span>
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-slate-500 font-medium">
+                                      <div className="flex justify-between items-center xl:block gap-2">
+                                        <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Email</span>
+                                        <span className="break-all text-right xl:text-left xl:break-normal text-xs xl:text-sm">{user.email}</span>
+                                      </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-center">
-                                      {['super_admin', 'PM'].includes(user.role) ? (
-                                        <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-full border border-indigo-100">
-                                          All
-                                        </span>
-                                      ) : user.visiblePages && user.visiblePages.length > 0 ? (
-                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-full border border-slate-200">
-                                          {user.visiblePages.length} Pages
-                                        </span>
-                                      ) : (
-                                        <span className="text-xs text-slate-400">-</span>
-                                      )}
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center text-slate-400 font-mono tracking-widest">
+                                      <div className="flex justify-between items-center xl:block gap-2">
+                                        <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Password</span>
+                                        <span className="text-xs xl:text-sm">{authMethod}</span>
+                                      </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-center">
-                                      <div className="flex items-center justify-center">
-                                        <div className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors cursor-pointer ${user.requireSecurityCheck !== false ? 'bg-indigo-500' : 'bg-slate-300'}`} onClick={() => toggleUserSecurityCheck(user)}>
-                                          <div className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${user.requireSecurityCheck !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
+                                      <div className="flex justify-between items-center xl:block gap-2">
+                                        <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Status</span>
+                                        <span className={`px-2 py-0.5 xl:px-2.5 xl:py-1 rounded-md xl:rounded-lg text-[10px] xl:text-xs font-semibold ${user.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/50' : 'bg-slate-100 text-slate-500 border border-slate-200/50'}`}>
+                                          {user.isActive ? 'Active' : 'Disabled'}
+                                        </span>
+                                      </div>
+                                    </td>
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
+                                      <div className="flex justify-between items-center xl:block gap-2">
+                                        <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Visible Pages</span>
+                                        {['super_admin', 'PM'].includes(user.role) ? (
+                                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-full border border-indigo-100">
+                                            All
+                                          </span>
+                                        ) : user.visiblePages && user.visiblePages.length > 0 ? (
+                                          <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded-full border border-slate-200">
+                                            {user.visiblePages.length} Pages
+                                          </span>
+                                        ) : (
+                                          <span className="text-[10px] xl:text-xs text-slate-400">-</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
+                                      <div className="flex justify-between items-center xl:block gap-2">
+                                        <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Security Check</span>
+                                        <div className="flex items-center justify-center xl:justify-center">
+                                          <div className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors cursor-pointer ${user.requireSecurityCheck !== false ? 'bg-indigo-500' : 'bg-slate-300'}`} onClick={() => toggleUserSecurityCheck(user)}>
+                                            <div className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${user.requireSecurityCheck !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+                                          </div>
                                         </div>
                                       </div>
                                     </td>
-                                    <td className="px-5 py-3.5 text-center">
-                                      <div className="flex items-center justify-center gap-3">
-                                        <div className="flex items-center gap-1 transition-opacity">
-                                          <button onClick={() => { setEditingItem(user); setUserForm({name:user.name, email:user.email, role:user.role, isActive:user.isActive, visiblePages: user.visiblePages || [], password:"", confirmPassword:"", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false}); setUserModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Edit Staff">
-                                            <Edit className="w-4 h-4"/>
+                                    <td className="block xl:table-cell px-0 xl:px-5 py-2 xl:py-3.5 text-center xl:text-center">
+                                      <div className="flex justify-end xl:justify-center">
+                                        <div className="flex items-center gap-2 xl:gap-1 transition-opacity">
+                                          <button onClick={() => { setEditingItem(user); setUserForm({name:user.name, email:user.email, role:user.role, isActive:user.isActive, visiblePages: user.visiblePages || [], password:"", confirmPassword:"", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false}); setUserModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors" title="Edit Staff">
+                                            <Edit className="w-4 h-4 xl:w-4 xl:h-4"/>
                                           </button>
-                                          <button onClick={() => deleteUser(user._id)} className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Staff">
-                                            <Trash className="w-4 h-4"/>
+                                          <button onClick={() => deleteUser(user._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors ml-2 xl:ml-0" title="Delete Staff">
+                                            <Trash className="w-4 h-4 xl:w-4 xl:h-4"/>
                                           </button>
                                         </div>
                                       </div>
@@ -618,23 +637,23 @@ const AdminSettings = () => {
               <div className="p-0">
                 {/* WhatsApp Linking Panel */}
                 <div>
-                  <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                  <div className="p-4 xl:p-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                     <Smartphone className="w-5 h-5 text-emerald-500" />
-                    <h3 className="text-base font-bold text-slate-800">WhatsApp Link</h3>
+                    <h3 className="text-sm xl:text-base font-bold text-slate-800">WhatsApp Link</h3>
                     {waStatus?.status === 'CONNECTED' && (
                       <span className="ml-auto px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200 flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Connected
                       </span>
                     )}
                   </div>
-                  <div className="p-6">
+                  <div className="p-4 xl:p-6">
                     {(waLoading && !waStatus) || waStatus?.status === 'INITIALIZING' || isLinking ? (
                       <div className="flex items-center gap-3 text-slate-500">
                         <div className="w-5 h-5 border-2 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
                         <span className="text-sm font-medium">Establishing connection...</span>
                       </div>
                     ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                      <div className="flex flex-col xl:flex-row items-start xl:items-center gap-6">
                         <div className="bg-white p-3 rounded-2xl shadow border border-slate-100 flex-shrink-0">
                           {waStatus?.qrCode ? <QRCode value={waStatus.qrCode} size={150} level="H" /> : <div className="w-[150px] h-[150px] bg-slate-50 animate-pulse rounded-xl" />}
                         </div>
@@ -645,7 +664,7 @@ const AdminSettings = () => {
                         </div>
                       </div>
                     ) : waStatus?.status === 'CONNECTED' ? (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                      <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100">
                             <CheckCircle2 className="w-5 h-5 text-emerald-500" />
@@ -655,20 +674,22 @@ const AdminSettings = () => {
                             <p className="text-xs text-slate-500">Account: <strong>{waStatus?.connectedNumber}</strong></p>
                           </div>
                         </div>
-                        <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="ml-auto px-4 py-2 bg-rose-50 text-rose-600 text-sm font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center gap-2 flex-shrink-0">
+                        <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="ml-auto px-4 py-2.5 xl:py-2 bg-rose-50 text-rose-600 text-sm font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center justify-center gap-2 flex-shrink-0 w-full xl:w-auto">
                           <Unplug className="w-4 h-4" /> Disconnect
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100">
-                          <MessageCircle className="w-5 h-5 text-slate-400" />
+                      <div className="flex flex-col xl:flex-row items-start xl:items-center gap-4">
+                        <div className="flex items-center gap-4 w-full xl:w-auto">
+                          <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center border border-slate-100 shrink-0">
+                            <MessageCircle className="w-5 h-5 text-slate-400" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-800 text-sm">Not Connected</p>
+                            <p className="text-xs text-slate-500">Link your WhatsApp to enable automated alert messages.</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-slate-800 text-sm">Not Connected</p>
-                          <p className="text-xs text-slate-500">Link your WhatsApp to enable automated alert messages.</p>
-                        </div>
-                        <button onClick={handleWhatsAppLink} className="ml-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-all inline-flex items-center gap-2 flex-shrink-0">
+                        <button onClick={handleWhatsAppLink} className="xl:ml-auto w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-semibold rounded-xl shadow-sm transition-all inline-flex items-center justify-center gap-2 flex-shrink-0">
                           <Smartphone className="w-4 h-4" /> Generate QR
                         </button>
                       </div>
@@ -678,29 +699,46 @@ const AdminSettings = () => {
 
                 {/* Security Alerts Contacts Panel */}
                 <div className="border-t border-slate-100">
-                  <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                    <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-rose-500"/> Security Alerts Contacts</h3>
-                    <button onClick={() => { setEditingItem(null); setAlertForm({name:"", role:"", subRole:"", email:"", phoneNumber:""}); setAlertModalOpen(true); }} className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><UserPlus className="w-4 h-4"/> Add Contact</button>
+                  <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
+                    <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-rose-500"/> Security Alerts Contacts</h3>
+                    <button onClick={() => { setEditingItem(null); setAlertForm({name:"", role:"", subRole:"", email:"", phoneNumber:""}); setAlertModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4"/> Add Contact</button>
                   </div>
                   <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
-                      <thead className="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
+                    <table className="block xl:table w-full text-left text-sm whitespace-normal xl:whitespace-nowrap">
+                      <thead className="hidden xl:table-header-group bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
                         <tr><th className="px-6 py-4">Name</th><th className="px-6 py-4">Role/Sub</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Phone</th><th className="px-6 py-4 text-right">Actions</th></tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100/60">
+                      <tbody className="block xl:table-row-group divide-y-0 xl:divide-y divide-slate-100/60 p-4 xl:p-0 space-y-4 xl:space-y-0 bg-slate-50/30 xl:bg-transparent">
                         {alerts.map(a => (
-                          <tr key={a._id} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="px-6 py-4 font-medium text-slate-800">{a.name}</td>
-                            <td className="px-6 py-4 text-slate-500">{a.role} <span className="text-xs text-slate-400">({a.subRole})</span></td>
-                            <td className="px-6 py-4 text-slate-500">{a.email}</td>
-                            <td className="px-6 py-4 text-slate-500">{a.phoneNumber}</td>
-                            <td className="px-6 py-4 text-right">
-                              <button onClick={() => { setEditingItem(a); setAlertForm({name:a.name, role:a.role, subRole:a.subRole, email:a.email, phoneNumber:a.phoneNumber}); setAlertModalOpen(true); }} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors mx-1"><Edit className="w-4 h-4"/></button>
-                              <button onClick={() => deleteAlert(a._id)} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors mx-1"><Trash className="w-4 h-4"/></button>
+                          <tr key={a._id} className="block xl:table-row bg-white xl:bg-transparent border border-slate-200 xl:border-0 rounded-xl xl:rounded-none p-3 xl:p-0 hover:bg-slate-50/30 transition-colors shadow-sm xl:shadow-none text-sm">
+                            <td className="block xl:table-cell px-0 xl:px-6 py-1.5 xl:py-4 font-bold xl:font-medium text-slate-800 text-sm border-b border-slate-50 xl:border-0">{a.name}</td>
+                            <td className="block xl:table-cell px-0 xl:px-6 py-1.5 xl:py-4 text-slate-500 border-b border-slate-50 xl:border-0">
+                              <div className="flex justify-between items-center xl:block gap-2">
+                                <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Role</span>
+                                <span className="text-right xl:text-left text-xs xl:text-sm">{a.role} <span className="text-[10px] xl:text-xs text-slate-400">({a.subRole})</span></span>
+                              </div>
+                            </td>
+                            <td className="block xl:table-cell px-0 xl:px-6 py-1.5 xl:py-4 text-slate-500 border-b border-slate-50 xl:border-0">
+                              <div className="flex justify-between items-center xl:block gap-2">
+                                <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Email</span>
+                                <span className="break-all text-right xl:text-left xl:break-normal text-xs xl:text-sm">{a.email}</span>
+                              </div>
+                            </td>
+                            <td className="block xl:table-cell px-0 xl:px-6 py-1.5 xl:py-4 text-slate-500 border-b border-slate-50 xl:border-0">
+                              <div className="flex justify-between items-center xl:block gap-2">
+                                <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Phone</span>
+                                <span className="text-xs xl:text-sm">{a.phoneNumber}</span>
+                              </div>
+                            </td>
+                            <td className="block xl:table-cell px-0 xl:px-6 py-2 xl:py-4 text-right">
+                              <div className="flex justify-end">
+                                <button onClick={() => { setEditingItem(a); setAlertForm({name:a.name, role:a.role, subRole:a.subRole, email:a.email, phoneNumber:a.phoneNumber}); setAlertModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Edit className="w-4 h-4 xl:w-4 xl:h-4"/></button>
+                                <button onClick={() => deleteAlert(a._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Trash className="w-4 h-4 xl:w-4 xl:h-4"/></button>
+                              </div>
                             </td>
                           </tr>
                         ))}
-                        {alerts.length === 0 && <tr><td colSpan="5" className="text-center py-8 text-slate-400">No alert contacts found</td></tr>}
+                        {alerts.length === 0 && <tr className="block xl:table-row"><td colSpan="5" className="block xl:table-cell text-center py-8 text-slate-400">No alert contacts found</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -710,11 +748,11 @@ const AdminSettings = () => {
 
             {activeTab === "apikeys" && (
               <div className="p-0">
-                <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-600"/> API Keys</h3>
-                  <button onClick={() => { setApiForm({ name: "", accessiblePages: [], expiresInDays: "never" }); setApiKeyModalOpen(true); }} className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold rounded-xl flex items-center gap-2 shadow-sm transition-all"><Key className="w-4 h-4"/> Generate Key</button>
+                <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
+                  <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-600"/> API Keys</h3>
+                  <button onClick={() => { setApiForm({ name: "", accessiblePages: [], expiresInDays: "never" }); setApiKeyModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><Key className="w-4 h-4"/> Generate Key</button>
                 </div>
-                <div className="p-6">
+                <div className="p-4 xl:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {apiKeys.map(k => (
                       <div key={k._id} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex items-center justify-between group hover:border-slate-300 transition-all">
@@ -735,9 +773,9 @@ const AdminSettings = () => {
             {activeTab === "whatsapp" && (
               <div className="flex flex-col md:flex-row h-full">
                 {/* Left side: Toggles */}
-                <div className="w-full md:w-1/3 border-r border-slate-100 bg-slate-50/50 p-6">
-                  <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Settings2 className="w-5 h-5 text-emerald-600"/> Notification Toggles</h3>
-                  <p className="text-sm text-slate-500 mb-6">Select which events trigger WhatsApp notifications.</p>
+                <div className="w-full md:w-1/3 border-r border-slate-100 bg-slate-50/50 p-4 xl:p-6">
+                  <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-4 xl:mb-6 flex items-center gap-2"><Settings2 className="w-5 h-5 text-emerald-600"/> Notification Toggles</h3>
+                  <p className="text-xs xl:text-sm text-slate-500 mb-4 xl:mb-6">Select which events trigger WhatsApp notifications.</p>
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {AVAILABLE_PAGES.map(page => (
                       <ToggleOption 
@@ -752,7 +790,7 @@ const AdminSettings = () => {
                 </div>
                 
                 {/* Right side: WhatsApp Linking */}
-                <div className="w-full md:w-2/3 p-6 md:p-12 flex flex-col items-center justify-center relative overflow-hidden bg-white">
+                <div className="w-full md:w-2/3 p-4 xl:p-6 md:p-12 flex flex-col items-center justify-center relative overflow-hidden bg-white min-h-[300px]">
                   {isLinking || (waLoading && !waStatus) || waStatus?.status === 'INITIALIZING' ? (
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
@@ -803,16 +841,16 @@ const AdminSettings = () => {
         <>
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh] pointer-events-auto">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Staff Member" : "Add Staff Member"}</h3>
-              <button onClick={() => setUserModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-full pointer-events-auto">
+            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Staff Member" : "Add Staff Member"}</h3>
+              <button type="button" onClick={() => setUserModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-4 xl:p-6 overflow-y-auto">
               <form onSubmit={handleUserSubmit} className="space-y-4">
                 
                 {!editingItem && (
-                  <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
+                  <div className="flex flex-col xl:flex-row gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
                     <button type="button" onClick={() => setUserForm({...userForm, authProvider: 'developer_password'})} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'developer_password' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Email & Password</button>
                     <button type="button" onClick={() => setUserForm({...userForm, authProvider: 'google'})} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'google' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Google Login</button>
                   </div>
@@ -820,7 +858,7 @@ const AdminSettings = () => {
 
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.name} onChange={e=>setUserForm({...userForm, name: e.target.value})} /></div>
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">{userForm.authProvider === 'google' ? 'Gmail Address' : 'Email'}</label><input type="email" required disabled={!!editingItem} className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm disabled:opacity-50" value={userForm.email} onChange={e=>setUserForm({...userForm, email: e.target.value})} /></div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.role} onChange={e=>{
                       const newRole = e.target.value;
                       let newVisiblePages = userForm.visiblePages;
@@ -847,7 +885,7 @@ const AdminSettings = () => {
                         <label className="block text-sm font-semibold text-slate-700">Visible Pages</label>
                         <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">{userForm.visiblePages.length} Selected</span>
                       </div>
-                      <div className={`grid grid-cols-2 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-40 overflow-y-auto`}>
+                      <div className={`grid grid-cols-1 xl:grid-cols-2 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-40 overflow-y-auto`}>
                         {AVAILABLE_PAGES.map(page => (
                           <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900">
                             <input type="checkbox" checked={userForm.visiblePages.includes(page)} onChange={() => handleVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
@@ -860,7 +898,7 @@ const AdminSettings = () => {
                 </div>
 
                 {(!editingItem && userForm.authProvider === 'developer_password') && (
-                  <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
                     <div><label className="block text-sm font-semibold text-slate-700 mb-1">Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
                     <div><label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label><input type="password" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
                   </div>
@@ -868,13 +906,13 @@ const AdminSettings = () => {
                 {(editingItem && userForm.authProvider === 'developer_password') && (
                   <div className="pt-2 border-t border-slate-100">
                     <p className="text-xs text-slate-400 mb-2">Leave blank to keep current password</p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                       <div><input type="password" placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} /></div>
                       <div><input type="password" placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} /></div>
                     </div>
                   </div>
                 )}
-                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md disabled:opacity-70">{loading ? "Saving..." : "Save Staff Member"}</button></div>
+                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md disabled:opacity-70">{loading ? "Saving..." : "Save Staff Member"}</button></div>
               </form>
             </div>
           </div>
@@ -887,15 +925,15 @@ const AdminSettings = () => {
         <>
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] pointer-events-auto">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Contact" : "Add Alert Contact"}</h3>
-              <button onClick={() => setAlertModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-full pointer-events-auto">
+            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Contact" : "Add Alert Contact"}</h3>
+              <button type="button" onClick={() => setAlertModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-4 xl:p-6 overflow-y-auto">
               <form onSubmit={handleAlertSubmit} className="space-y-4">
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.name} onChange={e=>setAlertForm({...alertForm, name:e.target.value})} /></div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
                     <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.role} onChange={e=>setAlertForm({...alertForm, role:e.target.value})}>
@@ -916,7 +954,7 @@ const AdminSettings = () => {
                 </div>
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">Email</label><input type="email" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.email} onChange={e=>setAlertForm({...alertForm, email:e.target.value})} /></div>
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">WhatsApp Phone (with Country Code)</label><input type="text" placeholder="e.g. 94701234567" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.phoneNumber} onChange={e=>setAlertForm({...alertForm, phoneNumber:e.target.value})} /></div>
-                <div className="pt-2"><button disabled={loading} type="submit" className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-semibold shadow-md">{loading ? "Saving..." : "Save Contact"}</button></div>
+                <div className="pt-2"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Contact"}</button></div>
               </form>
             </div>
           </div>
@@ -929,19 +967,19 @@ const AdminSettings = () => {
         <>
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-[90vh] pointer-events-auto">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">{editingItem ? "Edit Specialization" : "Add Specialization"}</h3>
-              <button onClick={() => setSpecModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-full pointer-events-auto">
+            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Specialization" : "Add Specialization"}</h3>
+              <button type="button" onClick={() => setSpecModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-4 xl:p-6 overflow-y-auto">
               <form onSubmit={handleSpecSubmit} className="space-y-4">
                 <div><label className="block text-sm font-semibold text-slate-700 mb-1">Specialization Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-amber-500" value={specForm.name} onChange={e=>setSpecForm({...specForm, name:e.target.value})} /></div>
                 <div className="flex items-center gap-3 pt-2">
                   <input type="checkbox" id="noncoding" checked={specForm.isNonCoding} onChange={e=>setSpecForm({...specForm, isNonCoding:e.target.checked})} className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
                   <label htmlFor="noncoding" className="text-sm font-semibold text-slate-700 cursor-pointer">Mark as Non-Coding Role (e.g. BA, QA, DevOps)</label>
                 </div>
-                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold shadow-md">{loading ? "Saving..." : "Save Specialization"}</button></div>
+                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Specialization"}</button></div>
               </form>
             </div>
           </div>
@@ -954,14 +992,14 @@ const AdminSettings = () => {
         <>
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[90vh] pointer-events-auto">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-800">Generate API Key</h3>
-              <button onClick={() => setApiKeyModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-6 h-6"/></button>
+            <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-full pointer-events-auto">
+            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="text-base xl:text-lg font-bold text-slate-800">Generate API Key</h3>
+              <button type="button" onClick={() => setApiKeyModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
             </div>
-            <div className="p-6 overflow-y-auto">
+            <div className="p-4 xl:p-6 overflow-y-auto">
               <form onSubmit={handleApiSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-semibold text-slate-700 mb-1">Key Name</label>
                     <input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-slate-500" placeholder="e.g., Mobile App Integration" value={apiForm.name} onChange={e=>setApiForm({...apiForm, name:e.target.value})} />
@@ -983,7 +1021,7 @@ const AdminSettings = () => {
                     <label className="block text-sm font-semibold text-slate-700">Accessible Pages</label>
                     <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{apiForm.accessiblePages.length} Selected</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 md:grid-cols-4 gap-3">
                     {AVAILABLE_PAGES.filter(p => p !== 'Settings').map(page => (
                       <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl p-3 bg-slate-50 transition-colors">
                         <input type="checkbox" checked={apiForm.accessiblePages.includes(page)} onChange={() => handleApiVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500" />
@@ -994,7 +1032,7 @@ const AdminSettings = () => {
                 </div>
 
                 <div className="pt-2">
-                  <button disabled={loading} type="submit" className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-semibold shadow-md">
+                  <button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">
                     {loading ? "Generating..." : "Generate Key"}
                   </button>
                 </div>
@@ -1028,11 +1066,11 @@ const AdminSettings = () => {
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
                   transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto"
                 >
-                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                  <div className="flex justify-between items-start mb-3 xl:mb-4">
                     <div>
-                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Security Check</h3>
                       <p className="text-xs text-slate-500 mt-1">Enter global security password to access settings.</p>
                     </div>
                   </div>
@@ -1048,7 +1086,7 @@ const AdminSettings = () => {
                   </div>
                   
                   <form onSubmit={handleVerify}>
-                    <div className="mb-3 sm:mb-5 relative">
+                    <div className="mb-3 xl:mb-5 relative">
                       <input
                         type={showVerifyPassword ? "text" : "password"}
                         value={verifyPassword}
@@ -1085,15 +1123,15 @@ const AdminSettings = () => {
         <>
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
-            <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl p-6 pointer-events-auto">
-            <h3 className="text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
+            <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-sm shadow-2xl p-4 xl:p-6 pointer-events-auto">
+            <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
             <p className="text-sm text-slate-500 mb-4">{confirmDialog.message}</p>
             {confirmDialog.type === "prompt" && (
               <input type="text" autoFocus className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm mb-4 focus:border-indigo-500" value={confirmDialog.value} onChange={e => setConfirmDialog({...confirmDialog, value: e.target.value})} />
             )}
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDialog({...confirmDialog, isOpen: false})} className="px-4 py-2 text-slate-500 hover:text-slate-700 font-semibold text-sm">Cancel</button>
-              <button onClick={() => { setConfirmDialog({...confirmDialog, isOpen: false}); confirmDialog.onConfirm(confirmDialog.value); }} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-md">Confirm</button>
+            <div className="flex flex-col-reverse xl:flex-row gap-3 justify-end mt-4">
+              <button onClick={() => setConfirmDialog({...confirmDialog, isOpen: false})} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-slate-100 xl:bg-transparent text-slate-700 xl:text-slate-500 hover:bg-slate-200 xl:hover:bg-transparent hover:text-slate-700 font-semibold text-sm rounded-xl transition-colors">Cancel</button>
+              <button onClick={() => { setConfirmDialog({...confirmDialog, isOpen: false}); confirmDialog.onConfirm(confirmDialog.value); }} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-md transition-colors">Confirm</button>
             </div>
           </div>
         </div>
@@ -1111,11 +1149,11 @@ const AdminSettings = () => {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 10 }}
                 transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto"
               >
-                <div className="flex justify-between items-start mb-3 sm:mb-4">
+                <div className="flex justify-between items-start mb-3 xl:mb-4">
                   <div>
-                    <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Security Check</h3>
                     <p className="text-xs text-slate-500 mt-1">Enter password to change notification toggle.</p>
                   </div>
                   <button type="button" onClick={() => setTogglePrompt({ isOpen: false, key: null, password: "" })} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
@@ -1124,13 +1162,13 @@ const AdminSettings = () => {
                 </div>
                 
                 <form onSubmit={handleToggleSubmit}>
-                  <div className="mb-3 sm:mb-5 relative">
+                  <div className="mb-3 xl:mb-5 relative">
                     <input type="password" required className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all" placeholder="Enter password..." value={togglePrompt.password} onChange={e => setTogglePrompt({...togglePrompt, password: e.target.value})} />
                   </div>
                   
-                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
-                    <button type="button" onClick={() => setTogglePrompt({ isOpen: false, key: null, password: "" })} className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">Cancel</button>
-                    <button type="submit" disabled={loading || !togglePrompt.password} className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer">{loading ? "Verifying..." : "Confirm"}</button>
+                  <div className="flex flex-col-reverse xl:flex-row gap-2 xl:gap-3 mt-4">
+                    <button type="button" onClick={() => setTogglePrompt({ isOpen: false, key: null, password: "" })} className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">Cancel</button>
+                    <button type="submit" disabled={loading || !togglePrompt.password} className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer">{loading ? "Verifying..." : "Confirm"}</button>
                   </div>
                 </form>
               </motion.div>
@@ -1157,7 +1195,7 @@ const TabButton = ({ active, onClick, icon: Icon, label, color }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all border shrink-0 ${
+      className={`flex items-center justify-center xl:justify-start w-full xl:w-auto gap-1.5 xl:gap-2 px-3 xl:px-5 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-xs xl:text-sm font-semibold transition-all border shrink-0 ${
         active ? colorMap[color] + " shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 bg-transparent border-transparent hover:bg-slate-50 hover:text-slate-700"
       }`}
     >
@@ -1175,7 +1213,7 @@ const PasswordField = ({ label, value, onChange, show, setShow }) => (
         type={show ? "text" : "password"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+        className="w-full px-3 xl:px-4 py-2 xl:py-3 bg-slate-50 border border-slate-200 rounded-lg xl:rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-sm font-medium text-slate-700"
       />
       <button type="button" onClick={() => setShow(!show)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
         {show ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -1185,7 +1223,7 @@ const PasswordField = ({ label, value, onChange, show, setShow }) => (
 );
 
 const ToggleOption = ({ label, description, enabled, onChange }) => (
-  <div className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-200/60 shadow-sm hover:border-emerald-200 transition-colors cursor-pointer" onClick={onChange}>
+  <div className="flex items-center justify-between p-3 xl:p-4 bg-white rounded-xl xl:rounded-2xl border border-slate-200/60 shadow-sm hover:border-emerald-200 transition-colors cursor-pointer" onClick={onChange}>
     <div>
       <p className="font-semibold text-slate-800">{label}</p>
       <p className="text-xs text-slate-500 mt-0.5">{description}</p>
