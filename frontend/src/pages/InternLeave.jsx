@@ -3,6 +3,8 @@ import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
+import SectionTip from "../components/SectionTip";
+import LivePassIndicator from "../components/LivePassIndicator";
 import toast from "react-hot-toast";
 import {
   FiFileText,
@@ -14,6 +16,7 @@ import {
   FiEye,
   FiChevronDown,
   FiCheckCircle,
+  FiXCircle,
   FiList,
   FiInfo,
   FiShield
@@ -26,23 +29,23 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
-        title: "My Extended Leave Requests",
-        description: "View and manage your extended leave requests",
-        newButton: "New Extended Leave Request",
-        duplicate:
-          "You already have an extended leave request for today. Only one request per day is allowed.",
-        emptyTitle: "No extended leave requests found",
-        emptyToday: "You haven't submitted any extended leave requests today.",
-      }
+      title: "My Extended Leave Requests",
+      description: "View and manage your extended leave requests",
+      newButton: "New Extended Leave Request",
+      duplicate:
+        "You already have an extended leave request for today. Only one request per day is allowed.",
+      emptyTitle: "No extended leave requests found",
+      emptyToday: "You haven't submitted any extended leave requests today.",
+    }
     : {
-        title: "My Short Leave Requests",
-        description: "View and manage your short leave permission requests",
-        newButton: "New Short Leave Request",
-        duplicate:
-          "You already have a short leave request for today. Only one request per day is allowed.",
-        emptyTitle: "No short leave requests found",
-        emptyToday: "You haven't submitted any short leave requests today.",
-      };
+      title: "My Short Leave Requests",
+      description: "View and manage your short leave permission requests",
+      newButton: "New Short Leave Request",
+      duplicate:
+        "You already have a short leave request for today. Only one request per day is allowed.",
+      emptyTitle: "No short leave requests found",
+      emptyToday: "You haven't submitted any short leave requests today.",
+    };
   const navigate = useNavigate();
   const [documentViewer, setDocumentViewer] = useState({
     show: false,
@@ -51,10 +54,10 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   });
   const [leaveRequests, setLeaveRequests] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Tabs: "list" | "new"
   const [activeTab, setActiveTab] = useState("new");
-  
+
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
@@ -68,6 +71,43 @@ const InternLeave = ({ requestType = "short_leave" }) => {
     total: 0,
     totalPages: 0,
   });
+
+  // Ticks every second so the live/expired pass indicator on each request
+  // card stays in sync with real time, exactly like the full pass screen.
+  // This is what stops the "Approved" preview card from being screenshotted
+  // and passed off as a currently-valid pass after it has actually expired.
+  const [liveClock, setLiveClock] = useState(new Date());
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const sriLankaTime = new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Colombo",
+      });
+      setLiveClock(new Date(sriLankaTime));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Mirrors the expiry rule used on the live pass page (and enforced by the
+  // backend): a short leave pass is only live for its own leave date, and
+  // only until 4:30 PM Sri Lanka time on that date.
+  const getPassLiveStatus = (request) => {
+    if (isStudyLeave || request.status !== "Approved" || !request.passToken) {
+      return null;
+    }
+    const requestDateStr = new Date(request.leaveDate).toISOString().split("T")[0];
+    // Build the date string from the Sri-Lanka-wall-clock Date's own getters
+    // (not toISOString, which would re-apply the browser's UTC offset and
+    // can land on the wrong day near midnight).
+    const pad = (n) => String(n).padStart(2, "0");
+    const todayLkStr = `${liveClock.getFullYear()}-${pad(liveClock.getMonth() + 1)}-${pad(liveClock.getDate())}`;
+    if (requestDateStr !== todayLkStr) {
+      return { isLive: false };
+    }
+    const hour = liveClock.getHours();
+    const minute = liveClock.getMinutes();
+    const isPastExpiry = hour > 16 || (hour === 16 && minute >= 30);
+    return { isLive: !isPastExpiry };
+  };
 
   useEffect(() => {
     const authToken = localStorage.getItem("authToken");
@@ -156,8 +196,8 @@ const InternLeave = ({ requestType = "short_leave" }) => {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
           errorData.message ||
-            errorData.error ||
-            `Failed to load document (${response.status})`,
+          errorData.error ||
+          `Failed to load document (${response.status})`,
         );
       }
 
@@ -255,10 +295,10 @@ const InternLeave = ({ requestType = "short_leave" }) => {
               </div>
             </div>
 
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              transition={{ delay: 0.1, duration: 0.2 }} 
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1, duration: 0.2 }}
               className="bg-white rounded-2xl shadow-sm border border-gray-100 p-1.5 sm:p-2 flex items-center gap-2 min-w-[200px]"
             >
               <div className="flex-1 bg-slate-50 rounded-xl p-2 flex items-center gap-2 border border-slate-100">
@@ -268,19 +308,19 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                 <div className="flex-1">
                   <label className="text-[clamp(8px,2vw,9px)] font-bold text-gray-400 uppercase tracking-wider block">Filter Date</label>
                   <div className="flex items-center">
-                    <input 
-                      type="date" 
-                      value={selectedDate} 
+                    <input
+                      type="date"
+                      value={selectedDate}
                       max={isStudyLeave ? undefined : todayStr}
                       onChange={(e) => {
                         setSelectedDate(e.target.value);
                         setPagination((prev) => ({ ...prev, page: 1 }));
                         setActiveTab("list");
-                      }} 
-                      className="bg-transparent text-[clamp(10px,2vw,12px)] font-bold text-gray-800 w-full focus:outline-none cursor-pointer" 
+                      }}
+                      className="bg-transparent text-[clamp(10px,2vw,12px)] font-bold text-gray-800 w-full focus:outline-none cursor-pointer"
                     />
                     {selectedDate && (
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDate("");
@@ -303,29 +343,27 @@ const InternLeave = ({ requestType = "short_leave" }) => {
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col min-h-[600px]">
             {/* Tab Switcher */}
             <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
-              <button 
+              <button
                 onClick={() => {
                   if (hasRequestForToday() && activeTab === "list") {
-                     toast.error(pageCopy.duplicate);
-                     return;
+                    toast.error(pageCopy.duplicate);
+                    return;
                   }
                   setActiveTab("new");
-                }} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
-                  activeTab === "new" 
-                    ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50" 
+                }}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${activeTab === "new"
+                    ? "bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white shadow-lg shadow-blue-500/30 ring-1 ring-blue-400/50"
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
-                }`}
+                  }`}
               >
                 <FiPlus size={18} /> New Request
               </button>
-              <button 
-                onClick={() => setActiveTab("list")} 
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${
-                  activeTab === "list" 
-                    ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50" 
+              <button
+                onClick={() => setActiveTab("list")}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-[clamp(11px,2.5vw,14px)] transition-all duration-100 ${activeTab === "list"
+                    ? "bg-gradient-to-r from-[#15803d] to-[#50b748] text-white shadow-lg shadow-green-500/30 ring-1 ring-green-400/50"
                     : "bg-white text-gray-500 hover:text-gray-700 hover:bg-gray-50 ring-1 ring-gray-200/50"
-                }`}
+                  }`}
               >
                 <FiList size={18} /> My Requests
               </button>
@@ -364,15 +402,15 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                         </div>
                         <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-700">{pageCopy.emptyTitle}</h4>
                         <p className="text-gray-500 text-[clamp(11px,2.5vw,14px)] mt-1 max-w-sm mx-auto">
-                          {isToday 
-                            ? pageCopy.emptyToday 
-                            : selectedDate 
+                          {isToday
+                            ? pageCopy.emptyToday
+                            : selectedDate
                               ? `No requests found for ${formatDisplayDate(selectedDate)}.`
                               : "No requests found."}
                         </p>
                         {isToday && (
-                          <button 
-                            onClick={() => setActiveTab("new")} 
+                          <button
+                            onClick={() => setActiveTab("new")}
                             className="mt-6 px-6 py-2.5 bg-[#0056a2] text-white font-bold rounded-xl shadow-md shadow-[#0056a2]/20 hover:bg-[#00488a] transition-all"
                           >
                             Create Request
@@ -384,140 +422,154 @@ const InternLeave = ({ requestType = "short_leave" }) => {
                         <h3 className="text-[clamp(16px,4vw,20px)] font-extrabold text-gray-800 tracking-tight mb-[clamp(12px,3vw,16px)] px-2">
                           {selectedDate ? `Requests for ${formatDisplayDate(selectedDate)}` : "All Requests"}
                         </h3>
-                        {leaveRequests.map((request) => (
-                          <motion.div
-                            layout
-                            key={request._id}
-                            className={`bg-white rounded-2xl shadow-sm border transition-all duration-200 overflow-hidden ${
-                              expandedId === request._id ? "border-[#00b4eb] shadow-md ring-1 ring-[#00b4eb]/20" : "border-gray-200 hover:border-gray-300"
-                            }`}
-                          >
-                            {/* Card Header / Summary */}
-                            <div 
-                              onClick={() => toggleExpand(request._id)}
-                              className="p-5 flex items-center justify-between cursor-pointer group select-none"
+                        {leaveRequests.map((request) => {
+                          const passLiveStatus = getPassLiveStatus(request);
+                          return (
+                            <motion.div
+                              layout
+                              key={request._id}
+                              className={`bg-white rounded-2xl shadow-sm border transition-all duration-200 overflow-hidden ${expandedId === request._id ? "border-[#00b4eb] shadow-md ring-1 ring-[#00b4eb]/20" : "border-gray-200 hover:border-gray-300"
+                                }`}
                             >
-                              <div className="flex items-center gap-4">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                                  request.status === "Approved" ? "bg-green-50 text-[#50b748]" :
-                                  request.status === "Denied" ? "bg-rose-50 text-rose-500" :
-                                  "bg-blue-50 text-[#0056a2]"
-                                }`}>
-                                  {request.status === "Approved" ? <FiCheckCircle size={24} /> :
-                                   request.status === "Denied" ? <FiX size={24} /> :
-                                   <FiClock size={24} />}
+                              {/* Card Header / Summary */}
+                              <div
+                                onClick={() => toggleExpand(request._id)}
+                                className="p-5 flex items-center justify-between cursor-pointer group select-none"
+                              >
+                                <div className="flex items-center gap-4">
+                                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${passLiveStatus ? (passLiveStatus.isLive ? "bg-green-50 text-[#50b748]" : "bg-rose-50 text-rose-500") :
+                                    request.status === "Approved" ? "bg-green-50 text-[#50b748]" :
+                                      request.status === "Denied" ? "bg-rose-50 text-rose-500" :
+                                        "bg-blue-50 text-[#0056a2]"
+                                    }`}>
+                                    {passLiveStatus ? (passLiveStatus.isLive ? <FiCheckCircle size={24} /> : <FiXCircle size={24} />) :
+                                      request.status === "Approved" ? <FiCheckCircle size={24} /> :
+                                        request.status === "Denied" ? <FiX size={24} /> :
+                                          <FiClock size={24} />}
+                                  </div>
+                                  <div>
+                                    <h4 className="text-lg font-bold text-gray-900 leading-tight">
+                                      {isStudyLeave
+                                        ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
+                                        : request.leaveTime}
+                                    </h4>
+                                    <p className="text-sm font-medium text-gray-500 mt-0.5">
+                                      {request.purpose} Purpose
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <h4 className="text-[clamp(14px,3.5vw,18px)] font-bold text-gray-900 leading-tight">
-                                    {isStudyLeave
-                                      ? `${formatDate(request.leaveDate)}${request.studyEndDate && request.studyEndDate !== request.leaveDate ? ` - ${formatDate(request.studyEndDate)}` : ""}`
-                                      : request.leaveTime}
-                                  </h4>
-                                  <p className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-500 mt-0.5">
-                                    {request.purpose} Purpose
-                                  </p>
-                                </div>
-                              </div>
-                              
-                              <div className="flex items-center gap-4">
-                                <div className="hidden sm:block">
-                                  <span className={getStatusBadgeClass(request.status)}>
-                                    {request.status}
-                                  </span>
-                                </div>
-                                <div className={`p-2 rounded-full transition-transform duration-200 ${expandedId === request._id ? 'rotate-180 bg-slate-100 text-gray-800' : 'bg-slate-50 text-gray-400 group-hover:bg-slate-100'}`}>
-                                  <FiChevronDown />
-                                </div>
-                              </div>
-                            </div>
 
-                            {/* Expanded Details */}
-                            <AnimatePresence>
-                              {expandedId === request._id && (
-                                <motion.div
-                                  initial={{ height: 0, opacity: 0 }}
-                                  animate={{ height: "auto", opacity: 1 }}
-                                  exit={{ height: 0, opacity: 0 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="border-t border-gray-100 bg-slate-50/50"
-                                >
-                                  <div className="p-5 space-y-4">
-                                    <div className="sm:hidden mb-2">
+                                <div className="flex items-center gap-4">
+                                  <div className="hidden sm:block">
+                                    {passLiveStatus ? (
+                                      <LivePassIndicator isLive={passLiveStatus.isLive} />
+                                    ) : (
                                       <span className={getStatusBadgeClass(request.status)}>
                                         {request.status}
                                       </span>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                      <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                        <div className="flex items-center gap-2 mb-2">
-                                          <FiInfo className="text-gray-400" />
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase tracking-wider">Reason</span>
-                                        </div>
-                                        <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.reason}</p>
-                                      </div>
-
-                                      <div className="space-y-3">
-                                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">National ID</span>
-                                          <span className="text-[clamp(11px,2.5vw,14px)] font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
-                                        </div>
-                                        
-                                        <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-500 uppercase">Submitted At</span>
-                                          <span className="text-[clamp(11px,2.5vw,14px)] font-medium text-gray-600">{formatDate(request.submittedAt)}</span>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {request.adminResponse && (
-                                      <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
-                                        <FiShield className="text-[#0056a2] mt-0.5" size={18} />
-                                        <div>
-                                          <span className="text-[clamp(10px,2vw,12px)] font-bold text-[#0056a2] uppercase tracking-wider block mb-1">Admin Response</span>
-                                          <p className="text-[clamp(11px,2.5vw,14px)] text-gray-800 font-medium">{request.adminResponse}</p>
-                                        </div>
-                                      </div>
                                     )}
-
-                                    {request.proofDocument && request.proofDocument.data && (
-                                      <div className="flex items-center gap-2 pt-2">
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleViewDocument(request._id); }}
-                                          className="text-[clamp(11px,2.5vw,14px)] px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold flex items-center gap-2 rounded-xl transition-all shadow-sm"
-                                        >
-                                          <FiEye className="text-[#00b4eb]" /> View Proof Document
-                                        </button>
-                                      </div>
-                                    )}
-
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-wrap items-center justify-end gap-3 pt-4 mt-2 border-t border-gray-200">
-                                      {request.status === "Pending" && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
-                                          className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-[clamp(11px,2.5vw,14px)] shadow-sm"
-                                        >
-                                          <FiTrash2 /> Delete Request
-                                        </button>
-                                      )}
-                                      
-                                      {request.status === "Approved" && request.passToken && (
-                                        <button
-                                          onClick={(e) => { e.stopPropagation(); navigate(`/leave-pass/${request.passToken}`); }}
-                                          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                                        >
-                                          <FiCheckCircle size={18} />
-                                          View Leave Pass
-                                        </button>
-                                      )}
-                                    </div>
                                   </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </motion.div>
-                        ))}
+                                  <div className={`p-2 rounded-full transition-transform duration-200 ${expandedId === request._id ? 'rotate-180 bg-slate-100 text-gray-800' : 'bg-slate-50 text-gray-400 group-hover:bg-slate-100'}`}>
+                                    <FiChevronDown />
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Expanded Details */}
+                              <AnimatePresence>
+                                {expandedId === request._id && (
+                                  <motion.div
+                                    initial={{ height: 0, opacity: 0 }}
+                                    animate={{ height: "auto", opacity: 1 }}
+                                    exit={{ height: 0, opacity: 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="border-t border-gray-100 bg-slate-50/50"
+                                  >
+                                    <div className="p-5 space-y-4">
+                                      <div className="sm:hidden mb-2">
+                                        {passLiveStatus ? (
+                                          <LivePassIndicator isLive={passLiveStatus.isLive} />
+                                        ) : (
+                                          <span className={getStatusBadgeClass(request.status)}>
+                                            {request.status}
+                                          </span>
+                                        )}
+                                      </div>
+
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                          <div className="flex items-center gap-2 mb-2">
+                                            <FiInfo className="text-gray-400" />
+                                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Reason</span>
+                                          </div>
+                                          <p className="text-sm text-gray-800 font-medium">{request.reason}</p>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
+                                            <span className="text-xs font-bold text-gray-500 uppercase">National ID</span>
+                                            <span className="text-sm font-bold text-gray-900 bg-slate-100 px-2 py-0.5 rounded-md">{request.nationalId || "â€”"}</span>
+                                          </div>
+
+                                          <div className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center">
+                                            <span className="text-xs font-bold text-gray-500 uppercase">Submitted At</span>
+                                            <span className="text-sm font-medium text-gray-600">{formatDate(request.submittedAt)}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                      {request.adminResponse && (
+                                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-start gap-3">
+                                          <FiShield className="text-[#0056a2] mt-0.5" size={18} />
+                                          <div>
+                                            <span className="text-xs font-bold text-[#0056a2] uppercase tracking-wider block mb-1">Admin Response</span>
+                                            <p className="text-sm text-gray-800 font-medium">{request.adminResponse}</p>
+                                          </div>
+                                        </div>
+                                      )}
+
+                                      {request.proofDocument && request.proofDocument.data && (
+                                        <div className="flex items-center gap-2 pt-2">
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleViewDocument(request._id); }}
+                                            className="text-sm px-4 py-2 bg-white border border-gray-200 hover:border-gray-300 text-gray-700 font-bold flex items-center gap-2 rounded-xl transition-all shadow-sm"
+                                          >
+                                            <FiEye className="text-[#00b4eb]" /> View Proof Document
+                                          </button>
+                                        </div>
+                                      )}
+
+                                      {/* Action Buttons */}
+                                      <div className="flex flex-wrap items-center justify-end gap-3 pt-4 mt-2 border-t border-gray-200">
+                                        {request.status === "Pending" && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
+                                            className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-sm shadow-sm"
+                                          >
+                                            <FiTrash2 /> Delete Request
+                                          </button>
+                                        )}
+
+                                        {request.status === "Approved" && request.passToken && (
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/leave-pass/${request.passToken}`); }}
+                                            className={`flex items-center gap-2 px-5 py-2.5 text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] ${passLiveStatus && !passLiveStatus.isLive
+                                              ? "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-lg hover:shadow-rose-500/30"
+                                              : "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-lg hover:shadow-green-500/30"
+                                              }`}
+                                          >
+                                            {passLiveStatus && !passLiveStatus.isLive ? <FiXCircle size={18} /> : <FiCheckCircle size={18} />}
+                                            View Leave Pass
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </motion.div>
+                          );
+                        })}
 
                         {/* Pagination */}
                         {pagination.totalPages > 1 && (
@@ -554,20 +606,20 @@ const InternLeave = ({ requestType = "short_leave" }) => {
       {/* Document Viewer Modal */}
       <AnimatePresence>
         {documentViewer.show && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
           >
-            <motion.div 
+            <motion.div
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.95, y: 20 }}
               className="relative bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] flex flex-col overflow-hidden"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#00b4eb] to-[#0056a2]"></div>
-              
+
               <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-slate-50/50">
                 <h3 className="text-[clamp(14px,3.5vw,18px)] font-extrabold text-gray-900 flex items-center gap-2">
                   <FiFileText className="text-[#0056a2]" /> Document Viewer
