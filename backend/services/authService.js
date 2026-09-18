@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
 const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
-const Supervisor = require("../models/Supervisor");
+const Staff = require("../models/Staff");
 const User = require("../models/User");
 const https = require("https");
 
@@ -120,11 +120,11 @@ class AuthService {
 
     const normalizedEmail = payload.email.toLowerCase().trim();
 
-    // 2. Check allowlist — supervisors collection (case-insensitive)
-    const supervisor = await Supervisor.findOne({ email: normalizedEmail });
-    if (!supervisor) {
+    // 2. Check allowlist — staff collection (case-insensitive)
+    const staff = await Staff.findOne({ email: normalizedEmail });
+    if (!staff) {
       throw new Error(
-        "Access denied. Your Google account is not registered as an authorized supervisor. " +
+        "Access denied. Your Google account is not registered as an authorized staff member. " +
         "Please contact the system administrator."
       );
     }
@@ -132,11 +132,11 @@ class AuthService {
     // 3. Find or create the User record
     let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      // First-time sign-in: auto-provision the admin User from supervisor record
-      const roleMap = { Supervisor: "supervisor", Developer: "admin" };
-      const userRole = roleMap[supervisor.role] || "supervisor";
+      // First-time sign-in: auto-provision the admin User from staff record
+      const roleMap = { Supervisor: "supervisor", Developer: "admin", Admin: "admin", Staff: "staff" };
+      const userRole = roleMap[staff.role] || staff.role.toLowerCase() || "supervisor";
       user = new User({
-        name: payload.name || supervisor.name,
+        name: payload.name || staff.name,
         email: normalizedEmail,
         authProvider: "google",
         role: userRole,
@@ -148,13 +148,20 @@ class AuthService {
       await user.save();
     } else {
       // Subsequent sign-ins: refresh name/picture
-      user.name = user.name || payload.name || supervisor.name;
+      user.name = user.name || payload.name || staff.name;
       user.picture = payload.picture || user.picture;
       user.googleSubject = payload.sub;
-      user.lastLoginAt = new Date();
-      if (!user.permissions?.length) {
-        user.permissions = permissionsForRole(user.role || "supervisor");
+      
+      const roleMap = { Supervisor: "supervisor", Developer: "admin", Admin: "admin", Staff: "staff" };
+      const newRole = roleMap[staff.role] || staff.role.toLowerCase();
+      
+      // Update role and permissions if role changed or missing permissions
+      if (user.role !== newRole || !user.permissions?.length) {
+        user.role = newRole;
+        user.permissions = permissionsForRole(newRole || "supervisor");
       }
+      
+      user.lastLoginAt = new Date();
       if (!user.isActive) {
         throw new Error("Your account has been deactivated. Please contact the system administrator.");
       }
