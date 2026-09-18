@@ -314,28 +314,34 @@ const AdminLogin = () => {
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6"
+              className="flex items-center gap-4 sm:gap-5 mb-5 sm:mb-7"
             >
-              <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-[#00b4eb] to-[#50b748] rounded-2xl opacity-40 blur-sm group-hover:opacity-70 transition-opacity duration-500" />
-                <img
-                  src={sltLogo}
-                  alt="SLT Mobitel Logo"
-                  className="relative w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-xl border-2 border-white/20 shadow-lg"
-                />
-              </div>
-              <div className="text-left">
-                <div className="flex items-center gap-2.5">
+              {/* Logos Group */}
+              <div className="flex items-center gap-2.5">
+                <div className="relative bg-white p-1.5 rounded-[0.8rem] shadow-lg flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 border border-white/10 shrink-0">
+                  <img
+                    src={sltLogo}
+                    alt="SLT Mobitel Logo"
+                    className="w-full h-full object-contain drop-shadow-sm"
+                  />
+                </div>
+                <div className="relative bg-white p-1.5 rounded-[0.8rem] shadow-lg flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 border border-white/10 shrink-0">
                   <img
                     src={talentHubLogo}
-                    alt="TalentHub"
-                    className="h-6 sm:h-8 w-auto rounded-md"
+                    alt="TalentHub Logo"
+                    className="w-full h-full object-contain drop-shadow-sm rounded"
                   />
-                  <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-                    TalentHub
-                  </h1>
                 </div>
-                <p className="text-xs sm:text-sm text-white/50 font-medium mt-0.5">
+              </div>
+
+              <div className="w-[1px] h-10 bg-white/20 hidden sm:block mx-1"></div>
+
+              {/* Text Group */}
+              <div className="text-left flex flex-col justify-center">
+                <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white leading-none drop-shadow-sm mb-1">
+                  TalentHub
+                </h1>
+                <p className="text-[10px] sm:text-xs text-white/70 font-bold tracking-widest uppercase opacity-90">
                   Administration Portal
                 </p>
               </div>
@@ -627,35 +633,6 @@ const AdminLogin = () => {
               <p className="mb-1.5">
                 © {new Date().getFullYear()} SLT Mobitel. All rights reserved.
               </p>
-              <div className="flex justify-center gap-4 mb-2 sm:mb-3">
-                <a
-                  href="#"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Privacy
-                </a>
-                <a
-                  href="#"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Terms
-                </a>
-                <a
-                  href={WHATSAPP_SUPPORT_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-[#00b4eb] transition-colors"
-                >
-                  Help
-                </a>
-              </div>
-              <div className="flex justify-center items-center">
-                <img
-                  src={transzentLogo}
-                  alt="Transzent"
-                  className="h-6 sm:h-8 w-auto rounded opacity-100 shadow-sm"
-                />
-              </div>
             </motion.div>
             </div>
           </div>
