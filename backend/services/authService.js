@@ -201,7 +201,17 @@ class AuthService {
     const email = googlePayload.email;
     const googlePictureUrl = googlePayload.picture;
 
-    const intern = await InternRepository.findByEmail(email);
+    let intern = await InternRepository.findByEmail(email);
+    if (!intern) {
+      // Check special access for inactive interns
+      const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${email}$`, "i") });
+      if (hasSpecialAccess) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
+      }
+    }
+
     if (!intern) {
       throw new Error("This email is not registered as an intern.");
     }
@@ -235,7 +245,17 @@ class AuthService {
   }
 
   async internLogin(email, password) {
-    const intern = await InternRepository.findByEmail(email);
+    let intern = await InternRepository.findByEmail(email);
+    if (!intern) {
+      // Check special access for inactive interns
+      const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${email}$`, "i") });
+      if (hasSpecialAccess) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
+      }
+    }
+
     if (!intern) {
       return { error: "Invalid email or password" };
     }
