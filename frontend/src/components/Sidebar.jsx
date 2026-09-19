@@ -115,11 +115,11 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
                   ? "text-white shadow-[0_4px_20px_rgba(255,255,255,0.15)] bg-white/15 border-white/30"
                   : "text-white/70 hover:text-white"
               }`
-              : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20
+              : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden hover:bg-white/15 hover:border-white/20
               ${
                 active
-                  ? "shadow-[0_4px_20px_rgba(255,255,255,0.15)] bg-white/15 border-white/30"
-                  : ""
+                  ? "shadow-[0_4px_20px_rgba(255,255,255,0.15)] bg-white/15 backdrop-blur-md border border-white/30"
+                  : "bg-transparent border border-transparent"
               }`;
 
             if (link.onClick) {
@@ -150,91 +150,92 @@ const Sidebar = ({ navLinks = [], isOpen, onClose, onLogout, user, mode = "grid"
               </Link>
             );
           })}
+          
+          {/* Separator for external documents / Serendib */}
+          {externalLinks.length > 0 && (
+            <div className="w-full">
+              <hr className="border-white/10 my-1 mx-2" />
+              <div className={isCollapsed ? "flex flex-col gap-1.5" : (mode === "grid" ? "grid grid-cols-2 gap-2" : "flex flex-col gap-1.5")}>
+                {externalLinks.map((link, index) => {
+                  const content = (!isCollapsed && mode === "grid") ? (
+                    <>
+                      <div
+                        className="mb-1 flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300"
+                      >
+                        {link.icon}
+                      </div>
+                      <span className="text-[9px] font-semibold text-center leading-[1.1] tracking-wide px-0.5 text-white/70 group-hover:text-white">
+                        {link.label}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300 shrink-0"
+                      >
+                        {link.icon}
+                      </div>
+                      {!isCollapsed && (
+                        <span className="text-xs font-bold leading-[1.1] tracking-wide px-3 truncate w-full text-left text-white/70 group-hover:text-white transition-colors duration-300">
+                          {link.label}
+                        </span>
+                      )}
+                    </>
+                  );
+
+                  const className = (!isCollapsed && mode === "grid")
+                    ? `group flex flex-col items-center justify-center p-1.5 h-20 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`
+                    : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden bg-transparent border border-transparent hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`;
+
+                  return (
+                    <button
+                      key={`ext-${index}`}
+                      onClick={(e) => {
+                        if (link.onClick) link.onClick(e);
+                        if (onClose) onClose();
+                      }}
+                      className={className}
+                      title={link.label}
+                    >
+                      {content}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Bottom Actions Section */}
       <div className="px-3 pb-3 mt-auto flex flex-col shrink-0">
         
-        {/* Separator for external documents / Serendib */}
-        {externalLinks.length > 0 && (
-          <div className="mb-1">
-            <hr className="border-white/10 mb-3 mx-2" />
-            <div className={isCollapsed ? "flex flex-col gap-1.5" : (mode === "grid" ? "grid grid-cols-2 gap-2" : "flex flex-col gap-1.5")}>
-              {externalLinks.map((link, index) => {
-                const content = (!isCollapsed && mode === "grid") ? (
-                  <>
-                    <div
-                      className="mb-1 flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300"
-                    >
-                      {link.icon}
-                    </div>
-                    <span className="text-[9px] font-semibold text-center leading-[1.1] tracking-wide px-0.5 text-white/70 group-hover:text-white">
-                      {link.label}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <div
-                      className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300 shrink-0"
-                    >
-                      {link.icon}
-                    </div>
-                    {!isCollapsed && (
-                      <span className="text-xs font-bold leading-[1.1] tracking-wide px-3 truncate w-full text-left text-white/70 group-hover:text-white transition-colors duration-300">
-                        {link.label}
-                      </span>
-                    )}
-                  </>
-                );
 
-                const className = (!isCollapsed && mode === "grid")
-                  ? `group flex flex-col items-center justify-center p-1.5 h-20 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`
-                  : `group flex items-center ${isCollapsed ? "justify-center w-full h-14" : "justify-start w-full"} p-2 rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white`;
-
-                return (
-                  <button
-                    key={`ext-${index}`}
-                    onClick={(e) => {
-                      if (link.onClick) link.onClick(e);
-                      if (onClose) onClose();
-                    }}
-                    className={className}
-                    title={link.label}
-                  >
-                    {content}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-        
         {/* Sign Out Button */}
         {onLogout && (
-          <div className="mt-1 w-full">
-            <hr className="border-white/10 my-3 mx-2 lg:hidden" />
+          <div className="w-full">
+            <hr className={`border-white/10 mx-2 ${location.pathname.startsWith('/admin') ? 'mb-6' : 'mb-3'}`} />
             <button
               onClick={() => {
                 if (onClose) onClose();
                 onLogout();
               }}
-              className={`group flex items-center w-full rounded-xl transition-all duration-300 relative overflow-hidden bg-white/5 backdrop-blur-md border border-white/10 shadow-[0_4px_12px_rgba(0,0,0,0.05)] hover:bg-red-500/10 hover:border-red-500/30 text-white/70 hover:text-red-400 ${isCollapsed ? "justify-center p-2 h-14" : "justify-between p-3"}`}
+              className={`group flex items-center w-full rounded-xl transition-all duration-300 relative overflow-hidden bg-transparent border border-white/20 hover:bg-white/15 hover:border-white/30 text-white/70 hover:text-white ${isCollapsed ? "justify-center p-2 h-14" : "justify-between p-3"}`}
               title="Sign Out"
             >
               {!isCollapsed && (
                 <div className="flex flex-col items-start text-left truncate max-w-[75%]">
-                  <span className="text-xs font-bold text-white/90 truncate w-full text-left group-hover:text-red-400 transition-colors">
+                  <span className="text-xs font-bold text-white/90 truncate w-full text-left group-hover:text-white transition-colors">
                     Sign Out
                   </span>
                   {user?.email && (
-                    <span className="text-[10px] text-white/50 truncate w-full text-left group-hover:text-red-400/70 transition-colors mt-0.5">
+                    <span className="text-[10px] text-white/50 truncate w-full text-left group-hover:text-white/80 transition-colors mt-0.5">
                       {user.email}
                     </span>
                   )}
                 </div>
               )}
-              <div className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-red-500/20 group-hover:text-red-400 transition-transform duration-300 shrink-0">
+              <div className="flex items-center justify-center p-2 rounded-full bg-white/5 text-white/70 group-hover:scale-110 group-hover:bg-white/10 group-hover:text-white transition-transform duration-300 shrink-0">
                 <LogOut className="h-4 w-4" />
               </div>
             </button>

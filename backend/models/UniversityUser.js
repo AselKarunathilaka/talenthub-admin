@@ -81,6 +81,10 @@ const universityUserSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    universityIdImage: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["super_admin", "admin", "developer", "supervisor", "PM"],
+    enum: ["super_admin", "admin", "developer", "supervisor", "PM", "pm"],
   },
   permissions: [{ type: String }],
   visiblePages: [{ type: String }],

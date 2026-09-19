@@ -1059,20 +1059,20 @@ useEffect(() => {
                                       "No ID Available"
                                     );
                                   } else if (!isAdmin) {
-                                    if (record.internId)
-                                      return (
-                                        record.internId.Trainee_ID ||
+                                    if (record.internId) {
+                                      const id = record.internId.Trainee_ID ||
                                         record.internId.traineeId ||
                                         record.internId.username ||
-                                        ""
-                                      );
+                                        "";
+                                      if (id) return id;
+                                    }
                                     if (record.Trainee_ID)
                                       return record.Trainee_ID;
                                     if (studentInfo?.Trainee_ID)
                                       return studentInfo.Trainee_ID;
                                     if (studentInfo?.traineeId)
                                       return studentInfo.traineeId;
-                                    return "No ID Available";
+                                    return "N/A";
                                   }
                                   return "No ID Available";
                                 })()}

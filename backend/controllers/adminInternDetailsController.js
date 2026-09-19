@@ -19,7 +19,7 @@ const DailyRecord = require("../models/DailyRecord");
 const DailyAttendanceLog = require("../models/DailyAttendanceLog");
 const MeetingAttendance = require("../models/MeetingAttendance");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
-const TalentTrailService = require("../services/TalentTrailService");
+const TalentTrailService = require("../services/talentTrailService");
 
 // ─── Attendance type classification ─────────────────────────────────────────
 

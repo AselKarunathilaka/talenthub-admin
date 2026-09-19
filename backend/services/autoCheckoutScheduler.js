@@ -27,94 +27,108 @@ class AutoCheckoutScheduler {
   }
 
   static async runAutoCheckout() {
-    const today = moment.tz('Asia/Colombo').format('YYYY-MM-DD');
-    
-    // Skip weekends
-    const dayOfWeek = moment.tz('Asia/Colombo').day();
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      console.log(`✨ Skipping auto-checkout for ${today} (Weekend).`);
-      return;
-    }
+    const now = moment.tz('Asia/Colombo');
+    const todayStr = now.format('YYYY-MM-DD');
+    const isPastTodayCheckoutTime = now.hours() > 16 || (now.hours() === 16 && now.minutes() >= 30);
 
-    // Skip holidays
-    const Holiday = require('../models/Holiday');
-    const isHoliday = await Holiday.findOne({ date: today });
-    if (isHoliday) {
-      console.log(`✨ Skipping auto-checkout for ${today} (Holiday: ${isHoliday.name}).`);
-      return;
-    }
-
-    const autoCheckoutTime = moment.tz(`${today}T16:30:00`, 'Asia/Colombo').toDate();
-    const todayStart = moment.tz(today, 'Asia/Colombo').startOf('day').toDate();
-    const todayEnd = moment.tz(today, 'Asia/Colombo').endOf('day').toDate();
-
-    console.log(`🔍 Finding interns to auto-checkout for ${today}...`);
+    console.log(`🔍 Finding interns to auto-checkout...`);
 
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        // 1. Find all active DailyRecords for today that haven't been checked out
+        // 1. Find all active DailyRecords that haven't been checked out
         const recordsToCheckout = await DailyRecord.find({
-          date: today,
           attendance: 'present',
           checkOutTime: null
         }).session(session);
 
         if (recordsToCheckout.length === 0) {
-          console.log('✨ No interns need auto-checkout today.');
+          console.log('✨ No interns need auto-checkout.');
           return;
         }
 
-        const internIds = recordsToCheckout.map(r => r.internId);
-        
-        console.log(`⚙️ Auto-checking out ${internIds.length} interns...`);
+        const recordsByDate = {};
+        for (const record of recordsToCheckout) {
+          // If the record is from a future date, skip it
+          if (record.date > todayStr) continue;
+          
+          // If the record is from today, skip if we haven't reached 16:30 yet
+          if (record.date === todayStr && !isPastTodayCheckoutTime) continue;
 
-        // 2. Update DailyRecords
-        await DailyRecord.updateMany(
-          {
-            date: today,
-            attendance: 'present',
-            checkOutTime: null
-          },
-          {
-            $set: {
-              checkOutTime: autoCheckoutTime,
-              isAutoCheckout: true
-            }
-          },
-          { session }
-        );
-
-        // 3. Update Intern attendance arrays to reflect checkOutTime
-        await Intern.updateMany(
-          {
-            _id: { $in: internIds },
-            'attendance': {
-              $elemMatch: {
-                type: { $in: ['daily_qr', 'face'] },
-                status: 'Present',
-                date: { $gte: todayStart, $lte: todayEnd },
-                checkOutTime: { $exists: false }
-              }
-            }
-          },
-          {
-            $set: { 'attendance.$[record].checkOutTime': autoCheckoutTime }
-          },
-          {
-            session,
-            arrayFilters: [
-              {
-                'record.type': { $in: ['daily_qr', 'face'] },
-                'record.status': 'Present',
-                'record.date': { $gte: todayStart, $lte: todayEnd },
-                'record.checkOutTime': { $exists: false }
-              }
-            ]
+          if (!recordsByDate[record.date]) {
+            recordsByDate[record.date] = [];
           }
-        );
+          recordsByDate[record.date].push(record);
+        }
 
-        console.log(`✅ Successfully auto-checked out ${internIds.length} interns.`);
+        const datesToProcess = Object.keys(recordsByDate);
+        if (datesToProcess.length === 0) {
+          console.log('✨ No eligible interns need auto-checkout at this time.');
+          return;
+        }
+
+        let totalCheckedOut = 0;
+
+        for (const date of datesToProcess) {
+          const recordsForDate = recordsByDate[date];
+          const internIds = recordsForDate.map(r => r.internId);
+          
+          console.log(`⚙️ Auto-checking out ${internIds.length} interns for date ${date}...`);
+
+          const autoCheckoutTime = moment.tz(`${date}T16:30:00`, 'Asia/Colombo').toDate();
+          const dayStart = moment.tz(date, 'Asia/Colombo').startOf('day').toDate();
+          const dayEnd = moment.tz(date, 'Asia/Colombo').endOf('day').toDate();
+
+          // 2. Update DailyRecords for this date
+          await DailyRecord.updateMany(
+            {
+              date: date,
+              attendance: 'present',
+              checkOutTime: null,
+              internId: { $in: internIds }
+            },
+            {
+              $set: {
+                checkOutTime: autoCheckoutTime,
+                isAutoCheckout: true
+              }
+            },
+            { session }
+          );
+
+          // 3. Update Intern attendance arrays to reflect checkOutTime
+          await Intern.updateMany(
+            {
+              _id: { $in: internIds },
+              'attendance': {
+                $elemMatch: {
+                  type: { $in: ['daily_qr', 'face', 'manual', 'manual_daily', 'daily'] },
+                  status: 'Present',
+                  date: { $gte: dayStart, $lte: dayEnd },
+                  checkOutTime: null
+                }
+              }
+            },
+            {
+              $set: { 'attendance.$[record].checkOutTime': autoCheckoutTime }
+            },
+            {
+              session,
+              arrayFilters: [
+                {
+                  'record.type': { $in: ['daily_qr', 'face', 'manual', 'manual_daily', 'daily'] },
+                  'record.status': 'Present',
+                  'record.date': { $gte: dayStart, $lte: dayEnd },
+                  'record.checkOutTime': null
+                }
+              ]
+            }
+          );
+          
+          totalCheckedOut += internIds.length;
+        }
+
+        console.log(`✅ Successfully auto-checked out ${totalCheckedOut} interns across ${datesToProcess.length} days.`);
       });
     } finally {
       await session.endSession();

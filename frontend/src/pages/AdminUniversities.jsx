@@ -17,7 +17,8 @@ import {
   X,
   FileText,
   Filter,
-  Phone
+  Phone,
+  Eye,
 } from "lucide-react";
 import AdminNavigation from "../components/AdminNavigation";
 import { adminApi } from "../api/adminApi";
@@ -101,6 +102,9 @@ const AdminUniversities = () => {
   const [pendingAction, setPendingAction] = useState(null);
   const [studentPage, setStudentPage] = useState(1);
 
+  // University ID image viewer state
+  const [viewIdModal, setViewIdModal] = useState(null); // null or { supervisorName, imageUrl }
+
   // Cache: keyed by university name -> student array
   const studentCache = React.useRef({});
 
@@ -153,6 +157,16 @@ const AdminUniversities = () => {
       } else if (action === "delete") {
         await adminApi.deleteUniversity(id);
         toast.success("University deleted successfully");
+      } else if (action === "deleteDocument") {
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/admin/universities/${id}/delete-document`, {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${JSON.parse(localStorage.getItem("adminInfo") || "{}").token || ""}`,
+          },
+        });
+        if (!response.ok) throw new Error("Failed to delete document");
+        toast.success("Document deleted successfully");
       }
       loadUniversities();
       setPendingAction(null);
@@ -171,7 +185,7 @@ const AdminUniversities = () => {
     setPasswordError("");
     try {
       const { action, uniName, contactName, contactEmail } = pendingAction || {};
-      const backendActionName = action === "approve" ? "university approve" : action === "reject" ? "university reject" : "university remove";
+      const backendActionName = action === "approve" ? "university approve" : action === "reject" ? "university reject" : action === "deleteDocument" ? "university document remove" : "university remove";
       
       let infoString = `University: ${uniName || ''}`;
       if (contactName || contactEmail) {
@@ -214,6 +228,8 @@ const AdminUniversities = () => {
     setStudentPage(1);
     loadStudents(val);
   };
+
+
 
   const filteredUniversities = universities.filter((u) => {
     if (activeTab === "approved") return u.status === "approved";
@@ -635,6 +651,29 @@ const AdminUniversities = () => {
                             <span className="font-bold text-slate-700 text-xs">{new Date(uni.requestedAt).toLocaleDateString()}</span>
                           </div>
                         )}
+                        {activeTab === "requests" && (
+                          <div className="flex gap-2">
+                            {uni.universityIdImage ? (
+                              <>
+                                <button
+                                  onClick={() => setViewIdModal({ supervisorName: uni.supervisorName, imageUrl: uni.universityIdImage })}
+                                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-bold transition-colors"
+                                >
+                                  <Eye className="h-3.5 w-3.5" /> View ID
+                                </button>
+                                <button
+                                  onClick={() => setConfirmModal({ action: "deleteDocument", uni })}
+                                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold transition-colors"
+                                  title="Delete document"
+                                >
+                                  <X className="h-3.5 w-3.5" />
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[11px] text-slate-400 font-medium px-2 py-2">No document uploaded</span>
+                            )}
+                          </div>
+                        )}
 
                         <div className="pt-2 flex gap-2 justify-end border-t border-slate-100/80">
                           {activeTab === "approved" ? (
@@ -667,16 +706,19 @@ const AdminUniversities = () => {
                     <table className="w-full text-sm border-separate border-spacing-0 table-fixed">
                       <thead className="bg-slate-50/90">
                       <tr>
-                        <th className="w-[28%] px-4 py-3.5 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">University</th>
-                        <th className="w-[26%] px-3 py-3.5 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                        <th className="w-[14%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                        <th className="w-[25%] px-4 py-3.5 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">University</th>
+                        <th className="w-[22%] px-3 py-3.5 border-b border-slate-200 text-left text-[11px] font-bold text-slate-500 uppercase tracking-wider">Contact</th>
+                        <th className="w-[10%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
                         {activeTab === "approved" && (
                           <th className="w-[10%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Students</th>
                         )}
                         {activeTab === "requests" && (
-                          <th className="w-[14%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Requested At</th>
+                          <th className="w-[10%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Requested At</th>
                         )}
-                        <th className="px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider">Actions</th>
+                        {activeTab === "requests" && (
+                          <th className="w-[13%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Document</th>
+                        )}
+                        <th className="w-[20%] px-3 py-3.5 border-b border-slate-200 text-center text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -716,7 +758,30 @@ const AdminUniversities = () => {
                               {new Date(uni.requestedAt).toLocaleDateString()}
                             </td>
                           )}
-                          <td className="px-3 py-3 text-center align-middle">
+                          {activeTab === "requests" && (
+                            <td className="px-3 py-3 text-center align-middle whitespace-nowrap">
+                              {uni.universityIdImage ? (
+                                <div className="flex items-center justify-center gap-1.5">
+                                  <button
+                                    onClick={() => setViewIdModal({ supervisorName: uni.supervisorName, imageUrl: uni.universityIdImage })}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200 text-xs font-bold transition-colors"
+                                  >
+                                    <Eye className="h-3.5 w-3.5" /> View
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmModal({ action: "deleteDocument", uni })}
+                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200 transition-colors"
+                                    title="Delete document"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] text-slate-400 font-medium">—</span>
+                              )}
+                            </td>
+                          )}
+                          <td className="px-3 py-3 text-center align-middle whitespace-nowrap">
                             {activeTab === "approved" ? (
                               <div className="flex items-center justify-center gap-2">
                                 <button
@@ -775,7 +840,7 @@ const AdminUniversities = () => {
 
       {/* Shared backdrop overlay - persists while any popup is open, prevents flash */}
       <AnimatePresence>
-        {(confirmModal || showSecurityPopup) && (
+        {(confirmModal || showSecurityPopup || viewIdModal) && (
           <motion.div
             key="shared-overlay"
             initial={{ opacity: 0 }}
@@ -808,13 +873,15 @@ const AdminUniversities = () => {
               >
               <h3 className="text-xl font-bold text-slate-900 mb-2">
                 {confirmModal.action === "approve" ? "Approve Request?" : 
-                 confirmModal.action === "reject" ? "Reject Request?" : "Delete Record?"}
+                 confirmModal.action === "reject" ? "Reject Request?" : confirmModal.action === "deleteDocument" ? "Delete Document?" : "Delete Record?"}
               </h3>
               <p className="text-sm text-slate-500 mb-6">
                 {confirmModal.action === "approve" 
                   ? `Are you sure you want to approve access for ${confirmModal.uni.universityName}? They will receive an email and can now log in.`
                   : confirmModal.action === "reject"
                   ? `Are you sure you want to reject access for ${confirmModal.uni.universityName}? They will receive an email notification.`
+                  : confirmModal.action === "deleteDocument"
+                  ? `Are you sure you want to delete the uploaded document for ${confirmModal.uni.universityName}? This action cannot be undone.`
                   : `Are you sure you want to completely delete the record for ${confirmModal.uni.universityName}? This action cannot be undone.`}
               </p>
 
@@ -946,6 +1013,81 @@ const AdminUniversities = () => {
             </motion.div>
           )}
         </AnimatePresence>
+
+      {/* University ID Image Viewer Modal */}
+      <AnimatePresence>
+        {viewIdModal && (
+          <motion.div key="id-modal-wrapper" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[200] pointer-events-none">
+            {/* Invisible click-capture for closing popup (whole screen) */}
+            <div
+              className="fixed inset-0 z-[26] pointer-events-auto"
+              onClick={() => setViewIdModal(null)}
+            />
+
+            {/* Modal container - Restrained to main content area for positioning */}
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex items-center justify-center px-4">
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 10 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 10 }}
+                className="bg-white rounded-2xl shadow-2xl p-5 w-full max-w-lg pointer-events-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">University ID Document</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">{viewIdModal.supervisorName}</p>
+                </div>
+                <button
+                  onClick={() => setViewIdModal(null)}
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center min-h-[200px]">
+                {viewIdModal.imageUrl.toLowerCase().endsWith('.pdf') ? (
+                  <div className="flex flex-col items-center py-10 gap-3">
+                    <FileText className="h-12 w-12 text-slate-400" />
+                    <p className="text-sm font-medium text-slate-600">PDF Document</p>
+                    <a
+                      href={`${import.meta.env.VITE_BACKEND_URL?.replace('/api', '') || 'http://localhost:5000'}${viewIdModal.imageUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-colors"
+                    >
+                      Open PDF
+                    </a>
+                  </div>
+                ) : (
+                  <img
+                    src={`${import.meta.env.VITE_BACKEND_URL?.replace('/api', '') || 'http://localhost:5000'}${viewIdModal.imageUrl}`}
+                    alt="University ID"
+                    className="w-full max-h-[60vh] object-contain p-2"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.parentElement.innerHTML = '<p class="text-slate-400 text-sm py-10">Image could not be loaded.</p>';
+                    }}
+                  />
+                )}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <a
+                  href={`${import.meta.env.VITE_BACKEND_URL?.replace('/api', '') || 'http://localhost:5000'}${viewIdModal.imageUrl}`}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors"
+                >
+                  <FileText className="h-3.5 w-3.5" /> Download
+                </a>
+              </div>
+            </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </AdminNavigation>
   );

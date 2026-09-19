@@ -64,7 +64,7 @@ const AdminSettings = () => {
   const [activeRoleTab, setActiveRoleTab] = useState("all");
   const adminSession = getAdminSession();
   const isSuperAdmin = adminSession?.user?.role === "super_admin";
-  const isPM = adminSession?.user?.role === "PM";
+  const isPM = adminSession?.user?.role === "PM" || adminSession?.user?.role === "pm";
   const canManageUsers = isSuperAdmin || isPM || adminSession?.user?.permissions?.includes("users.manage");
 
   // State: Security Verification Popup
@@ -589,7 +589,7 @@ const AdminSettings = () => {
                                     <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
                                       <div className="flex justify-between items-center xl:block gap-2">
                                         <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Visible Pages</span>
-                                        {['super_admin', 'PM'].includes(user.role) ? (
+                                        {['super_admin', 'PM', 'pm'].includes(user.role) ? (
                                           <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-full border border-indigo-100">
                                             All
                                           </span>
@@ -866,7 +866,7 @@ const AdminSettings = () => {
                       let newVisiblePages = userForm.visiblePages;
                       if (newRole === 'admin' || newRole === 'developer') {
                         newVisiblePages = AVAILABLE_PAGES.filter(p => p !== 'Settings');
-                      } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'PM') {
+                      } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'PM' || newRole === 'pm') {
                         newVisiblePages = [];
                       }
                       setUserForm({...userForm, role: newRole, visiblePages: newVisiblePages});
@@ -881,7 +881,7 @@ const AdminSettings = () => {
                 
                 {/* Visible Pages Multi-Select */}
                 <div className="pt-2">
-                  {!['super_admin', 'PM'].includes(userForm.role) && (
+                  {!['super_admin', 'PM', 'pm'].includes(userForm.role) && (
                     <>
                       <div className="flex items-center justify-between mb-2">
                         <label className="block text-sm font-semibold text-slate-700">Visible Pages</label>

@@ -231,6 +231,9 @@ const getDailyRecords = async (req, res) => {
     // If the user ID corresponds to a User (admin), show all records
     // If the user ID corresponds to an Intern, show only their records
 
+    let isSpecialAccessIntern = false;
+    let specialAccessInternTraineeId = null;
+
     // First check if this is an admin user
     const adminUser = await require("../models/User").findById(userId);
 
@@ -253,21 +256,56 @@ const getDailyRecords = async (req, res) => {
         intern = await Intern.findOne({ Trainee_ID: userId });
       }
 
+      // Special access interns are stored in InactiveIntern collection.
+      // Fall back to that collection before returning a 404.
+      if (!intern && userEmail) {
+        const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+        const hasSpecialAccess = await SpecialAccessIntern.findOne({
+          email: new RegExp(`^${userEmail}$`, "i"),
+        });
+        if (hasSpecialAccess) {
+          const InactiveIntern = require("../models/InactiveIntern");
+          intern = await InactiveIntern.findOne({
+            Trainee_Email: new RegExp(`^${userEmail}$`, "i"),
+          });
+        }
+      }
+
       if (!intern) {
         return res.status(404).json({
           error: "Intern record not found. Please contact your administrator.",
           details: `No intern found for email: ${userEmail}`,
         });
       }
+      
+      // Track if this intern came from InactiveIntern (special access intern)
+      isSpecialAccessIntern = intern.constructor?.modelName === "InactiveIntern" || 
+        (intern.collection?.collectionName === "inactiveinterns");
+      specialAccessInternTraineeId = intern.Trainee_ID || null;
+      
       query.$or = [
         { internId: intern._id },
         ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
       ];
     }
 
-    const records = await DailyRecord.find(query)
+    const rawRecords = await DailyRecord.find(query)
       .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
       .sort({ createdAt: -1 });
+
+    // For special access interns, `populate` targets the Intern collection and
+    // will return null for InactiveIntern _ids. Manually inject Trainee_ID so
+    // the frontend can display the correct ID instead of "No ID Available".
+    let records = rawRecords;
+    if (isSpecialAccessIntern && specialAccessInternTraineeId) {
+      records = rawRecords.map((record) => {
+        const obj = record.toObject();
+        if (!obj.internId || !obj.internId.Trainee_ID) {
+          obj.Trainee_ID = specialAccessInternTraineeId;
+        }
+        return obj;
+      });
+    }
 
     // Update cache
     dailyRecordsCache.set(cacheKey, { data: records, timestamp: Date.now() });

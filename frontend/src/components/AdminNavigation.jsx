@@ -15,8 +15,6 @@ import {
   UserX,
   Lock,
   Lightbulb,
-  SquarePlay,
-  FileText,
   Users,
   Shield,
   LogOut,
@@ -28,7 +26,6 @@ import {
   Bell,
 } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
-import agreementPdf from "../assets/Trainee_Guidelines_Agreement[34454]_251111_135146.pdf";
 import { getAdminSession, hasAdminPermission } from "../utils/adminAuth";
 import Layout from "./Layout";
 
@@ -65,23 +62,6 @@ const AdminNavigation = ({ children }) => {
     localStorage.removeItem("adminInfo");
     navigate("/admin-login");
   };
-
-  const handleYouTubeClick = () => {
-    window.open(
-      "https://youtube.com/@digitalserendib?si=9A0u6vWxGWY5EdnG",
-      "_blank",
-      "noopener,noreferrer"
-    );
-  };
-
-  const handleDownloadAgreement = () => {
-    const link = document.createElement("a");
-    link.href = agreementPdf;
-    link.download = "Trainee_Guidelines_Agreement.pdf";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
   
   const navLinks = [
     { to: "/admin/dashboard", label: "Dashboard", icon: <Home className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
@@ -102,16 +82,13 @@ const AdminNavigation = ({ children }) => {
     { to: "/admin/announcements", label: "Notifications", icon: <Bell className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/holidays", label: "Holidays", icon: <Calendar className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "dashboard.view" },
     { to: "/admin/settings", label: "Settings", icon: <Settings className="h-[18px] w-[18px]" />, hoverColor: "#ffffff", permission: "settings.manage" },
-
-    { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-[18px] w-[18px]" />, isExternal: true },
-    { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <SquarePlay className="h-[18px] w-[18px]" />, isExternal: true },
   ].filter((link) => {
     const user = adminSession?.user;
     const role = user?.role;
 
     if (link.isExternal || link.label === "Dashboard") return true;
     
-    if (role === "super_admin" || role === "PM") return true;
+    if (role === "super_admin" || role === "PM" || role === "pm") return true;
     
     if (role === "admin" || role === "developer") {
       if (link.label === "Settings") return false;
@@ -132,6 +109,8 @@ const AdminNavigation = ({ children }) => {
     email: adminSession?.user?.email,
     role: adminSession?.user?.role ? adminSession.user.role.replace('_', ' ').toUpperCase() : 'ADMIN',
     picture: adminSession?.user?.picture || null,
+    adminId: adminSession?.user?.id || adminSession?.user?._id || null,
+    isAdmin: true,
   };
 
   return (

@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+﻿import React, { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move } from "lucide-react";
+import { X, Armchair, Calendar, Trash2, Map as MapIcon, List, Info, CheckCircle2, ZoomIn, ZoomOut, Maximize, Move, AlertTriangle } from "lucide-react";
 import Navigation from "../components/Navigation";
 import SectionTip from "../components/SectionTip";
 import { useSeatManagement, useMapScale, getLocalISODate } from "./useSeatManagement";
@@ -82,14 +83,14 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
     if (success) handleModalClose();
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-50 p-4"
+        className="fixed inset-0 backdrop-blur-sm bg-slate-900/40 flex items-center justify-center z-[9999] p-4"
       >
         <motion.div
           initial={{ scale: 0.9, y: 20, opacity: 0 }}
@@ -125,7 +126,7 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
               </div>
             </div>
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-100/50 flex items-start gap-3">
-              <span className="text-[clamp(14px,3.5vw,18px)] leading-none shrink-0 mt-0.5">âš </span>
+              <AlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={18} />
               <span className="text-[clamp(11px,2.5vw,14px)] text-amber-800 font-medium leading-tight">One seat per intern per day is allowed. Make sure this is the seat you want!</span>
             </div>
             <div className="flex gap-3 pt-5">
@@ -139,6 +140,8 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
       </motion.div>
     </AnimatePresence>
   );
+
+  return typeof document !== "undefined" ? createPortal(modalContent, document.body) : null;
 };
 
 
@@ -276,7 +279,7 @@ const InternSeatReservation = () => {
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${currentSection === "A" ? "bg-white" : "bg-slate-300"}`} />
-                <span>Section A (1–36)</span>
+                <span>Section A (1â€“36)</span>
               </button>
               <button
                 type="button"
@@ -288,13 +291,13 @@ const InternSeatReservation = () => {
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${currentSection === "B" ? "bg-white" : "bg-slate-300"}`} />
-                <span>Section B (37–88)</span>
+                <span>Section B (37â€“88)</span>
               </button>
             </div>
 
             {/* Swipe hint displayed directly under the selection buttons */}
             <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 text-center tracking-tight">
-              ← Swipe horizontally to scroll →
+              â† Swipe horizontally to scroll â†’
             </span>
           </div>
 
@@ -340,7 +343,7 @@ const InternSeatReservation = () => {
   >
     {/* Section Title */}
     <div className="text-center font-bold text-slate-700 text-lg tracking-wide pt-4">
-      Section A &bull; Seats 1–36
+      Section A &bull; Seats 1â€“36
     </div>
 
     {/* Entrance Label Inside Section A */}
@@ -367,7 +370,7 @@ const InternSeatReservation = () => {
   >
     {/* Section Title */}
     <div className="text-center font-bold text-slate-700 text-lg tracking-wide pt-4">
-      Section B &bull; Seats 37–88
+      Section B &bull; Seats 37â€“88
     </div>
   </div>
   {/* Section A Pillar Circle (centerX=180, centerY=377, radius=68) */}

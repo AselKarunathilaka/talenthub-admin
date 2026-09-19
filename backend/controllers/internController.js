@@ -836,18 +836,38 @@ const checkInternProjects = async (req, res) => {
 const uploadProfilePicture = async (req, res) => {
   try {
     const { id } = req.params;
+    let internId = id;
+
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      const mongoose = require("mongoose");
+      const Intern = mongoose.model("Intern");
+      let intern = await Intern.findOne({ Trainee_ID: id });
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_ID: id });
+      }
+      if (!intern) {
+        return res.status(404).json({ error: "Intern not found" });
+      }
+      internId = intern._id;
+    }
+
     let imageBuffer = null;
     let contentType = "image/jpeg";
 
     if (req.file) {
-      imageBuffer = fs.readFileSync(req.file.path);
-      contentType = req.file.mimetype;
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.error("Failed to delete temp file:", err);
+      if (req.file.buffer) {
+        imageBuffer = req.file.buffer;
+      } else if (req.file.path) {
+        imageBuffer = fs.readFileSync(req.file.path);
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (err) {
+          console.error("Failed to delete temp file:", err);
+        }
       }
-    } else if (req.body.imageBase64) {
+      contentType = req.file.mimetype || "image/jpeg";
+    } else if (req.body?.imageBase64) {
       let base64Data = req.body.imageBase64;
       if (base64Data.includes("base64,")) {
         const matches = base64Data.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
@@ -864,8 +884,8 @@ const uploadProfilePicture = async (req, res) => {
     }
 
     await ProfilePicture.findOneAndUpdate(
-      { internId: id },
-      { internId: id, imageBuffer, contentType },
+      { internId },
+      { internId, imageBuffer, contentType },
       { upsert: true, new: true },
     );
 
@@ -885,7 +905,11 @@ const getProfilePicture = async (req, res) => {
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       const mongoose = require("mongoose");
       const Intern = mongoose.model("Intern");
-      const intern = await Intern.findOne({ Trainee_ID: id });
+      let intern = await Intern.findOne({ Trainee_ID: id });
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_ID: id });
+      }
       if (!intern) {
         return res.status(404).json({ error: "Intern not found" });
       }
@@ -946,11 +970,20 @@ const markTourSeen = async (req, res) => {
 
     const Intern = require("../models/Intern");
 
-    const intern = await Intern.findByIdAndUpdate(
+    let intern = await Intern.findByIdAndUpdate(
       id,
       { $set: { tourSeenVersion: version } },
       { new: true },
     );
+
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findByIdAndUpdate(
+        id,
+        { $set: { tourSeenVersion: version } },
+        { new: true },
+      );
+    }
 
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
@@ -1040,7 +1073,12 @@ const submitManualCheckInRequest = async (req, res) => {
     const Intern = require("../models/Intern");
     const ManualCheckInRequest = require("../models/ManualCheckInRequest");
 
-    const intern = await Intern.findById(internId);
+    let intern = await Intern.findById(internId);
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findById(internId);
+    }
+    
     if (!intern) {
       return res.status(404).json({ message: "Intern not found." });
     }

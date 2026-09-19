@@ -130,9 +130,9 @@ exports.updateUser = async (req, res, next) => {
     const updates = {};
     if (name !== undefined) updates.name = String(name).trim();
     if (role !== undefined) {
-      if (!["admin", "supervisor"].includes(role)) return res.status(400).json({ message: "Invalid role." });
-      updates.role = role;
-      if (permissions === undefined) updates.permissions = permissionsForRole(role);
+      if (!["admin", "supervisor", "developer", "PM", "pm"].includes(role)) return res.status(400).json({ message: "Invalid role." });
+      updates.role = role === "pm" ? "PM" : role;
+      if (permissions === undefined) updates.permissions = permissionsForRole(updates.role);
     }
     if (permissions !== undefined) {
       if (!Array.isArray(permissions)) return res.status(400).json({ message: "Permissions must be an array." });

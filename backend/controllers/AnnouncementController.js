@@ -79,7 +79,11 @@ const getAllAnnouncements = async (req, res) => {
 // GET /api/announcements/active — intern-facing, returns all active unread announcements
 const getActiveAnnouncements = async (req, res) => {
   try {
-    const intern = await Intern.findById(req.user.id).lean();
+    let intern = await Intern.findById(req.user.id).lean();
+    if (!intern) {
+      const InactiveIntern = require('../models/InactiveIntern');
+      intern = await InactiveIntern.findById(req.user.id).lean();
+    }
     const readIds = intern?.readAnnouncements || [];
     const announcements = await Announcement.find({ _id: { $nin: readIds } })
       .sort({ createdAt: -1 })
@@ -95,13 +99,19 @@ const getActiveAnnouncements = async (req, res) => {
 const markAnnouncementAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const intern = await Intern.findById(req.user.id);
+    let intern = await Intern.findById(req.user.id);
+    
+    if (!intern) {
+      const InactiveIntern = require('../models/InactiveIntern');
+      intern = await InactiveIntern.findById(req.user.id);
+    }
     
     if (!intern) {
       return res.status(404).json({ message: "Intern not found." });
     }
     
-    if (!intern.readAnnouncements.includes(id)) {
+    const readAnnouncements = intern.readAnnouncements || [];
+    if (!readAnnouncements.includes(id)) {
       intern.readAnnouncements.push(id);
       await intern.save();
     }

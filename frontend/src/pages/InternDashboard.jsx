@@ -409,54 +409,74 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
 
   const loadAllData = async () => {
     setLoading(true);
-    const [fetchedInternData] = await Promise.all([
-      loadInternData(), // Load intern details including end date
-      loadAttendanceData(), // Load attendance data
-      loadGitCommitsData(), // Load git commits data
-      loadLogbooksData(), // Load actual logbooks count
-      loadRecordCounts(), // Load direct collection counts
-      loadUniversityFeedbacks(), // Load university supervisor feedbacks
-      loadHolidays(), // Load holidays
-    ]);
-    setLoading(false);
-
     const internId = effectiveInternId;
 
-    // Always fetch projects (needed for both intern and admin preview)
-    try {
-      if (internId) {
-        const projectCheck = await api.get(
-          `/interns/${internId}/projects/check`,
-        );
-        if (projectCheck?.projects) {
-          setInternProjects(projectCheck.projects);
-        }
-        if (!isPreview) {
-          const hasProject =
-            projectCheck?.hasProject === true ||
-            (Array.isArray(projectCheck?.projects) &&
-              projectCheck.projects.length > 0);
-          if (projectCheck && !hasProject) {
-            if (faceModalOpenRef.current) {
-              setProjectPopupPending(true);
-            } else {
-              setShowNoProjectPopup(true);
-            }
-          }
-        }
+    const fetchProjectsCheck = async () => {
+      try {
+        if (!internId) return null;
+        return await api.get(`/interns/${internId}/projects/check`);
+      } catch (err) {
+        console.error("Error checking intern projects:", err);
+        return null;
       }
-    } catch (err) {
-      console.error("Error checking intern projects:", err);
+    };
+
+    const fetchFaceEnrollment = async () => {
+      if (isPreview || !internId) return true;
+      try {
+        const data = await api.get("/face-attendance/profile");
+        return Boolean(data.profile && data.profile.isActive);
+      } catch (error) {
+        console.error("Error checking face enrollment:", error);
+        return true;
+      }
+    };
+
+    const [
+      fetchedInternData,
+      _,
+      __,
+      ___,
+      ____,
+      _____,
+      ______,
+      projectCheck,
+      isFaceEnrolled
+    ] = await Promise.all([
+      loadInternData(),
+      loadAttendanceData(),
+      loadGitCommitsData(),
+      loadLogbooksData(),
+      loadRecordCounts(),
+      loadUniversityFeedbacks(),
+      loadHolidays(),
+      fetchProjectsCheck(),
+      fetchFaceEnrollment()
+    ]);
+
+    if (projectCheck?.projects) {
+      setInternProjects(projectCheck.projects);
     }
 
     if (!isPreview) {
-      const shouldPromptFace = Boolean(
-        internId && !(await checkFaceEnrollment()),
-      );
+      const shouldPromptFace = Boolean(internId && !isFaceEnrolled);
 
       if (shouldPromptFace) {
         faceModalOpenRef.current = true;
         setShowFaceModal(true);
+      }
+
+      const hasProject =
+        projectCheck?.hasProject === true ||
+        (Array.isArray(projectCheck?.projects) &&
+          projectCheck.projects.length > 0);
+          
+      if (projectCheck && !hasProject) {
+        if (faceModalOpenRef.current) {
+          setProjectPopupPending(true);
+        } else {
+          setShowNoProjectPopup(true);
+        }
       }
 
       // Show onboarding tour after all other modals are settled
@@ -476,6 +496,8 @@ const InternDashboard = ({ previewInternId = null, isPreview = false }) => {
         // Non-critical
       }
     }
+    
+    setLoading(false);
   };
 
   useEffect(() => {

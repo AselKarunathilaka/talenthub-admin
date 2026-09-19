@@ -1644,9 +1644,112 @@ const getUniversityStudentGitCommits = async (req, res) => {
   }
 };
 
+/**
+ * Register University Access Request WITH ID image upload (multipart/form-data)
+ */
+const registerUniversityRequestWithId = async (req, res) => {
+  try {
+    const {
+      universityName,
+      supervisorName,
+      email,
+      department,
+      contactNumber,
+      designation,
+      notes,
+    } = req.body;
+
+    if (!universityName || !supervisorName || !email) {
+      return res.status(400).json({
+        message: "University name, supervisor name, and email are required.",
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        message: "University ID image is required.",
+      });
+    }
+
+    const normalizedEmail = String(email).toLowerCase().trim();
+    const universityIdImagePath = `/uploads/${req.file.filename}`;
+
+    // Check if user already exists
+    const existing = await UniversityUser.findOne({ email: normalizedEmail });
+
+    if (existing) {
+      if (existing.status === "approved") {
+        return res.status(400).json({
+          message: "This email is already registered and approved. You can sign in directly with Google.",
+          status: "approved",
+        });
+      }
+
+      if (existing.status === "pending") {
+        return res.status(400).json({
+          message: "A registration request for this email is already pending admin approval.",
+          status: "pending",
+        });
+      }
+
+      // If rejected, revoked, or cancelled -> Allow re-submitting
+      existing.universityName = universityName.trim();
+      existing.supervisorName = supervisorName.trim();
+      existing.department = department ? department.trim() : existing.department;
+      existing.contactNumber = contactNumber ? contactNumber.trim() : existing.contactNumber;
+      existing.designation = designation ? designation.trim() : existing.designation;
+      existing.notes = notes ? notes.trim() : existing.notes;
+      existing.universityIdImage = universityIdImagePath;
+      existing.status = "pending";
+      existing.rejectionReason = "";
+      existing.requestedAt = new Date();
+      existing.approvedAt = null;
+      existing.approvedBy = null;
+      existing.rejectedAt = null;
+      existing.rejectedBy = null;
+      await existing.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Your registration request has been re-submitted for approval. You will receive an email once reviewed.",
+        supervisor: existing,
+      });
+    }
+
+    // Create new request
+    const newSupervisor = new UniversityUser({
+      universityName: universityName.trim(),
+      supervisorName: supervisorName.trim(),
+      email: normalizedEmail,
+      department: department ? department.trim() : "",
+      contactNumber: contactNumber ? contactNumber.trim() : "",
+      designation: designation ? designation.trim() : "University Supervisor / Coordinator",
+      notes: notes ? notes.trim() : "",
+      universityIdImage: universityIdImagePath,
+      status: "pending",
+      requestedAt: new Date(),
+    });
+
+    await newSupervisor.save();
+
+    return res.status(201).json({
+      success: true,
+      message: "Registration request submitted successfully. Awaiting approval.",
+      supervisor: newSupervisor,
+    });
+  } catch (error) {
+    console.error("[UniversityAuth] Registration with ID error:", error);
+    return res.status(500).json({
+      message: "Failed to submit registration request",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   universityGoogleLogin,
   registerUniversityRequest,
+  registerUniversityRequestWithId,
   checkUniversityStatus,
   getSupervisorProfile,
   getUniversityStudents,

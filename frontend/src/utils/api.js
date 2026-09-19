@@ -1,7 +1,24 @@
 // src/utils/api.js
 import { handleUnauthorized } from "./sessionUtils";
 
-export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL;
+export const API_BASE_URL = (
+  import.meta.env.VITE_BACKEND_URL || "http://localhost:5000/api"
+).replace(/\/+$/, "");
+
+export const safeParseResponse = async (res) => {
+  const contentType = res.headers?.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return await res.json();
+  }
+  const text = await res.text();
+  const titleMatch = text.match(/<title>([^<]+)<\/title>/i);
+  const statusMsg = titleMatch
+    ? titleMatch[1].trim()
+    : `HTTP ${res.status} ${res.statusText || ""}`.trim();
+  throw new Error(
+    `Server returned error (${res.status || "Unknown"}): ${statusMsg}. Please ensure the backend server is running and reachable.`
+  );
+};
 
 export const getAuthToken = () => {
   // Prefer intern token first — most API calls need intern identity.
@@ -47,8 +64,11 @@ const checkAuth = async (res) => {
     let code = "";
     try {
       const clone = res.clone();
-      const body = await clone.json();
-      code = body.code || "";
+      const contentType = clone.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const body = await clone.json();
+        code = body.code || "";
+      }
     } catch {
       code = "";
     }
@@ -87,7 +107,7 @@ export const api = {
       headers: createHeaders(),
     });
     await checkAuth(res);
-    return res.json();
+    return safeParseResponse(res);
   },
 
   post: async (endpoint, data) => {
@@ -97,7 +117,7 @@ export const api = {
       body: JSON.stringify(data),
     });
     await checkAuth(res);
-    return res.json();
+    return safeParseResponse(res);
   },
 
   put: async (endpoint, data) => {
@@ -107,7 +127,7 @@ export const api = {
       body: JSON.stringify(data),
     });
     await checkAuth(res);
-    return res.json();
+    return safeParseResponse(res);
   },
 
   patch: async (endpoint, data) => {
@@ -117,7 +137,7 @@ export const api = {
       body: JSON.stringify(data),
     });
     await checkAuth(res);
-    return res.json();
+    return safeParseResponse(res);
   },
 
   delete: async (endpoint) => {
@@ -126,6 +146,6 @@ export const api = {
       headers: createHeaders(),
     });
     await checkAuth(res);
-    return res.json();
+    return safeParseResponse(res);
   },
 };

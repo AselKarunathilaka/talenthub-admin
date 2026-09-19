@@ -23,7 +23,7 @@ const adminGoogleLogin = async (req, res) => {
     if (!token) {
       return res.status(400).json({ message: "Missing Google token." });
     }
-    const result = await authService.adminGoogleLogin(token);
+    const result = await authService.adminGoogleLogin(token, !!req.body.accessToken);
     res.status(200).json(result);
   } catch (error) {
     res.status(401).json({ message: error.message });

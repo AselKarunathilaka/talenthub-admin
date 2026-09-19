@@ -24,9 +24,12 @@ import {
   Activity,
   Award,
   ChevronDown,
+  Upload,
+  ImageIcon,
 } from "lucide-react";
 import SeasonalBackground from "../seasonal-backgrounds/SeasonalBackground";
 import { API_BASE_URL } from "../api/apiConfig";
+import { safeParseResponse } from "../utils/api";
 import sltLogo from "../assets/sltlogoOnly.png";
 import talentHubLogo from "../assets/talenthubwhitebg.jpeg";
 import transzentLogo from "../assets/transzent.jpeg";
@@ -72,6 +75,10 @@ const UniversityLogin = () => {
   const [submittingReg, setSubmittingReg] = useState(false);
   const [seasonActive, setSeasonActive] = useState(false);
   const [isImmersive, setIsImmersive] = useState(false);
+
+  // University ID image upload state
+  const [universityIdFile, setUniversityIdFile] = useState(null);
+  const [idFilePreview, setIdFilePreview] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -120,7 +127,7 @@ const UniversityLogin = () => {
         body: JSON.stringify({ accessToken: tokenResponse.access_token }),
       });
 
-      const data = await response.json();
+      const data = await safeParseResponse(response);
 
       if (response.ok && data.token) {
         // Success
@@ -170,8 +177,12 @@ const UniversityLogin = () => {
   // Submit Registration Request
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.universityName || !formData.supervisorName || !formData.email) {
+    if (!formData.universityName || !formData.supervisorName || !formData.email || !formData.department || !formData.designation || !formData.contactNumber) {
       setError("Please fill all required fields.");
+      return;
+    }
+    if (!universityIdFile) {
+      setError("University ID image is required.");
       return;
     }
 
@@ -180,19 +191,24 @@ const UniversityLogin = () => {
       ? `${formData.supervisorTitle} ${formData.supervisorName}`.trim()
       : formData.supervisorName;
 
-    const payload = {
-      ...formData,
-      supervisorName: finalName,
-    };
+    const payload = new FormData();
+    payload.append("universityName", formData.universityName);
+    payload.append("supervisorName", finalName);
+    payload.append("email", formData.email);
+    payload.append("department", formData.department || "");
+    payload.append("contactNumber", formData.contactNumber || "");
+    payload.append("designation", formData.designation || "");
+    payload.append("notes", formData.notes || "");
+    payload.append("universityIdImage", universityIdFile);
 
     setSubmittingReg(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/university/register`, {
+      const response = await fetch(`${API_BASE_URL}/university/register-with-id`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: payload,
+        // No Content-Type header: browser sets it with boundary for multipart
       });
 
       const data = await response.json();
@@ -223,9 +239,25 @@ const UniversityLogin = () => {
     }
   };
 
+  const handleIdFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUniversityIdFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => setIdFilePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRegisterClose = () => {
+    setIsRegisterOpen(false);
+    setUniversityIdFile(null);
+    setIdFilePreview(null);
+    setError(null);
+  };
+
   return (
     <div
-      className="min-h-screen lg:h-screen text-white relative overflow-x-hidden overflow-y-auto lg:overflow-hidden flex flex-col justify-center select-none cursor-default"
+      className="min-h-screen lg:h-screen text-white relative overflow-x-hidden overflow-y-auto lg:overflow-hidden flex flex-col justify-start lg:justify-center py-4 sm:py-6 lg:py-0 select-none cursor-default"
       style={{
         background: seasonActive
           ? "#02020a"
@@ -253,12 +285,22 @@ const UniversityLogin = () => {
         </motion.div>
       )}
 
+      {/* Subtle animated grain / mesh overlay */}
+      <div
+        className="fixed inset-0 pointer-events-none opacity-[0.035]"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 1px 1px, white 1px, transparent 0)",
+          backgroundSize: "32px 32px",
+        }}
+      />
+
       {/* Glow accents */}
       <div
         className="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] rounded-full pointer-events-none opacity-20"
         style={{
           background:
-            "radial-gradient(circle, rgba(0,180,235,0.4) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(0,86,162,0.4) 0%, transparent 70%)",
         }}
       />
       <div
@@ -271,7 +313,7 @@ const UniversityLogin = () => {
 
       {/* ─── Main Content ─── */}
       <div
-        className={`relative z-10 min-h-screen lg:h-screen flex flex-col lg:flex-row items-center justify-center transition-all duration-500 ${
+        className={`relative z-10 w-full max-w-[1440px] 2xl:max-w-[1560px] mx-auto my-auto flex flex-col lg:flex-row items-center justify-center gap-6 lg:gap-14 xl:gap-20 2xl:gap-28 px-3 xs:px-4 sm:px-8 lg:px-10 xl:px-14 transition-all duration-500 ease-in-out ${
           isImmersive
             ? "opacity-0 scale-95 pointer-events-none invisible"
             : "opacity-100 scale-100 visible"
@@ -282,26 +324,26 @@ const UniversityLogin = () => {
           initial={{ opacity: 0, x: -40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
-          className="w-full lg:w-[48%] xl:w-[50%] flex items-center justify-center min-h-screen lg:min-h-0 py-4 px-4 sm:p-6 lg:py-4 xl:py-6 lg:px-8"
+          className="w-full max-w-sm sm:max-w-md lg:max-w-none lg:w-[450px] xl:w-[480px] 2xl:w-[500px] flex items-center justify-center py-2 sm:py-4"
         >
-          <div className="w-full max-w-sm lg:max-w-md py-2">
+          <div className="w-full flex flex-col justify-center">
             {/* Brand header */}
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex items-center gap-4 sm:gap-5 mb-5 sm:mb-7"
+              className="flex items-center gap-2.5 sm:gap-4 mb-4 sm:mb-5.5 lg:mb-6"
             >
               {/* Logos Group */}
-              <div className="flex items-center gap-2.5">
-                <div className="relative bg-white p-1.5 rounded-[0.8rem] shadow-lg flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 border border-white/10 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="relative bg-white p-1 sm:p-1.5 rounded-[0.7rem] sm:rounded-[0.8rem] shadow-lg flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 border border-white/10 shrink-0">
                   <img
                     src={sltLogo}
                     alt="SLT Mobitel Logo"
                     className="w-full h-full object-contain drop-shadow-sm"
                   />
                 </div>
-                <div className="relative bg-white p-1.5 rounded-[0.8rem] shadow-lg flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 border border-white/10 shrink-0">
+                <div className="relative bg-white p-1 sm:p-1.5 rounded-[0.7rem] sm:rounded-[0.8rem] shadow-lg flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 border border-white/10 shrink-0">
                   <img
                     src={talentHubLogo}
                     alt="TalentHub Logo"
@@ -310,14 +352,14 @@ const UniversityLogin = () => {
                 </div>
               </div>
 
-              <div className="w-[1px] h-10 bg-white/20 hidden sm:block mx-1"></div>
+              <div className="w-[1px] h-8 sm:h-10 bg-white/20 block mx-0.5 sm:mx-1"></div>
 
               {/* Text Group */}
               <div className="text-left flex flex-col justify-center">
-                <h1 className="text-xl sm:text-3xl font-black tracking-tight text-white leading-none drop-shadow-sm mb-1">
+                <h1 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-none drop-shadow-sm mb-0.5 sm:mb-1">
                   TalentHub
                 </h1>
-                <p className="text-[10px] sm:text-xs text-white/70 font-bold tracking-widest uppercase opacity-90">
+                <p className="text-[9px] xs:text-[10px] sm:text-xs text-white/70 font-bold tracking-wider uppercase opacity-90 truncate max-w-[185px] xs:max-w-none">
                   University Access Portal
                 </p>
               </div>
@@ -408,14 +450,11 @@ const UniversityLogin = () => {
               )}
 
               {/* Card Title */}
-              <div className="text-center mb-4">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#50b748]/20 to-[#00b4eb]/20 border border-white/10 mb-2 shadow-inner">
-                  <GraduationCap className="h-6 w-6 text-[#50b748]" />
-                </div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+              <div className="text-center mb-3 sm:mb-4">
+                <h2 className="text-lg xs:text-xl sm:text-2xl font-extrabold text-white leading-tight">
                   University Supervisor
                 </h2>
-                <p className="text-white/60 text-xs mt-1">
+                <p className="text-white/60 text-[11px] sm:text-xs mt-1 max-w-[280px] sm:max-w-none mx-auto">
                   Access student logbooks, attendance & academic evaluations
                 </p>
               </div>
@@ -426,7 +465,7 @@ const UniversityLogin = () => {
                   type="button"
                   onClick={() => googleLogin()}
                   disabled={googleLoading}
-                  className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl text-xs sm:text-sm font-bold transition-all duration-300 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed group shadow-lg hover:shadow-xl active:scale-[0.98]"
                   style={{
                     background: "#ffffff",
                     color: "#2d3748",
@@ -446,12 +485,14 @@ const UniversityLogin = () => {
                   {googleLoading ? (
                     <>
                       <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                      <span className="tracking-wider">VERIFYING SUPERVISOR...</span>
+                      <span className="tracking-wider text-[#2d3748]">
+                        VERIFYING SUPERVISOR...
+                      </span>
                     </>
                   ) : (
                     <>
                       <svg
-                        className="h-5 w-5"
+                        className="h-5 w-5 transition-transform duration-300 group-hover:scale-110"
                         viewBox="0 0 24 24"
                         xmlns="http://www.w3.org/2000/svg"
                       >
@@ -472,7 +513,9 @@ const UniversityLogin = () => {
                           fill="#EA4335"
                         />
                       </svg>
-                      <span className="tracking-wider">SIGN IN WITH GOOGLE</span>
+                      <span className="tracking-wider text-[#2d3748]">
+                        SIGN IN WITH GOOGLE
+                      </span>
                     </>
                   )}
                 </button>
@@ -553,19 +596,19 @@ const UniversityLogin = () => {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.45 }}
-              className="mt-3 rounded-xl border border-[#25D366]/20 bg-[#25D366]/10 p-2.5 text-center"
+              className="mt-2 sm:mt-2.5 rounded-xl border border-[#25D366]/20 bg-[#25D366]/10 p-2 sm:p-2.5 text-center"
             >
-              <p className="mb-2 text-xs font-medium text-white/70">
+              <p className="mb-1 text-[11px] sm:text-xs font-medium text-white/70">
                 Need assistance with university verification?
               </p>
-              <WhatsAppSupportButton className="w-full" variant="solid" />
+              <WhatsAppSupportButton className="w-full py-2 text-xs sm:text-sm" variant="solid" />
             </motion.div>
             {/* Footer Copyright */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.7, duration: 0.5 }}
-              className="mt-4 text-center"
+              className="mt-1.5 sm:mt-2 text-center pb-2"
             >
               <p className="text-[10px] sm:text-xs text-white/40 font-medium tracking-wide">
                 &copy; 2026 SLT Mobitel. All rights reserved.
@@ -579,14 +622,16 @@ const UniversityLogin = () => {
           initial={{ opacity: 0, x: 40 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7, delay: 0.15 }}
-          className="hidden lg:flex lg:w-[52%] xl:w-[50%] items-center justify-center p-4 xl:p-6"
+          className="hidden lg:flex lg:w-[520px] xl:w-[580px] 2xl:w-[620px] items-center justify-center py-2 sm:py-4"
         >
           <div
-            className="relative z-10 w-full max-w-xl rounded-[2rem] p-5 xl:p-6 flex flex-col justify-between"
+            className="relative z-10 w-full rounded-[2rem] p-5 xl:p-6 flex flex-col justify-between min-h-[500px] xl:min-h-[540px]"
             style={{
               background: "rgba(255,255,255,0.03)",
               border: "1px solid rgba(255,255,255,0.08)",
               backdropFilter: "blur(24px)",
+              boxShadow:
+                "0 12px 40px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.08)",
             }}
           >
             {/* Header */}
@@ -685,7 +730,7 @@ const UniversityLogin = () => {
             >
               {/* Close Button */}
               <button
-                onClick={() => setIsRegisterOpen(false)}
+                onClick={handleRegisterClose}
                 className="absolute top-4 right-4 p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
               >
                 <X className="h-4 w-4" />
@@ -832,7 +877,7 @@ const UniversityLogin = () => {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Faculty / Department
+                        Faculty / Department <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -845,11 +890,12 @@ const UniversityLogin = () => {
                           })
                         }
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:outline-none focus:border-[#00b4eb] focus:ring-1 focus:ring-[#00b4eb]/20"
+                        required
                       />
                     </div>
                     <div>
                       <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Designation / Role
+                        Designation / Role <span className="text-rose-500">*</span>
                       </label>
                       <input
                         type="text"
@@ -862,6 +908,7 @@ const UniversityLogin = () => {
                           })
                         }
                         className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:outline-none focus:border-[#00b4eb] focus:ring-1 focus:ring-[#00b4eb]/20"
+                        required
                       />
                     </div>
                   </div>
@@ -869,7 +916,7 @@ const UniversityLogin = () => {
                   {/* Contact Number */}
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Contact Number (Mobile / Office)
+                      Contact Number (Mobile / Office) <span className="text-rose-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -882,7 +929,63 @@ const UniversityLogin = () => {
                         })
                       }
                       className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 text-xs focus:outline-none focus:border-[#00b4eb] focus:ring-1 focus:ring-[#00b4eb]/20"
+                      required
                     />
+                  </div>
+
+                  {/* University ID Image Upload */}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      University ID / Staff ID Image <span className="text-rose-500">*</span>
+                    </label>
+                    <label
+                      htmlFor="uni-id-upload"
+                      className={`flex flex-col items-center justify-center w-full border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200 ${
+                        idFilePreview
+                          ? "border-[#50b748]/40 bg-[#50b748]/5"
+                          : "border-slate-300 bg-slate-50 hover:border-[#00b4eb] hover:bg-blue-50/30"
+                      }`}
+                    >
+                      {idFilePreview ? (
+                        <div className="relative w-full">
+                          <img
+                            src={idFilePreview}
+                            alt="University ID preview"
+                            className="w-full max-h-40 object-contain rounded-xl p-1"
+                          />
+                          <div className="absolute bottom-2 right-2">
+                            <span className="text-[10px] font-bold text-[#50b748] bg-white/90 px-2 py-0.5 rounded-lg border border-[#50b748]/20">
+                              ✓ Image Selected
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center py-4 px-3 text-center">
+                          <div className="p-2 rounded-xl bg-slate-100 mb-2">
+                            <ImageIcon className="h-6 w-6 text-slate-400" />
+                          </div>
+                          <p className="text-xs font-semibold text-slate-600">Click to upload university/staff ID</p>
+                          <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG, PDF – max 5MB</p>
+                        </div>
+                      )}
+                      <input
+                        id="uni-id-upload"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,application/pdf"
+                        className="hidden"
+                        onChange={handleIdFileChange}
+                        required
+                      />
+                    </label>
+                    {idFilePreview && (
+                      <button
+                        type="button"
+                        onClick={() => { setUniversityIdFile(null); setIdFilePreview(null); }}
+                        className="mt-1.5 text-[10px] text-rose-500 hover:text-rose-700 font-medium underline"
+                      >
+                        Remove image
+                      </button>
+                    )}
                   </div>
 
                   {/* Submit Button */}

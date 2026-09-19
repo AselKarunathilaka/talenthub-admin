@@ -2,9 +2,11 @@ const express = require("express");
 const router = express.Router();
 const universityAuth = require("../middleware/universityAuth");
 const authMiddleware = require("../middleware/authMiddleware");
+const upload = require("../middleware/uploadMiddleware");
 const {
   universityGoogleLogin,
   registerUniversityRequest,
+  registerUniversityRequestWithId,
   checkUniversityStatus,
   getSupervisorProfile,
   getUniversityStudents,
@@ -19,6 +21,7 @@ const {
 router.post("/google-login", universityGoogleLogin);
 router.post("/login", universityGoogleLogin);
 router.post("/register", registerUniversityRequest);
+router.post("/register-with-id", upload.single("universityIdImage"), registerUniversityRequestWithId);
 router.get("/status", checkUniversityStatus);
 
 // ─── University Supervisor Protected Routes ─────────────────────────────────

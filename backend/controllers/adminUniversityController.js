@@ -201,3 +201,33 @@ exports.deleteStudentFeedbackForAdmin = async (req, res) => {
   emulateSupervisor(req);
   return deleteStudentFeedback(req, res);
 };
+
+const fs = require("fs");
+const path = require("path");
+
+exports.deleteUniversityDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const university = await UniversityUser.findById(id);
+
+    if (!university) {
+      return res.status(404).json({ error: "University not found" });
+    }
+
+    if (university.universityIdImage) {
+      // Remove file from filesystem if it exists
+      const filePath = path.join(__dirname, "..", university.universityIdImage);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      
+      university.universityIdImage = "";
+      await university.save();
+    }
+
+    res.status(200).json({ message: "Document deleted successfully" });
+  } catch (error) {
+    console.error("[AdminUniversityController] Error deleting document:", error);
+    res.status(500).json({ error: "Failed to delete document" });
+  }
+};

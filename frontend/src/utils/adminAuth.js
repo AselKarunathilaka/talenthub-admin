@@ -5,5 +5,5 @@ export const getAdminSession = () => {
 
 export const hasAdminPermission = (permission) => {
   const user = getAdminSession()?.user;
-  return user?.role === "super_admin" || user?.permissions?.includes(permission);
+  return user?.role === "super_admin" || user?.role === "PM" || user?.role === "pm" || user?.permissions?.includes(permission);
 };

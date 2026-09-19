@@ -11,6 +11,87 @@ const upload = multer({
   storage: multer.memoryStorage()
 });
 
+const AdminProfilePicture = require("../models/AdminProfilePicture");
+
+// ── Admin profile picture (PUBLIC GET, authenticated POST) ──────────────────
+// These must be defined BEFORE the router.use(requireAdmin) block.
+const profileUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// GET /admin/profile-picture/:userId  → serve image (public, no auth needed)
+router.get("/profile-picture/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const pic = await AdminProfilePicture.findOne({ userId });
+    if (pic && pic.imageBuffer) {
+      res.writeHead(200, {
+        "Content-Type": pic.contentType,
+        "Content-Length": pic.imageBuffer.length,
+        "Cache-Control": "public, max-age=86400",
+      });
+      return res.end(pic.imageBuffer);
+    }
+    // Fall back to User.picture (Google OAuth)
+    const User = require("../models/User");
+    const user = await User.findById(userId).select("picture");
+    if (user && user.picture) {
+      return res.redirect(302, user.picture);
+    }
+    return res.status(404).json({ error: "Profile picture not found" });
+  } catch (err) {
+    console.error("Error fetching admin profile picture:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/profile-picture/:userId  → upload (authenticated)
+router.post("/profile-picture/:userId", authMiddleware, profileUpload.single("image"), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    // Only allow users to update their own picture (unless super_admin/PM)
+    const tokenId = String(req.user?.id || req.user?._id || "");
+    const role = req.user?.role;
+    if (tokenId !== userId && role !== "super_admin" && role !== "PM" && role !== "pm") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    let imageBuffer, contentType;
+
+    if (req.file) {
+      imageBuffer = req.file.buffer;
+      contentType = req.file.mimetype;
+    } else if (req.body?.imageBase64) {
+      let b64 = req.body.imageBase64;
+      const matches = b64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        contentType = matches[1];
+        b64 = matches[2];
+      } else {
+        contentType = "image/jpeg";
+      }
+      imageBuffer = Buffer.from(b64, "base64");
+    } else {
+      return res.status(400).json({ error: "No image provided" });
+    }
+
+    await AdminProfilePicture.findOneAndUpdate(
+      { userId },
+      { userId, imageBuffer, contentType },
+      { upsert: true, new: true }
+    );
+    return res.status(200).json({ message: "Admin profile picture uploaded successfully" });
+  } catch (err) {
+    console.error("Error uploading admin profile picture:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 const {
   getDashboardStats,
   getInternReport,
@@ -50,6 +131,7 @@ const {
   addStudentFeedbackForAdmin,
   updateStudentFeedbackForAdmin,
   deleteStudentFeedbackForAdmin,
+  deleteUniversityDocument,
 } = require("../controllers/adminUniversityController");
 const {
   exportOnLeaveExcel,
@@ -208,6 +290,7 @@ router.get("/universities", getAllUniversities);
 router.put("/universities/:id/approve", approveUniversityRequest);
 router.put("/universities/:id/reject", rejectUniversityRequest);
 router.delete("/universities/:id", deleteUniversityRequest);
+router.delete("/universities/:id/delete-document", deleteUniversityDocument);
 router.get("/universities/:universityName/students", getUniversityStudentsForAdmin);
 router.get("/universities/students/:internId", getUniversityStudentDetailsForAdmin);
 router.get("/universities/students/:internId/git-commits", getUniversityStudentGitCommitsForAdmin);

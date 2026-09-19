@@ -5,6 +5,16 @@
   --breakpoint-xm: 425px;
 }
 
+::selection {
+  background-color: rgba(0, 180, 235, 0.35);
+  color: #ffffff;
+}
+
+::-moz-selection {
+  background-color: rgba(0, 180, 235, 0.35);
+  color: #ffffff;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

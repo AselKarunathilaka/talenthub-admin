@@ -20,7 +20,7 @@ const requireAdmin = async (req, res, next) => {
 };
 
 const requirePermission = (permission) => (req, res, next) => {
-  if (req.user?.role === "super_admin" || req.user?.permissions?.includes(permission)) return next();
+  if (req.user?.role === "super_admin" || req.user?.role === "PM" || req.user?.role === "pm" || req.user?.permissions?.includes(permission)) return next();
   return res.status(403).json({ message: `Permission required: ${permission}`, code: "FORBIDDEN" });
 };
 
