@@ -526,6 +526,35 @@ const AdminManualAttendance = () => {
                         <span className="text-[10px] sm:text-xs font-bold">Meeting</span>
                       </button>
                     </div>
+
+                    <AnimatePresence>
+                      {mode === "meeting" && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                          animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+                          exit={{ opacity: 0, height: 0, marginTop: 0 }}
+                          className="overflow-hidden flex flex-col"
+                        >
+                          <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Meeting Name <span className="text-red-400">*</span></label>
+                          <div className="relative">
+                            <select
+                              value={meetingName}
+                              onChange={(e) => setMeetingName(e.target.value)}
+                              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-[#000066]/20 focus:border-[#000066]/40 outline-none transition-all shadow-sm appearance-none cursor-pointer text-slate-700"
+                            >
+                              <option value="" disabled>Select a meeting type...</option>
+                              <option value="General Meeting">General Meeting</option>
+                              <option value="Discussion">Discussion</option>
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-slate-500">
+                              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                              </svg>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </motion.div>
                 </div>
 
