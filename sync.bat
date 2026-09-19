@@ -5,8 +5,8 @@ echo ========================================================
 echo.
 
 :: Define Paths
-set DEV_DIR="G:\github\TalentHub"
-set PROD_DIR="G:\github\Source-Code"
+set DEV_DIR="copy_your_local_path_to_Lakindu24-TalentHub_repo_here_inside_quotation_marks"
+set PROD_DIR="copy_your_local_path_to_DevoraOrg-SourceCode_repo_here_inside_quotation_marks"
 
 :: Run Robocopy
 :: /MIR  -> Mirror directory (copy new, update changed, delete removed)
