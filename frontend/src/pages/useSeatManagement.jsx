@@ -25,20 +25,36 @@ export const useMapScale = (mapWidth, mapHeight, viewportRef, trigger) => {
         fitScale = Math.min(scaleX, scaleY, 1);
       }
 
-      setScale(fitScale);
+      // Clamp to prevent infinite shrinking
+      fitScale = Math.min(Math.max(fitScale, 0.4), 1);
+
+      setScale(prev => {
+        if (Math.abs(prev - fitScale) < 0.02) {
+          return prev;
+        }
+        return fitScale;
+      });
       setReady(true);
     };
 
-    updateScale();
-    
+    let rafId;
+    const observerCallback = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(updateScale);
+    };
+
+    observer = new ResizeObserver(observerCallback);
     if (viewportRef.current) {
-      observer = new ResizeObserver(() => updateScale());
       observer.observe(viewportRef.current);
     }
+    
+    // Initial update
+    updateScale();
     
     window.addEventListener('resize', updateScale);
 
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       if (observer) {
         observer.disconnect();
       }

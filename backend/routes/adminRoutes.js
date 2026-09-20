@@ -11,6 +11,87 @@ const upload = multer({
   storage: multer.memoryStorage()
 });
 
+const AdminProfilePicture = require("../models/AdminProfilePicture");
+
+// ── Admin profile picture (PUBLIC GET, authenticated POST) ──────────────────
+// These must be defined BEFORE the router.use(requireAdmin) block.
+const profileUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// GET /admin/profile-picture/:userId  → serve image (public, no auth needed)
+router.get("/profile-picture/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    const pic = await AdminProfilePicture.findOne({ userId });
+    if (pic && pic.imageBuffer) {
+      res.writeHead(200, {
+        "Content-Type": pic.contentType,
+        "Content-Length": pic.imageBuffer.length,
+        "Cache-Control": "public, max-age=86400",
+      });
+      return res.end(pic.imageBuffer);
+    }
+    // Fall back to User.picture (Google OAuth)
+    const User = require("../models/User");
+    const user = await User.findById(userId).select("picture");
+    if (user && user.picture) {
+      return res.redirect(302, user.picture);
+    }
+    return res.status(404).json({ error: "Profile picture not found" });
+  } catch (err) {
+    console.error("Error fetching admin profile picture:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /admin/profile-picture/:userId  → upload (authenticated)
+router.post("/profile-picture/:userId", authMiddleware, profileUpload.single("image"), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: "Invalid user id" });
+    }
+    // Only allow users to update their own picture (unless super_admin/PM)
+    const tokenId = String(req.user?.id || req.user?._id || "");
+    const role = req.user?.role;
+    if (tokenId !== userId && role !== "super_admin" && role !== "PM" && role !== "pm") {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    let imageBuffer, contentType;
+
+    if (req.file) {
+      imageBuffer = req.file.buffer;
+      contentType = req.file.mimetype;
+    } else if (req.body?.imageBase64) {
+      let b64 = req.body.imageBase64;
+      const matches = b64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+      if (matches && matches.length === 3) {
+        contentType = matches[1];
+        b64 = matches[2];
+      } else {
+        contentType = "image/jpeg";
+      }
+      imageBuffer = Buffer.from(b64, "base64");
+    } else {
+      return res.status(400).json({ error: "No image provided" });
+    }
+
+    await AdminProfilePicture.findOneAndUpdate(
+      { userId },
+      { userId, imageBuffer, contentType },
+      { upsert: true, new: true }
+    );
+    return res.status(200).json({ message: "Admin profile picture uploaded successfully" });
+  } catch (err) {
+    console.error("Error uploading admin profile picture:", err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+
 const {
   getDashboardStats,
   getInternReport,
@@ -29,10 +110,29 @@ const {
   getInternGitCommits,
 } = require("../controllers/adminController");
 const {
+  getInternPerformance,
+} = require("../controllers/internPerformanceController");
+const {
+  getAdminAnalytics,
+} = require("../controllers/adminAnalyticsController");
+const {
   getPastInternLocations,
   getPastInternDistrictCounts,
   getPastInternSyncStats,
 } = require("../controllers/pastInternController");
+const {
+  getAllUniversities,
+  approveUniversityRequest,
+  rejectUniversityRequest,
+  deleteUniversityRequest,
+  getUniversityStudentsForAdmin,
+  getUniversityStudentDetailsForAdmin,
+  getUniversityStudentGitCommitsForAdmin,
+  addStudentFeedbackForAdmin,
+  updateStudentFeedbackForAdmin,
+  deleteStudentFeedbackForAdmin,
+  deleteUniversityDocument,
+} = require("../controllers/adminUniversityController");
 const {
   exportOnLeaveExcel,
 } = require("../controllers/onLeaveExportController");
@@ -77,12 +177,16 @@ const {
   bulkMarkAttendance,
   uploadAttendancePdf,
   extractIdsFromImages,
+  getPendingManualRequests,
+  approveManualRequest,
+  rejectManualRequest,
 } = require("../controllers/manualAttendanceController");
 
 // Admin intern details — attendance (own controller, admin-only feature)
 const {
   resolveInternId,
   getAdminInternAttendance,
+  getInternRecordCounts,
 } = require("../controllers/adminInternDetailsController");
 
 // ── All routes below require authentication ───────────────────────────────────
@@ -100,6 +204,12 @@ router.get("/on-leave/export", requirePermission("interns.view"), exportOnLeaveE
 
 // Dashboard statistics
 router.get("/dashboard/stats", getDashboardStats);
+
+// Active intern performance overview
+router.get("/intern-performance", getInternPerformance);
+
+// Intern analytics overview
+router.get("/analytics", getAdminAnalytics);
 
 // Search interns
 router.get("/search/interns", searchInterns);
@@ -127,6 +237,9 @@ router.get(
   resolveInternId,
   getAdminInternAttendance,
 );
+
+// Get direct collection counts (daily attendance, meeting attendance, logbook)
+router.get("/intern/:internId/record-counts", getInternRecordCounts);
 
 // Get individual intern's real GitHub commits (per TalentTrail project repos)
 router.get("/intern/:internId/git-commits", getInternGitCommits);
@@ -172,6 +285,19 @@ router.get("/announcements", getAllAnnouncements);
 router.post("/announcements", createAnnouncement);
 router.delete("/announcements/:id", deleteAnnouncement);
 
+// University Management (admin only)
+router.get("/universities", getAllUniversities);
+router.put("/universities/:id/approve", approveUniversityRequest);
+router.put("/universities/:id/reject", rejectUniversityRequest);
+router.delete("/universities/:id", deleteUniversityRequest);
+router.delete("/universities/:id/delete-document", deleteUniversityDocument);
+router.get("/universities/:universityName/students", getUniversityStudentsForAdmin);
+router.get("/universities/students/:internId", getUniversityStudentDetailsForAdmin);
+router.get("/universities/students/:internId/git-commits", getUniversityStudentGitCommitsForAdmin);
+router.post("/universities/students/:internId/feedback", addStudentFeedbackForAdmin);
+router.put("/universities/students/:internId/feedback/:feedbackId", updateStudentFeedbackForAdmin);
+router.delete("/universities/students/:internId/feedback/:feedbackId", deleteStudentFeedbackForAdmin);
+
 // GET  /admin/attendance/by-date?date=YYYY-MM-DD  → list of present interns (meeting + daily combined)
 router.get("/attendance/by-date", getAttendanceByDate);
 
@@ -203,6 +329,7 @@ router.get(
 // Admin controlled attendance policy used by intern face/QR attendance flows
 router.get("/attendance/settings", getAttendanceSettings);
 router.put("/attendance/settings", updateAttendanceSettings);
+router.post("/attendance/verify-security", requireAdmin, require("../controllers/attendanceSettingsController").verifySecurityPassword);
 
 // Attendance — face/QR meeting pin
 router.get("/face-attendance/meeting-pin", getCurrentMeetingPin);
@@ -229,6 +356,10 @@ router.post(
   extractIdsFromImages
 );
 
+router.get("/manual-attendance/requests/pending", getPendingManualRequests);
+router.post("/manual-attendance/requests/:id/approve", approveManualRequest);
+router.post("/manual-attendance/requests/:id/reject", rejectManualRequest);
+
 // Manually trigger TalentTrail sync
 router.post("/sync/talent-trail", async (req, res) => {
   try {
@@ -236,6 +367,28 @@ router.post("/sync/talent-trail", async (req, res) => {
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get all unique synced TalentTrail projects
+router.get("/talenttrail/projects", async (req, res) => {
+  try {
+    const InternTalentTrailSync = require("../models/InternTalentTrailSync");
+    const internCode = req.query.internCode;
+
+    if (internCode) {
+      const sync = await InternTalentTrailSync.findOne({ internCode }).lean();
+      return res.json(sync && sync.projects ? sync.projects : []);
+    }
+
+    const projects = await InternTalentTrailSync.aggregate([
+      { $unwind: "$projects" },
+      { $group: { _id: "$projects.projectId", project: { $first: "$projects" } } },
+      { $replaceRoot: { newRoot: "$project" } }
+    ]);
+    res.json(projects);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

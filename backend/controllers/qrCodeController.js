@@ -118,39 +118,43 @@ const generateQRCode = async (req, res) => {
     const { internId, type, projectName, meetingTitle, limit } = req.query;
     const normalizedProjectName = normalizeProjectName(projectName || meetingTitle || "General Meeting");
     
-    let sessionId;
+    const activeToken = Math.random().toString(36).substr(2, 9);
+    let baseSessionId;
+    let qrPayload;
+
     if (type === 'daily') {
       // Generate QR for daily attendance
       if (internId) {
-        sessionId = `daily_attendance_${internId}_${Date.now()}`;
+        baseSessionId = `daily_attendance_${internId}_${Date.now()}`;
       } else {
-        sessionId = `daily_attendance_${Date.now()}`;
+        baseSessionId = `daily_attendance_${Date.now()}`;
       }
+      qrPayload = `${baseSessionId}::${activeToken}`;
     } else {
       // Generate QR for meeting attendance (JSON format expected by scanner)
       // Keep meetingTitle for backward compatibility with older scanners.
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      baseSessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const meetingData = {
         type: 'meeting_attendance',
         projectName: normalizedProjectName,
         meetingTitle: normalizedProjectName,
         timestamp: Date.now(),
-        sessionId: sessionId
+        sessionId: baseSessionId,
+        token: activeToken
       };
 
       if (internId) {
         meetingData.internId = internId;
       }
 
-      sessionId = JSON.stringify(meetingData);
+      qrPayload = JSON.stringify(meetingData);
     }
     
-    const qrCode = await QRCode.toDataURL(sessionId); 
+    const qrCode = await QRCode.toDataURL(qrPayload); 
 
     // Store in memory
-    const extractedSessionId = type === 'daily' ? sessionId : JSON.parse(sessionId).sessionId;
-    activeQrSessions.set(extractedSessionId, {
-      sessionId: extractedSessionId,
+    activeQrSessions.set(baseSessionId, {
+      sessionId: baseSessionId,
       type,
       projectName: normalizedProjectName,
       meetingTitle: normalizedProjectName,
@@ -158,12 +162,55 @@ const generateQRCode = async (req, res) => {
       status: "Active",
       createdAt: Date.now(),
       expiresAt: Date.now() + 5 * 60 * 1000,
-      attendees: []
+      attendees: [],
+      activeToken,
+      previousToken: null,
+      rotatedAt: Date.now()
     });
 
-    res.status(200).json({ qrCode, sessionId: extractedSessionId, type });  
+    res.status(200).json({ qrCode, sessionId: baseSessionId, type });  
   } catch (error) {
     res.status(500).json({ message: "Error generating QR Code", error: error.message });
+  }
+};
+
+const rotateSession = async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+    const session = activeQrSessions.get(sessionId);
+    
+    if (!session) {
+      return res.status(404).json({ message: "Session not found" });
+    }
+    
+    if (session.status !== "Active") {
+      return res.status(400).json({ message: "Session is no longer active" });
+    }
+
+    const newToken = Math.random().toString(36).substr(2, 9);
+    session.previousToken = session.activeToken;
+    session.activeToken = newToken;
+    session.rotatedAt = Date.now();
+    
+    let qrPayload;
+    if (session.type === 'daily') {
+      qrPayload = `${session.sessionId}::${newToken}`;
+    } else {
+      const meetingData = {
+        type: 'meeting_attendance',
+        projectName: session.projectName,
+        meetingTitle: session.meetingTitle,
+        timestamp: Date.now(),
+        sessionId: session.sessionId,
+        token: newToken
+      };
+      qrPayload = JSON.stringify(meetingData);
+    }
+
+    const qrCode = await QRCode.toDataURL(qrPayload);
+    res.status(200).json({ qrCode, sessionId: session.sessionId, type: session.type });
+  } catch (error) {
+    res.status(500).json({ message: "Error rotating QR session", error: error.message });
   }
 };
 
@@ -337,6 +384,43 @@ const scanQRCode = async (req, res) => {
   }
 
   try {
+    // Extract token and base session ID for dynamic position security validation
+    let extractedSessionId = qrCode;
+    let extractedToken = null;
+    
+    try {
+      const payload = JSON.parse(qrCode);
+      if (payload.sessionId) extractedSessionId = payload.sessionId;
+      if (payload.token) extractedToken = payload.token;
+    } catch (e) {
+      if (qrCode.includes("::")) {
+        const parts = qrCode.split("::");
+        extractedSessionId = parts[0];
+        extractedToken = parts[1];
+      }
+    }
+
+    const session = activeQrSessions.get(extractedSessionId);
+
+    if (session) {
+      if (session.status === "Ended" || session.status === "Expired") {
+        return res.status(400).json({ message: "This QR session has been ended by the admin." });
+      }
+      
+      if (!extractedToken) {
+        return res.status(400).json({ message: "Invalid QR code format. Missing security token." });
+      }
+
+      let isTokenValid = false;
+      if (extractedToken === session.activeToken) {
+        isTokenValid = true;
+      }
+
+      if (!isTokenValid) {
+        return res.status(400).json({ message: "QR code is expired. Please scan the latest QR code." });
+      }
+    }
+
     // Validate QR code format based on scan type
     if (scanType === 'daily') {
       // Accept both daily_attendance_ and attendance_session_ for backward compatibility
@@ -407,14 +491,9 @@ const scanQRCode = async (req, res) => {
       }
 
       // Update in-memory session for real-time presentation panel
-      let extractedSessionId = qrCode;
-      try {
-        const payload = JSON.parse(qrCode);
-        if (payload.sessionId) extractedSessionId = payload.sessionId;
-      } catch (e) {}
-
-      const session = activeQrSessions.get(extractedSessionId);
+      // session is already retrieved above
       if (session) {
+
         const internData = await Intern.findById(internId);
         if (internData && !session.attendees.some(a => a.internId.toString() === internData._id.toString())) {
           session.attendees.push({
@@ -457,13 +536,7 @@ const scanQRCode = async (req, res) => {
       }
 
       // Update in-memory session for real-time presentation panel
-      let extractedSessionId = qrCode;
-      try {
-        const payload = JSON.parse(qrCode);
-        if (payload.sessionId) extractedSessionId = payload.sessionId;
-      } catch (e) {}
-
-      const session = activeQrSessions.get(extractedSessionId);
+      // session is already retrieved above
       if (session) {
         const internData = await Intern.findById(internId);
         if (internData && !session.attendees.some(a => a.internId.toString() === internData._id.toString())) {
@@ -584,6 +657,21 @@ const scanMeetingQRCode = async (req, res) => {
           session.status = "Expired";
           return res.status(400).json({ message: "QR code is expired." });
         }
+        
+        // Strict token validation
+        if (!qrPayload.token) {
+          return res.status(400).json({ message: "Invalid QR code format. Missing security token." });
+        }
+        
+        let isTokenValid = false;
+        if (qrPayload.token === session.activeToken) {
+          isTokenValid = true;
+        }
+        
+        if (!isTokenValid) {
+          return res.status(400).json({ message: "QR code is expired. Please scan the latest QR code." });
+        }
+        
         // Check if already in attendees
         if (session.attendees.some(a => a.internId.toString() === internId.toString())) {
           return res.status(400).json({ message: "Attendance for this meeting is already marked." });
@@ -664,5 +752,6 @@ module.exports = {
   scanQRCode, 
   scanMeetingQRCode,
   getSessionStatus,
-  expireSession
+  expireSession,
+  rotateSession
 };

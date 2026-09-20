@@ -564,6 +564,150 @@ const getPendingCheckIns = async (req, res) => {
   }
 };
 
+/**
+ * Admin book a seat for an intern
+ * @route POST /api/admin/seat-bookings/book
+ * @access Private (Admin only)
+ */
+const adminBookSeat = async (req, res) => {
+  try {
+    const { seatNumber, date, traineeId } = req.body;
+
+    if (!seatNumber || !date || !traineeId) {
+      return res.status(400).json({
+        success: false,
+        message: "Seat number, date, and Trainee ID are required",
+      });
+    }
+
+    // Find intern by Trainee_ID or email
+    const trimmedId = String(traineeId).trim();
+    const intern = await Intern.findOne({
+      $or: [
+        { Trainee_ID: { $regex: new RegExp(`^${trimmedId}$`, "i") } },
+        { Trainee_Email: { $regex: new RegExp(`^${trimmedId}$`, "i") } },
+      ],
+    });
+
+    if (!intern) {
+      return res.status(404).json({
+        success: false,
+        message: `Intern with Trainee ID '${trimmedId}' not found`,
+      });
+    }
+
+    const bookingDate = new Date(date + "T00:00:00.000Z");
+
+    // Check if seat is locked
+    const isLocked = await LockedSeat.findOne({ seatNumber });
+    if (isLocked) {
+      return res.status(400).json({
+        success: false,
+        message: `Seat ${seatNumber} is currently locked. Please unlock it first.`,
+      });
+    }
+
+    // Check if seat has an active booking for this date
+    const nextDay = new Date(bookingDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+
+    const existingBooking = await SeatBooking.findOne({
+      seatNumber,
+      bookingDate: { $gte: bookingDate, $lt: nextDay },
+      status: "active",
+    });
+
+    if (existingBooking) {
+      return res.status(400).json({
+        success: false,
+        message: `Seat ${seatNumber} is already booked for this date`,
+      });
+    }
+
+    // Remove any cancelled bookings for this seat and date to avoid unique index violation
+    await SeatBooking.deleteMany({
+      seatNumber,
+      bookingDate: { $gte: bookingDate, $lt: nextDay },
+      status: "cancelled",
+    });
+
+    // Create booking
+    const booking = await SeatBooking.create({
+      seatNumber,
+      internId: intern._id,
+      traineeId: intern.Trainee_ID,
+      email: intern.Trainee_Email,
+      bookingDate,
+      bookedAt: new Date(),
+      status: "active",
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Seat ${seatNumber} successfully booked for ${intern.Trainee_Name} (${intern.Trainee_ID})`,
+      booking,
+    });
+  } catch (error) {
+    console.error("Error admin booking seat:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to book seat",
+    });
+  }
+};
+
+/**
+ * Admin cancel a seat booking
+ * @route POST /api/admin/seat-bookings/cancel
+ * @access Private (Admin only)
+ */
+const adminCancelBooking = async (req, res) => {
+  try {
+    const { bookingId, seatNumber, date } = req.body;
+
+    let query;
+    if (bookingId) {
+      query = { _id: bookingId };
+    } else if (seatNumber && date) {
+      const bookingDate = new Date(date + "T00:00:00.000Z");
+      const nextDay = new Date(bookingDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      query = {
+        seatNumber,
+        bookingDate: { $gte: bookingDate, $lt: nextDay },
+        status: "active",
+      };
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID or seat number and date are required",
+      });
+    }
+
+    const booking = await SeatBooking.findOne(query);
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Active booking not found",
+      });
+    }
+
+    booking.status = "cancelled";
+    await booking.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Booking for Seat ${booking.seatNumber} has been cancelled`,
+    });
+  } catch (error) {
+    console.error("Error admin cancelling booking:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Failed to cancel booking",
+    });
+  }
+};
+
 module.exports = {
   getSeatBookings,
   getBookingStats,
@@ -573,4 +717,6 @@ module.exports = {
   lockSeat,
   unlockSeat,
   getPendingCheckIns,
+  adminBookSeat,
+  adminCancelBooking,
 };

@@ -22,6 +22,20 @@ class LeaveRequestRepository {
     }).select("_id").sort({ submittedAt: -1 });
   }
 
+  async findStudyLeavesForYear(internId, year) {
+    const startOfYear = new Date(year, 0, 1);
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+    
+    return await LeaveRequest.find({
+      intern: internId,
+      requestType: "study_leave",
+      status: { $in: ["Pending", "Approved"] },
+      // Leave intersects with this year if it starts before year-end AND ends after year-start
+      leaveDate: { $lte: endOfYear },
+      studyEndDate: { $gte: startOfYear },
+    }).select("leaveDate studyEndDate status");
+  }
+
   async findByInternId(internId, options = {}) {
     const { status, date, limit, skip, requestType } = options;
     const filter = { intern: internId };

@@ -259,6 +259,66 @@ export const adminSeatApi = {
   },
 
   /**
+   * Admin book a seat for an intern
+   * @param {number} seatNumber - Seat number to book
+   * @param {string} date - Booking date (YYYY-MM-DD)
+   * @param {string} traineeId - Intern's Trainee ID or email
+   * @returns {Promise<Object>} - { success, message, booking }
+   */
+  bookSeat: async (seatNumber, date, traineeId) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seat-bookings/book`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ seatNumber, date, traineeId }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to book seat: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error booking seat:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Admin cancel a seat booking
+   * @param {Object} options - { bookingId, seatNumber, date }
+   * @returns {Promise<Object>} - { success, message }
+   */
+  cancelBooking: async ({ bookingId, seatNumber, date }) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/admin/seat-bookings/cancel`,
+        {
+          method: "POST",
+          headers: getHeaders(),
+          body: JSON.stringify({ bookingId, seatNumber, date }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || `Failed to cancel booking: ${response.status}`);
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error cancelling booking:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Get interns who booked a seat but haven't scanned daily attendance
    * @param {string} date - Date filter (YYYY-MM-DD)
    * @returns {Promise<Object>} - { success, date, pendingCheckIns, count }

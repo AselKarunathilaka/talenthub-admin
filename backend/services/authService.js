@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
 const gateStaffRepository = require("../repositories/gateStaffRepository");
 const { permissionsForRole, permissionsForUser } = require("../config/adminPermissions");
-const Supervisor = require("../models/Supervisor");
+const Staff = require("../models/Staff");
 const User = require("../models/User");
 const https = require("https");
 
@@ -24,7 +24,7 @@ class AuthService {
     );
     return {
       token,
-      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, permissions },
+      user: { id: user._id, name: user.name, email: user.email, picture: user.picture, role, permissions, requireSecurityCheck: user.requireSecurityCheck, visiblePages: user.visiblePages },
       message: "Login successful!",
     };
   }
@@ -107,30 +107,60 @@ class AuthService {
    * In both cases, the authenticated email is checked against the
    * `supervisors` allowlist before a session is issued.
    */
-  async adminGoogleLogin(credentialOrCode) {
+  async adminGoogleLogin(credentialOrCode, isAccessToken = false) {
     let payload;
 
-    if (credentialOrCode && credentialOrCode.startsWith("ya29.")) {
-      // ── Access token flow (useGoogleLogin implicit) ──────────────────────
-      // Verify by fetching Google userinfo
-      const googlePayload = await this._fetchGoogleUserInfo(credentialOrCode);
-      if (!googlePayload || !googlePayload.email) {
-        throw new Error("Failed to verify Google identity. Please try again.");
+    // Try access token flow first if indicated or if token starts with ya29.
+    if (isAccessToken || (credentialOrCode && credentialOrCode.startsWith("ya29."))) {
+      try {
+        const googlePayload = await this._fetchGoogleUserInfo(credentialOrCode);
+        if (googlePayload && googlePayload.email) {
+          payload = {
+            email: googlePayload.email,
+            email_verified: googlePayload.email_verified !== false,
+            name: googlePayload.name,
+            picture: googlePayload.picture,
+            sub: googlePayload.sub,
+          };
+        }
+      } catch (err) {
+        console.warn("Access token lookup failed, trying ID token:", err.message);
       }
-      payload = {
-        email: googlePayload.email,
-        email_verified: googlePayload.email_verified,
-        name: googlePayload.name,
-        picture: googlePayload.picture,
-        sub: googlePayload.sub,
-      };
-    } else {
-      // ── ID token flow (Google One Tap / credential) ───────────────────────
-      const ticket = await client.verifyIdToken({
-        idToken: credentialOrCode,
-        audience: process.env.GOOGLE_CLIENT_ID,
-      });
-      payload = ticket.getPayload();
+    }
+
+    // If not resolved by access token, try ID token verification
+    if (!payload) {
+      try {
+        const ticket = await client.verifyIdToken({
+          idToken: credentialOrCode,
+          audience: process.env.GOOGLE_CLIENT_ID,
+        });
+        payload = ticket.getPayload();
+      } catch (idErr) {
+        // As a last resort, if not already tried, attempt userinfo lookup
+        if (!isAccessToken && !credentialOrCode.startsWith("ya29.")) {
+          try {
+            const googlePayload = await this._fetchGoogleUserInfo(credentialOrCode);
+            if (googlePayload && googlePayload.email) {
+              payload = {
+                email: googlePayload.email,
+                email_verified: googlePayload.email_verified !== false,
+                name: googlePayload.name,
+                picture: googlePayload.picture,
+                sub: googlePayload.sub,
+              };
+            }
+          } catch {
+            throw new Error(`Google authentication failed: ${idErr.message}`);
+          }
+        } else {
+          throw new Error(`Google authentication failed: ${idErr.message}`);
+        }
+      }
+    }
+
+    if (!payload || !payload.email) {
+      throw new Error("Failed to verify Google account details.");
     }
 
     if (!payload.email_verified) {
@@ -139,11 +169,11 @@ class AuthService {
 
     const normalizedEmail = payload.email.toLowerCase().trim();
 
-    // 2. Check allowlist — supervisors collection (case-insensitive)
-    const supervisor = await Supervisor.findOne({ email: normalizedEmail });
-    if (!supervisor) {
+    // 2. Check allowlist — staff collection (case-insensitive)
+    const staff = await Staff.findOne({ email: normalizedEmail });
+    if (!staff) {
       throw new Error(
-        "Access denied. Your Google account is not registered as an authorized supervisor. " +
+        "Access denied. Your Google account is not registered as an authorized staff member. " +
         "Please contact the system administrator."
       );
     }
@@ -151,11 +181,24 @@ class AuthService {
     // 3. Find or create the User record
     let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
-      // First-time sign-in: auto-provision the admin User from supervisor record
-      const roleMap = { Supervisor: "supervisor", Developer: "admin" };
-      const userRole = roleMap[supervisor.role] || "supervisor";
+      // First-time sign-in: auto-provision the admin User from staff record
+      const roleMap = {
+        Supervisor: "supervisor",
+        supervisor: "supervisor",
+        Developer: "developer",
+        developer: "developer",
+        Admin: "admin",
+        admin: "admin",
+        Staff: "admin",
+        staff: "admin",
+        super_admin: "super_admin",
+        PM: "PM",
+        pm: "PM",
+      };
+      const rawRole = (staff.role || "").trim();
+      const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || "supervisor";
       user = new User({
-        name: payload.name || supervisor.name,
+        name: payload.name || staff.name,
         email: normalizedEmail,
         authProvider: "google",
         role: userRole,
@@ -167,13 +210,33 @@ class AuthService {
       await user.save();
     } else {
       // Subsequent sign-ins: refresh name/picture
-      user.name = user.name || payload.name || supervisor.name;
+      user.name = user.name || payload.name || staff.name;
       user.picture = payload.picture || user.picture;
       user.googleSubject = payload.sub;
-      user.lastLoginAt = new Date();
-      if (!user.permissions?.length) {
-        user.permissions = permissionsForRole(user.role || "supervisor");
+      
+      const roleMap = {
+        Supervisor: "supervisor",
+        supervisor: "supervisor",
+        Developer: "developer",
+        developer: "developer",
+        Admin: "admin",
+        admin: "admin",
+        Staff: "admin",
+        staff: "admin",
+        super_admin: "super_admin",
+        PM: "PM",
+        pm: "PM",
+      };
+      const rawRole = (staff.role || user.role || "").trim();
+      const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || user.role || "supervisor";
+      
+      // Update role and permissions if role changed or missing permissions
+      if (user.role !== newRole || !user.permissions?.length) {
+        user.role = newRole;
+        user.permissions = permissionsForRole(newRole || "supervisor");
       }
+      
+      user.lastLoginAt = new Date();
       if (!user.isActive) {
         throw new Error("Your account has been deactivated. Please contact the system administrator.");
       }
@@ -220,7 +283,17 @@ class AuthService {
     const email = googlePayload.email;
     const googlePictureUrl = googlePayload.picture;
 
-    const intern = await InternRepository.findByEmail(email);
+    let intern = await InternRepository.findByEmail(email);
+    if (!intern) {
+      // Check special access for inactive interns
+      const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${email}$`, "i") });
+      if (hasSpecialAccess) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
+      }
+    }
+
     if (!intern) {
       throw new Error("This email is not registered as an intern.");
     }
@@ -236,28 +309,62 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern, true);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
+      message: "Login successful!",
+    };
   }
 
-  async internLogin(email, password) {
-    const intern = await InternRepository.findByEmail(email);
-    if (!intern) {
-      return { error: "Invalid email or password" };
+  async internLogin(emailOrId, password) {
+    if (!emailOrId || !password) {
+      return { error: "Please enter your email or ID and password." };
     }
 
-    if (!intern.isTestAccount) {
-      return {
-        error: "Email/password login is only available for test accounts.",
-      };
+    const cleanIdentifier = String(emailOrId).trim();
+    let intern = await InternRepository.findByEmail(cleanIdentifier);
+    if (!intern) {
+      intern = await InternRepository.getInternById(cleanIdentifier);
+    }
+    if (!intern) {
+      // Check special access for inactive interns
+      const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${cleanIdentifier}$`, "i") });
+      if (hasSpecialAccess) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${cleanIdentifier}$`, "i") });
+      }
+    }
+
+    if (!intern) {
+      return { error: "Invalid email/ID or password." };
     }
 
     if (!intern.password) {
-      return { error: "No password set for this account." };
+      return {
+        error: "No password has been set for this intern account. Please sign in with Google.",
+      };
     }
 
-    const isMatch = await bcrypt.compare(password, intern.password);
+    let isMatch = false;
+    if (intern.password.startsWith("$2")) {
+      isMatch = await bcrypt.compare(password, intern.password);
+    } else {
+      isMatch = intern.password === password;
+    }
+
     if (!isMatch) {
-      return { error: "Invalid email or password" };
+      return { error: "Invalid email/ID or password." };
     }
 
     const token = jwt.sign(
@@ -266,7 +373,21 @@ class AuthService {
       { expiresIn: "24h" },
     );
 
-    return { token, internId: intern._id, message: "Login successful!" };
+    const talentHubRestrictionService = require("./talentHubRestrictionService");
+    const access = await talentHubRestrictionService.evaluateInternAccess(intern, true);
+
+    return {
+      token,
+      internId: intern._id,
+      talentHubRestricted: access.restricted,
+      talentHubRestrictionReason: access.reason,
+      talentHubOverride: access.isOverride,
+      talentHubOverrideExpiresAt: access.overrideExpiresAt,
+      daysRemaining: access.daysRemaining,
+      agreementAccepted: intern.agreementAccepted,
+      digitalAgreement: intern.digitalAgreement,
+      message: "Login successful!",
+    };
   }
 
   // Gate Staff Login

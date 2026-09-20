@@ -1,10 +1,13 @@
 const Announcement = require("../models/Announcement");
 const Intern = require("../models/Intern");
+const { sendEmail } = require("../utils/emailSender");
+const { sendWhatsAppMessage } = require("../utils/whatsappSender");
+const { getActiveInternsQuery } = require("../utils/workingDays");
 
 // POST /api/admin/announcements
 const createAnnouncement = async (req, res) => {
   try {
-    const { title, message, priority, showAsPopup } = req.body;
+    const { title, message, priority, showAsPopup, alwaysDisplay } = req.body;
 
     if (!title || !message) {
       return res
@@ -24,8 +27,34 @@ const createAnnouncement = async (req, res) => {
       message,
       priority: priority || "normal",
       showAsPopup: Boolean(showAsPopup),
+      alwaysDisplay: Boolean(alwaysDisplay),
       createdBy,
     });
+
+    
+    // Asynchronously send to all active interns
+    Intern.find(getActiveInternsQuery())
+      .select("Trainee_Email Trainee_Phone")
+      .lean()
+      .then(async (interns) => {
+        console.log(`[Announcements] Sending mass announcement to ${interns.length} interns...`);
+        for (const intern of interns) {
+          if (intern.Trainee_Email) {
+            await sendEmail({
+              to: intern.Trainee_Email,
+              subject: `TalentHub Announcement: ${title}`,
+              text: message,
+              html: `<h2>${title}</h2><p>${message.replace(/\n/g, '<br/>')}</p>`
+            }).catch(() => {});
+          }
+          if (intern.Trainee_Phone) {
+            await sendWhatsAppMessage(intern.Trainee_Phone, `📢 *TalentHub Announcement*\n\n*${title}*\n\n${message}`).catch(() => {});
+          }
+          await new Promise(resolve => setTimeout(resolve, 100)); // 100ms delay to prevent rate limits
+        }
+        console.log(`[Announcements] Finished sending mass announcement to ${interns.length} interns.`);
+      })
+      .catch(err => console.error("Error fetching interns for mass announcement:", err));
 
     return res.status(201).json(announcement);
   } catch (error) {
@@ -50,7 +79,11 @@ const getAllAnnouncements = async (req, res) => {
 // GET /api/announcements/active — intern-facing, returns all active unread announcements
 const getActiveAnnouncements = async (req, res) => {
   try {
-    const intern = await Intern.findById(req.user.id).lean();
+    let intern = await Intern.findById(req.user.id).lean();
+    if (!intern) {
+      const InactiveIntern = require('../models/InactiveIntern');
+      intern = await InactiveIntern.findById(req.user.id).lean();
+    }
     const readIds = intern?.readAnnouncements || [];
     const announcements = await Announcement.find({ _id: { $nin: readIds } })
       .sort({ createdAt: -1 })
@@ -66,13 +99,19 @@ const getActiveAnnouncements = async (req, res) => {
 const markAnnouncementAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const intern = await Intern.findById(req.user.id);
+    let intern = await Intern.findById(req.user.id);
+    
+    if (!intern) {
+      const InactiveIntern = require('../models/InactiveIntern');
+      intern = await InactiveIntern.findById(req.user.id);
+    }
     
     if (!intern) {
       return res.status(404).json({ message: "Intern not found." });
     }
     
-    if (!intern.readAnnouncements.includes(id)) {
+    const readAnnouncements = intern.readAnnouncements || [];
+    if (!readAnnouncements.includes(id)) {
       intern.readAnnouncements.push(id);
       await intern.save();
     }

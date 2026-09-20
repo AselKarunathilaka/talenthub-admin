@@ -12,6 +12,7 @@ const qrCodeRoutes = require("./routes/qrCodeRoutes");
 const faceAttendanceRoutes = require("./routes/faceAttendanceRoutes");
 const dailyRecordRoutes = require("./routes/dailyRecordRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const adminSettingsRoutes = require("./routes/adminSettingsRoutes");
 const complianceRoutes = require("./routes/complianceRoutes");
 const leaveRequestRoutes = require("./routes/leaveRequestRoutes");
 const seatBookingRoutes = require("./routes/seatBookingRoutes");
@@ -23,8 +24,10 @@ const holidayAdminRoutes = require("./routes/holidayAdminRoutes");
 const inactiveInternRoutes = require("./routes/inactiveInternRoutes");
 const certificateVerifyRoutes = require("./routes/certificateVerifyRoutes");
 const logBookRestrictionRoutes = require("./routes/logBookRestrictionroutes");
+const talentHubRestrictionRoutes = require("./routes/talentHubRestrictionRoutes");
 const seasonOverrideRoutes = require("./routes/seasonOverrideRoutes");
 const webauthnRoutes = require("./routes/webauthnRoutes");
+const universityRoutes = require("./routes/universityRoutes");
 const errorHandler = require("./middleware/errorMiddleware");
 
 require("./scheduler");
@@ -69,6 +72,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/records", dailyRecordRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/admin/settings", adminSettingsRoutes);
 app.use("/api/compliance", complianceRoutes);
 app.use("/api/leave-requests", leaveRequestRoutes);
 app.use("/api/seat-reservation", seatBookingRoutes);
@@ -78,6 +82,7 @@ app.use("/api/announcements", internAnnouncementRoutes);
 app.use("/api/inactive-interns", inactiveInternRoutes);
 app.use("/api/verify", certificateVerifyRoutes);
 app.use("/api/admin/logbook-restrictions", logBookRestrictionRoutes);
+app.use("/api/admin/talenthub-restrictions", talentHubRestrictionRoutes);
 
 //Sri Lanka Holidays (public read; admin management under /api/admin/holidays)
 app.use("/api/holidays", holidayRoutes);
@@ -85,6 +90,9 @@ app.use("/api/admin/holidays", holidayAdminRoutes);
 
 // Seasonal Login Background Override (admin-only write, public read)
 app.use("/api/login-season", seasonOverrideRoutes);
+
+// University Portal Routes
+app.use("/api/university", universityRoutes);
 
 app.get("/api/version", (_req, res) => {
   res.json({

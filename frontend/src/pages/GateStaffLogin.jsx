@@ -9,6 +9,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import { safeParseResponse } from "../utils/api";
 
 const GateStaffLogin = () => {
   const [formData, setFormData] = useState({
@@ -50,10 +51,10 @@ const GateStaffLogin = () => {
         },
       );
 
-      const data = await response.json();
+      const data = await safeParseResponse(response);
 
       if (!response.ok) {
-        throw new Error(data.error || "Login failed");
+        throw new Error(data.error || data.message || "Login failed");
       }
 
       localStorage.setItem("token", data.token);

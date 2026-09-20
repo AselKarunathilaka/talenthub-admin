@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { UserX } from "lucide-react";
+import { UserX, X } from "lucide-react";
 import {
   FaArrowLeft,
   FaSearch,
@@ -25,23 +25,60 @@ import {
   FaLaptopCode,
   FaTasks,
   FaChevronDown,
-  FaChevronUp,
   FaChevronLeft,
   FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
   FaUsers,
   FaRegCalendarAlt,
   FaVideo,
+  FaEye,
+  FaEyeSlash,
 } from "react-icons/fa";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
+
+// Digital Clock Component (Memoized to prevent parent re-renders)
+const formatDigit = (num) => num.toString().padStart(2, '0');
+
+const DigitalClock = React.memo(function DigitalClock() {
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-4 w-full">
+      <div className="flex items-baseline font-bold tracking-tight text-slate-800 tabular-nums">
+        <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl">{formatDigit(time.getHours())}</span>
+        <span className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-slate-400 mx-0.5 sm:mx-1 animate-pulse font-medium">:</span>
+        <span className="text-xl sm:text-2xl md:text-3xl lg:text-4xl">{formatDigit(time.getMinutes())}</span>
+        <span className="text-[10px] sm:text-xs md:text-sm lg:text-base text-[#006600] font-bold ml-1 sm:ml-1.5">{formatDigit(time.getSeconds())}</span>
+      </div>
+      <div className="hidden sm:block w-1.5 h-1.5 rounded-full bg-slate-300"></div>
+      <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs md:text-sm lg:text-base font-bold text-slate-600 mt-0.5 sm:mt-0">
+        <span className="text-[#000066] uppercase">{time.toLocaleDateString("en-US", { weekday: "short" })}</span>
+        <span>{time.getDate()}</span>
+        <span>{time.toLocaleDateString("en-US", { month: "short" })}</span>
+      </div>
+    </div>
+  );
+});
 
 /* ─── helpers ──────────────────────────────────────────────── */
-const fmtDate = (
-  d,
-  opts = { year: "numeric", month: "short", day: "numeric" },
-) => (d ? new Date(d).toLocaleDateString("en-US", opts) : "N/A");
+const fmtDate = (d) => {
+  if (!d) return "N/A";
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return "N/A";
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+};
 
 const isSameDay = (a, b) => {
   if (!a || !b) return false;
@@ -74,247 +111,273 @@ const toKey = (date) => {
 };
 
 /* ─── AttendanceCalendar ────────────────────────────────────── */
-/**
- * Renders a monthly grid calendar with two colored cell types:
- *   • green = daily attendance
- *   • blue  = meeting attendance
- *   • both  = split diagonal pill
- * No absent/rate display — just the two presence types.
- */
-function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
+const AttendanceCalendar = React.memo(function AttendanceCalendar({ dailyMap = {}, meetingMap = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth()); // 0-indexed
 
-  const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else setViewMonth((m) => m + 1);
-  };
+  const prevMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 0) {
+        setViewYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }, []);
 
-  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
+  const nextMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 11) {
+        setViewYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }, []);
+
+  const monthLabel = useMemo(() => new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
-  });
+  }), [viewYear, viewMonth]);
 
   const firstDow = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const cells = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < firstDow; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) list.push(d);
+    return list;
+  }, [firstDow, daysInMonth]);
 
-  const keyFor = (day) => {
-    if (!day) return null;
-    return `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  };
-
-  const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div className="select-none">
-      {/* month nav */}
-      <div className="flex items-center justify-between mb-4">
-        <button
-          onClick={prevMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <FaChevronLeft className="text-xs" />
-        </button>
-        <span className="text-sm font-semibold text-gray-700">
-          {monthLabel}
-        </span>
-        <button
-          onClick={nextMonth}
-          className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-colors"
-        >
-          <FaChevronRight className="text-xs" />
-        </button>
-      </div>
-
-      {/* day-of-week headers */}
-      <div className="grid grid-cols-7 mb-1">
-        {DOW.map((d) => (
-          <div
-            key={d}
-            className="text-center text-[10px] font-semibold text-gray-400 py-1"
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
+        {/* month nav */}
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <button
+            onClick={prevMonth}
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
-            {d}
+            <FaChevronLeft className="text-xs sm:text-base" />
+          </button>
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              {monthLabel}
+            </h3>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Daily & Meeting Attendance</p>
           </div>
-        ))}
-      </div>
+          <button
+            onClick={nextMonth}
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
+          >
+            <FaChevronRight className="text-xs sm:text-base" />
+          </button>
+        </div>
 
-      {/* day cells */}
-      <div className="grid grid-cols-7 gap-1">
-        {cells.map((day, idx) => {
-          if (!day) return <div key={`blank-${idx}`} />;
-          const k = keyFor(day);
-          const hasDaily = !!dailyMap[k];
-          const hasMeeting = !!meetingMap[k];
-          const hasBoth = hasDaily && hasMeeting;
-          const isToday =
-            day === today.getDate() &&
-            viewMonth === today.getMonth() &&
-            viewYear === today.getFullYear();
-
-          // Determine cell background
-          let cellBg = "bg-white";
-          let textColor = "text-gray-500";
-          let ring = "";
-
-          if (hasBoth) {
-            // split: left green, right blue via gradient
-            cellBg = "bg-gradient-to-r from-green-400 to-blue-500";
-            textColor = "text-white font-bold";
-          } else if (hasDaily) {
-            cellBg = "bg-green-100 border border-green-300";
-            textColor = "text-green-800 font-semibold";
-          } else if (hasMeeting) {
-            cellBg = "bg-blue-100 border border-blue-300";
-            textColor = "text-blue-800 font-semibold";
-          }
-
-          if (isToday && !hasDaily && !hasMeeting) {
-            ring = "ring-2 ring-gray-300";
-            textColor = "text-gray-700 font-bold";
-          }
-
-          const dailyCount = hasDaily ? dailyMap[k].length : 0;
-          const meetingCount = hasMeeting ? meetingMap[k].length : 0;
-
-          return (
+        {/* day-of-week headers */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-4">
+          {DOW.map((d) => (
             <div
-              key={k}
-              title={
-                hasBoth
-                  ? `Daily: ${dailyCount} · Meeting: ${meetingCount}`
-                  : hasDaily
-                    ? `Daily attendance: ${dailyCount}`
-                    : hasMeeting
-                      ? `Meeting attendance: ${meetingCount}`
-                      : undefined
-              }
-              className={`flex items-center justify-center rounded-lg h-8 text-xs transition-all ${cellBg} ${textColor} ${ring}`}
+              key={d}
+              className="text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-gray-600 py-1.5 sm:py-2.5 px-0.5 sm:px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-md sm:rounded-lg border border-gray-200"
             >
-              {day}
+              {d}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      {/* legend */}
-      <div className="flex items-center gap-5 mt-4 pt-3 border-t border-gray-100">
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-green-100 border border-green-300 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Daily</span>
+        {/* day cells */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          {cells.map((day, idx) => {
+            if (!day) return <div key={`blank-${idx}`} />;
+            const k = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            const hasDaily = !!dailyMap[k];
+            const hasMeeting = !!meetingMap[k];
+            const hasBoth = hasDaily && hasMeeting;
+            const isToday =
+              day === today.getDate() &&
+              viewMonth === today.getMonth() &&
+              viewYear === today.getFullYear();
+
+            // Determine cell background
+            let cellBg = "bg-white";
+            let textColor = "text-gray-400";
+            let borderClass = "border border-gray-100";
+            let shadowClass = "";
+
+            if (hasBoth) {
+              cellBg = "bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500";
+              textColor = "text-white font-bold";
+              borderClass = "border-0";
+              shadowClass = "shadow-sm sm:shadow-md hover:shadow-lg hover:shadow-blue-300";
+            } else if (hasDaily) {
+              cellBg = "bg-gradient-to-br from-emerald-50 to-green-50";
+              textColor = "text-emerald-700 font-semibold";
+              borderClass = "border border-emerald-200";
+              shadowClass = "shadow-sm hover:shadow-md hover:shadow-emerald-200";
+            } else if (hasMeeting) {
+              cellBg = "bg-gradient-to-br from-blue-50 to-cyan-50";
+              textColor = "text-blue-700 font-semibold";
+              borderClass = "border border-blue-200";
+              shadowClass = "shadow-sm hover:shadow-md hover:shadow-blue-200";
+            }
+
+            if (isToday && !hasDaily && !hasMeeting) {
+              cellBg = "bg-gradient-to-br from-amber-50 to-orange-50";
+              textColor = "text-gray-700 font-bold";
+              borderClass = "border-2 border-amber-300";
+              shadowClass = "hover:shadow-md hover:shadow-amber-200";
+            }
+
+            const dailyCount = hasDaily ? dailyMap[k].length : 0;
+            const meetingCount = hasMeeting ? meetingMap[k].length : 0;
+            const interactive = hasDaily || hasMeeting || isToday;
+
+            return (
+              <div
+                key={k}
+                title={
+                  hasBoth
+                    ? `Daily: ${dailyCount} · Meeting: ${meetingCount}`
+                    : hasDaily
+                      ? `Daily attendance: ${dailyCount}`
+                      : hasMeeting
+                        ? `Meeting attendance: ${meetingCount}`
+                        : isToday ? "Today" : undefined
+                }
+                className={`flex items-center justify-center rounded-lg sm:rounded-xl h-8 sm:h-10 md:h-12 text-xs sm:text-sm md:text-base font-semibold transition-all duration-150 cursor-pointer ${cellBg} ${textColor} ${borderClass} ${shadowClass} ${interactive ? "hover:scale-105 active:scale-95" : ""}`}
+              >
+                {day}
+              </div>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-blue-100 border border-blue-300 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Meeting</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="w-4 h-4 rounded bg-gradient-to-r from-green-400 to-blue-500 inline-block flex-shrink-0" />
-          <span className="text-xs text-gray-500">Both</span>
+
+        {/* legend */}
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-5 mt-4 sm:mt-6 pt-3 sm:pt-5 border-t border-gray-200">
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-emerald-50 to-green-50 border sm:border-2 border-emerald-200">
+              <span className="text-[9px] sm:text-xs text-emerald-600">✓</span>
+            </div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Daily</span>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="flex items-center justify-center w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-blue-50 to-cyan-50 border sm:border-2 border-blue-200">
+              <span className="text-[9px] sm:text-xs text-blue-600">•</span>
+            </div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Meeting</span>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-emerald-400 via-green-400 to-blue-500 border-0"></div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Both</span>
+          </div>
+          <div className="flex items-center gap-1.5 sm:gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-md sm:rounded-lg bg-gradient-to-br from-amber-50 to-orange-50 border sm:border-2 border-amber-400"></div>
+            <span className="text-[10px] sm:text-xs md:text-sm font-semibold text-gray-700">Today</span>
+          </div>
         </div>
       </div>
     </div>
   );
-}
+});
 
 /* ─── DailyRecordsCalendar ──────────────────────────────────── */
-/**
- * Shows a calendar where dates that have a daily record are highlighted.
- * Clicking a date reveals the record details below.
- */
-function DailyRecordsCalendar({ recordsByDate = {} }) {
+const DailyRecordsCalendar = React.memo(function DailyRecordsCalendar({ recordsByDate = {} }) {
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [selectedKey, setSelectedKey] = useState(null);
 
-  const prevMonth = () => {
-    if (viewMonth === 0) {
-      setViewMonth(11);
-      setViewYear((y) => y - 1);
-    } else setViewMonth((m) => m - 1);
-  };
-  const nextMonth = () => {
-    if (viewMonth === 11) {
-      setViewMonth(0);
-      setViewYear((y) => y + 1);
-    } else setViewMonth((m) => m + 1);
-  };
+  const prevMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 0) {
+        setViewYear((y) => y - 1);
+        return 11;
+      }
+      return m - 1;
+    });
+  }, []);
 
-  const monthLabel = new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
+  const nextMonth = useCallback(() => {
+    setViewMonth((m) => {
+      if (m === 11) {
+        setViewYear((y) => y + 1);
+        return 0;
+      }
+      return m + 1;
+    });
+  }, []);
+
+  const monthLabel = useMemo(() => new Date(viewYear, viewMonth).toLocaleDateString("en-US", {
     month: "long",
     year: "numeric",
-  });
+  }), [viewYear, viewMonth]);
 
   const firstDow = new Date(viewYear, viewMonth, 1).getDay();
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < firstDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  const cells = useMemo(() => {
+    const list = [];
+    for (let i = 0; i < firstDow; i++) list.push(null);
+    for (let d = 1; d <= daysInMonth; d++) list.push(d);
+    return list;
+  }, [firstDow, daysInMonth]);
 
-  const keyFor = (day) =>
-    `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-
-  const DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const selectedRecord = selectedKey ? recordsByDate[selectedKey] : null;
 
   const attendanceBadge = (status) => {
     const map = {
-      present: "bg-green-100 text-green-700",
-      absent: "bg-red-100 text-red-700",
-      late: "bg-yellow-100 text-yellow-700",
+      present: "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 border border-emerald-300",
+      absent: "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border border-red-300",
+      late: "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 border border-amber-300",
     };
-    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-500";
+    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600 border border-gray-200";
   };
 
   const workStatusBadge = (status) => {
     const map = {
-      working: "bg-blue-100 text-blue-700",
-      leave: "bg-orange-100 text-orange-700",
-      wfh: "bg-indigo-100 text-indigo-700",
+      working: "bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 border border-blue-300",
+      leave: "bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border border-orange-300",
+      wfh: "bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 border border-indigo-300",
     };
-    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-500";
+    return map[status?.toLowerCase()] ?? "bg-gray-100 text-gray-600 border border-gray-200";
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-6">
       {/* calendar */}
-      <div className="bg-gray-50 rounded-2xl p-4">
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl p-3 sm:p-5 md:p-6 border border-gray-100 shadow-md sm:shadow-lg">
         {/* nav */}
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
           <button
             onClick={prevMonth}
-            className="p-1.5 rounded-lg hover:bg-white text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
-            <FaChevronLeft className="text-xs" />
+            <FaChevronLeft className="text-xs sm:text-base" />
           </button>
-          <span className="text-sm font-semibold text-gray-700">
-            {monthLabel}
-          </span>
+          <div className="text-center">
+            <h3 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              {monthLabel}
+            </h3>
+            <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5">Click a date to view</p>
+          </div>
           <button
             onClick={nextMonth}
-            className="p-1.5 rounded-lg hover:bg-white text-gray-500 hover:text-gray-800 transition-colors shadow-sm"
+            className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 text-blue-600 transition-all duration-150 shadow-sm sm:shadow-md hover:scale-105 active:scale-95"
           >
-            <FaChevronRight className="text-xs" />
+            <FaChevronRight className="text-xs sm:text-base" />
           </button>
         </div>
 
         {/* dow headers */}
-        <div className="grid grid-cols-7 mb-1">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-2 sm:mb-4">
           {DOW.map((d) => (
             <div
               key={d}
-              className="text-center text-[10px] font-semibold text-gray-400 py-1"
+              className="text-center text-[8px] sm:text-[10px] md:text-xs font-bold text-gray-600 py-1.5 sm:py-2.5 px-0.5 sm:px-1 uppercase tracking-wider bg-gradient-to-b from-gray-50 to-gray-100 rounded-md sm:rounded-lg border border-gray-200"
             >
               {d}
             </div>
@@ -322,10 +385,10 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         </div>
 
         {/* cells */}
-        <div className="grid grid-cols-7 gap-y-1">
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
           {cells.map((day, idx) => {
             if (!day) return <div key={`blank-${idx}`} />;
-            const k = keyFor(day);
+            const k = `${viewYear}-${String(viewMonth + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
             const hasRecord = !!recordsByDate[k];
             const isSelected = k === selectedKey;
             const isToday =
@@ -337,21 +400,21 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
               <button
                 key={k}
                 onClick={() => setSelectedKey(isSelected ? null : k)}
-                disabled={!hasRecord}
-                className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all text-xs font-medium leading-none
+                disabled={!hasRecord && !isToday}
+                className={`flex flex-col items-center justify-center py-2 sm:py-3 md:py-4 px-0.5 sm:px-1 rounded-lg sm:rounded-xl font-bold transition-all duration-150 text-xs sm:text-sm md:text-base leading-tight
                   ${
                     isSelected
-                      ? "bg-blue-600 text-white shadow-md shadow-blue-200"
+                      ? "bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-300 border-0 scale-105"
                       : hasRecord
-                        ? "bg-white hover:bg-blue-50 text-gray-800 border border-blue-200 hover:border-blue-400 cursor-pointer shadow-sm"
+                        ? `bg-gradient-to-br from-blue-50 to-cyan-50 text-blue-700 border-2 border-blue-300 hover:from-blue-100 hover:to-cyan-100 cursor-pointer shadow-sm hover:shadow-md hover:scale-105 active:scale-95`
                         : isToday
-                          ? "text-blue-500 font-bold"
-                          : "text-gray-400 cursor-default"
+                          ? "bg-gradient-to-br from-amber-50 to-orange-50 text-amber-700 font-bold border-2 border-amber-400 hover:from-amber-100 hover:to-orange-100 cursor-pointer shadow-sm hover:scale-105 active:scale-95"
+                          : "text-gray-300 cursor-default"
                   }`}
               >
                 {day}
                 {hasRecord && !isSelected && (
-                  <span className="w-1 h-1 rounded-full bg-blue-400 mt-0.5" />
+                  <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-blue-500 mt-1" />
                 )}
               </button>
             );
@@ -359,36 +422,46 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
         </div>
 
         {/* hint */}
-        <p className="text-[10px] text-gray-400 text-center mt-3">
-          Highlighted dates have logbook entries — tap to view
-        </p>
+        <div className="mt-4 sm:mt-5 pt-3 sm:pt-4 border-t border-gray-200">
+          <p className="text-[10px] sm:text-xs text-gray-500 text-center flex items-center justify-center gap-1.5 sm:gap-2">
+            <FaRegCalendarAlt className="text-blue-400" />
+            Dates with a dot have logbook entries
+          </p>
+        </div>
       </div>
 
       {/* selected record details */}
       <AnimatePresence mode="wait">
-        {selectedRecord ? (
+        {selectedRecord && (
           <motion.div
             key={selectedKey}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.18 }}
-            className="border border-blue-100 rounded-2xl overflow-hidden bg-white shadow-sm"
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.15 }}
+            className="border border-blue-200 rounded-2xl overflow-hidden bg-gradient-to-br from-white to-blue-50 shadow-lg sm:shadow-xl"
           >
             {/* record header */}
-            <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-blue-100">
-              <FaCalendar className="text-blue-400 text-xs flex-shrink-0" />
-              <span className="text-sm font-semibold text-gray-800">
-                {new Date(selectedRecord.date).toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </span>
+            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-2.5 sm:py-4 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 border-b border-blue-300">
+              <div className="p-1.5 sm:p-2.5 rounded-lg bg-white/20">
+                <FaCalendar className="text-white text-sm sm:text-lg flex-shrink-0" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-xs sm:text-sm md:text-base font-bold text-white block truncate">
+                  {new Date(selectedRecord.date).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </span>
+                <span className="text-[10px] sm:text-xs text-blue-100">
+                  {new Date(selectedRecord.date).toLocaleDateString("en-US", { weekday: "short" })}
+                </span>
+              </div>
               {selectedRecord.status && (
                 <span
-                  className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-semibold ${workStatusBadge(selectedRecord.status)}`}
+                  className={`px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg text-[10px] sm:text-xs font-bold shrink-0 ${workStatusBadge(selectedRecord.status)}`}
                 >
                   {selectedRecord.status}
                 </span>
@@ -396,58 +469,78 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
             </div>
 
             {/* record body */}
-            <div className="px-5 py-4 space-y-4">
+            <div className="px-3 sm:px-6 py-4 sm:py-6 space-y-3 sm:space-y-5">
               {[
                 {
                   label: "Stack / Technology",
                   icon: FaLaptopCode,
                   value: selectedRecord.stack,
+                  color: "from-purple-500 to-pink-500",
                 },
-                { label: "Task", icon: FaTasks, value: selectedRecord.task },
+                { 
+                  label: "Task", 
+                  icon: FaTasks, 
+                  value: selectedRecord.task,
+                  color: "from-blue-500 to-cyan-500",
+                },
                 {
                   label: "Progress / Challenges",
                   icon: FaChartBar,
                   value: selectedRecord.progress,
+                  color: "from-green-500 to-emerald-500",
                 },
                 {
                   label: "Blockers / Plans",
                   icon: FaExclamationTriangle,
                   value: selectedRecord.blockers,
+                  color: "from-orange-500 to-red-500",
                 },
-              ].map(({ label, icon: Icon, value }) => (
-                <div key={label}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
-                    <Icon className="text-[9px]" /> {label}
+              ].map(({ label, icon: Icon, value, color }) => (
+                <div 
+                  key={label}
+                  className="border-l-4 border-blue-300 pl-3 sm:pl-4 py-1.5 sm:py-2"
+                >
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 sm:mb-2 flex items-center gap-1.5 sm:gap-2">
+                    <span className={`p-1 sm:p-1.5 rounded-lg bg-gradient-to-br ${color} text-white`}>
+                      <Icon className="text-xs" />
+                    </span>
+                    {label}
                   </p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-                    {value || <span className="italic text-gray-400">—</span>}
+                  <p className="text-xs sm:text-sm text-gray-700 whitespace-pre-wrap leading-relaxed font-medium">
+                    {value || <span className="italic text-gray-400 font-normal">— No entry</span>}
                   </p>
                 </div>
               ))}
 
               {/* meeting attendance within the record */}
               {selectedRecord.meetingAttendance?.length > 0 && (
-                <div>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                    Meeting Attendance (
-                    {selectedRecord.meetingAttendance.length})
+                <div
+                  className="border-t-2 border-dashed border-blue-200 pt-3 sm:pt-5"
+                >
+                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 sm:mb-3 flex items-center gap-2">
+                    <span className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
+                      <FaVideo className="text-xs" />
+                    </span>
+                    Meeting Attendance ({selectedRecord.meetingAttendance.length})
                   </p>
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {selectedRecord.meetingAttendance.map((m, i) => (
                       <div
                         key={i}
-                        className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-xs"
+                        className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs border border-blue-100 hover:border-blue-300 transition-all"
                       >
-                        <span className="font-medium text-gray-700 truncate mr-2">
-                          {m.meetingTitle}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-gray-800 truncate mr-2">
+                            {m.meetingTitle}
+                          </p>
                           {m.projectName && (
-                            <span className="ml-1 text-gray-400">
-                              ({m.projectName})
-                            </span>
+                            <p className="text-[10px] sm:text-[11px] text-gray-500">
+                              {m.projectName}
+                            </p>
                           )}
-                        </span>
+                        </div>
                         <span
-                          className={`px-2 py-0.5 rounded-full font-semibold flex-shrink-0 ${attendanceBadge(m.attendanceStatus)}`}
+                          className={`px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg font-bold flex-shrink-0 text-[10px] sm:text-[11px] ${attendanceBadge(m.attendanceStatus)}`}
                         >
                           {m.attendanceStatus}
                         </span>
@@ -458,95 +551,120 @@ function DailyRecordsCalendar({ recordsByDate = {} }) {
               )}
 
               {selectedRecord.attendanceTime && (
-                <p className="text-xs text-gray-400">
+                <p
+                  className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-2 pt-2 border-t border-gray-100 mt-3 sm:mt-4 pt-3 sm:pt-4"
+                >
+                  <FaClock className="text-blue-400" />
                   Marked at:{" "}
-                  {new Date(selectedRecord.attendanceTime).toLocaleTimeString(
-                    "en-US",
-                    {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    },
-                  )}
+                  <span className="font-semibold text-gray-700">
+                    {new Date(selectedRecord.attendanceTime).toLocaleTimeString(
+                      "en-US",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: true,
+                      },
+                    )}
+                  </span>
                 </p>
               )}
             </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-10 text-gray-400 space-y-2"
-          >
-            <FaRegCalendarAlt className="text-3xl opacity-30" />
-            <p className="text-sm">
-              Select a highlighted date to view the logbook entry
-            </p>
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   );
-}
+});
 
-/* ─── Pagination ────────────────────────────────────────────── */
-function Pagination({ page, totalPages, onPrev, onNext, onPage }) {
-  if (totalPages <= 1) return null;
+/* ─── Pagination (Memoized) ─────────────────────────────────── */
+const Pagination = React.memo(function Pagination({ page, totalPages, total, limit, onPage }) {
+  if (!total || total <= 0) return null;
 
-  const getPages = () => {
-    if (totalPages <= 7) {
+  const from = (page - 1) * limit + 1;
+  const to = Math.min(page * limit, total);
+  const hasPrev = page > 1;
+  const hasNext = page < totalPages;
+
+  const pageNums = (() => {
+    if (totalPages <= 7)
       return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    if (page <= 4) {
-      return [1, 2, 3, 4, 5, "...", totalPages];
-    }
-    if (page >= totalPages - 3) {
-      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    }
-    return [1, "...", page - 1, page, page + 1, "...", totalPages];
-  };
+    const s = new Set([1, totalPages]);
+    for (
+      let i = Math.max(2, page - 2);
+      i <= Math.min(totalPages - 1, page + 2);
+      i++
+    )
+      s.add(i);
+    return [...s].sort((a, b) => a - b);
+  })();
+
+  const btn = (onClick, disabled, icon, title) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none"
+    >
+      {icon}
+    </button>
+  );
 
   return (
-    <div className="flex flex-nowrap items-center justify-center w-full gap-1">
-      <button
-        onClick={onPrev}
-        disabled={page === 1}
-        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
-      >
-        <FaChevronLeft className="text-[10px]" /> Prev
-      </button>
-      
-      {getPages().map((p, i) =>
-        p === "..." ? (
-          <span key={`e-${i}`} className="text-xs text-gray-400 px-2 flex-shrink-0">
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onPage(p)}
-            className={`w-[26px] h-[28px] flex items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-              p === page
-                ? "bg-blue-600 text-white shadow-md shadow-blue-200"
-                : "text-gray-500 hover:bg-blue-50 hover:text-blue-600 bg-white"
-            }`}
-          >
-            {p}
-          </button>
-        ),
-      )}
-      
-      <button
-        onClick={onNext}
-        disabled={page === totalPages}
-        className="flex items-center gap-1 p-2 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors font-bold text-xs"
-      >
-        Next <FaChevronRight className="text-[10px]" />
-      </button>
+    <div className="flex flex-col items-center justify-between gap-2.5 px-3 sm:px-4 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl w-full mt-auto">
+      <p className="text-xs sm:text-sm text-slate-500 font-medium text-center">
+        Showing{" "}
+        <span className="font-bold text-slate-700">
+          {from} - {to}
+        </span>{" "}
+        of <span className="font-bold text-slate-700">{total}</span>{" "}
+        records
+      </p>
+      <div className="flex items-center gap-1 flex-wrap justify-center">
+        {btn(
+          () => onPage(1),
+          !hasPrev,
+          <FaAngleDoubleLeft className="h-3 w-3" />,
+          "First",
+        )}
+        {btn(
+          () => onPage(page - 1),
+          !hasPrev,
+          <FaChevronLeft className="h-3 w-3" />,
+          "Previous",
+        )}
+        {pageNums.map((p, idx, arr) => (
+          <React.Fragment key={p}>
+            {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+              <span className="px-1 text-slate-400 text-xs font-bold">…</span>
+            )}
+            <button
+              onClick={() => onPage(p)}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg text-xs font-bold transition-all focus:outline-none ${
+                p === page
+                  ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20"
+                  : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {p}
+            </button>
+          </React.Fragment>
+        ))}
+        {btn(
+          () => onPage(page + 1),
+          !hasNext,
+          <FaChevronRight className="h-3 w-3" />,
+          "Next",
+        )}
+        {btn(
+          () => onPage(totalPages),
+          !hasNext,
+          <FaAngleDoubleRight className="h-3 w-3" />,
+          "Last",
+        )}
+      </div>
     </div>
   );
-}
+});
 
 /* ─── main component ────────────────────────────────────────── */
 export default function AdminInactiveInterns() {
@@ -574,6 +692,13 @@ export default function AdminInactiveInterns() {
   const [reactivating, setReactivating] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+
+  // Security Popup State
+  const [showSecurityPopup, setShowSecurityPopup] = useState(false);
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPasswordText, setShowPasswordText] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [securitySaving, setSecuritySaving] = useState(false);
 
   const carouselRef = useRef(null);
 
@@ -626,7 +751,7 @@ export default function AdminInactiveInterns() {
   }, [fetchInactiveInterns]);
 
   /* select intern → fetch details */
-  const handleSelectIntern = async (intern) => {
+  const handleSelectIntern = useCallback(async (intern) => {
     setSelectedIntern(intern);
     setDetails(null);
     setDailyRecords([]);
@@ -647,7 +772,7 @@ export default function AdminInactiveInterns() {
     } finally {
       setDetailsLoading(false);
     }
-  };
+  }, [token]);
 
   /* fetch daily records */
   const fetchDailyRecords = useCallback(async () => {
@@ -678,10 +803,17 @@ export default function AdminInactiveInterns() {
     if (activeTab === "records") fetchDailyRecords();
   }, [activeTab, fetchDailyRecords]);
 
-  /* reactivate */
-  const handleReactivate = async () => {
+  /* reactivate — opens security check popup */
+  const handleReactivate = useCallback(() => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeReactivate(); return; }
     if (!selectedIntern) return;
-    if (!window.confirm(`Reactivate ${selectedIntern.traineeName}?`)) return;
+    setShowSecurityPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  }, [selectedIntern]);
+
+  /* execute reactivation after password verified */
+  const executeReactivate = useCallback(async () => {
+    if (!selectedIntern) return;
     setReactivating(true);
     try {
       const res = await fetch(
@@ -705,45 +837,100 @@ export default function AdminInactiveInterns() {
     } finally {
       setReactivating(false);
     }
-  };
+  }, [selectedIntern, token]);
+
+  /* verify security password then reactivate */
+  const handlePasswordVerify = useCallback(async () => {
+    if (!securityPassword) {
+      setPasswordError("Please enter the security password");
+      return;
+    }
+    setSecuritySaving(true);
+    setPasswordError("");
+    try {
+      const internName = selectedIntern?.traineeName || "";
+      const internEmail = selectedIntern?.traineeEmail || selectedIntern?.email || "";
+      const internId = selectedIntern?.traineeId || "N/A";
+      const response = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          securityPin: securityPassword,
+          action: "intern reactivate",
+          extraInfo: `Intern: ${internName} (ID: ${internId})${internEmail ? ` - ${internEmail}` : ""}`,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && (data.success || data.message)) {
+        setShowSecurityPopup(false);
+        setSecurityPassword("");
+        setPasswordError("");
+        await executeReactivate();
+      } else {
+        setPasswordError(data.message || "Invalid security password");
+      }
+    } catch (err) {
+      setPasswordError(err.message || "Invalid security password");
+    } finally {
+      setSecuritySaving(false);
+    }
+  }, [securityPassword, selectedIntern, authHeaders, executeReactivate]);
 
   const tabs = ["overview", "attendance", "records"];
 
-  /* ── render ── */
   return (
     <AdminNavigation>
-      <div className="inactive-root relative z-10">
-        {/* Ambient background */}
-        <div className="inactive-ambient absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="inactive-ambient__orb inactive-ambient__orb--1 absolute" />
-          <div className="inactive-ambient__orb inactive-ambient__orb--2 absolute" />
-        </div>
+      {/* Background using transparent to blend with Layout */}
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+          
+          {/* Top header: Title on Left, Clock & Tools on Right */}
+          <div className="relative z-20 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
 
-        <div className="inactive-content relative z-10 pt-4">
-          <main className="inactive-main">
-
-            {/* Page header */}
-            <div className="mb-8">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            {/* Left: Dashboard Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <UserX className="text-[#0056a2] h-8 w-8" />
-                </div>
-                Inactive Interns
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.05, duration: 0.2 }}
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                Manage interns no longer in the active TalentHub system
-              </motion.p>
+                <UserX className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Inactive Interns
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-[10px] sm:text-xs md:text-sm lg:text-base font-medium max-w-xl"
+                >
+                  Manage interns no longer in the active TalentHub system
+                </motion.p>
+              </div>
             </div>
+            
+            {/* Right: Clock */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 w-full xl:w-auto">
+              {/* Clock Container */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm px-3 sm:px-5 md:px-6 py-2 sm:py-3 md:py-4 rounded-xl md:rounded-[16px] w-full xl:w-auto"
+              >
+                <DigitalClock />
+              </motion.div>
+            </div>
+          </div>
 
             {/* Stats + Search bar */}
             <motion.div
@@ -815,11 +1002,7 @@ export default function AdminInactiveInterns() {
                 <div className="inactive-list-body">
                   {loading ? (
                     <div className="inactive-loader" style={{ minHeight: 200 }}>
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="inactive-loader__spinner"
-                      />
+                      <div className="inactive-loader__spinner animate-spin" />
                       <p>Loading…</p>
                     </div>
                   ) : inactiveInterns.length === 0 ? (
@@ -831,16 +1014,11 @@ export default function AdminInactiveInterns() {
                       <p>{searchTerm ? 'Try a different search term.' : 'All interns are currently active.'}</p>
                     </div>
                   ) : (
-                    inactiveInterns.map((intern, index) => (
-                      <motion.div
+                    inactiveInterns.map((intern) => (
+                      <div
                         key={intern.id}
-                        onClick={() => {
-                          handleSelectIntern(intern);
-                        }}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ duration: 0.15 }}
-                        className={`inactive-list-item ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
+                        onClick={() => handleSelectIntern(intern)}
+                        className={`inactive-list-item transform-gpu transition-colors ${selectedIntern?.id === intern.id ? 'inactive-list-item--selected' : ''}`}
                       >
                          <div className="inactive-list-item__avatar" style={{ padding: 0, overflow: 'hidden', position: 'relative' }}>
                             <img
@@ -863,7 +1041,7 @@ export default function AdminInactiveInterns() {
                           <div className="inactive-list-item__meta">
                             <span>ID: {intern.traineeId}</span>
                             {intern.archivedAt && (
-                              <span>· {new Date(intern.archivedAt).toLocaleDateString()}</span>
+                              <span>· {fmtDate(intern.archivedAt)}</span>
                             )}
                           </div>
                           <div className="inactive-list-item__email" title={intern.email}>
@@ -871,22 +1049,20 @@ export default function AdminInactiveInterns() {
                           </div>
                         </div>
                         <div className="inactive-list-item__arrow">›</div>
-                      </motion.div>
+                      </div>
                     ))
                   )}
                 </div>
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="inactive-list-pagination">
-                    <Pagination
-                      page={currentPage}
-                      totalPages={totalPages}
-                      onPrev={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                      onPage={(p) => setCurrentPage(p)}
-                    />
-                  </div>
+                  <Pagination
+                    page={currentPage}
+                    totalPages={totalPages}
+                    total={totalInterns}
+                    limit={PAGE_SIZE}
+                    onPage={(p) => setCurrentPage(p)}
+                  />
                 )}
               </div>
 
@@ -917,10 +1093,8 @@ export default function AdminInactiveInterns() {
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                     >
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="inactive-loader__spinner"
+                      <div
+                        className="inactive-loader__spinner animate-spin"
                         style={{ width: 48, height: 48, marginBottom: 16 }}
                       />
                       <p className="inactive-empty-detail__sub">Loading profile…</p>
@@ -1094,11 +1268,7 @@ export default function AdminInactiveInterns() {
                               <div>
                                 {recordsLoading ? (
                                   <div className="inactive-loader" style={{ minHeight: 200 }}>
-                                    <motion.div
-                                      animate={{ rotate: 360 }}
-                                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                      className="inactive-loader__spinner"
-                                    />
+                                    <div className="inactive-loader__spinner animate-spin" />
                                     <p>Loading records…</p>
                                   </div>
                                 ) : recordsError ? (
@@ -1147,42 +1317,14 @@ export default function AdminInactiveInterns() {
 
             </div>
           </main>
-        </div>
 
         <style>{`
-          /* ── Root ── */
-          .inactive-root {
-            min-height: 100vh;
-            background: #f0f4f8;
-            position: relative;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-          }
-
-          /* ── Ambient ── */
-          .inactive-ambient { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
-          .inactive-ambient__orb {
-            position: absolute; border-radius: 50%;
-            filter: blur(80px); opacity: 0.06;
-          }
-          .inactive-ambient__orb--1 {
-            width: 500px; height: 500px;
-            background: #0056a2; top: -100px; right: -100px;
-          }
-          .inactive-ambient__orb--2 {
-            width: 400px; height: 400px;
-            background: #50b748; bottom: -80px; left: -80px;
-          }
-
-          /* ── Layout ── */
-          .inactive-content { position: relative; z-index: 1; padding-top: 8px; }
-          .inactive-main { max-width: 1200px; margin: 0 auto; padding: 24px 24px 60px; }
-
           /* ── Stats bar ── */
           .inactive-stats-bar {
             display: flex; align-items: center; gap: 20px;
             padding: 14px 20px; background: white;
-            border-radius: 14px; border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            border-radius: 16px; border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             margin-bottom: 20px; flex-wrap: wrap;
           }
           .inactive-stat { display: flex; flex-direction: column; gap: 2px; align-items: center; text-align: center; }
@@ -1232,23 +1374,23 @@ export default function AdminInactiveInterns() {
             min-height: calc(100vh - 250px);
           }
           @media (max-width: 900px) {
-            .inactive-layout { flex-direction: column; }
+            .inactive-layout { flex-direction: column; gap: 16px; min-height: auto; }
           }
 
           /* ── Left col: intern list ── */
           .inactive-list-col {
             flex: 0 0 340px; min-width: 0;
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             overflow: hidden; display: flex; flex-direction: column;
           }
           @media (max-width: 900px) {
-            .inactive-list-col { flex: none; width: 100%; height: 500px; }
+            .inactive-list-col { flex: none; width: 100%; height: auto; max-height: 480px; }
           }
           .inactive-list-header {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 16px 20px; border-bottom: 1px solid #f0f0f0;
+            padding: 16px 20px; border-bottom: 1px solid rgba(226, 232, 240, 0.8);
             background: #fafafa;
           }
           .inactive-list-header__title {
@@ -1256,7 +1398,9 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-body {
             flex: 1; overflow-y: auto; min-height: 0;
-            max-height: calc(100vh - 350px);
+          }
+          @media (max-width: 900px) {
+            .inactive-list-body { max-height: 320px; }
           }
           .inactive-list-item {
             display: flex; align-items: center; gap: 10px;
@@ -1299,11 +1443,6 @@ export default function AdminInactiveInterns() {
           }
           .inactive-list-item:hover .inactive-list-item__arrow { color: #0056a2; }
           .inactive-list-item--selected .inactive-list-item__arrow { color: #0056a2; }
-          .inactive-list-pagination {
-            border-top: 1px solid #f0f0f0; background: white;
-            padding: 12px 14px; flex-shrink: 0;
-            display: flex; justify-content: center;
-          }
 
           /* ── Right col: detail ── */
           .inactive-detail-col {
@@ -1312,9 +1451,9 @@ export default function AdminInactiveInterns() {
 
           /* ── Detail panel ── */
           .inactive-detail-panel {
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex; flex-direction: column; overflow: hidden;
             flex: 1;
           }
@@ -1323,7 +1462,7 @@ export default function AdminInactiveInterns() {
           .inactive-detail-header {
             display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start;
             padding: 24px; background: #fafafa;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
           }
           .inactive-detail-avatar {
             width: 64px; height: 64px; border-radius: 16px;
@@ -1349,7 +1488,7 @@ export default function AdminInactiveInterns() {
 
           /* ── Tabs ── */
           .inactive-tabs {
-            display: flex; border-bottom: 1px solid #f0f0f0;
+            display: flex; border-bottom: 1px solid rgba(226, 232, 240, 0.8);
             padding: 0 16px; background: white; overflow-x: auto;
           }
           .inactive-tab {
@@ -1415,9 +1554,9 @@ export default function AdminInactiveInterns() {
 
           /* ── Empty detail ── */
           .inactive-empty-detail {
-            background: white; border-radius: 20px;
-            border: 1px solid #f0f0f0;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            background: white; border-radius: 16px;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             min-height: 400px; padding: 40px; text-align: center;
@@ -1436,7 +1575,150 @@ export default function AdminInactiveInterns() {
           .inactive-empty-detail__sub {
             font-size: 13px; color: #6b7280; max-width: 320px; margin: 0; line-height: 1.6;
           }
+
+          /* ── Responsive adjustments for 1024px and below ── */
+          @media (max-width: 1024px) {
+            .inactive-layout {
+              flex-direction: column; gap: 16px; min-height: auto;
+            }
+            .inactive-list-col {
+              flex: none; width: 100%; height: auto; max-height: 480px;
+            }
+            .inactive-list-body {
+              max-height: 320px;
+            }
+            .inactive-stats-bar {
+              padding: 10px 14px; gap: 10px; margin-bottom: 14px;
+            }
+            .inactive-stat__value { font-size: 20px; }
+            .inactive-stat__label { font-size: 10px; }
+            .inactive-stat--divider { display: none; }
+            .inactive-search-bar { min-width: 100%; }
+            .inactive-search-bar__input {
+              padding: 8px 34px 8px 32px; font-size: 12px;
+            }
+            .inactive-search-bar__icon { left: 10px; font-size: 12px; }
+            .inactive-detail-panel { border-radius: 12px; }
+            .inactive-detail-header { padding: 14px; gap: 12px; }
+            .inactive-detail-avatar { width: 44px; height: 44px; font-size: 18px; border-radius: 12px; }
+            .inactive-detail-name { font-size: 15px; }
+            .inactive-detail-meta { font-size: 11px; }
+            .inactive-detail-email { font-size: 10px; }
+            .inactive-btn { width: 100%; padding: 8px 14px; font-size: 11px; }
+            .inactive-tabs { padding: 0 8px; }
+            .inactive-tab { padding: 10px 12px; font-size: 11px; }
+            .inactive-tab-content { padding: 12px; }
+            .inactive-empty-detail { padding: 24px 14px; min-height: 240px; }
+            .inactive-empty-detail__icon { width: 56px; height: 56px; border-radius: 14px; margin-bottom: 12px; }
+            .inactive-empty-detail__title { font-size: 14px; }
+            .inactive-empty-detail__sub { font-size: 11px; }
+          }
+
+          /* ── Responsive adjustments for 320px - 480px ── */
+          @media (max-width: 480px) {
+            .inactive-layout { gap: 10px; }
+            .inactive-list-col { border-radius: 12px; }
+            .inactive-list-header { padding: 10px 12px; }
+            .inactive-list-header__title { font-size: 12px; }
+            .inactive-count-badge { padding: 3px 8px; font-size: 10px; }
+            .inactive-list-item { padding: 8px 10px; gap: 8px; }
+            .inactive-list-item__avatar { width: 30px; height: 30px; font-size: 12px; border-radius: 8px; }
+            .inactive-list-item__name { font-size: 11px; }
+            .inactive-list-item__meta { font-size: 9px; }
+            .inactive-list-item__email { font-size: 9px; }
+            .inactive-list-item__arrow { font-size: 14px; }
+          }
         `}</style>
+
+        {/* Security Check Backdrop */}
+        <AnimatePresence>
+          {showSecurityPopup && (
+            <motion.div
+              key="inactive-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[25] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Security Check Popup */}
+        <AnimatePresence>
+          {showSecurityPopup && (
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+              <div
+                className="fixed inset-0 z-[26] pointer-events-auto"
+                onClick={() => setShowSecurityPopup(false)}
+              />
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  
+                  onAnimationComplete={() => {
+                    document.getElementById('inactive-security-password-input')?.focus();
+                  }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                >
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">Enter password to proceed</p>
+                    </div>
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      id="inactive-security-password-input"
+                      type={showPasswordText ? "text" : "password"}
+                      value={securityPassword}
+                      onChange={(e) => setSecurityPassword(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                      placeholder="Enter password..."
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordText(!showPasswordText)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      {showPasswordText ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {passwordError && (
+                      <p className="text-xs font-semibold text-rose-500 mt-2">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowSecurityPopup(false)}
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handlePasswordVerify}
+                      disabled={securitySaving || !securityPassword}
+                      className="flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer"
+                    >
+                      {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
       </div>
     </AdminNavigation>
   );

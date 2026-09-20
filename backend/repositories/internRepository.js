@@ -48,7 +48,36 @@ class InternRepository {
   }
 
   static async getInternById(internId) {
-    return await Intern.findById(internId);
+    if (!internId) return null;
+    const mongoose = require("mongoose");
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+          { email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+          { email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    return intern;
   }
 
   static async findByEmail(email) {

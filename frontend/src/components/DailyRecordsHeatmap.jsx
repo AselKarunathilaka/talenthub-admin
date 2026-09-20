@@ -91,9 +91,9 @@ function buildGrid(recordsByDate, rangeStart, rangeEnd) {
   return weeks;
 }
 
-const DailyRecordsHeatmap = ({ startDate, endDate }) => {
-  const [records, setRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+const DailyRecordsHeatmap = ({ startDate, endDate, records: propRecords }) => {
+  const [records, setRecords] = useState(propRecords || []);
+  const [loading, setLoading] = useState(propRecords !== undefined ? false : true);
   const [error, setError] = useState(null);
   const [hovered, setHovered] = useState(null);
   const scrollRef = useRef(null);
@@ -124,6 +124,13 @@ const DailyRecordsHeatmap = ({ startDate, endDate }) => {
   }, [startDate, endDate]);
 
   useEffect(() => {
+    if (propRecords !== undefined) {
+      setRecords(Array.isArray(propRecords) ? propRecords : []);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
 
     const fetchRecords = async () => {
@@ -131,7 +138,15 @@ const DailyRecordsHeatmap = ({ startDate, endDate }) => {
         setLoading(true);
         const authToken =
           localStorage.getItem("authToken") ||
-          JSON.parse(localStorage.getItem("studentInfo") || "{}").token;
+          localStorage.getItem("token") ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("studentInfo") || "{}").token; }
+            catch { return null; }
+          })() ||
+          (() => {
+            try { return JSON.parse(localStorage.getItem("adminInfo") || "{}").token; }
+            catch { return null; }
+          })();
 
         if (!authToken) {
           if (!cancelled) {
@@ -176,7 +191,7 @@ const DailyRecordsHeatmap = ({ startDate, endDate }) => {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [propRecords]);
 
   const recordsByDate = useMemo(() => {
     const map = new Map();

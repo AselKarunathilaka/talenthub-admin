@@ -40,6 +40,20 @@ const restrictionHistorySchema = new mongoose.Schema({
   autoRestricted: { type: Boolean, default: true }, // true = system-triggered, false = manual
 });
 
+/* ─────────────────────────────────────────────────────────────────────────── */
+/*  TalentHub (Project-based) restriction history entry                        */
+/* ─────────────────────────────────────────────────────────────────────────── */
+const talentHubRestrictionHistorySchema = new mongoose.Schema({
+  restrictedAt: { type: Date, required: true },
+  restrictionReason: { type: String, required: true },
+  liftedAt: { type: Date, default: null },
+  liftedBy: { type: String, default: null }, // admin identifier or "System"
+  liftReason: { type: String, default: null },
+  autoRestricted: { type: Boolean, default: true }, // true = system-triggered (no project), false = manual
+  isOverride: { type: Boolean, default: false }, // true = temporary 5-day override
+  overrideExpiresAt: { type: Date, default: null },
+});
+
 // Store API-style keys as the canonical document shape so DB contains Trainee_* fields.
 const internSchema = new mongoose.Schema(
   {
@@ -68,6 +82,13 @@ const internSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
+    digitalAgreement: {
+      agreed: { type: Boolean, default: false },
+      agreedAt: { type: Date },
+      status: { type: String, default: "pending" },
+      items: { type: [String], default: [] },
+      version: { type: String, default: "1.0" },
+    },
     isTestAccount: { type: Boolean, default: false },
     password: { type: String, default: "" },
     googlePictureUrl: { type: String, default: "" },
@@ -95,6 +116,52 @@ const internSchema = new mongoose.Schema(
     logbookRestrictionHistory: {
       type: [restrictionHistorySchema],
       default: [],
+    },
+
+    /* ── TalentHub (Project-based) restriction ────────────────────────────── */
+    talentHubRestricted: {
+      type: Boolean,
+      default: false,
+      index: true, // fast look-up on every intern login and route access
+    },
+    talentHubRestrictedAt: {
+      type: Date,
+      default: null,
+    },
+    talentHubRestrictionReason: {
+      type: String,
+      default: null,
+      // e.g. "No project assigned"
+    },
+    talentHubOverride: {
+      type: Boolean,
+      default: false, // true = Admin manually lifted / granted temporary 5-day access
+      index: true,
+    },
+    talentHubOverrideAt: {
+      type: Date,
+      default: null,
+    },
+    talentHubOverrideExpiresAt: {
+      type: Date,
+      default: null, // 5-day expiration timestamp
+    },
+    talentHubOverrideBy: {
+      type: String,
+      default: null,
+    },
+    talentHubOverrideReason: {
+      type: String,
+      default: null,
+    },
+    talentHubRestrictionHistory: {
+      type: [talentHubRestrictionHistorySchema],
+      default: [],
+    },
+
+    commitsCount: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true },

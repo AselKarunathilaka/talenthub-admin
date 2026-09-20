@@ -44,9 +44,9 @@ import {
 } from "../utils/entryHeuristics";
 import { rateLimitedBatchValidate } from "../utils/batchValidation";
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/*  Utility – check if current time is after 10 AM (Sri Lankan time)         */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*  Utility â€“ check if current time is after 10 AM (Sri Lankan time)         */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const checkLeaveTimeRestriction = () => {
   try {
     const now = new Date();
@@ -80,9 +80,9 @@ const checkLeaveTimeRestriction = () => {
   }
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Color palettes keyed by status                                           */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const STATUS_PALETTES = {
   working: {
     primary: "#0056a2",
@@ -122,9 +122,9 @@ const STATUS_PALETTES = {
   },
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Motivational quotes                                                      */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const MOTIVATIONAL_QUOTES = [
   "Small daily improvements lead to staggering results.",
   "Your logbook tells the story of your growth.",
@@ -136,18 +136,18 @@ const MOTIVATIONAL_QUOTES = [
   "Progress, not perfection. Log what matters.",
 ];
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Stepper Steps                                                            */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const STEPS = [
   { id: 0, label: "Status", icon: FiUmbrella },
   { id: 1, label: "Stack", icon: FiMonitor },
   { id: 2, label: "Details", icon: FiBook },
 ];
 
-/* ────────────────────────────────────────────────────────────────────────── */
-/*  ★ LogbookRestricted — shown when the intern's logbook is locked          */
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/*  â˜… LogbookRestricted â€” shown when the intern's logbook is locked          */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const LogbookRestricted = ({ reason, restrictedAt }) => {
   const fmtDate = (d) => {
     if (!d) return null;
@@ -210,7 +210,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           </h2>
           <p
             style={{
-              fontSize: 13,
+              fontSize: "clamp(11px, 2vw, 12px)",
               color: "#991b1b",
               marginTop: 5,
               marginBottom: 0,
@@ -236,19 +236,19 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
           {restrictedAt && (
             <p
               style={{
-                fontSize: 12,
+                fontSize: "clamp(10px, 2vw, 12px)",
                 color: "#ef4444",
                 fontWeight: 600,
                 margin: "0 0 6px",
               }}
             >
-              🔒 Restricted on {fmtDate(restrictedAt)}
+              ðŸ”’ Restricted on {fmtDate(restrictedAt)}
             </p>
           )}
           {reason && (
             <p
               style={{
-                fontSize: 13,
+                fontSize: "clamp(11px, 2vw, 12px)",
                 color: "#991b1b",
                 margin: 0,
                 lineHeight: 1.6,
@@ -261,7 +261,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
 
         <p
           style={{
-            fontSize: 14,
+            fontSize: "clamp(11px, 2.5vw, 13px)",
             color: "#7f1d1d",
             lineHeight: 1.7,
             marginBottom: 20,
@@ -315,7 +315,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 13,
+                  fontSize: "clamp(11px, 2vw, 12px)",
                   fontWeight: 700,
                   flexShrink: 0,
                 }}
@@ -324,7 +324,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
               </span>
               <span
                 style={{
-                  fontSize: 14,
+                  fontSize: "clamp(11px, 2.5vw, 13px)",
                   color: "#7f1d1d",
                   lineHeight: 1.5,
                   paddingTop: 3,
@@ -339,7 +339,7 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
         <div style={{ borderTop: "1px solid #fecaca", paddingTop: 16 }}>
           <p
             style={{
-              fontSize: 12,
+              fontSize: "clamp(10px, 2vw, 12px)",
               color: "#991b1b",
               margin: 0,
               lineHeight: 1.6,
@@ -355,10 +355,10 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
   );
 };
 
-/* ────────────────────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 /*  Main Component                                                           */
-/* ────────────────────────────────────────────────────────────────────────── */
-const Logbook = () => {
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+const InternLogBook = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -385,7 +385,7 @@ const Logbook = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [leaveLimitReached, setLeaveLimitReached] = useState(false);
 
-  /* ── ★ New: logbook restriction state ── */
+  /* â”€â”€ â˜… New: logbook restriction state â”€â”€ */
   const [logbookRestriction, setLogbookRestriction] = useState({
     checking: true,
     restricted: false,
@@ -408,7 +408,7 @@ const Logbook = () => {
   // Current palette
   const palette = STATUS_PALETTES[formData.status] || STATUS_PALETTES.working;
 
-  /* ── Progress bar calculation ─────────────────────────────────────────── */
+  /* â”€â”€ Progress bar calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const completionProgress = useMemo(() => {
     if (formData.status === "leave") return 100;
 
@@ -427,7 +427,7 @@ const Logbook = () => {
     return filled * 20;
   }, [formData]);
 
-  /* ── ★ Check logbook restriction on mount ── */
+  /* â”€â”€ â˜… Check logbook restriction on mount â”€â”€ */
   useEffect(() => {
     const checkRestriction = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -476,7 +476,7 @@ const Logbook = () => {
     checkRestriction();
   }, []);
 
-  /* ── Check project access on mount ────────────────────────────────────── */
+  /* â”€â”€ Check project access on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkAccess = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -512,7 +512,7 @@ const Logbook = () => {
     checkAccess();
   }, []);
 
-  /* ── Check for extended leave on mount ────────────────────────────────── */
+  /* â”€â”€ Check for extended leave on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkExtendedLeave = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -609,7 +609,7 @@ const Logbook = () => {
         });
         setActiveStep(0);
       } else if (data.code === "LOGBOOK_RESTRICTED") {
-        /* ── ★ Handle restriction returned from server mid-session ── */
+        /* â”€â”€ â˜… Handle restriction returned from server mid-session â”€â”€ */
         setLogbookRestriction({
           checking: false,
           restricted: true,
@@ -715,7 +715,7 @@ const Logbook = () => {
       return;
     }
 
-    // ── Mandatory field check for all three fields ──
+    // â”€â”€ Mandatory field check for all three fields â”€â”€
     if (formData.status !== "leave") {
       if (
         !formData.tasks.trim() ||
@@ -875,7 +875,7 @@ const Logbook = () => {
     }
   };
 
-  /* ── Stepper navigation ───────────────────────────────────────────────── */
+  /* â”€â”€ Stepper navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const isOnLeave = formData.status === "leave";
 
   // Determine which steps are reachable
@@ -903,7 +903,7 @@ const Logbook = () => {
     if (activeStep > 0) setActiveStep((s) => s - 1);
   };
 
-  /* ── Derived states ───────────────────────────────────────────────────── */
+  /* ── Derived states ──────────────────────────────────────────────────────── */
   const isSubmitDisabled =
     projectAccessBlocked !== false ||
     extendedLeaveBlocked !== false ||
@@ -1006,9 +1006,9 @@ const Logbook = () => {
     },
   ];
 
-  /* ──────────────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   /*  STATUS OPTIONS (styled cards)                                          */
-  /* ──────────────────────────────────────────────────────────────────────── */
+  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const statusOptions = [
     {
       value: "working",
@@ -1036,70 +1036,61 @@ const Logbook = () => {
     },
   ];
 
-  /* ════════════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   /*  RENDER                                                                 */
-  /* ════════════════════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
     <>
       {showSuccessAnimation && (
         <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
       )}
 
-      <div
-        className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans"
-        style={{ background: "#f0f4f8" }}
-      >
-        <Navigation />
+      <Navigation>
 
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            <SectionTip sectionKey="logbook" />
+            
 
-            {/* ───── Page Header ───── */}
-            <div style={{ marginBottom: 32 }} className="logbook-fade-in">
-              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                <div>
-                  <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
-                    <BookOpen className="text-[#00b4eb] h-8 w-8" />
-                    Daily Logbook
+            {/* â”€â”€â”€â”€â”€ Page Header â”€â”€â”€â”€â”€ */}
+            <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
+              <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
+                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                  <BookOpen className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <h1 className="text-[clamp(20px,5vw,28px)] font-[800] text-[#1a1a2e] leading-tight tracking-tight">
+                    Smart Logbook
                   </h1>
-                  <p
-                    style={{
-                      color: "#6b7280",
-                      marginTop: 6,
-                      fontSize: 15,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    "{quote}"
+                  <p className="text-[#6b7280] mt-[2px] text-[clamp(11px,2.5vw,14px)] font-medium">
+                    Record your daily progress and tasks seamlessly.
                   </p>
                 </div>
-                <button
-                  onClick={() => navigate("/DailyRecords")}
-                  className="logbook-view-records-btn"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    padding: "10px 20px",
-                    background: "white",
-                    border: `1.5px solid ${palette.border}`,
-                    borderRadius: 14,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: palette.primary,
-                    cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                  }}
-                >
-                  <FiBook style={{ marginRight: 8, color: palette.light }} />
-                  View Records
-                  <FiArrowRight style={{ marginLeft: 8, opacity: 0.5 }} />
-                </button>
               </div>
+              <button
+                onClick={() => navigate("/DailyRecords")}
+                className="logbook-view-records-btn"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "10px 20px",
+                  background: "white",
+                  border: `1.5px solid ${palette.border}`,
+                  borderRadius: 14,
+                  fontSize: "clamp(11px, 2.5vw, 13px)",
+                  fontWeight: 600,
+                  color: palette.primary,
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                }}
+              >
+                <FiBook style={{ marginRight: 8, color: palette.light }} />
+                View Records
+                <FiArrowRight style={{ marginLeft: 8, opacity: 0.5 }} />
+              </button>
             </div>
 
-            {/* ───── ★ Step 1: Restriction check loading ───── */}
+            {/* â”€â”€â”€â”€â”€ â˜… Step 1: Restriction check loading â”€â”€â”€â”€â”€ */}
             {logbookRestriction.checking && (
               <div
                 className="logbook-fade-in"
@@ -1120,16 +1111,16 @@ const Logbook = () => {
                   size={28}
                   style={{ color: "#ef4444", marginBottom: 16 }}
                 />
-                <p style={{ fontSize: 15, fontWeight: 600, color: "#374151" }}>
-                  Checking logbook access…
+                <p style={{ fontSize: "clamp(12px, 3vw, 14px)", fontWeight: 600, color: "#374151" }}>
+                  Checking logbook accessâ€¦
                 </p>
-                <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+                <p style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#9ca3af", marginTop: 4 }}>
                   Verifying your submission status
                 </p>
               </div>
             )}
 
-            {/* ───── ★ Step 2: Logbook Restricted UI ───── */}
+            {/* â”€â”€â”€â”€â”€ â˜… Step 2: Logbook Restricted UI â”€â”€â”€â”€â”€ */}
             {!logbookRestriction.checking && logbookRestriction.restricted && (
               <div className="logbook-fade-in">
                 <LogbookRestricted
@@ -1139,10 +1130,10 @@ const Logbook = () => {
               </div>
             )}
 
-            {/* ───── Step 3: Normal form flow (only when not restricted) ───── */}
+            {/* â”€â”€â”€â”€â”€ Step 3: Normal form flow (only when not restricted) â”€â”€â”€â”€â”€ */}
             {!logbookRestriction.checking && !logbookRestriction.restricted && (
               <>
-                {/* ───── Project Access Blocked — Standalone Instruction Card ───── */}
+                {/* â”€â”€â”€â”€â”€ Project Access Blocked â€” Standalone Instruction Card â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === true && (
                   <div
                     className="logbook-card logbook-fade-in"
@@ -1196,7 +1187,7 @@ const Logbook = () => {
                         </h2>
                         <p
                           style={{
-                            fontSize: 13,
+                            fontSize: "clamp(11px, 2vw, 12px)",
                             color: "#a16207",
                             marginTop: 4,
                           }}
@@ -1220,7 +1211,7 @@ const Logbook = () => {
                         >
                           <p
                             style={{
-                              fontSize: 13,
+                              fontSize: "clamp(11px, 2vw, 12px)",
                               color: "#92400e",
                               fontWeight: 500,
                               margin: 0,
@@ -1233,7 +1224,7 @@ const Logbook = () => {
 
                       <p
                         style={{
-                          fontSize: 14,
+                          fontSize: "clamp(11px, 2.5vw, 13px)",
                           color: "#a16207",
                           marginBottom: 16,
                           lineHeight: 1.6,
@@ -1324,7 +1315,7 @@ const Logbook = () => {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 700,
                                 flexShrink: 0,
                               }}
@@ -1333,7 +1324,7 @@ const Logbook = () => {
                             </span>
                             <span
                               style={{
-                                fontSize: 14,
+                                fontSize: "clamp(11px, 2.5vw, 13px)",
                                 color: "#78350f",
                                 lineHeight: 1.5,
                                 paddingTop: 3,
@@ -1354,14 +1345,14 @@ const Logbook = () => {
                       >
                         <p
                           style={{
-                            fontSize: 12,
+                            fontSize: "clamp(10px, 2vw, 12px)",
                             color: "#b45309",
                             margin: 0,
                             lineHeight: 1.5,
                           }}
                         >
                           Already joined a team? Team data is synced every 5
-                          minutes — please wait a moment and refresh, or contact
+                          minutes â€” please wait a moment and refresh, or contact
                           your administrator if the issue persists.
                         </p>
                       </div>
@@ -1384,7 +1375,7 @@ const Logbook = () => {
                             "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
                           color: "white",
                           fontWeight: 600,
-                          fontSize: 15,
+                          fontSize: "clamp(12px, 3vw, 14px)",
                           textDecoration: "none",
                           transition: "all 0.3s ease",
                           boxShadow: "0 4px 14px rgba(245, 158, 11, 0.25)",
@@ -1397,7 +1388,7 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Extended Leave Blocked — Standalone Instruction Card ───── */}
+                {/* â”€â”€â”€â”€â”€ Extended Leave Blocked â€” Standalone Instruction Card â”€â”€â”€â”€â”€ */}
                 {extendedLeaveBlocked === true && (
                   <div
                     className="logbook-card logbook-fade-in"
@@ -1451,7 +1442,7 @@ const Logbook = () => {
                         </h2>
                         <p
                           style={{
-                            fontSize: 13,
+                            fontSize: "clamp(11px, 2vw, 12px)",
                             color: "#0c4a6e",
                             marginTop: 4,
                           }}
@@ -1464,7 +1455,7 @@ const Logbook = () => {
                     <div style={{ padding: "24px" }}>
                       <p
                         style={{
-                          fontSize: 14,
+                          fontSize: "clamp(11px, 2.5vw, 13px)",
                           color: "#0c4a6e",
                           marginBottom: 16,
                           lineHeight: 1.6,
@@ -1495,7 +1486,7 @@ const Logbook = () => {
                   </div>
                 )}
 
-                {/* ───── Loading state while checking access ───── */}
+                {/* â”€â”€â”€â”€â”€ Loading state while checking access â”€â”€â”€â”€â”€ */}
                 {(projectAccessBlocked === null ||
                   extendedLeaveBlocked === null) && (
                   <div
@@ -1519,20 +1510,20 @@ const Logbook = () => {
                     />
                     <p
                       style={{
-                        fontSize: 15,
+                        fontSize: "clamp(12px, 3vw, 14px)",
                         fontWeight: 600,
                         color: "#374151",
                       }}
                     >
                       Checking status...
                     </p>
-                    <p style={{ fontSize: 13, color: "#9ca3af", marginTop: 4 }}>
+                    <p style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#9ca3af", marginTop: 4 }}>
                       Verifying your project assignment and leave status
                     </p>
                   </div>
                 )}
 
-                {/* ───── Main Form Card (only when access is granted) ───── */}
+                {/* â”€â”€â”€â”€â”€ Main Form Card (only when access is granted) â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === false &&
                   extendedLeaveBlocked === false && (
                     <div
@@ -1548,7 +1539,7 @@ const Logbook = () => {
                         position: "relative",
                       }}
                     >
-                      {/* ── Progress bar (top border) ── */}
+                      {/* â”€â”€ Progress bar (top border) â”€â”€ */}
                       <div
                         style={{
                           height: 4,
@@ -1584,7 +1575,7 @@ const Logbook = () => {
                         )}
                       </div>
 
-                      {/* ── Stepper Header ── */}
+                      {/* â”€â”€ Stepper Header â”€â”€ */}
                       <div
                         style={{
                           padding: "20px 24px 16px",
@@ -1729,12 +1720,12 @@ const Logbook = () => {
                         </div>
                       </div>
 
-                      {/* ── Form Body ── */}
+                      {/* â”€â”€ Form Body â”€â”€ */}
                       <div style={{ padding: "24px" }}>
                         <form onSubmit={handleSubmit}>
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 0 — Status Selection                   ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 0 â€” Status Selection                   â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -1754,7 +1745,7 @@ const Logbook = () => {
                               >
                                 How are you working today?
                               </h2>
-                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                              <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                 Select your work status for today
                               </p>
                             </div>
@@ -1763,7 +1754,7 @@ const Logbook = () => {
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 600,
                                 color: "#374151",
                                 marginBottom: 12,
@@ -1873,7 +1864,7 @@ const Logbook = () => {
                                     </div>
                                     <span
                                       style={{
-                                        fontSize: 14,
+                                        fontSize: "clamp(11px, 2.5vw, 13px)",
                                         fontWeight: 700,
                                         color: isSelected
                                           ? opt.palette.primary
@@ -1961,7 +1952,7 @@ const Logbook = () => {
                                   background: palette.gradient,
                                   color: "white",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: areFieldsDisabled
                                     ? "not-allowed"
                                     : "pointer",
@@ -1975,9 +1966,9 @@ const Logbook = () => {
                             </div>
                           </div>
 
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 1 — Task Stack                         ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 1 â€” Task Stack                         â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -2000,7 +1991,7 @@ const Logbook = () => {
                               >
                                 What's your focus area?
                               </h2>
-                              <p style={{ color: "#6b7280", fontSize: 14 }}>
+                              <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                 Select the technology stack you worked on
                               </p>
                             </div>
@@ -2009,7 +2000,7 @@ const Logbook = () => {
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                fontSize: 13,
+                                fontSize: "clamp(11px, 2vw, 12px)",
                                 fontWeight: 600,
                                 color: "#374151",
                                 marginBottom: 12,
@@ -2092,7 +2083,7 @@ const Logbook = () => {
                                     </div>
                                     <span
                                       style={{
-                                        fontSize: 13,
+                                        fontSize: "clamp(11px, 2vw, 12px)",
                                         fontWeight: isSelected ? 600 : 500,
                                         color: isSelected
                                           ? palette.primary
@@ -2128,7 +2119,7 @@ const Logbook = () => {
                                   background: "white",
                                   color: "#6b7280",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: "pointer",
                                   transition: "all 0.3s ease",
                                 }}
@@ -2152,7 +2143,7 @@ const Logbook = () => {
                                     : "#d1d5db",
                                   color: "white",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: formData.stack
                                     ? "pointer"
                                     : "not-allowed",
@@ -2168,9 +2159,9 @@ const Logbook = () => {
                             </div>
                           </div>
 
-                          {/* ╔══════════════════════════════════════════════╗ */}
-                          {/* ║  STEP 2 — The Three Fields (or Leave msg)    ║ */}
-                          {/* ╚══════════════════════════════════════════════╝ */}
+                          {/* â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•— */}
+                          {/* â•‘  STEP 2 â€” The Three Fields (or Leave msg)    â•‘ */}
+                          {/* â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */}
                           <div
                             className="logbook-step-content"
                             style={{
@@ -2234,7 +2225,7 @@ const Logbook = () => {
                                 </div>
                               </div>
                             ) : (
-                              /* ── Working / WFH mode — all three fields ── */
+                              /* â”€â”€ Working / WFH mode â€” all three fields â”€â”€ */
                               <>
                                 <div
                                   style={{
@@ -2252,18 +2243,18 @@ const Logbook = () => {
                                   >
                                     Log your daily impact
                                   </h2>
-                                  <p style={{ color: "#6b7280", fontSize: 14 }}>
+                                  <p style={{ color: "#6b7280", fontSize: "clamp(11px, 2.5vw, 13px)" }}>
                                     Complete your daily work summary
                                   </p>
                                 </div>
 
-                                {/* ── Tasks Completed ── */}
+                                {/* â”€â”€ Tasks Completed â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2299,7 +2290,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.tasks.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2317,13 +2308,13 @@ const Logbook = () => {
                                   />
                                 </div>
 
-                                {/* ── Challenges Faced ── */}
+                                {/* â”€â”€ Challenges Faced â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2359,7 +2350,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.challenges.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2377,13 +2368,13 @@ const Logbook = () => {
                                   />
                                 </div>
 
-                                {/* ── Plans for Tomorrow ── */}
+                                {/* â”€â”€ Plans for Tomorrow â”€â”€ */}
                                 <div style={{ marginBottom: 20 }}>
                                   <label
                                     style={{
                                       display: "flex",
                                       alignItems: "center",
-                                      fontSize: 13,
+                                      fontSize: "clamp(11px, 2vw, 12px)",
                                       fontWeight: 600,
                                       color: "#374151",
                                       marginBottom: 8,
@@ -2419,7 +2410,7 @@ const Logbook = () => {
                                       padding: "12px 16px",
                                       border: `1.5px solid ${formData.plans.trim() ? palette.border : "#e0e0e0"}`,
                                       borderRadius: 14,
-                                      fontSize: 14,
+                                      fontSize: "clamp(11px, 2.5vw, 13px)",
                                       resize: "vertical",
                                       outline: "none",
                                       transition: "all 0.3s ease",
@@ -2439,7 +2430,7 @@ const Logbook = () => {
                               </>
                             )}
 
-                            {/* ── Status / error messages ── */}
+                            {/* â”€â”€ Status / error messages â”€â”€ */}
                             {statusMessage && (
                               <div
                                 className="logbook-fade-in"
@@ -2499,14 +2490,14 @@ const Logbook = () => {
                                           fontWeight: 600,
                                           color: "#92400e",
                                           marginBottom: 4,
-                                          fontSize: 14,
+                                          fontSize: "clamp(11px, 2.5vw, 13px)",
                                         }}
                                       >
                                         Team Assignment Required
                                       </p>
                                       <p
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           marginBottom: 12,
                                         }}
@@ -2515,7 +2506,7 @@ const Logbook = () => {
                                       </p>
                                       <p
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           marginBottom: 8,
                                         }}
@@ -2537,7 +2528,7 @@ const Logbook = () => {
                                       </p>
                                       <ol
                                         style={{
-                                          fontSize: 13,
+                                          fontSize: "clamp(11px, 2vw, 12px)",
                                           color: "#a16207",
                                           listStyleType: "decimal",
                                           paddingLeft: 20,
@@ -2586,7 +2577,7 @@ const Logbook = () => {
                                         }}
                                       >
                                         Already joined a team? Team data is
-                                        synced every 5 minutes — please wait a
+                                        synced every 5 minutes â€” please wait a
                                         moment and refresh, or contact your
                                         administrator if the issue persists.
                                       </p>
@@ -2596,7 +2587,7 @@ const Logbook = () => {
                                       <span
                                         style={{
                                           fontWeight: 600,
-                                          fontSize: 14,
+                                          fontSize: "clamp(11px, 2.5vw, 13px)",
                                           color:
                                             statusMessage.type === "success"
                                               ? "#166534"
@@ -2622,7 +2613,7 @@ const Logbook = () => {
                               </div>
                             )}
 
-                            {/* ── Nav & Submit buttons ── */}
+                            {/* â”€â”€ Nav & Submit buttons â”€â”€ */}
                             <div
                               style={{
                                 display: "flex",
@@ -2644,7 +2635,7 @@ const Logbook = () => {
                                   background: "white",
                                   color: "#6b7280",
                                   fontWeight: 600,
-                                  fontSize: 14,
+                                  fontSize: "clamp(11px, 2.5vw, 13px)",
                                   cursor: "pointer",
                                   transition: "all 0.3s ease",
                                 }}
@@ -2675,7 +2666,7 @@ const Logbook = () => {
                                       ? "#92400e"
                                       : "white",
                                   fontWeight: 700,
-                                  fontSize: 15,
+                                  fontSize: "clamp(12px, 3vw, 14px)",
                                   cursor: isSubmitDisabled
                                     ? "not-allowed"
                                     : "pointer",
@@ -2695,7 +2686,7 @@ const Logbook = () => {
                               <p
                                 style={{
                                   textAlign: "center",
-                                  fontSize: 12,
+                                  fontSize: "clamp(10px, 2vw, 12px)",
                                   color: "#b45309",
                                   marginTop: 8,
                                 }}
@@ -2721,50 +2712,12 @@ const Logbook = () => {
                     </div>
                   )}
 
-                {/* ───── Info Cards (only when access is granted) ───── */}
+                {/* â”€â”€â”€â”€â”€ Info Cards (only when access is granted) â”€â”€â”€â”€â”€ */}
                 {projectAccessBlocked === false && (
                   <div style={{ marginTop: 24 }} className="logbook-fade-in">
-                    <div className="grid gap-4 md:grid-cols-2">
+                    <div className="grid gap-4">
                       {/* Tips Card */}
-                      <InfoCard
-                        icon={<FiInfo />}
-                        title="Tips for Better Logging"
-                        palette={palette}
-                      >
-                        <ul
-                          style={{ listStyle: "none", padding: 0, margin: 0 }}
-                        >
-                          {[
-                            "Always keep a backup of your weekly logs",
-                            "Be specific about the tasks you completed",
-                            "Only submit descriptive and work-related entries",
-                            "Update daily to help you track your progress",
-                          ].map((tip, i) => (
-                            <li
-                              key={i}
-                              style={{
-                                display: "flex",
-                                alignItems: "flex-start",
-                                gap: 8,
-                                padding: "6px 0",
-                                fontSize: 13,
-                                color: "#4b5563",
-                              }}
-                            >
-                              <span
-                                style={{
-                                  color: palette.light,
-                                  flexShrink: 0,
-                                  marginTop: 2,
-                                }}
-                              >
-                                •
-                              </span>
-                              {tip}
-                            </li>
-                          ))}
-                        </ul>
-                      </InfoCard>
+                      
 
                       {/* Today's Summary Card */}
                       <InfoCard
@@ -2814,14 +2767,14 @@ const Logbook = () => {
             )}
           </main>
         </div>
-      </div>
+      </Navigation>
     </>
   );
 };
 
-/* ════════════════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 /*  Sub-Components                                                            */
-/* ════════════════════════════════════════════════════════════════════════════ */
+/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
 
 /** Static info card for sidebar info */
 const InfoCard = ({ icon, title, palette, children }) => {
@@ -2862,7 +2815,7 @@ const InfoCard = ({ icon, title, palette, children }) => {
         </div>
         <span
           style={{
-            fontSize: 15,
+            fontSize: "clamp(12px, 3vw, 14px)",
             fontWeight: 600,
             color: "#1a1a2e",
             flex: 1,
@@ -2881,12 +2834,13 @@ const InfoCard = ({ icon, title, palette, children }) => {
 const SummaryRow = ({ label, value }) => (
   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
     <span
-      style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", minWidth: 60 }}
+      style={{ fontSize: "clamp(11px, 2vw, 12px)", fontWeight: 600, color: "#6b7280", minWidth: 60 }}
     >
       {label}:
     </span>
-    <span style={{ fontSize: 13, color: "#374151", flex: 1 }}>{value}</span>
+    <span style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#374151", flex: 1 }}>{value}</span>
   </div>
 );
 
-export default Logbook;
+export default InternLogBook;
+

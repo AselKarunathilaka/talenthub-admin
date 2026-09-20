@@ -86,6 +86,61 @@ const downloadApprovedLeaveReport = async ({
 
 // Admin API functions
 export const adminApi = {
+  // Generic HTTP methods for the adminApi
+  get: async (url) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
+  post: async (url, body = {}) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
+  put: async (url, body = {}) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify(body),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+  
+  delete: async (url) => {
+    const response = await fetch(`${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw { response: { data: err, status: response.status } };
+    }
+    return response.json();
+  },
+
   // Download on-leave interns Excel
   downloadOnLeaveExcel: async () => {
     const token = getAuthToken();
@@ -98,6 +153,59 @@ export const adminApi = {
     await checkAuth(response);
     if (!response.ok) throw new Error("Failed to download on-leave Excel");
     return response.blob();
+  },
+
+  // --- University Management ---
+  getUniversities: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities`, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to fetch universities");
+    return response.json();
+  },
+
+  approveUniversity: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}/approve`, {
+      method: "PUT",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to approve university");
+    return response.json();
+  },
+
+  rejectUniversity: async (id, reason) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}/reject`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify({ rejectionReason: reason }),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to reject university");
+    return response.json();
+  },
+
+  deleteUniversity: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/admin/universities/${id}`, {
+      method: "DELETE",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to delete university");
+    return response.json();
+  },
+
+  getStudentsByUniversity: async (universityName) => {
+    const url = `${API_BASE_URL}/admin/universities/${encodeURIComponent(universityName)}/students`;
+    const response = await fetch(url, {
+      method: "GET",
+      headers: getHeaders(),
+    });
+    await checkAuth(response);
+    if (!response.ok) throw new Error("Failed to fetch university students");
+    return response.json();
   },
   downloadApprovedLeaveReport,
   // Get dashboard statistics
@@ -441,6 +549,25 @@ export const adminApi = {
       throw error;
     }
   },
+
+  rotateQrSession: async (sessionId) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/qrcode/session/${sessionId}/rotate`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to rotate session: ${response.status}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error rotating QR session:", error);
+      throw error;
+    }
+  },
+
 
   getFaceMeetingPin: async (projectName = "", options = {}) => {
     try {

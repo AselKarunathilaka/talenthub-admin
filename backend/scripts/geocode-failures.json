@@ -1,0 +1,55 @@
+{
+  "generatedAt": "2026-09-12T17:36:57.771Z",
+  "failed": [
+    {
+      "traineeId": "3645",
+      "name": "A.W.I SAHANJITH",
+      "address": "242/16 mukalanhena bingiriya"
+    },
+    {
+      "traineeId": "3704",
+      "name": "Tharindu Dilshan Wickramasinghe",
+      "address": "No:129/3, Dewalagodella, Akaragama"
+    },
+    {
+      "traineeId": "3707",
+      "name": "R.P. Nilukshi Kaushalya Wijerathne",
+      "address": "Pahalawaththa, Ambanpola"
+    },
+    {
+      "traineeId": "3730",
+      "name": "Mithila Rasanjith Wickramatunge",
+      "address": "163/2/1, Walpitamulla, Devalapola"
+    },
+    {
+      "traineeId": "3858",
+      "name": "Ethugal Pedige Ravindu Sachintha Dissanayaka",
+      "address": "C 8/3 Minimaruwa Alwathura"
+    },
+    {
+      "traineeId": "3868",
+      "name": "Bodawaththe Gedara Nimesha Nethmina Samarathunge",
+      "address": "178 Bodawaththa Udagunnepana"
+    },
+    {
+      "traineeId": "3927",
+      "name": "DRC Sharuna Siriwansha",
+      "address": "Kiralabakka , Kalugamawa"
+    },
+    {
+      "traineeId": "3938",
+      "name": "Siri Jayalath Jothirathne Hirusha Pramuditha",
+      "address": "100/3C  Nuwararawewa"
+    },
+    {
+      "traineeId": "3947",
+      "name": "S Ramesh Krishan Sundarshana",
+      "address": "Thalgala , Nagollagama"
+    },
+    {
+      "traineeId": "3959",
+      "name": "Insusha Ashen",
+      "address": "2/2/C/4/3 Soriyapaluwa Ganemullla"
+    }
+  ]
+}

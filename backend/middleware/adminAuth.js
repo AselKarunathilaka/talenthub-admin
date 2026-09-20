@@ -20,13 +20,14 @@ const requireAdmin = async (req, res, next) => {
 };
 
 const requirePermission = (permission) => (req, res, next) => {
-  if (req.user?.role === "super_admin" || req.user?.permissions?.includes(permission)) return next();
+  if (req.user?.role === "super_admin" || req.user?.role === "PM" || req.user?.role === "pm" || req.user?.permissions?.includes(permission)) return next();
   return res.status(403).json({ message: `Permission required: ${permission}`, code: "FORBIDDEN" });
 };
 
 const routePermission = (req) => {
   const path = req.path;
   if (path.startsWith("/users")) return "users.manage";
+  if (path.startsWith("/settings")) return "settings.manage";
   if (path.startsWith("/dashboard")) return "dashboard.view";
   if (path.startsWith("/daily-records") || path.includes("non-submission")) return "daily_logs.view";
   if (path.startsWith("/announcements")) return "announcements.manage";
@@ -34,7 +35,7 @@ const routePermission = (req) => {
     return req.method === "GET" ? "attendance.view" : "attendance.manage";
   }
   if (path.includes("issue-certificate") || path.startsWith("/sync/") || path.startsWith("/trigger/")) return "interns.manage";
-  if (path.startsWith("/intern") || path.includes("district") || path.includes("location") || path.startsWith("/past-intern")) return "interns.view";
+  if (path.startsWith("/intern") || path.includes("district") || path.includes("location") || path.startsWith("/past-intern") || path.startsWith("/analytics")) return "interns.view";
   return "dashboard.view";
 };
 

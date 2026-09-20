@@ -239,46 +239,39 @@ const AdminFeatureTips = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-pink-50 text-gray-800 relative z-10 overflow-hidden">
-        {/* Floating BG blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div
-          className="absolute w-80 h-80 rounded-full bg-blue-100/40 -top-20 -left-20"
-          animate={{ y: [0, -30, 0], x: [0, 20, 0] }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-          className="absolute w-96 h-96 rounded-full bg-pink-100/40 top-1/4 right-0"
-          animate={{ y: [0, 20, 0], x: [0, -20, 0] }}
-          transition={{ duration: 18, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        />
-      </div>
-
-      <div className="pt-2 sm:pt-4">
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="max-w-7xl mx-auto">
-            {/* Page Header */}
-            <div className="mb-8">
-              <motion.h1
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+          {/* Page Header */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
-                <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                  <Lightbulb className="text-[#0056a2] h-8 w-8" />
-                </div>
-                Feature Tips
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.05, duration: 0.2 }}
-                className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-              >
-                Create "What's New" modals to announce new features to all interns.
-              </motion.p>
+                <Lightbulb className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight"
+                >
+                  Feature Tips
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.05, duration: 0.2 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-[10px] sm:text-xs md:text-sm lg:text-base font-medium max-w-xl"
+                >
+                  Create "What's New" modals to announce new features to all interns.
+                </motion.p>
+              </div>
             </div>
+          </div>
 
             {/* Error banner */}
             <AnimatePresence>
@@ -530,9 +523,7 @@ const AdminFeatureTips = () => {
                 </div>
               </motion.div>
             </div>
-          </div>
         </main>
-      </div>
 
       {/* Confirm Delete Modal */}
       <AnimatePresence>

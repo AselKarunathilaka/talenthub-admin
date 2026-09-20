@@ -154,10 +154,11 @@ class FaceAttendanceService {
       throw new Error("A valid face descriptor is required.");
     }
 
-    const profileQuery = { isActive: true };
-    if (expectedInternId) {
-      profileQuery.internId = expectedInternId;
+    if (!expectedInternId) {
+       throw new Error("expectedInternId is required for 1-to-1 face matching.");
     }
+
+    const profileQuery = { isActive: true, internId: expectedInternId };
 
     const profiles = await InternFaceProfile.find(profileQuery).populate(
       "internId",
@@ -167,7 +168,7 @@ class FaceAttendanceService {
     if (!profiles.length) {
       return {
         matched: false,
-        reason: expectedInternId ? "profile_missing_for_intern" : "profile_missing",
+        reason: "profile_missing_for_intern",
         threshold: FACE_MATCH_THRESHOLD,
         bestDistance: null,
       };

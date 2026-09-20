@@ -1,16 +1,16 @@
-import React, { useEffect } from "react";
+import React, { useEffect, Suspense, lazy } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Login from "../pages/Login";
-import Attendance from "../pages/Attendance";
+import InternAttendance from "../pages/InternAttendance";
 import FaceAttendance from "../pages/FaceAttendance";
 import ScanQRCode from "../pages/ScanQRCode";
-import Dashboard from "../pages/Dashboard";
+import InternDashboard from "../pages/InternDashboard";
 import Availability from "../pages/Availability";
-import LogBook from "../pages/LogBook"; // Make sure the filename is LogBook.jsx
+import InternLogBook from "../pages/InternLogBook";
 import DailyRecords from "../pages/DailyRecords";
-import MyLeaveRequests from "../pages/MyLeaveRequests";
+import InternLeave from "../pages/InternLeave";
 import ShortLeavePass from "../pages/ShortLeavePass";
-import SeatReservation from "../pages/SeatReservation";
+import InternSeatReservation from "../pages/InternSeatReservation";
 import AdminLogin from "../pages/AdminLogin";
 import AdminDashboard from "../pages/AdminDashboard";
 import AdminDailyRecords from "../pages/AdminDailyRecords";
@@ -33,9 +33,18 @@ import AdminInactiveInterns from "../pages/AdminInactiveInterns";
 import CertificateVerify from "../pages/CertificateVerify";
 import AdminFaceAttendance from "../pages/AdminFaceAttendance";
 import AdminFeatureTips from "../pages/AdminFeatureTips";
-import LogbookRestrictions from "../pages/LogbookRestrictions";
+import AdminLogbookRestrictions from "../pages/AdminLogbookRestrictions";
+import AdminTalentHubRestrictions from "../pages/AdminTalentHubRestrictions";
 import AdminHolidays from "../pages/AdminHolidays";
 import AdminUserManagement from "../pages/AdminUserManagement";
+import UniversityLogin from "../pages/UniversityLogin";
+import UniversityDashboard from "../pages/UniversityDashboard";
+import UniversityStudentDetails from "../pages/UniversityStudentDetails";
+import AdminUniversities from "../pages/AdminUniversities";
+import AdminAnalytics from "../pages/AdminAnalytics";
+import AdminSettings from "../pages/AdminSettings";
+// Lazy-loaded — splits AdminInternPerformance into its own JS chunk
+const AdminInternPerformance = lazy(() => import("../pages/AdminInternPerformance"));
 import AdminRoute from "../components/AdminRoute";
 
 const ScrollbarThemer = () => {
@@ -66,7 +75,7 @@ const AppRoutes = () => {
         path="/attendance"
         element={
           <AgreementGuard>
-            <Attendance />
+            <InternAttendance />
           </AgreementGuard>
         }
       />
@@ -90,7 +99,7 @@ const AppRoutes = () => {
         path="/dashboard"
         element={
           <AgreementGuard>
-            <Dashboard />
+            <InternDashboard />
           </AgreementGuard>
         }
       />
@@ -115,7 +124,7 @@ const AppRoutes = () => {
         path="/log-book"
         element={
           <AgreementGuard>
-            <LogBook />
+            <InternLogBook />
           </AgreementGuard>
         }
       />
@@ -131,7 +140,7 @@ const AppRoutes = () => {
         path="/leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests requestType="short_leave" />
+            <InternLeave requestType="short_leave" />
           </AgreementGuard>
         }
       />
@@ -139,7 +148,7 @@ const AppRoutes = () => {
         path="/study-leave-requests"
         element={
           <AgreementGuard>
-            <MyLeaveRequests requestType="study_leave" />
+            <InternLeave requestType="study_leave" />
           </AgreementGuard>
         }
       />
@@ -155,10 +164,18 @@ const AppRoutes = () => {
         path="/seat-reservation"
         element={
           <AgreementGuard>
-            <SeatReservation />
+            <InternSeatReservation />
           </AgreementGuard>
         }
       />
+
+      {/* University Routes */}
+      <Route path="/university-login" element={<UniversityLogin />} />
+      <Route path="/university/dashboard" element={<UniversityDashboard />} />
+      <Route path="/university-dashboard" element={<UniversityDashboard />} />
+      <Route path="/university/student/:internId" element={<UniversityStudentDetails />} />
+      <Route path="/university/intern/:internId" element={<UniversityStudentDetails />} />
+      <Route path="/university-student/:internId" element={<UniversityStudentDetails />} />
 
       {/* Admin Routes */}
       <Route path="/admin-login" element={<AdminLogin />} />
@@ -182,9 +199,14 @@ const AppRoutes = () => {
         path="/admin/study-leave-requests"
         element={<AdminLeaveManagement requestType="study_leave" />}
       />
+      <Route path="/admin/universities" element={<AdminUniversities />} />
+      <Route path="/admin/universities/students/:internId" element={<UniversityStudentDetails />} />
       <Route path="/admin/announcements" element={<AdminAnnouncements />} />
       <Route path="/admin/feature-tips" element={<AdminFeatureTips />} />
       <Route path="/admin/seat-management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seat management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seat%20management" element={<AdminSeatManagement />} />
+      <Route path="/admin/seatmanagement" element={<AdminSeatManagement />} />
       <Route
         path="/admin/intern-locations"
         element={<AdminInternLocations />}
@@ -212,10 +234,24 @@ const AppRoutes = () => {
 
       <Route
         path="/admin/logbook-restrictions"
-        element={<LogbookRestrictions />}
+        element={<AdminLogbookRestrictions />}
+      />
+      <Route
+        path="/admin/talenthub-restrictions"
+        element={<AdminTalentHubRestrictions />}
       />
       <Route path="/admin/holidays" element={<AdminHolidays />} />
       <Route path="/admin/users" element={<AdminUserManagement />} />
+      <Route path="/admin/settings" element={<AdminSettings />} />
+      <Route path="/admin/analytics" element={<AdminAnalytics />} />
+      <Route
+        path="/admin/intern-performance"
+        element={
+          <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="w-8 h-8 border-4 border-[#000066]/30 border-t-[#000066] rounded-full animate-spin" /></div>}>
+            <AdminInternPerformance />
+          </Suspense>
+        }
+      />
       </Route>
       </Routes>
     </>

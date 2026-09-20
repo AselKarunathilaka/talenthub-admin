@@ -115,7 +115,7 @@ const getDistanceKm = (fromLocation, officeLocation = SLT_OFFICE) => {
   return earthRadiusKm * c;
 };
 
-const Attendance = () => {
+const InternAttendance = () => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const [activeTab, setActiveTab] = useState("meeting"); // "meeting" or "daily"
@@ -841,11 +841,10 @@ const Attendance = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-slate-50 font-sans">
-      <Navigation />
+    <Navigation>
 
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
-        <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+        <main className="flex-1 p-[clamp(16px,4vw,24px)] mx-auto max-w-[1200px] w-full">
           <SectionTip sectionKey="attendance" />
           {enrollmentSuccess && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
@@ -853,34 +852,38 @@ const Attendance = () => {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#50b748]/10">
                 <CheckCircle className="h-9 w-9 text-[#50b748]" />
               </div>
-              <h2 className="mt-4 text-xl font-bold text-slate-900">Face Enrollment Complete</h2>
+              <h2 className="mt-4 text-[clamp(14px,3.5vw,16px)] font-bold text-slate-900">Face Enrollment Complete</h2>
               <p className="mt-2 text-sm text-slate-500">Your refreshed biometric profile is ready.</p>
             </div>
           </div>
         )}
         
           {/* Header & Status */}
-          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 logbook-fade-in">
-            <div>
-              <h1 className="text-[28px] font-[800] text-[#1a1a2e] flex items-center gap-[10px]">
-                <ScanLine className="text-[#00b4eb] h-8 w-8" />
-                Attendance
-              </h1>
-              <p className="text-[#6b7280] mt-[6px] text-[15px] italic">
-                "Mark your daily or meeting attendance seamlessly."
-              </p>
+          <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
+            <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
+              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                <ScanLine className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
+              </div>
+              <div className="flex flex-col justify-center">
+                <h1 className="text-[clamp(18px,5vw,26px)] font-[800] text-[#1a1a2e] leading-tight tracking-tight">
+                  Smart Attendance
+                </h1>
+                <p className="text-[#6b7280] mt-[2px] text-[clamp(10px,2vw,12px)] font-medium">
+                  Fast, secure, and seamless attendance tracking.
+                </p>
+              </div>
             </div>
             <div
-              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-bold shadow-sm ${
+              className={`inline-flex items-center gap-[clamp(4px,1.5vw,8px)] rounded-[clamp(8px,2vw,12px)] border px-[clamp(10px,2.5vw,16px)] py-[clamp(6px,1.5vw,10px)] text-[clamp(11px,2.5vw,14px)] font-bold shadow-sm ${
                 mode === "enroll" || locationValid
                   ? "border-[#50b748]/30 bg-[#50b748]/10 text-[#50b748]"
                   : "border-red-200 bg-red-50 text-red-700"
               }`}
             >
               {mode === "enroll" || locationValid ? (
-                <MapPin className="w-5 h-5" />
+                <MapPin className="w-[clamp(16px,4vw,20px)] h-[clamp(16px,4vw,20px)]" />
               ) : (
-                <AlertCircle className="w-5 h-5" />
+                <AlertCircle className="w-[clamp(16px,4vw,20px)] h-[clamp(16px,4vw,20px)]" />
               )}
               {mode === "enroll"
                 ? "Face enrollment works from anywhere"
@@ -905,13 +908,13 @@ const Attendance = () => {
 
           {/* Top Level Tab Switcher (from Dashboard) */}
           <motion.div
-            className="flex mb-8 bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 w-full md:max-w-md relative"
+            className="flex mb-[clamp(20px,5vw,32px)] bg-white p-[clamp(4px,1vw,6px)] rounded-[clamp(12px,3vw,16px)] shadow-sm border border-gray-100 w-full sm:max-w-md relative"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
           >
             <button
               onClick={() => switchTab("meeting")}
-              className={`relative z-10 flex-1 py-3 px-4 text-sm font-bold rounded-xl transition-all duration-300 ${
+              className={`relative z-10 flex-1 py-[clamp(10px,2.5vw,12px)] px-[clamp(12px,3vw,16px)] text-[clamp(10px,2vw,12px)] font-bold rounded-xl transition-all duration-300 ${
                 activeTab === "meeting"
                   ? "text-white"
                   : "text-gray-500 hover:text-gray-700"
@@ -921,7 +924,7 @@ const Attendance = () => {
             </button>
             <button
               onClick={() => switchTab("daily")}
-              className={`relative z-10 flex-1 py-3 px-4 text-sm font-bold rounded-xl transition-all duration-300 ${
+              className={`relative z-10 flex-1 py-[clamp(10px,2.5vw,12px)] px-[clamp(12px,3vw,16px)] text-[clamp(10px,2vw,12px)] font-bold rounded-xl transition-all duration-300 ${
                 activeTab === "daily"
                   ? "text-white"
                   : "text-gray-500 hover:text-gray-700"
@@ -943,25 +946,29 @@ const Attendance = () => {
           </motion.div>
 
           {/* Main Content Area */}
-          <div className="grid gap-6 lg:grid-cols-3 lg:gap-8">
-            <motion.div className="lg:col-span-2 space-y-6" variants={containerVariants} initial="initial" animate="animate">
+          <div className="w-full">
+            <motion.div className="space-y-[clamp(16px,4vw,24px)]" variants={containerVariants} initial="initial" animate="animate">
               
 
 
               {/* Scanner Container */}
-              <motion.div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden" variants={itemVariants}>
+              <motion.div className="bg-white rounded-[clamp(20px,5vw,32px)] shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-gray-100/60 overflow-hidden relative" variants={itemVariants}>
                 
                 {/* Method Switcher Header */}
-                <div className="flex border-b border-gray-100 bg-slate-50/50 p-2 gap-2">
-                  <button onClick={() => switchMethod("face")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 ${activeMethod === "face" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
-                    <Camera size={18} /> Face ID
+                <div className="flex flex-col sm:flex-row border-b border-gray-100 bg-slate-50/50 p-[clamp(6px,1.5vw,8px)] gap-[clamp(6px,1.5vw,8px)]">
+                  <button onClick={() => switchMethod("face")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "face" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                    <Camera className="w-[clamp(16px,4vw,18px)] h-[clamp(16px,4vw,18px)]" /> Face ID
                   </button>
-                  <button onClick={() => switchMethod("qr")} className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl font-bold text-sm transition-all duration-200 ${activeMethod === "qr" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
-                    <QrCode size={18} /> QR Scanner
+                  <button onClick={() => switchMethod("qr")} className={`flex-1 flex items-center justify-center gap-[clamp(4px,1vw,8px)] px-[clamp(12px,3vw,24px)] py-[clamp(10px,2.5vw,14px)] rounded-[clamp(8px,2vw,16px)] font-bold text-[clamp(10px,2vw,12px)] transition-all duration-200 ${activeMethod === "qr" ? "bg-white text-[#0056a2] shadow-sm border border-gray-200" : "text-gray-500 hover:bg-gray-100 hover:text-gray-700"}`}>
+                    <QrCode className="w-[clamp(16px,4vw,18px)] h-[clamp(16px,4vw,18px)]" /> QR Scanner
                   </button>
                 </div>
 
-                <div className="p-6">
+                <div className="p-[clamp(16px,4vw,24px)]">
+                  <div className={`grid gap-[clamp(16px,4vw,24px)] ${activeTab === "meeting" && activeMethod === "face" ? "lg:grid-cols-2 lg:items-center" : ""}`}>
+                    
+                    {/* LEFT COLUMN: CAMERA VIEWS & CONTROLS */}
+                    <div className="space-y-4 w-full min-w-0 order-2 lg:order-1">
                   {activeTab === "daily" && mode === "recognize" && (
                     <div className="mb-4">
                       <DailyAttendanceActionControl
@@ -986,7 +993,7 @@ const Attendance = () => {
                         </div>
                       )}
 
-                      <div className="relative aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner ring-1 ring-slate-200">
+                      <div className={`relative mx-auto w-full max-w-[600px] aspect-[4/3] ${cameraActive ? 'bg-slate-900' : 'bg-slate-50'} overflow-hidden shadow-inner ring-1 ring-slate-200`} style={{ borderRadius: 'clamp(16px, 4vw, 28px)' }}>
                         {cameraActive ? (
                           <>
                             <video ref={videoRef} className="absolute inset-0 h-full w-full object-cover" style={{ transform: "scaleX(-1)" }} muted playsInline />
@@ -1009,34 +1016,41 @@ const Attendance = () => {
                             </div>
                           </>
                         ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10" style={{ borderRadius: 'clamp(16px, 4vw, 28px)' }}>
                             {!modelsLoaded ? (
-                              <>
-                                <Loader className="h-16 w-16 animate-spin text-slate-300 mb-4" />
-                                <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
-                                  Loading face recognition modules...
+                              <div className="flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                                <div className="w-[clamp(40px,8vw,64px)] h-[clamp(40px,8vw,64px)] mb-[clamp(8px,2vw,16px)] rounded-full bg-slate-200/50 flex items-center justify-center relative">
+                                  <Loader className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] animate-spin text-slate-400" />
+                                </div>
+                                <h3 className="text-[clamp(14px,3.5vw,16px)] font-bold text-slate-600 mb-2">Initializing...</h3>
+                                <p className="text-[clamp(10px,2.5vw,12px)] font-medium text-slate-400 max-w-xs">
+                                  Loading face recognition modules. Please wait.
                                 </p>
-                              </>
+                              </div>
                             ) : (
-                              <>
-                                <Camera className="h-16 w-16 text-slate-300 mb-4" />
-                                <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
+                              <div className="flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                                <div className="w-[clamp(40px,8vw,64px)] h-[clamp(40px,8vw,64px)] mb-[clamp(8px,2vw,16px)] rounded-full bg-gradient-to-br from-[#00b4eb]/10 to-[#0056a2]/5 flex items-center justify-center shadow-inner relative">
+                                  <div className="absolute inset-0 rounded-full border-2 border-[#00b4eb]/30 animate-pulse"></div>
+                                  <Camera className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] text-[#0056a2]" />
+                                </div>
+                                <h3 className="text-[clamp(12px,3vw,16px)] font-bold text-[#1a1a2e] mb-1">Ready to Scan</h3>
+                                <p className="text-[clamp(10px,2.5vw,12px)] font-medium text-slate-500 max-w-xs">
                                   {mode === "enroll"
-                                    ? "Start the camera to enroll your face."
-                                    : "Start the camera to mark your attendance."}
+                                    ? "Start the camera to securely register your face profile."
+                                    : "Start the camera to instantly verify your attendance."}
                                 </p>
-                              </>
+                              </div>
                             )}
                           </div>
                         )}
                         {loading && (
                           <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
-                            <Loader className="h-10 w-10 animate-spin text-[#00b4eb]" />
+                            <Loader className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] animate-spin text-[#00b4eb]" />
                           </div>
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2 max-w-[600px] mx-auto w-full">
                         {cameraActive ? (
                           <>
                             {mode === "recognize" && (
@@ -1044,7 +1058,7 @@ const Attendance = () => {
                                 type="button"
                                 onClick={handleFaceRecognition}
                                 disabled={loading || cooldown || !faceGuide.ready}
-                                className={`flex-1 py-4 px-6 rounded-2xl font-bold text-white shadow-lg transition-all ${
+                                className={`flex-1 py-[clamp(12px,3vw,16px)] px-[clamp(16px,4vw,24px)] rounded-[clamp(12px,3vw,16px)] font-bold text-[clamp(12px,3vw,14px)] text-white shadow-lg transition-all ${
                                   loading || cooldown || !faceGuide.ready
                                     ? "bg-slate-300 cursor-not-allowed shadow-none"
                                     : "bg-gradient-to-r from-[#00b4eb] to-[#0056a2] hover:shadow-blue-500/30 active:scale-95"
@@ -1065,7 +1079,7 @@ const Attendance = () => {
                               type="button"
                               onClick={stopCamera}
                               disabled={loading}
-                              className="px-6 py-4 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 border-2 border-slate-200 transition-all active:scale-95 disabled:opacity-50"
+                              className="px-[clamp(16px,4vw,24px)] py-[clamp(12px,3vw,16px)] rounded-[clamp(12px,3vw,16px)] font-bold text-[clamp(12px,3vw,14px)] text-slate-600 bg-slate-100 hover:bg-slate-200 border-2 border-slate-200 transition-all active:scale-95 disabled:opacity-50"
                             >
                               Stop
                             </button>
@@ -1075,7 +1089,7 @@ const Attendance = () => {
                             type="button"
                             onClick={startCamera}
                             disabled={!canStartCamera || cooldown}
-                            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all ${
+                            className={`flex-1 py-[clamp(12px,3vw,16px)] px-[clamp(16px,4vw,24px)] rounded-[clamp(12px,3vw,16px)] font-bold text-[clamp(12px,3vw,14px)] text-white shadow-lg flex items-center justify-center gap-[clamp(4px,1vw,8px)] transition-all ${
                               !canStartCamera || cooldown
                                 ? "bg-slate-300 cursor-not-allowed shadow-none"
                                 : "bg-gradient-to-r from-[#50b748] to-[#2e7d32] hover:shadow-green-500/30 active:scale-95"
@@ -1124,7 +1138,7 @@ const Attendance = () => {
                   {/* QR CODE VIEW */}
                   {activeMethod === "qr" && (
                     <div className="space-y-4">
-                      <div className="relative aspect-[4/3] bg-slate-900 rounded-2xl overflow-hidden shadow-inner ring-1 ring-slate-200">
+                      <div className={`relative mx-auto w-full max-w-[600px] aspect-square sm:aspect-[4/3] ${qrScanning ? 'bg-slate-900' : 'bg-slate-50'} overflow-hidden shadow-inner ring-1 ring-slate-200`} style={{ borderRadius: 'clamp(16px, 4vw, 28px)' }}>
                         <video
                           ref={qrVideoRef}
                           className="absolute inset-0 h-full w-full object-cover"
@@ -1135,16 +1149,7 @@ const Attendance = () => {
                         
                         {qrScanning ? (
                           <>
-                            {/* Scanning overlay effect */}
-                            <div className="absolute inset-0 pointer-events-none">
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <motion.div
-                                  className="w-48 h-48 border-2 border-[#00b4eb]/50 rounded-2xl shadow-[0_0_20px_rgba(0,180,235,0.3)]"
-                                  animate={{ borderColor: ["rgba(0, 180, 235, 0.3)", "rgba(0, 180, 235, 0.8)", "rgba(0, 180, 235, 0.3)"] }}
-                                  transition={{ duration: 2, repeat: Infinity }}
-                                />
-                              </div>
-                            </div>
+
                             
                             {qrScanSuccess && (
                               <motion.div
@@ -1167,26 +1172,32 @@ const Attendance = () => {
 
                             {qrProcessing && !qrScanSuccess && (
                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
-                                <Loader className="h-10 w-10 animate-spin text-[#00b4eb]" />
+                                <Loader className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] animate-spin text-[#00b4eb]" />
                               </div>
                             )}
                           </>
                         ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
-                            <QrCode className="h-16 w-16 text-slate-300 mb-4" />
-                            <p className="text-sm font-bold text-slate-500 max-w-xs text-center px-4">
-                              Start the scanner and point your camera at the QR code.
-                            </p>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10" style={{ borderRadius: 'clamp(16px, 4vw, 28px)' }}>
+                            <div className="flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+                              <div className="w-[clamp(40px,8vw,64px)] h-[clamp(40px,8vw,64px)] mb-[clamp(8px,2vw,16px)] rounded-full bg-gradient-to-br from-[#00b4eb]/10 to-[#0056a2]/5 flex items-center justify-center shadow-inner relative">
+                                <div className="absolute inset-0 rounded-full border-2 border-[#00b4eb]/30 animate-pulse"></div>
+                                <QrCode className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] text-[#0056a2]" />
+                              </div>
+                              <h3 className="text-[clamp(12px,3vw,16px)] font-bold text-[#1a1a2e] mb-1">Ready to Scan</h3>
+                              <p className="text-[clamp(10px,2.5vw,12px)] font-medium text-slate-500 max-w-xs">
+                                Start the scanner and align the QR code within the frame.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2 max-w-[600px] mx-auto w-full">
                         {qrScanning ? (
                           <button
                             type="button"
                             onClick={stopQRScanner}
-                            className="flex-1 px-6 py-4 rounded-2xl font-bold text-red-600 bg-red-50 hover:bg-red-100 border-2 border-red-200 transition-all active:scale-95 flex items-center justify-center gap-2"
+                            className="flex-1 px-[clamp(16px,4vw,24px)] py-[clamp(12px,3vw,16px)] rounded-[clamp(12px,3vw,16px)] font-bold text-[clamp(12px,3vw,14px)] text-red-600 bg-red-50 hover:bg-red-100 border-2 border-red-200 transition-all active:scale-95 flex items-center justify-center gap-[clamp(4px,1vw,8px)]"
                           >
                             <XCircle size={20} /> Stop Scanner
                           </button>
@@ -1195,7 +1206,7 @@ const Attendance = () => {
                             type="button"
                             onClick={startQRScanner}
                             disabled={!canStartQr}
-                            className={`flex-1 py-4 px-6 rounded-2xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all ${
+                            className={`flex-1 py-[clamp(12px,3vw,16px)] px-[clamp(16px,4vw,24px)] rounded-[clamp(12px,3vw,16px)] font-bold text-[clamp(12px,3vw,14px)] text-white shadow-lg flex items-center justify-center gap-[clamp(4px,1vw,8px)] transition-all ${
                               !canStartQr
                                 ? "bg-slate-300 cursor-not-allowed shadow-none"
                                 : "bg-gradient-to-r from-[#00b4eb] to-[#0056a2] hover:shadow-blue-500/30 active:scale-95"
@@ -1208,114 +1219,72 @@ const Attendance = () => {
                     </div>
                   )}
 
+                    </div>
+
+                    {/* RIGHT COLUMN: MEETING DETAILS */}
+                    <AnimatePresence>
+                      {activeTab === "meeting" && activeMethod === "face" && (
+                        <motion.div 
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, scale: 0.95 }}
+                          className="h-full min-w-0 order-1 lg:order-2"
+                        >
+                          <div className="bg-gradient-to-br from-blue-50/80 to-slate-50 border border-blue-100/50 rounded-[clamp(16px,4vw,24px)] p-[clamp(20px,5vw,32px)] shadow-sm h-full flex flex-col justify-center gap-6">
+                            <div>
+                              <div className="flex items-center gap-3 mb-2">
+                                <div className="w-10 h-10 rounded-full bg-white shadow-sm flex items-center justify-center text-[#00b4eb]">
+                                  <Users className="w-5 h-5" />
+                                </div>
+                                <h2 className="text-[clamp(14px,3.5vw,16px)] font-bold text-[#1a1a2e]">Meeting Details</h2>
+                              </div>
+                              <p className="text-slate-500 text-[clamp(10px,2vw,12px)] font-medium">Please enter your project and PIN to verify your meeting attendance.</p>
+                            </div>
+                            
+                            <div className="flex flex-col gap-[clamp(16px,4vw,20px)]">
+                              <div>
+                                <label className="block text-[clamp(10px,2vw,12px)] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                                  Project Name
+                                </label>
+                                <input
+                                  type="text"
+                                  value={projectName}
+                                  onChange={(e) => setProjectName(e.target.value)}
+                                  placeholder="Enter project name..."
+                                  className="w-full px-[clamp(16px,4vw,20px)] py-[clamp(12px,3vw,16px)] bg-white border border-gray-100 shadow-sm rounded-2xl font-medium text-[clamp(13px,3vw,14px)] text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all placeholder:text-gray-300"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[clamp(10px,2vw,12px)] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                                  Meeting PIN (6 Digits)
+                                </label>
+                                <input
+                                  type="text"
+                                  value={meetingPin}
+                                  onChange={(e) => setMeetingPin(e.target.value)}
+                                  placeholder="Enter PIN..."
+                                  maxLength={6}
+                                  className="w-full px-[clamp(16px,4vw,20px)] py-[clamp(12px,3vw,16px)] bg-white border border-gray-100 shadow-sm rounded-2xl font-medium text-[clamp(13px,3vw,14px)] text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all tracking-widest placeholder:text-gray-300 placeholder:tracking-normal"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                  </div>
                 </div>
               </motion.div>
             </motion.div>
 
-            {/* Sidebar / Tips */}
-            <motion.div className="space-y-6" variants={itemVariants}>
-              
-              {/* Meeting Inputs */}
-              <AnimatePresence>
-                {activeTab === "meeting" && activeMethod === "face" && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    animate={{ opacity: 1, height: "auto", marginBottom: 24 }}
-                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                    className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden p-6"
-                  >
-                    <h2 className="text-lg font-bold text-gray-800 mb-4">Meeting Details</h2>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                          Project Name
-                        </label>
-                        <input
-                          type="text"
-                          value={projectName}
-                          onChange={(e) => setProjectName(e.target.value)}
-                          placeholder="Enter project name..."
-                          className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-gray-500 mb-2">
-                          Meeting PIN (6 Digits)
-                        </label>
-                        <input
-                          type="text"
-                          value={meetingPin}
-                          onChange={(e) => setMeetingPin(e.target.value)}
-                          placeholder="Enter PIN..."
-                          maxLength={6}
-                          className="w-full px-4 py-3 bg-slate-50 border-2 border-gray-100 rounded-xl font-medium text-gray-800 focus:outline-none focus:border-[#00b4eb] focus:ring-4 focus:ring-[#00b4eb]/10 transition-all"
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-              <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-slate-50/80 px-6 py-5 border-b border-gray-100">
-                  <h3 className="font-extrabold text-gray-800 flex items-center text-lg">
-                    <Info size={20} className="mr-2 text-[#00b4eb]" />
-                    Quick Tips
-                  </h3>
-                </div>
-                <div className="p-6">
-                  {activeMethod === "face" ? (
-                    <div className="space-y-4">
-                      {[
-                        "Ensure your face is well-lit and clearly visible.",
-                        "Remove masks, sunglasses, or heavy accessories.",
-                        "Center your face inside the oval guide.",
-                        "Hold your device steady during the scan.",
-                        "If verification fails, try enrolling your face again."
-                      ].map((tip, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#00b4eb]/10 text-[#00b4eb] font-bold text-xs flex items-center justify-center mt-0.5">
-                            {index + 1}
-                          </div>
-                          <p className="text-gray-600 text-sm font-medium leading-relaxed">{tip}</p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {[
-                        "Hold steady 15-30cm from the QR code.",
-                        "Ensure good lighting to avoid glare on the screen.",
-                        "Make sure the entire QR code is visible in the frame.",
-                        "Wait for the success confirmation before leaving.",
-                      ].map((tip, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#00b4eb]/10 text-[#00b4eb] font-bold text-xs flex items-center justify-center mt-0.5">
-                            {index + 1}
-                          </div>
-                          <p className="text-gray-600 text-sm font-medium leading-relaxed">{tip}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
 
-              <div className="bg-gradient-to-br from-[#00b4eb]/10 to-[#0056a2]/10 border border-[#0056a2]/20 rounded-3xl p-6">
-                <h3 className="font-extrabold text-[#0056a2] mb-2">Need Help?</h3>
-                <p className="text-[#0056a2]/80 text-sm mb-4 font-medium">
-                  If you're experiencing persistent issues with {activeMethod === "face" ? "face recognition" : "the QR scanner"}, contact IT support.
-                </p>
-                <WhatsAppSupportButton
-                  className="w-full"
-                  variant="light"
-                />
-              </div>
-            </motion.div>
           </div>
         </main>
       </div>
-    </div>
+    </Navigation>
   );
 };
 
-export default Attendance;
+export default InternAttendance;
+

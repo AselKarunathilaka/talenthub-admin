@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { ScanLine } from "lucide-react";
@@ -24,9 +24,16 @@ import {
   FaUsers,
   FaChevronLeft,
   FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
   FaEnvelope,
   FaCheckCircle,
   FaTimesCircle,
+  FaEye,
+  FaEyeSlash,
+  FaGraduationCap,
+  FaUniversity,
+  FaCheck,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
@@ -212,7 +219,7 @@ const TypeBadge = ({ type }) => {
   };
   return (
     <span
-      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-full text-xs font-medium border ${cls}`}
+      className={`inline-flex items-center whitespace-nowrap px-2 py-0.5 rounded-lg sm:rounded-full text-[10px] sm:text-xs font-medium border ${cls}`}
     >
       {label}
     </span>
@@ -222,60 +229,71 @@ const TypeBadge = ({ type }) => {
 // ── Pagination ────────────────────────────────────────────────────────────────
 const PAGE_SIZE = 15;
 
-const Pagination = ({ current, total, onChange }) => {
-  if (total <= 1) return null;
+const Pagination = ({ current, totalPages, totalItems, onChange }) => {
+  if (totalItems === 0) return null;
 
-  const pages = [];
-  const delta = 1;
-  const left = current - delta;
-  const right = current + delta + 1;
-  let last = 0;
+  const limit = PAGE_SIZE;
+  const from = (current - 1) * limit + 1;
+  const to = Math.min(current * limit, totalItems);
 
-  for (let i = 1; i <= total; i++) {
-    if (i === 1 || i === total || (i >= left && i < right)) {
-      if (last && i - last > 1) pages.push("...");
-      pages.push(i);
-      last = i;
-    }
-  }
+  const hasPrevPage = current > 1;
+  const hasNextPage = current < totalPages;
+
+  const pageNums = (() => {
+    if (totalPages <= 7)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const s = new Set([1, totalPages]);
+    for (
+      let i = Math.max(2, current - 2);
+      i <= Math.min(totalPages - 1, current + 2);
+      i++
+    )
+      s.add(i);
+    return [...s].sort((a, b) => a - b);
+  })();
+
+  const btn = (onClick, disabled, icon, title) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none"
+    >
+      {icon}
+    </button>
+  );
 
   return (
-    <div className="flex items-center justify-center gap-1 py-3 px-4 border-t border-gray-100 bg-gray-50">
-      <button
-        onClick={() => onChange(current - 1)}
-        disabled={current === 1}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        <FaChevronLeft className="h-3 w-3" />
-      </button>
-
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span key={`ellipsis-${i}`} className="px-2 text-xs text-gray-400">
-            …
-          </span>
-        ) : (
-          <button
-            key={p}
-            onClick={() => onChange(p)}
-            className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-colors ${
-              p === current
-                ? "bg-blue-500 text-white shadow-sm"
-                : "text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            {p}
-          </button>
-        ),
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-t border-slate-200/80 bg-slate-50/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl">
+      <p className="text-xs sm:text-sm text-slate-500 font-medium">
+        Showing{" "}
+        <span className="font-bold text-slate-700">
+          {from} - {to}
+        </span>{" "}
+        of <span className="font-bold text-slate-700">{totalItems}</span>{" "}
+        records
+      </p>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          {btn(() => onChange(1), !hasPrevPage, <FaAngleDoubleLeft className="h-3 w-3" />, "First")}
+          {btn(() => onChange(current - 1), !hasPrevPage, <FaChevronLeft className="h-3 w-3" />, "Previous")}
+          {pageNums.map((p, idx, arr) => (
+            <React.Fragment key={p}>
+              {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+                <span className="px-1 text-slate-400 text-xs font-bold">…</span>
+              )}
+              <button
+                onClick={() => onChange(p)}
+                className={`w-8 h-8 rounded-lg text-xs font-bold transition-all focus:outline-none ${p === current ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20" : "text-slate-600 hover:bg-slate-200"}`}
+              >
+                {p}
+              </button>
+            </React.Fragment>
+          ))}
+          {btn(() => onChange(current + 1), !hasNextPage, <FaChevronRight className="h-3 w-3" />, "Next")}
+          {btn(() => onChange(totalPages), !hasNextPage, <FaAngleDoubleRight className="h-3 w-3" />, "Last")}
+        </div>
       )}
-
-      <button
-        onClick={() => onChange(current + 1)}
-        disabled={current === total}
-        className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-      >
-        <FaChevronRight className="h-3 w-3" />
-      </button>
     </div>
   );
 };
@@ -308,7 +326,7 @@ const AttendanceTable = ({
   if (filtered.length === 0) {
     return (
       <div className="text-center py-16 bg-gray-50 px-4">
-        <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+        <FaCalendarCheck className="mx-auto h-12 w-12 text-gray-300 mb-3 sm:mb-4" />
         <h3 className="text-base font-medium text-gray-600 mb-1">
           No attendance records
         </h3>
@@ -322,7 +340,7 @@ const AttendanceTable = ({
   return (
     <>
       {/* ── Mobile cards ── */}
-      <div className="block lg:hidden divide-y divide-gray-100">
+      <div className="block xl:hidden divide-y divide-gray-100">
         {paginated.map((intern) => (
           <motion.div
             key={intern._id}
@@ -331,32 +349,43 @@ const AttendanceTable = ({
             transition={{ duration: 0.1 }}
           >
             <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center space-x-3">
-                <div className="h-9 w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
+              <div className="flex items-start space-x-3">
+                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm mt-0.5">
                   <FaUser className="text-indigo-600 text-xs" />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-xs sm:text-sm font-semibold text-gray-900 leading-tight">
                     {intern.name}
                   </p>
-                  <p className="text-xs text-gray-500">{intern.id}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="inline-flex text-[10px] sm:text-xs text-slate-600 sm:text-slate-500 bg-slate-100 sm:bg-transparent px-2 sm:px-0 py-0.5 sm:py-0 rounded-lg sm:rounded-none border border-slate-200/60 sm:border-transparent font-medium">
+                      {intern.id}
+                    </span>
+                    <div className="sm:hidden">
+                      <TypeBadge type={intern.type} />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <TypeBadge type={intern.type} />
+              <div className="hidden sm:block">
+                <TypeBadge type={intern.type} />
+              </div>
             </div>
             <div className="ml-12 space-y-0.5">
-              <p className="text-xs text-gray-500">
-                🎓 {intern.fieldOfSpecialization}
+              <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                <FaGraduationCap className="text-gray-400" /> {intern.fieldOfSpecialization}
               </p>
-              <p className="text-xs text-gray-500">🏛️ {intern.institute}</p>
+              <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                <FaUniversity className="text-gray-400" /> {intern.institute}
+              </p>
               {!isMeeting && intern.timeMarked !== "—" && (
                 <div className="flex flex-col gap-0.5">
-                  <p className="text-xs text-gray-500">
-                    🕐 {intern.timeMarked} (In)
+                  <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                    <FaClock className="text-gray-400" /> {intern.timeMarked} (In)
                   </p>
                   {intern.checkOutTime && (
-                    <p className="text-xs text-gray-500">
-                      🕐 {intern.checkOutTime} (Out)
+                    <p className="text-[10px] sm:text-xs text-gray-500 flex items-center gap-1.5">
+                      <FaClock className="text-gray-400" /> {intern.checkOutTime} (Out)
                     </p>
                   )}
                 </div>
@@ -366,7 +395,7 @@ const AttendanceTable = ({
                   <button
                     type="button"
                     onClick={() => toggleInternMeetings(intern._id)}
-                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700"
+                    className="mt-2 inline-flex items-center gap-2 rounded-lg bg-blue-50 px-2.5 py-1 sm:px-3 sm:py-1.5 text-xs font-semibold text-blue-700"
                   >
                     <span>
                       {intern.meetingCount || intern.meetings?.length || 0}{" "}
@@ -404,39 +433,30 @@ const AttendanceTable = ({
         ))}
       </div>
 
-      {/* ── Desktop table — 7 fixed columns ── */}
-      <div className="hidden lg:block w-full">
-        <table className="w-full text-left text-sm table-fixed divide-y divide-gray-100">
-          <colgroup>
-            <col style={{ width: "4%" }} />
-            <col style={{ width: "10%" }} />
-            <col style={{ width: "22%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "18%" }} />
-            <col style={{ width: "14%" }} />
-            <col style={{ width: "14%" }} />
-          </colgroup>
+      {/* ── Desktop table ── */}
+      <div className="hidden xl:block overflow-x-auto w-full">
+        <table className="w-full text-left text-sm divide-y divide-gray-100">
           <thead className="bg-slate-50/80 border-b border-gray-100">
             <tr>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px]">
                 #
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] text-center">
                 ID
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px]">
                 Name
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
-                Field
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] text-center">
+                Specialization
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
-                Institute
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] text-center">
+                University
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] text-center">
                 {isMeeting ? "Meetings" : "Check-in / Out"}
               </th>
-              <th className="px-3 py-3 font-bold text-gray-500 uppercase tracking-wider text-xs">
+              <th className="px-3 py-3 font-bold text-slate-500 uppercase tracking-wider text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] text-center">
                 Type
               </th>
             </tr>
@@ -444,44 +464,57 @@ const AttendanceTable = ({
           <tbody className="divide-y divide-gray-50">
             {paginated.map((intern, idx) => (
               <React.Fragment key={intern._id}>
-                <motion.tr className="hover:bg-slate-50/50 transition-colors group">
-                  <td className="px-3 py-3 text-xs text-gray-400 font-mono">
+                <tr className="hover:bg-slate-50/80 transition-colors group">
+                  <td className="px-3 py-3.5 text-[10px] sm:text-xs lg:text-sm font-medium text-slate-400 font-mono w-12 text-left">
                     {(page - 1) * PAGE_SIZE + idx + 1}
                   </td>
-                  <td className="px-3 py-3">
-                    <span className="text-xs font-mono text-gray-600 truncate block">
+                  <td className="px-3 py-3.5 text-center">
+                    <span className="text-[8px] sm:text-[9px] lg:text-[11px] font-semibold text-slate-500 font-mono block">
                       {intern.id}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="h-7 w-7 rounded-full bg-gradient-to-r from-indigo-100 to-blue-100 flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <FaUser className="text-indigo-600 text-[10px]" />
+                  <td className="px-3 py-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-[#000066]/10 text-[#000066] flex items-center justify-center font-bold text-sm sm:text-base flex-shrink-0 overflow-hidden shadow-inner relative border border-slate-200">
+                        <img
+                          src={`${API_BASE_URL}/interns/${intern._id}/profile-picture`}
+                          alt={intern.name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                            if (e.target.nextSibling) e.target.nextSibling.style.display = 'flex';
+                          }}
+                        />
+                        <div className="w-full h-full flex items-center justify-center hidden bg-gradient-to-br from-[#000066]/20 to-[#006600]/20">
+                          {(intern.name || "?")[0].toUpperCase()}
+                        </div>
                       </div>
-                      <span className="text-sm font-semibold text-gray-900 truncate">
-                        {intern.name}
-                      </span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#000066] transition-colors break-words">
+                          {intern.name}
+                        </span>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3">
-                    <span className="text-xs text-gray-600 truncate block">
+                  <td className="px-3 py-3.5 text-center">
+                    <span className="text-[10px] sm:text-xs lg:text-sm text-slate-600 block truncate">
                       {intern.fieldOfSpecialization || "—"}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3.5 text-left">
                     <span
-                      className="text-xs text-gray-700 truncate block"
+                      className="text-[10px] sm:text-xs lg:text-sm text-slate-700 block truncate"
                       title={intern.institute}
                     >
                       {intern.institute || "—"}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3.5 text-center">
                     {isMeeting ? (
                       <button
                         type="button"
                         onClick={() => toggleInternMeetings(intern._id)}
-                        className="inline-flex items-center gap-1.5 rounded-lg bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-[#000066]/5 px-2 py-1 text-[10px] sm:text-xs lg:text-xs sm:text-sm font-semibold text-[#000066] hover:bg-[#000066]/10 transition-colors focus:outline-none"
                       >
                         <span>
                           {intern.meetingCount || intern.meetings?.length || 0}
@@ -491,7 +524,7 @@ const AttendanceTable = ({
                         />
                       </button>
                     ) : (
-                      <div className="flex flex-col gap-1 text-xs text-gray-700">
+                      <div className="flex flex-col items-center justify-center gap-1 text-[10px] sm:text-xs lg:text-sm font-medium text-slate-500">
                         <div className="flex items-center gap-1">
                           <FaClock className="h-3 w-3 text-emerald-500 flex-shrink-0" />
                           <span className="truncate">{intern.timeMarked}</span>
@@ -499,7 +532,7 @@ const AttendanceTable = ({
                         {intern.checkOutTime && (
                           <div className="flex items-center gap-1">
                             <FaClock className="h-3 w-3 text-amber-500 flex-shrink-0" />
-                            <span className="truncate text-gray-500">
+                            <span className="truncate text-slate-400">
                               {intern.checkOutTime}
                             </span>
                           </div>
@@ -507,10 +540,10 @@ const AttendanceTable = ({
                       </div>
                     )}
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-3.5 text-center">
                     <TypeBadge type={intern.type} />
                   </td>
-                </motion.tr>
+                </tr>
 
                 {/* Meeting expansion row */}
                 {isMeeting && expandedInterns[intern._id] && (
@@ -552,17 +585,7 @@ const AttendanceTable = ({
       </div>
 
       {/* ── Pagination ── */}
-      <Pagination current={page} total={totalPages} onChange={setPage} />
-
-      {/* ── Footer count ── */}
-      {filtered.length > 0 && (
-        <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100">
-          <p className="text-xs text-gray-400 text-center">
-            {filtered.length} intern{filtered.length !== 1 ? "s" : ""} • page{" "}
-            {page} of {totalPages || 1}
-          </p>
-        </div>
-      )}
+      <Pagination current={page} totalPages={totalPages} totalItems={filtered.length} onChange={setPage} />
     </>
   );
 };
@@ -585,10 +608,23 @@ const AdminInternAttendance = () => {
   const [triggering, setTriggering] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearchTerm(searchInput);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
   const [toast, setToast] = useState(null);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [sltLocationRequired, setSltLocationRequired] = useState(true);
+  const [showPasswordPopup, setShowPasswordPopup] = useState(false);
+  const [passwordPopupAction, setPasswordPopupAction] = useState("");
+  const [securityPassword, setSecurityPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const [expandedInterns, setExpandedInterns] = useState({});
 
   const [showTriggerModal, setShowTriggerModal] = useState(false);
@@ -635,23 +671,89 @@ const AdminInternAttendance = () => {
   }, []);
 
   const handleToggleLocationRequirement = async () => {
-    const nextValue = !sltLocationRequired;
-    setSltLocationRequired(nextValue);
+    if (sltLocationRequired) {
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (adminInfo?.user?.requireSecurityCheck === false) {
+        await submitLocationToggle(false, null);
+        return;
+      }
+      setPasswordPopupAction("location");
+      setShowPasswordPopup(true);
+      setSecurityPassword("");
+      setPasswordError("");
+      return;
+    }
+    await submitLocationToggle(true, null);
+  };
+  
+  const handleMarkAttendanceClick = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      navigate("/admin/manual-attendance");
+      return;
+    }
+    setPasswordPopupAction("attendance");
+    setShowPasswordPopup(true);
+    setSecurityPassword("");
+    setPasswordError("");
+  };
+
+  const handlePasswordVerify = async () => {
+    if (passwordPopupAction === "location") {
+      await submitLocationToggle(false, securityPassword);
+    } else if (passwordPopupAction === "attendance") {
+      setSettingsSaving(true);
+      setPasswordError("");
+      try {
+        const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+        const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(adminInfo.token && { Authorization: `Bearer ${adminInfo.token}` }),
+          },
+          body: JSON.stringify({ securityPin: securityPassword, action: "manual attendance" }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Invalid password");
+        
+        setShowPasswordPopup(false);
+        showToast("Security verification successful", "success");
+        navigate("/admin/manual-attendance");
+      } catch (err) {
+        setPasswordError(err.message || "Invalid password");
+      } finally {
+        setSettingsSaving(false);
+      }
+    }
+  };
+
+  const submitLocationToggle = async (required, password) => {
     setSettingsSaving(true);
+    setPasswordError("");
     try {
-      const result = await attendanceApi.updateSettings({
-        sltLocationRequired: nextValue,
-      });
+      const payload = { sltLocationRequired: required };
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const requireCheck = adminInfo?.user?.requireSecurityCheck !== false;
+
+      if (!required) {
+        if (requireCheck && !password) {
+          setPasswordError("Password is required");
+          setSettingsSaving(false);
+          return;
+        }
+        if (password) payload.securityPin = password;
+      }
+      const result = await attendanceApi.updateSettings(payload);
       setSltLocationRequired(result.settings?.sltLocationRequired !== false);
-      showToast(
-        nextValue
-          ? "SLT Location Requirement ON"
-          : "SLT Location Requirement OFF",
-        nextValue ? "success" : "error",
-      );
+      if (!required) setShowPasswordPopup(false);
+      showToast(`Location checking ${required ? "enabled" : "disabled"}`, "success");
     } catch (err) {
-      setSltLocationRequired(!nextValue);
-      showToast(err.message || "Failed to update location setting", "error");
+      if (!required) {
+        setPasswordError(err.message || "Invalid password");
+      } else {
+        showToast(err.message || "Failed to update settings", "error");
+      }
     } finally {
       setSettingsSaving(false);
     }
@@ -685,7 +787,7 @@ const AdminInternAttendance = () => {
       if (result.success) {
         showToast(
           result.result?.emailSent
-            ? `Report sent to ${recipients.length} recipient(s) ✓`
+            ? `Report sent to ${recipients.length} recipient(s)`
             : "Check complete — all interns attended",
           "success",
         );
@@ -701,15 +803,19 @@ const AdminInternAttendance = () => {
   };
 
   const activeData = activeTab === "meeting" ? meetingData : dailyData;
-  const filtered = (activeData?.interns || []).filter((intern) => {
+  const filtered = useMemo(() => {
+    if (!activeData?.interns) return [];
+    if (!searchTerm) return activeData.interns;
     const q = searchTerm.toLowerCase();
-    return (
-      intern.name.toLowerCase().includes(q) ||
-      String(intern.id).toLowerCase().includes(q) ||
-      (intern.fieldOfSpecialization || "").toLowerCase().includes(q) ||
-      (intern.institute || "").toLowerCase().includes(q)
-    );
-  });
+    return activeData.interns.filter((intern) => {
+      return (
+        intern.name.toLowerCase().includes(q) ||
+        String(intern.id).toLowerCase().includes(q) ||
+        (intern.fieldOfSpecialization || "").toLowerCase().includes(q) ||
+        (intern.institute || "").toLowerCase().includes(q)
+      );
+    });
+  }, [activeData, searchTerm]);
 
   const formatDateLabel = (dateStr) =>
     new Date(dateStr + "T00:00:00").toLocaleDateString("en-US", {
@@ -721,8 +827,8 @@ const AdminInternAttendance = () => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-4 sm:gap-6 min-w-0">
           <AnimatePresence>
             {toast && <Toast toast={toast} onClose={() => setToast(null)} />}
           </AnimatePresence>
@@ -746,7 +852,7 @@ const AdminInternAttendance = () => {
                   exit={{ scale: 0.92, opacity: 0, y: 20 }}
                   transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 >
-                  <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center justify-between mb-3 sm:mb-5">
                     <div className="flex items-center space-x-3">
                       <div className="w-9 h-9 rounded-xl bg-indigo-100 flex items-center justify-center">
                         <FaBell className="h-4 w-4 text-indigo-600" />
@@ -755,7 +861,7 @@ const AdminInternAttendance = () => {
                         <h3 className="text-base font-semibold text-gray-900">
                           Send Non-Attendance Report
                         </h3>
-                        <p className="text-xs text-gray-500">
+                        <p className="text-[10px] sm:text-xs text-gray-500">
                           Triggers the weekly email + Excel attachment
                         </p>
                       </div>
@@ -768,7 +874,7 @@ const AdminInternAttendance = () => {
                     </button>
                   </div>
 
-                  <div className="mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
+                  <div className="mb-3 sm:mb-4 bg-indigo-50 border border-indigo-100 rounded-xl p-3 text-xs text-indigo-800">
                     This will check all active interns for meeting attendance
                     over the <strong>past 14 days</strong> and email a
                     non-attendance report to the recipients below.
@@ -799,7 +905,7 @@ const AdminInternAttendance = () => {
                     )}
                   </div>
 
-                  <div className="flex space-x-2 mb-5">
+                  <div className="flex space-x-2 mb-3 sm:mb-5">
                     <input
                       type="email"
                       value={recipientInput}
@@ -832,7 +938,7 @@ const AdminInternAttendance = () => {
                       disabled={triggering || recipients.length === 0}
                       whileHover={{ scale: triggering ? 1 : 1.02 }}
                       whileTap={{ scale: triggering ? 1 : 0.98 }}
-                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
+                      className="flex-1 flex items-center justify-center space-x-2 py-2.5 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 disabled:from-gray-300 disabled:to-gray-400 text-white rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm disabled:cursor-not-allowed"
                     >
                       {triggering ? (
                         <>
@@ -852,32 +958,38 @@ const AdminInternAttendance = () => {
             )}
           </AnimatePresence>
 
-          {/* ── Page ── */}
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            <div className="space-y-4 md:space-y-5">
-              {/* ── Header Row ── */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <motion.h1
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="text-2xl sm:text-3xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
-                  >
-                    <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                      <ScanLine className="text-[#0056a2] h-7 w-7" />
-                    </div>
-                    Attendance
-                  </motion.h1>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1, duration: 0.2 }}
-                    className="mt-2 text-sm text-gray-500 font-medium"
-                  >
-                    Browse intern attendance and absentees
-                  </motion.p>
-                </div>
+          {/* Header Section */}
+          <div className="flex flex-col gap-4 sm:gap-6 transition-all duration-300">
+            <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+            {/* Left: Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+              >
+                <ScanLine className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-xl sm:text-3xl md:text-4xl leading-tight font-extrabold text-slate-900 tracking-tight"
+                >
+                  Attendance
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                >
+                  Browse intern attendance and absentees
+                </motion.p>
+              </div>
+            </div>
 
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -910,8 +1022,8 @@ const AdminInternAttendance = () => {
                   </div>
 
                   <button
-                    onClick={() => navigate("/admin/manual-attendance")}
-                    className="flex-1 bg-gradient-to-r from-[#0056a2] to-[#00b4eb] text-white px-2.5 sm:px-4 py-2 sm:py-2 rounded-xl font-bold text-[11px] sm:text-sm shadow-sm hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                    onClick={handleMarkAttendanceClick}
+                    className="flex-1 bg-gradient-to-r from-[#000066] to-[#006600] text-white px-2.5 sm:px-5 py-2 sm:py-2.5 rounded-lg sm:rounded-xl font-bold text-[11px] sm:text-sm shadow-md shadow-[#006600]/20 hover:opacity-90 transition-all flex items-center justify-center gap-1.5 sm:gap-2 focus:outline-none"
                   >
                     <FaEdit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     <span className="whitespace-nowrap">Mark Attendance</span>
@@ -927,8 +1039,8 @@ const AdminInternAttendance = () => {
                 transition={{ delay: 0.2, duration: 0.3 }}
               >
                 {/* Top Toolbar Row: Tabs & Reports */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-1">
-                  {/* Tabs */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-1">
+              {/* Tabs */}
                   <div className="flex bg-gray-50 p-1.5 rounded-2xl shadow-inner border border-gray-200/60 w-full sm:w-[320px] relative">
                     <button
                       onClick={() => {
@@ -936,20 +1048,16 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "meeting"
                           ? "text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>Meeting</span>
-                      {meetingData?.count != null && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "meeting" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
-                        >
-                          {meetingData.count}
-                        </span>
-                      )}
+                      <FaUsers className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-shrink-0" />
+                      <span className="whitespace-nowrap">
+                        Meeting {meetingData ? `(${meetingData.count})` : ""}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
@@ -957,20 +1065,16 @@ const AdminInternAttendance = () => {
                         setSearchTerm("");
                         setExpandedInterns({});
                       }}
-                      className={`relative z-10 flex-1 py-2 px-2 text-sm font-bold rounded-xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                      className={`relative flex items-center justify-center gap-1 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-xs sm:text-sm font-bold rounded-xl transition-all w-1/2 z-10 ${
                         activeTab === "daily"
                           ? "text-white"
-                          : "text-gray-500 hover:text-gray-700"
+                          : "text-slate-600 hover:bg-slate-100"
                       }`}
                     >
-                      <span>Daily</span>
-                      {dailyData?.count != null && (
-                        <span
-                          className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold transition-colors ${activeTab === "daily" ? "bg-white/20 text-white shadow-sm" : "bg-gray-200 text-gray-500"}`}
-                        >
-                          {dailyData.count}
-                        </span>
-                      )}
+                      <FaCalendarCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                      <span className="whitespace-nowrap">
+                        Daily {dailyData ? `(${dailyData.count})` : ""}
+                      </span>
                     </button>
 
                     <div
@@ -978,16 +1082,16 @@ const AdminInternAttendance = () => {
                       style={{
                         background:
                           activeTab === "meeting"
-                            ? "linear-gradient(135deg, #00b4eb 0%, #0056a2 100%)"
-                            : "linear-gradient(135deg, #50b748 0%, #2e7d32 100%)",
+                            ? "linear-gradient(135deg, #003399 0%, #000066 100%)"
+                            : "linear-gradient(135deg, #009900 0%, #006600 100%)",
                         left: activeTab === "meeting" ? "6px" : "calc(50%)",
                       }}
                     />
                   </div>
 
                   {/* Reports Actions */}
-                  <div className="flex w-full lg:w-auto mt-2 lg:mt-0">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-auto gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
+                <div className="flex w-full md:w-auto mt-2 md:mt-0">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between w-full sm:w-[320px] gap-2 sm:gap-4 bg-red-50 p-1.5 rounded-xl border border-red-100">
                       <div className="flex items-center justify-center px-2 py-1 sm:py-0">
                         <span className="text-[10px] sm:text-xs font-bold text-red-600 uppercase tracking-wider whitespace-nowrap">
                           Absentees List
@@ -995,7 +1099,7 @@ const AdminInternAttendance = () => {
                       </div>
 
                       <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                        <motion.button
+                        <button
                           onClick={async () => {
                             setExportingNonAttendance(true);
                             try {
@@ -1014,8 +1118,6 @@ const AdminInternAttendance = () => {
                             }
                           }}
                           disabled={exportingNonAttendance}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                           className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-emerald-600 hover:bg-emerald-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
                           title="Export non-attendance report (last 14 days)"
                         >
@@ -1025,18 +1127,16 @@ const AdminInternAttendance = () => {
                             <FaFileExcel className="h-3 w-3" />
                           )}
                           <span>Excel</span>
-                        </motion.button>
+                        </button>
 
-                        <motion.button
+                        <button
                           onClick={() => setShowTriggerModal(true)}
-                          whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
                           className="flex flex-1 sm:flex-none justify-center items-center space-x-1.5 px-3 py-2 sm:py-1.5 bg-white text-indigo-600 hover:bg-indigo-50 border border-gray-200 rounded-lg text-xs font-semibold transition-all"
                           title="Email non-attendance report to managers"
                         >
                           <FaEnvelope className="h-3 w-3" />
                           <span>Email</span>
-                        </motion.button>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1045,51 +1145,71 @@ const AdminInternAttendance = () => {
                 <hr className="border-gray-100 m-0" />
 
                 {/* Bottom Toolbar Row: Filters */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 p-1">
-                  {/* Date Selector */}
-                  <div className="flex items-center gap-2 bg-slate-50 border border-gray-100 rounded-xl px-3 py-2 w-full sm:w-auto">
-                    <FaCalendarDay className="text-[#00b4eb] h-4 w-4" />
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                      className="bg-transparent text-sm font-semibold text-gray-800 w-full focus:outline-none cursor-pointer"
-                    />
+                <div className="flex flex-col md:flex-row items-stretch md:items-end justify-between gap-4 p-1">
+                  <div className="flex flex-col sm:flex-row items-stretch gap-3 w-full md:w-auto">
+                    {/* Date Selector */}
+                    <div className="flex-1 sm:flex-none">
+                      <label className="block text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Select Date</label>
+                      <div className="flex gap-2 h-[42px] sm:h-[46px] lg:h-[48px]">
+                        <div 
+                          className="flex items-center gap-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl px-3 w-full sm:w-auto relative cursor-pointer focus-within:border-[#000066]/40 transition-colors flex-1 shadow-sm" 
+                          onClick={() => document.getElementById('date-picker-input')?.showPicker?.()}
+                        >
+                          <FaCalendarDay className="text-[#000066] h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <input
+                            id="date-picker-input"
+                            type="date"
+                            value={selectedDate}
+                            onChange={(e) => setSelectedDate(e.target.value)}
+                            onClick={(e) => e.target.showPicker && e.target.showPicker()}
+                            onMouseDown={(e) => e.preventDefault()}
+                            className="bg-transparent text-xs sm:text-xs sm:text-sm font-bold text-slate-800 w-full focus:outline-none cursor-pointer"
+                            style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
+                          />
+                        </div>
+                        {selectedDate !== today && (
+                          <button
+                            onClick={() => setSelectedDate(today)}
+                            className="px-4 h-full bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-600 rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold transition-all whitespace-nowrap shadow-sm"
+                          >
+                            Today
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  {selectedDate !== today && (
-                    <button
-                      onClick={() => setSelectedDate(today)}
-                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
-                    >
-                      Today
-                    </button>
-                  )}
 
                   {/* Search Bar */}
-                  <div className="relative w-full flex-1">
-                    <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                    <input
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Search by name, ID, field, or institute..."
-                      className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-gray-100 rounded-xl focus:ring-2 focus:ring-[#00b4eb] text-sm transition-all"
-                    />
-                    {searchTerm && (
-                      <button
-                        onClick={() => setSearchTerm("")}
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full"
-                      >
-                        <FaTimes className="h-3 w-3" />
-                      </button>
-                    )}
+                  <div className="flex-1 w-full lg:min-w-[400px]">
+                    <label htmlFor="search-input" className="block text-[10px] sm:text-xs lg:text-xs sm:text-sm font-bold text-slate-700 mb-1.5">Search Records</label>
+                    <div className="flex items-center space-x-2">
+                      <div className="relative flex-1 group h-[42px] sm:h-[46px] lg:h-[48px]">
+                        <FaSearch className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-slate-400 group-focus-within:text-[#000066]/70 transition-colors h-3.5 w-3.5 sm:h-4 sm:w-5" />
+                        <input
+                          id="search-input"
+                          type="text"
+                          value={searchInput}
+                          onChange={(e) => setSearchInput(e.target.value)}
+                          placeholder="Search by name, ID, field, or institute..."
+                          className="w-full h-full pl-8 sm:pl-11 pr-3 sm:pr-4 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl focus:ring-0 focus:outline-none focus:border-[#000066]/40 text-slate-900 text-xs sm:text-sm shadow-sm transition-all"
+                        />
+                        {searchInput && (
+                          <button
+                            onClick={() => setSearchInput("")}
+                            className="absolute right-2.5 sm:right-4 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 bg-white p-1 rounded-full shadow-sm focus:outline-none"
+                          >
+                            <FaTimes className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </motion.div>
 
               {/* ── Meeting Without Daily Report ── */}
               <motion.div
-                className="bg-white p-4 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
+                className="bg-white p-3 sm:p-5 rounded-2xl border border-amber-200 shadow-sm"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25, duration: 0.3 }}
@@ -1100,18 +1220,22 @@ const AdminInternAttendance = () => {
                       <FaUsers className="text-amber-600 h-4 w-4" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-900">
+                      <h3 className="text-xs sm:text-sm font-bold text-gray-900">
                         Meeting Attendance Without Daily Check-in
                       </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
                         Interns who attended a meeting but didn't mark daily
                         attendance on {formatDateLabel(selectedDate)}
                       </p>
                     </div>
                   </div>
 
-                  <motion.button
+                  <button
                     onClick={async () => {
+                      if (!meetingData || meetingData.count === 0) {
+                        showToast("No records to export", "info");
+                        return;
+                      }
                       setExportingMissingDaily(true);
                       try {
                         await attendanceApi.exportMeetingWithoutDailyExcel(
@@ -1127,18 +1251,16 @@ const AdminInternAttendance = () => {
                         setExportingMissingDaily(false);
                       }
                     }}
-                    disabled={exportingMissingDaily}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition-all disabled:opacity-50 whitespace-nowrap w-full sm:w-auto justify-center"
+                    disabled={exportingMissingDaily || !meetingData || meetingData.count === 0}
+                    className="flex items-center gap-1.5 px-3 sm:px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
                   >
                     {exportingMissingDaily ? (
-                      <FaSpinner className="h-3 w-3 animate-spin" />
+                      <FaSpinner className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <FaFileExcel className="h-3 w-3" />
+                      <FaFileExcel className="h-3.5 w-3.5 text-white/90" />
                     )}
                     <span>Download Excel</span>
-                  </motion.button>
+                  </button>
                 </div>
               </motion.div>
 
@@ -1149,16 +1271,14 @@ const AdminInternAttendance = () => {
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.3 }}
               >
-                <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/80">
+                <div className="px-4 py-4 sm:px-6 sm:py-5 border-b border-gray-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 bg-slate-50/80">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900 tracking-tight leading-snug">
+                    <h2 className="text-base sm:text-lg font-bold text-gray-900 tracking-tight leading-snug">
                       {loading ? (
                         "Loading…"
                       ) : activeData ? (
                         <>
-                          {activeTab === "meeting" ? "Meeting" : "Daily"}{" "}
-                          Attendance — <br />
-                          {formatDateLabel(selectedDate)}
+                          {activeTab === "meeting" ? "Meeting" : "Daily"} Attendance - {formatDateLabel(selectedDate)}
                         </>
                       ) : (
                         "Attendance Records"
@@ -1172,9 +1292,9 @@ const AdminInternAttendance = () => {
                       </p>
                     )}
                   </div>
-                  <div className="flex items-center gap-4">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4 w-full sm:w-auto mt-2 sm:mt-0">
                     {loading && (
-                      <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5" />
+                      <FaSpinner className="animate-spin text-[#00b4eb] h-5 w-5 self-center" />
                     )}
                     <motion.button
                       onClick={async () => {
@@ -1222,20 +1342,18 @@ const AdminInternAttendance = () => {
                           ? meetingData?.count
                           : dailyData?.count) === 0
                       }
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center space-x-1.5 px-4 py-2 bg-white text-gray-700 hover:bg-gray-50 rounded-xl text-sm font-bold shadow-sm border border-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center gap-1.5 px-3 sm:px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-[#000066] hover:bg-[#000066]/90 text-white rounded-lg sm:rounded-xl text-xs sm:text-xs sm:text-sm font-bold shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap w-full sm:w-auto justify-center focus:outline-none"
                     >
                       {(
                         activeTab === "meeting"
                           ? exportingMeetingPdf
                           : exportingDailyPdf
                       ) ? (
-                        <FaSpinner className="h-3.5 w-3.5 animate-spin text-[#00b4eb]" />
+                        <FaSpinner className="h-3.5 w-3.5 animate-spin text-white" />
                       ) : (
-                        <FaFilePdf className="h-3.5 w-3.5 text-red-500" />
+                        <FaFilePdf className="h-3.5 w-3.5 text-white/80" />
                       )}
-                      <span className="hidden sm:inline">Export PDF</span>
+                      <span>Download PDF</span>
                     </motion.button>
                   </div>
                 </div>
@@ -1249,13 +1367,13 @@ const AdminInternAttendance = () => {
                         repeat: Infinity,
                         ease: "linear",
                       }}
-                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-4"
+                      className="w-10 h-10 border-t-4 border-b-4 border-blue-400 rounded-full mb-3 sm:mb-4"
                     />
                     <p className="text-sm">Fetching attendance…</p>
                   </div>
                 ) : filtered.length === 0 && searchTerm ? (
                   <div className="text-center py-16 bg-gray-50 px-4">
-                    <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-4" />
+                    <FaSearch className="mx-auto h-10 w-10 text-gray-300 mb-3 sm:mb-4" />
                     <h3 className="text-base font-medium text-gray-600 mb-1">
                       No results
                     </h3>
@@ -1273,9 +1391,86 @@ const AdminInternAttendance = () => {
                   />
                 )}
               </motion.div>
-            </div>
-          </main>
-        </div>
+            </div> {/* End of blur wrapper */}
+        </main>
+        
+        {/* Password Modal placed outside main but inside relative container to cover everything except navbar/sidebar */}
+        <AnimatePresence>
+          {showPasswordPopup && (
+            <>
+              {/* Overlay covering full screen, under navbar/sidebar */}
+              <div 
+                className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
+                onClick={() => setShowPasswordPopup(false)}
+              />
+              
+              {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
+              <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
+                <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  >
+                    <div className="flex justify-between items-start mb-3 sm:mb-4">
+                      <div>
+                        <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {passwordPopupAction === "attendance" ? "Enter password to access manual marking" : "Enter password to disable location requirement"}
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors"
+                      >
+                        <FaTimes className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="mb-3 sm:mb-5 relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={securityPassword}
+                        onChange={(e) => setSecurityPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handlePasswordVerify()}
+                        placeholder="Enter password..."
+                        autoFocus
+                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none"
+                      >
+                        {showPassword ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                      </button>
+                      {passwordError && (
+                        <p className="text-xs font-semibold text-red-500 mt-2">{passwordError}</p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowPasswordPopup(false)}
+                        className="flex-1 px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-xs sm:text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handlePasswordVerify}
+                        disabled={settingsSaving || !securityPassword}
+                        className="flex-1 flex items-center justify-center px-2.5 py-1 sm:px-3 sm:py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-xl text-xs sm:text-sm font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+                      >
+                        {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              </div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </AdminNavigation>
   );

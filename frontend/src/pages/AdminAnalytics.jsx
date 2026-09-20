@@ -1,0 +1,1646 @@
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Search,
+  BarChart3,
+  Filter,
+  X,
+  ChevronDown,
+  ChevronUp,
+  ChevronRight,
+  Mail,
+  Briefcase,
+  GraduationCap,
+  Calendar,
+  Video,
+  BookOpen,
+  GitCommit,
+  Activity,
+  User,
+  RefreshCw,
+  AlertCircle,
+  TrendingUp,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Download,
+  Users,
+  Building2,
+  FileText
+} from "lucide-react";
+import {
+  FaChevronLeft,
+  FaChevronRight,
+  FaAngleDoubleLeft,
+  FaAngleDoubleRight,
+} from "react-icons/fa";
+import { motion, AnimatePresence } from "framer-motion";
+import AdminNavigation from "../components/AdminNavigation";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import axios from "axios";
+import { API_BASE_URL } from "../api/apiConfig";
+
+// ── Auth token retriever (supports adminInfo, userData, and token keys) ───────
+const getAuthToken = () => {
+  const adminInfo = localStorage.getItem("adminInfo");
+  if (adminInfo) {
+    try {
+      const parsed = JSON.parse(adminInfo);
+      if (parsed.token) return parsed.token;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const userData = localStorage.getItem("userData");
+  if (userData) {
+    try {
+      const parsed = JSON.parse(userData);
+      if (parsed.token) return parsed.token;
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return localStorage.getItem("token") || null;
+};
+
+// ── Date Formatter (YYYY/MM/DD) ──────────────────────────────────────────────
+const formatDate = (dateStr) => {
+  if (!dateStr) return "N/A";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "N/A";
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
+};
+
+// ── Specialization classifier for non-coding roles (QA, BA, PM, DevOps, AI) ───
+const isNoCommitSpecialization = (spec) => {
+  if (!spec) return false;
+  const s = spec.trim().toLowerCase();
+
+  if (/\b(qa|sqa|ba|pm|apm|devops|ai|ml|genai|sre|nlp)\b/i.test(s)) {
+    return true;
+  }
+
+  return (
+    s === "qa" ||
+    s.includes("quality assurance") ||
+    s.includes("software quality") ||
+    s.includes("qa engineer") ||
+    s === "ba" ||
+    s.includes("business analyst") ||
+    s.includes("business analysis") ||
+    s.includes("business analytics") ||
+    s === "pm" ||
+    s.includes("project manager") ||
+    s.includes("project management") ||
+    s.includes("product manager") ||
+    s.includes("product management") ||
+    s === "devops" ||
+    s.includes("devops") ||
+    s.includes("dev ops") ||
+    s === "ai" ||
+    s.includes("artificial intelligence") ||
+    s.includes("machine learning") ||
+    s.includes("data science") ||
+    s.includes("data scientist") ||
+    s.includes("deep learning") ||
+    s.includes("computer vision") ||
+    s.includes("generative ai") ||
+    s.startsWith("ai ") ||
+    s.endsWith(" ai") ||
+    s.includes(" ai ") ||
+    s.includes("ai/") ||
+    s.includes("/ai")
+  );
+};
+
+// ── Rate color helper ────────────────────────────────────────────────────────
+const getRateTextColor = (rate) => {
+  if (rate >= 80) return "text-emerald-600";
+  if (rate >= 60) return "text-amber-500";
+  return "text-rose-500";
+};
+
+const getStatusBadge = (status) => {
+  const s = String(status || "").trim();
+  switch (s) {
+    case "In Progress":
+    case "Active":
+    case "On Track":
+    case "IN_PROGRESS":
+    case "INPROGRESS":
+    case "ACTIVE":
+      return "bg-blue-50 text-blue-700 border-blue-200";
+    case "Completed":
+    case "Good":
+    case "COMPLETE":
+    case "COMPLETED":
+    case "DONE":
+      return "bg-emerald-50 text-emerald-700 border-emerald-200";
+    case "On Hold":
+    case "ON_HOLD":
+    case "ONHOLD":
+    case "HOLD":
+      return "bg-amber-50 text-amber-700 border-amber-200";
+    case "At Risk":
+    case "Delayed":
+    case "AT_RISK":
+    case "DELAYED":
+      return "bg-orange-50 text-orange-700 border-orange-200";
+    case "Planning":
+    case "Testing":
+    case "PLANNING":
+    case "TESTING":
+      return "bg-purple-50 text-purple-700 border-purple-200";
+    case "Retired":
+    case "RETIRED":
+      return "bg-slate-100 text-slate-600 border-slate-300";
+    case "Cancelled":
+    case "Canceled":
+    case "CANCELLED":
+    case "CANCELED":
+    case "Poor":
+    case "Inactive":
+      return "bg-rose-50 text-rose-700 border-rose-200";
+    default:
+      return "bg-slate-50 text-slate-700 border-slate-200";
+  }
+};
+
+// Clean status text display without badge/tag styling
+const getPerformanceStatusText = (rate) => {
+  if (rate >= 80) {
+    return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-emerald-600 whitespace-nowrap">Good</span>;
+  }
+  if (rate >= 60) {
+    return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-amber-500 whitespace-nowrap">At Risk</span>;
+  }
+  return <span className="text-[10px] sm:text-[11px] md:text-[13px] font-bold text-rose-600 whitespace-nowrap">Poor</span>;
+};
+
+// Profile avatar with image and fallback initial
+const InternAvatar = React.memo(({ id, name, size = "w-9 h-9", textClass = "text-xs" }) => {
+  const [hasError, setHasError] = useState(false);
+  const initial = (name || "?").charAt(0).toUpperCase();
+
+  if (hasError || !id) {
+    return (
+      <div className={`${size} rounded-full bg-gradient-to-br from-[#000066] to-[#006600] flex items-center justify-center text-white ${textClass} font-bold shadow-sm flex-shrink-0`}>
+        {initial}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${size} rounded-full bg-slate-100 flex items-center justify-center text-white font-bold shadow-sm flex-shrink-0 overflow-hidden relative border border-slate-200`}>
+      <img
+        src={`${API_BASE_URL}/interns/${id}/profile-picture`}
+        alt={name || "Intern"}
+        className="w-full h-full object-cover"
+        onError={() => setHasError(true)}
+        loading="lazy"
+      />
+    </div>
+  );
+});
+
+// Table Sort Icon
+const SortIcon = React.memo(({ sortKey, currentSortKey, direction }) => {
+  const isSorted = currentSortKey === sortKey;
+  return (
+    <span className={`transition-opacity duration-150 ${isSorted ? "opacity-100 text-[#000066]" : "opacity-0 group-hover:opacity-100 text-slate-400"}`}>
+      {isSorted && direction === "desc" ? (
+        <ChevronDown className="w-3.5 h-3.5 text-[#000066]" />
+      ) : (
+        <ChevronUp className="w-3.5 h-3.5" />
+      )}
+    </span>
+  );
+});
+
+// Mobile Card Component
+const MobileCard = React.memo(({ row, isExpanded, onToggle }) => {
+  const isNoCommit = isNoCommitSpecialization(row.specialization);
+
+  return (
+    <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+      <div
+        onClick={() => onToggle(row.id)}
+        className="p-2.5 sm:p-3 sm:p-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors gap-1.5 sm:gap-2 sm:gap-3"
+      >
+        <div className="flex items-center gap-1.5 sm:gap-2 sm:gap-3 min-w-0 flex-1">
+          <InternAvatar id={row.id} name={row.name} size="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10" textClass="text-[10px] sm:text-xs" />
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-slate-800 leading-tight truncate text-[11px] sm:text-xs md:text-sm">{row.name}</h3>
+            <p className="text-[9px] sm:text-[10px] md:text-xs text-slate-500 font-medium truncate mt-0.5">
+              {row.email} • {row.traineeId}
+            </p>
+            {row.institute && row.institute !== "Not Specified" && (
+              <p className="text-[8px] sm:text-[9px] md:text-[11px] font-medium text-indigo-600/90 flex items-center gap-1 truncate mt-0.5">
+                <Building2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0 text-indigo-400" />
+                <span className="truncate">{row.institute}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-1 sm:gap-1.5 sm:gap-2.5 flex-shrink-0">
+          {getPerformanceStatusText(row.performanceRate)}
+          <div className={`transition-transform duration-200 ease-out ${isExpanded ? 'rotate-90' : ''}`}>
+            <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-slate-400" />
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="border-t border-slate-100 bg-slate-50 overflow-hidden"
+          >
+            <div className="p-3 sm:p-4 space-y-3 sm:space-y-4">
+              {/* Stack & Dates */}
+              <div className="bg-white p-2.5 sm:p-3 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm space-y-1.5">
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">{row.specialization}</span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-500">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <span className="truncate">Duration: <strong className="text-slate-700">{formatDate(row.startDate)} – {formatDate(row.endDate)}</strong></span>
+                </div>
+              </div>
+
+              {/* Rates without progress bars */}
+              <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-4 text-center">
+                <div className="flex flex-col items-center">
+                  <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Daily Att.</p>
+                  <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.dailyAttendanceRate)}`}>
+                    {row.dailyAttendanceRate}%
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Meeting Att.</p>
+                  <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.meetingAttendanceRate)}`}>
+                    {row.meetingAttendanceRate}%
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Logbook</p>
+                  <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.logbookRecordRate)}`}>
+                    {row.logbookRecordRate}%
+                  </span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <p className="text-[9px] sm:text-[10px] font-bold uppercase text-slate-400 mb-0.5 sm:mb-1">Performance</p>
+                  <span className={`text-sm sm:text-[15px] font-black ${getRateTextColor(row.performanceRate)}`}>
+                    {row.performanceRate}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Counts - without tags */}
+              <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm">
+                <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 sm:mb-3">Activity Summary</h4>
+                <div className={`grid ${isNoCommit ? "grid-cols-3 sm:grid-cols-5" : "grid-cols-3 sm:grid-cols-6"} gap-1.5 sm:gap-2 text-center`}>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-black text-blue-600 leading-none">{row.dailyAttendanceCount}</span>
+                    <span className="text-[8px] sm:text-[9px] text-blue-600 font-bold uppercase tracking-wider mt-1">Daily Att.</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-black text-purple-600 leading-none">{row.meetingAttendanceCount}</span>
+                    <span className="text-[8px] sm:text-[9px] text-purple-600 font-bold uppercase tracking-wider mt-1">Meetings</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-black text-amber-600 leading-none">{row.logbookCount}</span>
+                    <span className="text-[8px] sm:text-[9px] text-amber-600 font-bold uppercase tracking-wider mt-1">Logbook</span>
+                  </div>
+                  {!isNoCommit && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-sm sm:text-base font-black text-emerald-600 leading-none">{row.commitCount}</span>
+                      <span className="text-[8px] sm:text-[9px] text-emerald-600 font-bold uppercase tracking-wider mt-1">Commits</span>
+                    </div>
+                  )}
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-black text-teal-600 leading-none">{row.workingDays ?? 0}</span>
+                    <span className="text-[8px] sm:text-[9px] text-teal-600 font-bold uppercase tracking-wider mt-1">Work Days</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <span className="text-sm sm:text-base font-black text-indigo-600 leading-none">{row.expectedMeetings ?? 0}</span>
+                    <span className="text-[8px] sm:text-[9px] text-indigo-600 font-bold uppercase tracking-wider mt-1">Exp Meets</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Projects */}
+              <div className="bg-white p-2.5 sm:p-4 rounded-lg sm:rounded-xl border border-slate-100 shadow-sm">
+                <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5 sm:mb-3">Assigned Projects</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {row.projects && row.projects.length > 0 ? (
+                    row.projects.map((proj, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 border border-slate-100 rounded-lg p-2 sm:p-2.5">
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          <Briefcase className="w-3.5 h-3.5 text-indigo-500 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-slate-700 truncate">{proj?.name || proj?.projectName || String(proj)}</span>
+                        </div>
+                        <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[8px] sm:text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
+                          {proj?.status || "In Progress"}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-xs text-slate-400 italic text-center py-2 col-span-full">No projects assigned.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+});
+
+// Desktop Table Row Component
+const DesktopTableRow = React.memo(({ row, isExpanded, onToggle }) => {
+  const isNoCommit = isNoCommitSpecialization(row.specialization);
+
+  return (
+    <React.Fragment>
+      {/* Main Row */}
+      <tr
+        onClick={() => onToggle(row.id)}
+        className={`group cursor-pointer transition-colors duration-150 ${
+          isExpanded
+            ? 'bg-indigo-50/60 shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]'
+            : 'hover:bg-slate-50/80'
+        }`}
+      >
+        <td className="px-2 py-3 text-slate-400 group-hover:text-[#000066] transition-colors text-center align-middle">
+          <div className={`transition-transform duration-200 ease-out inline-block ${isExpanded ? 'rotate-90' : ''}`}>
+            <ChevronRight className="w-4 h-4 mx-auto" />
+          </div>
+        </td>
+
+        {/* Name, Avatar & Mail + ID display area */}
+        <td className="px-3 py-3 text-left align-middle">
+          <div className="flex items-center gap-2.5">
+            <InternAvatar id={row.id} name={row.name} size="w-9 h-9" />
+            <div className="min-w-0 flex-1 pr-2">
+              <p className="font-bold text-slate-800 text-[13px] leading-snug truncate">{row.name}</p>
+              <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1 mt-0.5 truncate">
+                <Mail className="w-3 h-3 flex-shrink-0 text-slate-400" />
+                <span className="truncate">{row.email} • {row.traineeId}</span>
+              </p>
+              {row.institute && row.institute !== "Not Specified" && (
+                <p className="text-[10.5px] font-medium text-indigo-600/90 flex items-center gap-1 mt-0.5 truncate">
+                  <Building2 className="w-3 h-3 flex-shrink-0 text-indigo-400" />
+                  <span className="truncate">{row.institute}</span>
+                </p>
+              )}
+            </div>
+          </div>
+        </td>
+
+        {/* Trainee ID: Perfectly Centered */}
+        <td className="px-3 py-3 text-center align-middle">
+          <span className="font-mono text-[13px] font-bold text-slate-700">
+            {row.traineeId}
+          </span>
+        </td>
+
+        {/* Specialization: Left aligned */}
+        <td className="px-3 py-3 text-left align-middle">
+          <div className="flex items-center gap-1.5 text-[13px] font-medium text-slate-700 truncate">
+            <GraduationCap className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+            <span className="truncate">{row.specialization}</span>
+          </div>
+        </td>
+
+        {/* Daily Att.: Perfectly Centered */}
+        <td className="px-3 py-3 text-center align-middle">
+          <span className={`text-[13px] font-bold ${getRateTextColor(row.dailyAttendanceRate)}`}>
+            {row.dailyAttendanceRate}%
+          </span>
+        </td>
+
+        {/* Meeting Att.: Perfectly Centered */}
+        <td className="px-3 py-3 text-center align-middle">
+          <span className={`text-[13px] font-bold ${getRateTextColor(row.meetingAttendanceRate)}`}>
+            {row.meetingAttendanceRate}%
+          </span>
+        </td>
+
+        {/* Logbook: Perfectly Centered */}
+        <td className="px-3 py-3 text-center align-middle">
+          <span className={`text-[13px] font-bold ${getRateTextColor(row.logbookRecordRate)}`}>
+            {row.logbookRecordRate}%
+          </span>
+        </td>
+
+        {/* Performance: Perfectly Centered */}
+        <td className="px-3 py-3 text-center align-middle">
+          <span className={`text-[13px] font-bold ${getRateTextColor(row.performanceRate)}`}>
+            {row.performanceRate}%
+          </span>
+        </td>
+
+        {/* Status: Perfectly Centered text without tag/badge */}
+        <td className="px-3 py-3 text-center align-middle">
+          {getPerformanceStatusText(row.performanceRate)}
+        </td>
+      </tr>
+
+      {/* Expanded Dropdown Drawer */}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <tr className="bg-slate-50/60">
+            <td colSpan="9" className="p-0 border-b border-slate-200">
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: "easeInOut" }}
+                className="overflow-hidden"
+              >
+                <div className="p-4 md:p-5 lg:p-6 bg-slate-50/90 shadow-inner">
+                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 lg:p-5">
+
+                    {/* Drawer Heading & Activity Counts without tags */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5 pb-4 border-b border-slate-200">
+                      <div className="flex items-center gap-3">
+                        <InternAvatar id={row.id} name={row.name} size="w-11 h-11" textClass="text-sm" />
+                        <div>
+                          <div className="flex items-center gap-2 text-slate-800">
+                            <h4 className="text-base font-extrabold text-slate-900">{row.name}</h4>
+                            <span className="text-xs font-bold text-slate-500 font-mono">({row.traineeId})</span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            {row.specialization} • {formatDate(row.startDate)} – {formatDate(row.endDate)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Activity Counts: Conditional Git Commits based on Specialization */}
+                      <div className="flex flex-wrap items-center gap-4 sm:gap-6 lg:gap-7">
+                        <div className="flex flex-col items-center">
+                          <span className="text-[18px] lg:text-[20px] font-black text-blue-600 leading-none">{row.dailyAttendanceCount}</span>
+                          <span className="text-[10px] text-blue-600 font-bold uppercase tracking-wider mt-1">Daily Att.</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[18px] lg:text-[20px] font-black text-purple-600 leading-none">{row.meetingAttendanceCount}</span>
+                          <span className="text-[10px] text-purple-600 font-bold uppercase tracking-wider mt-1">Meeting Att.</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[18px] lg:text-[20px] font-black text-amber-600 leading-none">{row.logbookCount}</span>
+                          <span className="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-1">Logbook</span>
+                        </div>
+                        {!isNoCommit && (
+                          <div className="flex flex-col items-center">
+                            <span className="text-[18px] lg:text-[20px] font-black text-emerald-600 leading-none">{row.commitCount}</span>
+                            <span className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-1">Git Commits</span>
+                          </div>
+                        )}
+                        <div className="flex flex-col items-center">
+                          <span className="text-[18px] lg:text-[20px] font-black text-teal-600 leading-none">{row.workingDays ?? 0}</span>
+                          <span className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mt-1">Work Days</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-[18px] lg:text-[20px] font-black text-indigo-600 leading-none">{row.expectedMeetings ?? 0}</span>
+                          <span className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider mt-1">Exp Meets</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Projects Section */}
+                    <div>
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2.5">
+                        Assigned Projects & Modules
+                      </h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {row.projects && row.projects.length > 0 ? (
+                          row.projects.map((proj, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg p-3 hover:bg-slate-100/70 transition-colors">
+                              <div className="flex items-center gap-2 truncate pr-2">
+                                <Briefcase className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                                <span className="text-sm font-semibold text-slate-700 truncate">{proj?.name || proj?.projectName || String(proj)}</span>
+                              </div>
+                              <span className={`flex-shrink-0 px-2 py-0.5 rounded text-[9px] font-bold border uppercase tracking-wider ${getStatusBadge(proj?.status)}`}>
+                                {proj?.status || "In Progress"}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="col-span-full text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-300">
+                            <p className="text-sm text-slate-500 italic">No projects assigned.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </motion.div>
+            </td>
+          </tr>
+        )}
+      </AnimatePresence>
+    </React.Fragment>
+  );
+});
+
+// Pagination bar matching Daily Logs design
+const PaginationBar = React.memo(({
+  totalEntries,
+  currentPage,
+  pageSize,
+  totalPages,
+  isLoading,
+  isRefreshing,
+  onPageChange,
+  isMobile = false
+}) => {
+  if (!totalEntries) return null;
+
+  const from = (currentPage - 1) * pageSize + 1;
+  const to = Math.min(currentPage * pageSize, totalEntries);
+  const hasPrevPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
+
+  const pageNums = (() => {
+    const delta = 1;
+    if (totalPages <= 5)
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const s = new Set([1, totalPages]);
+    for (
+      let i = Math.max(2, currentPage - delta);
+      i <= Math.min(totalPages - 1, currentPage + delta);
+      i++
+    )
+      s.add(i);
+    return [...s].sort((a, b) => a - b);
+  })();
+
+  const btn = (onClick, disabled, icon, title) => (
+    <button
+      onClick={onClick}
+      disabled={disabled || isLoading || isRefreshing}
+      title={title}
+      className="p-1 sm:p-1.5 rounded-md sm:rounded-lg text-slate-500 hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition focus:outline-none cursor-pointer"
+    >
+      {icon}
+    </button>
+  );
+
+  return (
+    <div
+      className={`flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 px-3 sm:px-4 md:px-6 py-2.5 sm:py-3.5 bg-slate-50/80 ${
+        isMobile
+          ? "rounded-xl sm:rounded-[14px] md:rounded-2xl border border-slate-200/80 shadow-sm"
+          : "border-t border-slate-200/80 rounded-b-xl sm:rounded-b-[14px] md:rounded-b-2xl"
+      }`}
+    >
+      <p className="text-[11px] sm:text-xs md:text-sm text-slate-500 font-medium text-center sm:text-left">
+        Showing{" "}
+        <span className="font-bold text-slate-700">
+          {from} - {to}
+        </span>{" "}
+        of <span className="font-bold text-slate-700">{totalEntries}</span>{" "}
+        records
+      </p>
+      <div className="flex items-center gap-0.5 sm:gap-1 flex-wrap justify-center">
+        {btn(
+          () => onPageChange(1),
+          !hasPrevPage,
+          <FaAngleDoubleLeft className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
+          "First",
+        )}
+        {btn(
+          () => onPageChange(Math.max(1, currentPage - 1)),
+          !hasPrevPage,
+          <FaChevronLeft className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
+          "Previous",
+        )}
+        {pageNums.map((p, idx, arr) => (
+          <React.Fragment key={p}>
+            {arr[idx - 1] && p - arr[idx - 1] > 1 && (
+              <span className="px-0.5 sm:px-1 text-slate-400 text-[10px] sm:text-xs font-bold">…</span>
+            )}
+            <button
+              onClick={() => onPageChange(p)}
+              disabled={isLoading || isRefreshing}
+              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg text-[11px] sm:text-xs font-bold transition-all focus:outline-none cursor-pointer ${
+                p === currentPage
+                  ? "bg-gradient-to-r from-[#000066] to-[#006600] text-white shadow-md shadow-[#006600]/20"
+                  : "text-slate-600 hover:bg-slate-200"
+              }`}
+            >
+              {p}
+            </button>
+          </React.Fragment>
+        ))}
+        {btn(
+          () => onPageChange(Math.min(totalPages, currentPage + 1)),
+          !hasNextPage,
+          <FaChevronRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
+          "Next",
+        )}
+        {btn(
+          () => onPageChange(totalPages),
+          !hasNextPage,
+          <FaAngleDoubleRight className="h-2.5 w-2.5 sm:h-3 sm:w-3" />,
+          "Last",
+        )}
+      </div>
+    </div>
+  );
+});
+
+// Helper to compute month date range for analytics filtering
+const computeMonthRange = (selection, includeCurrent) => {
+  if (selection === "all" && !includeCurrent) {
+    return { startDate: null, endDate: null, label: "All Months" };
+  }
+
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-indexed (0 = Jan, 7 = Aug)
+
+  const formatYMD = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const curMonthStart = new Date(currentYear, currentMonth, 1);
+  const curMonthEnd = new Date(currentYear, currentMonth + 1, 0);
+
+  if (selection === "current" || (selection === "all" && includeCurrent)) {
+    return {
+      startDate: formatYMD(curMonthStart),
+      endDate: formatYMD(curMonthEnd),
+      label: "Current Month",
+    };
+  }
+
+  let startMonthOffset = 1;
+  let baseLabel = "Previous Month";
+
+  if (selection === "prev1") {
+    startMonthOffset = 1;
+    baseLabel = "Previous Month";
+  } else if (selection === "prev2") {
+    startMonthOffset = 2;
+    baseLabel = "Previous 2 Months";
+  } else if (selection === "prev3") {
+    startMonthOffset = 3;
+    baseLabel = "Previous 3 Months";
+  }
+
+  const rangeStart = new Date(currentYear, currentMonth - startMonthOffset, 1);
+  const rangeEnd = includeCurrent
+    ? curMonthEnd
+    : new Date(currentYear, currentMonth, 0); // Last day of previous month
+
+  let label = baseLabel;
+  if (includeCurrent) {
+    if (selection === "prev1") label = "Current + Previous Month";
+    else if (selection === "prev2") label = "Current + Prev 2 Months";
+    else if (selection === "prev3") label = "Current + Prev 3 Months";
+  }
+
+  return {
+    startDate: formatYMD(rangeStart),
+    endDate: formatYMD(rangeEnd),
+    label,
+  };
+};
+
+const AdminAnalytics = () => {
+  const navigate = useNavigate();
+
+  const [analyticsData, setAnalyticsData] = useState([]);
+  const [summaryStats, setSummaryStats] = useState({ total: 0, good: 0, atRisk: 0, poor: 0 });
+  const [totalEntries, setTotalEntries] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [uniqueSpecializations, setUniqueSpecializations] = useState([]);
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Filters and Sorting
+  const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [specFilter, setSpecFilter] = useState("all");
+  const [monthSelection, setMonthSelection] = useState("all");
+  const [includeCurrentMonth, setIncludeCurrentMonth] = useState(false);
+  const [useInternStartDate, setUseInternStartDate] = useState(false);
+  const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+  const monthDropdownRef = useRef(null);
+
+  const [sortConfig, setSortConfig] = useState({ key: "traineeId", direction: "asc" });
+  const [expandedRowId, setExpandedRowId] = useState(null);
+
+  // Server-Side Pagination (default 25 items per page for ultra-fast loading)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+
+  // Debounce search term to prevent rapid requests while typing
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1);
+    }, 250);
+    return () => clearTimeout(handler);
+  }, [searchTerm]);
+
+  // Active month range computation
+  const activeMonthRange = useMemo(() => {
+    return computeMonthRange(monthSelection, includeCurrentMonth);
+  }, [monthSelection, includeCurrentMonth]);
+
+  // Click outside to close month dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (monthDropdownRef.current && !monthDropdownRef.current.contains(e.target)) {
+        setIsMonthDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const fetchAnalytics = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) setIsRefreshing(true);
+      else setIsLoading(true);
+      setError(null);
+
+      const token = getAuthToken();
+      if (!token) {
+        setError("Admin authentication required. Please log in.");
+        setIsLoading(false);
+        setIsRefreshing(false);
+        navigate("/admin-login");
+        return;
+      }
+
+      const range = computeMonthRange(monthSelection, includeCurrentMonth);
+      const params = new URLSearchParams();
+      if (isRefresh) params.set("refresh", "true");
+      if (range.startDate && range.endDate) {
+        params.set("startDate", range.startDate);
+        params.set("endDate", range.endDate);
+        params.set("useInternStartDate", String(useInternStartDate));
+      }
+      params.set("page", String(currentPage));
+      params.set("limit", String(pageSize));
+      if (debouncedSearchTerm.trim()) params.set("search", debouncedSearchTerm.trim());
+      if (statusFilter !== "all") params.set("status", statusFilter);
+      if (specFilter !== "all") params.set("specialization", specFilter);
+      if (sortConfig.key) {
+        params.set("sortBy", sortConfig.key);
+        params.set("sortOrder", sortConfig.direction);
+      }
+
+      const res = await axios.get(`${API_BASE_URL}/admin/analytics?${params.toString()}`, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setAnalyticsData(res.data);
+          setTotalEntries(res.data.length);
+          setTotalPages(Math.max(1, Math.ceil(res.data.length / pageSize)));
+          const good = res.data.filter((i) => (Number(i.performanceRate) || 0) >= 80).length;
+          const atRisk = res.data.filter((i) => (Number(i.performanceRate) || 0) >= 60 && (Number(i.performanceRate) || 0) < 80).length;
+          const poor = res.data.filter((i) => (Number(i.performanceRate) || 0) < 60).length;
+          setSummaryStats({ total: res.data.length, good, atRisk, poor });
+        } else {
+          setAnalyticsData(res.data.interns || []);
+          if (res.data.summary) {
+            setSummaryStats(res.data.summary);
+          }
+          if (res.data.pagination) {
+            setTotalEntries(res.data.pagination.total);
+            setTotalPages(res.data.pagination.totalPages);
+          } else if (typeof res.data.total === "number") {
+            setTotalEntries(res.data.total);
+            setTotalPages(Math.max(1, Math.ceil(res.data.total / pageSize)));
+          }
+          if (Array.isArray(res.data.specializations)) {
+            setUniqueSpecializations(res.data.specializations);
+          }
+        }
+      } else {
+        setAnalyticsData([]);
+        setTotalEntries(0);
+        setTotalPages(1);
+      }
+    } catch (err) {
+      console.error("Error fetching admin analytics:", err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setError("Session expired or unauthorized. Redirecting to login...");
+        setTimeout(() => navigate("/admin-login"), 1500);
+      } else {
+        setError(err.response?.data?.message || "Failed to load analytics data.");
+      }
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [
+    navigate,
+    monthSelection,
+    includeCurrentMonth,
+    useInternStartDate,
+    currentPage,
+    pageSize,
+    debouncedSearchTerm,
+    statusFilter,
+    specFilter,
+    sortConfig,
+  ]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleSort = useCallback((key) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+    setCurrentPage(1);
+  }, []);
+
+  const toggleRow = useCallback((id) => {
+    setExpandedRowId((prev) => (prev === id ? null : id));
+  }, []);
+
+  const handlePageChange = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
+  const handleSearchChange = useCallback((val) => {
+    setSearchTerm(val);
+  }, []);
+
+  const handleStatusFilterChange = useCallback((val) => {
+    setStatusFilter(val);
+    setCurrentPage(1);
+  }, []);
+
+  const handleSpecFilterChange = useCallback((val) => {
+    setSpecFilter(val);
+    setCurrentPage(1);
+  }, []);
+
+  // Helper to fetch all matching users for PDF and CSV export
+  const fetchAllMatchingDataForExport = async () => {
+    const token = getAuthToken();
+    if (!token) return [];
+
+    const range = computeMonthRange(monthSelection, includeCurrentMonth);
+    const params = new URLSearchParams();
+    params.set("exportAll", "true");
+    if (range.startDate && range.endDate) {
+      params.set("startDate", range.startDate);
+      params.set("endDate", range.endDate);
+      params.set("useInternStartDate", String(useInternStartDate));
+    }
+    if (searchTerm.trim()) params.set("search", searchTerm.trim());
+    if (statusFilter !== "all") params.set("status", statusFilter);
+    if (specFilter !== "all") params.set("specialization", specFilter);
+    if (sortConfig.key) {
+      params.set("sortBy", sortConfig.key);
+      params.set("sortOrder", sortConfig.direction);
+    }
+
+    const res = await axios.get(`${API_BASE_URL}/admin/analytics?${params.toString()}`, {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.data) {
+      if (Array.isArray(res.data)) return res.data;
+      if (Array.isArray(res.data.interns)) return res.data.interns;
+    }
+    return analyticsData;
+  };
+
+  // CSV Export Handler - Fetches all matching users
+  const exportToCSV = async () => {
+    try {
+      setIsExporting(true);
+      const allMatching = await fetchAllMatchingDataForExport();
+      if (!allMatching || allMatching.length === 0) return;
+
+      const headers = [
+        "Trainee ID",
+        "Intern Name",
+        "Email",
+        "University / Institute",
+        "Specialization",
+        "Start Date",
+        "End Date",
+        "Working Days",
+        "Expected Meetings",
+        "Daily Attendance %",
+        "Meeting Attendance %",
+        "Logbook %",
+        "Performance %",
+        "Status",
+        "Daily Att. Count",
+        "Meeting Att. Count",
+        "Logbook Count",
+        "Git Commits",
+        "Assigned Projects"
+      ];
+
+      const rows = allMatching.map((item) => [
+        `"${item.traineeId || ""}"`,
+        `"${item.name || ""}"`,
+        `"${item.email || ""}"`,
+        `"${item.institute || item.university || "Not Specified"}"`,
+        `"${item.specialization || ""}"`,
+        `"${formatDate(item.startDate)}"`,
+        `"${formatDate(item.endDate)}"`,
+        item.workingDays ?? 0,
+        item.expectedMeetings ?? 0,
+        item.dailyAttendanceRate,
+        item.meetingAttendanceRate,
+        item.logbookRecordRate,
+        item.performanceRate,
+        `"${item.internStatus || ""}"`,
+        item.dailyAttendanceCount,
+        item.meetingAttendanceCount,
+        item.logbookCount,
+        isNoCommitSpecialization(item.specialization) ? "N/A" : item.commitCount,
+        `"${(item.projects || []).map((p) => p?.name || p?.projectName || String(p)).join(", ")}"`
+      ]);
+
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      const safeMonthLabel = activeMonthRange.label.replace(/[^a-zA-Z0-9]/g, "_");
+      link.setAttribute("download", `TalentHub_Analytics_${safeMonthLabel}_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export CSV:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // PDF Export Handler - Fetches all matching users
+  const exportToPDF = async () => {
+    try {
+      setIsExporting(true);
+      const allMatching = await fetchAllMatchingDataForExport();
+      if (!allMatching || allMatching.length === 0) return;
+
+      const doc = new jsPDF("landscape");
+      
+      // Title
+      doc.setFontSize(22);
+      doc.setTextColor(0, 0, 102); // #000066
+      doc.text("TalentHub Analytics Report", 14, 20);
+      
+      // Date, time & Period
+      doc.setFontSize(10);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Period: ${activeMonthRange.label}   |   Generated on: ${new Date().toLocaleString()}`, 14, 28);
+      
+      // KPI summary
+      doc.setFontSize(11);
+      doc.setTextColor(50, 50, 50);
+      doc.text(
+        `Total Interns: ${summaryStats.total}   |   Good: ${summaryStats.good}   |   At Risk: ${summaryStats.atRisk}   |   Poor: ${summaryStats.poor}`,
+        14, 38
+      );
+
+      const tableColumn = [
+        "ID", 
+        "Name", 
+        "University", 
+        "Stack", 
+        "Start Date",
+        "Projects", 
+        "Daily", 
+        "Meeting", 
+        "Performance", 
+        "Status"
+      ];
+      
+      const tableRows = [];
+
+      allMatching.forEach(item => {
+        const rowData = [
+          item.traineeId || "",
+          item.name || "",
+          item.institute || item.university || "Not Specified",
+          item.specialization || "",
+          formatDate(item.startDate) || "",
+          (item.projects || []).map(p => p?.name || p?.projectName || String(p)).join("\n"),
+          `${item.dailyAttendanceRate}%`,
+          `${item.meetingAttendanceRate}%`,
+          `${item.performanceRate}%`,
+          item.internStatus || (item.performanceRate >= 80 ? "Good" : item.performanceRate >= 60 ? "At Risk" : "Poor")
+        ];
+        tableRows.push(rowData);
+      });
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 45,
+        theme: 'grid',
+        styles: { fontSize: 8, cellPadding: 3, textColor: [40, 40, 40] },
+        headStyles: { fillColor: [0, 0, 102], textColor: 255, fontStyle: 'bold', halign: 'center' },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center', fontStyle: 'bold' },
+          1: { cellWidth: 40 },
+          2: { cellWidth: 38 },
+          3: { cellWidth: 20 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 55 },
+          6: { cellWidth: 18, halign: 'center' },
+          7: { cellWidth: 18, halign: 'center' },
+          8: { cellWidth: 26, halign: 'center', fontStyle: 'bold' },
+          9: { cellWidth: 18, halign: 'center', fontStyle: 'bold' }
+        },
+        didParseCell: function(data) {
+          if (data.section === 'body' && data.column.index === 9) {
+            const status = data.cell.raw;
+            if (status === 'Good') {
+              data.cell.styles.textColor = [5, 150, 105]; // emerald-600
+            } else if (status === 'At Risk') {
+              data.cell.styles.textColor = [217, 119, 6]; // amber-600
+            } else if (status === 'Poor') {
+              data.cell.styles.textColor = [225, 29, 72]; // rose-600
+            }
+          }
+        }
+      });
+
+      const safeMonthLabel = activeMonthRange.label.replace(/[^a-zA-Z0-9]/g, "_");
+      doc.save(`TalentHub_Analytics_${safeMonthLabel}_${new Date().toISOString().slice(0, 10)}.pdf`);
+    } catch (err) {
+      console.error("Failed to generate PDF:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+
+
+  return (
+    <AdminNavigation>
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+
+          {/* Top header: Title on Left, Actions on Right */}
+          <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+
+            {/* Left: Analytics Title */}
+            <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="p-2 sm:p-2.5 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
+              >
+                <TrendingUp className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+              </motion.div>
+              <div className="flex flex-col justify-center min-w-0">
+                <motion.h1
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight truncate"
+                >
+                  Analytics
+                </motion.h1>
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.1, duration: 0.3 }}
+                  className="text-slate-500 mt-0.5 text-[11px] sm:text-xs md:text-sm lg:text-base font-medium truncate max-w-xl"
+                >
+                  Monitor intern performance, attendance, and project progress
+                </motion.p>
+              </div>
+            </div>
+
+            {/* Right: Actions (under title on 768px and 1024px, max-width card) */}
+            <div className="flex items-center gap-2 sm:gap-4 w-full xl:w-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+                className="bg-white rounded-xl md:rounded-[16px] shadow-sm border border-slate-200/80 p-1.5 sm:p-2 sm:p-2.5 flex items-center gap-1.5 sm:gap-2 md:gap-3 w-full xl:w-auto justify-between"
+              >
+                <button
+                  onClick={exportToPDF}
+                  disabled={isLoading || isExporting || totalEntries === 0}
+                  className="flex-1 xl:flex-none justify-center flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer min-w-0"
+                  title="Export to PDF"
+                >
+                  <FileText className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-rose-500 flex-shrink-0" />
+                  <span className="truncate">{isExporting ? "Exporting..." : "Export PDF"}</span>
+                </button>
+                <button
+                  onClick={exportToCSV}
+                  disabled={isLoading || isExporting || totalEntries === 0}
+                  className="flex-1 xl:flex-none justify-center flex items-center gap-1 sm:gap-1.5 px-2 sm:px-4 md:px-6 py-1.5 sm:py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 transition-all shadow-sm disabled:opacity-50 cursor-pointer min-w-0"
+                  title="Export to CSV"
+                >
+                  <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-slate-500 flex-shrink-0" />
+                  <span className="truncate">Export CSV</span>
+                </button>
+                <button
+                  onClick={() => fetchAnalytics(true)}
+                  disabled={isLoading || isRefreshing}
+                  title="Refresh Data"
+                  className="p-1.5 sm:p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 rounded-lg sm:rounded-xl text-slate-600 hover:text-slate-900 transition-all shadow-sm flex-shrink-0 disabled:opacity-50 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ${isRefreshing || isLoading ? 'animate-spin text-[#000066]' : ''}`} />
+                </button>
+              </motion.div>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+            {/* Total Interns */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400 leading-tight">Total Interns</p>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-slate-800 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.total}
+                </p>
+              </div>
+            </div>
+
+            {/* Good Performance */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">Good</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-emerald-600 bg-emerald-50 px-1 py-0.5 rounded">&ge;80%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-emerald-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.good}
+                </p>
+              </div>
+            </div>
+
+            {/* At Risk */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">At Risk</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-amber-600 bg-amber-50 px-1 py-0.5 rounded">60-79%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-amber-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.atRisk}
+                </p>
+              </div>
+            </div>
+
+            {/* Poor */}
+            <div className="bg-white p-2 sm:p-2.5 md:p-3 lg:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-2 sm:gap-2.5 md:gap-3.5 min-w-0">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 lg:w-10 lg:h-10 rounded-lg sm:rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+                <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-4.5 md:h-4.5 lg:w-5 lg:h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1 flex-wrap leading-tight">
+                  <span className="text-[8px] sm:text-[9px] md:text-[10px] lg:text-[11px] font-bold uppercase tracking-wider text-slate-400">Poor</span>
+                  <span className="text-[7px] sm:text-[8px] md:text-[9px] font-semibold text-rose-600 bg-rose-50 px-1 py-0.5 rounded">&lt;60%</span>
+                </div>
+                <p className="text-sm sm:text-base md:text-lg lg:text-xl font-black text-rose-600 leading-tight mt-0.5">
+                  {isLoading ? "..." : summaryStats.poor}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div className="bg-white p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200/80 shadow-sm flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
+            {/* Search input */}
+            <div className="relative flex-1 w-full xl:max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                autoComplete="off"
+                spellCheck="false"
+                placeholder="Search by name, ID, email, specialization..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-9 pr-9 py-2 sm:py-2.5 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium outline-none focus:border-[#000066] transition-colors placeholder:text-slate-400"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => handleSearchChange("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 bg-slate-200 hover:bg-slate-300 rounded-full text-slate-500 transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* Filters Row */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full xl:w-auto">
+              {/* Status Filter */}
+              <div className="grid grid-cols-4 w-full sm:w-auto bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl p-0.5 sm:p-1 text-[10px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold flex-shrink-0">
+                {[
+                  { key: "all", label: "All" },
+                  { key: "Good", label: "Good" },
+                  { key: "At Risk", label: "At Risk" },
+                  { key: "Poor", label: "Poor" }
+                ].map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => handleStatusFilterChange(tab.key)}
+                    className={`px-2 sm:px-3 md:px-2.5 lg:px-2.5 xl:px-3 py-1.5 rounded-md sm:rounded-lg text-center transition-all truncate cursor-pointer ${
+                      statusFilter === tab.key
+                        ? "bg-[#000066] text-white shadow-sm font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Specialization Filter Dropdown */}
+              {uniqueSpecializations.length > 0 && (
+                <div className="relative w-full sm:w-auto flex-shrink-0">
+                  <select
+                    value={specFilter}
+                    onChange={(e) => handleSpecFilterChange(e.target.value)}
+                    className="w-full sm:w-auto appearance-none pl-3 pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
+                  >
+                    <option value="all">All Specializations</option>
+                    {uniqueSpecializations.map((spec) => (
+                      <option key={spec} value={spec}>{spec}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              )}
+
+              {/* Month Filter Dropdown */}
+              <div className="relative flex-1 sm:flex-none" ref={monthDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsMonthDropdownOpen((prev) => !prev)}
+                  className={`w-full sm:w-auto flex items-center justify-between gap-1.5 pl-2.5 sm:pl-3 pr-7 sm:pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border ${
+                    monthSelection !== "all" || includeCurrentMonth
+                      ? "border-[#000066] text-[#000066] bg-indigo-50/50 font-bold"
+                      : "border-slate-200/80 text-slate-700 font-semibold"
+                  } rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs outline-none hover:border-[#000066] transition-colors cursor-pointer shadow-sm`}
+                  title="Filter by Month Range"
+                >
+                  <Calendar className={`w-3.5 h-3.5 ${monthSelection !== "all" || includeCurrentMonth ? "text-[#000066]" : "text-slate-400"} flex-shrink-0`} />
+                  <span className="truncate max-w-[110px] sm:max-w-[145px]">{activeMonthRange.label}</span>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </button>
+
+                <AnimatePresence>
+                  {isMonthDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4, scale: 0.98 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute left-0 sm:right-0 sm:left-auto mt-1.5 w-[calc(100vw-36px)] max-w-xs sm:w-60 bg-white border border-slate-200 rounded-xl shadow-xl z-50 p-2 overflow-hidden"
+                    >
+                      {/* Top Checkboxes */}
+                      <div className="space-y-1.5 p-1 bg-slate-50/80 rounded-lg border border-slate-100">
+                        {/* Checkbox 1: Current Month */}
+                        <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={includeCurrentMonth}
+                              onChange={(e) => {
+                                setIncludeCurrentMonth(e.target.checked);
+                                setCurrentPage(1);
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
+                            />
+                            <span>Current Month</span>
+                          </label>
+                          <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
+                            {monthSelection === "all" || monthSelection === "current"
+                              ? "Filter by current month"
+                              : "Combine with previous months"}
+                          </p>
+                        </div>
+
+                        {/* Checkbox 2: Use Internship Start Date */}
+                        <div className="px-2 py-1.5 hover:bg-slate-100/80 rounded-md transition-colors border-t border-slate-200/50 pt-1.5">
+                          <label className="flex items-center gap-2 cursor-pointer select-none text-xs font-bold text-slate-800">
+                            <input
+                              type="checkbox"
+                              checked={useInternStartDate}
+                              onChange={(e) => {
+                                setUseInternStartDate(e.target.checked);
+                                setCurrentPage(1);
+                              }}
+                              className="w-4 h-4 rounded border-slate-300 text-[#000066] focus:ring-[#000066] cursor-pointer accent-[#000066]"
+                            />
+                            <span>Use Internship Start Date</span>
+                          </label>
+                          <p className="text-[10px] text-slate-500 pl-6 mt-0.5">
+                            Calculate from internship start date
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 my-1.5" />
+
+                      {/* Month Range Options */}
+                      <div className="space-y-0.5">
+                        {[
+                          { key: "all", label: "All Months" },
+                          { key: "current", label: "Current Month" },
+                          { key: "prev1", label: "Previous Month" },
+                          { key: "prev2", label: "Previous 2 Months" },
+                          { key: "prev3", label: "Previous 3 Months" },
+                        ].map((opt) => {
+                          const isSelected = monthSelection === opt.key;
+                          return (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              onClick={() => {
+                                setMonthSelection(opt.key);
+                                setCurrentPage(1);
+                                setIsMonthDropdownOpen(false);
+                              }}
+                              className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between ${
+                                isSelected
+                                  ? "bg-indigo-50 text-[#000066] font-bold"
+                                  : "text-slate-700 hover:bg-slate-50 font-medium"
+                              }`}
+                            >
+                              <span>{opt.label}</span>
+                              {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-[#000066]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
+              {/* Page Size Selector */}
+              <div className="relative flex-shrink-0">
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="appearance-none pl-2.5 sm:pl-3.5 pr-7 sm:pr-8 lg:pl-2.5 lg:pr-7 py-2 bg-slate-50 border border-slate-200/80 rounded-lg sm:rounded-xl text-[11px] sm:text-xs md:text-[11px] lg:text-[11px] xl:text-xs font-semibold text-slate-700 outline-none focus:border-[#000066] transition-colors cursor-pointer"
+                >
+                  <option value="10">10 / page</option>
+                  <option value="25">25 / page</option>
+                  <option value="50">50 / page</option>
+                  <option value="100">100 / page</option>
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+            {/* Mobile View: Cards */}
+            <div className="xl:hidden flex flex-col gap-2.5 sm:gap-3">
+              {isLoading ? (
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                  <div className="relative mb-3 flex items-center justify-center">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border-3 border-indigo-100 border-t-[#000066] animate-spin"></div>
+                    <Activity className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#000066] absolute inset-0 m-auto animate-pulse" />
+                  </div>
+                  <h4 className="text-xs sm:text-sm font-bold text-slate-800">Calculating & Loading Analytics...</h4>
+                  <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Processing attendance, logbooks, and performance rates</p>
+                </div>
+              ) : error ? (
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                  <AlertCircle className="w-7 h-7 sm:w-8 sm:h-8 text-rose-500 mb-2" />
+                  <p className="text-xs sm:text-sm font-bold text-slate-700 mb-3">{error}</p>
+                  <button
+                    onClick={() => fetchAnalytics(true)}
+                    className="px-3.5 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg sm:rounded-xl transition-colors cursor-pointer"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : analyticsData.length > 0 ? (
+                <>
+                  {analyticsData.map((row) => (
+                    <MobileCard
+                      key={row.id}
+                      row={row}
+                      isExpanded={expandedRowId === row.id}
+                      onToggle={toggleRow}
+                    />
+                  ))}
+                  {/* Mobile Pagination */}
+                  <PaginationBar
+                    totalEntries={totalEntries}
+                    currentPage={currentPage}
+                    pageSize={pageSize}
+                    totalPages={totalPages}
+                    isLoading={isLoading}
+                    isRefreshing={isRefreshing}
+                    onPageChange={handlePageChange}
+                    isMobile={true}
+                  />
+                </>
+              ) : (
+                <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-200/80 p-8 sm:p-12 flex flex-col items-center justify-center text-center shadow-sm">
+                  <div className="w-12 h-12 sm:w-16 sm:h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                    <Filter className="w-6 h-6 sm:w-8 sm:h-8 text-slate-300" />
+                  </div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-700">No results found</h3>
+                  <p className="text-xs sm:text-sm text-slate-500 mt-1">Try adjusting your search criteria or clearing filters.</p>
+                  {(searchTerm || statusFilter !== "all" || specFilter !== "all") && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm("");
+                        setStatusFilter("all");
+                        setSpecFilter("all");
+                        setCurrentPage(1);
+                      }}
+                      className="mt-3.5 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg sm:rounded-xl transition-colors cursor-pointer"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+
+            {/* Desktop View: Compact Modern Table with Fixed Layout & Precise Alignment */}
+            <div className="hidden xl:block bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-separate border-spacing-0 table-fixed">
+                  <thead className="bg-slate-50/90">
+                    <tr>
+                      <th className="w-[3.5%] px-2 py-3.5 border-b border-slate-200 text-center"></th>
+                      {[
+                        { k: "name", l: "Intern", align: "left", width: "w-[31.5%]" },
+                        { k: "traineeId", l: "Trainee ID", align: "center", width: "w-[10%]" },
+                        { k: "specialization", l: "Specialization", align: "left", width: "w-[11%]" },
+                        { k: "dailyAttendanceRate", l: "Daily Att.", align: "center", width: "w-[9%]" },
+                        { k: "meetingAttendanceRate", l: "Meeting Att.", align: "center", width: "w-[10%]" },
+                        { k: "logbookRecordRate", l: "Logbook", align: "center", width: "w-[9%]" },
+                        { k: "performanceRate", l: "Performance", align: "center", width: "w-[9%]" },
+                        { k: "internStatus", l: "Status", align: "center", width: "w-[7%]" },
+                      ].map((col) => (
+                        <th
+                          key={col.k}
+                          className={`px-3 py-3.5 cursor-pointer group hover:bg-slate-100/70 transition-colors whitespace-nowrap border-b border-slate-200 ${col.align === 'center' ? 'text-center' : 'text-left'} ${col.width || ''}`}
+                          onClick={() => handleSort(col.k)}
+                        >
+                          {col.align === "center" ? (
+                            <div className="relative inline-flex items-center justify-center">
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{col.l}</span>
+                              <span className="absolute -right-4 top-1/2 -translate-y-1/2 flex items-center">
+                                <SortIcon sortKey={col.k} currentSortKey={sortConfig.key} direction={sortConfig.direction} />
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="inline-flex items-center gap-1">
+                              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{col.l}</span>
+                              <SortIcon sortKey={col.k} currentSortKey={sortConfig.key} direction={sortConfig.direction} />
+                            </div>
+                          )}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {isLoading ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-20 text-center text-slate-500">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="relative mb-3 flex items-center justify-center">
+                              <div className="w-12 h-12 rounded-full border-3 border-indigo-100 border-t-[#000066] animate-spin"></div>
+                              <Activity className="w-5 h-5 text-[#000066] absolute inset-0 m-auto animate-pulse" />
+                            </div>
+                            <h4 className="text-base font-bold text-slate-800">Calculating & Loading Analytics...</h4>
+                            <p className="text-xs text-slate-500 mt-1 max-w-sm">
+                              Processing attendance, meeting participation, logbooks, and performance rates.
+                            </p>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : error ? (
+                      <tr>
+                        <td colSpan="9" className="px-6 py-16 text-center text-rose-500">
+                          <div className="flex flex-col items-center justify-center">
+                            <AlertCircle className="w-8 h-8 mb-2 text-rose-500" />
+                            <p className="text-sm font-bold text-slate-700 mb-2">{error}</p>
+                            <button
+                              onClick={() => fetchAnalytics(true)}
+                              className="mt-2 px-4 py-1.5 text-xs font-bold text-white bg-[#000066] hover:bg-[#000088] rounded-lg transition-colors cursor-pointer"
+                            >
+                              Retry
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : analyticsData.length > 0 ? (
+                      analyticsData.map((row) => (
+                        <DesktopTableRow
+                          key={row.id}
+                          row={row}
+                          isExpanded={expandedRowId === row.id}
+                          onToggle={toggleRow}
+                        />
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="px-4 py-16 text-center">
+                          <div className="flex flex-col items-center justify-center">
+                            <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                              <Filter className="w-8 h-8 text-slate-300" />
+                            </div>
+                            <h3 className="text-lg font-bold text-slate-700">No results found</h3>
+                            <p className="text-sm text-slate-500 mt-1">Try adjusting your search criteria or clearing active filters.</p>
+                            {(searchTerm || statusFilter !== "all" || specFilter !== "all") && (
+                              <button
+                                onClick={() => {
+                                  setSearchTerm("");
+                                  setStatusFilter("all");
+                                  setSpecFilter("all");
+                                  setCurrentPage(1);
+                                }}
+                                className="mt-4 px-4 py-2 text-xs font-bold text-[#000066] bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+                              >
+                                Clear All Filters
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Desktop Table Footer & Pagination */}
+              <PaginationBar
+                totalEntries={totalEntries}
+                currentPage={currentPage}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                isLoading={isLoading}
+                isRefreshing={isRefreshing}
+                onPageChange={handlePageChange}
+                isMobile={false}
+              />
+            </div>
+
+        </main>
+      </div>
+    </AdminNavigation>
+  );
+};
+
+export default AdminAnalytics;

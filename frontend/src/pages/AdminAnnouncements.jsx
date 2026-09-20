@@ -15,9 +15,13 @@ import {
   FaChevronDown,
   FaChevronLeft,
   FaChevronRight,
+  FaEye,
+  FaEyeSlash,
+  FaLock,
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { announcementApi } from "../api/adminApi";
+import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
 import { Megaphone } from "lucide-react";
 
@@ -40,9 +44,9 @@ const PRIORITY_OPTIONS = [
 ];
 
 const priorityStyle = {
-  normal: "bg-blue-50 text-[#0056a2] border-blue-200",
-  important: "bg-amber-50 text-amber-700 border-amber-200",
-  urgent: "bg-rose-50 text-rose-700 border-rose-200",
+  normal: "bg-blue-50 text-[#0056a2] border-[#0056a2] shadow-sm",
+  important: "bg-amber-50 text-amber-700 border-amber-500 shadow-sm",
+  urgent: "bg-rose-50 text-rose-700 border-rose-500 shadow-sm",
 };
 
 const priorityDot = {
@@ -94,6 +98,7 @@ const AdminAnnouncements = () => {
   const [message, setMessage] = useState("");
   const [priority, setPriority] = useState("normal");
   const [showAsPopup, setShowAsPopup] = useState(false);
+  const [alwaysDisplay, setAlwaysDisplay] = useState(false);
   const [sending, setSending] = useState(false);
 
   // List state
@@ -110,7 +115,14 @@ const AdminAnnouncements = () => {
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [error, setError] = useState(null);
+    const [error, setError] = useState(null);
+
+  // Security Check State
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [confirmShowPw, setConfirmShowPw] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
+  const [securitySaving, setSecuritySaving] = useState(false);
 
   const showToast = (msg, type = "info") => {
     setToast({ message: msg, type });
@@ -147,16 +159,8 @@ const AdminAnnouncements = () => {
   }, [filterPriority, searchTerm]);
 
   // ── Send ───────────────────────────────────────────────────────────────────
-  const handleSend = async () => {
-    if (!title.trim()) {
-      showToast("Title is required.", "error");
-      return;
-    }
-    if (!message.trim()) {
-      showToast("Message is required.", "error");
-      return;
-    }
-
+  
+  const executeSend = async () => {
     setSending(true);
     try {
       await announcementApi.create({
@@ -164,12 +168,14 @@ const AdminAnnouncements = () => {
         message: message.trim(),
         priority,
         showAsPopup,
+        alwaysDisplay,
       });
       showToast("Announcement sent successfully!", "success");
       setTitle("");
       setMessage("");
       setPriority("normal");
       setShowAsPopup(false);
+      setAlwaysDisplay(false);
       setCurrentPage(1);
       fetchAnnouncements();
     } catch (err) {
@@ -179,8 +185,85 @@ const AdminAnnouncements = () => {
     }
   };
 
+  
+  const handleConfirmVerify = async () => {
+    if (!confirmPassword) {
+      setConfirmError("Please enter the security password");
+      return;
+    }
+    setSecuritySaving(true);
+    setConfirmError("");
+    try {
+      let action = "Send announcemt for all interns in admin side";
+      let extraInfo = `Title: ${title}`;
+      if (confirmTarget?.type === "delete") {
+        action = "Delete anncounement in admin side";
+        extraInfo = `Title: ${confirmTarget.title}`;
+      }
+
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      const res = await fetch(`${API_BASE_URL}/admin/attendance/verify-security`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` },
+        body: JSON.stringify({
+          securityPin: confirmPassword,
+          action,
+          extraInfo,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && (data.success || data.message)) {
+        setConfirmError("");
+        const target = confirmTarget;
+        setConfirmTarget(null);
+        setConfirmPassword("");
+        
+        if (target?.type === "send") {
+          executeSend();
+        } else if (target?.type === "delete") {
+          executeDelete(target.id);
+        }
+      } else {
+        setConfirmError(data.error || data.message || "Invalid security password");
+      }
+    } catch (err) {
+      setConfirmError(err.message || "Invalid security password");
+    } finally {
+      setSecuritySaving(false);
+    }
+  };
+
+
+  const handleSend = async () => {
+    if (!title.trim()) {
+      showToast("Title is required.", "error");
+      return;
+    }
+    if (!message.trim()) {
+      showToast("Message is required.", "error");
+      return;
+    }
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      executeSend();
+      return;
+    }
+    setConfirmTarget({ type: 'send' });
+  };
+
+
+  const handleDeleteClick = (announcement) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      executeDelete(announcement._id);
+      return;
+    }
+    setConfirmTarget({ type: 'delete', id: announcement._id, title: announcement.title });
+  };
+
   // ── Delete ─────────────────────────────────────────────────────────────────
-  const handleDelete = async (id) => {
+  const executeDelete = async (id) => {
     setDeletingId(id);
     try {
       await announcementApi.delete(id);
@@ -195,7 +278,7 @@ const AdminAnnouncements = () => {
       showToast("Failed to delete announcement.", "error");
     } finally {
       setDeletingId(null);
-      setConfirmDelete(null);
+      
     }
   };
 
@@ -241,31 +324,37 @@ const AdminAnnouncements = () => {
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
     <AdminNavigation>
-      <div className="min-h-screen bg-slate-50 font-sans text-gray-800 pb-10 flex flex-col">
-        <div className="flex-1 w-full lg:mt-4 lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
             {/* Page Header */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
                 >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <Megaphone className="text-[#0056a2] h-8 w-8" />
-                  </div>
-                  Announcements
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  Broadcast messages and important notices to all interns
-                </motion.p>
+                  <Megaphone className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                </motion.div>
+                <div className="flex flex-col justify-center">
+                  <motion.h1
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  >
+                    Announcements
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  >
+                    Broadcast messages and important notices to all interns
+                  </motion.p>
+                </div>
               </div>
             </div>
 
@@ -290,10 +379,10 @@ const AdminAnnouncements = () => {
               )}
             </AnimatePresence>
 
-            <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 md:gap-6">
               {/* ── Compose Panel ── */}
               <motion.div
-                className="xl:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm h-fit"
+                className="xl:col-span-5 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col h-auto xl:h-[calc(100vh-40px)] xl:min-h-[700px] xl:sticky xl:top-6"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1, duration: 0.3 }}
@@ -312,7 +401,7 @@ const AdminAnnouncements = () => {
                   </div>
                 </div>
 
-                <div className="space-y-5">
+                <div className="flex-1 xl:overflow-y-auto pr-2 px-1 -mx-1 pb-4 space-y-5 xl:[&::-webkit-scrollbar]:w-2 xl:[&::-webkit-scrollbar-track]:bg-transparent xl:[&::-webkit-scrollbar-thumb]:bg-slate-200 xl:[&::-webkit-scrollbar-thumb]:rounded-full hover:xl:[&::-webkit-scrollbar-thumb]:bg-slate-300">
                   {/* Title */}
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
@@ -360,15 +449,14 @@ const AdminAnnouncements = () => {
                           key={opt.value}
                           type="button"
                           onClick={() => setPriority(opt.value)}
-                          className={`flex items-center justify-center space-x-1.5 px-2 py-2.5 rounded-xl border text-xs font-bold transition-all ${
+                          className={`w-full flex items-center justify-center space-x-1.5 px-1 sm:px-2 py-2.5 rounded-xl border-2 text-[10px] sm:text-xs font-bold transition-all ${
                             priority === opt.value
-                              ? priorityStyle[opt.value] +
-                                " ring-2 ring-offset-1 ring-current"
+                              ? priorityStyle[opt.value]
                               : "bg-slate-50 border-slate-200 text-gray-500 hover:bg-gray-100"
                           }`}
                         >
                           <span
-                            className={`h-2 w-2 rounded-full ${priorityDot[opt.value]}`}
+                            className={`h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full ${priorityDot[opt.value]}`}
                           />
                           <span>{opt.label}</span>
                         </button>
@@ -404,32 +492,62 @@ const AdminAnnouncements = () => {
                     </span>
                   </div>
 
+                  {/* Always Display Toggle */}
+                  <div className="flex items-center space-x-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setAlwaysDisplay(!alwaysDisplay)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[#00b4eb] focus:ring-offset-2 ${
+                        alwaysDisplay ? "bg-amber-500" : "bg-gray-200"
+                      }`}
+                      role="switch"
+                      aria-checked={alwaysDisplay}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          alwaysDisplay ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                    <span className="flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">
+                        Always Display
+                      </span>
+                      <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+                        Show once per day instead of dismissing permanently when closed
+                      </span>
+                    </span>
+                  </div>
+
                   {/* Send button */}
-                  <motion.button
-                    onClick={handleSend}
-                    disabled={sending}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 text-white rounded-2xl text-sm font-bold transition-all shadow-sm shadow-blue-500/20 disabled:cursor-not-allowed disabled:shadow-none"
-                    whileHover={{ scale: sending ? 1 : 1.02 }}
-                    whileTap={{ scale: sending ? 1 : 0.98 }}
-                  >
-                    {sending ? (
-                      <>
-                        <FaSpinner className="h-4 w-4 animate-spin" />
-                        <span>Sending...</span>
-                      </>
-                    ) : (
-                      <>
-                        <FaPaperPlane className="h-4 w-4" />
-                        <span>Send to All Interns</span>
-                      </>
-                    )}
-                  </motion.button>
+                  <div className="pt-2">
+                    <motion.button
+                      onClick={handleSend}
+                      disabled={sending}
+                      className="w-full flex items-center justify-center space-x-2 px-4 py-3.5 bg-[#0056a2] hover:bg-[#00488a] disabled:bg-gray-300 text-white rounded-2xl text-sm font-bold transition-all shadow-sm shadow-blue-500/20 disabled:cursor-not-allowed disabled:shadow-none"
+                      whileHover={{ scale: sending ? 1 : 1.02 }}
+                      whileTap={{ scale: sending ? 1 : 0.98 }}
+                    >
+                      {sending ? (
+                        <>
+                          <FaSpinner className="h-4 w-4 animate-spin" />
+                          <span>Sending...</span>
+                        </>
+                      ) : (
+                        <>
+                          <FaPaperPlane className="h-4 w-4" />
+                          <span>Send to All Interns</span>
+                        </>
+                      )}
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
 
               {/* ── Announcements List ── */}
               <motion.div
-                className="xl:col-span-3 flex flex-col gap-4 md:gap-6"
+                className="xl:col-span-7 flex flex-col gap-4 md:gap-6 h-auto xl:h-[calc(100vh-40px)] xl:min-h-[700px]"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.2, duration: 0.3 }}
@@ -464,8 +582,8 @@ const AdminAnnouncements = () => {
                 </div>
 
                 {/* List card */}
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex-1">
-                  <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50">
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden flex flex-col flex-1 min-h-[400px] lg:min-h-0">
+                  <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-gray-100 flex items-center justify-between bg-slate-50/50 flex-shrink-0">
                     <h3 className="text-lg font-extrabold text-gray-900">
                       Sent Announcements
                     </h3>
@@ -506,7 +624,7 @@ const AdminAnnouncements = () => {
                     </div>
                   ) : (
                     <>
-                      <div className="divide-y divide-gray-100">
+                      <div className="divide-y divide-gray-100 xl:overflow-y-auto flex-1 xl:[&::-webkit-scrollbar]:w-2 xl:[&::-webkit-scrollbar-track]:bg-transparent xl:[&::-webkit-scrollbar-thumb]:bg-slate-200 xl:[&::-webkit-scrollbar-thumb]:rounded-full hover:xl:[&::-webkit-scrollbar-thumb]:bg-slate-300">
                         {paginated.map((a) => {
                           const isExpanded = expandedId === a._id;
                           return (
@@ -533,6 +651,11 @@ const AdminAnnouncements = () => {
                                       {a.showAsPopup && (
                                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
                                           Popup
+                                        </span>
+                                      )}
+                                      {a.alwaysDisplay && (
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                                          Daily
                                         </span>
                                       )}
                                     </div>
@@ -570,7 +693,7 @@ const AdminAnnouncements = () => {
                                   </motion.button>
 
                                   <motion.button
-                                    onClick={() => setConfirmDelete(a._id)}
+                                    onClick={() => handleDeleteClick(a)}
                                     disabled={deletingId === a._id}
                                     className="p-2 rounded-xl text-gray-400 hover:text-rose-500 hover:bg-rose-50 transition-colors disabled:opacity-50"
                                     whileHover={{ scale: 1.1 }}
@@ -592,7 +715,7 @@ const AdminAnnouncements = () => {
 
                       {/* Pagination */}
                       {totalPages > 1 && (
-                        <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/50">
+                        <div className="px-6 py-4 border-t border-gray-100 bg-slate-50/50 flex-shrink-0">
                           <div className="flex items-center justify-between gap-4">
                             <motion.button
                               onClick={() => goTo(safePage - 1)}
@@ -657,55 +780,119 @@ const AdminAnnouncements = () => {
               </motion.div>
             </div>
           </main>
-        </div>
       </div>
 
-      {/* Confirm Delete Modal */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <motion.div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
+      
+
+      
+        {/* ── Security Check Backdrop ── */}
+        <AnimatePresence>
+          {confirmTarget && (
             <motion.div
-              className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 max-w-sm w-full"
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-            >
-              <div className="flex flex-col items-center text-center space-y-4 mb-6">
-                <div className="h-16 w-16 rounded-full bg-rose-100 flex items-center justify-center">
-                  <FaTrash className="h-8 w-8 text-rose-500" />
-                </div>
-                <div>
-                  <h4 className="text-xl font-extrabold text-gray-900 mb-1">
-                    Delete Announcement?
-                  </h4>
-                  <p className="text-sm font-medium text-gray-500">
-                    This action cannot be undone. Are you sure you want to permanently delete this announcement?
-                  </p>
-                </div>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => setConfirmDelete(null)}
-                  className="flex-1 px-4 py-3 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-sm font-bold transition-colors shadow-sm"
+              key="announcement-overlay"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-md"
+            />
+          )}
+        </AnimatePresence>
+
+        {/* ── Security Check Popup ── */}
+        <AnimatePresence>
+          {confirmTarget && (
+            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+              <div
+                className="fixed inset-0 z-[49] pointer-events-auto"
+                onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+              />
+              <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
+                  onAnimationComplete={() => {
+                    document.getElementById('announcement-security-password-input')?.focus();
+                  }}
+                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(confirmDelete)}
-                  className="flex-1 px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-sm font-bold transition-colors shadow-sm shadow-red-500/20"
-                >
-                  Delete
-                </button>
+                  <div className="flex justify-between items-start mb-3 sm:mb-4">
+                    
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-800">Security Check</h3>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {confirmTarget?.type === "delete" ? "Enter password to delete announcement" : "Enter password to send announcement"}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                    >
+                      <FaTimes className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  
+                  <div className={`flex items-center gap-3 border rounded-xl p-3 mb-4 ${confirmTarget?.type === "delete" ? "bg-rose-50 border-rose-100" : "bg-blue-50 border-blue-100"}`}>
+                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: confirmTarget?.type === "delete" ? 'linear-gradient(135deg,#f43f5e,#e11d48)' : 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                      {confirmTarget?.type === "delete" ? <FaTrash /> : <FaBullhorn />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-slate-800 truncate">
+                        {confirmTarget?.type === "delete" ? "Delete Announcement" : "Mass Announcement"}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {confirmTarget?.type === "delete" ? "Action cannot be undone" : "To: All Interns"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mb-3 sm:mb-5 relative">
+                    <input
+                      id="announcement-security-password-input"
+                      type={confirmShowPw ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => { setConfirmPassword(e.target.value); setConfirmError(""); }}
+                      onKeyDown={(e) => e.key === "Enter" && handleConfirmVerify()}
+                      placeholder="Enter password..."
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setConfirmShowPw(!confirmShowPw)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 transition-colors focus:outline-none cursor-pointer"
+                    >
+                      {confirmShowPw ? <FaEyeSlash className="w-4 h-4" /> : <FaEye className="w-4 h-4" />}
+                    </button>
+                    {confirmError && (
+                      <p className="text-xs font-semibold text-rose-500 mt-2">{confirmError}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 mt-4">
+                    <button
+                      onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
+                      className="flex-1 px-4 py-2 sm:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    
+                    <button
+                      onClick={handleConfirmVerify}
+                      disabled={securitySaving || !confirmPassword}
+                      className={`flex-1 flex items-center justify-center px-4 py-2 sm:py-2.5 text-white rounded-xl text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm cursor-pointer ${confirmTarget?.type === "delete" ? "bg-rose-600 hover:bg-rose-700" : "bg-blue-600 hover:bg-blue-700"}`}
+                    >
+                      {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : (confirmTarget?.type === "delete" ? "Verify & Delete" : "Verify & Send")}
+                    </button>
+                  </div>
+                </motion.div>
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </AdminNavigation>
@@ -713,3 +900,4 @@ const AdminAnnouncements = () => {
 };
 
 export default AdminAnnouncements;
+

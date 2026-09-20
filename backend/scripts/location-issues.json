@@ -1,0 +1,117 @@
+{
+  "generatedAt": "2026-09-12T17:52:50.248Z",
+  "issues": [
+    {
+      "id": "3791",
+      "name": "Sineth Ransen De Silva",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "No.08,George Jayasinha mw,Polhena,Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3844",
+      "name": "Hewa Batuwitage Dewmi Sandothma",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "Dalugama, Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3957",
+      "name": "Weerasinghe Kankanamge Malith Yasintha",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "C/4  Mawella Road , Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3970",
+      "name": "Senuja Amarasingha Ekanayaka",
+      "storedDistrict": "Colombo",
+      "verifiedDistrict": "Gampaha",
+      "address": "No 37 Manelgama Road, Kelaniya",
+      "action": "re-geocoded"
+    },
+    {
+      "id": "3645",
+      "name": "A.W.I SAHANJITH",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "242/16 mukalanhena bingiriya",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3704",
+      "name": "Tharindu Dilshan Wickramasinghe",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "No:129/3, Dewalagodella, Akaragama",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3707",
+      "name": "R.P. Nilukshi Kaushalya Wijerathne",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Pahalawaththa, Ambanpola",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3730",
+      "name": "Mithila Rasanjith Wickramatunge",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "163/2/1, Walpitamulla, Devalapola",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3858",
+      "name": "Ethugal Pedige Ravindu Sachintha Dissanayaka",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "C 8/3 Minimaruwa Alwathura",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3868",
+      "name": "Bodawaththe Gedara Nimesha Nethmina Samarathunge",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "178 Bodawaththa Udagunnepana",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3927",
+      "name": "DRC Sharuna Siriwansha",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Kiralabakka , Kalugamawa",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3938",
+      "name": "Siri Jayalath Jothirathne Hirusha Pramuditha",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "100/3C  Nuwararawewa",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3947",
+      "name": "S Ramesh Krishan Sundarshana",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "Thalgala , Nagollagama",
+      "action": "geocode failed"
+    },
+    {
+      "id": "3959",
+      "name": "Insusha Ashen",
+      "storedDistrict": "none",
+      "verifiedDistrict": "—",
+      "address": "2/2/C/4/3 Soriyapaluwa Ganemullla",
+      "action": "geocode failed"
+    }
+  ]
+}

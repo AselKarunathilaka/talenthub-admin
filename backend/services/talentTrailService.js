@@ -1,7 +1,10 @@
 const axios = require("axios");
+const https = require("https");
 
 const TALENTTRAIL_BASE_URL = "https://talenttrail.slt.lk/api";
-const SERVICE_TOKEN = "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
+const SERVICE_TOKEN = process.env.TALENTHUB_FEDERATION_SECRET || "TH_SK_f8e7d6c5b4a39281z0y9x8w7v6u5t4s3r2q1p0";
+
+const sslAgent = new https.Agent({ rejectUnauthorized: false });
 
 /**
  * Service to interact with the TalentTrail API.
@@ -13,6 +16,7 @@ class TalentTrailService {
     this._tokenExpiry = null;
     this.client = axios.create({
       baseURL: TALENTTRAIL_BASE_URL,
+      httpsAgent: sslAgent,
       timeout: 15000,
       headers: { "Content-Type": "application/json" },
     });
@@ -97,6 +101,11 @@ class TalentTrailService {
     return this.authGet("/project-attendance");
   }
 
+  /** Get team attendance records */
+  async getTeamAttendance() {
+    return this.authGet("/team-attendance");
+  }
+
   /**
    * Get enriched certificate data for a specific intern.
    * Aggregates: intern details, projects, modules, attendance count.
@@ -131,18 +140,27 @@ class TalentTrailService {
         return { talentTrailIntern: null, projects: [], attendanceCount: 0 };
       }
 
-      // ── Step 2: Find teams this intern belongs to ─────────────────────
-      // GET /team-members → filter by internId
+      // ── Step 2: Find teams this intern belongs to ────────────────────────
+      // GET /team-members   filter by internId
       let internTeamIds = [];
+      let allTeamsMap = {};
       try {
-        const allMembers = await this.getTeamMembers();
+        const [allMembers, allTeams] = await Promise.all([
+          this.getTeamMembers().catch(() => []),
+          this.getTeams().catch(() => [])
+        ]);
         internTeamIds = Array.isArray(allMembers)
           ? allMembers
               .filter((tm) => tm.internId === ttIntern.internId)
               .map((tm) => tm.teamId)
           : [];
+        if (Array.isArray(allTeams)) {
+          allTeams.forEach(t => {
+            allTeamsMap[t.teamId] = t.teamName || `Team ${t.teamId}`;
+          });
+        }
       } catch (err) {
-        console.warn("Failed to fetch team members:", err.message);
+        console.warn("Failed to fetch team members/teams:", err.message);
       }
 
       // ── Step 3: Find all projects via team assignments ─────────────────
@@ -157,10 +175,21 @@ class TalentTrailService {
             )
           );
 
-          // Collect unique project IDs from team assignments
+          // Collect unique project IDs from team assignments and map projectId -> teamIds
           const projectIds = new Set();
-          teamProjectResults.flat().forEach((pt) => {
-            if (pt.projectId) projectIds.add(pt.projectId);
+          const projectIdToTeamIds = {};
+          
+          internTeamIds.forEach((tid, idx) => {
+            const pts = teamProjectResults[idx];
+            if (Array.isArray(pts)) {
+              pts.forEach((pt) => {
+                if (pt.projectId) {
+                  projectIds.add(pt.projectId);
+                  if (!projectIdToTeamIds[pt.projectId]) projectIdToTeamIds[pt.projectId] = [];
+                  projectIdToTeamIds[pt.projectId].push(tid);
+                }
+              });
+            }
           });
 
           if (projectIds.size > 0) {
@@ -179,6 +208,8 @@ class TalentTrailService {
               description: p.description || "",
               startDate: p.startDate || null,
               targetDate: p.targetDate || null,
+              meetingDay: p.meetingDay || null,
+              assignedTeamName: p.assignedTeamName || "External Team",
             }));
           }
         }
@@ -194,6 +225,9 @@ class TalentTrailService {
       let attendanceRecords = [];
       try {
         const attendance = await this.getProjectAttendance();
+        if (Array.isArray(attendance) && attendance.length > 0) {
+          console.log("Sample attendance record:", attendance[0]);
+        }
         if (Array.isArray(attendance) && internProjects.length > 0) {
           const internProjectIds = new Set(
             internProjects.map((p) => p.projectId)
@@ -201,7 +235,10 @@ class TalentTrailService {
           attendanceRecords = attendance.filter(
             (a) => internProjectIds.has(a.projectId)
           );
-          attendanceCount = attendanceRecords.filter((a) => a.status === "PRESENT").length;
+          attendanceCount = attendanceRecords.filter((a) => {
+            const s = String(a.status).toUpperCase();
+            return s === "PRESENT" || s === "PARTICIPATED";
+          }).length;
         } else if (Array.isArray(attendance)) {
           // No project info — return all records as best-effort
           attendanceRecords = attendance;
@@ -212,7 +249,6 @@ class TalentTrailService {
       } catch (err) {
         console.warn("Failed to fetch attendance:", err.message);
       }
-
       return {
         talentTrailIntern: ttIntern,
         projects: internProjects,

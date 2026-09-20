@@ -5,10 +5,11 @@ const attendanceSchema = new mongoose.Schema({
   status: { type: String, enum: ["Present", "Absent"], default: "Absent" },
   type: {
     type: String,
-      enum: ["manual", "qr", "daily_qr", "daily", "face"],
+      enum: ["manual", "qr", "daily_qr", "daily", "face", "manual_daily", "manual_meeting", "face_meeting", "meeting"],
     default: "manual",
   },
   timeMarked: { type: Date },
+  checkOutTime: { type: Date },
   qrCode: { type: String },
   meetingName: { type: String },
 });
@@ -49,7 +50,20 @@ const inactiveInternSchema = new mongoose.Schema(
     },
     agreementAccepted: { type: Boolean, default: false },
     agreementAcceptedDate: { type: Date },
+    digitalAgreement: {
+      agreed: { type: Boolean, default: false },
+      agreedAt: { type: Date },
+      status: { type: String, default: "pending" },
+      items: { type: [String], default: [] },
+      version: { type: String, default: "1.0" },
+    },
     googlePictureUrl: { type: String, default: "" },
+    readAnnouncements: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Announcement",
+      },
+    ],
 
     // ✅ Archival metadata — why/when this intern was archived
     archivedAt: { type: Date, default: Date.now },
@@ -63,7 +77,7 @@ const inactiveInternSchema = new mongoose.Schema(
     originalUpdatedAt: { type: Date },
   },
   {
-    timestamps: false, // We manage timestamps manually via originalCreatedAt/updatedAt
+    timestamps: true, // Enable timestamps so updatedAt reflects "Last seen" for special access interns
     _id: false, // Prevent Mongoose from auto-generating a new _id
   },
 );

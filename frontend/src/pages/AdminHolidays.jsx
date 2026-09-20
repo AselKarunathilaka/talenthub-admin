@@ -207,48 +207,55 @@ const AdminHolidays = () => {
 
   return (
     <AdminNavigation>
-      <div className="min-h-[calc(100dvh-4rem)] lg:min-h-[100dvh] bg-slate-50 pb-10">
-        <div className="flex-1 w-full lg:px-6 xl:px-10">
-          <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1400px] w-full">
+      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
 
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6 pt-2">
-              {/* Left: Title & Subtitle */}
-              <div>
-                <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="text-3xl sm:text-4xl font-extrabold text-gray-900 flex items-center gap-3 tracking-tight"
+            <div className="relative z-30 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2">
+              {/* Left: Dashboard Title Style */}
+              <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                  className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
                 >
-                  <div className="p-2.5 bg-[#00b4eb]/10 rounded-2xl">
-                    <CalendarDays className="text-[#0056a2] h-7 w-7 sm:h-8 sm:w-8" />
-                  </div>
-                  Public Holidays
-                </motion.h1>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.05, duration: 0.2 }}
-                  className="text-gray-500 mt-2 text-sm sm:text-base font-medium max-w-xl"
-                >
-                  Working days, logbook windows and Sunday restrictions all read from this list.
-                </motion.p>
+                  <CalendarDays className="text-white h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                </motion.div>
+                <div className="flex flex-col justify-center">
+                  <motion.h1
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight"
+                  >
+                    Public Holidays
+                  </motion.h1>
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.1, duration: 0.3 }}
+                    className="text-slate-500 mt-0.5 sm:mt-1 text-xs sm:text-sm md:text-base font-medium max-w-xl"
+                  >
+                    Working days, logbook windows and Sunday restrictions all read from this list.
+                  </motion.p>
+                </div>
               </div>
 
               {/* Right: Controls Pill */}
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.1, duration: 0.2 }}
-                className="bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-3 flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3"
-              >
+              <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 w-full xl:w-auto">
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.15, duration: 0.3 }}
+                  className="flex items-center justify-center bg-white border border-slate-200/80 shadow-sm p-2 sm:p-3 rounded-xl md:rounded-[16px] w-full xl:w-auto flex-wrap sm:flex-nowrap gap-2 sm:gap-3"
+                >
                 {/* Year selector */}
                 <div className="relative">
                   <select
                     value={year}
                     onChange={(e) => setYear(Number(e.target.value))}
-                    className="appearance-none pl-3 pr-8 py-2.5 text-sm font-bold bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 cursor-pointer hover:border-slate-300 transition-colors focus:ring-2 focus:ring-[#00b4eb]/30 focus:outline-none"
+                    className="appearance-none pl-2.5 sm:pl-3 pr-7 sm:pr-8 py-2 sm:py-2.5 text-xs sm:text-sm font-bold bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl text-slate-700 cursor-pointer hover:border-slate-300 transition-colors focus:ring-2 focus:ring-[#00b4eb]/30 focus:outline-none"
                   >
                     {[thisYear - 1, thisYear, thisYear + 1, thisYear + 2].map((y) => (
                       <option key={y} value={y}>
@@ -263,7 +270,7 @@ const AdminHolidays = () => {
                 <button
                   onClick={runSync}
                   disabled={busy === "sync"}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white transition-all bg-[#0056a2] rounded-2xl hover:bg-[#00488a] disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-blue-500/20"
+                  className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white transition-all bg-[#0056a2] rounded-xl sm:rounded-2xl hover:bg-[#00488a] disabled:opacity-60 disabled:cursor-not-allowed shadow-sm shadow-blue-500/20"
                 >
                   {busy === "sync" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -280,13 +287,14 @@ const AdminHolidays = () => {
                     setForm({ date: `${year}-01-01`, name: "" });
                     setShowAdd(true);
                   }}
-                  className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-[#0056a2] transition-all bg-[#00b4eb]/10 rounded-2xl hover:bg-[#00b4eb]/20 shadow-sm"
+                  className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-[#0056a2] transition-all bg-[#00b4eb]/10 rounded-xl sm:rounded-2xl hover:bg-[#00b4eb]/20 shadow-sm"
                 >
                   <Plus className="h-4 w-4" />
                   <span className="hidden sm:inline">Add holiday</span>
                   <span className="sm:hidden">Add</span>
                 </button>
               </motion.div>
+              </div>
             </div>
 
             {/* ── Year overview — compact pill tabs ───────────────────────── */}
@@ -304,7 +312,7 @@ const AdminHolidays = () => {
                     <button
                       key={y.year}
                       onClick={() => setYear(y.year)}
-                      className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border text-sm font-bold transition-all duration-200 ${
+                      className={`flex items-center gap-2 sm:gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl border text-xs sm:text-sm font-bold transition-all duration-200 w-full sm:w-auto justify-between sm:justify-start ${
                         active
                           ? "bg-white border-[#00b4eb]/30 shadow-sm ring-2 ring-[#00b4eb]/20 text-slate-900"
                           : "bg-white/60 border-slate-200 text-slate-600 hover:bg-white hover:border-slate-300 hover:shadow-sm"
@@ -334,7 +342,7 @@ const AdminHolidays = () => {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.3 }}
-              className={`mb-8 rounded-3xl border p-5 sm:p-6 ${
+              className={`mb-6 sm:mb-8 rounded-2xl sm:rounded-3xl border p-4 sm:p-5 md:p-6 ${
                 quality.safe
                   ? "border-emerald-200/60 bg-emerald-50/50"
                   : "border-amber-200/60 bg-amber-50/50"
@@ -408,7 +416,7 @@ const AdminHolidays = () => {
                 <button
                   onClick={toggleVerify}
                   disabled={busy === "verify" || holidays.length === 0}
-                  className={`w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
+                  className={`w-full sm:w-auto shrink-0 flex items-center justify-center gap-2 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-2.5 sm:py-3 text-xs sm:text-sm font-bold text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${
                     meta?.dataQuality === "verified"
                       ? "bg-slate-500 hover:bg-slate-600"
                       : "bg-emerald-600 hover:bg-emerald-700"
@@ -467,15 +475,15 @@ const AdminHolidays = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, duration: 0.3 }}
-              className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm overflow-hidden"
             >
               {/* Card header */}
-              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-base sm:text-lg font-bold text-slate-900">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 sm:px-6 py-4 sm:border-b sm:border-slate-100 bg-white border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none shadow-sm sm:shadow-none mb-3 sm:mb-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  <h2 className="text-base sm:text-lg font-bold text-slate-900 whitespace-nowrap">
                     {year} Calendar
                   </h2>
-                  <span className={`inline-flex items-center gap-1 rounded-xl border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${quality.chip}`}>
+                  <span className={`inline-flex items-center gap-1 rounded-xl border px-2 py-0.5 text-[10px] font-black uppercase tracking-wide ${quality.chip} whitespace-nowrap`}>
                     <span className={`inline-block h-1.5 w-1.5 rounded-full ${quality.dot}`} />
                     {quality.label}
                   </span>
@@ -509,7 +517,7 @@ const AdminHolidays = () => {
                     <button
                       onClick={runSync}
                       disabled={busy === "sync"}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-white bg-[#0056a2] rounded-2xl hover:bg-[#00488a] transition-colors shadow-sm disabled:opacity-60"
+                      className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-white bg-[#0056a2] rounded-xl sm:rounded-2xl hover:bg-[#00488a] transition-colors shadow-sm disabled:opacity-60"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Sync now
@@ -519,7 +527,7 @@ const AdminHolidays = () => {
                         setForm({ date: `${year}-01-01`, name: "" });
                         setShowAdd(true);
                       }}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 rounded-2xl hover:bg-slate-200 transition-colors"
+                      className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold text-slate-700 bg-slate-100 rounded-xl sm:rounded-2xl hover:bg-slate-200 transition-colors"
                     >
                       <Plus className="h-4 w-4" />
                       Add manually
@@ -527,16 +535,16 @@ const AdminHolidays = () => {
                   </div>
                 </div>
               ) : (
-                <ul className="divide-y divide-slate-100/80">
+                <ul className="flex flex-col gap-3 sm:gap-0 sm:block sm:divide-y sm:divide-slate-100/80">
                   {holidays.map((h) => {
                     const dp = getDateParts(h.date);
                     return (
                       <li
                         key={h._id}
-                        className="flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-3.5 hover:bg-slate-50/80 transition-colors group"
+                        className="flex items-start sm:items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-3.5 hover:bg-slate-50/80 transition-colors group bg-white sm:bg-transparent border border-slate-100 sm:border-0 rounded-2xl sm:rounded-none shadow-sm sm:shadow-none mb-3 sm:mb-0"
                       >
                         {/* Calendar date badge */}
-                        <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center bg-blue-50/80 border border-blue-100/50 rounded-2xl">
+                        <div className="shrink-0 w-14 h-14 sm:w-16 sm:h-16 flex flex-col items-center justify-center bg-blue-50/80 border border-blue-100/50 rounded-2xl mt-0.5 sm:mt-0">
                           <span className="text-[10px] font-black uppercase tracking-widest text-[#0056a2]/60 leading-none">
                             {dp.month}
                           </span>
@@ -548,53 +556,55 @@ const AdminHolidays = () => {
                           </span>
                         </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm sm:text-base font-bold text-slate-800 truncate">
-                            {h.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {(h.type || []).map((t) => (
-                              <span
-                                key={t}
-                                className="inline-block rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide"
-                              >
-                                {t}
-                              </span>
-                            ))}
-                            {h.sources?.length > 0 && (
-                              <span className="text-[11px] text-slate-400 font-medium">
-                                via {h.sources.join(", ")}
+                        {/* Info & Actions */}
+                        <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+                          <div className="min-w-0">
+                            <p className="text-sm sm:text-base font-bold text-slate-800 leading-tight">
+                              {h.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2 sm:mt-1">
+                              {(h.type || []).map((t) => (
+                                <span
+                                  key={t}
+                                  className="inline-block rounded-lg bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 uppercase tracking-wide"
+                                >
+                                  {t}
+                                </span>
+                              ))}
+                              {h.sources?.length > 0 && (
+                                <span className="text-[11px] text-slate-400 font-medium whitespace-nowrap">
+                                  via {h.sources.join(", ")}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Badges & actions */}
+                          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
+                            {h.isManual && (
+                              <span className="inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700">
+                                <Sparkles className="h-3 w-3" />
+                                <span className="hidden sm:inline">Manual</span>
                               </span>
                             )}
+                            <button
+                              onClick={() => {
+                                setEditing(h);
+                                setForm({ date: h.date, name: h.name });
+                              }}
+                              className="p-2 rounded-xl text-slate-400 sm:text-slate-300 bg-slate-50 sm:bg-transparent hover:bg-slate-100 hover:text-slate-700 transition-colors sm:opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              title="Rename"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(h)}
+                              className="p-2 rounded-xl text-rose-400 sm:text-slate-300 bg-rose-50 sm:bg-transparent hover:bg-rose-100 hover:text-rose-600 transition-colors sm:opacity-0 group-hover:opacity-100 focus:opacity-100"
+                              title="Remove"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
-                        </div>
-
-                        {/* Badges & actions */}
-                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                          {h.isManual && (
-                            <span className="hidden sm:inline-flex items-center gap-1 rounded-xl border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-indigo-700">
-                              <Sparkles className="h-3 w-3" />
-                              Manual
-                            </span>
-                          )}
-                          <button
-                            onClick={() => {
-                              setEditing(h);
-                              setForm({ date: h.date, name: h.name });
-                            }}
-                            className="p-2 rounded-xl text-slate-300 hover:bg-slate-100 hover:text-slate-700 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Rename"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(h)}
-                            className="p-2 rounded-xl text-slate-300 hover:bg-rose-50 hover:text-rose-600 transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-                            title="Remove"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </li>
                     );
@@ -608,15 +618,12 @@ const AdminHolidays = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35, duration: 0.3 }}
-              className="mt-5 flex items-start gap-2 text-xs text-slate-400 max-w-2xl"
+              className="mt-5 flex items-start gap-2 text-xs text-slate-400 w-full"
             >
               <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-              Providers publish roughly a year ahead, so a future year staying empty
-              is normal — it is gazetted later. Editing any date clears the year's
-              verification, so re-verify after making changes.
+              Providers publish roughly a year ahead, so a future year staying empty is normal it is gazetted later. Editing any date clears the year's verification, so re verify after making changes.
             </motion.p>
           </main>
-        </div>
 
         {/* ── Add / edit modal ─────────────────────────────────────────────── */}
         <AnimatePresence>

@@ -27,6 +27,10 @@ const announcementSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    alwaysDisplay: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

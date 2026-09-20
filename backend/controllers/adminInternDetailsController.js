@@ -1,4 +1,4 @@
-// At the top of adminInternDetailsController.js, add this helper:
+const mongoose = require("mongoose");
 const Intern = require("../models/Intern");
 
 const resolveInternId = async (req, res, next) => {
@@ -16,6 +16,8 @@ const resolveInternId = async (req, res, next) => {
 
 const InternService = require("../services/internService");
 const DailyRecord = require("../models/DailyRecord");
+const DailyAttendanceLog = require("../models/DailyAttendanceLog");
+const MeetingAttendance = require("../models/MeetingAttendance");
 const FaceAttendanceLog = require("../models/FaceAttendanceLog");
 const TalentTrailService = require("../services/talentTrailService");
 
@@ -26,6 +28,8 @@ const DAILY_ATTENDANCE_TYPES = new Set([
   "daily_qr",
   "face",
   "manual_daily",
+  "manual",  // matches AdminAnalytics
+  "qr",      // matches AdminAnalytics
 ]);
 
 const MEETING_ATTENDANCE_TYPES = new Set([
@@ -36,13 +40,12 @@ const MEETING_ATTENDANCE_TYPES = new Set([
   "manual",
 ]);
 
+const { getColomboDateKey, getDailyTypePriority } = require("../utils/attendanceHistory");
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const getDateKey = (date) => {
-  const parsed = date ? new Date(date) : null;
-  return parsed && !Number.isNaN(parsed.getTime())
-    ? parsed.toISOString().slice(0, 10)
-    : String(date || "");
+  return getColomboDateKey(date);
 };
 
 /** Format a Date (or date-string/timestamp) as hh:mm AM/PM in Sri Lanka time. */
@@ -78,8 +81,6 @@ const normalizeAttendanceMethod = (type) => {
  *
  * Returns { dailyAttendance, meetingAttendance, attendance (combined), stats }
  */
-const { getDailyTypePriority } = require("../utils/attendanceHistory");
-
 const formatAttendanceTypeLabel = (type, isMeeting = false) => {
   const t = String(type || "").toLowerCase();
   if (t === "face") return "Face Attendance";
@@ -98,38 +99,63 @@ const getAdminInternAttendance = async (req, res) => {
   const { internId } = req.params;
 
   try {
-    // 1. Load intern document
-    const intern = await InternService.getInternById(internId);
+    // 1. Load intern document (by ObjectId, Trainee_ID, Trainee_Email, or InactiveIntern)
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
     if (!intern) {
       return res.status(404).json({ message: "Intern not found" });
     }
 
-    // 2. Load DailyRecord entries and FaceAttendanceLog (authoritative audit for face scans)
-    const [dailyRecords, successfulFaceLogs] = await Promise.all([
-      DailyRecord.find({ internId }).sort({
+    const idOr = [
+      { internId: intern._id },
+      ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+    ];
+
+    // 2. Load DailyRecord entries, FaceAttendanceLog, DailyAttendanceLog, and MeetingAttendance
+    const [dailyRecords, successfulFaceLogs, standaloneDailyLogs, standaloneMeetingLogs] = await Promise.all([
+      DailyRecord.find({ $or: idOr }).sort({
         date: -1,
       }),
       FaceAttendanceLog.find({
-        internId,
+        $or: idOr,
         status: "present",
         method: "face",
         qrBackupUsed: { $ne: true },
       })
         .select("attendanceDate attendanceTime method qrBackupUsed metadata")
         .lean(),
+      DailyAttendanceLog.find({ $or: idOr }).sort({ date: -1 }).lean().catch(() => []),
+      MeetingAttendance.find({ $or: idOr }).sort({ date: -1 }).lean().catch(() => []),
     ]);
 
     // Build a set of ISO date keys where a genuine face (non-QR-backup) daily scan exists
+    // (Matches AdminAnalytics which includes all valid face attendance logs)
     const faceDates = new Set(
-      successfulFaceLogs
-        .filter((log) => {
-          const attendanceType = String(
-            log.metadata?.attendanceType || "daily",
-          ).toLowerCase();
-          // Include if explicitly typed "daily" or no type set (defaults to daily context)
-          return attendanceType === "daily" || !log.metadata?.attendanceType;
-        })
-        .map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
+      successfulFaceLogs.map((log) => getDateKey(log.attendanceDate || log.attendanceTime)),
     );
 
     const dailyAttendance = [];
@@ -204,7 +230,9 @@ const getAdminInternAttendance = async (req, res) => {
         const isDailyEntry = DAILY_ATTENDANCE_TYPES.has(type);
         const isMeetingEntry = MEETING_ATTENDANCE_TYPES.has(type);
 
-        if (isDailyEntry) return; // handled in Step 6 fallback
+        // Skip purely-daily types that are NOT also meeting types (daily, daily_qr, face, manual_daily).
+        // "qr" and "manual" are in BOTH sets (like AdminAnalytics) — they count for daily AND meeting.
+        if (isDailyEntry && !isMeetingEntry) return; // purely daily — handled in Step 6 fallback
         if (!isMeetingEntry) return; // unknown type — skip
 
         const legacyName =
@@ -304,33 +332,101 @@ const getAdminInternAttendance = async (req, res) => {
         intern.Trainee_ID,
         intern.Trainee_Email,
       );
-      if (ttData?.attendanceRecords?.length > 0) {
-        ttData.attendanceRecords.forEach((record) => {
-          const at = record.date ? new Date(record.date) : new Date();
-          const projectName = record.projectName || "External Project";
-          if (dailyRecordMeetingKeys.has(getMeetingKey(at, projectName)))
-            return;
 
-          meetingAttendance.push({
-            date: at,
-            status:
-              record.status === "PRESENT"
-                ? "Present"
-                : record.status === "LATE"
-                  ? "Late"
-                  : "Absent",
-            meetingName: projectName,
-            projectName,
-            type: "Meeting",
-            rawType: "talenttrail",
-            attendanceTypeLabel: "External Project",
-            attendanceMethod: "talenttrail",
-            time: formatColomboTime(at),
-            isMeeting: true,
-          });
-          dailyRecordMeetingKeys.add(getMeetingKey(at, projectName));
+      // ── Step 5b: Individual Project/Team Attendance from Meeting Days ──
+      const validDailyAttendanceDates = new Set(faceDates);
+      if (intern.attendance && intern.attendance.length > 0) {
+        intern.attendance.forEach(entry => {
+          const type = String(entry.type || "").toLowerCase();
+          if (DAILY_ATTENDANCE_TYPES.has(type) && type !== "daily") {
+            if (String(entry.status || "present").toLowerCase() === "present") {
+              validDailyAttendanceDates.add(getDateKey(entry.date));
+            }
+          }
         });
       }
+
+      const daysOfWeek = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
+
+      if (ttData?.projects?.length > 0) {
+        console.log(`[AdminInternDetails] Processing ${ttData.projects.length} projects for meeting days...`);
+        ttData.projects.forEach(project => {
+          console.log(`[AdminInternDetails] Project: ${project.projectName}, meetingDay: ${project.meetingDay}`);
+          if (!project.meetingDay) return;
+          const rawDays = String(project.meetingDay).split(",").map(d => d.trim().toLowerCase());
+          const meetingDayIndices = rawDays.map(d => daysOfWeek[d]).filter(idx => idx !== undefined);
+          
+          if (meetingDayIndices.length === 0) return;
+
+          const pStartDate = project.startDate ? new Date(project.startDate) : null;
+          const internStart = intern.Training_StartDate ? new Date(intern.Training_StartDate) : null;
+          
+          // Determine the actual start date: later of project start or intern start
+          let startDate = pStartDate;
+          if (internStart && pStartDate && internStart > pStartDate) {
+            startDate = internStart;
+          } else if (!pStartDate && internStart) {
+            startDate = internStart;
+          }
+          if (!startDate || isNaN(startDate.getTime())) return;
+
+          // Ignore project.targetDate as it might be outdated (e.g. from a past year)
+          // Cap the end date at the intern's training end date or today, whichever is earlier
+          const internEnd = intern.Training_EndDate ? new Date(intern.Training_EndDate) : new Date();
+          const endDate = internEnd.getTime() < Date.now() ? new Date(internEnd) : new Date();
+
+          let currentDate = new Date(startDate);
+          currentDate.setHours(12, 0, 0, 0); // avoid timezone shifts
+          endDate.setHours(23, 59, 59, 999);
+          
+          let generatedCount = 0;
+
+          while (currentDate <= endDate) {
+            if (meetingDayIndices.includes(currentDate.getDay())) {
+              const projectName = project.projectName || "External Project";
+              const dateKey = getDateKey(currentDate);
+              const isPresent = validDailyAttendanceDates.has(dateKey);
+              
+              if (!dailyRecordMeetingKeys.has(getMeetingKey(currentDate, projectName))) {
+                meetingAttendance.push({
+                  date: new Date(currentDate), // clone
+                  status: isPresent ? "Present" : "Absent",
+                  meetingName: projectName,
+                  projectName: projectName,
+                  type: "Meeting",
+                  rawType: "talenttrail",
+                  attendanceTypeLabel: "External Project",
+                  attendanceMethod: "talenttrail",
+                  time: formatColomboTime(currentDate),
+                  isMeeting: true,
+                });
+                
+                const teamName = project.assignedTeamName || "External Team";
+                meetingAttendance.push({
+                  date: new Date(currentDate), // clone
+                  status: isPresent ? "Present" : "Absent",
+                  meetingName: teamName,
+                  projectName: teamName,
+                  actualProjectName: projectName, // the TalentTrail project this team belongs to
+                  meetingDay: project.meetingDay || null, // meeting day(s) from TalentTrail project
+                  type: "Meeting",
+                  rawType: "talenttrail-team",
+                  attendanceTypeLabel: "Team Meeting",
+                  attendanceMethod: "talenttrail-team",
+                  time: formatColomboTime(currentDate),
+                  isMeeting: true,
+                });
+
+                dailyRecordMeetingKeys.add(getMeetingKey(currentDate, projectName));
+                generatedCount++;
+              }
+            }
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+          console.log(`[AdminInternDetails] Generated ${generatedCount} records for ${project.projectName}`);
+        });
+      }
+
     } catch (e) {
       console.error(
         "[AdminInternDetails] TalentTrail fetch failed:",
@@ -375,6 +471,28 @@ const getAdminInternAttendance = async (req, res) => {
         });
       }
 
+      // Also merge standalone MeetingAttendance documents if not already in meetingAttendance
+      (standaloneMeetingLogs || []).forEach((entry) => {
+        const at = entry.date ? new Date(entry.date) : (entry.attendanceTime ? new Date(entry.attendanceTime) : new Date());
+        const meetingName = entry.projectName || entry.meetingTitle || "General Meeting";
+        const meetingKey = getMeetingKey(at, meetingName);
+        if (dailyRecordMeetingKeys.has(meetingKey)) return;
+
+        meetingAttendance.push({
+          date: at,
+          status: (entry.status || "present").toLowerCase() === "absent" ? "Absent" : "Present",
+          meetingName,
+          projectName: meetingName,
+          type: "Meeting",
+          rawType: entry.markType || "meeting",
+          attendanceTypeLabel: formatAttendanceTypeLabel(entry.markType || "meeting", true),
+          attendanceMethod: normalizeAttendanceMethod(entry.markType || "meeting"),
+          time: formatColomboTime(entry.attendanceTime || at),
+          isMeeting: true,
+        });
+        dailyRecordMeetingKeys.add(meetingKey);
+      });
+
       // Also ensure all faceDates are present even if not in DailyRecord or intern.attendance
       faceDates.forEach((faceDateKey) => {
         const currentCovered = new Set(
@@ -398,7 +516,30 @@ const getAdminInternAttendance = async (req, res) => {
             checkOutTime: formatColomboTime(matchingMethodInfo?.checkOutTime),
             attendanceTime: checkInTime || faceDateKey,
           });
+          coveredDates.add(faceDateKey);
         }
+      });
+
+      // Also merge standalone DailyAttendanceLog entries if date not yet covered
+      (standaloneDailyLogs || []).forEach((entry) => {
+        const entryDate = entry.date ? new Date(entry.date) : (entry.attendanceTime ? new Date(entry.attendanceTime) : null);
+        if (!entryDate || isNaN(entryDate.getTime())) return;
+        const dayKey = getDateKey(entryDate);
+        if (coveredDates.has(dayKey)) return;
+
+        const rawType = entry.markType || "daily";
+        dailyAttendance.push({
+          date: dayKey,
+          status: (entry.status || "present").toLowerCase() === "absent" ? "Absent" : "Present",
+          type: "Daily",
+          rawType,
+          attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
+          attendanceMethod: normalizeAttendanceMethod(rawType),
+          time: formatColomboTime(entry.attendanceTime || entryDate),
+          checkOutTime: formatColomboTime(entry.checkOutTime),
+          attendanceTime: entry.attendanceTime || entryDate,
+        });
+        coveredDates.add(dayKey);
       });
     } catch (_) {
       // Non-fatal
@@ -452,4 +593,65 @@ const getAdminInternAttendance = async (req, res) => {
   }
 };
 
-module.exports = { getAdminInternAttendance, resolveInternId };
+/**
+ * GET /admin/intern/:internId/record-counts
+ *
+ * Returns direct collection counts:
+ *  { totalDailyAttendance, totalMeetingAttendance, totalLogbook }
+ */
+const getInternRecordCounts = async (req, res) => {
+  const { internId } = req.params;
+  try {
+    let intern = null;
+    if (mongoose.Types.ObjectId.isValid(internId)) {
+      intern = await Intern.findById(internId);
+      if (!intern) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        intern = await InactiveIntern.findById(internId);
+      }
+    }
+    if (!intern) {
+      intern = await Intern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+    if (!intern) {
+      const InactiveIntern = require("../models/InactiveIntern");
+      intern = await InactiveIntern.findOne({
+        $or: [
+          { Trainee_ID: internId },
+          { Trainee_Email: { $regex: new RegExp(`^${internId}$`, "i") } },
+        ],
+      });
+    }
+
+    const idOr = [
+      ...(intern ? [{ internId: intern._id }] : []),
+      ...(mongoose.Types.ObjectId.isValid(internId) ? [{ internId }] : []),
+      ...(intern?.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : [{ traineeId: internId }]),
+    ];
+
+    const [dailyCount, meetingCount, logbookCount] = await Promise.all([
+      DailyAttendanceLog.countDocuments({ $or: idOr }),
+      MeetingAttendance.countDocuments({ $or: idOr }),
+      DailyRecord.countDocuments({ $or: idOr }),
+    ]);
+
+    return res.status(200).json({
+      totalDailyAttendance: dailyCount,
+      totalMeetingAttendance: meetingCount,
+      totalLogbook: logbookCount,
+    });
+  } catch (error) {
+    console.error("[AdminInternDetails] Error fetching record counts:", error);
+    return res.status(500).json({
+      message: "Error fetching intern record counts",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = { getAdminInternAttendance, resolveInternId, getInternRecordCounts };

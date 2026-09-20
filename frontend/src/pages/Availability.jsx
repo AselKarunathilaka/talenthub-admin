@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { FaPlus, FaTimes, FaCalendarAlt } from "react-icons/fa";
 import axios from "axios";
 import Swal from "sweetalert2";
@@ -141,8 +141,7 @@ const Availability = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row w-full min-h-screen bg-white">
-      <Navigation />
+    <Navigation>
 
       <div className="flex-1 w-full p-4 md:p-6">
         <main className="mx-auto">
@@ -312,7 +311,7 @@ const Availability = () => {
           </motion.div>
         </main>
       </div>
-    </div>
+    </Navigation>
   );
 };
 

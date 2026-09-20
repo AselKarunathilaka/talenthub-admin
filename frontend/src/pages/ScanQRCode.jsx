@@ -131,7 +131,7 @@ const ScanQRCode = () => {
     }
 
     if (scanMode === 'meeting') {
-      // No project name required — it is read directly from the QR code
+      // No project name required â€” it is read directly from the QR code
     }
 
     isProcessingRef.current = false;
@@ -160,7 +160,7 @@ const ScanQRCode = () => {
             const typedProjectName = normalizeProjectName(currentProjectName || '');
 
             if (!typedProjectName) {
-              // No project name required from user — it comes from the QR itself
+              // No project name required from user â€” it comes from the QR itself
               // Just proceed with scan
             }
 
@@ -373,8 +373,7 @@ const ScanQRCode = () => {
   };
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-white">
-      <Navigation />
+    <Navigation>
 
       <motion.div
         className="flex-1 w-full lg:mt-20 lg:px-10"
@@ -620,28 +619,6 @@ const ScanQRCode = () => {
                   </div>
                 </div>
               </motion.div>
-
-              {/* Quick Tips */}
-              <motion.div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5" variants={itemVariants}>
-                <h3 className="font-medium text-gray-900 flex items-center mb-3">
-                  <Info size={18} className="text-blue-400 mr-2 animate-info-icon" />
-                  Quick Tips
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { icon: '🔍', text: 'Hold steady 15-50cm from code' },
-                    { icon: '💡', text: 'Ensure good lighting' },
-                    { icon: '📱', text: 'Clean camera lens' },
-                    { icon: '🔄', text: 'Try different angles if needed' }
-                  ].map((tip, index) => (
-                    <motion.div key={index} className="flex items-start gap-2 animate-fade-in" variants={itemVariants} style={{ transitionDelay: `${0.2 + index * 0.05}s` }}>
-                      <span className="text-lg mt-0.5 animate-icon-bounce">{tip.icon}</span>
-                      <p className="text-sm text-gray-600">{tip.text}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-
               {/* Scan Result Card */}
               {scanResult && (
                 <motion.div
@@ -716,23 +693,14 @@ const ScanQRCode = () => {
                 </div>
               </motion.div>
 
-              <motion.div className="bg-blue-50 border border-blue-100 rounded-xl p-5 animate-fade-in" variants={itemVariants}>
-                <h3 className="font-medium text-gray-800 mb-2 animate-text-slide-up">Need Help?</h3>
-                <p className="text-gray-600 text-sm mb-3 animate-text-slide-up" style={{ transitionDelay: '0.1s' }}>
-                  If you're experiencing issues with the scanner, our support team is here to help.
-                </p>
-                <WhatsAppSupportButton
-                  className="w-full animate-button-bounce"
-                  size="sm"
-                  variant="light"
-                />
-              </motion.div>
+
             </motion.div>
           </div>
         </motion.main>
       </motion.div>
-    </div>
+    </Navigation>
   );
 };
 
 export default ScanQRCode;
+

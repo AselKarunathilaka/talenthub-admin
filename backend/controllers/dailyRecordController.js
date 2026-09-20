@@ -9,12 +9,12 @@ const {
   validateWithGemini,
   validateBatchWithGemini,
 } = require("../utils/llmValidator");
-
 const {
   addAuditCheckoutTimes,
   buildDailyAttendanceByDate,
   getColomboDateKey,
 } = require("../utils/attendanceHistory");
+const { recordDailyAttendance } = require("../services/dailyAttendanceLogService");
 
 const BATCH_FIELDS = ["tasks", "challenges", "plans"];
 
@@ -47,13 +47,30 @@ function hasDailyAttendanceForDate(intern, dateStr) {
 async function ensureDailyAttendance(intern, dateStr) {
   if (hasDailyAttendanceForDate(intern, dateStr)) return;
 
+  const now = new Date();
   intern.attendance.push({
     date: new Date(dateStr),
     status: "Present",
     type: "daily",
-    timeMarked: new Date(),
+    timeMarked: now,
+    checkOutTime: now,
   });
   await intern.save();
+
+  // ── Write to dedicated daily attendance log collection ─────────────────────
+  recordDailyAttendance({
+    internId: intern._id,
+    traineeId: intern.Trainee_ID || intern.traineeId || "",
+    traineeName: intern.Trainee_Name || "",
+    date: dateStr,
+    attendanceTime: now,
+    markType: "daily",
+    status: "present",
+    isCheckout: true,
+    checkOutTime: now,
+    sessionId: null,
+    source: "logbook",
+  });
 }
 
 // ── Shared helper: resolve internId from request user ────────────────────────
@@ -95,6 +112,7 @@ const createDailyRecord = async (req, res) => {
     }
 
     const internId = intern._id;
+    const traineeId = intern.Trainee_ID || intern.traineeId || "";
 
     // ★ Only mark daily attendance for working / wfh submissions
     const effectiveStatus = status || "working";
@@ -117,7 +135,7 @@ const createDailyRecord = async (req, res) => {
       existing.task = task;
       existing.progress = progress || "No challenges faced";
       existing.blockers = blockers || "No specific plans";
-      existing.traineeId = intern.Trainee_ID; // ★ keep in sync
+      existing.traineeId = traineeId || existing.traineeId; // ★ keep in sync
       if (status) existing.status = status;
       if (!existing.attendanceTime) {
         existing.attendanceTime = existingAttendance?.timeMarked || now;
@@ -135,7 +153,7 @@ const createDailyRecord = async (req, res) => {
 
     const newRecord = new DailyRecord({
       internId,
-      traineeId: intern.Trainee_ID, // ★ New
+      traineeId,
       date,
       stack,
       task,
@@ -144,7 +162,7 @@ const createDailyRecord = async (req, res) => {
       status: status || "working",
       attendance: "present",
       attendanceTime: existingAttendance?.timeMarked || now,
-      checkOutTime: existingAttendance?.checkOutTime || null,
+      checkOutTime: existingAttendance?.checkOutTime || (existingAttendance ? null : now),
     });
 
     await newRecord.save();
@@ -213,18 +231,44 @@ const getDailyRecords = async (req, res) => {
     // If the user ID corresponds to a User (admin), show all records
     // If the user ID corresponds to an Intern, show only their records
 
+    let isSpecialAccessIntern = false;
+    let specialAccessInternTraineeId = null;
+
     // First check if this is an admin user
     const adminUser = await require("../models/User").findById(userId);
 
     if (!adminUser) {
       // This is likely an intern login, filter by their records
+      let intern = null;
+      const mongoose = require("mongoose");
+      if (mongoose.Types.ObjectId.isValid(userId)) {
+        intern = await Intern.findById(userId);
+      }
+      if (!intern && userEmail) {
+        intern = await Intern.findOne({
+          $or: [
+            { Trainee_Email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+            { email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
+          ],
+        });
+      }
+      if (!intern && userId) {
+        intern = await Intern.findOne({ Trainee_ID: userId });
+      }
 
-      // Try to find intern by ID first (Google login case)
-      let intern = await Intern.findById(userId);
-
-      if (!intern) {
-        // Try to find by email (backup case)
-        intern = await Intern.findOne({ email: userEmail });
+      // Special access interns are stored in InactiveIntern collection.
+      // Fall back to that collection before returning a 404.
+      if (!intern && userEmail) {
+        const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+        const hasSpecialAccess = await SpecialAccessIntern.findOne({
+          email: new RegExp(`^${userEmail}$`, "i"),
+        });
+        if (hasSpecialAccess) {
+          const InactiveIntern = require("../models/InactiveIntern");
+          intern = await InactiveIntern.findOne({
+            Trainee_Email: new RegExp(`^${userEmail}$`, "i"),
+          });
+        }
       }
 
       if (!intern) {
@@ -233,12 +277,35 @@ const getDailyRecords = async (req, res) => {
           details: `No intern found for email: ${userEmail}`,
         });
       }
-      query.internId = intern._id;
+      
+      // Track if this intern came from InactiveIntern (special access intern)
+      isSpecialAccessIntern = intern.constructor?.modelName === "InactiveIntern" || 
+        (intern.collection?.collectionName === "inactiveinterns");
+      specialAccessInternTraineeId = intern.Trainee_ID || null;
+      
+      query.$or = [
+        { internId: intern._id },
+        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
+      ];
     }
 
-    const records = await DailyRecord.find(query)
+    const rawRecords = await DailyRecord.find(query)
       .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
       .sort({ createdAt: -1 });
+
+    // For special access interns, `populate` targets the Intern collection and
+    // will return null for InactiveIntern _ids. Manually inject Trainee_ID so
+    // the frontend can display the correct ID instead of "No ID Available".
+    let records = rawRecords;
+    if (isSpecialAccessIntern && specialAccessInternTraineeId) {
+      records = rawRecords.map((record) => {
+        const obj = record.toObject();
+        if (!obj.internId || !obj.internId.Trainee_ID) {
+          obj.Trainee_ID = specialAccessInternTraineeId;
+        }
+        return obj;
+      });
+    }
 
     // Update cache
     dailyRecordsCache.set(cacheKey, { data: records, timestamp: Date.now() });
