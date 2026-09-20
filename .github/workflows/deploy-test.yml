@@ -84,6 +84,9 @@ jobs:
               npm install
             fi
 
+            echo "Seeding test accounts for QA..."
+            node scripts/seed_test_accounts.js || true
+
             echo "Restarting TalentHub backend..."
             pm2 restart talenthub-admin-backend
             pm2 save
