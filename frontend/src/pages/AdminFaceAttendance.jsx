@@ -60,12 +60,6 @@ const ENROLLMENT_PROMPTS = [
   "Return to the center for the final scan.",
 ];
 
-<<<<<<< HEAD
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
-const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
-const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
-const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
-=======
 const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
   inputSize: 320,
   scoreThreshold: 0.45,
@@ -76,7 +70,6 @@ const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
 });
 const FACE_GUIDE_INTERVAL_MS = 100;
 const REQUIRED_STABLE_FACE_CHECKS = 2;
->>>>>>> ad8e367eca1cf390511adaedbb28be187326f98f
 
 const getAuthHeaders = () => {
   const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
