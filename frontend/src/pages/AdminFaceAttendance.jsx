@@ -81,27 +81,6 @@ const getAuthHeaders = () => {
 
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 
-// Simplified drawing function to avoid external dependency
-const drawFaceMesh = (canvas, landmarks) => {
-  if (!canvas || !landmarks) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw landmarks
-  ctx.fillStyle = "#3b82f6";
-  landmarks.positions.forEach((pt) => {
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
-    ctx.fill();
-  });
-};
-
-const clearFaceMesh = (canvas) => {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-};
-
 // ── API ───────────────────────────────────────────────────────────────────────
 const adminFaceApi = {
   searchIntern: async (query) => {
