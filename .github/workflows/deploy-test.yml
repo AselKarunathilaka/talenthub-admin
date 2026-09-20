@@ -47,7 +47,7 @@ jobs:
             printf '%s\n' \
               'PORT=${{ secrets.BACKEND_PORT }}' \
               'NODE_ENV=${{ secrets.NODE_ENV }}' \
-              'MONGO_URI=${{ secrets.MONGO_URI }}' \
+              'MONGO_URI=${{ secrets.TEST_MONGO_URI }}' \
               'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
               'CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}' \
               'TALENTHUB_FEDERATION_SECRET=${{ secrets.TALENTHUB_FEDERATION_SECRET }}' \
