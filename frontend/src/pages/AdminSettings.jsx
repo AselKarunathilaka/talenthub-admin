@@ -489,7 +489,8 @@ const AdminSettings = () => {
                         { id: "admin", label: "Admins" },
                         { id: "supervisor", label: "Supervisors" },
                         { id: "developer", label: "Developers" },
-                        { id: "PM", label: "Project Managers" }
+                        { id: "PM", label: "Project Managers" },
+                        { id: "qa", label: "QA" }
                       ].map((tab) => {
                         const count = users.filter(u => {
                           if (tab.id === "all" && (u.authProvider === "google" || u.googleSubject)) return false;
@@ -552,6 +553,7 @@ const AdminSettings = () => {
                                                     user.role === 'admin' ? 'text-indigo-500 bg-indigo-100' :
                                                     user.role === 'supervisor' ? 'text-sky-500 bg-sky-100' :
                                                     user.role === 'developer' ? 'text-emerald-500 bg-emerald-100' :
+                                                    user.role === 'qa' ? 'text-pink-500 bg-pink-100' :
                                                     'text-slate-500 bg-slate-100';
                                   
                                   const authMethod = (user.authProvider === 'google' || user.googleSubject) ? 'Google SSO' : '••••••••';
@@ -864,13 +866,13 @@ const AdminSettings = () => {
                     <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.role} onChange={e=>{
                       const newRole = e.target.value;
                       let newVisiblePages = userForm.visiblePages;
-                      if (newRole === 'admin' || newRole === 'developer') {
+                      if (newRole === 'admin' || newRole === 'developer' || newRole === 'qa') {
                         newVisiblePages = AVAILABLE_PAGES.filter(p => p !== 'Settings');
                       } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'PM' || newRole === 'pm') {
                         newVisiblePages = [];
                       }
                       setUserForm({...userForm, role: newRole, visiblePages: newVisiblePages});
-                    }}><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="PM">PM</option><option value="supervisor">Supervisor</option><option value="developer">Developer</option></select></div>
+                    }}><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="PM">PM</option><option value="supervisor">Supervisor</option><option value="developer">Developer</option><option value="qa">QA</option></select></div>
                     <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e=>setUserForm({...userForm, isActive: e.target.value === 'true'})}><option value="true">Active</option><option value="false">Inactive</option></select></div>
                   </div>
 

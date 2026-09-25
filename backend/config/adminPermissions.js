@@ -14,6 +14,8 @@ const ROLE_PERMISSIONS = {
   PM: ALL_PERMISSIONS,
   pm: ALL_PERMISSIONS,
   admin: ADMIN_PERMISSIONS,
+  qa: ADMIN_PERMISSIONS,
+  QA: ADMIN_PERMISSIONS,
   developer: ADMIN_PERMISSIONS,
   supervisor: [
     "dashboard.view", "interns.view", "daily_logs.view", "attendance.view",

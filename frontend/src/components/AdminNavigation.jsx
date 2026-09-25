@@ -90,7 +90,7 @@ const AdminNavigation = ({ children }) => {
     
     if (role === "super_admin" || role === "PM" || role === "pm") return true;
     
-    if (role === "admin" || role === "developer") {
+    if (role === "admin" || role === "developer" || role === "qa") {
       if (link.label === "Settings") return false;
       return true;
     }

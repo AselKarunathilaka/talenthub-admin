@@ -24,7 +24,7 @@ const createTransporter = () => {
   return nodemailer.createTransport(config);
 };
 
-const roleLabel = (role) => role === "admin" ? "Administrator" : "Supervisor";
+const roleLabel = (role) => role === "admin" ? "Administrator" : role === "qa" ? "QA" : "Supervisor";
 
 const buildHtml = ({ name, email, role, inviterName, inviterEmail, loginUrl }) => {
   const safeName = escapeHtml(name || "Team member");

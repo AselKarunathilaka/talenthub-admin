@@ -42,7 +42,7 @@ exports.createUser = async (req, res, next) => {
     const { name = "", email, role, permissions } = req.body;
     const normalizedName = String(name).trim();
     const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (!normalizedName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || !["admin", "supervisor"].includes(role)) {
+    if (!normalizedName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || !["admin", "supervisor", "qa", "PM", "pm", "developer"].includes(role)) {
       return res.status(400).json({ message: "A full name, valid Google email, and role are required." });
     }
     if (await User.exists({ email: normalizedEmail })) {
@@ -130,7 +130,7 @@ exports.updateUser = async (req, res, next) => {
     const updates = {};
     if (name !== undefined) updates.name = String(name).trim();
     if (role !== undefined) {
-      if (!["admin", "supervisor", "developer", "PM", "pm"].includes(role)) return res.status(400).json({ message: "Invalid role." });
+      if (!["admin", "supervisor", "developer", "PM", "pm", "qa"].includes(role)) return res.status(400).json({ message: "Invalid role." });
       updates.role = role === "pm" ? "PM" : role;
       if (permissions === undefined) updates.permissions = permissionsForRole(updates.role);
     }

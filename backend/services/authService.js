@@ -194,6 +194,8 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
+        QA: "qa",
+        qa: "qa",
       };
       const rawRole = (staff.role || "").trim();
       const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || "supervisor";
@@ -226,6 +228,8 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
+        QA: "qa",
+        qa: "qa",
       };
       const rawRole = (staff.role || user.role || "").trim();
       const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || user.role || "supervisor";
