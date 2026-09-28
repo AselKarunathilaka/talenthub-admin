@@ -1275,18 +1275,19 @@ const syncWithSLTAPI = async (req, res) => {
     );
 
     // Perform the sync
-    const syncResult = await internService.syncWithSLTAPI(enableCleanup);
+    const syncResult = await internService.syncWithSLTAPI({ enableCleanup });
 
     res.json({
       success: syncResult.success,
+      networkError: syncResult.networkError || false,
       message: syncResult.message,
       data: {
-        totalProcessed: syncResult.stats.totalProcessed,
-        newInterns: syncResult.stats.added,
-        updatedInterns: syncResult.stats.updated,
-        removedInterns: syncResult.stats.removed,
-        skippedInterns: syncResult.stats.skipped,
-        errors: syncResult.stats.errors,
+        totalProcessed: syncResult.stats?.totalProcessed || 0,
+        newInterns: syncResult.stats?.added || 0,
+        updatedInterns: syncResult.stats?.updated || 0,
+        removedInterns: syncResult.stats?.removed || 0,
+        skippedInterns: syncResult.stats?.skipped || 0,
+        errors: syncResult.stats?.errors || 0,
         cleanupEnabled: enableCleanup,
       },
     });

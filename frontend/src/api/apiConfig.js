@@ -42,6 +42,7 @@ export const API_ENDPOINTS = {
     INTERN_DETAILS: "/admin/intern",
     SETTINGS: {
       SECURITY_PASSWORD: "/admin/settings/security-password",
+      SECURITY_PASSWORDS: "/admin/settings/security-passwords",
       USERS: "/admin/settings/users",
       WHATSAPP_STATUS: "/admin/settings/whatsapp-status",
       WHATSAPP_DISCONNECT: "/admin/settings/whatsapp-disconnect",

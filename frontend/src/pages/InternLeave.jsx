@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { getMyLeaveRequests, deleteLeaveRequest } from "../api/leaveRequestApi";
+import { getMyLeaveRequests, deleteLeaveRequest, getLeaveRequestsByInternId } from "../api/leaveRequestApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import LeaveRequestForm from "../components/LeaveRequestForm";
 import Navigation from "../components/Navigation";
@@ -25,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bike, GraduationCap } from "lucide-react";
 
-const InternLeave = ({ requestType = "short_leave" }) => {
+const InternLeave = ({ requestType = "short_leave", isPreview = false, previewInternId = null }) => {
   const isStudyLeave = requestType === "study_leave";
   const pageCopy = isStudyLeave
     ? {
@@ -61,8 +61,22 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   // Accordion state
   const [expandedId, setExpandedId] = useState(null);
 
-  // Date filter â€” defaults to today for short leave, empty (all) for study leave
-  const todayStr = new Date().toISOString().split("T")[0];
+  // Helper: returns a date as "YYYY-MM-DD" in Asia/Colombo (Sri Lanka, UTC+5:30).
+  // Using toISOString() alone can give the wrong date near midnight in SLT.
+  const toSLTDateStr = (date = new Date()) => {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Colombo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const p = {};
+    parts.forEach(({ type, value }) => { p[type] = value; });
+    return `${p.year}-${p.month}-${p.day}`;
+  };
+
+  // Date filter - defaults to today (Sri Lanka time) for short leave, empty (all) for study leave
+  const todayStr = toSLTDateStr();
   const [selectedDate, setSelectedDate] = useState(isStudyLeave ? "" : todayStr);
 
   const [pagination, setPagination] = useState({
@@ -94,7 +108,8 @@ const InternLeave = ({ requestType = "short_leave" }) => {
     if (isStudyLeave || request.status !== "Approved" || !request.passToken) {
       return null;
     }
-    const requestDateStr = new Date(request.leaveDate).toISOString().split("T")[0];
+    // Parse the stored leaveDate in Sri Lanka timezone to get the correct local date string
+    const requestDateStr = toSLTDateStr(new Date(request.leaveDate));
     // Build the date string from the Sri-Lanka-wall-clock Date's own getters
     // (not toISOString, which would re-apply the browser's UTC offset and
     // can land on the wrong day near midnight).
@@ -110,6 +125,12 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   };
 
   useEffect(() => {
+    // Skip intern auth check when rendered in admin preview mode
+    if (isPreview) {
+      fetchLeaveRequests();
+      return;
+    }
+
     const authToken = localStorage.getItem("authToken");
     const internId = localStorage.getItem("internId");
 
@@ -124,7 +145,7 @@ const InternLeave = ({ requestType = "short_leave" }) => {
     }
 
     fetchLeaveRequests();
-  }, [selectedDate, pagination.page, requestType]);
+  }, [selectedDate, pagination.page, requestType, isPreview]);
 
   const fetchLeaveRequests = async () => {
     setLoading(true);
@@ -136,17 +157,27 @@ const InternLeave = ({ requestType = "short_leave" }) => {
         requestType: requestType,
       };
 
-      const response = await getMyLeaveRequests(params);
+      let response;
+      if (isPreview && previewInternId) {
+        response = await getLeaveRequestsByInternId(
+          previewInternId,
+          params.page,
+          params.limit,
+          params.requestType,
+        );
+      } else {
+        response = await getMyLeaveRequests(params);
+      }
       setLeaveRequests(response.data);
       setPagination(response.pagination);
     } catch (error) {
       console.error("[MyLeaveRequests] Error fetching leave requests:", error);
 
-      if (error.message === "Invalid Token" || error.response?.status === 401) {
+      if (!isPreview && (error.message === "Invalid Token" || error.response?.status === 401)) {
         toast.error("Your session has expired. Please log in again.");
         localStorage.removeItem("authToken");
         localStorage.removeItem("internId");
-        navigate("/");
+        if (!isPreview) navigate("/");
         return;
       }
 
@@ -240,6 +271,7 @@ const InternLeave = ({ requestType = "short_leave" }) => {
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
+      timeZone: "Asia/Colombo",
       year: "numeric",
       month: "short",
       day: "numeric",
@@ -262,7 +294,8 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   const hasRequestForToday = () => {
     if (selectedDate !== todayStr) return false;
     return leaveRequests.some((request) => {
-      const requestDate = new Date(request.leaveDate).toISOString().split("T")[0];
+      // Compare leave dates using Sri Lanka timezone to avoid UTC day-boundary issues
+      const requestDate = toSLTDateStr(new Date(request.leaveDate));
       return requestDate === todayStr;
     });
   };
@@ -272,13 +305,14 @@ const InternLeave = ({ requestType = "short_leave" }) => {
   };
 
   return (
-    <Navigation>
+    <Navigation isPreview={isPreview}>
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+          {/* <SectionTip sectionKey={isStudyLeave ? "extendedleave" : "shortleave"} /> */}
           {/* Header & Date Picker */}
           <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
             <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
-              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+              <div className={`w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] flex items-center justify-center shrink-0 shadow-md ${isStudyLeave ? "bg-gradient-to-br from-[#f97316] to-[#ea580c] border border-orange-700/30 shadow-orange-500/20" : "bg-gradient-to-br from-[#8b5cf6] to-[#6d28d9] border border-violet-700/30 shadow-violet-500/20"}`}>
                 {isStudyLeave ? (
                   <GraduationCap className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
                 ) : (
@@ -541,7 +575,7 @@ const InternLeave = ({ requestType = "short_leave" }) => {
 
                                       {/* Action Buttons */}
                                       <div className="flex flex-wrap items-center justify-end gap-3 pt-4 mt-2 border-t border-gray-200">
-                                        {request.status === "Pending" && (
+                                        {(request.status === "Pending" || request.status === "Denied" || isStudyLeave) && (
                                           <button
                                             onClick={(e) => { e.stopPropagation(); handleDelete(request._id); }}
                                             className="flex items-center gap-2 px-4 py-2.5 text-rose-600 bg-white border border-rose-200 hover:bg-rose-50 rounded-xl transition-all font-bold text-sm shadow-sm"

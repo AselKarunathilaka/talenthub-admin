@@ -119,7 +119,21 @@ export const getMyLeaveRequests = async (params = {}) => {
   }
 };
 
-// Get all leave requests (for admins)
+// Get leave requests for a specific intern (admin preview mode)
+export const getLeaveRequestsByInternId = async (internId, page = 1, limit = 10, type) => {
+  try {
+    const params = { page, limit };
+    if (type) params.type = type;
+    const response = await axios.get(
+      `${API_BASE_URL}/leave-requests/admin/intern/${internId}`,
+      { params, headers: getHeaders() },
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || error;
+  }
+};
+
 export const getAllLeaveRequests = async (params = {}) => {
   try {
     const response = await axios.get(`${API_BASE_URL}/leave-requests/all`, {
@@ -182,14 +196,40 @@ export const bulkUpdateLeaveRequestStatus = async (requestIds, statusData) => {
 // Delete leave request
 export const deleteLeaveRequest = async (id) => {
   try {
-    const response = await axios.delete(
-      `${API_BASE_URL}/leave-requests/${id}`,
-      {
-        headers: getHeaders(),
-      },
-    );
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+    const adminInfo = typeof localStorage !== "undefined" ? localStorage.getItem("adminInfo") : null;
+    let isAdmin = false;
+    if (adminInfo) {
+      try {
+        const parsed = JSON.parse(adminInfo);
+        if (parsed?.token) isAdmin = true;
+      } catch (e) {
+        // ignore
+      }
+    }
+    if (currentPath.includes("/admin/") || currentPath.includes("admin-")) {
+      isAdmin = true;
+    }
+
+    const endpoint = isAdmin
+      ? `${API_BASE_URL}/leave-requests/admin/${id}`
+      : `${API_BASE_URL}/leave-requests/${id}`;
+
+    const response = await axios.delete(endpoint, {
+      headers: getHeaders(),
+    });
     return response.data;
   } catch (error) {
+    if (error.response?.status === 403 || error.response?.status === 401) {
+      try {
+        const fallbackRes = await axios.delete(`${API_BASE_URL}/leave-requests/${id}`, {
+          headers: getHeaders(),
+        });
+        return fallbackRes.data;
+      } catch (fallbackErr) {
+        throw fallbackErr.response?.data || fallbackErr;
+      }
+    }
     throw error.response?.data || error;
   }
 };

@@ -1,15 +1,19 @@
 // services/sltApiService.js
 const axios = require("axios");
+const https = require("https");
 const path = require("path");
 require("dotenv").config({ path: path.resolve(__dirname, "..", ".env") });
+
+const sslAgent = new https.Agent({ rejectUnauthorized: false });
 
 class SLTApiService {
   constructor() {
     this.apiUrl =
+      process.env.SLT_API_URL ||
       "https://prohub.slt.com.lk/ProhubTrainees/api/MainApi/AllActiveTrainees";
-    this.secretKey = process.env.TRAINEES_API_SECRET_KEY;
-    this.timeout = 30000; // 30 seconds
-    this.debug = false; // Disabled verbose logging for performance
+    this.secretKey = (process.env.TRAINEES_API_SECRET_KEY || "").replace(/^["']|["']$/g, "");
+    this.timeout = parseInt(process.env.SLT_API_TIMEOUT, 10) || 10000;
+    this.debug = process.env.DEBUG_SYNC === "true";
   }
 
   async fetchActiveTrainees() {
@@ -20,14 +24,16 @@ class SLTApiService {
         console.log("🔗 Fetching active trainees from SLT API...");
       }
 
-      if (!this.secretKey) {
+      const secretKey = (process.env.TRAINEES_API_SECRET_KEY || this.secretKey || "").replace(/^["']|["']$/g, "");
+      if (!secretKey) {
         throw new Error("API secret key is missing from environment variables");
       }
 
-      const requestBody = { secretKey: this.secretKey };
+      const requestBody = { secretKey };
 
       const response = await axios.post(this.apiUrl, requestBody, {
         timeout: this.timeout,
+        httpsAgent: sslAgent,
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -64,6 +70,21 @@ class SLTApiService {
 
       return traineesData;
     } catch (error) {
+      const isConnError =
+        error.code === "ETIMEDOUT" ||
+        error.code === "ECONNABORTED" ||
+        error.code === "ENOTFOUND" ||
+        error.code === "ECONNREFUSED" ||
+        (typeof error.message === "string" && error.message.toLowerCase().includes("timeout"));
+
+      if (isConnError) {
+        console.warn(`⚠️ SLT API unreachable (${error.code || error.message}) - check network or SLT VPN connection.`);
+        const netErr = new Error(`No response received from SLT API (${error.code || "ETIMEDOUT"}) - Check network connectivity or SLT VPN`);
+        netErr.isNetworkError = true;
+        netErr.code = error.code || "ETIMEDOUT";
+        throw netErr;
+      }
+
       console.error(`❌ SLT API Error:`, error.message);
 
       if (error.response) {
@@ -90,9 +111,11 @@ class SLTApiService {
             );
         }
       } else if (error.request) {
-        throw new Error(
+        const reqErr = new Error(
           "No response received from SLT API - Check network connectivity",
         );
+        reqErr.isNetworkError = true;
+        throw reqErr;
       } else {
         throw new Error(`Failed to fetch data from SLT API: ${error.message}`);
       }

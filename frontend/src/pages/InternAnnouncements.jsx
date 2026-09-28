@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+﻿import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ChevronDown,
@@ -112,7 +112,7 @@ const setDismissedToday = (id) => {
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-const InternAnnouncements = () => {
+const InternAnnouncements = ({ previewInternId = null, isPreview = false }) => {
   const navigate = useNavigate();
 
   const [announcements, setAnnouncements] = useState([]);
@@ -125,7 +125,7 @@ const InternAnnouncements = () => {
   // Auth guard
   useEffect(() => {
     const internId = localStorage.getItem("internId");
-    if (!internId) navigate("/");
+    if (!internId && !isPreview) navigate("/");
   }, [navigate]);
 
   const load = useCallback(async () => {
@@ -225,14 +225,14 @@ const InternAnnouncements = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <Navigation onLogout={handleLogout}>
+    <Navigation onLogout={handleLogout} isPreview={isPreview}>
       <div className="w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1200px] w-full">
-          <SectionTip sectionKey="announcements" />
+          {/* <SectionTip sectionKey="announcements" /> */}
           {/* Page Header */}
           <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
             <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
-              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-br from-red-500 to-rose-700 flex items-center justify-center shrink-0 shadow-md">
                 <Bell className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
               </div>
               <div className="flex flex-col justify-center">
@@ -347,6 +347,10 @@ const InternAnnouncements = () => {
                             <div className="flex-1 min-w-0">
                               {/* Title row */}
                               <div className="flex flex-wrap items-center gap-3 mb-2">
+                                {/* Purple announcement badge icon */}
+                                <span className="flex-shrink-0 w-7 h-7 rounded-[8px] bg-gradient-to-br from-red-500 to-rose-700 flex items-center justify-center shadow-sm">
+                                  <Bell className="h-3.5 w-3.5 text-white" />
+                                </span>
                                 <span
                                   className={`text-base font-bold break-words min-w-0 ${
                                     isRead ? "text-gray-700" : "text-gray-900"

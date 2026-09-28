@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { announcementApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 import AdminNavigation from "../components/AdminNavigation";
 import { Megaphone } from "lucide-react";
 
@@ -246,6 +247,10 @@ const AdminAnnouncements = () => {
     }
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({
+        action: "Send announcemt for all interns in admin side",
+        extraInfo: `Title: ${title}`
+      });
       executeSend();
       return;
     }
@@ -256,6 +261,10 @@ const AdminAnnouncements = () => {
   const handleDeleteClick = (announcement) => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({
+        action: "Delete anncounement in admin side",
+        extraInfo: `Title: ${announcement.title}`
+      });
       executeDelete(announcement._id);
       return;
     }
@@ -786,37 +795,36 @@ const AdminAnnouncements = () => {
 
       
         {/* ── Security Check Backdrop ── */}
-        <AnimatePresence>
+        <>
+
           {confirmTarget && (
-            <motion.div
-              key="announcement-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
+             
+             
+             
+             
+             
               className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-md"
             />
           )}
-        </AnimatePresence>
+        </>
 
         {/* ── Security Check Popup ── */}
-        <AnimatePresence>
+        <>
+
           {confirmTarget && (
-            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed inset-0 z-[22] pointer-events-none">
               <div
                 className="fixed inset-0 z-[49] pointer-events-auto"
                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
               />
               <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                  onAnimationComplete={() => {
-                    document.getElementById('announcement-security-password-input')?.focus();
-                  }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                <div
+                 
+                 
+                 
+                 
+                 className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -888,11 +896,11 @@ const AdminAnnouncements = () => {
                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : (confirmTarget?.type === "delete" ? "Verify & Delete" : "Verify & Send")}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
     </AdminNavigation>

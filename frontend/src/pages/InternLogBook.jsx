@@ -1,4 +1,4 @@
-import React, {
+﻿﻿import React, {
   useState,
   useEffect,
   useRef,
@@ -44,9 +44,7 @@ import {
 } from "../utils/entryHeuristics";
 import { rateLimitedBatchValidate } from "../utils/batchValidation";
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  Utility â€“ check if current time is after 10 AM (Sri Lankan time)         */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const checkLeaveTimeRestriction = () => {
   try {
     const now = new Date();
@@ -80,9 +78,7 @@ const checkLeaveTimeRestriction = () => {
   }
 };
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  Color palettes keyed by status                                           */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const STATUS_PALETTES = {
   working: {
     primary: "#0056a2",
@@ -122,9 +118,7 @@ const STATUS_PALETTES = {
   },
 };
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  Motivational quotes                                                      */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const MOTIVATIONAL_QUOTES = [
   "Small daily improvements lead to staggering results.",
   "Your logbook tells the story of your growth.",
@@ -136,18 +130,14 @@ const MOTIVATIONAL_QUOTES = [
   "Progress, not perfection. Log what matters.",
 ];
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  Stepper Steps                                                            */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const STEPS = [
   { id: 0, label: "Status", icon: FiUmbrella },
   { id: 1, label: "Stack", icon: FiMonitor },
   { id: 2, label: "Details", icon: FiBook },
 ];
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  â˜… LogbookRestricted â€” shown when the intern's logbook is locked          */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+
 const LogbookRestricted = ({ reason, restrictedAt }) => {
   const fmtDate = (d) => {
     if (!d) return null;
@@ -355,10 +345,8 @@ const LogbookRestricted = ({ reason, restrictedAt }) => {
   );
 };
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-/*  Main Component                                                           */
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-const InternLogBook = () => {
+
+const InternLogBook = ({ previewInternId = null, isPreview = false, onViewRecords = null }) => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -385,7 +373,7 @@ const InternLogBook = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [leaveLimitReached, setLeaveLimitReached] = useState(false);
 
-  /* â”€â”€ â˜… New: logbook restriction state â”€â”€ */
+
   const [logbookRestriction, setLogbookRestriction] = useState({
     checking: true,
     restricted: false,
@@ -408,7 +396,6 @@ const InternLogBook = () => {
   // Current palette
   const palette = STATUS_PALETTES[formData.status] || STATUS_PALETTES.working;
 
-  /* â”€â”€ Progress bar calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const completionProgress = useMemo(() => {
     if (formData.status === "leave") return 100;
 
@@ -427,7 +414,6 @@ const InternLogBook = () => {
     return filled * 20;
   }, [formData]);
 
-  /* â”€â”€ â˜… Check logbook restriction on mount â”€â”€ */
   useEffect(() => {
     const checkRestriction = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -445,7 +431,7 @@ const InternLogBook = () => {
           await import("../api/apiConfig");
         const res = await fetch(
           `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}/status`,
-          { headers: { Authorization: `Bearer ${authToken}` } },
+          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" },
         );
         if (res.ok) {
           const data = await res.json();
@@ -476,7 +462,6 @@ const InternLogBook = () => {
     checkRestriction();
   }, []);
 
-  /* â”€â”€ Check project access on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkAccess = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -512,7 +497,6 @@ const InternLogBook = () => {
     checkAccess();
   }, []);
 
-  /* â”€â”€ Check for extended leave on mount â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   useEffect(() => {
     const checkExtendedLeave = async () => {
       const authToken = localStorage.getItem("authToken");
@@ -526,7 +510,7 @@ const InternLogBook = () => {
           await import("../api/apiConfig");
         const res = await fetch(
           `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`,
-          { headers: { Authorization: `Bearer ${authToken}` } },
+          { headers: { Authorization: `Bearer ${authToken}` }, cache: "no-store" },
         );
 
         if (res.ok) {
@@ -609,7 +593,6 @@ const InternLogBook = () => {
         });
         setActiveStep(0);
       } else if (data.code === "LOGBOOK_RESTRICTED") {
-        /* â”€â”€ â˜… Handle restriction returned from server mid-session â”€â”€ */
         setLogbookRestriction({
           checking: false,
           restricted: true,
@@ -675,7 +658,9 @@ const InternLogBook = () => {
         text: "Authentication required. Please log in again.",
       });
       setIsSubmitting(false);
-      navigate("/");
+      if (!isPreview) {
+        navigate("/");
+      }
       return;
     }
 
@@ -715,7 +700,6 @@ const InternLogBook = () => {
       return;
     }
 
-    // â”€â”€ Mandatory field check for all three fields â”€â”€
     if (formData.status !== "leave") {
       if (
         !formData.tasks.trim() ||
@@ -843,7 +827,7 @@ const InternLogBook = () => {
     if (statusMessage?.type === "success") {
       timer = setTimeout(() => {
         setStatusMessage(null);
-        navigate("/DailyRecords");
+        if (!isPreview) navigate("/DailyRecords");
       }, 3000);
     }
     return () => clearTimeout(timer);
@@ -875,7 +859,6 @@ const InternLogBook = () => {
     }
   };
 
-  /* â”€â”€ Stepper navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const isOnLeave = formData.status === "leave";
 
   // Determine which steps are reachable
@@ -1006,9 +989,6 @@ const InternLogBook = () => {
     },
   ];
 
-  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  /*  STATUS OPTIONS (styled cards)                                          */
-  /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const statusOptions = [
     {
       value: "working",
@@ -1036,25 +1016,22 @@ const InternLogBook = () => {
     },
   ];
 
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-  /*  RENDER                                                                 */
-  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   return (
     <>
       {showSuccessAnimation && (
         <SuccessCheckmarkAnimation onComplete={handleAnimationComplete} />
       )}
 
-      <Navigation>
+      <Navigation isPreview={isPreview}>
 
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
-            
+            {/* <SectionTip sectionKey="logbook" /> */}
 
             {/* â”€â”€â”€â”€â”€ Page Header â”€â”€â”€â”€â”€ */}
             <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
               <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
-                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-br from-[#10b981] to-[#059669] flex items-center justify-center shrink-0 border border-emerald-700/30 shadow-md shadow-emerald-500/20">
                   <BookOpen className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
                 </div>
                 <div className="flex flex-col justify-center">
@@ -1067,7 +1044,7 @@ const InternLogBook = () => {
                 </div>
               </div>
               <button
-                onClick={() => navigate("/DailyRecords")}
+                onClick={() => { if (isPreview && onViewRecords) onViewRecords(); else if (!isPreview) navigate("/DailyRecords"); }}
                 className="logbook-view-records-btn"
                 style={{
                   display: "inline-flex",
@@ -1112,7 +1089,7 @@ const InternLogBook = () => {
                   style={{ color: "#ef4444", marginBottom: 16 }}
                 />
                 <p style={{ fontSize: "clamp(12px, 3vw, 14px)", fontWeight: 600, color: "#374151" }}>
-                  Checking logbook accessâ€¦
+                  Checking logbook access...
                 </p>
                 <p style={{ fontSize: "clamp(11px, 2vw, 12px)", color: "#9ca3af", marginTop: 4 }}>
                   Verifying your submission status
@@ -1466,7 +1443,7 @@ const InternLogBook = () => {
                         period. Enjoy your leave!
                       </p>
                       <button
-                        onClick={() => navigate("/DailyRecords")}
+                        onClick={() => { if (isPreview && onViewRecords) onViewRecords(); else if (!isPreview) navigate("/DailyRecords"); }}
                         style={{
                           background: "#0ea5e9",
                           color: "white",

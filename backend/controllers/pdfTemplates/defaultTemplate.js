@@ -124,11 +124,11 @@ const drawRow = (doc, record, rowIndex, rowNumber, y) => {
   return y + rowH;
 };
 
-const drawInternHeader = (doc, name, traineeId, y) => {
+const drawInternHeader = (doc, name, traineeId, y, universityName) => {
   const PAGE_BOTTOM = pageBottom(doc);
-  if (y + 55 > PAGE_BOTTOM) y = addPage(doc);
+  if (y + 70 > PAGE_BOTTOM) y = addPage(doc);
 
-  const blockH = 42;
+  const blockH = 58;
   doc.rect(TABLE_LEFT, y, TABLE_WIDTH, blockH).fill("#e8f0fe");
   doc.rect(TABLE_LEFT, y, TABLE_WIDTH, blockH).stroke("#c5d3f0");
 
@@ -141,11 +141,22 @@ const drawInternHeader = (doc, name, traineeId, y) => {
       lineBreak: false,
     });
 
+  if (universityName) {
+    doc
+      .fontSize(9)
+      .font("Helvetica")
+      .fillColor("#1a5e2a")
+      .text(`University: ${universityName}`, TABLE_LEFT + 12, y + 23, {
+        width: TABLE_WIDTH - 24,
+        lineBreak: false,
+      });
+  }
+
   doc
     .fontSize(9)
     .font("Helvetica")
     .fillColor("#3a5a8c")
-    .text(`Trainee ID: ${traineeId || "N/A"}`, TABLE_LEFT + 12, y + 23, {
+    .text(`Trainee ID: ${traineeId || "N/A"}`, TABLE_LEFT + 12, y + (universityName ? 39 : 23), {
       width: TABLE_WIDTH - 24,
       lineBreak: false,
     });
@@ -162,7 +173,7 @@ const drawInternHeader = (doc, name, traineeId, y) => {
  * @param {object}   opts     { dateLabel, isAdmin }
  * @returns {Promise<Buffer>}
  */
-const generate = async (records, { dateLabel, isAdmin }) => {
+const generate = async (records, { dateLabel, isAdmin, universityName = "NSBM Green University" }) => {
   const doc = new PDFDocument({ margin: 40, size: "A4" });
   const bufferPromise = collectBuffer(doc);
 
@@ -202,8 +213,14 @@ const generate = async (records, { dateLabel, isAdmin }) => {
   let currentY = doc.y;
   const PAGE_BOTTOM = pageBottom(doc);
 
-  const renderGroup = (groupRecords, name, traineeId) => {
-    currentY = drawInternHeader(doc, name, traineeId, currentY);
+  const renderGroup = (groupRecords, name, traineeId, groupUniversity) => {
+    currentY = drawInternHeader(
+      doc,
+      name,
+      traineeId,
+      currentY,
+      groupUniversity || universityName || "NSBM Green University",
+    );
     currentY = drawTableHeader(doc, currentY);
 
     groupRecords.forEach((record, idx) => {
@@ -219,17 +236,19 @@ const generate = async (records, { dateLabel, isAdmin }) => {
   if (isAdmin) {
     const groups = new Map();
     for (const r of records) {
-      const key = String(r.internId?._id || "unknown");
+      const key = String(r.internId?.Trainee_ID || r.traineeId || r.internId?._id || "unknown");
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(r);
     }
 
     const entries = [...groups.entries()];
     entries.forEach(([, groupRecords], gIdx) => {
+      groupRecords.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
       const first = groupRecords[0];
-      const name = first.internId?.Trainee_Name || "Unknown Intern";
-      const traineeId = first.internId?.Trainee_ID || "N/A";
-      renderGroup(groupRecords, name, traineeId);
+      const name = first?.internId?.Trainee_Name || "Unknown Intern";
+      const traineeId = first?.internId?.Trainee_ID || first?.traineeId || "N/A";
+      const groupUni = first?.internId?.Institute || universityName || "NSBM Green University";
+      renderGroup(groupRecords, name, traineeId, groupUni);
 
       if (gIdx < entries.length - 1) {
         currentY += 16;
@@ -237,10 +256,12 @@ const generate = async (records, { dateLabel, isAdmin }) => {
       }
     });
   } else {
+    records.sort((a, b) => (a.date || "").localeCompare(b.date || ""));
     const first = records[0];
-    const name = first.internId?.Trainee_Name || "Unknown Intern";
-    const traineeId = first.internId?.Trainee_ID || "N/A";
-    renderGroup(records, name, traineeId);
+    const name = first?.internId?.Trainee_Name || "Unknown Intern";
+    const traineeId = first?.internId?.Trainee_ID || first?.traineeId || "N/A";
+    const groupUni = first?.internId?.Institute || universityName || "NSBM Green University";
+    renderGroup(records, name, traineeId, groupUni);
   }
 
   doc.end();

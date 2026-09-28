@@ -28,8 +28,11 @@ const getColomboDateKey = (value) => {
 
 const DAILY_TYPE_PRIORITY = {
   face: 4,
+  "face recognition": 4,
   daily_qr: 3,
+  qr: 3,
   manual_daily: 2,
+  manual: 2,
   daily: 1,
 };
 

@@ -37,8 +37,9 @@ const getRelativeTime = (dateString) => {
   return "Just now";
 };
 
-const AdminInternRecords = () => {
-  const { internId } = useParams();
+const AdminInternRecords = ({ internId: internIdProp = null, isPreview = false, onBack = null }) => {
+  const { internId: internIdParam } = useParams();
+  const internId = internIdProp || internIdParam;
   const navigate = useNavigate();
 
   const [internDetails, setInternDetails] = useState(null);
@@ -104,58 +105,53 @@ const AdminInternRecords = () => {
 
   if (loading) {
     return (
-      <AdminNavigation>
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <div className="text-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
-              className="w-12 h-12 border-t-4 border-b-4 border-[#00b4eb] rounded-full mx-auto mb-4"
-            />
-            <p className="text-gray-500 font-medium">Loading logbook records...</p>
-          </div>
+      <div className="min-h-[300px] bg-slate-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+            className="w-12 h-12 border-t-4 border-b-4 border-[#00b4eb] rounded-full mx-auto mb-4"
+          />
+          <p className="text-gray-500 font-medium">Loading logbook records...</p>
         </div>
-      </AdminNavigation>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <AdminNavigation>
-        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-          <div className="text-center max-w-md p-8 bg-white rounded-2xl border border-gray-100 shadow-sm">
-            <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
-            <p className="text-gray-700 mb-6">{error}</p>
-            <div className="flex justify-center">
-              <motion.button
-                onClick={fetchInternDetails}
-                className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-sm"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Retry
-              </motion.button>
-            </div>
+      <div className="min-h-[300px] bg-slate-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl border border-gray-100 shadow-sm">
+          <FaExclamationTriangle className="text-4xl text-red-500 mb-4 mx-auto" />
+          <p className="text-gray-700 mb-6">{error}</p>
+          <div className="flex justify-center">
+            <motion.button
+              onClick={fetchInternDetails}
+              className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl shadow-sm"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Retry
+            </motion.button>
           </div>
         </div>
-      </AdminNavigation>
+      </div>
     );
   }
 
-  return (
-    <AdminNavigation>
-      <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
-          <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
-            {/* Normal Flow Back Button */}
-            <div className="w-full -mt-2 sm:-mt-4 mb-1">
-              <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-slate-500 hover:text-[#000066] transition-colors w-fit px-3 py-1.5 -ml-3 rounded-lg hover:bg-slate-200/50"
-              >
-                <FaChevronLeft className="h-3.5 w-3.5" />
-                <span className="text-sm font-bold">Back to Daily Logs</span>
-              </button>
-            </div>
+  const innerContent = (
+    <div className="min-h-full relative font-sans text-slate-800 flex flex-col select-none">
+        <main className="relative flex-1 p-3 sm:p-6 sm:px-8 mx-auto max-w-[1400px] w-full flex flex-col gap-5 sm:gap-6 min-w-0">
+          {/* Back Button */}
+          <div className="w-full -mt-2 sm:-mt-4 mb-1">
+            <button
+              onClick={() => onBack ? onBack() : navigate(-1)}
+              className="flex items-center gap-2 text-slate-500 hover:text-[#000066] transition-colors w-fit px-3 py-1.5 -ml-3 rounded-lg hover:bg-slate-200/50"
+            >
+              <FaChevronLeft className="h-3.5 w-3.5" />
+              <span className="text-sm font-bold">Back to Daily Logs</span>
+            </button>
+          </div>
             {/* Header Section */}
           <div className="relative z-30 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2 mb-8">
             {/* Left: Title */}
@@ -370,9 +366,11 @@ const AdminInternRecords = () => {
               )}
             </motion.div>
         </main>
-      </div>
-    </AdminNavigation>
+    </div>
   );
+
+  return isPreview ? innerContent : <AdminNavigation>{innerContent}</AdminNavigation>;
 };
+
 
 export default AdminInternRecords;

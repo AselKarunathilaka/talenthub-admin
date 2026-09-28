@@ -1,9 +1,18 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { encrypt, decrypt } = require('../utils/dbEncryption');
 
 const userSchema = new mongoose.Schema({
-  name: { type: String, trim: true, default: "" },
-  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  name: { type: String, trim: true, default: "", set: encrypt, get: decrypt },
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true, 
+    lowercase: true, 
+    trim: true,
+    set: encrypt,
+    get: decrypt
+  },
   password: { type: String, select: false },
   googleSubject: { type: String, sparse: true },
   picture: String,
@@ -13,7 +22,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["super_admin", "admin", "developer", "supervisor", "PM", "pm"],
+    set: encrypt,
+    get: decrypt
   },
   permissions: [{ type: String }],
   visiblePages: [{ type: String }],
@@ -29,6 +39,7 @@ const userSchema = new mongoose.Schema({
   invitationEmailError: { type: String, select: false },
   invitationEmailAttempts: { type: Number, default: 0 },
   requireSecurityCheck: { type: Boolean, default: true },
+  disableSecurityMessage: { type: Boolean, default: false },
   lastLoginAt: Date,
   // WebAuthn Passkey fields
   passkeys: [{
@@ -40,7 +51,12 @@ const userSchema = new mongoose.Schema({
     transports: { type: [String] },
   }],
   currentChallenge: { type: String, select: false },
-}, { timestamps: true, collection: "staff" });
+}, { 
+  timestamps: true, 
+  collection: "staff",
+  toJSON: { getters: true },
+  toObject: { getters: true }
+});
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password") || !this.password) return next();

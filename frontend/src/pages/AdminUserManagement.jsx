@@ -154,7 +154,7 @@ export default function AdminUserManagement() {
             {loading ? <div className="p-16 text-center text-sm text-slate-500">Loading users…</div> : filteredUsers.length === 0 ? <div className="p-16 text-center"><Users className="mx-auto h-10 w-10 text-slate-300" /><p className="mt-3 font-semibold text-slate-700">No users found</p></div> : <div className="divide-y divide-slate-100">
               {filteredUsers.map((user) => {
                 const isExpanded = expandedUserId === user.id;
-                const isProtected = user.role === "super_admin";
+                const isProtected = user.role === "super_admin" || user.role === "super_admin_plus";
                 return <article key={user.id} className="transition hover:bg-slate-50/60">
                   <div className="grid items-center gap-4 p-4 lg:grid-cols-[minmax(230px,1.5fr)_160px_130px_150px_130px]">
                     <div className="flex min-w-0 items-center gap-3"><div className="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-emerald-500 text-sm font-bold text-white">{(user.name || user.email).slice(0, 2).toUpperCase()}</div><div className="min-w-0"><p className="truncate font-bold text-slate-900">{user.name || "Unnamed user"}</p><p className="flex items-center gap-1 truncate text-xs text-slate-500"><Mail className="h-3 w-3" />{user.email}</p></div></div>

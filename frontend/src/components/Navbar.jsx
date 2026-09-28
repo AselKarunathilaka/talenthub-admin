@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Menu, LogOut, ChevronDown, Camera } from "lucide-react";
 import ProfilePictureModal from "./ProfilePictureModal";
 import { API_BASE_URL, API_ENDPOINTS } from "../api/apiConfig";
+import { formatRole } from "../utils/adminAuth";
 
 const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideSidebar }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -49,6 +50,11 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
   const getEffectiveInternId = () => {
     return user?.internId || user?.Trainee_ID || localStorage.getItem("internId") || null;
   };
+
+  const roleLabel = formatRole(user?.role || user?.designation) || (isAdmin ? "Admin" : "Intern");
+  // Display only the human-friendly Trainee ID (e.g. 3907) — never the internal Mongo _id
+  const displayId = !isAdmin ? (user?.Trainee_ID || null) : null;
+  const roleWithId = displayId ? `${roleLabel} - ${displayId}` : roleLabel;
 
   // Build a live picture URL that respects picHash for cache-busting
   const buildLivePicUrl = () => {
@@ -162,11 +168,11 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="flex items-center gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 pr-3 sm:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] min-w-[125px] md:min-w-[160px] justify-between pointer-events-auto"
+              className="flex items-center gap-1.5 xs:gap-2 sm:gap-3 rounded-full p-1 sm:p-1.5 pr-2.5 xs:pr-3 sm:pr-4 bg-white/10 backdrop-blur-md border border-white/20 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:bg-white/20 hover:border-white/30 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#00b4eb] min-w-0 max-w-[130px] xs:max-w-[180px] sm:max-w-none sm:min-w-[160px] justify-between pointer-events-auto"
             >
               {/* Profile picture with camera overlay on hover - clicking opens profile modal */}
               <div
-                className="relative group cursor-pointer flex-shrink-0"
+                className="relative group cursor-pointer flex-shrink-0 rounded-full p-[2px] bg-gradient-to-br from-[#00b4eb] to-indigo-600 shadow-sm"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleProfileClick();
@@ -178,7 +184,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
                     src={userPic}
                     alt="Profile"
                     referrerPolicy="no-referrer"
-                    className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full object-cover border border-slate-200 shadow-sm"
+                    className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full object-cover block"
                     onError={(e) => {
                       if (!livePicFailed && livePicUrl) {
                         setLivePicFailed(true);
@@ -191,7 +197,7 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
                     }}
                   />
                 ) : (
-                  <div className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full bg-gradient-to-br from-[#000066] to-[#00b4eb] flex items-center justify-center text-white font-bold shadow-sm text-xs sm:text-sm md:text-base">
+                  <div className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 rounded-full bg-[#000066] flex items-center justify-center text-white font-bold text-xs sm:text-sm md:text-base">
                     {getInitials(userName)}
                   </div>
                 )}
@@ -201,43 +207,43 @@ const Navbar = ({ onMenuClick, user, activeTitle, onLogout, customActions, hideS
                 </div>
               </div>
 
-              <div className="flex flex-col items-start text-left flex-1 min-w-[75px] md:min-w-[120px] px-1">
+              <div className="flex flex-col items-start text-left flex-1 min-w-0 px-1">
                 <span className="text-xs sm:text-sm font-semibold text-white truncate w-full leading-tight">
                   {userName}
                 </span>
-                <span className="text-[10px] sm:text-xs text-white/70 truncate w-full leading-tight">
-                  {user?.role || user?.designation || (isAdmin ? "Admin" : "Intern")}
+                <span className="text-[10px] sm:text-xs text-white/70 truncate w-full leading-tight hidden xs:block">
+                  {roleWithId}
                 </span>
               </div>
-              <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 shrink-0" />
+              <ChevronDown className="hidden xs:block h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/80 shrink-0" />
             </button>
 
             {/* Dropdown Menu */}
             {dropdownOpen && (
-              <div className="absolute right-0 mt-3 w-full min-w-[180px] md:min-w-full origin-top-right rounded-2xl bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5 focus:outline-none p-1.5 transform transition-all duration-200 z-[100]">
-                {/* Change Photo */}
-                <button
-                  onClick={handleProfileClick}
-                  className="group flex w-full items-center justify-center md:justify-start gap-2.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200 mb-1"
-                >
-                  <Camera className="h-4 w-4 text-[#00b4eb]" />
-                  Change Photo
-                </button>
+              <div className="absolute right-0 mt-3 w-[260px] origin-top-right rounded-2xl bg-white shadow-2xl border border-slate-100 ring-1 ring-black/5 focus:outline-none overflow-hidden transform transition-all duration-200 z-[100]">
 
-                {/* Divider */}
-                <div className="h-px bg-slate-100 mx-2 mb-1" />
+                <div className="p-1.5">
+                  {/* Change Photo */}
+                  <button
+                    onClick={handleProfileClick}
+                    className="group flex w-full items-center gap-2.5 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200 mb-1"
+                  >
+                    <Camera className="h-4 w-4 text-[#00b4eb]" />
+                    Change Photo
+                  </button>
 
-                {/* Sign Out */}
-                <button
-                  onClick={() => {
-                    setDropdownOpen(false);
-                    if (onLogout) onLogout();
-                  }}
-                  className="group flex w-full items-center justify-center md:justify-start gap-2.5 rounded-xl px-4 py-2.5 text-sm font-bold text-[#ef4444] bg-red-50/50 hover:bg-[#ef4444] hover:text-white transition-all duration-300"
-                >
-                  <LogOut className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
-                  Sign Out
-                </button>
+                  {/* Sign Out */}
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      if (onLogout) onLogout();
+                    }}
+                    className="group flex w-full items-center gap-2.5 rounded-xl px-4 py-2.5 text-sm font-bold text-[#ef4444] bg-red-50/50 hover:bg-[#ef4444] hover:text-white transition-all duration-300"
+                  >
+                    <LogOut className="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
+                    Sign Out
+                  </button>
+                </div>
               </div>
             )}
           </div>

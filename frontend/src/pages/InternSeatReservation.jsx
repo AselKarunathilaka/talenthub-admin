@@ -146,7 +146,7 @@ const BookingModal = ({ currentSeat, formatDisplayDate, selectedDate, handleModa
 
 
 
-const InternSeatReservation = () => {
+const InternSeatReservation = ({ previewInternId = null, isPreview = false }) => {
   const {
     showModal,
     currentSeat,
@@ -255,7 +255,7 @@ const InternSeatReservation = () => {
       return (
         <div className="flex flex-col w-full h-full">
           {/* Legend + Controls */}
-          <div className="flex justify-end items-center py-3 px-4 bg-white border-b border-gray-100 flex-wrap gap-2 shrink-0">
+          <div className="flex justify-center sm:justify-end items-center py-3 px-4 bg-white border-b border-gray-100 flex-wrap gap-2 shrink-0">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2"><div className="w-5 h-5 bg-white border-2 border-[#50b748] rounded-lg shadow-sm flex items-center justify-center"><Armchair size={10} className="text-[#50b748]" /></div><span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-600">Available</span></div>
               <div className="flex items-center gap-2"><div className="w-5 h-5 bg-rose-500 border-2 border-rose-600 rounded-lg shadow-sm flex items-center justify-center"><X size={11} strokeWidth={3} className="text-white" /></div><span className="text-[clamp(10px,2vw,12px)] font-bold text-gray-600">Booked</span></div>
@@ -279,7 +279,7 @@ const InternSeatReservation = () => {
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${currentSection === "A" ? "bg-white" : "bg-slate-300"}`} />
-                <span>Section A (1â€“36)</span>
+                <span>Section A (1-36)</span>
               </button>
               <button
                 type="button"
@@ -291,13 +291,13 @@ const InternSeatReservation = () => {
                 }`}
               >
                 <span className={`w-1.5 h-1.5 rounded-full ${currentSection === "B" ? "bg-white" : "bg-slate-300"}`} />
-                <span>Section B (37â€“88)</span>
+                <span>Section B (37-88)</span>
               </button>
             </div>
 
             {/* Swipe hint displayed directly under the selection buttons */}
             <span className="text-[10px] sm:text-[11px] font-semibold text-slate-400 text-center tracking-tight">
-              â† Swipe horizontally to scroll â†’
+              &larr; Swipe horizontally to scroll &rarr;
             </span>
           </div>
 
@@ -305,7 +305,7 @@ const InternSeatReservation = () => {
           <div
             ref={mapViewportRef}
             onScroll={handleMapScroll}
-            className="w-full overflow-x-auto lg:overflow-x-hidden overflow-y-hidden bg-white relative flex items-center justify-start lg:justify-center pt-1 pb-3 custom-scrollbar touch-pan-x select-none"
+            className="w-full overflow-x-auto lg:overflow-x-hidden bg-white relative flex items-center justify-start lg:justify-center pt-1 pb-3 custom-scrollbar select-none"
             style={{ minHeight: `${Math.round(MAP_HEIGHT * scale)}px` }}
           >
             {/* Map content - only show after initial transform is ready to avoid flicker */}
@@ -343,7 +343,7 @@ const InternSeatReservation = () => {
   >
     {/* Section Title */}
     <div className="text-center font-bold text-slate-700 text-lg tracking-wide pt-4">
-      Section A &bull; Seats 1â€“36
+      Section A &bull; Seats 1-36
     </div>
 
     {/* Entrance Label Inside Section A */}
@@ -370,7 +370,7 @@ const InternSeatReservation = () => {
   >
     {/* Section Title */}
     <div className="text-center font-bold text-slate-700 text-lg tracking-wide pt-4">
-      Section B &bull; Seats 37â€“88
+      Section B &bull; Seats 37-88
     </div>
   </div>
   {/* Section A Pillar Circle (centerX=180, centerY=377, radius=68) */}
@@ -491,12 +491,13 @@ const InternSeatReservation = () => {
 
   return (
     <SeatContext.Provider value={{ getSeatStatus, allBookings, dailyBookings, handleSeatClick, lockedSeatDetails }}>
-      <Navigation>
+      <Navigation isPreview={isPreview}>
         <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
           <main className="flex-1 p-4 sm:p-6 mx-auto max-w-[1600px] w-full">
+            {/* <SectionTip sectionKey="seat" /> */}
             <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
               <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
-                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+                <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-br from-[#ec4899] to-[#be185d] flex items-center justify-center shrink-0 border border-pink-700/30 shadow-md shadow-pink-500/20">
                   <Armchair className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
                 </div>
                 <div className="flex flex-col justify-center">

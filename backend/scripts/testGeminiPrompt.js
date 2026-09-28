@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 require("dotenv").config({ path: require("path").join(__dirname, "../.env") });
 
-const MODEL_NAME = "gemini-3.1-flash-lite";
+const MODEL_NAME = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 
 const LENIENT_BATCH_PROMPT = (tasks, challenges, plans) => `
 You are a very lenient internship logbook validator. Your only job is to detect if a sentence is COMPLETELY UNRELATED to any kind of work or learning activity.

@@ -1,4 +1,4 @@
-const leaveRequestRepository = require("../repositories/leaveRequestRepository");
+﻿const leaveRequestRepository = require("../repositories/leaveRequestRepository");
 const internRepository = require("../repositories/internRepository");
 const emailSender = require("../utils/emailSender");
 const PDFDocument = require("pdfkit");
@@ -545,34 +545,51 @@ class LeaveRequestService {
     }
   }
 
-  async updateLeaveRequestStatus(id, status, adminResponse, reviewedBy) {
-    try {
-      // Validate status
-      if (!["Approved", "Denied", "Pending"].includes(status)) {
-        throw new Error("Invalid status. Must be Approved, Denied, or Pending");
-      }
 
-      // Update leave request
-      const leaveRequest = await leaveRequestRepository.updateStatus(
-        id,
-        status,
-        adminResponse,
-        reviewedBy,
-      );
+
+
+  async getLeaveRequestsByInternId(internId, page = 1, limit = 10, requestType) {
+    try {
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      const leaveRequests = await leaveRequestRepository.findByInternId(internId, {
+        skip,
+        limit: parseInt(limit),
+        requestType: requestType || undefined,
+      });
+
+      const total = await leaveRequestRepository.countByInternId(internId, null, {
+        requestType: requestType || undefined,
+      });
+
+      return {
+        leaveRequests,
+        total,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+      };
+    } catch (error) {
+      console.error('Error getting leave requests by intern ID:', error);
+      throw error;
+    }
+  }
+  async adminDeleteLeaveRequest(id) {
+    try {
+      const leaveRequest = await leaveRequestRepository.findById(id);
 
       if (!leaveRequest) {
         throw new Error("Leave request not found");
       }
 
-      // Send notification email to intern
-      await this.notifyInternStatusUpdate(leaveRequest);
+      if (leaveRequest.requestType === "study_leave") {
+        await this.removeStudyLeaveFromLogbook(leaveRequest);
+      }
 
-      console.log(
-        `Leave request ${id} updated to ${status} by admin ${reviewedBy}`,
-      );
-      return leaveRequest;
+      await leaveRequestRepository.delete(id);
+      console.log(`[Admin] Leave request ${id} deleted successfully.`);
+      return { message: "Leave request permanently deleted" };
     } catch (error) {
-      console.error("Error updating leave request status:", error);
+      console.error("Error admin deleting leave request:", error);
       throw error;
     }
   }
@@ -594,13 +611,21 @@ class LeaveRequestService {
       console.log("[Delete] Extracted intern ID:", leaveRequestInternId);
       console.log("[Delete] Current user intern ID:", internId.toString());
 
-      // Only allow deletion if status is Pending and by the intern who created it
-      if (leaveRequest.status !== "Pending") {
+      if (leaveRequestInternId !== internId.toString()) {
+        throw new Error("Unauthorized to delete this leave request");
+      }
+
+      // Allow deletion if status is Pending, Denied, or if it is an extended leave
+      if (
+        leaveRequest.status !== "Pending" &&
+        leaveRequest.status !== "Denied" &&
+        leaveRequest.requestType !== "study_leave"
+      ) {
         throw new Error("Cannot delete a leave request that has been reviewed");
       }
 
-      if (leaveRequestInternId !== internId.toString()) {
-        throw new Error("Unauthorized to delete this leave request");
+      if (leaveRequest.requestType === "study_leave") {
+        await this.removeStudyLeaveFromLogbook(leaveRequest);
       }
 
       await leaveRequestRepository.delete(id);
@@ -730,6 +755,8 @@ class LeaveRequestService {
 
       if (status === "Approved" && leaveRequest.requestType === "study_leave") {
         await this.syncApprovedStudyLeaveToLogbook(leaveRequest);
+      } else if (status !== "Approved" && leaveRequest.requestType === "study_leave") {
+        await this.removeStudyLeaveFromLogbook(leaveRequest);
       }
 
       // Send notification email to intern
@@ -785,6 +812,68 @@ class LeaveRequestService {
         },
         { upsert: true, new: true, setDefaultsOnInsert: true },
       );
+    }
+
+    try {
+      const { clearDailyRecordsCache } = require("../controllers/dailyRecordController");
+      if (typeof clearDailyRecordsCache === "function") {
+        clearDailyRecordsCache();
+      }
+    } catch (cacheErr) {
+      console.error("Error clearing daily records cache:", cacheErr);
+    }
+  }
+
+  async removeStudyLeaveFromLogbook(leaveRequest) {
+    try {
+      if (!leaveRequest || leaveRequest.requestType !== "study_leave") return;
+
+      const dates = getStudyLeaveDates(leaveRequest);
+      const internObj = leaveRequest.intern;
+      const internId = internObj?._id || internObj;
+
+      if (!internId || !dates || !dates.length) return;
+
+      // Find any other approved study_leave requests for this intern to avoid deleting overlapping days
+      const LeaveRequest = require("../models/LeaveRequest");
+      const otherApprovedRequests = await LeaveRequest.find({
+        _id: { $ne: leaveRequest._id },
+        intern: internId,
+        requestType: "study_leave",
+        status: "Approved",
+      }).lean();
+
+      const otherCoveredDates = new Set();
+      for (const other of otherApprovedRequests) {
+        const otherDates = getStudyLeaveDates(other);
+        otherDates.forEach((d) => otherCoveredDates.add(d));
+      }
+
+      const datesToDelete = dates.filter((d) => !otherCoveredDates.has(d));
+
+      if (datesToDelete.length > 0) {
+        const result = await DailyRecord.deleteMany({
+          internId,
+          date: { $in: datesToDelete },
+          status: "study_leave",
+        });
+        console.log(
+          `[StudyLeave] Removed ${result.deletedCount} study_leave DailyRecord(s) for intern ${internId} on dates:`,
+          datesToDelete,
+        );
+      }
+
+      // Invalidate in-memory cache
+      try {
+        const { clearDailyRecordsCache } = require("../controllers/dailyRecordController");
+        if (typeof clearDailyRecordsCache === "function") {
+          clearDailyRecordsCache();
+        }
+      } catch (cacheErr) {
+        console.error("Error clearing daily records cache:", cacheErr);
+      }
+    } catch (error) {
+      console.error("Error removing study leave from logbook:", error);
     }
   }
 

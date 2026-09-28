@@ -1,9 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const settingsController = require("../controllers/adminSettingsController");
+const authMiddleware = require("../middleware/authMiddleware");
 const { requireAdmin, enforceRoutePermission } = require("../middleware/adminAuth");
 
-// Apply basic admin authentication to all routes here
+// Apply JWT auth first (populates req.user), then verify admin account
+router.use(authMiddleware);
 router.use(requireAdmin);
 
 // Settings routes require 'settings.manage' or 'users.manage' depending on the exact route,
@@ -12,13 +14,12 @@ router.use(requireAdmin);
 
 // ─── Security Settings ───
 router.put("/security-password", enforceRoutePermission, settingsController.changeSecurityPassword);
+router.get("/security-passwords", enforceRoutePermission, settingsController.getAllSecurityPasswords);
+router.post("/security-passwords", enforceRoutePermission, settingsController.addSecurityPassword);
+router.put("/security-passwords/:id", enforceRoutePermission, settingsController.updateSecurityPassword);
+router.delete("/security-passwords/:id", enforceRoutePermission, settingsController.removeSecurityPassword);
 
 // ─── User Management (Requires super_admin or 'users.manage' permission) ───
-// We map these manually if needed, or rely on enforceRoutePermission if we adjust the mapping.
-// Since all are under /settings, routePermission in adminAuth currently maps /settings to 'settings.manage'.
-// To restrict user management correctly, we use enforceRoutePermission mapped to 'users.manage' explicitly here,
-// or we modify routePermission to check /settings/users. 
-// Let's use custom middleware to ensure 'users.manage' is enforced strictly for these routes.
 const { requirePermission } = require("../middleware/adminAuth");
 const requireUserManage = requirePermission("users.manage");
 
@@ -43,7 +44,6 @@ router.put("/security-alerts/:id", enforceRoutePermission, settingsController.up
 router.delete("/security-alerts/:id", enforceRoutePermission, settingsController.deleteSecurityAlert);
 
 // ─── Specializations ───
-
 
 
 

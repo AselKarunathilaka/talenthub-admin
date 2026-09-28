@@ -4,6 +4,10 @@ const InternRepository = require("../repositories/internRepository");
 
 class SLTApiScheduler {
   static init() {
+    if (process.env.SLT_API_SYNC_ENABLED === "false") {
+      console.log("⏸️  SLT API synchronization scheduler disabled (SLT_API_SYNC_ENABLED=false)");
+      return;
+    }
     console.log("🕐 Initializing SLT API synchronization scheduler...");
 
     // Schedule sync every 4 minutes to catch API changes
@@ -117,6 +121,11 @@ class SLTApiScheduler {
 
       const result = await InternService.syncWithSLTAPI({ enableCleanup });
 
+      if (result.networkError) {
+        console.log("ℹ️  Scheduled sync deferred: SLT API unreachable from current network. Operating with local MongoDB data.");
+        return result;
+      }
+
       console.log("✅ Scheduled sync completed:", result.message);
 
       if (result.success && result.stats) {
@@ -227,6 +236,21 @@ class SLTApiScheduler {
       console.log("✅ Comprehensive update completed:", result.message);
       return result;
     } catch (error) {
+      if (error.isNetworkError || (typeof error.message === "string" && error.message.includes("unreachable"))) {
+        console.log(`ℹ️  Comprehensive update deferred: ${error.message}`);
+        return {
+          success: false,
+          networkError: true,
+          message: `Comprehensive update deferred: ${error.message}`,
+          stats: {
+            updated: 0,
+            missingData: 0,
+            notFoundInApi: 0,
+            errors: 0,
+            totalProcessed: 0,
+          },
+        };
+      }
       console.error("❌ Comprehensive update failed:", error.message);
       return {
         success: false,

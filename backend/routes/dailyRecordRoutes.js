@@ -93,6 +93,24 @@ router.post(
   checkLogbookRestriction,
   createDailyRecord,
 );
+router.get("/admin/intern/:internId", async (req, res) => {
+  try {
+    // Allow admin access only
+    if (!req.user || (req.user.role !== "admin" && req.user.role !== "super_admin")) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    const DailyRecord = require("../models/DailyRecord");
+    const records = await DailyRecord.find({ internId: req.params.internId })
+      .sort({ date: -1 })
+      .populate("internId", "Trainee_Name Trainee_ID Trainee_Email username")
+      .lean();
+    return res.json(records);
+  } catch (err) {
+    console.error("Admin daily records fetch error:", err);
+    return res.status(500).json({ error: "Failed to fetch records" });
+  }
+});
+
 router.get("/", getDailyRecords);
 router.get("/:id", getDailyRecordById);
 router.put("/:id", updateDailyRecord);

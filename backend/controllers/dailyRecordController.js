@@ -1,5 +1,6 @@
 const DailyRecord = require("../models/DailyRecord");
 const Intern = require("../models/Intern");
+const { encrypt } = require("../utils/dbEncryption");
 const { validateEntry } = require("../utils/heuristics");
 const {
   checkLeaveSubmissionAllowed,
@@ -73,12 +74,83 @@ async function ensureDailyAttendance(intern, dateStr) {
   });
 }
 
-// ── Shared helper: resolve internId from request user ────────────────────────
-const resolveIntern = async (userId, userEmail) => {
-  let intern = await Intern.findById(userId);
-  if (!intern) intern = await Intern.findOne({ email: userEmail });
-  if (!intern) intern = await Intern.findOne({ userId });
+// ── Shared helper: resolve intern record (active or inactive special access) ──
+const findInternRecord = async (userId, userEmail) => {
+  const mongoose = require("mongoose");
+  const Intern = require("../models/Intern");
+  const InactiveIntern = require("../models/InactiveIntern");
+  const SpecialAccessIntern = require("../models/SpecialAccessIntern");
+
+  let intern = null;
+
+  // 1. Try finding by ObjectId in Intern, then InactiveIntern
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    intern = await Intern.findById(userId);
+    if (!intern) {
+      intern = await InactiveIntern.findById(userId);
+    }
+  }
+
+  // 2. Try finding by email in Intern, then InactiveIntern
+  if (!intern && userEmail) {
+    const cleanEmail = String(userEmail).trim();
+    const emailRegex = new RegExp(`^${cleanEmail}$`, "i");
+    intern = await Intern.findOne({
+      $or: [{ Trainee_Email: emailRegex }, { email: emailRegex }],
+    });
+    if (!intern) {
+      intern = await InactiveIntern.findOne({
+        $or: [{ Trainee_Email: emailRegex }, { email: emailRegex }],
+      });
+    }
+  }
+
+  // 3. Try finding by Trainee_ID
+  if (!intern && userId) {
+    const cleanId = String(userId).trim();
+    intern = await Intern.findOne({ Trainee_ID: cleanId });
+    if (!intern) {
+      intern = await InactiveIntern.findOne({ Trainee_ID: cleanId });
+    }
+  }
+
+  // 4. Special access check in SpecialAccessIntern
+  if (!intern && (userEmail || userId)) {
+    const cleanEmail = userEmail ? String(userEmail).trim().toLowerCase() : "";
+    const cleanId = userId ? String(userId).trim() : "";
+
+    const specialInterns = await SpecialAccessIntern.find({});
+    for (const spec of specialInterns) {
+      const specEmail = spec.email ? String(spec.email).trim().toLowerCase() : "";
+      const specId = spec.internId ? String(spec.internId).trim() : "";
+      const matchEmail = cleanEmail && specEmail === cleanEmail;
+      const matchId = cleanId && specId === cleanId;
+
+      if (matchEmail || matchId) {
+        intern = await InactiveIntern.findOne({
+          $or: [
+            ...(specEmail ? [{ Trainee_Email: new RegExp(`^${specEmail}$`, "i") }] : []),
+            ...(specId ? [{ Trainee_ID: specId }] : []),
+          ],
+        });
+        if (!intern) {
+          intern = await Intern.findOne({
+            $or: [
+              ...(specEmail ? [{ Trainee_Email: new RegExp(`^${specEmail}$`, "i") }] : []),
+              ...(specId ? [{ Trainee_ID: specId }] : []),
+            ],
+          });
+        }
+        if (intern) break;
+      }
+    }
+  }
+
   return intern;
+};
+
+const resolveIntern = async (userId, userEmail) => {
+  return await findInternRecord(userId, userEmail);
 };
 
 // ── POST / ────────────────────────────────────────────────────────────────────
@@ -146,7 +218,7 @@ const createDailyRecord = async (req, res) => {
       await existing.save();
       await existing.populate(
         "internId",
-        "Trainee_Name Trainee_ID Trainee_Email",
+        "Trainee_Name Trainee_ID Trainee_Email Institute",
       );
       return res.status(200).json(existing);
     }
@@ -169,7 +241,7 @@ const createDailyRecord = async (req, res) => {
 
     await newRecord.populate(
       "internId",
-      "Trainee_Name Trainee_ID Trainee_Email",
+      "Trainee_Name Trainee_ID Trainee_Email Institute",
     );
     
     // Invalidate cache
@@ -214,6 +286,10 @@ const createDailyRecord = async (req, res) => {
 const dailyRecordsCache = new Map();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+const clearDailyRecordsCache = () => {
+  dailyRecordsCache.clear();
+};
+
 // Get all daily records (for admin) or user's own records
 const getDailyRecords = async (req, res) => {
   try {
@@ -227,84 +303,151 @@ const getDailyRecords = async (req, res) => {
     }
 
     const query = {};
-    // Check if this is an admin or intern request
-    // If the user ID corresponds to a User (admin), show all records
-    // If the user ID corresponds to an Intern, show only their records
+    const mongoose = require("mongoose");
+    const User = require("../models/User");
 
-    let isSpecialAccessIntern = false;
-    let specialAccessInternTraineeId = null;
+    // Safe admin check: findById only if userId is a valid ObjectId
+    let adminUser = null;
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+      adminUser = await User.findById(userId);
+    }
 
-    // First check if this is an admin user
-    const adminUser = await require("../models/User").findById(userId);
+    let internInfo = null;
 
     if (!adminUser) {
-      // This is likely an intern login, filter by their records
-      let intern = null;
-      const mongoose = require("mongoose");
-      if (mongoose.Types.ObjectId.isValid(userId)) {
-        intern = await Intern.findById(userId);
-      }
-      if (!intern && userEmail) {
-        intern = await Intern.findOne({
-          $or: [
-            { Trainee_Email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
-            { email: { $regex: new RegExp(`^${userEmail}$`, "i") } },
-          ],
-        });
-      }
-      if (!intern && userId) {
-        intern = await Intern.findOne({ Trainee_ID: userId });
-      }
-
-      // Special access interns are stored in InactiveIntern collection.
-      // Fall back to that collection before returning a 404.
-      if (!intern && userEmail) {
-        const SpecialAccessIntern = require("../models/SpecialAccessIntern");
-        const hasSpecialAccess = await SpecialAccessIntern.findOne({
-          email: new RegExp(`^${userEmail}$`, "i"),
-        });
-        if (hasSpecialAccess) {
-          const InactiveIntern = require("../models/InactiveIntern");
-          intern = await InactiveIntern.findOne({
-            Trainee_Email: new RegExp(`^${userEmail}$`, "i"),
-          });
-        }
-      }
+      // Find intern in active Intern or InactiveIntern (special access)
+      const intern = await findInternRecord(userId, userEmail);
 
       if (!intern) {
         return res.status(404).json({
           error: "Intern record not found. Please contact your administrator.",
-          details: `No intern found for email: ${userEmail}`,
+          details: `No intern found for id: ${userId}, email: ${userEmail}`,
         });
       }
-      
-      // Track if this intern came from InactiveIntern (special access intern)
-      isSpecialAccessIntern = intern.constructor?.modelName === "InactiveIntern" || 
-        (intern.collection?.collectionName === "inactiveinterns");
-      specialAccessInternTraineeId = intern.Trainee_ID || null;
-      
-      query.$or = [
-        { internId: intern._id },
-        ...(intern.Trainee_ID ? [{ traineeId: intern.Trainee_ID }] : []),
-      ];
+
+      internInfo = {
+        _id: intern._id,
+        Trainee_ID: intern.Trainee_ID || intern.traineeId || "",
+        traineeId: intern.Trainee_ID || intern.traineeId || "",
+        Trainee_Name: intern.Trainee_Name || intern.traineeName || "Intern",
+        traineeName: intern.Trainee_Name || intern.traineeName || "Intern",
+        Trainee_Email: intern.Trainee_Email || intern.email || userEmail || "",
+        email: intern.Trainee_Email || intern.email || userEmail || "",
+        Institute: intern.Institute || "NSBM Green University",
+      };
+
+      const orClauses = [{ internId: intern._id }];
+      if (intern.Trainee_ID) {
+        orClauses.push({ traineeId: String(intern.Trainee_ID).trim() });
+      }
+      if (intern.traineeId) {
+        orClauses.push({ traineeId: String(intern.traineeId).trim() });
+      }
+      query.$or = orClauses;
     }
 
-    const rawRecords = await DailyRecord.find(query)
-      .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
+    let rawRecords = await DailyRecord.find(query)
+      .populate("internId", "Trainee_Name Trainee_ID Trainee_Email Institute")
       .sort({ createdAt: -1 });
 
-    // For special access interns, `populate` targets the Intern collection and
-    // will return null for InactiveIntern _ids. Manually inject Trainee_ID so
-    // the frontend can display the correct ID instead of "No ID Available".
-    let records = rawRecords;
-    if (isSpecialAccessIntern && specialAccessInternTraineeId) {
+    // Auto-clean any orphaned study_leave records that lack an active Approved LeaveRequest
+    const studyLeaveRecords = rawRecords.filter((r) => r.status === "study_leave");
+    if (studyLeaveRecords.length > 0) {
+      try {
+        const LeaveRequest = require("../models/LeaveRequest");
+        const targetInternId = internInfo ? internInfo._id : null;
+        const approvedLeaves = await LeaveRequest.find({
+          ...(targetInternId ? { intern: targetInternId } : {}),
+          requestType: "study_leave",
+          status: "Approved",
+        }).lean();
+
+        const validKeys = new Set();
+        for (const leave of approvedLeaves) {
+          const start = new Date(leave.leaveDate);
+          const end = new Date(leave.studyEndDate || leave.leaveDate);
+          start.setHours(0, 0, 0, 0);
+          end.setHours(0, 0, 0, 0);
+          const cur = new Date(start);
+          const lInternId = (leave.intern?._id || leave.intern).toString();
+          while (cur <= end) {
+            validKeys.add(`${lInternId}_${cur.toISOString().split("T")[0]}`);
+            cur.setDate(cur.getDate() + 1);
+          }
+        }
+
+        const orphanedIds = [];
+        for (const rec of studyLeaveRecords) {
+          const recInternId = (rec.internId?._id || rec.internId || internInfo?._id || "").toString();
+          const key = `${recInternId}_${rec.date}`;
+          if (!validKeys.has(key)) {
+            orphanedIds.push(rec._id);
+          }
+        }
+
+        if (orphanedIds.length > 0) {
+          await DailyRecord.deleteMany({ _id: { $in: orphanedIds } });
+          console.log(`[DailyRecord] Auto-purged ${orphanedIds.length} orphaned study_leave DailyRecord(s)`);
+          const orphanedSet = new Set(orphanedIds.map((id) => id.toString()));
+          rawRecords = rawRecords.filter((r) => !orphanedSet.has(r._id.toString()));
+        }
+      } catch (cleanErr) {
+        console.error("Error auto-cleaning orphaned study_leave records:", cleanErr);
+      }
+    }
+
+    // Format records and ensure internId is populated even for inactive/special access interns
+    let records;
+    if (!adminUser && internInfo) {
       records = rawRecords.map((record) => {
         const obj = record.toObject();
-        if (!obj.internId || !obj.internId.Trainee_ID) {
-          obj.Trainee_ID = specialAccessInternTraineeId;
+        if (!obj.internId || typeof obj.internId !== "object" || !obj.internId.Trainee_Name) {
+          obj.internId = internInfo;
+        }
+        if (!obj.Trainee_ID) {
+          obj.Trainee_ID = internInfo.Trainee_ID;
+        }
+        if (!obj.traineeId) {
+          obj.traineeId = internInfo.traineeId;
         }
         return obj;
       });
+    } else {
+      // For admin view, populate any missing internId from InactiveIntern if needed
+      const missingTraineeIds = new Set();
+      rawRecords.forEach((r) => {
+        if (!r.internId && r.traineeId) {
+          missingTraineeIds.add(r.traineeId);
+        }
+      });
+
+      if (missingTraineeIds.size > 0) {
+        const InactiveIntern = require("../models/InactiveIntern");
+        const inactives = await InactiveIntern.find({
+          Trainee_ID: { $in: Array.from(missingTraineeIds) },
+        }).lean();
+        const inactMap = new Map(inactives.map((i) => [i.Trainee_ID, i]));
+
+        records = rawRecords.map((record) => {
+          const obj = record.toObject();
+          if (!obj.internId && obj.traineeId && inactMap.has(obj.traineeId)) {
+            const inact = inactMap.get(obj.traineeId);
+            obj.internId = {
+              _id: inact._id,
+              Trainee_ID: inact.Trainee_ID,
+              traineeId: inact.Trainee_ID,
+              Trainee_Name: inact.Trainee_Name,
+              traineeName: inact.Trainee_Name,
+              Trainee_Email: inact.Trainee_Email,
+              email: inact.Trainee_Email,
+              Institute: inact.Institute || "NSBM Green University",
+            };
+          }
+          return obj;
+        });
+      } else {
+        records = rawRecords;
+      }
     }
 
     // Update cache
@@ -506,12 +649,11 @@ const validateBatchEntries = async (req, res) => {
       "[BATCH VALIDATE] ❌ Gemini validation failed:",
       error.message,
     );
-    // Do NOT fail-open. Return 503 so the frontend blocks submission.
-    return res.status(503).json({
-      error:
-        "AI validation is temporarily unavailable. Please try again in a moment.",
-      details: error.message,
-      stack: error.stack,
+    // TEMPORARY FIX: Fail-open so interns can submit their logbooks even if the AI is down on the live server
+    return res.status(200).json({
+      tasks: { valid: true, reason: "" },
+      challenges: { valid: true, reason: "" },
+      plans: { valid: true, reason: "" },
     });
   }
 };
@@ -524,4 +666,6 @@ module.exports = {
   deleteDailyRecord,
   validateLogbookEntry,
   validateBatchEntries,
+  findInternRecord,
+  clearDailyRecordsCache,
 };

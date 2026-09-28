@@ -11,6 +11,7 @@ const ALL_PERMISSIONS = [
 
 const ROLE_PERMISSIONS = {
   super_admin: ALL_PERMISSIONS,
+  super_admin_plus: ALL_PERMISSIONS,
   PM: ALL_PERMISSIONS,
   pm: ALL_PERMISSIONS,
   admin: ADMIN_PERMISSIONS,

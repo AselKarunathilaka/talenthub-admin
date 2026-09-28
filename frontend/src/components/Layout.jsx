@@ -77,6 +77,8 @@ const Layout = ({
           </div>
         </main>
 
+        <div id="layout-modal-root" className="absolute inset-0 z-20 pointer-events-none" />
+
         <div className="absolute top-0 left-0 right-0 z-30 pointer-events-auto">
           <Navbar
             onMenuClick={() => setIsMobileOpen(true)}

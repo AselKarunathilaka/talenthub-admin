@@ -48,6 +48,7 @@ const exportDailyRecordsPDF = async (req, res) => {
       endDate,
       template: templateId = "default",
     } = req.query;
+    let resolvedUniversity = req.query.universityName || "NSBM Green University";
     const userId = req.user.id;
     const userEmail = req.user.email;
 
@@ -61,28 +62,61 @@ const exportDailyRecordsPDF = async (req, res) => {
     const dateQuery = buildDateQuery({ date, startDate, endDate });
 
     // Determine admin vs intern
+    const mongoose = require("mongoose");
     const User = require("../models/User");
-    const Intern = require("../models/Intern");
     const DailyRecord = require("../models/DailyRecord");
+    const { findInternRecord } = require("./dailyRecordController");
 
-    const adminUser = await User.findById(userId);
+    const adminUser = (userId && mongoose.Types.ObjectId.isValid(userId))
+      ? await User.findById(userId)
+      : null;
     const isAdmin = !!adminUser;
 
+    let internRecord = null;
     if (!isAdmin) {
-      let intern = await Intern.findById(userId);
-      if (!intern) intern = await Intern.findOne({ email: userEmail });
-      if (!intern)
+      internRecord = await findInternRecord(userId, userEmail);
+      if (!internRecord)
         return res.status(404).json({ error: "Intern record not found." });
-      dateQuery.internId = intern._id;
+      if (internRecord.Institute) {
+        resolvedUniversity = internRecord.Institute;
+      }
+      dateQuery.$or = [
+        { internId: internRecord._id },
+        ...(internRecord.Trainee_ID ? [{ traineeId: internRecord.Trainee_ID }] : []),
+      ];
     }
 
-    const records = await DailyRecord.find(dateQuery)
-      .populate("internId", "Trainee_Name Trainee_ID Trainee_Email")
-      .sort({ internId: 1, date: -1 });
+    const rawRecords = await DailyRecord.find(dateQuery)
+      .populate("internId", "Trainee_Name Trainee_ID Trainee_Email Institute")
+      .sort({ date: 1 });
+
+    const records = rawRecords.map((r) => {
+      const obj = r.toObject ? r.toObject() : { ...r };
+      if ((!obj.internId || !obj.internId.Trainee_Name) && internRecord) {
+        obj.internId = {
+          _id: internRecord._id,
+          Trainee_ID: internRecord.Trainee_ID || internRecord.traineeId || "",
+          traineeId: internRecord.Trainee_ID || internRecord.traineeId || "",
+          Trainee_Name: internRecord.Trainee_Name || internRecord.traineeName || "Intern",
+          traineeName: internRecord.Trainee_Name || internRecord.traineeName || "Intern",
+          Trainee_Email: internRecord.Trainee_Email || internRecord.email || userEmail || "",
+          email: internRecord.Trainee_Email || internRecord.email || userEmail || "",
+          Institute: internRecord.Institute || resolvedUniversity,
+        };
+      }
+      return obj;
+    });
+
+    // Ensure strictly chronological sort by date (earliest to latest)
+    records.sort((a, b) => {
+      const da = a.date || "";
+      const db = b.date || "";
+      return da.localeCompare(db);
+    });
 
     // ── Resolve template ──────────────────────────────────────────────────────
     const tmpl = getTemplate(templateId);
-    const buffer = await tmpl.generate(records, { dateLabel, isAdmin });
+    const buffer = await tmpl.generate(records, { dateLabel, isAdmin, universityName: resolvedUniversity });
 
     // ── Build filename & content-type (PDF or XLSX) ───────────────────────────
     const isExcel = tmpl.ext === "xlsx";

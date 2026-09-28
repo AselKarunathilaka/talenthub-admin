@@ -32,6 +32,7 @@ import {
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 /*  Config / helpers                                                           */
@@ -273,7 +274,17 @@ const TalentHubRestrictions = () => {
     doc.save(`TalentHub_Restrictions_${new Date().toISOString().split("T")[0]}.pdf`);
   };
 
-  const executeAction = async (target, type) => { try { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); let endpoint = ""; let body = {}; let successMsg = ""; if (type === "lift") { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`; body = { liftReason: "Admin granted temporary access" }; successMsg = `Temporary access granted for ${target.name}`; } else { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`; body = { reason: "Admin manually restricted access / revoked override" }; successMsg = `Access restricted for ${target.name}`; } const res = await fetch(`${API_BASE_URL}${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` }, body: JSON.stringify(body) }); const json = await res.json(); if (json.success) { showToast(successMsg); await fetchRestrictions(false); } else { showToast(json.error || "Failed", "error"); } } catch { showToast("Error processing request", "error"); } }; const handleConfirmClick = (intern, type) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeAction(intern, type); return; }
+  const executeAction = async (target, type) => { try { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); let endpoint = ""; let body = {}; let successMsg = ""; if (type === "lift") { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/lift`; body = { liftReason: "Admin granted temporary access" }; successMsg = `Temporary access granted for ${target.name}`; } else { endpoint = `/admin/talenthub-restrictions/${target.id || target._id}/restrict`; body = { reason: "Admin manually restricted access / revoked override" }; successMsg = `Access restricted for ${target.name}`; } const res = await fetch(`${API_BASE_URL}${endpoint}`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminInfo.token}` }, body: JSON.stringify(body) }); const json = await res.json(); if (json.success) { showToast(successMsg); await fetchRestrictions(false); } else { showToast(json.error || "Failed", "error"); } } catch { showToast("Error processing request", "error"); } }; const handleConfirmClick = (intern, type) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      const action = type === "lift" ? "talenthub restriction lift" : "talenthub restriction revoke";
+      logSecurityAction({
+        action,
+        extraInfo: `Intern: ${intern?.name || ""} (ID: ${intern?.traineeId || "N/A"})`
+      });
+      executeAction(intern, type);
+      return;
+    }
     setConfirmTarget(intern);
     setConfirmType(type);
     setConfirmPassword("");
@@ -719,37 +730,36 @@ const TalentHubRestrictions = () => {
         </main>
 
         {/* ── Security Check Backdrop ── */}
-        <AnimatePresence>
+        <>
+
           {(confirmTarget || historyTarget) && (
-            <motion.div
-              key="talenthub-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
+             
+             
+             
+             
+             
               className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
             />
           )}
-        </AnimatePresence>
+        </>
 
         {/* ── Security Check Popup ── */}
-        <AnimatePresence>
+        <>
+
           {confirmTarget && (
-            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed inset-0 z-[22] pointer-events-none">
               <div
                 className="fixed inset-0 z-[49] pointer-events-auto"
                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
               />
               <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                  onAnimationComplete={() => {
-                    document.getElementById('talenthub-security-password-input')?.focus();
-                  }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                <div
+                 
+                 
+                 
+                 
+                 className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-start mb-3 xl:mb-4">
@@ -826,11 +836,11 @@ const TalentHubRestrictions = () => {
                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
 
         {/* Modals */}
         <HistoryModal

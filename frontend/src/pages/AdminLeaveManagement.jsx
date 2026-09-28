@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import {
@@ -6,8 +6,10 @@ import {
   updateLeaveRequestStatus,
   bulkUpdateLeaveRequestStatus,
   getLeaveRequestStats,
+  deleteLeaveRequest,
 } from "../api/leaveRequestApi";
 import { downloadApprovedLeaveReport, adminApi } from "../api/adminApi";
+import { logSecurityAction } from "../utils/securityLogger";
 import toast from "react-hot-toast";
 import {
   FiFileText,
@@ -27,6 +29,7 @@ import {
   FiChevronRight,
   FiChevronsLeft,
   FiChevronsRight,
+  FiTrash2,
 } from "react-icons/fi";
 import { Bike, GraduationCap } from "lucide-react";
 import { FaTimes, FaEye, FaEyeSlash, FaSpinner } from "react-icons/fa";
@@ -347,7 +350,43 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     setDocumentViewer({ show: false, url: "", type: "", loading: false });
   };
 
-  const triggerSecurityPopup = (type, args) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { if (type === "statusUpdate") { handleStatusUpdateActual(...args); } else if (type === "approveAll") { handleApproveAllActual(); } else if (type === "bulkSubmit") { confirmBulkActionActual(); } setActionModal(prev => ({ ...prev, open: false })); setIsBulkModalOpen(false); return; }
+  const triggerSecurityPopup = (type, args) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      let actionName = "security verification";
+      let internInfo = "";
+      if (type === "statusUpdate") {
+        const requestId = args[0];
+        const status = args[1];
+        const request = leaveRequests.find(r => r._id === requestId);
+        if (request) {
+          internInfo = ` for ${request.internName} (ID: ${request.internTraineeId})`;
+        }
+        if (requestType === "short_leave") {
+          actionName = status === "Approved" ? "short leave approve" : status === "Denied" ? "short leave deny" : "short leave restore";
+        } else {
+          actionName = status === "Approved" ? "extended leave approve" : status === "Denied" ? "extended leave deny" : "extended leave restore";
+        }
+        logSecurityAction({ action: actionName, extraInfo: internInfo });
+        handleStatusUpdateActual(...args);
+      } else if (type === "approveAll") {
+        actionName = requestType === "short_leave" ? "short leave approve" : "extended leave approve";
+        internInfo = ` for ${stats.pending} intern(s)`;
+        logSecurityAction({ action: actionName, extraInfo: internInfo });
+        handleApproveAllActual();
+      } else if (type === "bulkSubmit") {
+        const isRestore = bulkAction === "restore";
+        actionName = requestType === "short_leave" 
+          ? (bulkAction === "approve" ? "short leave approve" : isRestore ? "short leave restore" : "short leave deny") 
+          : (bulkAction === "approve" ? "extended leave approve" : isRestore ? "extended leave restore" : "extended leave deny");
+        internInfo = ` for ${selectedRequests.size} intern(s)`;
+        logSecurityAction({ action: actionName, extraInfo: internInfo });
+        confirmBulkActionActual();
+      }
+      setActionModal(prev => ({ ...prev, open: false }));
+      setIsBulkModalOpen(false);
+      return;
+    }
     setPendingAction({ type, args });
     setSecurityPassword("");
     setPasswordError("");
@@ -649,6 +688,21 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
     }
   };
 
+  const handleDeleteRequest = async (requestId) => {
+    try {
+      setProcessing(true);
+      await deleteLeaveRequest(requestId);
+      toast.success("Leave request permanently deleted.");
+      setSelectedRequest(null);
+      fetchLeaveRequests();
+    } catch (error) {
+      console.error("Error deleting leave request:", error);
+      toast.error(error.message || "Failed to delete leave request.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const handleDownloadApprovedReport = async () => {
     const toastId = toast.loading("Generating approved leave report...");
     try {
@@ -933,10 +987,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
           <div className="relative z-10 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-6 pt-2 mb-8">
             {/* Left: Title */}
             <div className="flex items-center gap-2 sm:gap-3 md:gap-4">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
+              <div
+                
+                
+                
                 className="p-2.5 sm:p-3 md:p-3.5 bg-gradient-to-br from-[#000066] to-[#006600] shadow-md rounded-lg sm:rounded-xl md:rounded-2xl border border-[#006600]/20 flex-shrink-0"
               >
                 {isStudyLeave ? (
@@ -944,20 +998,20 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 ) : (
                   <Bike className="text-white h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" />
                 )}
-              </motion.div>
+              </div>
               <div className="flex flex-col justify-center">
                 <motion.h1
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3 }}
+                  
+                  
+                  
                   className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-slate-900 tracking-tight"
                 >
                   {pageCopy.title}
                 </motion.h1>
                 <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.1, duration: 0.3 }}
+                  
+                  
+                  
                   className="text-slate-500 mt-0.5 sm:mt-1 text-[10px] sm:text-xs md:text-sm lg:text-base font-medium max-w-xl"
                 >
                   {pageCopy.description}
@@ -965,10 +1019,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               </div>
             </div>
 
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1, duration: 0.2 }}
+            <div
+              
+              
+              
               className="flex gap-3 flex-col sm:flex-row flex-wrap sm:justify-end sm:items-center w-full md:w-auto"
             >
               {!isStudyLeave && canManageLeave && (
@@ -1048,7 +1102,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                 </button>
               )}
 
-              {canManageLeave && filter === "Pending" && displayedStats.pending > 0 && (
+              {/* Approve All hidden for extended (study) leave — only Deny is available */}
+              {!isStudyLeave && canManageLeave && filter === "Pending" && displayedStats.pending > 0 && (
                 <button
                   onClick={handleApproveAll}
                   disabled={processing}
@@ -1058,14 +1113,14 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   APPROVE ALL {displayedStats.pending}
                 </button>
               )}
-            </motion.div>
+            </div>
           </div>
 
           {/* Premium Stat Cards */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.3 }}
+          <div
+            
+            
+            
             className="grid grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 mb-4"
           >
             {/* Pending Card */}
@@ -1191,15 +1246,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               </div>
             </div>
 
-          </motion.div>
+          </div>
 
           {/* Bulk Actions Bar */}
-          <AnimatePresence>
+          
             {canManageLeave && (filter === "Pending" || filter === "Denied") && selectedRequests.size > 0 && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
+              <div
+                
+                
+                
                 className="mb-6 bg-[#0056a2]/5 border border-[#0056a2]/20 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col lg:flex-row items-center justify-between gap-3 sm:gap-4 overflow-hidden shadow-sm"
               >
                 <div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-center lg:justify-start">
@@ -1222,7 +1277,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                         <FiX className="w-4 h-4 shrink-0" />
                         <span className="truncate">Deny <span className="hidden sm:inline">Selected</span></span>
                       </button>
-                      {/* Approve Selected on RIGHT */}
+                      {/* Approve Selected hidden for extended (study) leave */}
+                      {!isStudyLeave && (
                       <button
                         onClick={() => handleBulkAction("approve")}
                         disabled={processing}
@@ -1231,6 +1287,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                         <FiCheckCircle className="w-4 h-4 shrink-0" />
                         <span className="truncate">Approve <span className="hidden sm:inline">Selected</span></span>
                       </button>
+                      )}
                     </>
                   ) : (
                     /* Restore Selected for Denied tab */
@@ -1253,15 +1310,15 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     Clear <span className="hidden sm:inline">Selection</span>
                   </button>
                 </div>
-              </motion.div>
+              </div>
             )}
-          </AnimatePresence>
+          
 
           {/* Search Bar */}
-          <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.2 }}
+          <div
+              
+              
+              
               className="mb-4 select-none"
             >
               <div className="relative">
@@ -1292,7 +1349,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     : `${filteredRequests.length} result${filteredRequests.length !== 1 ? "s" : ""} found`}
                 </p>
               )}
-            </motion.div>
+            </div>
 
           {/* Content Body */}
           {loading ? (
@@ -1300,9 +1357,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#0056a2]"></div>
             </div>
           ) : filteredRequests.length === 0 ? (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+            <div
+              
+              
               className="bg-white rounded-3xl shadow-sm border border-dashed border-gray-300 p-8 sm:p-12 md:p-16 text-center"
             >
               <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
@@ -1338,7 +1395,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                   View Today's Pending
                 </button>
               </div>
-            </motion.div>
+            </div>
           ) : (
             <>
               {/* Mobile Select All */}
@@ -1360,11 +1417,11 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               )}
 
               {/* Premium Data Table */}
-              <motion.div 
+              <div 
                 className="bg-transparent xl:bg-white rounded-2xl shadow-none xl:shadow-sm border-none xl:border border-slate-200/80 overflow-hidden mb-6 z-10 relative"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3, duration: 0.3 }}
+                
+                
+                
               >
                 <div className="overflow-hidden xl:overflow-x-auto">
                   <table className="w-full text-left text-sm block xl:table border-collapse">
@@ -1410,16 +1467,16 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                       </tr>
                     </thead>
                     <tbody className="block xl:table-row-group bg-transparent xl:bg-white divide-y-0 xl:divide-y divide-slate-200/60 p-0 xl:p-0 space-y-4 xl:space-y-0">
-                      <AnimatePresence>
+                      
                         {filteredRequests.map((request) => {
                           const urgent = isUrgentRequest(request.leaveDate);
                           const todayRequest = isToday(request.leaveDate);
                           return (
                             <motion.tr
                               layout
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
+                              
+                              
+                              
                               key={request._id}
                               className={`block xl:table-row transition-colors hover:bg-slate-50/50 relative bg-white rounded-2xl xl:rounded-none shadow-sm xl:shadow-none border border-slate-200/80 xl:border-none p-4 xl:p-0 ${
                                 urgent && request.status === "Pending"
@@ -1589,10 +1646,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                       </button>
                                     </div>
                                   ) : request.status === "Denied" && canManageLeave ? (
-                                    <div className="flex flex-col sm:flex-row xl:flex-col gap-2 w-full sm:w-auto items-stretch sm:items-center">
+                                    <div className="flex flex-col sm:flex-row xl:flex-col gap-2 w-full sm:w-auto items-stretch">
                                       <button
                                         onClick={() => openReviewModal(request)}
-                                        className="px-3 py-2 w-full sm:w-auto bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm"
+                                        className="px-3 py-2 flex-1 w-full flex items-center justify-center bg-slate-50 text-gray-600 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm"
                                       >
                                         Details
                                       </button>
@@ -1605,7 +1662,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                                           )
                                         }
                                         disabled={processing}
-                                        className="px-3 py-2 w-full sm:w-auto flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-transparent rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
+                                        className="px-3 py-2 flex-1 w-full flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white border border-amber-200 hover:border-transparent rounded-xl text-xs font-bold transition-all shadow-sm disabled:opacity-50"
                                         title="Restore to Pending"
                                       >
                                         <FiRotateCcw className="w-3 h-3" />
@@ -1625,7 +1682,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                             </motion.tr>
                           );
                         })}
-                      </AnimatePresence>
+                      
                     </tbody>
                   </table>
                 </div>
@@ -1706,37 +1763,39 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     </div>
                   </div>
                 )}
-              </motion.div>
+              </div>
             </>
           )}
         </main>
 
       {/* Review Modal */}
-      <AnimatePresence>
+      
         {selectedRequest && (
-          <React.Fragment>
-            <motion.div
-              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 transform-gpu will-change-transform"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+          <React.Fragment key="review-modal-frag">
+            <div
+              key="review-modal-backdrop"
+              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 "
+              
+              
+              
               onClick={closeReviewModal}
               onWheel={handleBackdropWheel}
               onTouchStart={handleBackdropTouchStart}
               onTouchMove={handleBackdropTouchMove}
             />
-            <motion.div
+            <div
+              key="action-modal-content"
               style={{ left: `${sidebarWidth}px` }}
-              className="fixed top-[64px] bottom-[40px] right-0 z-[28] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="fixed top-[64px] bottom-[40px] right-0 z-[32] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
+              
+              
+              
             >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+              <div
+                
+                
+                
+                
                 className="bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 max-w-2xl lg:max-w-3xl w-full h-[min(580px,calc(100vh-125px))] flex flex-col relative pointer-events-auto overflow-hidden my-auto"
                 onClick={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
@@ -1945,6 +2004,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                           className="w-full px-2.5 sm:px-3 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#00b4eb] focus:border-transparent transition-all resize-none text-[11px] sm:text-xs font-medium text-gray-800 select-text min-h-[76px] sm:min-h-[88px]"
                         />
                         <div className="flex gap-2 pt-2 sm:pt-2.5">
+                          {/* Approve button hidden for extended (study) leave */}
+                          {!isStudyLeave && (
                           <button
                             onClick={() =>
                               handleStatusUpdate(
@@ -1963,6 +2024,7 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                             <FiCheckCircle className="text-xs sm:text-sm" />{" "}
                             {processing ? "Processing..." : "Approve"}
                           </button>
+                          )}
                           <button
                             onClick={() =>
                               handleStatusUpdate(
@@ -1987,42 +2049,112 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
 
                     {selectedRequest.status === "Denied" && canManageLeave && (
                       <div className="pt-2.5 sm:pt-3 border-t border-gray-200">
-                        <button
-                          onClick={() =>
-                            handleStatusUpdate(
-                              selectedRequest._id,
-                              "Pending",
-                              adminResponse || selectedRequest.adminResponse,
-                            )
-                          }
-                          disabled={processing}
-                          className={`w-full flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3.5 h-9 sm:h-10 rounded-lg text-xs sm:text-sm font-bold text-white transition-all shadow-sm ${
-                            processing
-                              ? "bg-gray-400 cursor-not-allowed"
-                              : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-md hover:shadow-amber-500/20 ring-1 ring-amber-400/50"
-                          }`}
-                        >
-                          <FiRotateCcw className="text-xs sm:text-sm" />{" "}
-                          {processing ? "Restoring..." : "Restore to Pending"}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(
+                                selectedRequest._id,
+                                "Pending",
+                                adminResponse || selectedRequest.adminResponse,
+                              )
+                            }
+                            disabled={processing}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3.5 h-9 sm:h-10 rounded-lg text-xs sm:text-sm font-bold text-white transition-all shadow-sm ${
+                              processing
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-md hover:shadow-amber-500/20 ring-1 ring-amber-400/50"
+                            }`}
+                          >
+                            <FiRotateCcw className="text-xs sm:text-sm" />{" "}
+                            {processing ? "Restoring..." : "Restore"}
+                          </button>
+                          <button
+                            onClick={() => { setSelectedRequest(null); handleQuickAction(selectedRequest._id, "delete", selectedRequest.intern?.name || ""); }}
+                            disabled={processing}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3.5 h-9 sm:h-10 rounded-lg text-xs sm:text-sm font-bold text-white transition-all shadow-sm ${
+                              processing
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-gray-700 to-gray-900 hover:from-gray-800 hover:to-black hover:shadow-md ring-1 ring-gray-600/50"
+                            }`}
+                            title="Permanently delete this request"
+                          >
+                            <FiTrash2 className="text-xs sm:text-sm" />{" "}
+                            {processing ? "..." : "Delete"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Revoke approval: only for extended leave Approved requests */}
+                    {isStudyLeave && selectedRequest.status === "Approved" && canManageLeave && (
+                      <div className="pt-2.5 sm:pt-3 border-t border-gray-200 space-y-2">
+                        <span className="text-[8px] sm:text-[9px] font-bold text-rose-500 uppercase tracking-wider flex items-center gap-1">
+                          <FiFileText className="text-xs" /> Revoke Approval
+                        </span>
+                        <textarea
+                          value={adminResponse}
+                          onChange={(e) => setAdminResponse(e.target.value)}
+                          placeholder="Add a reason for revoking this approval..."
+                          rows="2"
+                          className="w-full px-2.5 sm:px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-rose-400 focus:border-transparent transition-all resize-none text-[11px] sm:text-xs font-medium text-gray-800 select-text"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(
+                                selectedRequest._id,
+                                "Pending",
+                                adminResponse || selectedRequest.adminResponse,
+                              )
+                            }
+                            disabled={processing}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3.5 h-9 sm:h-10 rounded-lg text-xs sm:text-sm font-bold text-white transition-all shadow-sm ${
+                              processing
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-md hover:shadow-amber-500/20 ring-1 ring-amber-400/50"
+                            }`}
+                          >
+                            <FiRotateCcw className="text-xs sm:text-sm" />{" "}
+                            {processing ? "Processing..." : "Restore to Pending"}
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleStatusUpdate(
+                                selectedRequest._id,
+                                "Denied",
+                                adminResponse,
+                              )
+                            }
+                            disabled={processing}
+                            className={`flex-1 flex items-center justify-center gap-1.5 py-2 sm:py-2.5 px-3.5 h-9 sm:h-10 rounded-lg text-xs sm:text-sm font-bold text-white transition-all shadow-sm ${
+                              processing
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-md hover:shadow-red-500/20 ring-1 ring-red-400/50"
+                            }`}
+                          >
+                            <FiX className="text-xs sm:text-sm" />{" "}
+                            {processing ? "Processing..." : "Deny"}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
             </React.Fragment>
             )}
-      </AnimatePresence>
+      
 
       {/* Single Action Confirmation Modal */}
-      <AnimatePresence>
+      
         {actionModal.open && canManageLeave && (
-          <React.Fragment>
-            <motion.div
-              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 transform-gpu will-change-transform"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+          <React.Fragment key="action-modal-frag">
+            <div
+              key="action-modal-backdrop"
+              className={`fixed inset-0 z-[30] pointer-events-auto transition-opacity duration-200 ${selectedRequest ? "bg-slate-900/20" : "bg-slate-900/60 backdrop-blur-sm"}`}
+              
+              
+              
               onClick={() =>
                 !processing &&
                 setActionModal({
@@ -2037,18 +2169,19 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
               onTouchStart={handleBackdropTouchStart}
               onTouchMove={handleBackdropTouchMove}
             />
-            <motion.div
+            <div
+              key="action-modal-content"
               style={{ left: `${sidebarWidth}px` }}
-              className="fixed top-[64px] bottom-[40px] right-0 z-[28] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="fixed top-[64px] bottom-[40px] right-0 z-[32] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
+              
+              
+              
             >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+              <div
+                
+                
+                
+                
                 className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-sm w-full flex flex-col relative overflow-hidden pointer-events-auto max-h-full my-auto"
                 onClick={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
@@ -2186,6 +2319,8 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                               "Pending",
                               actionModal.adminResponse,
                             );
+                          } else if (actionModal.action === "delete") {
+                            await handleDeleteRequest(actionModal.requestId);
                           }
                           setActionModal({
                             open: false,
@@ -2203,7 +2338,9 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                               ? "bg-gradient-to-r from-[#15803d] to-[#50b748] hover:shadow-md hover:shadow-green-500/20"
                               : actionModal.action === "deny"
                                 ? "bg-gradient-to-r from-rose-600 to-red-500 hover:shadow-md hover:shadow-red-500/20"
-                                : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-md hover:shadow-amber-500/20"
+                                : actionModal.action === "delete"
+                                  ? "bg-gradient-to-r from-gray-700 to-gray-900 hover:shadow-md ring-1 ring-gray-600/50"
+                                  : "bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 hover:shadow-md hover:shadow-amber-500/20"
                         }`}
                       >
                         {processing
@@ -2212,42 +2349,45 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                             ? "Approve"
                             : actionModal.action === "deny"
                               ? "Deny"
-                              : "Restore"}
+                              : actionModal.action === "delete"
+                                ? "Delete"
+                                : "Restore"}
                       </button>
                     </div>
                   </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
             </React.Fragment>
             )}
-      </AnimatePresence>
+      
 
       {/* Bulk Action Modal */}
-      <AnimatePresence>
+      
         {isBulkModalOpen && canManageLeave && (
           <React.Fragment>
-            <motion.div
-              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 transform-gpu will-change-transform"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <div
+              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 "
+              
+              
+              
               onClick={() => !processing && setIsBulkModalOpen(false)}
               onWheel={handleBackdropWheel}
               onTouchStart={handleBackdropTouchStart}
               onTouchMove={handleBackdropTouchMove}
             />
-            <motion.div
+            <div
+              key="action-modal-content"
               style={{ left: `${sidebarWidth}px` }}
-              className="fixed top-[64px] bottom-[40px] right-0 z-[28] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="fixed top-[64px] bottom-[40px] right-0 z-[32] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
+              
+              
+              
             >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+              <div
+                
+                
+                
+                
                 className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-sm w-full flex flex-col relative overflow-hidden pointer-events-auto max-h-full my-auto"
                 onClick={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
@@ -2374,38 +2514,39 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                       </button>
                     </div>
                   </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
             </React.Fragment>
             )}
-      </AnimatePresence>
+      
 
       {/* Document Viewer Modal */}
-      <AnimatePresence>
+      
         {documentViewer.show && (
           <React.Fragment>
-            <motion.div
-              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 transform-gpu will-change-transform"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <div
+              className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-sm transition-opacity duration-200 "
+              
+              
+              
               onClick={closeDocumentViewer}
               onWheel={handleBackdropWheel}
               onTouchStart={handleBackdropTouchStart}
               onTouchMove={handleBackdropTouchMove}
             />
-            <motion.div
+            <div
+              key="action-modal-content"
               style={{ left: `${sidebarWidth}px` }}
-              className="fixed top-[64px] bottom-[40px] right-0 z-[28] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="fixed top-[64px] bottom-[40px] right-0 z-[32] pointer-events-none flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-hidden"
+              
+              
+              
             >
-              <motion.div
-                initial={{ scale: 0.95, opacity: 0, y: 10 }}
-                animate={{ scale: 1, opacity: 1, y: 0 }}
-                exit={{ scale: 0.95, opacity: 0, y: 10 }}
-                transition={{ duration: 0.18, ease: "easeOut" }}
+              <div
+                
+                
+                
+                
                 className="relative bg-white rounded-xl sm:rounded-2xl shadow-2xl border border-slate-200 max-w-4xl lg:max-w-5xl w-full h-[min(580px,calc(100vh-125px))] flex flex-col overflow-hidden pointer-events-auto my-auto"
                 onClick={(e) => e.stopPropagation()}
                 onWheel={(e) => e.stopPropagation()}
@@ -2486,20 +2627,21 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                     Close Viewer
                   </button>
                 </div>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
             </React.Fragment>
             )}
-      </AnimatePresence>
+      
 
       {/* Security Check Popup */}
-      <AnimatePresence>
+      <>
+
         {showSecurityPopup && (
           <>
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }} 
+            <div 
+              
+              
+              
               className="fixed inset-0 z-[25] pointer-events-auto bg-slate-900/60 backdrop-blur-md transition-all duration-300" 
               onClick={() => setShowSecurityPopup(false)}
             />
@@ -2507,10 +2649,10 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
             {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
             <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
               <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                <div
+                 
+                 
+                 
                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                 >
                   <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -2563,12 +2705,12 @@ const AdminLeaveManagement = ({ requestType = "short_leave" }) => {
                       {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           </>
         )}
-      </AnimatePresence>
+      </>
 
       </div>
     </AdminNavigation>

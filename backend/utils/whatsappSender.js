@@ -5,7 +5,7 @@ const fs = require('fs');
 let client;
 let isReady = false;
 let qrCodeData = null;
-let connectionStatus = 'INITIALIZING'; // INITIALIZING, DISCONNECTED, WAITING_FOR_SCAN, CONNECTED, ERROR
+let connectionStatus = 'INITIALIZING'; // INITIALIZING, DISCONNECTED, WAITING_FOR_SCAN, AUTHENTICATING, CONNECTED, ERROR
 let connectedNumber = null;
 let connectionTime = null;
 
@@ -28,11 +28,14 @@ const initializeWhatsApp = async () => {
     }
     
     client = new Client({
-        // Use LocalAuth to save the session so you don't have to scan the QR code every time
         authStrategy: new LocalAuth({ dataPath: './.wwebjs_auth' }),
-        authTimeoutMs: 60000,
-        qrMaxRetries: 3,
+        authTimeoutMs: 0,
+        qrMaxRetries: 0,
+        takeoverOnConflict: true,
+        takeoverTimeoutMs: 0,
+        webVersionCache: { type: 'none' },
         puppeteer: {
+            headless: true,
             args: [
                 '--no-sandbox', 
                 '--disable-setuid-sandbox',
@@ -40,15 +43,20 @@ const initializeWhatsApp = async () => {
                 '--disable-accelerated-2d-canvas',
                 '--no-first-run',
                 '--no-zygote',
-                '--disable-gpu'
+                '--disable-gpu',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows',
+                '--disable-renderer-backgrounding',
+                '--disable-extensions',
+                '--disable-features=IsolateOrigins,site-per-process'
             ],
-            protocolTimeout: 240000
+            protocolTimeout: 300000
         }
     });
 
     client.on('qr', (qr) => {
         console.log('\n======================================================');
-        console.log('⚠️  ACTION REQUIRED: LINK WHATSAPP ACCOUNT');
+        console.log('WARNING: ACTION REQUIRED: LINK WHATSAPP ACCOUNT');
         console.log('Scan this QR code with the WhatsApp app on your phone:');
         qrcode.generate(qr, { small: true });
         console.log('======================================================\n');
@@ -57,8 +65,18 @@ const initializeWhatsApp = async () => {
         connectionStatus = 'WAITING_FOR_SCAN';
     });
 
+    client.on('loading_screen', (percent, message) => {
+        console.log(`[WhatsApp] Loading: ${percent}% - ${message}`);
+    });
+
+    client.on('authenticated', () => {
+        console.log('[WhatsApp] QR scanned & authenticated! Waiting for ready...');
+        connectionStatus = 'AUTHENTICATING';
+        qrCodeData = null;
+    });
+
     client.on('ready', () => {
-        console.log('✅ [WhatsApp] Client is ready and authenticated!');
+        console.log('[WhatsApp] Client is ready and authenticated!');
         isReady = true;
         connectionStatus = 'CONNECTED';
         qrCodeData = null;
@@ -67,25 +85,37 @@ const initializeWhatsApp = async () => {
     });
     
     client.on('disconnected', (reason) => {
-        console.log('❌ [WhatsApp] Client was logged out or disconnected:', reason);
+        console.log('[WhatsApp] Client was logged out or disconnected:', reason);
         isReady = false;
         connectionStatus = 'DISCONNECTED';
         qrCodeData = null;
         connectedNumber = null;
         connectionTime = null;
         
-        // Removed auto-restart to prevent "Browser is already running" locked session loops.
-        // User must manually restart from Admin Settings if disconnected.
+        if (reason === 'NAVIGATION' || reason === 'CONFLICT') {
+            console.log('[WhatsApp] Transient disconnection, auto-reconnect in 5s...');
+            setTimeout(() => {
+                initializeWhatsApp().catch(err => console.error('[WhatsApp] Auto-reconnect failed:', err));
+            }, 5000);
+        }
     });
 
     client.on('auth_failure', (msg) => {
-        console.error('❌ [WhatsApp] Authentication failure:', msg);
+        console.error('[WhatsApp] Authentication failure:', msg);
         connectionStatus = 'ERROR';
         qrCodeData = null;
+        
+        if (fs.existsSync('./.wwebjs_auth')) {
+            try { fs.rmSync('./.wwebjs_auth', { recursive: true, force: true }); } catch (e) {}
+        }
+        console.log('[WhatsApp] Restarting in 5s after auth_failure...');
+        setTimeout(() => {
+            initializeWhatsApp().catch(err => console.error('[WhatsApp] Restart failed:', err));
+        }, 5000);
     });
 
     client.initialize().catch(err => {
-        console.error('❌ [WhatsApp] Initialization failed:', err);
+        console.error('[WhatsApp] Initialization failed:', err);
         connectionStatus = 'ERROR';
     });
 };
@@ -101,7 +131,6 @@ const getWhatsAppStatus = () => {
 
 const disconnectWhatsApp = async () => {
     if (!client) {
-        // If not initialized, just try to clean up the folder anyway
         if (fs.existsSync('./.wwebjs_auth')) {
             try { fs.rmSync('./.wwebjs_auth', { recursive: true, force: true }); } catch (e) {}
         }
@@ -126,7 +155,6 @@ const disconnectWhatsApp = async () => {
         }
     };
 
-    // Wrap in timeout to prevent hanging when puppeteer is crashed
     const safeLogout = () => Promise.race([
         client.logout(),
         new Promise(resolve => setTimeout(resolve, 3000))
@@ -142,7 +170,6 @@ const disconnectWhatsApp = async () => {
         cleanupAndRestart(false);
         return { success: true };
     } catch (error) {
-        // Fallback destroy if logout fails
         try {
             await safeDestroy();
             cleanupAndRestart(false);
@@ -150,7 +177,7 @@ const disconnectWhatsApp = async () => {
         } catch (destroyErr) {
             console.error('[WhatsApp Sender] Disconnect failed:', error);
             cleanupAndRestart(false);
-            return { success: true, message: "Forced cleanup" }; // Always return true to clear UI
+            return { success: true, message: "Forced cleanup" };
         }
     }
 };
@@ -159,7 +186,7 @@ const disconnectWhatsApp = async () => {
  * Manually trigger linking (initialization).
  */
 const linkWhatsApp = async () => {
-    if (connectionStatus === 'WAITING_FOR_SCAN' || connectionStatus === 'CONNECTED') {
+    if (connectionStatus === 'WAITING_FOR_SCAN' || connectionStatus === 'CONNECTED' || connectionStatus === 'AUTHENTICATING') {
         return { success: true, message: "Already linking or connected" };
     }
     await initializeWhatsApp();
@@ -174,13 +201,11 @@ const sendWhatsAppMessage = async (toPhoneNumber, message) => {
   console.log(`[WhatsApp Sender] Message Content:\n${message}\n`);
 
   if (!client || !isReady) {
-      console.error('[WhatsApp Sender] Failed: WhatsApp client is not ready. Please check the server terminal and scan the QR code if prompted.');
+      console.error('[WhatsApp Sender] Failed: WhatsApp client is not ready.');
       return { success: false, error: 'Client not ready' };
   }
 
   try {
-    // Format the phone number to the required format (e.g., 94702443742@c.us)
-    // Assumes Sri Lankan numbers start with '0' (e.g., 0702443742 -> 94702443742)
     let formattedNumber = toPhoneNumber.replace(/[^0-9]/g, '');
     if (formattedNumber.startsWith('0')) {
         formattedNumber = '94' + formattedNumber.substring(1);
@@ -189,8 +214,6 @@ const sendWhatsAppMessage = async (toPhoneNumber, message) => {
     }
     
     const chatId = `${formattedNumber}@c.us`;
-    
-    // Send the message via the automated headless browser
     await client.sendMessage(chatId, message);
     
     console.log(`[WhatsApp Sender] Successfully sent WhatsApp message to ${toPhoneNumber}.`);

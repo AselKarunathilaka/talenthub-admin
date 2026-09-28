@@ -28,6 +28,7 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "googleapis": "^148.0.0",
+    "groq-sdk": "^1.6.0",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",

@@ -114,6 +114,12 @@ const LeaveRequestForm = ({ onSuccess, requestType = "short_leave" }) => {
     const today = new Date().toISOString().split("T")[0];
 
     if (isStudyLeave) {
+      // Extended leave only accepts "Academic Exams / Study" purpose — reject anything else
+      if (formData.purpose !== "Academic Exams / Study") {
+        toast.error("Extended leave requests are only accepted for Academic Exams / Study purposes.");
+        return;
+      }
+
       if (!formData.studyEndDate) {
         toast.error("Please select the final extended leave date");
         return;

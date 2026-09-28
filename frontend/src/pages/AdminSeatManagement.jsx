@@ -23,6 +23,7 @@ import {
 } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 import { Armchair, Map as MapIcon, List, Mail, Clock, Calendar, ChevronLeft } from "lucide-react";
 
 import {
@@ -398,7 +399,16 @@ const AdminSeatManagement = () => {
     if (lockLoading || seatActionLoading) return;
     const actionName = action === "lock" ? "seat lock" : "seat unlock";
     const tId = customTraineeId !== undefined ? customTraineeId : lockTraineeId;
-    
+    const extraInfo = `Seat ${seatNumber}${tId?.trim() ? `, Trainee ID: ${tId.trim()}` : ''}`;
+
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({ action: actionName, extraInfo });
+      setSelectedSeatModal(null);
+      executeToggleLock(seatNumber, action, customTraineeId);
+      return;
+    }
+
     setPendingAction({
       name: actionName,
       extraInfo: { seatNumber, traineeId: tId?.trim() },
@@ -435,6 +445,17 @@ const AdminSeatManagement = () => {
     }
     if (seatActionLoading) return;
 
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({
+        action: "seat book",
+        extraInfo: `Seat ${seatNumber}, Trainee ID: ${traineeId.trim()}`
+      });
+      setSelectedSeatModal(null);
+      executeAdminBookSeat(seatNumber, traineeId);
+      return;
+    }
+
     setPendingAction({
       name: "seat book",
       extraInfo: { seatNumber, traineeId: traineeId.trim() },
@@ -469,6 +490,17 @@ const AdminSeatManagement = () => {
 
   const handleAdminCancelBooking = (bookingId, seatNumber) => {
     if (seatActionLoading) return;
+
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({
+        action: "booking cancel",
+        extraInfo: `Seat ${seatNumber}`
+      });
+      setSelectedSeatModal(null);
+      executeAdminCancelBooking(bookingId, seatNumber);
+      return;
+    }
 
     setPendingAction({
       name: "booking cancel",
@@ -1927,9 +1959,10 @@ const AdminSeatManagement = () => {
         </AnimatePresence>
 
         {/* Security Check Popup */}
-        <AnimatePresence>
+        <>
+
           {showSecurityPopup && (
-            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+            <div className="fixed inset-0 z-[50] pointer-events-none">
               {/* Invisible click-capture for closing security popup */}
               <div
                 className="fixed inset-0 z-[26] pointer-events-auto"
@@ -1938,14 +1971,11 @@ const AdminSeatManagement = () => {
 
               {/* Modal container */}
               <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    onAnimationComplete={() => {
-                      document.getElementById('seat-security-password-input')?.focus();
-                    }}
-                    className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                  <div
+                   
+                   
+                   
+                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   >
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
                       <div>
@@ -1997,11 +2027,11 @@ const AdminSeatManagement = () => {
                         {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
       </div>
     </AdminNavigation>
   );

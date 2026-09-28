@@ -2,6 +2,7 @@ const AttendanceSettingsService = require("../services/attendanceSettingsService
 const SecuritySetting = require("../models/SecuritySetting");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
+const { encrypt } = require("../utils/dbEncryption");
 
 const getAttendanceSettings = async (req, res) => {
   try {
@@ -47,7 +48,18 @@ const updateAttendanceSettings = async (req, res) => {
           return res.status(400).json({ message: "Security Password is required." });
         }
 
-        const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
+        let isMatch = false;
+    if (securityConfig.passwords && securityConfig.passwords.length > 0) {
+      for (const p of securityConfig.passwords) {
+        if (await bcrypt.compare(securityPin, p.hash)) {
+          isMatch = true;
+          break;
+        }
+      }
+    }
+    if (!isMatch && securityConfig.password) {
+      isMatch = await bcrypt.compare(securityPin, securityConfig.password);
+    }
         if (!isMatch) {
           return res.status(400).json({ message: "Invalid Security Password." });
         }
@@ -66,7 +78,7 @@ const updateAttendanceSettings = async (req, res) => {
     // Format date as yyyy/mm/dd
     const now = new Date();
     const dateStr = now.getFullYear() + "/" + String(now.getMonth() + 1).padStart(2, "0") + "/" + String(now.getDate()).padStart(2, "0");
-    
+
     // Format time as 12h
     let hours = now.getHours();
     const ampm = hours >= 12 ? "PM" : "AM";
@@ -78,9 +90,11 @@ const updateAttendanceSettings = async (req, res) => {
     // Retrieve real user name from DB
     let adminName = req.user?.name || "Unknown User";
     let adminEmail = req.user?.email || "Unknown Email";
-    
-    if (req.user && req.user.email) {
-      const actualUser = await User.findOne({ email: req.user.email });
+
+    if (req.user) {
+      const actualUser = req.user.id
+        ? await User.findById(req.user.id)
+        : (req.user.email ? await User.findOne({ email: encrypt(req.user.email.toLowerCase().trim()) }) : null);
       if (actualUser && actualUser.name) {
         adminName = actualUser.name;
       }
@@ -117,7 +131,7 @@ const updateAttendanceSettings = async (req, res) => {
         alerts.forEach(alert => {
           if (alert.phoneNumber) {
             const message = `⚠️ *SECURITY ALERT*\nLocation Geofencing ${statusText}\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-            sendWhatsAppMessage(alert.phoneNumber, message).catch(err => 
+            sendWhatsAppMessage(alert.phoneNumber, message).catch(err =>
               console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
             );
           }
@@ -134,22 +148,51 @@ const updateAttendanceSettings = async (req, res) => {
 const verifySecurityPassword = async (req, res) => {
   try {
     const { securityPin, action, extraInfo } = req.body;
-    if (!securityPin) {
-      return res.status(400).json({ message: "Security Password is required." });
-    }
-    
-    const securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
-    if (!securityConfig) {
-      return res.status(400).json({ message: "Invalid Security Password." });
-    }
-    
-    const isMatch = await bcrypt.compare(securityPin, securityConfig.password);
-    
+
     let adminName = req.user?.name || "Unknown User";
     let adminEmail = req.user?.email || "Unknown Email";
-    if (req.user && req.user.email) {
-      const actualUser = await User.findOne({ email: req.user.email });
-      if (actualUser && actualUser.name) adminName = actualUser.name;
+    let actualUser = req.admin;
+    if (!actualUser && req.user) {
+      actualUser = req.user.id
+        ? await User.findById(req.user.id)
+        : (req.user.email ? await User.findOne({ email: encrypt(req.user.email.toLowerCase().trim()) }) : null);
+    }
+    if (actualUser && actualUser.name) adminName = actualUser.name;
+
+    const bypassPin = actualUser?.requireSecurityCheck === false;
+    if (!securityPin && !bypassPin) {
+      return res.status(400).json({ message: "Security Password is required." });
+    }
+
+    let securityConfig = await SecuritySetting.findOne({ functionName: { $regex: /^security check$/i } });
+    if (!securityConfig) {
+      securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
+    }
+    if (!securityConfig) {
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash("TalentHub@2026", salt);
+      securityConfig = await SecuritySetting.create({
+        functionName: "Security Check",
+        password: hashedPassword,
+        history: [],
+      });
+    }
+
+    let isMatch = false;
+    if (bypassPin && !securityPin) {
+      isMatch = true;
+    } else {
+      if (securityConfig.passwords && securityConfig.passwords.length > 0) {
+        for (const p of securityConfig.passwords) {
+          if (p.hash && (await bcrypt.compare(securityPin, p.hash))) {
+            isMatch = true;
+            break;
+          }
+        }
+      }
+      if (!isMatch && securityConfig.password) {
+        isMatch = await bcrypt.compare(securityPin, securityConfig.password);
+      }
     }
 
     if (!isMatch) {
@@ -169,7 +212,7 @@ const verifySecurityPassword = async (req, res) => {
       SecurityAlert.find({}).then(alerts => {
         alerts.forEach(alert => {
           if (alert.phoneNumber) {
-            sendWhatsAppMessage(alert.phoneNumber, failureMessage).catch(err => 
+            sendWhatsAppMessage(alert.phoneNumber, failureMessage).catch(err =>
               console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
             );
           }
@@ -185,7 +228,7 @@ const verifySecurityPassword = async (req, res) => {
 
       return res.status(400).json({ message: "Invalid Security Password." });
     }
-    
+
     const now = new Date();
     const dateStr = now.getFullYear() + "/" + String(now.getMonth() + 1).padStart(2, "0") + "/" + String(now.getDate()).padStart(2, "0");
     let hours = now.getHours();
@@ -194,7 +237,7 @@ const verifySecurityPassword = async (req, res) => {
     hours = hours ? hours : 12;
     const minutes = String(now.getMinutes()).padStart(2, "0");
     const timeStr = hours + ":" + minutes + " " + ampm;
-    
+
     securityConfig.history.push({
       activity: action || "security verification",
       userName: adminName,
@@ -203,11 +246,11 @@ const verifySecurityPassword = async (req, res) => {
       time: timeStr,
     });
     await securityConfig.save();
-    
+
     const { sendSecurityAlertEmail } = require("../utils/emailSender");
     const { sendWhatsAppMessage } = require("../utils/whatsappSender");
     const SecurityAlert = require("../models/SecurityAlert");
-    
+
     let statusText = "Security Verification Passed";
     if (action === "manual attendance") {
       statusText = "Manual Attendance Admin Tool Accessed";
@@ -257,11 +300,11 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Logbook Restriction lift in admin side";
     } else if (action === "talenthub restriction lift") {
       statusText = "TalentHub Restriction lift in admin side";
-        } else if (action === "talenthub restriction revoke") {
+    } else if (action === "talenthub restriction revoke") {
       statusText = "TalentHub Restriction revoke in admin side";
     } else if (action === "Send announcemt for all interns in admin side" || action === "send mass announcement") {
       statusText = "Send announcemt for all interns in admin side";
-        } else if (action === "Delete anncounement in admin side" || action === "delete announcement") {
+    } else if (action === "Delete anncounement in admin side" || action === "delete announcement") {
       statusText = "Delete anncounement in admin side";
     } else if (action === "add holiday") {
       statusText = "Add Holiday in admin side";
@@ -275,21 +318,31 @@ const verifySecurityPassword = async (req, res) => {
       statusText = "Unverify Holidays in admin side";
     } else if (action === "Get access to settings page in admin side" || action === "Settings page accessed") {
       statusText = "Settings page to get access in admin side";
+    } else if (action === "whatsapp qr generate" || action === "whatsapp qr code generation" || action === "Generated WhatsApp QR code in admin settings") {
+      statusText = "WhatsApp QR Code Generated in Admin Side";
+    } else if (action === "whatsapp disconnect" || action === "Disconnected WhatsApp in admin settings") {
+      statusText = "WhatsApp Disconnected in Admin Side";
+    } else if (action && action.startsWith("Security Message turned")) {
+      statusText = action; // e.g. "Security Message turned OFF for John"
+    } else if (action && action.startsWith("Turned") && action.includes("Security Check for")) {
+      statusText = action; // e.g. "Turned ON Security Check for John"
+    } else if (action) {
+      statusText = action;
     }
-    
+
     let emailStatusText = statusText;
     let whatsappMessage = `⚠️ *SECURITY ALERT*\n${statusText}`;
-    
+
     if (extraInfo) {
       whatsappMessage += `\n\nAction Data:\n${extraInfo.replace(/, /g, '\n')}`;
     }
-    
+
     whatsappMessage += `\n\nAction Performed By: ${adminName} (${adminEmail})\nTimestamp: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Colombo' })}`;
-    
+
     // Check toggles before sending alerts
     const t = securityConfig.toggles || {};
     let shouldSendAlert = true;
-    
+
     if (action.includes("location") && t.location === false) shouldSendAlert = false;
     else if (action.includes("attendance") && t.attendance === false) shouldSendAlert = false;
     else if (action.includes("logbook") && t.logbook === false) shouldSendAlert = false;
@@ -303,16 +356,19 @@ const verifySecurityPassword = async (req, res) => {
         statusText: emailStatusText,
         actionData: extraInfo // Pass extraInfo directly to format cleanly in email
       }).catch(err => console.error("Failed to send security alert email:", err));
-      
-      SecurityAlert.find({}).then(alerts => {
-        alerts.forEach(alert => {
-          if (alert.phoneNumber) {
-            sendWhatsAppMessage(alert.phoneNumber, whatsappMessage).catch(err => 
-              console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
-            );
-          }
-        });
-      }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+
+      const disableMsg = actualUser?.disableSecurityMessage === true;
+      if (!disableMsg) {
+        SecurityAlert.find({}).then(alerts => {
+          alerts.forEach(alert => {
+            if (alert.phoneNumber) {
+              sendWhatsAppMessage(alert.phoneNumber, whatsappMessage).catch(err =>
+                console.error(`Failed to send WhatsApp to ${alert.phoneNumber}:`, err)
+              );
+            }
+          });
+        }).catch(err => console.error("Failed to fetch security alerts for WhatsApp:", err));
+      }
     }
 
     return res.status(200).json({ message: "Verification successful." });

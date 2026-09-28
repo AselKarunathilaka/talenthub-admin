@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { logSecurityAction } from "../utils/securityLogger";
 import { useNavigate } from "react-router-dom";
 import AdminNavigation from "../components/AdminNavigation";
 import { ScanLine } from "lucide-react";
@@ -689,6 +690,7 @@ const AdminInternAttendance = () => {
   const handleMarkAttendanceClick = () => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({ action: "manual attendance" });
       navigate("/admin/manual-attendance");
       return;
     }
@@ -1395,7 +1397,8 @@ const AdminInternAttendance = () => {
         </main>
         
         {/* Password Modal placed outside main but inside relative container to cover everything except navbar/sidebar */}
-        <AnimatePresence>
+        <>
+
           {showPasswordPopup && (
             <>
               {/* Overlay covering full screen, under navbar/sidebar */}
@@ -1407,10 +1410,10 @@ const AdminInternAttendance = () => {
               {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
               <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
                 <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  <div
+                   
+                   
+                   
                     className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   >
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -1465,12 +1468,12 @@ const AdminInternAttendance = () => {
                         {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
             </>
           )}
-        </AnimatePresence>
+        </>
       </div>
     </AdminNavigation>
   );

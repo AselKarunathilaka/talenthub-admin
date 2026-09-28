@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../utils/api";
 
 const INITIAL_STATUS = {
@@ -9,7 +9,7 @@ const INITIAL_STATUS = {
   minimumCheckoutMinutes: 15,
 };
 
-export const useDailyAttendanceStatus = () => {
+export const useDailyAttendanceStatus = ({ previewInternId = null, isPreview = false } = {}) => {
   const [status, setStatus] = useState(INITIAL_STATUS);
   const [attendanceAction, setAttendanceAction] = useState("check_in");
   const [statusLoading, setStatusLoading] = useState(true);
@@ -17,7 +17,8 @@ export const useDailyAttendanceStatus = () => {
   const refreshDailyStatus = useCallback(async () => {
     setStatusLoading(true);
     try {
-      const response = await apiFetch("/face-attendance/daily-status");
+      const url = isPreview && previewInternId ? `/admin/face-attendance/daily-status/${previewInternId}` : "/face-attendance/daily-status";
+      const response = await apiFetch(url);
       const result = await response.json();
       if (!response.ok) throw new Error(result.message);
 
@@ -33,7 +34,7 @@ export const useDailyAttendanceStatus = () => {
     } finally {
       setStatusLoading(false);
     }
-  }, []);
+  }, [isPreview, previewInternId]);
 
   useEffect(() => {
     refreshDailyStatus();

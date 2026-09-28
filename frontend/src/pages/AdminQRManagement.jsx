@@ -7,6 +7,7 @@ import { FaArrowLeft, FaQrcode, FaCalendarDay, FaUsers, FaDownload, FaExpand, Fa
 import { toast } from 'react-hot-toast';
 import { adminApi } from '../api/adminApi';
 import { API_BASE_URL } from '../api/apiConfig';
+import { logSecurityAction } from "../utils/securityLogger";
 
 const AdminQRManagement = () => {
   const navigate = useNavigate();
@@ -32,7 +33,14 @@ const AdminQRManagement = () => {
   const [passwordError, setPasswordError] = useState("");
   const [settingsSaving, setSettingsSaving] = useState(false);
 
-  const handleGenerateClick = () => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { handleGenerate(); return; }
+  const handleGenerateClick = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      const actionString = activeTab === 'meeting' ? "meeting qr code generation" : "daily qr code generation";
+      logSecurityAction({ action: actionString });
+      handleGenerate();
+      return;
+    }
     setShowPasswordPopup(true);
     setSecurityPassword("");
     setPasswordError("");
@@ -687,7 +695,8 @@ const AdminQRManagement = () => {
       </div>
       
       {/* Password Modal */}
-      <AnimatePresence>
+      <>
+
         {showPasswordPopup && (
           <>
             <div 
@@ -696,10 +705,10 @@ const AdminQRManagement = () => {
             />
             <div className="absolute inset-x-0 top-0 h-full z-[70] pointer-events-none">
               <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                <div
+                 
+                 
+                 
                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                 >
                   <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -754,12 +763,12 @@ const AdminQRManagement = () => {
                       {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           </>
         )}
-      </AnimatePresence>
+      </>
     </AdminNavigation>
   );
 };

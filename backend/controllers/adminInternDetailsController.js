@@ -40,6 +40,7 @@ const MEETING_ATTENDANCE_TYPES = new Set([
   "manual",
 ]);
 
+const moment = require("moment-timezone");
 const { getColomboDateKey, getDailyTypePriority } = require("../utils/attendanceHistory");
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -58,6 +59,54 @@ const formatColomboTime = (date) => {
     minute: "2-digit",
     timeZone: "Asia/Colombo",
   });
+};
+
+/**
+ * Resolves check-in and check-out times based on attendance method:
+ * - Logbook attendance (`type === 'daily'`): check-in and check-out MUST be the exact same time.
+ * - Other methods (Face, QR, Manual, etc.): check-out must not equal check-in.
+ *   If not checked out by 4:30 PM (or past date), auto checkout at 04:30 PM (16:30 Asia/Colombo).
+ *   If today and before 16:30, show null (—).
+ */
+const resolveAttendanceTimes = (rawDate, rawType, checkInInput, checkOutInput) => {
+  const dateStr = getDateKey(rawDate);
+  const isLogbook = (rawType || "").toLowerCase() === "daily";
+  const inTime = checkInInput ? new Date(checkInInput) : null;
+  let outTime = checkOutInput ? new Date(checkOutInput) : null;
+
+  if (isLogbook) {
+    return {
+      checkInTime: inTime,
+      checkOutTime: inTime,
+    };
+  }
+
+  // Non-logbook: Face, QR, Manual, etc.
+  const nowColombo = moment.tz("Asia/Colombo");
+  const todayColomboStr = nowColombo.format("YYYY-MM-DD");
+  const isPast430Today =
+    nowColombo.hours() > 16 ||
+    (nowColombo.hours() === 16 && nowColombo.minutes() >= 30);
+
+  const isSameAsIn =
+    inTime &&
+    outTime &&
+    Math.abs(outTime.getTime() - inTime.getTime()) <= 2 * 60 * 1000;
+
+  const needsAutoCheckout = !outTime || isSameAsIn;
+
+  if (needsAutoCheckout) {
+    if (dateStr < todayColomboStr || (dateStr === todayColomboStr && isPast430Today)) {
+      outTime = moment.tz(`${dateStr}T16:30:00`, "Asia/Colombo").toDate();
+    } else {
+      outTime = null;
+    }
+  }
+
+  return {
+    checkInTime: inTime,
+    checkOutTime: outTime,
+  };
 };
 
 const getMeetingKey = (date, meetingName) =>
@@ -213,6 +262,23 @@ const getAdminInternAttendance = async (req, res) => {
       });
     }
 
+    // Ensure successful face logs are represented in dailyMethodByDate
+    successfulFaceLogs.forEach((log) => {
+      const faceDateKey = getDateKey(log.attendanceDate || log.attendanceTime);
+      const current = dailyMethodByDate.get(faceDateKey);
+      const facePriority = getDailyTypePriority("face");
+      const currentPriority = current ? getDailyTypePriority(current.rawType) : 0;
+      if (!current || facePriority > currentPriority) {
+        dailyMethodByDate.set(faceDateKey, {
+          method: "face recognition",
+          rawType: "face",
+          markedAt: log.attendanceTime,
+          checkInTime: log.attendanceTime,
+          checkOutTime: current?.checkOutTime || null,
+        });
+      }
+    });
+
     // ── Step 2: Track meeting keys covered by DailyRecord ────────────────────
     dailyRecords.forEach((record) => {
       if (record.meetingAttendance && record.meetingAttendance.length > 0) {
@@ -275,17 +341,22 @@ const getAdminInternAttendance = async (req, res) => {
             : "Present";
 
         const matchingMethodInfo = dailyMethodByDate.get(dateKey);
+        const rawType = matchingMethodInfo?.rawType || "daily";
+
         const attendanceTime = record.attendanceTime
           ? new Date(record.attendanceTime)
           : matchingMethodInfo?.checkInTime
             ? new Date(matchingMethodInfo.checkInTime)
             : null;
-        const checkOutTime = record.checkOutTime
-          ? new Date(record.checkOutTime)
-          : matchingMethodInfo?.checkOutTime
-            ? new Date(matchingMethodInfo.checkOutTime)
+
+        const checkOutTime = matchingMethodInfo?.checkOutTime
+          ? new Date(matchingMethodInfo.checkOutTime)
+          : record.checkOutTime
+            ? new Date(record.checkOutTime)
             : null;
-        const rawType = matchingMethodInfo?.rawType || "daily";
+
+        const { checkInTime: resolvedIn, checkOutTime: resolvedOut } =
+          resolveAttendanceTimes(dateKey, rawType, attendanceTime, checkOutTime);
 
         dailyAttendance.push({
           date: record.date,
@@ -296,9 +367,10 @@ const getAdminInternAttendance = async (req, res) => {
           recordStatus: record.status,
           attendanceMethod:
             matchingMethodInfo?.method || normalizeAttendanceMethod(rawType),
-          time: formatColomboTime(attendanceTime),
-          checkOutTime: formatColomboTime(checkOutTime),
-          attendanceTime: attendanceTime,
+          time: formatColomboTime(resolvedIn),
+          checkInTime: formatColomboTime(resolvedIn),
+          checkOutTime: formatColomboTime(resolvedOut),
+          attendanceTime: resolvedIn,
         });
       }
 
@@ -456,6 +528,9 @@ const getAdminInternAttendance = async (req, res) => {
           const checkInDate = entry.timeMarked ? new Date(entry.timeMarked) : entryDate;
           const checkOutDate = entry.checkOutTime ? new Date(entry.checkOutTime) : null;
 
+          const { checkInTime: resolvedIn, checkOutTime: resolvedOut } =
+            resolveAttendanceTimes(dayKey, rawType, checkInDate, checkOutDate);
+
           dailyAttendance.push({
             date: dayKey,
             status: entry.status || "Present",
@@ -463,9 +538,10 @@ const getAdminInternAttendance = async (req, res) => {
             rawType,
             attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
             attendanceMethod: isFaceScan ? "face recognition" : normalizeAttendanceMethod(type),
-            time: formatColomboTime(checkInDate),
-            checkOutTime: formatColomboTime(checkOutDate),
-            attendanceTime: entry.timeMarked || entry.date,
+            time: formatColomboTime(resolvedIn),
+            checkInTime: formatColomboTime(resolvedIn),
+            checkOutTime: formatColomboTime(resolvedOut),
+            attendanceTime: resolvedIn || entry.date,
           });
           coveredDates.add(dayKey);
         });
@@ -504,6 +580,10 @@ const getAdminInternAttendance = async (req, res) => {
             (log) => getDateKey(log.attendanceDate || log.attendanceTime) === faceDateKey,
           );
           const checkInTime = faceLog?.attendanceTime || matchingMethodInfo?.checkInTime;
+          const checkOutTime = matchingMethodInfo?.checkOutTime || null;
+
+          const { checkInTime: resolvedIn, checkOutTime: resolvedOut } =
+            resolveAttendanceTimes(faceDateKey, "face", checkInTime, checkOutTime);
 
           dailyAttendance.push({
             date: faceDateKey,
@@ -512,9 +592,10 @@ const getAdminInternAttendance = async (req, res) => {
             rawType: "face",
             attendanceTypeLabel: "Face Attendance",
             attendanceMethod: "face recognition",
-            time: formatColomboTime(checkInTime),
-            checkOutTime: formatColomboTime(matchingMethodInfo?.checkOutTime),
-            attendanceTime: checkInTime || faceDateKey,
+            time: formatColomboTime(resolvedIn),
+            checkInTime: formatColomboTime(resolvedIn),
+            checkOutTime: formatColomboTime(resolvedOut),
+            attendanceTime: resolvedIn || faceDateKey,
           });
           coveredDates.add(faceDateKey);
         }
@@ -528,6 +609,12 @@ const getAdminInternAttendance = async (req, res) => {
         if (coveredDates.has(dayKey)) return;
 
         const rawType = entry.markType || "daily";
+        const rawCheckIn = entry.attendanceTime || entryDate;
+        const rawCheckOut = entry.checkOutTime || null;
+
+        const { checkInTime: resolvedIn, checkOutTime: resolvedOut } =
+          resolveAttendanceTimes(dayKey, rawType, rawCheckIn, rawCheckOut);
+
         dailyAttendance.push({
           date: dayKey,
           status: (entry.status || "present").toLowerCase() === "absent" ? "Absent" : "Present",
@@ -535,9 +622,10 @@ const getAdminInternAttendance = async (req, res) => {
           rawType,
           attendanceTypeLabel: formatAttendanceTypeLabel(rawType, false),
           attendanceMethod: normalizeAttendanceMethod(rawType),
-          time: formatColomboTime(entry.attendanceTime || entryDate),
-          checkOutTime: formatColomboTime(entry.checkOutTime),
-          attendanceTime: entry.attendanceTime || entryDate,
+          time: formatColomboTime(resolvedIn),
+          checkInTime: formatColomboTime(resolvedIn),
+          checkOutTime: formatColomboTime(resolvedOut),
+          attendanceTime: resolvedIn || entryDate,
         });
         coveredDates.add(dayKey);
       });

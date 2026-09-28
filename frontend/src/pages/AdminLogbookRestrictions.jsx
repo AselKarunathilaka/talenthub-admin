@@ -38,6 +38,7 @@ import autoTable from "jspdf-autotable";
 import Swal from "sweetalert2";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 import holidayApi from "../api/holidayApi";
 
 /* ─────────────────────────────────────────────────────────────────────────── */
@@ -453,7 +454,16 @@ const AdminLogbookRestriction = () => {
     showToast("Logbook access successfully restored.", "success");
   };
 
-  const handleLiftClick = (intern) => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { setLiftTarget(intern); return; }
+  const handleLiftClick = (intern) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({
+        action: "logbook restriction lift",
+        extraInfo: `Intern: ${intern?.traineeName || ""} (ID: ${intern?.traineeId || "N/A"})`
+      });
+      setLiftTarget(intern);
+      return;
+    }
     setConfirmTarget(intern);
     setConfirmPassword("");
     setConfirmShowPw(false);
@@ -805,37 +815,36 @@ const AdminLogbookRestriction = () => {
         </main>
 
         {/* ── Security Check Backdrop ── */}
-        <AnimatePresence>
+        <>
+
           {(confirmTarget || historyTarget || liftTarget) && (
-            <motion.div
-              key="logbook-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
+             
+             
+             
+             
+             
               className="fixed inset-0 z-[20] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
             />
           )}
-        </AnimatePresence>
+        </>
 
         {/* ── Security Check Popup ── */}
-        <AnimatePresence>
+        <>
+
           {confirmTarget && (
-            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed inset-0 z-[22] pointer-events-none">
               <div
                 className="fixed inset-0 z-[49] pointer-events-auto"
                 onClick={() => { setConfirmTarget(null); setConfirmError(""); }}
               />
               <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-[80px] lg:pb-8">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                  onAnimationComplete={() => {
-                    document.getElementById('logbook-security-password-input')?.focus();
-                  }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                <div
+                 
+                 
+                 
+                 
+                 className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex justify-between items-start mb-3 xl:mb-4">
@@ -908,11 +917,11 @@ const AdminLogbookRestriction = () => {
                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
 
         {/* Modals */}
         <LiftModal

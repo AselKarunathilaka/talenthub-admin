@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { 
+import {
   KeyRound, Users, UserPlus, ShieldCheck, Lock, Eye, EyeOff, Edit, Power, PowerOff, AlertTriangle,
-  MessageCircle, Smartphone, RefreshCw, CheckCircle2, XCircle, Unplug, ShieldAlert, Key, Link as LinkIcon, Trash, ListChecks, CheckSquare, Settings2
+  MessageCircle, Smartphone, RefreshCw, CheckCircle2, XCircle, Unplug, ShieldAlert, Key, Link as LinkIcon, Trash, ListChecks, CheckSquare, Settings2, Plus
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import QRCode from "react-qr-code";
@@ -12,9 +12,9 @@ import { getAdminSession } from "../utils/adminAuth";
 import AdminNavigation from "../components/AdminNavigation";
 
 const AVAILABLE_PAGES = [
-  "Dashboard", "Daily Logs", "Intern Attendance", "Face Attendance", "QR Management", 
-  "Pin Management", "Short Leave", "Extended Leave", "Intern Locations", "Seat Management", 
-  "Analytics", "Universities", "Inactive Interns", "Logbook Restrictions", 
+  "Dashboard", "Daily Logs", "Intern Attendance", "Face Attendance", "QR Management",
+  "Pin Management", "Short Leave", "Extended Leave", "Intern Locations", "Seat Management",
+  "Analytics", "Universities", "Inactive Interns", "Logbook Restrictions",
   "TalentHub Restrictions", "Announcements", "Holidays", "Settings"
 ];
 
@@ -25,13 +25,12 @@ const Toast = ({ toast, onDismiss }) => (
         initial={{ opacity: 0, y: 40, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-        className={`fixed bottom-6 right-6 z-[9999] flex items-center space-x-3 px-5 py-3 rounded-2xl shadow-xl border max-w-sm ${
-          toast.type === "success"
+        className={`fixed bottom-6 right-6 z-[9999] flex items-center space-x-3 px-5 py-3 rounded-2xl shadow-xl border max-w-sm ${toast.type === "success"
             ? "bg-emerald-50 border-emerald-200 text-emerald-800"
             : toast.type === "error"
               ? "bg-rose-50 border-rose-200 text-rose-800"
               : "bg-blue-50 border-blue-200 text-blue-800"
-        }`}
+          }`}
       >
         {toast.type === "success" ? (
           <CheckCircle2 className="flex-shrink-0 h-5 w-5 text-emerald-500" />
@@ -64,8 +63,9 @@ const AdminSettings = () => {
   const [activeRoleTab, setActiveRoleTab] = useState("all");
   const adminSession = getAdminSession();
   const isSuperAdmin = adminSession?.user?.role === "super_admin";
+  const isSuperAdminPlus = adminSession?.user?.role === "super_admin_plus";
   const isPM = adminSession?.user?.role === "PM" || adminSession?.user?.role === "pm";
-  const canManageUsers = isSuperAdmin || isPM || adminSession?.user?.permissions?.includes("users.manage");
+  const canManageUsers = isSuperAdmin || isSuperAdminPlus || isPM || adminSession?.user?.permissions?.includes("users.manage");
 
   // State: Security Verification Popup
   const [isVerified, setIsVerified] = useState(adminSession?.user?.requireSecurityCheck === false);
@@ -76,16 +76,35 @@ const AdminSettings = () => {
 
   // Tabs states
   const [loading, setLoading] = useState(false);
-  const [togglePrompt, setTogglePrompt] = useState({ isOpen: false, key: null, password: "" });
+  const [togglePrompt, setTogglePrompt] = useState({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" });
+  const [showTogglePassword, setShowTogglePassword] = useState(false);
 
-  // Security Password State
-  const [currentPassword, setCurrentPassword] = useState("");
+    // Security Password State (Multi-Password Support)
+  const [securityPasswords, setSecurityPasswords] = useState([]);
+  const [securityPasswordsLoading, setSecurityPasswordsLoading] = useState(false);
+
+  // Add Password Form State (No label field - new password and confirm password only)
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [addPasswordLoading, setAddPasswordLoading] = useState(false);
+
+  // Edit Password Modal State
+  const [editPasswordModalOpen, setEditPasswordModalOpen] = useState(false);
+  const [editingPasswordItem, setEditingPasswordItem] = useState(null);
+  const [editingPasswordIndex, setEditingPasswordIndex] = useState(0);
+  const [editNewPassword, setEditNewPassword] = useState("");
+  const [editConfirmPassword, setEditConfirmPassword] = useState("");
+  const [showEditNew, setShowEditNew] = useState(false);
+  const [showEditConfirm, setShowEditConfirm] = useState(false);
+  const [editPasswordLoading, setEditPasswordLoading] = useState(false);
+
+  // Delete Password Modal State
+  const [deletePasswordModalOpen, setDeletePasswordModalOpen] = useState(false);
+  const [deletingPasswordItem, setDeletingPasswordItem] = useState(null);
+  const [deletingPasswordIndex, setDeletingPasswordIndex] = useState(0);
+  const [deletePasswordLoading, setDeletePasswordLoading] = useState(false);
 
   // WhatsApp Toggles State
   const [toggles, setToggles] = useState({
@@ -117,7 +136,7 @@ const AdminSettings = () => {
   const [editingItem, setEditingItem] = useState(null);
 
   // Forms
-  const [userForm, setUserForm] = useState({ name: "", email: "", role: "admin", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true });
+  const [userForm, setUserForm] = useState({ name: "", email: "", role: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], requireSecurityCheck: true });
   const [showUserFormPassword, setShowUserFormPassword] = useState(false);
   const [showUserFormConfirmPassword, setShowUserFormConfirmPassword] = useState(false);
   const [alertForm, setAlertForm] = useState({ name: "", role: "", subRole: "", email: "", phoneNumber: "" });
@@ -147,7 +166,20 @@ const AdminSettings = () => {
     }
   };
 
+  const fetchSecurityPasswords = async () => {
+    setSecurityPasswordsLoading(true);
+    try {
+      const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORDS);
+      setSecurityPasswords(Array.isArray(res) ? res : res?.passwords || res?.data || []);
+    } catch (e) {
+      console.error("Failed to load security passwords", e);
+    } finally {
+      setSecurityPasswordsLoading(false);
+    }
+  };
+
   const loadInitialData = () => {
+    fetchSecurityPasswords();
     if (canManageUsers) {
       fetchUsers();
       fetchAlerts();
@@ -161,8 +193,22 @@ const AdminSettings = () => {
   useEffect(() => {
     if (isVerified) {
       loadInitialData();
+      // When security check popup is disabled, still notify backend so message/email fires
+      const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+      if (adminInfo?.user?.requireSecurityCheck === false) {
+        adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: "",
+          action: "Get access to settings page in admin side",
+        }).catch(() => {});
+      }
     }
   }, []);
+
+  useEffect(() => {
+    if (isVerified && activeTab === "security") {
+      fetchSecurityPasswords();
+    }
+  }, [activeTab, isVerified]);
 
   useEffect(() => {
     let pollInterval;
@@ -192,16 +238,161 @@ const AdminSettings = () => {
   };
 
   // -- Handlers --
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (newPassword !== confirmPassword) return showToast("Passwords do not match.", "error");
-    if (newPassword.length < 6) return showToast("Must be at least 6 characters.", "error");
-    setPasswordLoading(true);
+  const executeAddSecurityPassword = async (pwd) => {
+    setAddPasswordLoading(true);
     try {
-      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORD, { currentPassword, newPassword });
-      showToast("Password changed successfully.", "success");
-      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
-    } catch (e) { showToast(e.response?.data?.message || "Failed to change password.", "error"); } finally { setPasswordLoading(false); }
+      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORDS, { password: pwd });
+      showToast("Security password added successfully.", "success");
+      setNewPassword("");
+      setConfirmPassword("");
+      fetchSecurityPasswords();
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to add security password.", "error");
+    } finally {
+      setAddPasswordLoading(false);
+    }
+  };
+
+  const executeUpdateSecurityPassword = async (id, pwd) => {
+    setEditPasswordLoading(true);
+    try {
+      await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORDS}/${id}`, {
+        password: pwd,
+      });
+      showToast("Security password updated successfully.", "success");
+      setEditPasswordModalOpen(false);
+      fetchSecurityPasswords();
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to update security password.", "error");
+    } finally {
+      setEditPasswordLoading(false);
+    }
+  };
+
+  const executeRemoveSecurityPassword = async (id) => {
+    setDeletePasswordLoading(true);
+    try {
+      await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_PASSWORDS}/${id}`);
+      showToast("Security password removed successfully.", "success");
+      setDeletePasswordModalOpen(false);
+      setDeletingPasswordItem(null);
+      fetchSecurityPasswords();
+    } catch (e) {
+      showToast(e.response?.data?.message || "Failed to remove security password.", "error");
+    } finally {
+      setDeletePasswordLoading(false);
+    }
+  };
+
+  const handleAddSecurityPassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword || !confirmPassword) {
+      return showToast("Please enter and confirm the new password.", "error");
+    }
+    if (newPassword !== confirmPassword) {
+      return showToast("Passwords do not match.", "error");
+    }
+    if (newPassword.length < 6) {
+      return showToast("Password must be at least 6 characters.", "error");
+    }
+
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // the backend can send the message/email, then execute the action.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: "Added new security password in admin settings",
+      }).catch(() => {/* backend handles gracefully */});
+      executeAddSecurityPassword(newPassword);
+      return;
+    }
+
+    setTogglePrompt({
+      isOpen: true,
+      type: "add_password",
+      target: newPassword,
+      password: "",
+      title: "Security Check",
+      subtitle: "Enter security password to add new password."
+    });
+  };
+
+  const openEditPasswordModal = (item, index) => {
+    setEditingPasswordItem(item);
+    setEditingPasswordIndex(index);
+    setEditNewPassword("");
+    setEditConfirmPassword("");
+    setEditPasswordModalOpen(true);
+  };
+
+  const handleUpdateSecurityPassword = async (e) => {
+    e.preventDefault();
+    if (!editNewPassword || !editConfirmPassword) {
+      return showToast("Please enter and confirm the new password.", "error");
+    }
+    if (editNewPassword !== editConfirmPassword) {
+      return showToast("Passwords do not match.", "error");
+    }
+    if (editNewPassword.length < 6) {
+      return showToast("Password must be at least 6 characters.", "error");
+    }
+
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    const targetPayload = { id: editingPasswordItem._id, password: editNewPassword };
+
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // the backend can send the message/email, then execute the action.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: `Updated security password #${editingPasswordIndex + 1} in admin settings`,
+      }).catch(() => {/* backend handles gracefully */});
+      executeUpdateSecurityPassword(targetPayload.id, targetPayload.password);
+      return;
+    }
+
+    setEditPasswordModalOpen(false);
+    setTogglePrompt({
+      isOpen: true,
+      type: "update_password",
+      target: targetPayload,
+      password: "",
+      title: "Security Check",
+      subtitle: `Enter security password to update Password #${editingPasswordIndex + 1}.`
+    });
+  };
+
+  const confirmRemovePassword = (item, index) => {
+    if (securityPasswords.length <= 1) {
+      return showToast("Cannot remove the only remaining security password.", "error");
+    }
+
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // the backend can send the message/email, then execute the action.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: `Removed security password #${index + 1} in admin settings`,
+      }).catch(() => {/* backend handles gracefully */});
+      executeRemoveSecurityPassword(item._id);
+      return;
+    }
+
+    setTogglePrompt({
+      isOpen: true,
+      type: "remove_password",
+      target: item._id,
+      password: "",
+      title: "Security Check",
+      subtitle: `Enter security password to remove Password #${index + 1}.`
+    });
+  };
+
+  const handleRemovePassword = async () => {
+    if (!deletingPasswordItem) return;
+    executeRemoveSecurityPassword(deletingPasswordItem._id);
   };
 
   const executeToggleActual = async (key) => {
@@ -222,27 +413,90 @@ const AdminSettings = () => {
   const requestToggleChange = (key) => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // the backend can send the message/email, then execute the toggle action.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: `Turned ${toggles[key] ? 'OFF' : 'ON'} WhatsApp Notification for ${key}`,
+      }).catch(() => {/* backend handles gracefully */});
       executeToggleActual(key);
       return;
     }
-    setTogglePrompt({ isOpen: true, key, password: "" });
+    setTogglePrompt({
+      isOpen: true,
+      type: "whatsapp",
+      target: key,
+      password: "",
+      title: "Security Check",
+      subtitle: "Enter password to change notification toggle."
+    });
   };
+
 
   const handleToggleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const statusText = toggles[togglePrompt.key] ? 'OFF' : 'ON';
-      await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
-        securityPin: togglePrompt.password,
-        action: `Turned ${statusText} WhatsApp Notification for ${togglePrompt.key}`,
-      });
-      
-      const newToggles = { ...toggles, [togglePrompt.key]: !toggles[togglePrompt.key] };
-      await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.TOGGLES, newToggles);
-      setToggles(newToggles);
-      showToast(`Notification for ${togglePrompt.key} turned ${statusText}.`, "success");
-      setTogglePrompt({ isOpen: false, key: null, password: "" });
+      if (togglePrompt.type === "whatsapp") {
+        const key = togglePrompt.target;
+        const statusText = toggles[key] ? 'OFF' : 'ON';
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: `Turned ${statusText} WhatsApp Notification for ${key}`,
+        });
+
+        const newToggles = { ...toggles, [key]: !toggles[key] };
+        await adminApi.put(API_ENDPOINTS.ADMIN.SETTINGS.TOGGLES, newToggles);
+        setToggles(newToggles);
+        showToast(`Notification for ${key} turned ${statusText}.`, "success");
+      } else if (togglePrompt.type === "user_security") {
+        const user = togglePrompt.target;
+        const newVal = user.requireSecurityCheck === false ? true : false;
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: `Turned ${newVal ? 'ON' : 'OFF'} Security Check for ${user.name}`,
+        });
+        await executeUserSecurityToggle(user, newVal);
+      } else if (togglePrompt.type === "user_security_message") {
+        const user = togglePrompt.target;
+        const newVal = user.disableSecurityMessage !== true ? true : false;
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: `Security Message turned ${newVal ? 'OFF' : 'ON'} for ${user.name}`,
+        });
+        await executeUserSecurityMessage(user, newVal);
+      } else if (togglePrompt.type === "add_password") {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: "Added new security password in admin settings",
+        });
+        await executeAddSecurityPassword(togglePrompt.target);
+      } else if (togglePrompt.type === "update_password") {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: "Updated security password in admin settings",
+        });
+        await executeUpdateSecurityPassword(togglePrompt.target.id, togglePrompt.target.password);
+      } else if (togglePrompt.type === "remove_password") {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: "Removed security password in admin settings",
+        });
+      } else if (togglePrompt.type === "whatsapp_link") {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: "whatsapp qr generate",
+        });
+        await executeWhatsAppLinkActual();
+      } else if (togglePrompt.type === "whatsapp_disconnect") {
+        await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+          securityPin: togglePrompt.password,
+          action: "whatsapp disconnect",
+        });
+        await executeWhatsAppDisconnectActual();
+      }
+      setTogglePrompt({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" });
+      setShowTogglePassword(false);
     } catch (e) {
       showToast(e.response?.data?.message || "Invalid Security Password", "error");
     } finally {
@@ -250,31 +504,87 @@ const AdminSettings = () => {
     }
   };
 
-  const handleWhatsAppLink = async () => {
+  const executeWhatsAppLinkActual = async () => {
     setIsLinking(true);
     setWaLoading(true);
     try {
       await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_LINK);
+      // Keep polling until the QR appears (WAITING_FOR_SCAN), during scan (AUTHENTICATING), or fully connected (CONNECTED/ERROR)
+      // Do NOT stop at WAITING_FOR_SCAN — we must continue to detect the post-scan state.
       const poll = setInterval(async () => {
         try {
           const res = await adminApi.get(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_STATUS);
-          if (['WAITING_FOR_SCAN', 'CONNECTED', 'ERROR'].includes(res?.status)) {
-            clearInterval(poll); setWaStatus(res); setIsLinking(false); setWaLoading(false);
+          setWaStatus(res);
+          if (res?.status === 'WAITING_FOR_SCAN') {
+            // QR ready — stop showing isLinking spinner so the QR is visible, but keep polling
+            setIsLinking(false); setWaLoading(false);
           }
-        } catch (e) { clearInterval(poll); }
-      }, 1000);
+          if (res?.status === 'CONNECTED' || res?.status === 'ERROR') {
+            clearInterval(poll); setIsLinking(false); setWaLoading(false);
+          }
+        } catch (e) { clearInterval(poll); setIsLinking(false); setWaLoading(false); }
+      }, 1500);
+      // Safety: stop polling after 5 minutes
+      setTimeout(() => clearInterval(poll), 5 * 60 * 1000);
     } catch (e) {
       showToast("Failed to start linking.", "error");
       setIsLinking(false); fetchWhatsAppStatus();
     }
   };
 
-  const handleWhatsAppDisconnect = async () => {
+  const handleWhatsAppLink = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // backend sends the message/email, then execute link.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: "whatsapp qr generate",
+      }).catch(() => {});
+      executeWhatsAppLinkActual();
+      return;
+    }
+
+    setTogglePrompt({
+      isOpen: true,
+      type: "whatsapp_link",
+      target: null,
+      password: "",
+      title: "Security Check",
+      subtitle: "Enter security password to generate WhatsApp QR code."
+    });
+  };
+
+  const executeWhatsAppDisconnectActual = async () => {
     setWaDisconnecting(true);
     try {
       await adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.WHATSAPP_DISCONNECT);
       fetchWhatsAppStatus();
+      showToast("WhatsApp disconnected successfully.", "success");
     } catch (e) { showToast("Failed to disconnect.", "error"); } finally { setWaDisconnecting(false); }
+  };
+
+  const handleWhatsAppDisconnect = () => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // backend sends the message/email, then execute disconnect.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: "whatsapp disconnect",
+      }).catch(() => {});
+      executeWhatsAppDisconnectActual();
+      return;
+    }
+
+    setTogglePrompt({
+      isOpen: true,
+      type: "whatsapp_disconnect",
+      target: null,
+      password: "",
+      title: "Security Check",
+      subtitle: "Enter security password to disconnect WhatsApp."
+    });
   };
 
   // -- User CRUD --
@@ -295,18 +605,41 @@ const AdminSettings = () => {
       setUserModalOpen(false); fetchUsers();
     } catch (e) { showToast(e.response?.data?.message || "Failed to save user.", "error"); } finally { setLoading(false); }
   };
-  
+
   const deleteUser = async (id) => {
     openConfirmDialog("Delete User", "Are you sure you want to delete this user?", async () => {
-      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${id}`); fetchUsers(); showToast("User deleted.", "success"); } catch(e) { showToast(e.response?.data?.message || "Failed to delete.", "error"); }
+      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${id}`); fetchUsers(); showToast("User deleted.", "success"); } catch (e) { showToast(e.response?.data?.message || "Failed to delete.", "error"); }
     });
   };
 
-  const toggleUserSecurityCheck = async (user) => {
-    // Optimistic UI update for immediate response
+  const toggleUserSecurityCheck = (user) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     const newVal = user.requireSecurityCheck === false ? true : false;
+
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      // Security Check popup is disabled — still call VERIFY_SECURITY with empty pin so
+      // the backend can send the message/email, then execute the toggle action.
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: `Turned ${newVal ? 'ON' : 'OFF'} Security Check for ${user.name}`,
+      }).catch(() => {/* backend handles gracefully */});
+      executeUserSecurityToggle(user, newVal);
+      return;
+    }
+    setTogglePrompt({
+      isOpen: true,
+      type: "user_security",
+      target: user,
+      password: "",
+      title: `Security Check Turn ${newVal ? 'On' : 'Off'}`,
+      subtitle: `Enter password to turn ${newVal ? 'ON' : 'OFF'} security check for ${user.name}.`
+    });
+  };
+
+  const executeUserSecurityToggle = async (user, newVal) => {
+    // Optimistic UI update for immediate response
     setUsers(prevUsers => prevUsers.map(u => u._id === user._id ? { ...u, requireSecurityCheck: newVal } : u));
-    
+
     try {
       await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${user._id}`, { ...user, requireSecurityCheck: newVal });
       showToast(`Security check for ${user.name} turned ${newVal ? 'ON' : 'OFF'}`, "success");
@@ -315,10 +648,45 @@ const AdminSettings = () => {
         const updatedSession = { ...adminSession, user: { ...adminSession.user, requireSecurityCheck: newVal } };
         localStorage.setItem("adminInfo", JSON.stringify(updatedSession));
       }
-    } catch(e) {
+    } catch (e) {
       // Revert on error
       setUsers(prevUsers => prevUsers.map(u => u._id === user._id ? { ...u, requireSecurityCheck: user.requireSecurityCheck } : u));
       showToast("Failed to update security check", "error");
+    }
+  };
+
+  // Super Admin Plus exclusive: toggle the Security Check Message on/off for a user
+  const toggleUserSecurityMessage = (user) => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    const newVal = user.disableSecurityMessage !== true ? true : false;
+
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      adminApi.post(API_ENDPOINTS.ADMIN.SETTINGS.VERIFY_SECURITY, {
+        securityPin: "",
+        action: `Security Message turned ${newVal ? 'OFF' : 'ON'} for ${user.name}`,
+      }).catch(() => {});
+      executeUserSecurityMessage(user, newVal);
+      return;
+    }
+
+    setTogglePrompt({
+      isOpen: true,
+      type: "user_security_message",
+      target: user,
+      password: "",
+      title: `Security Message Turn ${newVal ? 'Off' : 'On'}`,
+      subtitle: `Enter password to turn ${newVal ? 'OFF' : 'ON'} security message for ${user.name}.`
+    });
+  };
+
+  const executeUserSecurityMessage = async (user, newVal) => {
+    setUsers(prevUsers => prevUsers.map(u => u._id === user._id ? { ...u, disableSecurityMessage: newVal } : u));
+    try {
+      await adminApi.put(`${API_ENDPOINTS.ADMIN.SETTINGS.USERS}/${user._id}`, { ...user, disableSecurityMessage: newVal });
+      showToast(`Security message for ${user.name} turned ${newVal ? 'OFF' : 'ON'}`, "success");
+    } catch (e) {
+      setUsers(prevUsers => prevUsers.map(u => u._id === user._id ? { ...u, disableSecurityMessage: user.disableSecurityMessage } : u));
+      showToast("Failed to update security message setting", "error");
     }
   };
 
@@ -334,7 +702,7 @@ const AdminSettings = () => {
   };
   const deleteAlert = async (id) => {
     openConfirmDialog("Delete Alert Contact", "Are you sure you want to delete this alert contact?", async () => {
-      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS}/${id}`); fetchAlerts(); showToast("Deleted.", "success"); } catch(e) {}
+      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SECURITY_ALERTS}/${id}`); fetchAlerts(); showToast("Deleted.", "success"); } catch (e) { }
     });
   };
 
@@ -350,7 +718,7 @@ const AdminSettings = () => {
   };
   const deleteSpec = async (id) => {
     openConfirmDialog("Delete Specialization", "Are you sure you want to delete this specialization?", async () => {
-      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS}/${id}`); fetchSpecs(); showToast("Deleted.", "success"); } catch(e) {}
+      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.SPECIALIZATIONS}/${id}`); fetchSpecs(); showToast("Deleted.", "success"); } catch (e) { }
     });
   };
 
@@ -363,7 +731,7 @@ const AdminSettings = () => {
       setApiKeyModalOpen(false);
       fetchApiKeys();
       showToast("Key generated.", "success");
-    } catch(e) {
+    } catch (e) {
       showToast("Failed to generate API Key.", "error");
     } finally {
       setLoading(false);
@@ -379,7 +747,7 @@ const AdminSettings = () => {
   };
   const deleteApiKey = async (id) => {
     openConfirmDialog("Revoke API Key", "Are you sure you want to revoke this API Key?", async () => {
-      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.API_KEYS}/${id}`); fetchApiKeys(); showToast("Revoked.", "success"); } catch(e) {}
+      try { await adminApi.delete(`${API_ENDPOINTS.ADMIN.SETTINGS.API_KEYS}/${id}`); fetchApiKeys(); showToast("Revoked.", "success"); } catch (e) { }
     });
   };
 
@@ -392,14 +760,19 @@ const AdminSettings = () => {
   };
 
   // --- UI Render ---
-  const standardRoles = ["super_admin", "PM", "admin", "supervisor", "developer"];
+  // super_admin_plus is always treated as a standard role (not legacy) but hidden from non-SAP users
+  const standardRoles = ["super_admin", "super_admin_plus", "PM", "admin", "supervisor", "developer", "BA", "QA"];
   const extraRoles = [...new Set(users.map(u => u.role))].filter(r => r && !standardRoles.includes(r));
   const roleGroups = [
+    // Super Admin Plus group — only visible to SAP users
+    ...(isSuperAdminPlus ? [{ key: "super_admin_plus", label: "Super Admin Plus", color: "text-fuchsia-700 bg-fuchsia-50 ring-fuchsia-600/20", iconColor: "text-fuchsia-500" }] : []),
     { key: "super_admin", label: "Super Admins", color: "text-purple-700 bg-purple-50 ring-purple-600/20", iconColor: "text-purple-500" },
     { key: "PM", label: "Project Managers", color: "text-amber-700 bg-amber-50 ring-amber-600/20", iconColor: "text-amber-500" },
     { key: "admin", label: "Administrators", color: "text-indigo-700 bg-indigo-50 ring-indigo-600/20", iconColor: "text-indigo-500" },
     { key: "supervisor", label: "Supervisors", color: "text-sky-700 bg-sky-50 ring-sky-600/20", iconColor: "text-sky-500" },
     { key: "developer", label: "Developers", color: "text-emerald-700 bg-emerald-50 ring-emerald-600/20", iconColor: "text-emerald-500" },
+    { key: "BA", label: "Business Analysts", color: "text-teal-700 bg-teal-50 ring-teal-600/20", iconColor: "text-teal-500" },
+    { key: "QA", label: "Quality Assurance", color: "text-orange-700 bg-orange-50 ring-orange-600/20", iconColor: "text-orange-500" },
     ...extraRoles.map(r => ({
       key: r, label: (r.charAt(0).toUpperCase() + r.slice(1)).replace(/_/g, ' ') + " (Legacy)", color: "text-slate-700 bg-slate-50 ring-slate-600/20", iconColor: "text-slate-500"
     }))
@@ -409,7 +782,7 @@ const AdminSettings = () => {
     <AdminNavigation>
       <div className="min-h-screen bg-slate-50/50 p-4 md:p-6 lg:p-8 animate-fade-in pb-24">
         <div className="max-w-7xl mx-auto space-y-8">
-          
+
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="relative flex flex-col xl:flex-row xl:items-start xl:justify-between gap-6 pt-2">
               <div className="flex items-center gap-2 xl:gap-3 md:gap-4">
@@ -453,110 +826,226 @@ const AdminSettings = () => {
 
           <div className="bg-white rounded-2xl xl:rounded-3xl shadow-sm border border-slate-200/60 overflow-hidden min-h-[500px]">
             {activeTab === "security" && (
-              <div className="p-4 xl:p-8 flex justify-center">
-                <div className="max-w-md w-full">
-                  <h3 className="text-lg xl:text-xl font-bold text-slate-800 mb-2 flex items-center justify-center gap-2"><KeyRound className="w-5 h-5 text-blue-500"/> Change Security Password</h3>
-                  <p className="text-sm text-slate-500 mb-8 text-center">This password is required for sensitive administrative actions.</p>
-                  
-                  <form onSubmit={handlePasswordChange} className="space-y-5">
-                    <PasswordField label="Current Password" value={currentPassword} onChange={setCurrentPassword} show={showCurrent} setShow={setShowCurrent} />
-                    <PasswordField label="New Password" value={newPassword} onChange={setNewPassword} show={showNew} setShow={setShowNew} />
-                    <PasswordField label="Confirm New Password" value={confirmPassword} onChange={setConfirmPassword} show={showConfirm} setShow={setShowConfirm} />
-                    <button type="submit" disabled={passwordLoading} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-blue-500/20">
-                      {passwordLoading ? "Updating..." : "Update Password"}
-                    </button>
-                  </form>
+              <div className="p-4 xl:p-8">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 items-stretch">
+                  {/* Left Column: Add New Password */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-5 xl:p-7 flex flex-col justify-between h-full min-h-[420px] shadow-sm">
+                    <div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100/60 shadow-xs">
+                          <KeyRound className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base xl:text-lg font-bold text-slate-800">Add New Password</h3>
+                          <p className="text-xs text-slate-500">Configure credentials for administrative actions</p>
+                        </div>
+                      </div>
+
+                      <form id="add-security-password-form" onSubmit={handleAddSecurityPassword} className="space-y-4 mt-6">
+                        <PasswordField
+                          label="New Password"
+                          value={newPassword}
+                          onChange={setNewPassword}
+                          show={showNew}
+                          setShow={setShowNew}
+                        />
+                        <PasswordField
+                          label="Confirm Password"
+                          value={confirmPassword}
+                          onChange={setConfirmPassword}
+                          show={showConfirm}
+                          setShow={setShowConfirm}
+                        />
+                      </form>
+                    </div>
+
+                    <div className="pt-6 mt-auto">
+                      <button
+                        type="submit"
+                        form="add-security-password-form"
+                        disabled={addPasswordLoading || !newPassword || !confirmPassword}
+                        className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all shadow-md shadow-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm"
+                      >
+                        {addPasswordLoading ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Plus className="w-4 h-4" />
+                        )}
+                        {addPasswordLoading ? "Adding Password..." : "Add Password"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right Column: Current Passwords List */}
+                  <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-5 xl:p-7 flex flex-col h-full min-h-[420px] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 border border-emerald-100/60 shadow-xs">
+                          <ShieldCheck className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <h3 className="text-base xl:text-lg font-bold text-slate-800">Current Passwords</h3>
+                          <p className="text-xs text-slate-500">Active passwords authorized for system verification</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-semibold px-2.5 py-1 bg-white border border-slate-200 text-slate-600 rounded-full shadow-xs">
+                        {securityPasswords.length} Active
+                      </span>
+                    </div>
+
+                    {/* Scrollable list container that takes remaining space */}
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-3 custom-scrollbar mt-2 max-h-[300px] lg:max-h-none">
+                      {securityPasswordsLoading ? (
+                        <div className="flex flex-col items-center justify-center h-full py-16 text-slate-400">
+                          <RefreshCw className="w-6 h-6 animate-spin text-blue-500 mb-2" />
+                          <span className="text-xs font-medium">Loading passwords...</span>
+                        </div>
+                      ) : securityPasswords.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full py-16 text-slate-400 bg-white rounded-xl border border-dashed border-slate-200">
+                          <KeyRound className="w-8 h-8 text-slate-300 mb-2" />
+                          <p className="text-sm font-medium text-slate-600">No passwords found</p>
+                          <p className="text-xs text-slate-400 mt-1">Add a security password using the form on the left.</p>
+                        </div>
+                      ) : (
+                        securityPasswords.map((p, idx) => (
+                          <div
+                            key={p._id || idx}
+                            className="bg-white border border-slate-200 rounded-xl p-3.5 xl:p-4 flex items-center justify-between shadow-xs hover:border-blue-300 hover:shadow-sm transition-all"
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-lg bg-blue-50/70 border border-blue-100/50 flex items-center justify-center text-blue-600 font-bold text-xs shrink-0">
+                                #{idx + 1}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-semibold text-slate-800 text-sm truncate flex items-center gap-2">
+                                  Password #{idx + 1}
+                                  <span className="text-[11px] font-mono text-slate-400 tracking-widest font-normal">••••••••</span>
+                                </p>
+                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                  Added: {p.addedAt ? new Date(p.addedAt).toLocaleDateString() : "Active"}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1 shrink-0 ml-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditPasswordModal(p, idx)}
+                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                title="Update Password"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => confirmRemovePassword(p, idx)}
+                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Remove Password"
+                              >
+                                <Trash className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
 
             {activeTab === "users" && (
               <div className="p-0 flex flex-col min-h-[500px]">
-                  <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col gap-4 xl:gap-6 bg-slate-50/50">
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
-                      <div>
-                        <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500"/> Staff & Login Management</h3>
-                        <p className="text-xs xl:text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
-                      </div>
-                      <button onClick={() => { setEditingItem(null); setUserForm({name:"", email:"", role:"admin", isActive:true, password:"", confirmPassword:"", visiblePages:[], authProvider: "developer_password"}); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4"/> Add Staff</button>
+                <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col gap-4 xl:gap-6 bg-slate-50/50">
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-500" /> Staff & Login Management</h3>
+                      <p className="text-xs xl:text-sm text-slate-500 mt-1">Manage platform access, roles, and credentials</p>
                     </div>
+                    <button onClick={() => { setEditingItem(null); setUserForm({ name: "", email: "", role: "", isActive: true, password: "", confirmPassword: "", visiblePages: [], authProvider: "developer_password" }); setUserModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Staff</button>
+                  </div>
 
-                    {/* Role Filter Toggles */}
-                    <div className="flex flex-col xl:flex-row xl:flex-wrap gap-2">
-                      {[
-                        { id: "all", label: "Email and password login" },
-                        { id: "super_admin", label: "Super Admins" },
-                        { id: "admin", label: "Admins" },
-                        { id: "supervisor", label: "Supervisors" },
-                        { id: "developer", label: "Developers" },
-                        { id: "PM", label: "Project Managers" }
-                      ].map((tab) => {
-                        const count = users.filter(u => {
-                          if (tab.id === "all" && (u.authProvider === "google" || u.googleSubject)) return false;
-                          if (tab.id === "all") return true;
-                          return u.role === tab.id;
-                        }).length;
-                        return (
-                          <button
-                            key={tab.id}
-                            onClick={() => setActiveRoleTab(tab.id)}
-                            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all w-full xl:w-auto text-center ${
-                              activeRoleTab === tab.id
-                                ? "bg-indigo-600 text-white border border-transparent shadow-md shadow-indigo-500/20"
-                                : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  {/* Role Filter Toggles */}
+                  <div className="flex flex-col xl:flex-row xl:flex-wrap gap-2">
+                    {[
+                      { id: "all", label: "Email login" },
+                      ...(isSuperAdminPlus ? [{ id: "super_admin_plus", label: "Super Admin Plus" }] : []),
+                      { id: "super_admin", label: "Super Admins" },
+                      { id: "admin", label: "Admins" },
+                      { id: "supervisor", label: "Supervisors" },
+                      { id: "developer", label: "Developers" },
+                      { id: "PM", label: "PM" },
+                      { id: "BA", label: "BA" },
+                      { id: "QA", label: "QA" }
+                    ].map((tab) => {
+                      const count = users.filter(u => {
+                        if (tab.id === "all" && (u.authProvider === "google" || u.googleSubject)) return false;
+                        if (tab.id === "all") return true;
+                        return u.role === tab.id;
+                      }).length;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveRoleTab(tab.id)}
+                          className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all w-full xl:w-auto text-center ${activeRoleTab === tab.id
+                              ? "bg-indigo-600 text-white border border-transparent shadow-md shadow-indigo-500/20"
+                              : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                             }`}
-                          >
+                        >
                           {tab.label} ({count})
                         </button>
-                      )})}
-                    </div>
+                      )
+                    })}
                   </div>
-                  
-                  <div className="p-4 xl:p-6 space-y-6 xl:space-y-8 bg-slate-50/30 flex-1">
-                    {(() => {
-                      const filteredUsers = users.filter(u => {
-                        if (activeRoleTab !== "all" && u.role !== activeRoleTab) return false;
-                        if (activeRoleTab === "all" && (u.authProvider === "google" || u.googleSubject)) return false;
-                        return true;
-                      });
-                      
-                      if (filteredUsers.length === 0) {
-                        return (
-                          <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 border-dashed">
-                            <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                            <h4 className="text-sm font-semibold text-slate-600">No staff found</h4>
-                            <p className="text-xs text-slate-400 mt-1">Add staff members to grant them admin access.</p>
-                          </div>
-                        );
-                      }
-                      
+                </div>
+
+                <div className="p-4 xl:p-6 space-y-6 xl:space-y-8 bg-slate-50/30 flex-1">
+                  {(() => {
+                    const filteredUsers = users.filter(u => {
+                      // Super Admin Plus users are hidden from non-SAP users entirely
+                      if (u.role === "super_admin_plus" && !isSuperAdminPlus) return false;
+                      if (activeRoleTab !== "all" && u.role !== activeRoleTab) return false;
+                      if (activeRoleTab === "all" && (u.authProvider === "google" || u.googleSubject)) return false;
+                      return true;
+                    });
+
+                    if (filteredUsers.length === 0) {
                       return (
-                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                          <div className="overflow-x-auto">
-                            <table className="block xl:table w-full text-left text-sm whitespace-normal xl:whitespace-nowrap">
-                              <thead className="hidden xl:table-header-group text-slate-400 font-medium border-b border-slate-100 bg-white">
-                                <tr>
-                                  <th className="px-5 py-3">Name</th>
-                                  <th className="px-5 py-3">Email</th>
-                                  <th className="px-5 py-3 text-center">Password</th>
-                                  <th className="px-5 py-3 text-center w-1/6">Status</th>
-                                  <th className="px-5 py-3 text-center w-1/6">Visible Pages</th>
-                                  <th className="px-5 py-3 text-center w-1/6">Security Check</th>
-                                  <th className="px-5 py-3 text-center">Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody className="block xl:table-row-group divide-y-0 xl:divide-y divide-slate-50 p-4 xl:p-0 space-y-4 xl:space-y-0 bg-slate-50/30 xl:bg-transparent">
-                                {filteredUsers.map(user => {
-                                  const iconColor = user.role === 'super_admin' ? 'text-purple-500 bg-purple-100' :
-                                                    user.role === 'PM' ? 'text-amber-500 bg-amber-100' :
-                                                    user.role === 'admin' ? 'text-indigo-500 bg-indigo-100' :
-                                                    user.role === 'supervisor' ? 'text-sky-500 bg-sky-100' :
-                                                    user.role === 'developer' ? 'text-emerald-500 bg-emerald-100' :
-                                                    'text-slate-500 bg-slate-100';
-                                  
-                                  const authMethod = (user.authProvider === 'google' || user.googleSubject) ? 'Google SSO' : '••••••••';
-                                  
-                                  return (
+                        <div className="text-center py-12 bg-white rounded-2xl border border-slate-200 border-dashed">
+                          <Users className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                          <h4 className="text-sm font-semibold text-slate-600">No staff found</h4>
+                          <p className="text-xs text-slate-400 mt-1">Add staff members to grant them admin access.</p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                          <table className="block xl:table w-full text-left text-sm whitespace-normal xl:whitespace-nowrap">
+                            <thead className="hidden xl:table-header-group text-slate-400 font-medium border-b border-slate-100 bg-white">
+                              <tr>
+                                <th className="px-5 py-3">Name</th>
+                                <th className="px-5 py-3">Email</th>
+                                <th className="px-5 py-3 text-center">Password</th>
+                                <th className="px-5 py-3 text-center w-1/6">Status</th>
+                                <th className="px-5 py-3 text-center w-1/6">Visible Pages</th>
+                                <th className="px-5 py-3 text-center w-1/6">Security Check</th>
+                                <th className="px-5 py-3 text-center">Actions</th>
+                              </tr>
+                            </thead>
+                            <tbody className="block xl:table-row-group divide-y-0 xl:divide-y divide-slate-50 p-4 xl:p-0 space-y-4 xl:space-y-0 bg-slate-50/30 xl:bg-transparent">
+                              {filteredUsers.map(user => {
+                                const iconColor = user.role === 'super_admin' ? 'text-purple-500 bg-purple-100' :
+                                  user.role === 'PM' ? 'text-amber-500 bg-amber-100' :
+                                    user.role === 'admin' ? 'text-indigo-500 bg-indigo-100' :
+                                      user.role === 'supervisor' ? 'text-sky-500 bg-sky-100' :
+                                        user.role === 'developer' ? 'text-emerald-500 bg-emerald-100' :
+                                          'text-slate-500 bg-slate-100';
+
+                                const authMethod = (user.authProvider === 'google' || user.googleSubject) ? 'Google SSO' : '••••••••';
+
+                                return (
                                   <tr key={user._id} className="block xl:table-row bg-white xl:bg-transparent border border-slate-200 xl:border-0 rounded-xl xl:rounded-none p-3 xl:p-0 hover:bg-slate-50/50 transition-colors group/row shadow-sm xl:shadow-none text-sm">
                                     <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0">
                                       <div className="flex xl:flex-row items-center gap-2.5 xl:gap-3">
@@ -589,7 +1078,7 @@ const AdminSettings = () => {
                                     <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
                                       <div className="flex justify-between items-center xl:block gap-2">
                                         <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Visible Pages</span>
-                                        {['super_admin', 'PM', 'pm'].includes(user.role) ? (
+                                        {['super_admin', 'super_admin_plus', 'PM', 'pm'].includes(user.role) ? (
                                           <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] font-bold rounded-full border border-indigo-100">
                                             All
                                           </span>
@@ -605,34 +1094,54 @@ const AdminSettings = () => {
                                     <td className="block xl:table-cell px-0 xl:px-5 py-1.5 xl:py-3.5 border-b border-slate-50 xl:border-0 text-center xl:text-center">
                                       <div className="flex justify-between items-center xl:block gap-2">
                                         <span className="xl:hidden font-bold text-slate-400 text-[10px] xl:text-xs uppercase tracking-wider shrink-0">Security Check</span>
-                                        <div className="flex items-center justify-center xl:justify-center">
-                                          <div className={`relative inline-flex items-center w-11 h-6 rounded-full transition-colors cursor-pointer ${user.requireSecurityCheck !== false ? 'bg-indigo-500' : 'bg-slate-300'}`} onClick={() => toggleUserSecurityCheck(user)}>
-                                            <div className={`inline-block w-4 h-4 bg-white rounded-full transition-transform ${user.requireSecurityCheck !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+                                        <div className="flex flex-col items-center justify-center gap-1.5">
+                                          {/* Security Check popup toggle — visible to all managers */}
+                                          <div className="flex items-center gap-1.5" title={user.requireSecurityCheck !== false ? "Security Check Popup: ON" : "Security Check Popup: OFF"}>
+                                            <span className="text-[9px] text-indigo-500 font-bold">SCP</span>
+                                            <div
+                                              className={`relative inline-flex items-center w-10 h-5.5 rounded-full transition-colors cursor-pointer ${user.requireSecurityCheck !== false ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                                              onClick={() => toggleUserSecurityCheck(user)}
+                                            >
+                                              <div className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${user.requireSecurityCheck !== false ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                            </div>
                                           </div>
+                                          {/* Security Check Message toggle — exclusively for Super Admin Plus users */}
+                                          {isSuperAdminPlus && (
+                                            <div className="flex items-center gap-1.5" title={user.disableSecurityMessage !== true ? "Security Message: Enabled" : "Security Message: Disabled"}>
+                                              <span className="text-[9px] text-fuchsia-500 font-bold">MSG</span>
+                                              <div
+                                                className={`relative inline-flex items-center w-10 h-5.5 rounded-full transition-colors cursor-pointer ${user.disableSecurityMessage !== true ? 'bg-fuchsia-500' : 'bg-slate-300'}`}
+                                                onClick={() => toggleUserSecurityMessage(user)}
+                                              >
+                                                <div className={`inline-block w-4 h-4 bg-white rounded-full shadow transition-transform ${user.disableSecurityMessage !== true ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     </td>
                                     <td className="block xl:table-cell px-0 xl:px-5 py-2 xl:py-3.5 text-center xl:text-center">
                                       <div className="flex justify-end xl:justify-center">
                                         <div className="flex items-center gap-2 xl:gap-1 transition-opacity">
-                                          <button onClick={() => { setEditingItem(user); setUserForm({name:user.name, email:user.email, role:user.role, isActive:user.isActive, visiblePages: user.visiblePages || [], password:"", confirmPassword:"", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false}); setUserModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors" title="Edit Staff">
-                                            <Edit className="w-4 h-4 xl:w-4 xl:h-4"/>
+                                          <button onClick={() => { setEditingItem(user); setUserForm({ name: user.name, email: user.email, role: user.role, isActive: user.isActive, visiblePages: user.visiblePages || [], password: "", confirmPassword: "", authProvider: user.authProvider || (user.googleSubject ? "google" : "developer_password"), requireSecurityCheck: user.requireSecurityCheck !== false }); setUserModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors" title="Edit Staff">
+                                            <Edit className="w-4 h-4 xl:w-4 xl:h-4" />
                                           </button>
                                           <button onClick={() => deleteUser(user._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors ml-2 xl:ml-0" title="Delete Staff">
-                                            <Trash className="w-4 h-4 xl:w-4 xl:h-4"/>
+                                            <Trash className="w-4 h-4 xl:w-4 xl:h-4" />
                                           </button>
                                         </div>
                                       </div>
                                     </td>
                                   </tr>
-                                )})}
-                              </tbody>
-                            </table>
-                          </div>
+                                )
+                              })}
+                            </tbody>
+                          </table>
                         </div>
-                      );
-                    })()}
-                  </div>
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             )}
             {activeTab === "alerts" && (
@@ -653,6 +1162,11 @@ const AdminSettings = () => {
                       <div className="flex items-center gap-3 text-slate-500">
                         <div className="w-5 h-5 border-2 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
                         <span className="text-sm font-medium">Establishing connection...</span>
+                      </div>
+                    ) : waStatus?.status === 'AUTHENTICATING' ? (
+                      <div className="flex items-center gap-3 text-slate-500">
+                        <div className="w-5 h-5 border-2 border-emerald-100 border-t-emerald-500 rounded-full animate-spin" />
+                        <span className="text-sm font-medium text-emerald-600">QR scanned! Finalizing connection...</span>
                       </div>
                     ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
                       <div className="flex flex-col xl:flex-row items-start xl:items-center gap-6">
@@ -702,10 +1216,10 @@ const AdminSettings = () => {
                 {/* Security Alerts Contacts Panel */}
                 <div className="border-t border-slate-100">
                   <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
-                    <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-rose-500"/> Security Alerts Contacts</h3>
-                    <button onClick={() => { setEditingItem(null); setAlertForm({name:"", role:"", subRole:"", email:"", phoneNumber:""}); setAlertModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4"/> Add Contact</button>
+                    <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><ShieldAlert className="w-5 h-5 text-rose-500" /> Security Alerts Contacts</h3>
+                    <button onClick={() => { setEditingItem(null); setAlertForm({ name: "", role: "", subRole: "", email: "", phoneNumber: "" }); setAlertModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><UserPlus className="w-4 h-4" /> Add Contact</button>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                     <table className="block xl:table w-full text-left text-sm whitespace-normal xl:whitespace-nowrap">
                       <thead className="hidden xl:table-header-group bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100">
                         <tr><th className="px-6 py-4">Name</th><th className="px-6 py-4">Role/Sub</th><th className="px-6 py-4">Email</th><th className="px-6 py-4">Phone</th><th className="px-6 py-4 text-right">Actions</th></tr>
@@ -734,8 +1248,8 @@ const AdminSettings = () => {
                             </td>
                             <td className="block xl:table-cell px-0 xl:px-6 py-2 xl:py-4 text-right">
                               <div className="flex justify-end">
-                                <button onClick={() => { setEditingItem(a); setAlertForm({name:a.name, role:a.role, subRole:a.subRole, email:a.email, phoneNumber:a.phoneNumber}); setAlertModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Edit className="w-4 h-4 xl:w-4 xl:h-4"/></button>
-                                <button onClick={() => deleteAlert(a._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Trash className="w-4 h-4 xl:w-4 xl:h-4"/></button>
+                                <button onClick={() => { setEditingItem(a); setAlertForm({ name: a.name, role: a.role, subRole: a.subRole, email: a.email, phoneNumber: a.phoneNumber }); setAlertModalOpen(true); }} className="p-1.5 xl:p-1.5 bg-indigo-50 xl:bg-transparent text-indigo-600 xl:text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Edit className="w-4 h-4 xl:w-4 xl:h-4" /></button>
+                                <button onClick={() => deleteAlert(a._id)} className="p-1.5 xl:p-1.5 bg-rose-50 xl:bg-transparent text-rose-600 xl:text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg xl:rounded-lg transition-colors mx-1"><Trash className="w-4 h-4 xl:w-4 xl:h-4" /></button>
                               </div>
                             </td>
                           </tr>
@@ -751,8 +1265,8 @@ const AdminSettings = () => {
             {activeTab === "apikeys" && (
               <div className="p-0">
                 <div className="p-4 xl:p-6 border-b border-slate-100 flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-slate-50/50">
-                  <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-600"/> API Keys</h3>
-                  <button onClick={() => { setApiForm({ name: "", accessiblePages: [], expiresInDays: "never" }); setApiKeyModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><Key className="w-4 h-4"/> Generate Key</button>
+                  <h3 className="text-base xl:text-lg font-bold text-slate-800 flex items-center gap-2"><Key className="w-5 h-5 text-slate-600" /> API Keys</h3>
+                  <button onClick={() => { setApiForm({ name: "", accessiblePages: [], expiresInDays: "never" }); setApiKeyModalOpen(true); }} className="px-3 xl:px-4 py-2 xl:py-2 bg-slate-800 hover:bg-slate-900 text-white text-sm xl:text-sm font-semibold rounded-lg xl:rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all w-full xl:w-auto"><Key className="w-4 h-4" /> Generate Key</button>
                 </div>
                 <div className="p-4 xl:p-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -763,7 +1277,7 @@ const AdminSettings = () => {
                           <p className="font-mono text-xs text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded inline-block">{k.key}</p>
                           <p className="text-xs text-slate-400 mt-2">Created: {new Date(k.createdAt).toLocaleDateString()}</p>
                         </div>
-                        <button onClick={() => deleteApiKey(k._id)} className="w-10 h-10 bg-white border border-slate-200 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm"><Trash className="w-4 h-4"/></button>
+                        <button onClick={() => deleteApiKey(k._id)} className="w-10 h-10 bg-white border border-slate-200 text-rose-500 rounded-xl flex items-center justify-center hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm"><Trash className="w-4 h-4" /></button>
                       </div>
                     ))}
                     {apiKeys.length === 0 && <div className="col-span-full text-center py-8 text-slate-400">No API Keys generated</div>}
@@ -776,27 +1290,33 @@ const AdminSettings = () => {
               <div className="flex flex-col md:flex-row h-full">
                 {/* Left side: Toggles */}
                 <div className="w-full md:w-1/3 border-r border-slate-100 bg-slate-50/50 p-4 xl:p-6">
-                  <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-4 xl:mb-6 flex items-center gap-2"><Settings2 className="w-5 h-5 text-emerald-600"/> Notification Toggles</h3>
+                  <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-4 xl:mb-6 flex items-center gap-2"><Settings2 className="w-5 h-5 text-emerald-600" /> Notification Toggles</h3>
                   <p className="text-xs xl:text-sm text-slate-500 mb-4 xl:mb-6">Select which events trigger WhatsApp notifications.</p>
                   <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {AVAILABLE_PAGES.map(page => (
-                      <ToggleOption 
-                        key={page} 
-                        label={page} 
-                        description={`Alerts for activities in ${page}.`} 
-                        enabled={toggles[page] || false} 
-                        onChange={() => requestToggleChange(page)} 
+                      <ToggleOption
+                        key={page}
+                        label={page}
+                        description={`Alerts for activities in ${page}.`}
+                        enabled={toggles[page] || false}
+                        onChange={() => requestToggleChange(page)}
                       />
                     ))}
                   </div>
                 </div>
-                
+
                 {/* Right side: WhatsApp Linking */}
                 <div className="w-full md:w-2/3 p-4 xl:p-6 md:p-12 flex flex-col items-center justify-center relative overflow-hidden bg-white min-h-[300px]">
                   {isLinking || (waLoading && !waStatus) || waStatus?.status === 'INITIALIZING' ? (
                     <div className="flex flex-col items-center justify-center">
                       <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
                       <p className="text-slate-500 font-medium">Establishing connection...</p>
+                    </div>
+                  ) : waStatus?.status === 'AUTHENTICATING' ? (
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
+                      <p className="text-emerald-600 font-semibold">QR Scanned!</p>
+                      <p className="text-slate-400 text-sm mt-1">Finalizing connection, please wait...</p>
                     </div>
                   ) : waStatus?.status === 'WAITING_FOR_SCAN' ? (
                     <div className="text-center">
@@ -815,7 +1335,7 @@ const AdminSettings = () => {
                       <h3 className="text-xl font-bold text-slate-800 mb-2">WhatsApp Linked</h3>
                       <p className="text-sm text-slate-500 mb-8">Active Account: <strong>{waStatus?.connectedNumber}</strong></p>
                       <button onClick={handleWhatsAppDisconnect} disabled={waDisconnecting} className="px-8 py-3 bg-rose-50 text-rose-600 font-semibold rounded-xl hover:bg-rose-100 transition-colors border border-rose-200 inline-flex items-center gap-2">
-                        <Unplug className="w-4 h-4"/> Disconnect Device
+                        <Unplug className="w-4 h-4" /> Disconnect Device
                       </button>
                     </div>
                   ) : (
@@ -826,7 +1346,7 @@ const AdminSettings = () => {
                       <h3 className="text-xl font-bold text-slate-800 mb-2">Not Connected</h3>
                       <p className="text-sm text-slate-500 mb-8 max-w-xs mx-auto">Link your WhatsApp account to enable automated messages.</p>
                       <button onClick={handleWhatsAppLink} className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all inline-flex items-center gap-2">
-                        <Smartphone className="w-4 h-4"/> Generate QR Code
+                        <Smartphone className="w-4 h-4" /> Generate QR Code
                       </button>
                     </div>
                   )}
@@ -844,107 +1364,118 @@ const AdminSettings = () => {
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
             <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-lg shadow-2xl flex flex-col max-h-full pointer-events-auto">
-            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Staff Member" : "Add Staff Member"}</h3>
-              <button type="button" onClick={() => setUserModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
-            </div>
-            <div className="p-4 xl:p-6 overflow-y-auto">
-              <form onSubmit={handleUserSubmit} className="space-y-4">
-                
-                {!editingItem && (
-                  <div className="flex flex-col xl:flex-row gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
-                    <button type="button" onClick={() => setUserForm({...userForm, authProvider: 'developer_password'})} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'developer_password' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Email & Password</button>
-                    <button type="button" onClick={() => setUserForm({...userForm, authProvider: 'google'})} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'google' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Google Login</button>
-                  </div>
-                )}
+              <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Staff Member" : "Add Staff Member"}</h3>
+                <button type="button" onClick={() => setUserModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6" /></button>
+              </div>
+              <div className="p-4 xl:p-6 overflow-y-auto">
+                <form onSubmit={handleUserSubmit} className="space-y-4">
 
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.name} onChange={e=>setUserForm({...userForm, name: e.target.value})} /></div>
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">{userForm.authProvider === 'google' ? 'Gmail Address' : 'Email'}</label><input type="email" required disabled={!!editingItem} className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm disabled:opacity-50" value={userForm.email} onChange={e=>setUserForm({...userForm, email: e.target.value})} /></div>
+                  {!editingItem && (
+                    <div className="flex flex-col xl:flex-row gap-2 mb-4 p-1 bg-slate-100 rounded-xl">
+                      <button type="button" onClick={() => setUserForm({ ...userForm, authProvider: 'developer_password', email: '', password: '', confirmPassword: '' })} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'developer_password' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Email & Password</button>
+                      <button type="button" onClick={() => setUserForm({ ...userForm, authProvider: 'google', email: '', password: '', confirmPassword: '' })} className={`flex-1 py-2 text-sm font-semibold rounded-lg transition-all ${userForm.authProvider === 'google' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>Google Login</button>
+                    </div>
+                  )}
+
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })} /></div>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">{userForm.authProvider === 'google' ? 'Gmail Address' : 'Email'}</label><input type="email" required disabled={!!editingItem} className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm disabled:opacity-50" value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} /></div>
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.role} onChange={e=>{
+                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Role</label><select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.role} onChange={e => {
                       const newRole = e.target.value;
                       let newVisiblePages = userForm.visiblePages;
-                      if (newRole === 'admin' || newRole === 'developer') {
+                      if (newRole === 'admin' || newRole === 'developer' || newRole === 'BA' || newRole === 'QA') {
                         newVisiblePages = AVAILABLE_PAGES.filter(p => p !== 'Settings');
-                      } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'PM' || newRole === 'pm') {
+                      } else if (newRole === 'supervisor' || newRole === 'super_admin' || newRole === 'super_admin_plus' || newRole === 'PM' || newRole === 'pm') {
                         newVisiblePages = [];
                       }
-                      setUserForm({...userForm, role: newRole, visiblePages: newVisiblePages});
-                    }}><option value="super_admin">Super Admin</option><option value="admin">Admin</option><option value="PM">PM</option><option value="supervisor">Supervisor</option><option value="developer">Developer</option></select></div>
-                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e=>setUserForm({...userForm, isActive: e.target.value === 'true'})}><option value="true">Active</option><option value="false">Inactive</option></select></div>
+                      setUserForm({ ...userForm, role: newRole, visiblePages: newVisiblePages });
+                    }}>
+                      <option value="" disabled>Select Role</option>
+                      {/* Super Admin Plus option — only shown to SAP users */}
+                      {isSuperAdminPlus && <option value="super_admin_plus">Super Admin Plus</option>}
+                      <option value="super_admin">Super Admin</option>
+                      <option value="admin">Admin</option>
+                      <option value="PM">PM</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="developer">Developer</option>
+                      <option value="BA">BA</option>
+                      <option value="QA">QA</option>
+                    </select></div>
+                    <div><label className="block text-sm font-semibold text-slate-700 mb-1">Status</label><select className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 focus:border-indigo-500 outline-none text-sm" value={userForm.isActive.toString()} onChange={e => setUserForm({ ...userForm, isActive: e.target.value === 'true' })}><option value="true">Active</option><option value="false">Inactive</option></select></div>
                   </div>
 
                   <div className="flex items-center gap-3 pt-2">
-                    <input type="checkbox" id="requireSecurityCheck" checked={userForm.requireSecurityCheck !== false} onChange={e=>setUserForm({...userForm, requireSecurityCheck: e.target.checked})} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                    <input type="checkbox" id="requireSecurityCheck" checked={userForm.requireSecurityCheck !== false} onChange={e => setUserForm({ ...userForm, requireSecurityCheck: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
                     <label htmlFor="requireSecurityCheck" className="text-sm font-semibold text-slate-700 cursor-pointer">Require Global Security Check (Popup)</label>
                   </div>
-                
-                {/* Visible Pages Multi-Select */}
-                <div className="pt-2">
-                  {!['super_admin', 'PM', 'pm'].includes(userForm.role) && (
-                    <>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="block text-sm font-semibold text-slate-700">Visible Pages</label>
-                        <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">{userForm.visiblePages.length} Selected</span>
-                      </div>
-                      <div className={`grid grid-cols-1 xl:grid-cols-2 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-40 overflow-y-auto`}>
-                        {AVAILABLE_PAGES.map(page => (
-                          <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900">
-                            <input type="checkbox" checked={userForm.visiblePages.includes(page)} onChange={() => handleVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-                            {page}
-                          </label>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
 
-                {(!editingItem && userForm.authProvider === 'developer_password') && (
-                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
-                      <div className="relative">
-                        <input type={showUserFormPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} />
-                        <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                          {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label>
-                      <div className="relative">
-                        <input type={showUserFormConfirmPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} />
-                        <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                          {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
+                  {/* Visible Pages Multi-Select */}
+                  <div className="pt-2">
+                    {!['super_admin', 'super_admin_plus', 'PM', 'pm'].includes(userForm.role) && (
+                      <>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-sm font-semibold text-slate-700">Visible Pages</label>
+                          <span className="text-xs font-bold bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full border border-indigo-100">{userForm.visiblePages.length} Selected</span>
+                        </div>
+                        <div className={`grid grid-cols-1 xl:grid-cols-2 gap-2 border border-slate-200 rounded-xl p-3 bg-slate-50 max-h-40 overflow-y-auto`}>
+                          {AVAILABLE_PAGES.map(page => (
+                            <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900">
+                              <input type="checkbox" checked={userForm.visiblePages.includes(page)} onChange={() => handleVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
+                              {page}
+                            </label>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
-                {(editingItem && userForm.authProvider === 'developer_password') && (
-                  <div className="pt-2 border-t border-slate-100">
-                    <p className="text-xs text-slate-400 mb-2">Leave blank to keep current password</p>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                      <div className="relative">
-                        <input type={showUserFormPassword ? "text" : "password"} placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e=>setUserForm({...userForm, password: e.target.value})} />
-                        <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                          {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+
+                  {(!editingItem && userForm.authProvider === 'developer_password') && (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+                        <div className="relative">
+                          <input type={showUserFormPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+                          <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
-                      <div className="relative">
-                        <input type={showUserFormConfirmPassword ? "text" : "password"} placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e=>setUserForm({...userForm, confirmPassword: e.target.value})} />
-                        <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
-                          {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-700 mb-1">Confirm Password</label>
+                        <div className="relative">
+                          <input type={showUserFormConfirmPassword ? "text" : "password"} required className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })} />
+                          <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md disabled:opacity-70">{loading ? "Saving..." : "Save Staff Member"}</button></div>
-              </form>
+                  )}
+                  {(editingItem && userForm.authProvider === 'developer_password') && (
+                    <div className="pt-2 border-t border-slate-100">
+                      <p className="text-xs text-slate-400 mb-2">Leave blank to keep current password</p>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                        <div className="relative">
+                          <input type={showUserFormPassword ? "text" : "password"} placeholder="New Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} />
+                          <button type="button" onClick={() => setShowUserFormPassword(!showUserFormPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            {showUserFormPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <div className="relative">
+                          <input type={showUserFormConfirmPassword ? "text" : "password"} placeholder="Confirm Password" className="w-full border-slate-200 bg-slate-50 rounded-xl pl-4 pr-10 py-2.5 focus:border-indigo-500 outline-none text-sm transition-colors" value={userForm.confirmPassword} onChange={e => setUserForm({ ...userForm, confirmPassword: e.target.value })} />
+                          <button type="button" onClick={() => setShowUserFormConfirmPassword(!showUserFormConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none">
+                            {showUserFormConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md disabled:opacity-70">{loading ? "Saving..." : "Save Staff Member"}</button></div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
 
@@ -954,39 +1485,39 @@ const AdminSettings = () => {
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
             <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-full pointer-events-auto">
-            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Contact" : "Add Alert Contact"}</h3>
-              <button type="button" onClick={() => setAlertModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
-            </div>
-            <div className="p-4 xl:p-6 overflow-y-auto">
-              <form onSubmit={handleAlertSubmit} className="space-y-4">
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.name} onChange={e=>setAlertForm({...alertForm, name:e.target.value})} /></div>
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
-                    <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.role} onChange={e=>setAlertForm({...alertForm, role:e.target.value})}>
-                      <option value="">Select Role</option>
-                      <option value="Super Admin">Super Admin</option>
-                      <option value="Admin">Admin</option>
-                    </select>
+              <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Contact" : "Add Alert Contact"}</h3>
+                <button type="button" onClick={() => setAlertModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6" /></button>
+              </div>
+              <div className="p-4 xl:p-6 overflow-y-auto">
+                <form onSubmit={handleAlertSubmit} className="space-y-4">
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.name} onChange={e => setAlertForm({ ...alertForm, name: e.target.value })} /></div>
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Role</label>
+                      <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.role} onChange={e => setAlertForm({ ...alertForm, role: e.target.value })}>
+                        <option value="">Select Role</option>
+                        <option value="Super Admin">Super Admin</option>
+                        <option value="Admin">Admin</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Sub Role</label>
+                      <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.subRole} onChange={e => setAlertForm({ ...alertForm, subRole: e.target.value })}>
+                        <option value="">Select Sub Role</option>
+                        <option value="Project Manager">Project Manager</option>
+                        <option value="Supervisor">Supervisor</option>
+                        <option value="Developer">Developer</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Sub Role</label>
-                    <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.subRole} onChange={e=>setAlertForm({...alertForm, subRole:e.target.value})}>
-                      <option value="">Select Sub Role</option>
-                      <option value="Project Manager">Project Manager</option>
-                      <option value="Supervisor">Supervisor</option>
-                      <option value="Developer">Developer</option>
-                    </select>
-                  </div>
-                </div>
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Email</label><input type="email" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.email} onChange={e=>setAlertForm({...alertForm, email:e.target.value})} /></div>
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">WhatsApp Phone (with Country Code)</label><input type="text" placeholder="e.g. 94701234567" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.phoneNumber} onChange={e=>setAlertForm({...alertForm, phoneNumber:e.target.value})} /></div>
-                <div className="pt-2"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Contact"}</button></div>
-              </form>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Email</label><input type="email" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.email} onChange={e => setAlertForm({ ...alertForm, email: e.target.value })} /></div>
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">WhatsApp Phone (with Country Code)</label><input type="text" placeholder="e.g. 94701234567" required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-rose-500" value={alertForm.phoneNumber} onChange={e => setAlertForm({ ...alertForm, phoneNumber: e.target.value })} /></div>
+                  <div className="pt-2"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Contact"}</button></div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
 
@@ -996,22 +1527,22 @@ const AdminSettings = () => {
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
             <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-md shadow-2xl flex flex-col max-h-full pointer-events-auto">
-            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Specialization" : "Add Specialization"}</h3>
-              <button type="button" onClick={() => setSpecModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
-            </div>
-            <div className="p-4 xl:p-6 overflow-y-auto">
-              <form onSubmit={handleSpecSubmit} className="space-y-4">
-                <div><label className="block text-sm font-semibold text-slate-700 mb-1">Specialization Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-amber-500" value={specForm.name} onChange={e=>setSpecForm({...specForm, name:e.target.value})} /></div>
-                <div className="flex items-center gap-3 pt-2">
-                  <input type="checkbox" id="noncoding" checked={specForm.isNonCoding} onChange={e=>setSpecForm({...specForm, isNonCoding:e.target.checked})} className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
-                  <label htmlFor="noncoding" className="text-sm font-semibold text-slate-700 cursor-pointer">Mark as Non-Coding Role (e.g. BA, QA, DevOps)</label>
-                </div>
-                <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Specialization"}</button></div>
-              </form>
+              <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-base xl:text-lg font-bold text-slate-800">{editingItem ? "Edit Specialization" : "Add Specialization"}</h3>
+                <button type="button" onClick={() => setSpecModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6" /></button>
+              </div>
+              <div className="p-4 xl:p-6 overflow-y-auto">
+                <form onSubmit={handleSpecSubmit} className="space-y-4">
+                  <div><label className="block text-sm font-semibold text-slate-700 mb-1">Specialization Name</label><input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-amber-500" value={specForm.name} onChange={e => setSpecForm({ ...specForm, name: e.target.value })} /></div>
+                  <div className="flex items-center gap-3 pt-2">
+                    <input type="checkbox" id="noncoding" checked={specForm.isNonCoding} onChange={e => setSpecForm({ ...specForm, isNonCoding: e.target.checked })} className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500" />
+                    <label htmlFor="noncoding" className="text-sm font-semibold text-slate-700 cursor-pointer">Mark as Non-Coding Role (e.g. BA, QA, DevOps)</label>
+                  </div>
+                  <div className="pt-4"><button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">{loading ? "Saving..." : "Save Specialization"}</button></div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
 
@@ -1021,130 +1552,112 @@ const AdminSettings = () => {
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
             <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-full pointer-events-auto">
-            <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-base xl:text-lg font-bold text-slate-800">Generate API Key</h3>
-              <button type="button" onClick={() => setApiKeyModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6"/></button>
-            </div>
-            <div className="p-4 xl:p-6 overflow-y-auto">
-              <form onSubmit={handleApiSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Key Name</label>
-                    <input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-slate-500" placeholder="e.g., Mobile App Integration" value={apiForm.name} onChange={e=>setApiForm({...apiForm, name:e.target.value})} />
+              <div className="px-4 xl:px-6 py-4 xl:py-5 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-base xl:text-lg font-bold text-slate-800">Generate API Key</h3>
+                <button type="button" onClick={() => setApiKeyModalOpen(false)} className="text-slate-400 hover:text-slate-600"><XCircle className="w-5 h-5 xl:w-6 xl:h-6" /></button>
+              </div>
+              <div className="p-4 xl:p-6 overflow-y-auto">
+                <form onSubmit={handleApiSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Key Name</label>
+                      <input required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-slate-500" placeholder="e.g., Mobile App Integration" value={apiForm.name} onChange={e => setApiForm({ ...apiForm, name: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-1">Expiration</label>
+                      <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-slate-500" value={apiForm.expiresInDays} onChange={e => setApiForm({ ...apiForm, expiresInDays: e.target.value })}>
+                        <option value="never">Never Expire</option>
+                        <option value="7">7 Days</option>
+                        <option value="30">30 Days</option>
+                        <option value="90">90 Days</option>
+                        <option value="365">1 Year</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">Expiration</label>
-                    <select required className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm focus:border-slate-500" value={apiForm.expiresInDays} onChange={e=>setApiForm({...apiForm, expiresInDays:e.target.value})}>
-                      <option value="never">Never Expire</option>
-                      <option value="7">7 Days</option>
-                      <option value="30">30 Days</option>
-                      <option value="90">90 Days</option>
-                      <option value="365">1 Year</option>
-                    </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-semibold text-slate-700">Accessible Pages</label>
-                    <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{apiForm.accessiblePages.length} Selected</span>
-                  </div>
-                  <div className="grid grid-cols-1 xl:grid-cols-2 md:grid-cols-4 gap-3">
-                    {AVAILABLE_PAGES.filter(p => p !== 'Settings').map(page => (
-                      <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl p-3 bg-slate-50 transition-colors">
-                        <input type="checkbox" checked={apiForm.accessiblePages.includes(page)} onChange={() => handleApiVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500" />
-                        <span className="truncate" title={page}>{page}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="pt-2">
-                  <button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">
-                    {loading ? "Generating..." : "Generate Key"}
-                  </button>
-                </div>
-              </form>
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="block text-sm font-semibold text-slate-700">Accessible Pages</label>
+                      <span className="text-xs font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200">{apiForm.accessiblePages.length} Selected</span>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 md:grid-cols-4 gap-3">
+                      {AVAILABLE_PAGES.filter(p => p !== 'Settings').map(page => (
+                        <label key={page} className="flex items-center gap-2 cursor-pointer text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-xl p-3 bg-slate-50 transition-colors">
+                          <input type="checkbox" checked={apiForm.accessiblePages.includes(page)} onChange={() => handleApiVisiblePageToggle(page)} className="w-4 h-4 rounded border-slate-300 text-slate-600 focus:ring-slate-500" />
+                          <span className="truncate" title={page}>{page}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button disabled={loading} type="submit" className="w-full py-2 xl:py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-lg xl:rounded-xl text-sm xl:text-base font-semibold shadow-md">
+                      {loading ? "Generating..." : "Generate Key"}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
 
       {/* Security Check Backdrop & Modal */}
-      <AnimatePresence>
-        {!isVerified && (
-          <motion.div
-            key="security-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md"
-          />
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {!isVerified && (
-          <motion.div key="security-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+      {!isVerified && (
+        <>
+          <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md" />
+          <div className="fixed inset-0 z-[22] pointer-events-none">
             <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                  transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                  className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto"
-                >
-                  <div className="flex justify-between items-start mb-3 xl:mb-4">
-                    <div>
-                      <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Security Check</h3>
-                      <p className="text-xs text-slate-500 mt-1">Enter global security password to access settings.</p>
-                    </div>
+              <div className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto">
+                <div className="flex justify-between items-start mb-3 xl:mb-4">
+                  <div>
+                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Security Check</h3>
+                    <p className="text-xs text-slate-500 mt-1">Enter global security password to access settings.</p>
                   </div>
-                  
-                  <div className="flex items-center gap-3 border bg-blue-50 border-blue-100 rounded-xl p-3 mb-4">
-                    <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
-                      <ShieldCheck className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-slate-800 truncate">Access System Settings</p>
-                      <p className="text-xs text-slate-500 truncate">Authentication Required</p>
-                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 border bg-blue-50 border-blue-100 rounded-xl p-3 mb-4">
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
-                  
-                  <form onSubmit={handleVerify}>
-                    <div className="mb-3 xl:mb-5 relative">
-                      <input
-                        type={showVerifyPassword ? "text" : "password"}
-                        value={verifyPassword}
-                        onChange={(e) => { setVerifyPassword(e.target.value); setVerifyError(""); }}
-                        className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
-                        placeholder="Enter password..."
-                      />
-                      <button 
-                        type="button" 
-                        onClick={() => setShowVerifyPassword(!showVerifyPassword)}
-                        className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
-                      >
-                        {showVerifyPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                      {verifyError && <p className="text-xs font-semibold text-rose-500 mt-2">{verifyError}</p>}
-                    </div>
-                    
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">Access System Settings</p>
+                    <p className="text-xs text-slate-500 truncate">Authentication Required</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleVerify}>
+                  <div className="mb-3 xl:mb-5 relative">
+                    <input
+                      type={showVerifyPassword ? "text" : "password"}
+                      value={verifyPassword}
+                      onChange={(e) => { setVerifyPassword(e.target.value); setVerifyError(""); }}
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                      placeholder="Enter password..."
+                    />
                     <button
-                      type="submit"
-                      disabled={verifyLoading || !verifyPassword}
-                      className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      type="button"
+                      onClick={() => setShowVerifyPassword(!showVerifyPassword)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
                     >
-                      {verifyLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Verify Access"}
+                      {showVerifyPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
-                  </form>
-                </motion.div>
+                    {verifyError && <p className="text-xs font-semibold text-rose-500 mt-2">{verifyError}</p>}
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={verifyLoading || !verifyPassword}
+                    className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold shadow-sm transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {verifyLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : "Verify Access"}
+                  </button>
+                </form>
               </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Confirm/Prompt Dialog */}
       {confirmDialog.isOpen && (
@@ -1152,57 +1665,196 @@ const AdminSettings = () => {
           <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/50 backdrop-blur-sm" />
           <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[60] pointer-events-none flex items-center justify-center p-4 overflow-hidden">
             <div className="bg-white rounded-2xl xl:rounded-3xl w-full max-w-sm shadow-2xl p-4 xl:p-6 pointer-events-auto">
-            <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
-            <p className="text-sm text-slate-500 mb-4">{confirmDialog.message}</p>
-            {confirmDialog.type === "prompt" && (
-              <input type="text" autoFocus className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm mb-4 focus:border-indigo-500" value={confirmDialog.value} onChange={e => setConfirmDialog({...confirmDialog, value: e.target.value})} />
-            )}
-            <div className="flex flex-col-reverse xl:flex-row gap-3 justify-end mt-4">
-              <button onClick={() => setConfirmDialog({...confirmDialog, isOpen: false})} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-slate-100 xl:bg-transparent text-slate-700 xl:text-slate-500 hover:bg-slate-200 xl:hover:bg-transparent hover:text-slate-700 font-semibold text-sm rounded-xl transition-colors">Cancel</button>
-              <button onClick={() => { setConfirmDialog({...confirmDialog, isOpen: false}); confirmDialog.onConfirm(confirmDialog.value); }} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-md transition-colors">Confirm</button>
+              <h3 className="text-base xl:text-lg font-bold text-slate-800 mb-2">{confirmDialog.title}</h3>
+              <p className="text-sm text-slate-500 mb-4">{confirmDialog.message}</p>
+              {confirmDialog.type === "prompt" && (
+                <input type="text" autoFocus className="w-full border-slate-200 bg-slate-50 rounded-xl px-4 py-2.5 outline-none text-sm mb-4 focus:border-indigo-500" value={confirmDialog.value} onChange={e => setConfirmDialog({ ...confirmDialog, value: e.target.value })} />
+              )}
+              <div className="flex flex-col-reverse xl:flex-row gap-3 justify-end mt-4">
+                <button onClick={() => setConfirmDialog({ ...confirmDialog, isOpen: false })} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-slate-100 xl:bg-transparent text-slate-700 xl:text-slate-500 hover:bg-slate-200 xl:hover:bg-transparent hover:text-slate-700 font-semibold text-sm rounded-xl transition-colors">Cancel</button>
+                <button onClick={() => { setConfirmDialog({ ...confirmDialog, isOpen: false }); confirmDialog.onConfirm(confirmDialog.value); }} className="w-full xl:w-auto px-4 py-2.5 xl:py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold text-sm shadow-md transition-colors">Confirm</button>
+              </div>
             </div>
           </div>
-        </div>
         </>
       )}
 
       {/* Toggle Security Prompt Modal */}
       {togglePrompt.isOpen && (
-        <AnimatePresence>
-          <motion.div key="toggle-modal-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md" />
-          <motion.div key="toggle-modal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[22] pointer-events-none">
+        <>
+          <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md" onClick={() => { setTogglePrompt({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" }); setShowTogglePassword(false); }} />
+          <div className="fixed inset-0 z-[22] pointer-events-none">
             <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                transition={{ type: "spring", damping: 26, stiffness: 320 }}
-                className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto"
-              >
+              <div className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto">
                 <div className="flex justify-between items-start mb-3 xl:mb-4">
                   <div>
-                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Security Check</h3>
-                    <p className="text-xs text-slate-500 mt-1">Enter password to change notification toggle.</p>
+                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">{togglePrompt.title || "Security Check"}</h3>
+                    <p className="text-xs text-slate-500 mt-1">{togglePrompt.subtitle || "Enter password to verify security action."}</p>
                   </div>
-                  <button type="button" onClick={() => setTogglePrompt({ isOpen: false, key: null, password: "" })} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
+                  <button type="button" onClick={() => { setTogglePrompt({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" }); setShowTogglePassword(false); }} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
-                
+
+                <div className="flex items-center gap-3 border bg-blue-50 border-blue-100 rounded-xl p-3 mb-4">
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">{togglePrompt.title || "Security Verification"}</p>
+                    <p className="text-xs text-slate-500 truncate">Authentication Required</p>
+                  </div>
+                </div>
+
                 <form onSubmit={handleToggleSubmit}>
                   <div className="mb-3 xl:mb-5 relative">
-                    <input type="password" required className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/40 outline-none transition-all" placeholder="Enter password..." value={togglePrompt.password} onChange={e => setTogglePrompt({...togglePrompt, password: e.target.value})} />
+                    <input
+                      type={showTogglePassword ? "text" : "password"}
+                      required
+                      className="w-full pl-4 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500/40 outline-none transition-all"
+                      placeholder="Enter password..."
+                      value={togglePrompt.password}
+                      onChange={e => setTogglePrompt({ ...togglePrompt, password: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTogglePassword(!showTogglePassword)}
+                      className="absolute right-3 top-[10px] text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                    >
+                      {showTogglePassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
-                  
+
                   <div className="flex flex-col-reverse xl:flex-row gap-2 xl:gap-3 mt-4">
-                    <button type="button" onClick={() => setTogglePrompt({ isOpen: false, key: null, password: "" })} className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">Cancel</button>
-                    <button type="submit" disabled={loading || !togglePrompt.password} className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer">{loading ? "Verifying..." : "Confirm"}</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTogglePrompt({ isOpen: false, type: null, target: null, password: "", title: "", subtitle: "" });
+                        setShowTogglePassword(false);
+                      }}
+                      className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading || !togglePrompt.password}
+                      className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
+                    >
+                      {loading ? "Verifying..." : "Confirm"}
+                    </button>
                   </div>
                 </form>
-              </motion.div>
+              </div>
             </div>
-          </motion.div>
-        </AnimatePresence>
+          </div>
+        </>
+      )}
+
+      {/* Edit Password Modal */}
+      {editPasswordModalOpen && (
+        <>
+          <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md" onClick={() => setEditPasswordModalOpen(false)} />
+          <div className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+              <div className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto">
+                <div className="flex justify-between items-start mb-3 xl:mb-4">
+                  <div>
+                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Update Password #{editingPasswordIndex + 1}</h3>
+                    <p className="text-xs text-slate-500 mt-1">Enter new password for administrative actions.</p>
+                  </div>
+                  <button type="button" onClick={() => setEditPasswordModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 border bg-blue-50 border-blue-100 rounded-xl p-3 mb-4">
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#3b82f6,#2563eb)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                    <KeyRound className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">Security Password #{editingPasswordIndex + 1}</p>
+                    <p className="text-xs text-slate-500 truncate">Enter new credentials</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleUpdateSecurityPassword}>
+                  <div className="space-y-3 mb-4">
+                    <PasswordField
+                      label="New Password"
+                      value={editNewPassword}
+                      onChange={setEditNewPassword}
+                      show={showEditNew}
+                      setShow={setShowEditNew}
+                    />
+                    <PasswordField
+                      label="Confirm Password"
+                      value={editConfirmPassword}
+                      onChange={setEditConfirmPassword}
+                      show={showEditConfirm}
+                      setShow={setShowEditConfirm}
+                    />
+                  </div>
+
+                  <div className="flex flex-col-reverse xl:flex-row gap-2 xl:gap-3 mt-4">
+                    <button type="button" onClick={() => setEditPasswordModalOpen(false)} className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={editPasswordLoading || !editNewPassword || !editConfirmPassword} className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 text-white bg-blue-600 hover:bg-blue-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer">
+                      {editPasswordLoading ? "Updating..." : "Update"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Delete Password Modal */}
+      {deletePasswordModalOpen && (
+        <>
+          <div className="fixed inset-0 z-[20] pointer-events-auto bg-slate-900/60 backdrop-blur-md" onClick={() => setDeletePasswordModalOpen(false)} />
+          <div className="fixed inset-0 z-[22] pointer-events-none">
+            <div className="fixed left-0 lg:left-[260px] right-0 bottom-[80px] lg:bottom-[40px] top-[64px] z-[50] pointer-events-none flex flex-col items-center justify-center px-4 pt-6 pb-8">
+              <div className="bg-white rounded-xl xl:rounded-2xl shadow-xl border border-slate-200 p-4 xl:p-6 w-full max-w-sm pointer-events-auto">
+                <div className="flex justify-between items-start mb-3 xl:mb-4">
+                  <div>
+                    <h3 className="text-base xl:text-lg font-extrabold text-slate-800">Remove Password #{deletingPasswordIndex + 1}</h3>
+                    <p className="text-xs text-slate-500 mt-1">This password will no longer be valid for security checks.</p>
+                  </div>
+                  <button type="button" onClick={() => setDeletePasswordModalOpen(false)} className="p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-3 border bg-rose-50 border-rose-100 rounded-xl p-3 mb-4">
+                  <div style={{ width: 36, height: 36, borderRadius: '50%', overflow: 'hidden', background: 'linear-gradient(135deg,#f43f5e,#e11d48)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: 14 }}>
+                    <Trash className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-slate-800 truncate">Delete Security Password</p>
+                    <p className="text-xs text-rose-500 truncate">Permanent Action</p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col-reverse xl:flex-row gap-2 xl:gap-3 mt-4">
+                  <button type="button" onClick={() => setDeletePasswordModalOpen(false)} className="flex-1 px-4 py-2 xl:py-2.5 bg-white border-2 border-slate-300 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm cursor-pointer">
+                    Cancel
+                  </button>
+                  <button type="button" onClick={() => {
+                    const id = deletingPasswordItem?._id;
+                    const idx = deletingPasswordIndex;
+                    setDeletePasswordModalOpen(false);
+                    confirmRemovePassword({ _id: id }, idx);
+                  }} disabled={deletePasswordLoading} className="flex-1 flex items-center justify-center px-4 py-2 xl:py-2.5 text-white bg-rose-600 hover:bg-rose-700 rounded-xl text-sm font-bold disabled:opacity-50 transition-colors shadow-sm cursor-pointer">
+                    {deletePasswordLoading ? "Removing..." : "Remove"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
 
       <Toast toast={toast} onDismiss={() => setToast(null)} />
@@ -1223,9 +1875,8 @@ const TabButton = ({ active, onClick, icon: Icon, label, color }) => {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center justify-center xl:justify-start w-full xl:w-auto gap-1.5 xl:gap-2 px-3 xl:px-5 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-xs xl:text-sm font-semibold transition-all border shrink-0 ${
-        active ? colorMap[color] + " shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 bg-transparent border-transparent hover:bg-slate-50 hover:text-slate-700"
-      }`}
+      className={`flex items-center justify-center xl:justify-start w-full xl:w-auto gap-1.5 xl:gap-2 px-3 xl:px-5 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-xs xl:text-sm font-semibold transition-all border shrink-0 ${active ? colorMap[color] + " shadow-sm ring-1 ring-slate-900/5" : "text-slate-500 bg-transparent border-transparent hover:bg-slate-50 hover:text-slate-700"
+        }`}
     >
       <Icon className="w-4 h-4" />
       {label}

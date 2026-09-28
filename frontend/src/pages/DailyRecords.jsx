@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { Calendar } from "lucide-react";
 import {
   FiLoader,
@@ -23,7 +25,7 @@ import Navigation from "../components/Navigation";
 import ExportModal from "../components/ExportModal";
 
 // â”€â”€ Main Component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-const DailyRecords = () => {
+const DailyRecords = ({ isPreview = false, previewInternId = null, onViewLogbook = null }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [records, setRecords] = useState([]);
@@ -37,6 +39,7 @@ const DailyRecords = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [viewMode, setViewMode] = useState("calendar");
   const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+  const [selectedRecordDetails, setSelectedRecordDetails] = useState(null);
 
   // Export state
   const [showExportModal, setShowExportModal] = useState(false);
@@ -128,13 +131,19 @@ const DailyRecords = () => {
 
       if (!authToken) {
         setError("Authentication required. Please log in again.");
-        navigate(isAdmin ? "/admin-login" : "/");
+        if (!isPreview) navigate(isAdmin ? "/admin-login" : "/");
         return;
       }
 
       const { API_BASE_URL, API_ENDPOINTS } = await import("../api/apiConfig");
+      
+      let fetchUrl = `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`;
+      if (isPreview && previewInternId) {
+        fetchUrl = `${API_BASE_URL}/records/admin/intern/${previewInternId}`;
+      }
+
       const response = await fetch(
-        `${API_BASE_URL}${API_ENDPOINTS.RECORDS.LIST}`,
+        fetchUrl,
         {
           method: "GET",
           headers: {
@@ -146,21 +155,53 @@ const DailyRecords = () => {
 
       if (response.status === 401) {
         setError("Session expired. Please log in again.");
-        if (isAdmin) {
-          localStorage.removeItem("adminInfo");
-          navigate("/admin-login");
-        } else {
-          localStorage.removeItem("studentInfo");
-          localStorage.removeItem("authToken");
-          navigate("/");
+        if (!isPreview) {
+          if (isAdmin) {
+            localStorage.removeItem("adminInfo");
+            navigate("/admin-login");
+          } else {
+            localStorage.removeItem("studentInfo");
+            localStorage.removeItem("authToken");
+            navigate("/");
+          }
         }
         return;
       }
 
       const data = await response.json();
       if (response.ok) {
-        setRecords(Array.isArray(data) ? data : []);
+        const list = Array.isArray(data) ? data : [];
+        setRecords(list);
         setError(null);
+
+        // If current month has no records, but the intern has records from earlier months,
+        // automatically switch the calendar to the month of the most recent record
+        if (list.length > 0) {
+          const now = new Date();
+          const hasCurrentMonthRecords = list.some((r) => {
+            const rd = new Date(r.date ? `${r.date}T00:00:00` : r.createdAt);
+            return (
+              rd.getFullYear() === now.getFullYear() &&
+              rd.getMonth() === now.getMonth()
+            );
+          });
+
+          if (!hasCurrentMonthRecords) {
+            const sortedByDate = [...list].sort((a, b) => {
+              const da = new Date(a.date ? `${a.date}T00:00:00` : a.createdAt || 0);
+              const db = new Date(b.date ? `${b.date}T00:00:00` : b.createdAt || 0);
+              return db - da;
+            });
+            const latest = sortedByDate[0];
+            if (latest && (latest.date || latest.createdAt)) {
+              const latestDate = new Date(latest.date ? `${latest.date}T00:00:00` : latest.createdAt);
+              if (!isNaN(latestDate.getTime())) {
+                setCurrentMonth(new Date(latestDate.getFullYear(), latestDate.getMonth(), 1));
+                setSelectedDate(latestDate);
+              }
+            }
+          }
+        }
       } else {
         setError(data.error || "Failed to fetch records");
       }
@@ -238,6 +279,7 @@ useEffect(() => {
       if (params.startDate) qs.set("startDate", params.startDate);
       if (params.endDate) qs.set("endDate", params.endDate);
       if (params.template) qs.set("template", params.template);
+      if (params.universityName) qs.set("universityName", params.universityName);
 
       const url = `${API_BASE_URL}${API_ENDPOINTS.RECORDS.EXPORT_PDF}?${qs.toString()}`;
 
@@ -283,28 +325,34 @@ useEffect(() => {
   // â”€â”€ Filter / sort â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const filteredRecords = records
     .filter((record) => {
-      const matchesSearch =
-        (record.internId?.traineeName &&
-          record.internId.traineeName
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
-        (record.internId?.email &&
-          record.internId.email
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
-        (record.internId?.traineeId &&
-          record.internId.traineeId
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase())) ||
-        (record.task && record.task.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (record.progress &&
-          record.progress.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (record.blockers &&
-          record.blockers.toLowerCase().includes(searchTerm.toLowerCase()));
+      if (searchTerm && searchTerm.trim()) {
+        const term = searchTerm.trim().toLowerCase();
+        const internObj = record.internId || {};
+        const tName = (internObj.traineeName || internObj.Trainee_Name || "").toLowerCase();
+        const tEmail = (internObj.email || internObj.Trainee_Email || "").toLowerCase();
+        const tId = (
+          internObj.traineeId ||
+          internObj.Trainee_ID ||
+          record.Trainee_ID ||
+          record.traineeId ||
+          ""
+        ).toLowerCase();
+        const task = (record.task || "").toLowerCase();
+        const progress = (record.progress || "").toLowerCase();
+        const blockers = (record.blockers || "").toLowerCase();
 
-      if (!matchesSearch) return false;
+        const matchesSearch =
+          tName.includes(term) ||
+          tEmail.includes(term) ||
+          tId.includes(term) ||
+          task.includes(term) ||
+          progress.includes(term) ||
+          blockers.includes(term);
 
-      const recordDate = new Date(record.createdAt || record.date);
+        if (!matchesSearch) return false;
+      }
+
+      const recordDate = new Date(record.date ? `${record.date}T00:00:00` : record.createdAt);
       const today = new Date();
       switch (filterBy) {
         case "today":
@@ -321,21 +369,33 @@ useEffect(() => {
           return true;
       }
     })
-    .sort((a, b) =>
-      sortBy === "oldest"
-        ? new Date(a.createdAt || a.date) - new Date(b.createdAt || b.date)
-        : new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date),
-    );
+    .sort((a, b) => {
+      const da = new Date(a.date ? `${a.date}T00:00:00` : a.createdAt || 0);
+      const db = new Date(b.date ? `${b.date}T00:00:00` : b.createdAt || 0);
+      return sortBy === "oldest" ? da - db : db - da;
+    });
 
   const getRecordsForDate = (date) => {
     if (!date) return [];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    const dateKey = `${year}-${month}-${d}`;
+
     return records.filter((record) => {
-      const rd = new Date(record.date || record.createdAt);
-      return (
-        rd.getDate() === date.getDate() &&
-        rd.getMonth() === date.getMonth() &&
-        rd.getFullYear() === date.getFullYear()
-      );
+      if (record.date) {
+        const rDateKey = String(record.date).split("T")[0];
+        if (rDateKey === dateKey) return true;
+      }
+      if (record.createdAt) {
+        const rd = new Date(record.createdAt);
+        return (
+          rd.getDate() === date.getDate() &&
+          rd.getMonth() === date.getMonth() &&
+          rd.getFullYear() === date.getFullYear()
+        );
+      }
+      return false;
     });
   };
 
@@ -409,7 +469,7 @@ useEffect(() => {
   // â”€â”€ Loading / Error states â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
     return (
-      <Navigation>
+      <Navigation isPreview={isPreview}>
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
           <div className="text-center bg-white rounded-2xl shadow-sm p-8 md:p-12 border border-gray-200 max-w-md w-full" style={{ borderRadius: 20 }}>
             <div className="bg-indigo-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
@@ -423,13 +483,103 @@ useEffect(() => {
             </p>
           </div>
         </div>
-      </Navigation>
+  
+      {/* Admin Record Details Modal */}
+      <AnimatePresence>
+        {selectedRecordDetails && (
+          <motion.div
+            className={`${isPreview ? "absolute" : "fixed"} inset-0 z-[110] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm`}
+            initial={isAdmin ? { opacity: 0 } : false}
+            animate={isAdmin ? { opacity: 1 } : false}
+            exit={isAdmin ? { opacity: 0 } : false}
+            onClick={() => setSelectedRecordDetails(null)}
+          >
+            <motion.div
+              className="bg-white rounded-2xl shadow-2xl p-6 max-w-lg w-full max-h-[75vh] overflow-y-auto"
+              initial={isAdmin ? { scale: 0.9, y: 20 } : false}
+              animate={isAdmin ? { scale: 1, y: 0 } : false}
+              exit={isAdmin ? { scale: 0.9, y: 20 } : false}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900">
+                    Logbook Entry
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    {new Date(
+                      selectedRecordDetails.createdAt || selectedRecordDetails.date,
+                    ).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedRecordDetails(null)}
+                  className="p-2 rounded-full hover:bg-gray-100 text-gray-500"
+                >
+                  <FiX className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2 mb-4">
+                {selectedRecordDetails.stack && (
+                  <span className="px-2.5 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                    {selectedRecordDetails.stack}
+                  </span>
+                )}
+                {selectedRecordDetails.status && (
+                  <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold capitalize">
+                    {selectedRecordDetails.status}
+                  </span>
+                )}
+              </div>
+              <div className="space-y-4">
+                {selectedRecordDetails.task && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                      <FiCheckSquare className="text-blue-500 mr-1.5" /> Tasks Completed
+                    </p>
+                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3 whitespace-pre-wrap">
+                      {selectedRecordDetails.task}
+                    </p>
+                  </div>
+                )}
+                {selectedRecordDetails.progress && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                      <span className="text-emerald-500 mr-1.5">📈</span> Progress
+                    </p>
+                    <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 rounded-xl p-3 whitespace-pre-wrap">
+                      {selectedRecordDetails.progress}
+                    </p>
+                  </div>
+                )}
+                {selectedRecordDetails.blockers && (
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1 flex items-center">
+                      <span className="text-amber-500 mr-1.5">⚠️</span> Challenges / Blockers
+                    </p>
+                    <p className="text-sm text-gray-800 leading-relaxed bg-amber-50 rounded-xl p-3 whitespace-pre-wrap">
+                      {selectedRecordDetails.blockers}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    </Navigation>
     );
   }
 
   if (error) {
     return (
-      <Navigation>
+      <Navigation isPreview={isPreview}>
         <div className="flex-1 w-full lg:mt-20 lg:px-6 xl:px-10 flex items-center justify-center pb-10">
           <div className="bg-white rounded-2xl shadow-sm p-8 md:p-12 max-w-md w-full text-center border border-gray-200" style={{ borderRadius: 20 }}>
             <div className="bg-red-50 rounded-full p-4 md:p-6 w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 flex items-center justify-center">
@@ -456,12 +606,11 @@ useEffect(() => {
 
   // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   return (
-    <Navigation>
+    <Navigation isPreview={isPreview}>
 
       {/* Export Modal */}
       {showExportModal && (
-        <ExportModal
-          onClose={() => {
+        <ExportModal isPreview={isPreview} onClose={() => {
             setShowExportModal(false);
             setExportError(null);
           }}
@@ -470,150 +619,162 @@ useEffect(() => {
         />
       )}
 
-      {/* Day Details Modal */}
-      {isDayModalOpen && selectedDate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 md:p-6 border-b border-gray-100 bg-white">
-              <h3 className="text-lg md:text-xl font-bold text-gray-900">
-                {selectedDate.toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </h3>
-              <button
-                onClick={() => setIsDayModalOpen(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <FiX className="w-5 h-5 md:w-6 md:h-6" />
-              </button>
-            </div>
-            
-            {/* Body */}
-            <div className="p-5 md:p-6 overflow-y-auto bg-gray-50/50">
-              {getHolidayForDate(selectedDate) && (
-                <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <div className="font-semibold text-red-700 text-sm md:text-base">
-                    {getHolidayForDate(selectedDate).name}
-                  </div>
-                  <div className="text-xs md:text-sm text-red-600 mt-1">
-                    {(getHolidayForDate(selectedDate).type || []).join(", ")}
-                  </div>
-                </div>
-              )}
+      {/* Day Details Modal — portal to layout-modal-root so it perfectly centers within the content area */}
+      {isDayModalOpen && selectedDate && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          <motion.div
+            className="absolute inset-0 z-20 flex items-center justify-center p-4 pt-16 pb-10 bg-slate-900/40 backdrop-blur-sm pointer-events-auto"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsDayModalOpen(false)}
+          >
+            <motion.div
+              className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[75vh]"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 md:p-6 border-b border-gray-100 bg-white shrink-0">
+                <h3 className="text-lg md:text-xl font-bold text-gray-900">
+                  {selectedDate.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                  })}
+                </h3>
+                <button
+                  onClick={() => setIsDayModalOpen(false)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <FiX className="w-5 h-5 md:w-6 md:h-6" />
+                </button>
+              </div>
 
-              {selectedDateRecords.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedDateRecords.map((record) => (
-                    <div
-                      key={record._id}
-                      className="bg-white rounded-xl p-4 md:p-5 shadow-sm"
-                      style={{ border: "1.5px solid rgba(0, 180, 235, 0.2)" }}
-                    >
-                      <div className="flex items-center gap-2 mb-3">
-                        <FiUser className="text-indigo-600 text-sm" />
-                        <span className="font-semibold text-gray-900 text-sm md:text-base">
-                          {isAdmin
-                            ? record.internId?.traineeName || "Unknown User"
-                            : "My Record"}
-                        </span>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-2 mb-3">
-                        {record.stack &&
-                          !(
-                            record.status === "leave" &&
-                            record.stack === "On Leave"
-                          ) && (
+              {/* Body */}
+              <div className="p-5 md:p-6 overflow-y-auto bg-gray-50/50">
+                {getHolidayForDate(selectedDate) && (
+                  <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl">
+                    <div className="font-semibold text-red-700 text-sm md:text-base">
+                      {getHolidayForDate(selectedDate).name}
+                    </div>
+                    <div className="text-xs md:text-sm text-red-600 mt-1">
+                      {(getHolidayForDate(selectedDate).type || []).join(", ")}
+                    </div>
+                  </div>
+                )}
+
+                {selectedDateRecords.length > 0 ? (
+                  <div className="space-y-4">
+                    {selectedDateRecords.map((record) => (
+                      <div
+                        key={record._id}
+                        className="bg-white rounded-xl p-4 md:p-5 shadow-sm"
+                        style={{ border: "1.5px solid rgba(0, 180, 235, 0.2)" }}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <FiUser className="text-indigo-600 text-sm" />
+                          <span className="font-semibold text-gray-900 text-sm md:text-base">
+                            {isAdmin
+                              ? record.internId?.Trainee_Name || record.internId?.traineeName || "Unknown User"
+                              : "My Record"}
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          {record.stack && !(record.status === "leave" && record.stack === "On Leave") && (
                             <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
                               {record.stack}
                             </span>
                           )}
-                        {record.status === "wfh" && (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
-                            Work From Home
-                          </span>
-                        )}
-                        {record.status === "leave" && (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
-                            On Leave
-                          </span>
-                        )}
-                        {record.status === "study_leave" && (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">
-                            Extended Leave
-                          </span>
-                        )}
-                      </div>
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                            <div className="bg-blue-100 p-1.5 rounded-lg flex-shrink-0">
-                              <FiCheckSquare className="text-blue-600 flex-shrink-0 text-sm" />
-                            </div>
-                            <span className="text-sm">Tasks Completed</span>
-                          </h4>
-                          <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-4 rounded-xl border border-blue-200">
-                            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                              {record.task}
-                            </p>
-                          </div>
+                          {record.status === "wfh" && (
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-100">
+                              Work From Home
+                            </span>
+                          )}
+                          {record.status === "leave" && (
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100">
+                              On Leave
+                            </span>
+                          )}
+                          {record.status === "study_leave" && (
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 text-sky-700 border border-sky-100">
+                              Extended Leave
+                            </span>
+                          )}
                         </div>
 
-                        {record.progress && (
+                        <div className="space-y-4">
                           <div className="space-y-2">
                             <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                              <div className="bg-amber-100 p-1.5 rounded-lg flex-shrink-0">
-                                <FiAlertTriangle className="text-amber-600 flex-shrink-0 text-sm" />
+                              <div className="bg-blue-100 p-1.5 rounded-lg flex-shrink-0">
+                                <FiCheckSquare className="text-blue-600 flex-shrink-0 text-sm" />
                               </div>
-                              <span className="text-sm">Challenges Faced</span>
+                              <span className="text-sm">Tasks Completed</span>
                             </h4>
-                            <div className="bg-gradient-to-r from-amber-50 to-amber-100 p-3 md:p-4 rounded-xl border border-amber-200">
+                            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-3 md:p-4 rounded-xl border border-blue-200">
                               <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                                {record.progress}
+                                {record.task}
                               </p>
                             </div>
                           </div>
-                        )}
 
-                        {record.blockers && (
-                          <div className="space-y-2">
-                            <h4 className="font-semibold text-gray-800 flex items-center gap-2">
-                              <div className="bg-emerald-100 p-1.5 rounded-lg flex-shrink-0">
-                                <FiPlus className="text-emerald-600 flex-shrink-0 text-sm" />
+                          {record.progress && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <div className="bg-amber-100 p-1.5 rounded-lg flex-shrink-0">
+                                  <FiAlertTriangle className="text-amber-600 flex-shrink-0 text-sm" />
+                                </div>
+                                <span className="text-sm">Challenges Faced</span>
+                              </h4>
+                              <div className="bg-gradient-to-r from-amber-50 to-amber-100 p-3 md:p-4 rounded-xl border border-amber-200">
+                                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                  {record.progress}
+                                </p>
                               </div>
-                              <span className="text-sm">Plans for Tomorrow</span>
-                            </h4>
-                            <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 md:p-4 rounded-xl border border-emerald-200">
-                              <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
-                                {record.blockers}
-                              </p>
                             </div>
-                          </div>
-                        )}
+                          )}
+
+                          {record.blockers && (
+                            <div className="space-y-2">
+                              <h4 className="font-semibold text-gray-800 flex items-center gap-2">
+                                <div className="bg-emerald-100 p-1.5 rounded-lg flex-shrink-0">
+                                  <FiPlus className="text-emerald-600 flex-shrink-0 text-sm" />
+                                </div>
+                                <span className="text-sm">Plans for Tomorrow</span>
+                              </h4>
+                              <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 p-3 md:p-4 rounded-xl border border-emerald-200">
+                                <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words overflow-wrap-anywhere">
+                                  {record.blockers}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="text-xs text-gray-400 mt-4 flex items-center gap-1.5 font-medium">
+                          <FiCalendar className="w-3.5 h-3.5" />
+                          {formatDate(record.createdAt || record.date)}
+                        </div>
                       </div>
-                      
-                      <div className="text-xs text-gray-400 mt-4 flex items-center gap-1.5 font-medium">
-                        <FiCalendar className="w-3.5 h-3.5" />
-                        {formatDate(record.createdAt || record.date)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <FiCheckSquare className="text-4xl text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500 font-medium text-sm md:text-base">
-                    No records for this date
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <FiCheckSquare className="text-4xl text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium text-sm md:text-base">
+                      No records for this date
+                    </p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        </AnimatePresence>,
+        document.getElementById("layout-modal-root") || document.body
       )}
 
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
@@ -1022,7 +1183,7 @@ useEffect(() => {
                       {filteredRecords.map((record) => (
                         <div
                           key={record._id}
-                          className="bg-white hover:bg-indigo-50 transition-all duration-300 overflow-hidden flex flex-col min-w-0 h-auto"
+                          onClick={() => isAdmin && setSelectedRecordDetails(record)} className={`bg-white hover:bg-indigo-50 overflow-hidden flex flex-col min-w-0 h-auto ${isAdmin ? "cursor-pointer hover:ring-2 hover:ring-[#00b4eb] transition-all duration-300" : "transition-all duration-300"}`}
                           style={{
                             borderRadius: 20,
                             border: "1.5px solid rgba(0, 180, 235, 0.2)",
@@ -1037,7 +1198,7 @@ useEffect(() => {
                                 </div>
                                 <span className="font-semibold truncate text-white text-sm md:text-base">
                                   {isAdmin
-                                    ? record.internId?.traineeName ||
+                                    ? record.internId?.Trainee_Name || record.internId?.traineeName ||
                                       "Unknown User"
                                     : "My Record"}
                                 </span>
@@ -1086,7 +1247,7 @@ useEffect(() => {
                                   {formatDate(record.createdAt || record.date)}
                                 </span>
                               </div>
-                              <div className="text-white/70 text-xs font-medium">
+                              <div className="text-slate-500 text-xs font-medium">
                                 {getTimeAgo(record.createdAt || record.date)}
                               </div>
                             </div>
