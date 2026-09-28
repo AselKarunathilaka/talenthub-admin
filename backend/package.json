@@ -6,8 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
     "dev": "npx nodemon server.js",
-    "migrate:secure-admin-auth": "node scripts/secureAdminAuthMigration.js",
-    "migrate:staff:test": "node scripts/migrate_staff_to_test.js"
+    "migrate:secure-admin-auth": "node scripts/secureAdminAuthMigration.js"
   },
   "keywords": [],
   "author": "",
