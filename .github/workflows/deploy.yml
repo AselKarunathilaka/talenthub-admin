@@ -49,6 +49,7 @@ jobs:
               'NODE_ENV=${{ secrets.NODE_ENV }}' \
               'MONGO_URI=${{ secrets.MONGO_URI }}' \
               'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
+              'DB_ENCRYPTION_KEY=your_super_secret_jwt_key_here' \
               'CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}' \
               'TALENTHUB_FEDERATION_SECRET=${{ secrets.TALENTHUB_FEDERATION_SECRET }}' \
               'GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}' \

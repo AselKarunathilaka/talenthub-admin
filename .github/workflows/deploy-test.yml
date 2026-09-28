@@ -20,10 +20,10 @@ jobs:
       - name: Deploy using SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.TEST_SERVER_HOST }}
-          port: ${{ secrets.TEST_SERVER_PORT }}
-          username: ${{ secrets.TEST_SERVER_USER }}
-          key: ${{ secrets.TEST_SERVER_SSH_KEY }}
+          host: ${{ secrets.SERVER_HOST }}
+          port: ${{ secrets.SERVER_PORT }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
           command_timeout: 30m
           script: |
             set -e
@@ -49,6 +49,7 @@ jobs:
               'NODE_ENV=${{ secrets.NODE_ENV }}' \
               'MONGO_URI=${{ secrets.TEST_MONGO_URI }}' \
               'JWT_SECRET=${{ secrets.JWT_SECRET }}' \
+              'DB_ENCRYPTION_KEY=your_super_secret_jwt_key_here' \
               'CORS_ORIGIN=${{ secrets.CORS_ORIGIN }}' \
               'TALENTHUB_FEDERATION_SECRET=${{ secrets.TALENTHUB_FEDERATION_SECRET }}' \
               'GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}' \

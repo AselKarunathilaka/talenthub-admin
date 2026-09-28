@@ -2,7 +2,7 @@ const { OAuth2Client } = require("google-auth-library");
 const UserRepository = require("../repositories/userRepository");
 const InternRepository = require("../repositories/internRepository"); // Required for intern login
 const GateStaffRepository = require("../repositories/gateStaffRepository");
-const { encrypt } = require("../utils/dbEncryption");
+const { encrypt, buildEmailQuery, buildFieldQuery } = require("../utils/dbEncryption");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
@@ -153,7 +153,14 @@ class AuthService {
     const normalizedEmail = payload.email.toLowerCase().trim();
 
     // 2. Check allowlist — staff collection (case-insensitive)
-    const staff = await Staff.findOne({ email: encrypt(normalizedEmail) });
+    let staff = await Staff.findOne(buildEmailQuery(normalizedEmail));
+    if (!staff) {
+      // Safe fallback: inspect staff collection in memory (small collection)
+      const allStaff = await Staff.find({});
+      staff = allStaff.find(
+        (s) => (s.email || "").toString().toLowerCase().trim() === normalizedEmail
+      );
+    }
     if (!staff) {
       throw new Error(
         "Access denied. Your Google account is not registered as an authorized staff member. " +
@@ -162,7 +169,13 @@ class AuthService {
     }
 
     // 3. Find or create the User record
-    let user = await User.findOne({ email: encrypt(normalizedEmail) });
+    let user = await User.findOne(buildEmailQuery(normalizedEmail));
+    if (!user) {
+      const allUsers = await User.find({});
+      user = allUsers.find(
+        (u) => (u.email || "").toString().toLowerCase().trim() === normalizedEmail
+      );
+    }
     if (!user) {
       // First-time sign-in: auto-provision the admin User from staff record
       const roleMap = {
@@ -175,8 +188,11 @@ class AuthService {
         Staff: "admin",
         staff: "admin",
         super_admin: "super_admin",
+        super_admin_plus: "super_admin_plus",
         PM: "PM",
         pm: "PM",
+        QA: "qa",
+        qa: "qa",
       };
       const rawRole = (staff.role || "").trim();
       const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || "supervisor";
@@ -207,8 +223,11 @@ class AuthService {
         Staff: "admin",
         staff: "admin",
         super_admin: "super_admin",
+        super_admin_plus: "super_admin_plus",
         PM: "PM",
         pm: "PM",
+        QA: "qa",
+        qa: "qa",
       };
       const rawRole = (staff.role || user.role || "").trim();
       const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || user.role || "supervisor";
@@ -270,7 +289,7 @@ class AuthService {
     if (!intern) {
       // Check special access for inactive interns
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
-      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: encrypt(email.toLowerCase()) });
+      const hasSpecialAccess = await SpecialAccessIntern.findOne(buildEmailQuery(email.toLowerCase()));
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
         intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
@@ -324,8 +343,8 @@ class AuthService {
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
       const hasSpecialAccess = await SpecialAccessIntern.findOne({
         $or: [
-          { email: encrypt(cleanIdentifier.toLowerCase()) },
-          { internId: encrypt(cleanIdentifier) }
+          ...buildFieldQuery("email", cleanIdentifier.toLowerCase()).$or,
+          ...buildFieldQuery("internId", cleanIdentifier).$or,
         ]
       });
       if (hasSpecialAccess) {
