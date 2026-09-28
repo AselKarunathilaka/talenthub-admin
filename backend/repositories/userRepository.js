@@ -1,9 +1,17 @@
 const User = require("../models/User");
-const { encrypt } = require("../utils/dbEncryption");
+const { buildEmailQuery } = require("../utils/dbEncryption");
 
 class UserRepository {
   async findByEmail(email) {
-    return await User.findOne({ email: encrypt(String(email).trim().toLowerCase()) }).select("+password");
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    let user = await User.findOne(buildEmailQuery(normalizedEmail)).select("+password");
+    if (!user) {
+      const allUsers = await User.find({}).select("+password");
+      user = allUsers.find(
+        (u) => (u.email || "").toString().toLowerCase().trim() === normalizedEmail
+      );
+    }
+    return user || null;
   }
 
   async findById(id) {
