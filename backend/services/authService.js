@@ -2,6 +2,7 @@ const { OAuth2Client } = require("google-auth-library");
 const UserRepository = require("../repositories/userRepository");
 const InternRepository = require("../repositories/internRepository"); // Required for intern login
 const GateStaffRepository = require("../repositories/gateStaffRepository");
+const { encrypt } = require("../utils/dbEncryption");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const dotenv = require("../config/dotenv");
@@ -10,6 +11,7 @@ const { permissionsForRole, permissionsForUser } = require("../config/adminPermi
 const Staff = require("../models/Staff");
 const User = require("../models/User");
 const https = require("https");
+
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -51,27 +53,11 @@ class AuthService {
   // Admin Login
   async login(email, password) {
     const developerEmail = String(process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
-    const testingAdminEmail = String(process.env.TEST_ADMIN_EMAIL || "").trim().toLowerCase();
-    const projectAdminEmail = String(process.env.PROJECT_ADMIN_EMAIL || "").trim().toLowerCase();
     const normalizedEmail = String(email || "").trim().toLowerCase();
     const isDeveloper = normalizedEmail === developerEmail;
-    const isTestingAdmin = Boolean(testingAdminEmail) && normalizedEmail === testingAdminEmail;
-    const isProjectAdmin = Boolean(projectAdminEmail) && normalizedEmail === projectAdminEmail;
-    if (!isDeveloper && !isTestingAdmin && !isProjectAdmin) {
-      return { error: "Email/password login is not enabled for this account." };
-    }
 
     const user = await UserRepository.findByEmail(normalizedEmail);
     if (!user || !user.password) return { error: "Invalid email or password" };
-    if (isTestingAdmin && (user.authProvider !== "developer_password" || user.role !== "admin")) {
-      return { error: "Testing admin has not been securely provisioned." };
-    }
-    // Permit the configured legacy project administrator to use the password
-    // already stored on the account. A successful login below normalizes the
-    // provider to developer_password without replacing that password.
-    if (isProjectAdmin && user.role !== "admin") {
-      return { error: "Project administrator has not been securely provisioned." };
-    }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
@@ -81,17 +67,14 @@ class AuthService {
     if (!user.isActive) return { error: "Account is inactive. Please contact a super admin." };
     user.role = isDeveloper ? "super_admin" : (user.role || "admin");
     user.authProvider = "developer_password";
-    if (isDeveloper) {
-      user.permissions = permissionsForRole("super_admin");
-    } else {
-      const defaultPermissions = isTestingAdmin
-        ? permissionsForRole("admin").filter((permission) => permission !== "users.manage")
-        : permissionsForRole("admin");
-      user.permissions = permissionsForUser(
+    user.permissions = isDeveloper
+      ? permissionsForRole("super_admin")
+      : permissionsForUser(
         user,
-        user.permissions?.length ? user.permissions : defaultPermissions,
+        user.permissions?.length
+          ? user.permissions
+          : permissionsForRole(user.role).filter((permission) => permission !== "users.manage"),
       );
-    }
     user.lastLoginAt = new Date();
     await user.save();
     return this.createAdminSession(user);
@@ -170,7 +153,7 @@ class AuthService {
     const normalizedEmail = payload.email.toLowerCase().trim();
 
     // 2. Check allowlist — staff collection (case-insensitive)
-    const staff = await Staff.findOne({ email: normalizedEmail });
+    const staff = await Staff.findOne({ email: encrypt(normalizedEmail) });
     if (!staff) {
       throw new Error(
         "Access denied. Your Google account is not registered as an authorized staff member. " +
@@ -179,7 +162,7 @@ class AuthService {
     }
 
     // 3. Find or create the User record
-    let user = await User.findOne({ email: normalizedEmail });
+    let user = await User.findOne({ email: encrypt(normalizedEmail) });
     if (!user) {
       // First-time sign-in: auto-provision the admin User from staff record
       const roleMap = {
@@ -194,8 +177,6 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
-        QA: "qa",
-        qa: "qa",
       };
       const rawRole = (staff.role || "").trim();
       const userRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || "supervisor";
@@ -228,8 +209,6 @@ class AuthService {
         super_admin: "super_admin",
         PM: "PM",
         pm: "PM",
-        QA: "qa",
-        qa: "qa",
       };
       const rawRole = (staff.role || user.role || "").trim();
       const newRole = roleMap[rawRole] || (rawRole.toUpperCase() === "PM" ? "PM" : rawRole.toLowerCase()) || user.role || "supervisor";
@@ -291,7 +270,7 @@ class AuthService {
     if (!intern) {
       // Check special access for inactive interns
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
-      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${email}$`, "i") });
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: encrypt(email.toLowerCase()) });
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
         intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
@@ -343,10 +322,20 @@ class AuthService {
     if (!intern) {
       // Check special access for inactive interns
       const SpecialAccessIntern = require("../models/SpecialAccessIntern");
-      const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: new RegExp(`^${cleanIdentifier}$`, "i") });
+      const hasSpecialAccess = await SpecialAccessIntern.findOne({
+        $or: [
+          { email: encrypt(cleanIdentifier.toLowerCase()) },
+          { internId: encrypt(cleanIdentifier) }
+        ]
+      });
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
-        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${cleanIdentifier}$`, "i") });
+        intern = await InactiveIntern.findOne({
+          $or: [
+            { Trainee_Email: new RegExp(`^${cleanIdentifier}$`, "i") },
+            { Trainee_ID: cleanIdentifier }
+          ]
+        });
       }
     }
 

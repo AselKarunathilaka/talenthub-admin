@@ -22,6 +22,7 @@ import {
   FaSpinner,
 } from "react-icons/fa";
 import axios from "axios";
+import { logSecurityAction } from "../utils/securityLogger";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -511,7 +512,14 @@ const AdminInternLocations = () => {
   };
 
   // ── Toggle past interns ───────────────────────────────────────────────────
-  const handleTogglePastInterns = useCallback(() => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeTogglePastInterns(); return; }
+  const handleTogglePastInterns = useCallback(() => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      const actionName = !showPastInterns ? "past intern locations visibility toggled on" : "past intern locations visibility toggled off";
+      logSecurityAction({ action: actionName });
+      executeTogglePastInterns();
+      return;
+    }
     setSecurityPassword("");
     setPasswordError("");
     setShowPasswordText(false);
@@ -1230,7 +1238,8 @@ const AdminInternLocations = () => {
         </AnimatePresence>
       </main>
       {/* Security Check Popup */}
-      <AnimatePresence>
+      <>
+
         {showSecurityPopup && (
           <>
             {/* Overlay covering full screen, under navbar/sidebar */}
@@ -1242,10 +1251,10 @@ const AdminInternLocations = () => {
             {/* Modal container - sticky to center in viewport while respecting content area horizontal bounds */}
             <div className="absolute inset-x-0 top-0 h-full z-50 pointer-events-none">
               <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                <div
+                 
+                 
+                 
                   className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                 >
                   <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -1298,12 +1307,12 @@ const AdminInternLocations = () => {
                       {settingsSaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
             </div>
           </>
         )}
-      </AnimatePresence>
+      </>
     </div>
   </AdminNavigation>
   );

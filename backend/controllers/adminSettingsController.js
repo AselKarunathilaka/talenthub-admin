@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const SecuritySetting = require("../models/SecuritySetting");
 const bcrypt = require("bcryptjs");
+const { encrypt } = require("../utils/dbEncryption");
 
 // ─── SECURITY PASSWORD MANAGEMENT ───
 
@@ -13,7 +14,7 @@ exports.changeSecurityPassword = async (req, res) => {
     }
 
     let securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
-    
+
     if (!securityConfig) {
       // If none exists, we create it (fallback)
       const salt = await bcrypt.genSalt(10);
@@ -25,7 +26,18 @@ exports.changeSecurityPassword = async (req, res) => {
       });
     }
 
-    const isMatch = await bcrypt.compare(currentPassword, securityConfig.password);
+    let isMatch = false;
+    if (securityConfig.passwords && securityConfig.passwords.length > 0) {
+      for (const p of securityConfig.passwords) {
+        if (p.hash && (await bcrypt.compare(currentPassword, p.hash))) {
+          isMatch = true;
+          break;
+        }
+      }
+    }
+    if (!isMatch && securityConfig.password) {
+      isMatch = await bcrypt.compare(currentPassword, securityConfig.password);
+    }
     if (!isMatch) {
       return res.status(401).json({ message: "Incorrect current security password." });
     }
@@ -34,7 +46,7 @@ exports.changeSecurityPassword = async (req, res) => {
     const newHashedPassword = await bcrypt.hash(newPassword, salt);
 
     securityConfig.password = newHashedPassword;
-    
+
     // Log the change in history
     securityConfig.history.push({
       activity: "password changed",
@@ -50,6 +62,174 @@ exports.changeSecurityPassword = async (req, res) => {
   } catch (error) {
     console.error("[Settings] Change security password error:", error);
     res.status(500).json({ message: "Failed to change security password." });
+  }
+};
+
+exports.getAllSecurityPasswords = async (req, res) => {
+  try {
+    const securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
+    if (!securityConfig) {
+      return res.status(404).json({ message: "Security configuration not found." });
+    }
+
+    if ((!securityConfig.passwords || securityConfig.passwords.length === 0) && securityConfig.password) {
+      securityConfig.passwords = [
+        {
+          label: "",
+          hash: securityConfig.password,
+          addedAt: securityConfig.updatedAt || new Date(),
+        },
+      ];
+      await securityConfig.save();
+    }
+
+    const list = (securityConfig.passwords || []).map((p, idx) => ({
+      _id: p._id,
+      label: p.label || `Password #${idx + 1}`,
+      addedAt: p.addedAt,
+    }));
+
+    res.status(200).json(list);
+  } catch (error) {
+    console.error("[Settings] Get all security passwords error:", error);
+    res.status(500).json({ message: "Failed to fetch security passwords." });
+  }
+};
+
+exports.addSecurityPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "Password is required and must be at least 6 characters." });
+    }
+
+    let securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
+    if (!securityConfig) {
+      return res.status(404).json({ message: "Security configuration not found." });
+    }
+
+    if ((!securityConfig.passwords || securityConfig.passwords.length === 0) && securityConfig.password) {
+      securityConfig.passwords = [
+        {
+          label: "",
+          hash: securityConfig.password,
+          addedAt: securityConfig.updatedAt || new Date(),
+        },
+      ];
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hash = await bcrypt.hash(password, salt);
+
+    securityConfig.passwords.push({
+      label: "",
+      hash,
+      addedAt: new Date(),
+    });
+
+    securityConfig.history.push({
+      activity: "security password added",
+      userName: req.user?.name || "Unknown Admin",
+      userMail: req.user?.email || "unknown@domain.com",
+      date: new Date().toLocaleDateString("en-CA").replace(/-/g, "/"),
+      time: new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
+    });
+
+    await securityConfig.save();
+
+    const list = (securityConfig.passwords || []).map((p, idx) => ({
+      _id: p._id,
+      label: p.label || `Password #${idx + 1}`,
+      addedAt: p.addedAt,
+    }));
+
+    res.status(201).json({ message: "Security password added successfully.", passwords: list });
+  } catch (error) {
+    console.error("[Settings] Add security password error:", error);
+    res.status(500).json({ message: "Failed to add security password." });
+  }
+};
+
+exports.updateSecurityPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters." });
+    }
+
+    const securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
+    if (!securityConfig) {
+      return res.status(404).json({ message: "Security configuration not found." });
+    }
+
+    const targetPassword = securityConfig.passwords.id(id);
+    if (!targetPassword) {
+      return res.status(404).json({ message: "Password entry not found." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    targetPassword.hash = await bcrypt.hash(password, salt);
+
+    if (securityConfig.passwords[0]?._id?.toString() === id) {
+      securityConfig.password = targetPassword.hash;
+    }
+
+    securityConfig.history.push({
+      activity: "security password updated",
+      userName: req.user?.name || "Unknown Admin",
+      userMail: req.user?.email || "unknown@domain.com",
+      date: new Date().toLocaleDateString("en-CA").replace(/-/g, "/"),
+      time: new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
+    });
+
+    await securityConfig.save();
+
+    res.status(200).json({ message: "Security password updated successfully." });
+  } catch (error) {
+    console.error("[Settings] Update security password error:", error);
+    res.status(500).json({ message: "Failed to update security password." });
+  }
+};
+
+exports.removeSecurityPassword = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const securityConfig = await SecuritySetting.findOne({ functionName: "Security Check" });
+    if (!securityConfig) {
+      return res.status(404).json({ message: "Security configuration not found." });
+    }
+
+    if (!securityConfig.passwords || securityConfig.passwords.length <= 1) {
+      return res.status(400).json({ message: "Cannot remove the only remaining security password." });
+    }
+
+    const itemIndex = securityConfig.passwords.findIndex((p) => p._id.toString() === id);
+    if (itemIndex === -1) {
+      return res.status(404).json({ message: "Password entry not found." });
+    }
+
+    securityConfig.passwords.splice(itemIndex, 1);
+
+    if (securityConfig.passwords.length > 0) {
+      securityConfig.password = securityConfig.passwords[0].hash;
+    }
+
+    securityConfig.history.push({
+      activity: "security password removed",
+      userName: req.user?.name || "Unknown Admin",
+      userMail: req.user?.email || "unknown@domain.com",
+      date: new Date().toLocaleDateString("en-CA").replace(/-/g, "/"),
+      time: new Date().toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit' }),
+    });
+
+    await securityConfig.save();
+
+    res.status(200).json({ message: "Security password removed successfully." });
+  } catch (error) {
+    console.error("[Settings] Remove security password error:", error);
+    res.status(500).json({ message: "Failed to remove security password." });
   }
 };
 
@@ -79,11 +259,11 @@ exports.createUser = async (req, res) => {
       return res.status(400).json({ message: "Password is required for email/password logins." });
     }
 
-    if (role === "super_admin" && req.user.role !== "super_admin") {
-      return res.status(403).json({ message: "Only Super Admins can create other Super Admins." });
+    if ((role === "super_admin" || role === "super_admin_plus") && req.user.role !== "super_admin" && req.user.role !== "super_admin_plus") {
+      return res.status(403).json({ message: "Only Super Admins can create Super Admin accounts." });
     }
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: encrypt(String(email).trim().toLowerCase()) });
     if (existingUser) {
       return res.status(400).json({ message: "User with this email already exists." });
     }
@@ -123,20 +303,20 @@ exports.updateUser = async (req, res) => {
     }
 
     // Super Admin protections
-    if (userToUpdate.role === "super_admin" && req.user.role !== "super_admin") {
-      return res.status(403).json({ message: "Only Super Admins can modify other Super Admins." });
+    if ((userToUpdate.role === "super_admin" || userToUpdate.role === "super_admin_plus") && req.user.role !== "super_admin" && req.user.role !== "super_admin_plus") {
+      return res.status(403).json({ message: "Only Super Admins can modify other Super Admin accounts." });
     }
-    
-    if (role === "super_admin" && req.user.role !== "super_admin") {
+
+    if ((role === "super_admin" || role === "super_admin_plus") && req.user.role !== "super_admin" && req.user.role !== "super_admin_plus") {
       return res.status(403).json({ message: "Only Super Admins can promote users to Super Admin." });
     }
 
-    // Prevent demoting yourself if you are the only active super_admin
-    if (userToUpdate._id.toString() === req.user.id && (role && role !== "super_admin" || isActive === false)) {
-       const activeSuperAdminsCount = await User.countDocuments({ role: "super_admin", isActive: true });
-       if (activeSuperAdminsCount <= 1) {
-         return res.status(400).json({ message: "Cannot demote or disable the last active Super Admin account." });
-       }
+    // Prevent demoting yourself if you are the only active super_admin / super_admin_plus
+    if (userToUpdate._id.toString() === req.user.id && (role && role !== "super_admin" && role !== "super_admin_plus" || isActive === false)) {
+      const activeSuperAdminsCount = await User.countDocuments({ role: { $in: ["super_admin", "super_admin_plus"] }, isActive: true });
+      if (activeSuperAdminsCount <= 1) {
+        return res.status(400).json({ message: "Cannot demote or disable the last active Super Admin account." });
+      }
     }
 
     if (name) userToUpdate.name = name;
@@ -144,6 +324,7 @@ exports.updateUser = async (req, res) => {
     if (visiblePages !== undefined) userToUpdate.visiblePages = visiblePages;
     if (isActive !== undefined) userToUpdate.isActive = isActive;
     if (requireSecurityCheck !== undefined) userToUpdate.requireSecurityCheck = requireSecurityCheck;
+    if (req.body.disableSecurityMessage !== undefined) userToUpdate.disableSecurityMessage = req.body.disableSecurityMessage;
     if (password) userToUpdate.password = password; // Will be hashed by pre-save hook
 
     await userToUpdate.save();
@@ -168,16 +349,16 @@ exports.deleteUser = async (req, res) => {
     }
 
     // Super Admin protections
-    if (userToDelete.role === "super_admin" && req.user.role !== "super_admin") {
-      return res.status(403).json({ message: "Only Super Admins can delete other Super Admins." });
+    if ((userToDelete.role === "super_admin" || userToDelete.role === "super_admin_plus") && req.user.role !== "super_admin" && req.user.role !== "super_admin_plus") {
+      return res.status(403).json({ message: "Only Super Admins can delete other Super Admin accounts." });
     }
 
-    // Prevent deleting yourself if you are the only active super_admin
+    // Prevent deleting yourself if you are the only active super_admin / super_admin_plus
     if (userToDelete._id.toString() === req.user.id) {
-       const activeSuperAdminsCount = await User.countDocuments({ role: "super_admin", isActive: true });
-       if (activeSuperAdminsCount <= 1) {
-         return res.status(400).json({ message: "Cannot delete the last active Super Admin account." });
-       }
+      const activeSuperAdminsCount = await User.countDocuments({ role: { $in: ["super_admin", "super_admin_plus"] }, isActive: true });
+      if (activeSuperAdminsCount <= 1) {
+        return res.status(400).json({ message: "Cannot delete the last active Super Admin account." });
+      }
     }
 
     await User.findByIdAndDelete(id);

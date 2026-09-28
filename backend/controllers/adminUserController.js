@@ -42,7 +42,7 @@ exports.createUser = async (req, res, next) => {
     const { name = "", email, role, permissions } = req.body;
     const normalizedName = String(name).trim();
     const normalizedEmail = String(email || "").trim().toLowerCase();
-    if (!normalizedName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || !["admin", "supervisor", "qa", "PM", "pm", "developer"].includes(role)) {
+    if (!normalizedName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail) || !["admin", "supervisor"].includes(role)) {
       return res.status(400).json({ message: "A full name, valid Google email, and role are required." });
     }
     if (await User.exists({ email: normalizedEmail })) {
@@ -85,7 +85,7 @@ exports.resendInvitation = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id).select("+invitationEmailError");
     if (!user) return res.status(404).json({ message: "User not found." });
-    if (user.role === "super_admin" || user.authProvider !== "google") {
+    if (user.role === "super_admin" || user.role === "super_admin_plus" || user.authProvider !== "google") {
       return res.status(400).json({ message: "Invitations are only available for Google Admin and Supervisor accounts." });
     }
     if (!user.isActive) return res.status(400).json({ message: "Activate this account before resending its invitation." });
@@ -125,12 +125,12 @@ exports.updateUser = async (req, res, next) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) return res.status(404).json({ message: "User not found." });
-    if (user.role === "super_admin") return res.status(403).json({ message: "Super-admin accounts cannot be changed here." });
+    if (user.role === "super_admin" || user.role === "super_admin_plus") return res.status(403).json({ message: "Super-admin accounts cannot be changed here." });
     const { name, role, permissions, isActive, requireSecurityCheck } = req.body;
     const updates = {};
     if (name !== undefined) updates.name = String(name).trim();
     if (role !== undefined) {
-      if (!["admin", "supervisor", "developer", "PM", "pm", "qa"].includes(role)) return res.status(400).json({ message: "Invalid role." });
+      if (!["admin", "supervisor", "developer", "PM", "pm", "BA", "QA"].includes(role)) return res.status(400).json({ message: "Invalid role." });
       updates.role = role === "pm" ? "PM" : role;
       if (permissions === undefined) updates.permissions = permissionsForRole(updates.role);
     }

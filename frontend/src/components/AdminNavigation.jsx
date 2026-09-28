@@ -26,7 +26,7 @@ import {
   Bell,
 } from "lucide-react";
 import AdminNavbar from "./AdminNavbar";
-import { getAdminSession, hasAdminPermission } from "../utils/adminAuth";
+import { getAdminSession, hasAdminPermission, formatRole } from "../utils/adminAuth";
 import Layout from "./Layout";
 
 const AdminNavigation = ({ children }) => {
@@ -88,9 +88,9 @@ const AdminNavigation = ({ children }) => {
 
     if (link.isExternal || link.label === "Dashboard") return true;
     
-    if (role === "super_admin" || role === "PM" || role === "pm") return true;
+    if (role === "super_admin" || role === "super_admin_plus" || role === "PM" || role === "pm") return true;
     
-    if (role === "admin" || role === "developer" || role === "qa") {
+    if (role === "admin" || role === "developer") {
       if (link.label === "Settings") return false;
       return true;
     }
@@ -107,7 +107,7 @@ const AdminNavigation = ({ children }) => {
   const userData = {
     name: adminSession?.user?.name || adminSession?.user?.email,
     email: adminSession?.user?.email,
-    role: adminSession?.user?.role ? adminSession.user.role.replace('_', ' ').toUpperCase() : 'ADMIN',
+    role: formatRole(adminSession?.user?.role) || 'Admin',
     picture: adminSession?.user?.picture || null,
     adminId: adminSession?.user?.id || adminSession?.user?._id || null,
     isAdmin: true,

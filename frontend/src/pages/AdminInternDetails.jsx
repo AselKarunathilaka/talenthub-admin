@@ -47,6 +47,12 @@ import { adminApi } from "../api/adminApi";
 import { API_BASE_URL } from "../api/apiConfig";
 import AdminNavigation from "../components/AdminNavigation";
 import InternDashboard from "./InternDashboard";
+import InternLeave from "./InternLeave";
+import DailyRecords from "./DailyRecords";
+import InternAttendance from "./InternAttendance";
+import InternLogBook from "./InternLogBook";
+import InternAnnouncements from "./InternAnnouncements";
+import InternSeatReservation from "./InternSeatReservation";
 import {
   isNoCommitSpecialization,
   calcWorkingDays as calcWorkingDaysUtil,
@@ -209,6 +215,7 @@ const AdminInternDetails = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+  const [previewPage, setPreviewPage] = useState("dashboard");
   const [recentRecords, setRecentRecords] = useState([]);
 
   const [attendanceData, setAttendanceData] = useState(null);
@@ -1838,7 +1845,7 @@ const AdminInternDetails = () => {
                               className="bg-gray-50 rounded-xl p-3 border border-gray-200"
                             >
                               <div className="flex items-start justify-between mb-2">
-                                <div className="flex-1">
+                                <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900 truncate">
                                     {record.taskDescription ||
                                       record.task ||
@@ -4017,8 +4024,44 @@ const AdminInternDetails = () => {
 
                 {/* ══ PREVIEW TAB (Intern-Side Portal Preview using Dashboard.jsx) ══ */}
                 {activeTab === "preview" && (
-                  <div className="rounded-2xl overflow-hidden border border-gray-200 bg-[#f8fafc] shadow-sm">
-                    <InternDashboard previewInternId={internId} isPreview={true} />
+                  <div className="flex flex-col gap-4">
+                    {/* Preview Sub-navigation */}
+                    <div className="flex items-center gap-2 p-1.5 bg-gray-100 rounded-xl overflow-x-auto whitespace-nowrap">
+                      {[
+                        { id: "dashboard", label: "Dashboard" },
+                        { id: "attendance", label: "Attendance" },
+                        { id: "logbook", label: "Log Book" },
+                        { id: "daily_records", label: "Daily Records" },
+                        { id: "short_leave", label: "Short Leave" },
+                        { id: "study_leave", label: "Extended Leave" },
+                        { id: "seat", label: "Seat Reservation" },
+                        { id: "announcements", label: "Announcements" },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setPreviewPage(tab.id)}
+                          className={`px-4 py-2 rounded-lg text-sm font-bold transition-all shadow-sm ${
+                            previewPage === tab.id
+                              ? "bg-white text-[#0056a2] shadow ring-1 ring-black/5"
+                              : "text-gray-600 hover:bg-white/50 hover:text-gray-900"
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="rounded-2xl overflow-hidden border border-gray-200 bg-[#f8fafc] shadow-sm relative min-h-[500px]">
+                      {previewPage === "dashboard" && <InternDashboard previewInternId={internId} isPreview={true} />}
+                      {previewPage === "attendance" && <InternAttendance previewInternId={internId} isPreview={true} />}
+                      {previewPage === "logbook" && <InternLogBook previewInternId={internId} isPreview={true} onViewRecords={() => setPreviewPage("daily_records")} />}
+                      {previewPage === "daily_records" && <DailyRecords previewInternId={internId} isPreview={true} onViewLogbook={() => setPreviewPage("logbook")} />}
+                      
+                      {previewPage === "short_leave" && <InternLeave requestType="short_leave" previewInternId={internId} isPreview={true} />}
+                      {previewPage === "study_leave" && <InternLeave requestType="study_leave" previewInternId={internId} isPreview={true} />}
+                      {previewPage === "seat" && <InternSeatReservation previewInternId={internId} isPreview={true} />}
+                      {previewPage === "announcements" && <InternAnnouncements previewInternId={internId} isPreview={true} />}
+                    </div>
                   </div>
                 )}
               </motion.div>

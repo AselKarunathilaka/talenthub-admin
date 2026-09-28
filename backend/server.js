@@ -25,21 +25,27 @@ const server = app.listen(PORT, () => {
   // Auto-sync with SLT API on server startup
   // WARNING: enableCleanup: true will remove interns from the DB that are not present in the API.
   // This is destructive. Set AUTO_CLEANUP_INACTIVE_INTERNS='false' in your env if you want to disable cleanup.
-  console.log("🔄 Starting auto-sync with SLT API (cleanup enabled)...");
-  InternService.syncWithSLTAPI({ enableCleanup: true })
-    .then((result) => {
-      if (result.success) {
-        console.log("✅ Auto-sync completed successfully!");
-        console.log(
-          `📊 Stats: ${result.stats.added} added, ${result.stats.updated} updated, ${result.stats.skipped} skipped, ${result.stats.errors} errors`,
-        );
-      } else {
-        console.log("❌ Auto-sync failed:", result.message);
-      }
-    })
-    .catch((error) => {
-      console.error("❌ Auto-sync error:", error.message);
-    });
+  if (process.env.SLT_API_SYNC_ENABLED !== "false") {
+    console.log("🔄 Starting auto-sync with SLT API (cleanup enabled)...");
+    InternService.syncWithSLTAPI({ enableCleanup: true })
+      .then((result) => {
+        if (result.success) {
+          console.log("✅ Auto-sync completed successfully!");
+          console.log(
+            `📊 Stats: ${result.stats.added} added, ${result.stats.updated} updated, ${result.stats.skipped} skipped, ${result.stats.errors} errors`,
+          );
+        } else if (result.networkError) {
+          console.log("ℹ️  Auto-sync deferred: SLT API unreachable from current network. Operating with local MongoDB data.");
+        } else {
+          console.log("❌ Auto-sync failed:", result.message);
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Auto-sync error:", error.message);
+      });
+  } else {
+    console.log("⏭️  Auto-sync with SLT API skipped (SLT_API_SYNC_ENABLED=false)");
+  }
 
   // Load holidays into memory and keep the providers in sync.
   // Runs before the weekly scheduler because working-day maths depends on it.

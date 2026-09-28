@@ -11,11 +11,10 @@ const ALL_PERMISSIONS = [
 
 const ROLE_PERMISSIONS = {
   super_admin: ALL_PERMISSIONS,
+  super_admin_plus: ALL_PERMISSIONS,
   PM: ALL_PERMISSIONS,
   pm: ALL_PERMISSIONS,
   admin: ADMIN_PERMISSIONS,
-  qa: ADMIN_PERMISSIONS,
-  QA: ADMIN_PERMISSIONS,
   developer: ADMIN_PERMISSIONS,
   supervisor: [
     "dashboard.view", "interns.view", "daily_logs.view", "attendance.view",

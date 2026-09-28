@@ -36,7 +36,7 @@ import { toast } from "react-hot-toast";
 
 
 // Navigation Component
-const Navigation = ({ children }) => {
+const Navigation = ({ children, isPreview = false, onLogout }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
@@ -240,12 +240,12 @@ const Navigation = ({ children }) => {
   };
 
   const navLinks = [
-    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" /> },
-    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" /> },
-    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" /> },
-    { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" /> },
-    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" /> },
-    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" /> },
+    { to: "/dashboard", label: "Dashboard", icon: <Home className="h-5 w-5" />, color: "#0ea5e9" },
+    { to: "/attendance", label: "Attendance", icon: <ScanLine className="h-5 w-5" />, color: "#f59e0b" },
+    { to: "/log-book", label: "Log Book", icon: <BookOpen className="h-5 w-5" />, color: "#10b981" },
+    { to: "/leave-requests", label: "Short Leave", icon: <Bike className="h-5 w-5" />, color: "#8b5cf6" },
+    { to: "/study-leave-requests", label: "Extended Leave", icon: <GraduationCap className="h-5 w-5" />, color: "#f97316" },
+    { to: "/seat-reservation", label: "Seat Reservation", icon: <Armchair className="h-5 w-5" />, color: "#ec4899" },
     { onClick: handleTalentTrailClick, label: "Talent Trail", icon: <ExternalLink className="h-5 w-5" />, isExternal: true },
     { onClick: handleDownloadAgreement, label: "Guidelines", icon: <FileText className="h-5 w-5" />, isExternal: true },
     { onClick: handleYouTubeClick, label: "Digital Serendib", icon: <Youtube className="h-5 w-5" />, isExternal: true },
@@ -260,7 +260,7 @@ const Navigation = ({ children }) => {
       className="relative p-2 text-white bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 rounded-full transition-all duration-300 flex items-center justify-center mr-1 md:mr-2 shadow-[0_4px_12px_rgba(0,0,0,0.1)] hover:shadow-[0_4px_20px_rgba(255,255,255,0.15)]"
       title="Announcements"
     >
-      <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
+      <Bell className={`h-4 w-4 sm:h-5 sm:w-5 ${location.pathname === '/announcements' ? 'text-red-500' : 'text-white'}`} />
       {unreadCount > 0 && (
         <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -279,6 +279,10 @@ const Navigation = ({ children }) => {
     profilePicUrl: profileImgError ? avatarFallbackUrl : (profilePicUrl || avatarFallbackUrl),
     isAdmin: false,
   };
+
+  if (isPreview) {
+    return <div className="w-full">{children}</div>;
+  }
 
   return (
     <>

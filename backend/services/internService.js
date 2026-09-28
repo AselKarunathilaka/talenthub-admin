@@ -197,9 +197,12 @@ class InternService {
     try {
       console.log("🔄 Starting SLT API synchronization...");
 
-      const {
-        enableCleanup = process.env.AUTO_CLEANUP_INACTIVE_INTERNS === "true",
-      } = options;
+      const enableCleanup =
+        typeof options === "boolean"
+          ? options
+          : options && typeof options.enableCleanup === "boolean"
+            ? options.enableCleanup
+            : process.env.AUTO_CLEANUP_INACTIVE_INTERNS === "true";
 
       // Fetch active trainees from SLT API
       const activeTrainees = await SLTApiService.fetchActiveTrainees();
@@ -458,9 +461,25 @@ class InternService {
       console.log("✅ SLT API synchronization completed:", result.message);
       return result;
     } catch (error) {
-      console.error("❌ SLT API synchronization failed:", error.message);
+      const isNetworkError =
+        Boolean(error.isNetworkError) ||
+        (typeof error.message === "string" &&
+          (error.message.includes("unreachable") ||
+            error.message.includes("ETIMEDOUT") ||
+            error.message.includes("ECONNABORTED") ||
+            error.message.includes("ENOTFOUND") ||
+            error.message.includes("ECONNREFUSED") ||
+            error.message.includes("network connectivity")));
+
+      if (isNetworkError) {
+        console.warn(`⚠️ SLT API auto-sync deferred: ${error.message} (operating with local database)`);
+      } else {
+        console.error("❌ SLT API synchronization failed:", error.message);
+      }
+
       return {
         success: false,
+        networkError: isNetworkError,
         message: `Sync failed: ${error.message}`,
         stats: {
           added: 0,

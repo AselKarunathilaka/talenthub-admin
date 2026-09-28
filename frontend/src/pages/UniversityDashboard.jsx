@@ -288,8 +288,7 @@ const UniversityDashboard = () => {
 
       const studentsNeedingCommits = studentList.filter((s) => {
         const cached = cachedStudentsMap.get(s.id);
-        return !s.isInactive && !s.isTerminated &&
-               (cached?.commitsCount === undefined || cached?.commitsCount === 0);
+        return cached?.commitsCount === undefined;
       });
 
       // Merge cached commit counts into fresh student list immediately

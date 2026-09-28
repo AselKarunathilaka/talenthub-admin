@@ -37,6 +37,7 @@ import {
 } from "react-icons/fa";
 import logo from "../assets/sltlogo.jpg";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 
 const PAGE_SIZE = 10;
 
@@ -804,7 +805,19 @@ export default function AdminInactiveInterns() {
   }, [activeTab, fetchDailyRecords]);
 
   /* reactivate — opens security check popup */
-  const handleReactivate = useCallback(() => { const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}"); if (adminInfo?.user?.requireSecurityCheck === false) { executeReactivate(); return; }
+  const handleReactivate = useCallback(() => {
+    const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
+    if (adminInfo?.user?.requireSecurityCheck === false) {
+      const internName = selectedIntern?.traineeName || "";
+      const internEmail = selectedIntern?.traineeEmail || selectedIntern?.email || "";
+      const internId = selectedIntern?.traineeId || "N/A";
+      logSecurityAction({
+        action: "intern reactivate",
+        extraInfo: `Intern: ${internName} (ID: ${internId})${internEmail ? ` - ${internEmail}` : ""}`
+      });
+      executeReactivate();
+      return;
+    }
     if (!selectedIntern) return;
     setShowSecurityPopup(true);
     setSecurityPassword("");
@@ -1631,37 +1644,36 @@ export default function AdminInactiveInterns() {
         `}</style>
 
         {/* Security Check Backdrop */}
-        <AnimatePresence>
+        <>
+
           {showSecurityPopup && (
-            <motion.div
-              key="inactive-overlay"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <div
+             
+             
+             
+             
+             
               className="fixed inset-0 z-[25] pointer-events-none bg-slate-900/60 backdrop-blur-sm"
             />
           )}
-        </AnimatePresence>
+        </>
 
         {/* Security Check Popup */}
-        <AnimatePresence>
+        <>
+
           {showSecurityPopup && (
-            <motion.div key="modal-wrapper-animate" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[50] pointer-events-none">
+            <div className="fixed inset-0 z-[50] pointer-events-none">
               <div
                 className="fixed inset-0 z-[26] pointer-events-auto"
                 onClick={() => setShowSecurityPopup(false)}
               />
               <div className="fixed left-0 lg:left-[260px] right-0 bottom-0 top-[64px] z-50 pointer-events-none flex items-center justify-center px-4">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                <div
+                 
+                 
+                 
                   
-                  onAnimationComplete={() => {
-                    document.getElementById('inactive-security-password-input')?.focus();
-                  }}
-                  className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
+                 className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                 >
                   <div className="flex justify-between items-start mb-3 sm:mb-4">
                     <div>
@@ -1713,11 +1725,11 @@ export default function AdminInactiveInterns() {
                       {securitySaving ? <FaSpinner className="w-4 h-4 animate-spin" /> : "Verify"}
                     </button>
                   </div>
-                </motion.div>
+                </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </>
 
       </div>
     </AdminNavigation>

@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/authMiddleware");
 const { requireAdmin, requirePermission, enforceRoutePermission } = require("../middleware/adminAuth");
@@ -56,7 +56,7 @@ router.post("/profile-picture/:userId", authMiddleware, profileUpload.single("im
     // Only allow users to update their own picture (unless super_admin/PM)
     const tokenId = String(req.user?.id || req.user?._id || "");
     const role = req.user?.role;
-    if (tokenId !== userId && role !== "super_admin" && role !== "PM" && role !== "pm") {
+    if (tokenId !== userId && role !== "super_admin" && role !== "super_admin_plus" && role !== "PM" && role !== "pm") {
       return res.status(403).json({ error: "Forbidden" });
     }
 
@@ -393,3 +393,36 @@ router.get("/talenttrail/projects", async (req, res) => {
 });
 
 module.exports = router;
+
+router.get("/face-attendance/daily-status/:internId", requireAdmin, async (req, res, next) => {
+  try {
+    const { internId } = req.params;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const record = await require('../models/Attendance').findOne({
+      intern: internId,
+      date: { $gte: today }
+    }).sort({ checkInTime: -1 });
+
+    if (!record) {
+      return res.json({
+        state: "unknown",
+        checkInTime: null,
+        checkOutTime: null,
+        checkoutAvailableAt: null,
+        minimumCheckoutMinutes: 15,
+      });
+    }
+
+    res.json({
+      state: record.checkOutTime ? "checked_out" : "checked_in",
+      checkInTime: record.checkInTime,
+      checkOutTime: record.checkOutTime,
+      checkoutAvailableAt: record.checkInTime ? new Date(record.checkInTime.getTime() + 15 * 60000) : null,
+      minimumCheckoutMinutes: 15,
+    });
+  } catch (error) {
+    next(error);
+  }
+});

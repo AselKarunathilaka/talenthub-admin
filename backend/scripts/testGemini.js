@@ -5,7 +5,11 @@ const { GoogleGenerativeAI } = require("@google/generative-ai");
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return console.error("GEMINI_API_KEY missing");
     const gen = new GoogleGenerativeAI(apiKey);
-    const model = gen.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+    const requestOptions = {};
+    if (process.env.GEMINI_BASE_URL) {
+      requestOptions.baseUrl = process.env.GEMINI_BASE_URL;
+    }
+    const model = gen.getGenerativeModel({ model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite" }, requestOptions);
     const r = await model.generateContent('Is "fixed a bug" work-related?');
     console.log((await r.response.text()).slice(0, 400));
   } catch (e) {

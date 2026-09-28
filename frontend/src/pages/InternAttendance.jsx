@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   Camera,
@@ -34,17 +34,7 @@ import {
   requestFreshLocation,
   toAttendanceEvidence,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { enrollFaceSamples } from "../utils/faceEnrollment";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  evaluateFacePlacement,
-  faceRuntimeProfile,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 
 const SLT_OFFICE = {
   latitude: 6.9271,
@@ -62,10 +52,16 @@ const ENROLLMENT_PROMPTS = [
   "Turn your head slightly to the right.",
   "Return to the center for the final scan.",
 ];
-const FACE_DETECTOR_OPTIONS = createFaceDetectorOptions();
-const FACE_GUIDE_DETECTOR_OPTIONS = createFaceDetectorOptions({ guide: true });
-const FACE_GUIDE_INTERVAL_MS = faceRuntimeProfile.guideIntervalMs;
-const REQUIRED_STABLE_FACE_CHECKS = faceRuntimeProfile.stableChecks;
+const FACE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 320,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_DETECTOR_OPTIONS = new faceapi.TinyFaceDetectorOptions({
+  inputSize: 160,
+  scoreThreshold: 0.45,
+});
+const FACE_GUIDE_INTERVAL_MS = 500;
+const REQUIRED_STABLE_FACE_CHECKS = 2;
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
 const getProjectKey = (value) => normalizeProjectName(value);
 
@@ -115,7 +111,7 @@ const getDistanceKm = (fromLocation, officeLocation = SLT_OFFICE) => {
   return earthRadiusKm * c;
 };
 
-const InternAttendance = () => {
+const InternAttendance = ({ previewInternId = null, isPreview = false }) => {
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const [activeTab, setActiveTab] = useState("meeting"); // "meeting" or "daily"
@@ -289,13 +285,17 @@ const InternAttendance = () => {
     setFaceGuide({ ready: false, message: "Center your face inside the oval" });
   };
 
-  const stopQRScanner = () => {
+  const stopQRScanner = (keepProcessedGuard = false) => {
     if (qrScannerRef.current) {
-      qrScannerRef.current.reset();
+      try { qrScannerRef.current.reset(); } catch (_) {}
       qrScannerRef.current = null;
     }
-
-    processedQrRef.current = false;
+    // Stop the QR camera video track so the camera light turns off
+    if (qrVideoRef.current && qrVideoRef.current.srcObject) {
+      qrVideoRef.current.srcObject.getTracks().forEach((t) => t.stop());
+      qrVideoRef.current.srcObject = null;
+    }
+    if (!keepProcessedGuard) processedQrRef.current = false;
     setQrScanning(false);
     setQrProcessing(false);
   };
@@ -404,12 +404,9 @@ const InternAttendance = () => {
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
 
     try {
       const detections = await faceapi
@@ -429,8 +426,21 @@ const InternAttendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) return { error: quality.error };
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered =
+        Math.abs(centerX - 320) <= 105 &&
+        Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) {
+        return { error: "Move your face into the center oval." };
+      }
+
+      if (!largeEnough) {
+        return { error: "Move a little closer to the camera." };
+      }
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (error) {
@@ -442,12 +452,9 @@ const InternAttendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting..." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.drawImage(videoRef.current, 0, 0, 640, 480);
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -464,7 +471,16 @@ const InternAttendance = () => {
         };
       }
 
-      return evaluateFacePlacement(detections[0], dimensions);
+      const { box } = detections[0];
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      const centered = Math.abs(centerX - 320) <= 105 && Math.abs(centerY - 240) <= 95;
+      const largeEnough = box.width >= 135 && box.height >= 150;
+
+      if (!centered) return { error: "Move your face into the center oval." };
+      if (!largeEnough) return { error: "Move a little closer to the camera." };
+
+      return { ready: true };
     } catch (error) {
       console.error("Error inspecting face position:", error);
       return { error: "Could not read the camera frame." };
@@ -556,7 +572,14 @@ const InternAttendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
+        const isDistinct =
+          !previousFrame ||
+          Math.sqrt(
+            previousFrame.reduce((sum, value, index) => {
+              const difference = value - frameData.descriptor[index];
+              return sum + difference * difference;
+            }, 0),
+          ) >= 0.035;
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
@@ -761,13 +784,18 @@ const InternAttendance = () => {
           return;
         }
 
+        // Lock immediately to prevent any re-entry
         processedQrRef.current = true;
         setQrProcessing(true);
         setQrScanSuccess(true);
+        // Must defer stopQRScanner out of the ZXing decode callback —
+        // calling reset() synchronously from inside the callback throws/is ignored by ZXing.
+        window.setTimeout(() => stopQRScanner(true /* keepProcessedGuard */), 0);
 
         try {
           const internId = localStorage.getItem("internId");
-          const attendanceLocation = await getFreshAttendanceLocation();
+          // Use already-fetched location to avoid a slow GPS round-trip
+          const attendanceLocation = location || await getFreshAttendanceLocation();
           const payload = {
             qrCode: qrData,
             internId,
@@ -799,7 +827,9 @@ const InternAttendance = () => {
 
           if (!response.ok) {
             toast.error(data.message || "QR backup failed.");
+            // Re-enable scanning on failure
             processedQrRef.current = false;
+            setQrProcessing(false);
             return;
           }
 
@@ -811,7 +841,7 @@ const InternAttendance = () => {
                 ? "Check-out recorded using QR backup."
                 : "Check-in recorded using QR backup.",
           );
-          stopQRScanner();
+          processedQrRef.current = false;
           if (activeTab === "daily") await refreshDailyStatus();
         } catch (error) {
           console.error("QR backup error:", error);
@@ -841,11 +871,11 @@ const InternAttendance = () => {
   };
 
   return (
-    <Navigation>
+    <Navigation isPreview={isPreview}>
 
       <div className="flex-1 w-full lg:px-6 xl:px-10 pb-10">
         <main className="flex-1 p-[clamp(16px,4vw,24px)] mx-auto max-w-[1200px] w-full">
-          <SectionTip sectionKey="attendance" />
+          {/* <SectionTip sectionKey="attendance" /> */}
           {enrollmentSuccess && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
             <div className="animate-[fadeIn_0.25s_ease-out] rounded-2xl border border-[#50b748]/30 bg-white px-8 py-7 text-center shadow-2xl">
@@ -861,7 +891,7 @@ const InternAttendance = () => {
           {/* Header & Status */}
           <div className="mb-[clamp(16px,4vw,24px)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-[clamp(12px,3vw,16px)] logbook-fade-in w-full">
             <div className="flex items-center gap-[clamp(10px,2.5vw,16px)]">
-              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-r from-[#000066] to-[#006600] flex items-center justify-center shrink-0 border border-slate-700 shadow-md">
+              <div className="w-[clamp(40px,10vw,56px)] h-[clamp(40px,10vw,56px)] rounded-[clamp(12px,3vw,16px)] bg-gradient-to-br from-[#f59e0b] to-[#d97706] flex items-center justify-center shrink-0 border border-amber-700/30 shadow-md shadow-amber-500/20">
                 <ScanLine className="text-white w-[clamp(20px,5vw,28px)] h-[clamp(20px,5vw,28px)]" />
               </div>
               <div className="flex flex-col justify-center">
@@ -1150,26 +1180,6 @@ const InternAttendance = () => {
                         {qrScanning ? (
                           <>
 
-                            
-                            {qrScanSuccess && (
-                              <motion.div
-                                className="absolute inset-0 bg-[#00b4eb]/30 backdrop-blur-sm flex items-center justify-center z-40"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <motion.div
-                                  className="bg-white px-5 py-4 rounded-2xl shadow-xl flex items-center"
-                                  initial={{ scale: 0.8 }}
-                                  animate={{ scale: 1 }}
-                                >
-                                  <CheckCircle size={24} className="text-[#00b4eb] mr-3" />
-                                  <span className="font-bold text-gray-800 text-lg">Scan Successful!</span>
-                                </motion.div>
-                              </motion.div>
-                            )}
-
                             {qrProcessing && !qrScanSuccess && (
                               <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/40 backdrop-blur-sm">
                                 <Loader className="w-[clamp(16px,4vw,28px)] h-[clamp(16px,4vw,28px)] animate-spin text-[#00b4eb]" />
@@ -1189,6 +1199,25 @@ const InternAttendance = () => {
                               </p>
                             </div>
                           </div>
+                        )}
+                        {/* Success overlay — shown regardless of qrScanning state so it persists after auto-stop */}
+                        {qrScanSuccess && (
+                          <motion.div
+                            className="absolute inset-0 bg-[#00b4eb]/30 backdrop-blur-sm flex items-center justify-center z-40"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <motion.div
+                              className="bg-white px-5 py-4 rounded-2xl shadow-xl flex items-center"
+                              initial={{ scale: 0.8 }}
+                              animate={{ scale: 1 }}
+                            >
+                              <CheckCircle size={24} className="text-[#00b4eb] mr-3" />
+                              <span className="font-bold text-gray-800 text-lg">Scan Successful!</span>
+                            </motion.div>
+                          </motion.div>
                         )}
                       </div>
 

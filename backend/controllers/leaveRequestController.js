@@ -1,4 +1,4 @@
-const leaveRequestService = require("../services/leaveRequestService");
+﻿const leaveRequestService = require("../services/leaveRequestService");
 const User = require("../models/User");
 const fs = require("fs");
 
@@ -164,6 +164,35 @@ class LeaveRequestController {
     }
   }
 
+  // Admin get leave requests for specific intern
+  async getLeaveRequestsByInternId(req, res, next) {
+    try {
+      const { internId } = req.params;
+      const { page = 1, limit = 10, type } = req.query;
+
+      const result = await leaveRequestService.getLeaveRequestsByInternId(
+        internId,
+        page,
+        limit,
+        type
+      );
+
+      res.status(200).json({
+        success: true,
+        data: result.leaveRequests,
+        pagination: {
+          total: result.total,
+          page: result.page,
+          totalPages: result.totalPages,
+          limit: parseInt(limit),
+        },
+      });
+    } catch (error) {
+      console.error("Error in getLeaveRequestsByInternId controller:", error);
+      next(error);
+    }
+  }
+
   // Get all leave requests (Admin only)
   async getAllLeaveRequests(req, res, next) {
     try {
@@ -255,6 +284,30 @@ class LeaveRequestController {
       });
     } catch (error) {
       console.error("Error in updateLeaveRequestStatus controller:", error);
+      next(error);
+    }
+  }
+
+  // Admin delete leave request (Any status)
+  async adminDeleteLeaveRequest(req, res, next) {
+    try {
+      // Check if user is admin
+      const adminUser = await User.findById(req.user.id);
+      if (!adminUser) {
+        return res
+          .status(403)
+          .json({ success: false, message: "Admin access required" });
+      }
+
+      const { id } = req.params;
+      const result = await leaveRequestService.adminDeleteLeaveRequest(id);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+      });
+    } catch (error) {
+      console.error("Error in adminDeleteLeaveRequest controller:", error);
       next(error);
     }
   }

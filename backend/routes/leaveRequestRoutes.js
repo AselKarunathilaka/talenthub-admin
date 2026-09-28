@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 const leaveRequestController = require("../controllers/leaveRequestController");
 const authenticateUser = require("../middleware/authMiddleware");
@@ -26,6 +26,10 @@ router.delete("/:id", leaveRequestController.deleteLeaveRequest);
 
 // Admin routes
 router.get("/all", requireAdmin, requirePermission("leave.view"), leaveRequestController.getAllLeaveRequests);
+
+router.get("/admin/intern/:internId", requireAdmin, requirePermission("leave.view"), leaveRequestController.getLeaveRequestsByInternId);
+
+router.delete("/admin/:id", requireAdmin, requirePermission("leave.manage"), leaveRequestController.adminDeleteLeaveRequest);
 
 router.get("/stats", requireAdmin, requirePermission("leave.view"), leaveRequestController.getLeaveRequestStats);
 

@@ -30,14 +30,13 @@ const TEMPLATE_MAP = Object.fromEntries(TEMPLATES.map((t) => [t.id, t]));
 
 /**
  * Resolve a template by its id string.
- * Falls back to the default template when the id is unknown.
+ * All universities use the standard default template matching the uploaded layout.
  */
-const getTemplate = (id) => TEMPLATE_MAP[id] ?? defaultTemplate;
+const getTemplate = (_id) => defaultTemplate;
 
 /**
- * Returns all templates as { id, label } pairs, suitable for sending to the
- * frontend so it can populate the dropdown.
+ * Returns all templates as { id, label } pairs.
  */
-const listTemplates = () => TEMPLATES.map(({ id, label }) => ({ id, label }));
+const listTemplates = () => [{ id: "default", label: "Standard (SLT)" }];
 
 module.exports = { getTemplate, listTemplates, TEMPLATES };

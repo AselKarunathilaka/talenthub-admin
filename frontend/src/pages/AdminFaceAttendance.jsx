@@ -18,23 +18,14 @@ import * as faceapi from "face-api.js";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { API_BASE_URL } from "../api/apiConfig";
+import { logSecurityAction } from "../utils/securityLogger";
 import { adminApi } from "../api/adminApi";
 import { ChevronDown, Check } from "lucide-react";
 import {
   getDeviceTimeEvidence,
   requestFreshLocation,
 } from "../utils/attendanceEvidence";
-import { getCameraErrorMessage, requestFaceCameraStream, waitForPlayableVideo } from "../utils/cameraAccess";
-import { loadFaceModels } from "../utils/faceModelLoader";
-import { clearFaceMesh, drawFaceMesh } from "../utils/faceMesh";
-import {
-  createFaceDetectorOptions,
-  drawFaceVideoFrame,
-  evaluateFaceCaptureQuality,
-  evaluateFacePlacement,
-  faceRuntimeProfile,
-  isDistinctFaceDescriptor,
-} from "../utils/faceCapture";
+import { getCameraErrorMessage, requestFaceCameraStream } from "../utils/cameraAccess";
 import {
   FaCheckCircle,
   FaRedo,
@@ -80,6 +71,27 @@ const getAuthHeaders = () => {
 };
 
 const normalizeProjectName = (value) => String(value || "").trim().replace(/\s+/g, " ");
+
+// Simplified drawing function to avoid external dependency
+const drawFaceMesh = (canvas, landmarks) => {
+  if (!canvas || !landmarks) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw landmarks
+  ctx.fillStyle = "#3b82f6";
+  landmarks.positions.forEach((pt) => {
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 2, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+};
+
+const clearFaceMesh = (canvas) => {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+};
 
 // ── API ───────────────────────────────────────────────────────────────────────
 const adminFaceApi = {
@@ -425,6 +437,7 @@ const AdminFaceAttendance = () => {
   const handleInitializeClick = () => {
     const adminInfo = JSON.parse(localStorage.getItem("adminInfo") || "{}");
     if (adminInfo?.user?.requireSecurityCheck === false) {
+      logSecurityAction({ action: "face attendance scanner initialization" });
       startCamera();
       return;
     }
@@ -491,12 +504,18 @@ const AdminFaceAttendance = () => {
 
   const captureFrameForDescriptor = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting. Hold still and retry." };
+    const ctx = canvasRef.current.getContext("2d");
+    
+    // Ensure canvas matches video native dimensions to prevent squishing on mobile portrait
+    const vWidth = videoRef.current.videoWidth || 640;
+    const vHeight = videoRef.current.videoHeight || 480;
+    
+    if (canvasRef.current.width !== vWidth) canvasRef.current.width = vWidth;
+    if (canvasRef.current.height !== vHeight) canvasRef.current.height = vHeight;
+    if (meshCanvasRef.current.width !== vWidth) meshCanvasRef.current.width = vWidth;
+    if (meshCanvasRef.current.height !== vHeight) meshCanvasRef.current.height = vHeight;
+
+    ctx.drawImage(videoRef.current, 0, 0, vWidth, vHeight);
     
     try {
       const detections = await faceapi
@@ -511,8 +530,19 @@ const AdminFaceAttendance = () => {
 
       const detection = detections[0];
       drawFaceMesh(meshCanvasRef.current, detection.landmarks);
-      const quality = evaluateFaceCaptureQuality(detection, canvasRef.current, dimensions);
-      if (!quality.ready) return { error: quality.error };
+      const { box } = detection.detection;
+      const centerX = box.x + box.width / 2;
+      const centerY = box.y + box.height / 2;
+      
+      const targetCenterX = vWidth / 2;
+      const targetCenterY = vHeight / 2;
+      
+      // Dynamic center threshold based on video size
+      const centered = Math.abs(centerX - targetCenterX) <= (vWidth * 0.2) && Math.abs(centerY - targetCenterY) <= (vHeight * 0.2);
+      const largeEnough = box.width >= (vWidth * 0.2) && box.height >= (vHeight * 0.2);
+
+      if (!centered) return { error: "Move face into the center." };
+      if (!largeEnough) return { error: "Move closer to the camera." };
 
       return { descriptor: Array.from(detection.descriptor) };
     } catch (err) {
@@ -523,12 +553,14 @@ const AdminFaceAttendance = () => {
 
   const inspectFacePosition = async () => {
     if (!videoRef.current || !canvasRef.current) return null;
-    const dimensions = drawFaceVideoFrame(
-      videoRef.current,
-      canvasRef.current,
-      meshCanvasRef.current,
-    );
-    if (!dimensions) return { error: "Camera is still starting..." };
+
+    const ctx = canvasRef.current.getContext("2d");
+    const vWidth = videoRef.current.videoWidth || 640;
+    const vHeight = videoRef.current.videoHeight || 480;
+
+    if (canvasRef.current.width !== vWidth) canvasRef.current.width = vWidth;
+    if (canvasRef.current.height !== vHeight) canvasRef.current.height = vHeight;
+    ctx.drawImage(videoRef.current, 0, 0, vWidth, vHeight);
 
     try {
       const detections = await faceapi.detectAllFaces(
@@ -644,7 +676,12 @@ const AdminFaceAttendance = () => {
         liveDescriptorRef.current = frameData.descriptor;
 
         const previousFrame = currentFrames[currentFrames.length - 1];
-        const isDistinct = isDistinctFaceDescriptor(frameData.descriptor, previousFrame);
+        const isDistinct = !previousFrame || Math.sqrt(
+          previousFrame.reduce((sum, val, idx) => {
+            const diff = val - frameData.descriptor[idx];
+            return sum + diff * diff;
+          }, 0)
+        ) >= 0.035;
 
         if (!isDistinct) {
           setFaceGuide({ ready: true, message: ENROLLMENT_PROMPTS[currentFrames.length] });
@@ -1057,11 +1094,17 @@ const AdminFaceAttendance = () => {
                           style={{ transform: "scaleX(-1)", borderRadius: "1rem" }}
                           playsInline
                           muted
+                          onLoadedMetadata={(e) => {
+                            setVideoDims({
+                              width: e.target.videoWidth || 640,
+                              height: e.target.videoHeight || 480
+                            });
+                          }}
                         />
                         <canvas
                           ref={canvasRef}
-                          width={640}
-                          height={480}
+                          width={videoDims.width}
+                          height={videoDims.height}
                           className="hidden"
                         />
                         <canvas
@@ -1437,7 +1480,8 @@ const AdminFaceAttendance = () => {
         </AnimatePresence>
 
         {/* Password Modal */}
-        <AnimatePresence>
+        <>
+
           {showPasswordPopup && (
             <>
               <div 
@@ -1446,10 +1490,10 @@ const AdminFaceAttendance = () => {
               />
               <div className="absolute inset-x-0 top-0 h-full z-[70] pointer-events-none">
                 <div className="sticky top-[30vh] w-full flex justify-center px-4 pointer-events-none">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                  <div
+                   
+                   
+                   
                     className="bg-white rounded-2xl shadow-xl border border-slate-200 p-6 w-full max-w-sm pointer-events-auto"
                   >
                     <div className="flex justify-between items-start mb-3 sm:mb-4">
@@ -1504,12 +1548,12 @@ const AdminFaceAttendance = () => {
                         {settingsSaving ? <Loader className="w-4 h-4 animate-spin" /> : "Verify"}
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </div>
             </>
           )}
-        </AnimatePresence>
+        </>
 
       </main>
     </AdminNavigation>
