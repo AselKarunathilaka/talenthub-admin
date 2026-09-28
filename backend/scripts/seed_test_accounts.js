@@ -115,52 +115,12 @@ async function seed() {
     console.log("✅ Created intern@slt.lk (ID: TEST001, Password: Intern@123)");
   }
 
-  // 5. Authorized Staff for Google Sign-In
-  const Staff = require("../models/Staff");
-  const { buildEmailQuery } = require("../utils/dbEncryption");
-  const AUTHORIZED_STAFF = [
-    { name: "Ranuja Liyanaarachchi", email: "ranujaliyanaarachchi@gmail.com", role: "super_admin" },
-    { name: "Ranuja Liyanaarachchi", email: "ranuja.info@gmail.com", role: "super_admin_plus" },
-    { name: "Tharushi Dimalsha", email: "dimalshacooray@gmail.com", role: "super_admin" },
-    { name: "Giridaran Mohanaramachandran", email: "mgiridaransysdev@gmail.com", role: "super_admin" },
-    { name: "Savinthi Kuruppu", email: "savinthikuruppu@gmail.com", role: "developer" },
-    { name: "K.M.T.D.Wickramasinghe", email: "wickramasinghetharuka5@gmail.com", role: "PM" },
-    { name: "S.A.S.D.Senanayake", email: "sithulidulanma@gmail.com", role: "super_admin" },
-    { name: "Chanudi Neha", email: "nehagimhani15@gmail.com", role: "developer" },
-    { name: "R.M.S.K.Ranathunga", email: "sithararanathunga2001@gmail.com", role: "super_admin" },
-    { name: "Savidya Godamune", email: "savi.godamune@gmail.com", role: "super_admin" },
-    { name: "Ushan Malinda", email: "abesinhaushan@gmail.com", role: "super_admin" },
-    { name: "Lakindu Naveesha", email: "lakindunaveesha263@gmail.com", role: "super_admin" },
-    { name: "kavindu", email: "kavinduchandupa856@gmail.com", role: "admin" },
-    { name: "Kavindu Nimsara", email: "kavindunimsara123@gmail.com", role: "developer" },
-    { name: "Amasha", email: "gmahansamalee@gmail.com", role: "developer" },
-    { name: "Janaka Harambearachchi", email: "hjanaka@slt.lk", role: "super_admin" },
-    { name: "Janaka Harambearachchi", email: "hjanaka@gmail.com", role: "super_admin" },
-    { name: "TalentTrail", email: "admin@slt.lk", role: "super_admin" },
-  ];
-
-  for (const s of AUTHORIZED_STAFF) {
-    let existingStaff = await Staff.findOne(buildEmailQuery(s.email.toLowerCase().trim()));
-    if (!existingStaff) {
-      existingStaff = new Staff({
-        name: s.name,
-        email: s.email.toLowerCase().trim(),
-        role: s.role,
-      });
-      await existingStaff.save();
-      console.log(`✅ Seeded authorized staff: ${s.email} (${s.role})`);
-    } else {
-      console.log(`ℹ️ Staff already exists: ${s.email}`);
-    }
-  }
-
   console.log("\n==========================================");
   console.log("All test login accounts ready!");
   console.log("1. Admin: admin@slt.lk / Admin123");
   console.log("2. Super Admin: superadmin@slt.lk / Admin123");
   console.log("3. Gate Staff: gatestaff@slt.lk / GateStaff@123");
   console.log("4. Intern: intern@slt.lk (or TEST001) / Intern@123");
-  console.log("5. Authorized Google Staff Accounts Seeded!");
   console.log("==========================================\n");
 
   process.exit(0);
