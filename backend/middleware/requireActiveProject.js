@@ -2,6 +2,8 @@ const InternTalentTrailSync = require("../models/InternTalentTrailSync");
 const Intern = require("../models/Intern");
 const User = require("../models/User");
 
+const { buildEmailQuery } = require("../utils/dbEncryption");
+
 /**
  * Specializations that are exempt from the project-assignment restriction.
  * Interns in these fields can submit logbook entries regardless of whether
@@ -26,7 +28,7 @@ const requireActiveProject = async (req, res, next) => {
     const { id: userId, email: userEmail } = req.user;
 
     // Admins are identified by presence in the User collection.
-    const adminUser = await User.findOne({ email: userEmail });
+    const adminUser = userEmail ? await User.findOne(buildEmailQuery(userEmail)) : null;
     if (adminUser) return next();
 
     // From here on this is definitely an intern request.
