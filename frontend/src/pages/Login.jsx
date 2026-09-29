@@ -102,19 +102,9 @@ const Login = () => {
       });
 
       if (data.token) {
-        if (data.accountType === "admin" || data.user?.role) {
-          const adminInfo = {
-            token: data.token,
-            user: data.user,
-            loginTime: new Date().toISOString(),
-          };
-          localStorage.setItem("adminInfo", JSON.stringify(adminInfo));
-          navigate("/admin/dashboard");
-        } else {
-          localStorage.setItem("internId", data.internId);
-          localStorage.setItem("authToken", data.token);
-          navigate("/dashboard");
-        }
+        localStorage.setItem("internId", data.internId);
+        localStorage.setItem("authToken", data.token);
+        navigate("/dashboard");
       } else {
         setError(data.message || "Authentication failed. Please try again.");
       }
