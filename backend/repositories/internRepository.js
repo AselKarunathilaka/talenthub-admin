@@ -86,7 +86,10 @@ class InternRepository {
       .trim()
       .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     return await Intern.findOne({
-      Trainee_Email: { $regex: `^${escaped}$`, $options: "i" },
+      $or: [
+        { Trainee_Email: { $regex: `^${escaped}$`, $options: "i" } },
+        { email: { $regex: `^${escaped}$`, $options: "i" } },
+      ],
     });
   }
 

@@ -273,7 +273,12 @@ class AuthService {
       const hasSpecialAccess = await SpecialAccessIntern.findOne({ email: encrypt(email.toLowerCase()) });
       if (hasSpecialAccess) {
         const InactiveIntern = require("../models/InactiveIntern");
-        intern = await InactiveIntern.findOne({ Trainee_Email: new RegExp(`^${email}$`, "i") });
+        intern = await InactiveIntern.findOne({
+          $or: [
+            { Trainee_Email: new RegExp(`^${email}$`, "i") },
+            { email: new RegExp(`^${email}$`, "i") },
+          ],
+        });
       }
     }
 
