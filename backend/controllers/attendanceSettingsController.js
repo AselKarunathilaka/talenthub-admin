@@ -2,7 +2,7 @@ const AttendanceSettingsService = require("../services/attendanceSettingsService
 const SecuritySetting = require("../models/SecuritySetting");
 const User = require("../models/User");
 const bcrypt = require("bcryptjs");
-const { encrypt, buildEmailQuery } = require("../utils/dbEncryption");
+const { encrypt } = require("../utils/dbEncryption");
 
 const getAttendanceSettings = async (req, res) => {
   try {
@@ -92,10 +92,9 @@ const updateAttendanceSettings = async (req, res) => {
     let adminEmail = req.user?.email || "Unknown Email";
 
     if (req.user) {
-      let actualUser = req.user.id ? await User.findById(req.user.id) : null;
-      if (!actualUser && req.user.email) {
-        actualUser = await User.findOne(buildEmailQuery(req.user.email.toLowerCase().trim()));
-      }
+      const actualUser = req.user.id
+        ? await User.findById(req.user.id)
+        : (req.user.email ? await User.findOne({ email: encrypt(req.user.email.toLowerCase().trim()) }) : null);
       if (actualUser && actualUser.name) {
         adminName = actualUser.name;
       }
@@ -154,10 +153,9 @@ const verifySecurityPassword = async (req, res) => {
     let adminEmail = req.user?.email || "Unknown Email";
     let actualUser = req.admin;
     if (!actualUser && req.user) {
-      actualUser = req.user.id ? await User.findById(req.user.id) : null;
-      if (!actualUser && req.user.email) {
-        actualUser = await User.findOne(buildEmailQuery(req.user.email.toLowerCase().trim()));
-      }
+      actualUser = req.user.id
+        ? await User.findById(req.user.id)
+        : (req.user.email ? await User.findOne({ email: encrypt(req.user.email.toLowerCase().trim()) }) : null);
     }
     if (actualUser && actualUser.name) adminName = actualUser.name;
 

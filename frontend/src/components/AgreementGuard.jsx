@@ -8,6 +8,9 @@ import { handleUnauthorized } from "../utils/sessionUtils";
 import { Clock, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
 
+// Helper: get the intern auth token from localStorage
+const getInternToken = () => localStorage.getItem("authToken") || null;
+
 const AgreementGuard = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [showAgreement, setShowAgreement] = useState(false);
@@ -22,8 +25,10 @@ const AgreementGuard = ({ children }) => {
     }
 
     try {
+      const token = getInternToken();
       const response = await axios.get(
-        `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${internId}`
+        `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/page/${internId}`,
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {}
       );
 
       const intern = response.data;
@@ -65,9 +70,11 @@ const AgreementGuard = ({ children }) => {
 
   const handleAcceptAgreement = async (digitalAgreementPayload) => {
     try {
+      const token = getInternToken();
       await axios.put(
         `${API_BASE_URL}${API_ENDPOINTS.INTERNS.LIST}/${internId}/accept-agreement`,
-        { digitalAgreement: digitalAgreementPayload }
+        { digitalAgreement: digitalAgreementPayload },
+        token ? { headers: { Authorization: `Bearer ${token}` } } : {}
       );
       toast.success("Digital agreement accepted successfully!");
       setInternData((prev) => ({
