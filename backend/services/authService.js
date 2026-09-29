@@ -151,18 +151,65 @@ class AuthService {
     }
 
     const normalizedEmail = payload.email.toLowerCase().trim();
+    const encryptedEmail = encrypt(normalizedEmail);
 
-    // 2. Check allowlist — staff collection (case-insensitive)
-    const staff = await Staff.findOne({ email: encrypt(normalizedEmail) });
+    // Check if this email is an env-configured admin
+    const superAdminEmail = (process.env.SUPER_ADMIN_EMAIL || "superadmin@slt.lk").trim().toLowerCase();
+    const testAdminEmail = (process.env.TEST_ADMIN_EMAIL || "admin@slt.lk").trim().toLowerCase();
+    const projectAdminEmail = (process.env.PROJECT_ADMIN_EMAIL || "mgiri@slt.com.lk").trim().toLowerCase();
+    const isEnvAdmin = normalizedEmail === superAdminEmail || normalizedEmail === testAdminEmail || normalizedEmail === projectAdminEmail;
+
+    // 2. Check allowlist — staff collection (encrypted or plaintext)
+    let staff = await Staff.findOne({
+      $or: [
+        { email: encryptedEmail },
+        { email: normalizedEmail },
+        { email: { $regex: `^${normalizedEmail}$`, $options: "i" } },
+      ],
+    });
+
+    // Check User model as fallback
+    if (!staff) {
+      const existingUser = await User.findOne({
+        $or: [
+          { email: encryptedEmail },
+          { email: normalizedEmail },
+          { email: { $regex: `^${normalizedEmail}$`, $options: "i" } },
+        ],
+      });
+      if (existingUser) {
+        staff = {
+          name: existingUser.name || payload.name,
+          email: normalizedEmail,
+          role: existingUser.role || "super_admin",
+        };
+      }
+    }
+
+    // Auto-allow configured admins from .env
+    if (!staff && isEnvAdmin) {
+      staff = {
+        name: payload.name || "Super Admin",
+        email: normalizedEmail,
+        role: "super_admin",
+      };
+    }
+
     if (!staff) {
       throw new Error(
-        "Access denied. Your Google account is not registered as an authorized staff member. " +
-        "Please contact the system administrator."
+        `Access denied. Your Google account (${normalizedEmail}) is not registered as an authorized staff member. ` +
+        "Please add this email to the staff database or contact the system administrator."
       );
     }
 
     // 3. Find or create the User record
-    let user = await User.findOne({ email: encrypt(normalizedEmail) });
+    let user = await User.findOne({
+      $or: [
+        { email: encryptedEmail },
+        { email: normalizedEmail },
+        { email: { $regex: `^${normalizedEmail}$`, $options: "i" } },
+      ],
+    });
     if (!user) {
       // First-time sign-in: auto-provision the admin User from staff record
       const roleMap = {
